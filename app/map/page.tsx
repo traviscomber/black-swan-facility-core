@@ -2,25 +2,118 @@
 
 import { AppLayout } from "@/components/app-layout"
 import { PageHeader } from "@/components/page-header"
-import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Card, CardContent } from "@/components/ui/card"
 import { createClient } from "@/lib/supabase/client"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import type { Asset } from "@/lib/types"
-import Link from "next/link"
-import { MapPin, Layers, X, ChevronLeft, ChevronRight } from "lucide-react"
+import { Layers, X, ChevronLeft, ChevronRight, Maximize } from "lucide-react"
 
 export default function MapPage() {
   const [assets, setAssets] = useState<Asset[]>([])
   const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null)
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [mapType, setMapType] = useState<"street" | "satellite" | "terrain">("street")
   const [filters, setFilters] = useState({
     water: true,
     electricity: true,
     internet: true,
     critical: true,
   })
+  const [leafletLoaded, setLeafletLoaded] = useState(false)
+
+  const mapRef = useRef<any>(null)
+  const mapContainerRef = useRef<HTMLDivElement>(null)
+  const markersRef = useRef<any[]>([])
+
+  useEffect(() => {
+    if (typeof window === "undefined") return
+
+    // Check if Leaflet is already loaded
+    if ((window as any).L) {
+      setLeafletLoaded(true)
+      return
+    }
+
+    // Load Leaflet CSS
+    const link = document.createElement("link")
+    link.rel = "stylesheet"
+    link.href = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    document.head.appendChild(link)
+
+    // Load Leaflet JS
+    const script = document.createElement("script")
+    script.src = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+    script.onload = () => setLeafletLoaded(true)
+    document.head.appendChild(script)
+
+    return () => {
+      document.head.removeChild(link)
+      document.head.removeChild(script)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!leafletLoaded || typeof window === "undefined") return
+
+    const L = (window as any).L
+
+    if (!mapRef.current && mapContainerRef.current) {
+      const map = L.map(mapContainerRef.current).setView([-39.76, -73.23], 15)
+
+      // Add default tile layer (street map)
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        attribution: "© OpenStreetMap contributors",
+        maxZoom: 19,
+      }).addTo(map)
+
+      mapRef.current = map
+    }
+
+    return () => {
+      if (mapRef.current) {
+        mapRef.current.remove()
+        mapRef.current = null
+      }
+    }
+  }, [leafletLoaded])
+
+  useEffect(() => {
+    if (!mapRef.current || !leafletLoaded || typeof window === "undefined") return
+
+    const L = (window as any).L
+    const map = mapRef.current
+
+    // Remove existing tile layers
+    map.eachLayer((layer: any) => {
+      if (layer instanceof L.TileLayer) {
+        map.removeLayer(layer)
+      }
+    })
+
+    // Add new tile layer based on selected type
+    let tileUrl = ""
+    let attribution = ""
+
+    switch (mapType) {
+      case "satellite":
+        tileUrl = "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+        attribution = "© Esri"
+        break
+      case "terrain":
+        tileUrl = "https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png"
+        attribution = "© OpenTopoMap contributors"
+        break
+      case "street":
+      default:
+        tileUrl = "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+        attribution = "© OpenStreetMap contributors"
+    }
+
+    L.tileLayer(tileUrl, {
+      attribution,
+      maxZoom: 19,
+    }).addTo(map)
+  }, [mapType, leafletLoaded])
 
   useEffect(() => {
     const fetchAssets = async () => {
@@ -37,6 +130,74 @@ export default function MapPage() {
     fetchAssets()
   }, [])
 
+  useEffect(() => {
+    if (!mapRef.current || !leafletLoaded || typeof window === "undefined") return
+
+    const L = (window as any).L
+    const map = mapRef.current
+
+    // Clear existing markers
+    markersRef.current.forEach((marker) => marker.remove())
+    markersRef.current = []
+
+    // Filter assets
+    const filtered = assets.filter((asset) => {
+      if (asset.is_critical && filters.critical) return true
+      if (asset.type.toLowerCase() === "water" && filters.water) return true
+      if (asset.type.toLowerCase() === "electricity" && filters.electricity) return true
+      if (asset.type.toLowerCase() === "internet" && filters.internet) return true
+      return false
+    })
+
+    // Add markers for filtered assets
+    filtered.forEach((asset) => {
+      if (!asset.latitude || !asset.longitude) return
+
+      const color = getAssetColor(asset)
+
+      const icon = L.divIcon({
+        className: "custom-marker",
+        html: `<div style="
+          width: 24px;
+          height: 24px;
+          border-radius: 50%;
+          background-color: ${color};
+          border: 2px solid white;
+          box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        "></div>`,
+        iconSize: [24, 24],
+        iconAnchor: [12, 12],
+      })
+
+      const marker = L.marker([asset.latitude, asset.longitude], { icon })
+        .addTo(map)
+        .bindPopup(`
+          <div style="min-width: 200px;">
+            <h3 style="font-weight: 600; margin-bottom: 8px;">${asset.name}</h3>
+            <p style="font-size: 14px; color: #666; margin-bottom: 4px;">${asset.type}</p>
+            <p style="font-size: 12px; color: #999; margin-bottom: 12px;">${asset.location || ""}</p>
+            <a href="/assets/${asset.id}" style="
+              display: block;
+              text-align: center;
+              background-color: #1a73e8;
+              color: white;
+              padding: 8px;
+              border-radius: 6px;
+              text-decoration: none;
+              font-size: 14px;
+            ">View Details</a>
+          </div>
+        `)
+
+      markersRef.current.push(marker)
+    })
+
+    if (filtered.length > 0) {
+      const bounds = L.latLngBounds(filtered.map((a) => [a.latitude!, a.longitude!] as [number, number]))
+      map.fitBounds(bounds, { padding: [50, 50] })
+    }
+  }, [assets, filters, leafletLoaded])
+
   const getAssetColor = (asset: Asset) => {
     if (asset.is_critical) return "#ef4444"
     switch (asset.type.toLowerCase()) {
@@ -51,6 +212,16 @@ export default function MapPage() {
     }
   }
 
+  const toggleFullscreen = () => {
+    if (!mapContainerRef.current) return
+
+    if (!document.fullscreenElement) {
+      mapContainerRef.current.parentElement?.requestFullscreen()
+    } else {
+      document.exitFullscreen()
+    }
+  }
+
   const filteredAssets = assets.filter((asset) => {
     if (asset.is_critical && filters.critical) return true
     if (asset.type.toLowerCase() === "water" && filters.water) return true
@@ -59,109 +230,73 @@ export default function MapPage() {
     return false
   })
 
-  const centerLat =
-    filteredAssets.length > 0
-      ? filteredAssets.reduce((sum, a) => sum + (a.latitude || 0), 0) / filteredAssets.length
-      : 40.7128
-  const centerLng =
-    filteredAssets.length > 0
-      ? filteredAssets.reduce((sum, a) => sum + (a.longitude || 0), 0) / filteredAssets.length
-      : -74.006
-
   return (
     <AppLayout>
       <PageHeader title="GIS Map" description="Interactive facility asset map" />
 
       <div className="relative h-[calc(100vh-8rem)] md:h-[calc(100vh-5rem)]">
-        {/* Map View - Full width on mobile */}
-        <div className="absolute inset-0 bg-gray-100">
-          <div className="h-full w-full overflow-hidden">
-            {/* Grid background */}
-            <div
-              className="absolute inset-0"
-              style={{
-                backgroundImage: `
-                  linear-gradient(to right, #e5e7eb 1px, transparent 1px),
-                  linear-gradient(to bottom, #e5e7eb 1px, transparent 1px)
-                `,
-                backgroundSize: "50px 50px",
-              }}
-            />
+        <div ref={mapContainerRef} className="absolute inset-0 z-0" style={{ height: "100%", width: "100%" }} />
 
-            {/* Asset markers */}
-            {filteredAssets.map((asset) => {
-              const x = ((asset.longitude || 0) - centerLng) * 5000 + 50
-              const y = ((asset.latitude || 0) - centerLat) * 5000 + 50
-
-              return (
-                <div
-                  key={asset.id}
-                  className="absolute cursor-pointer transition-transform hover:scale-125 z-10"
-                  style={{
-                    left: `${50 + x}%`,
-                    top: `${50 - y}%`,
-                    transform: "translate(-50%, -50%)",
-                  }}
-                  onClick={() => setSelectedAsset(asset)}
-                >
-                  <div
-                    className="h-5 w-5 md:h-6 md:w-6 rounded-full border-2 border-white shadow-lg"
-                    style={{ backgroundColor: getAssetColor(asset) }}
-                  />
-                  {selectedAsset?.id === asset.id && (
-                    <div className="absolute left-8 top-0 z-20 w-48 md:w-56">
-                      <Card className="shadow-xl">
-                        <CardContent className="p-3">
-                          <div className="flex items-start justify-between mb-2">
-                            <p className="font-semibold text-sm flex-1">{asset.name}</p>
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                setSelectedAsset(null)
-                              }}
-                              className="text-gray-400 hover:text-gray-600 ml-2"
-                            >
-                              <X className="h-4 w-4" />
-                            </button>
-                          </div>
-                          <p className="text-xs text-gray-600">{asset.type}</p>
-                          <p className="text-xs text-gray-500 mt-1">{asset.location}</p>
-                          <Link href={`/assets/${asset.id}`} className="mt-3 block">
-                            <Button size="sm" className="w-full text-xs h-8">
-                              View Details
-                            </Button>
-                          </Link>
-                        </CardContent>
-                      </Card>
-                    </div>
-                  )}
-                </div>
-              )
-            })}
-
-            {/* Map overlay */}
-            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-              <div className="text-center">
-                <MapPin className="h-12 w-12 md:h-16 md:w-16 text-gray-300 mx-auto mb-4" />
-                <p className="text-gray-400 text-xs md:text-sm">Asset Map Visualization</p>
-                <p className="text-gray-300 text-xs mt-2 px-4">Click markers to view details</p>
-              </div>
+        {!leafletLoaded && (
+          <div className="absolute inset-0 flex items-center justify-center bg-gray-50">
+            <div className="text-center">
+              <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mb-3" />
+              <p className="text-sm text-gray-600">Loading map...</p>
             </div>
           </div>
+        )}
+
+        {/* Map Type Controls */}
+        <div className="absolute top-4 left-4 z-[1000] bg-white rounded-lg shadow-lg border border-gray-200 overflow-hidden">
+          <button
+            onClick={() => setMapType("street")}
+            className={`px-3 py-2 text-xs md:text-sm font-medium transition-colors border-b border-gray-200 block w-full text-left ${
+              mapType === "street" ? "bg-blue-50 text-blue-700" : "bg-white text-gray-700 hover:bg-gray-50"
+            }`}
+          >
+            Street
+          </button>
+          <button
+            onClick={() => setMapType("satellite")}
+            className={`px-3 py-2 text-xs md:text-sm font-medium transition-colors border-b border-gray-200 block w-full text-left ${
+              mapType === "satellite" ? "bg-blue-50 text-blue-700" : "bg-white text-gray-700 hover:bg-gray-50"
+            }`}
+          >
+            Satellite
+          </button>
+          <button
+            onClick={() => setMapType("terrain")}
+            className={`px-3 py-2 text-xs md:text-sm font-medium transition-colors block w-full text-left ${
+              mapType === "terrain" ? "bg-blue-50 text-blue-700" : "bg-white text-gray-700 hover:bg-gray-50"
+            }`}
+          >
+            Terrain
+          </button>
         </div>
 
+        {/* Fullscreen Button */}
+        <button
+          onClick={toggleFullscreen}
+          className="absolute top-4 left-32 z-[1000] bg-white rounded-lg shadow-lg p-2 border border-gray-200 hover:bg-gray-50 transition-colors"
+          title="Toggle fullscreen"
+        >
+          <Maximize className="h-4 w-4 md:h-5 md:w-5 text-gray-700" />
+        </button>
+
+        {/* Mobile Toggle Button */}
         <button
           onClick={() => setSidebarOpen(!sidebarOpen)}
-          className="md:hidden absolute top-4 right-4 z-30 bg-white rounded-lg shadow-lg p-2 border border-gray-200"
+          className="md:hidden absolute top-4 right-4 z-[1000] bg-white rounded-lg shadow-lg p-2 border border-gray-200"
         >
           {sidebarOpen ? <ChevronRight className="h-5 w-5" /> : <ChevronLeft className="h-5 w-5" />}
         </button>
 
+        {/* Asset List Sidebar */}
         <div
           className={`
             fixed md:absolute top-0 right-0 h-full w-[85vw] max-w-sm md:w-80
             bg-white border-l border-gray-200 shadow-xl md:shadow-none
-            transform transition-transform duration-300 ease-in-out z-20
+            transform transition-transform duration-300 ease-in-out z-[1001]
             ${sidebarOpen ? "translate-x-0" : "translate-x-full md:translate-x-0"}
           `}
         >
@@ -243,7 +378,9 @@ export default function MapPage() {
                     key={asset.id}
                     className="rounded-lg border border-gray-200 p-3 cursor-pointer transition-colors hover:bg-gray-50"
                     onClick={() => {
-                      setSelectedAsset(asset)
+                      if (mapRef.current && asset.latitude && asset.longitude) {
+                        mapRef.current.setView([asset.latitude, asset.longitude], 16)
+                      }
                       setSidebarOpen(false)
                     }}
                   >
@@ -274,8 +411,9 @@ export default function MapPage() {
           </div>
         </div>
 
+        {/* Mobile Overlay */}
         {sidebarOpen && (
-          <div className="md:hidden fixed inset-0 bg-black/30 z-10" onClick={() => setSidebarOpen(false)} />
+          <div className="md:hidden fixed inset-0 bg-black/30 z-[1000]" onClick={() => setSidebarOpen(false)} />
         )}
       </div>
     </AppLayout>
