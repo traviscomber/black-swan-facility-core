@@ -138,3 +138,134 @@ export interface AIOperationLog {
   metadata: Record<string, any>
   created_at: string
 }
+
+export interface Room {
+  id: string
+  room_number: string
+  room_type: string
+  capacity: number
+  status: "clean" | "occupied" | "dirty" | "maintenance"
+  location: string | null
+  amenities: string[] | null
+  rate_per_night: number | null
+  notes: string | null
+  created_at: string
+}
+
+export interface Reservation {
+  id: string
+  room_id: string | null
+  guest_name: string
+  guest_email: string | null
+  guest_phone: string | null
+  check_in: string
+  check_out: string
+  status: "confirmed" | "checked-in" | "checked-out" | "cancelled"
+  num_guests: number
+  special_requests: string | null
+  total_amount: number | null
+  created_at: string
+}
+
+export interface HousekeepingTask {
+  id: string
+  room_id: string | null
+  task_type: string
+  status: "pending" | "in-progress" | "completed"
+  assigned_to: string | null
+  priority: "low" | "normal" | "high" | "urgent"
+  notes: string | null
+  completed_at: string | null
+  created_at: string
+}
+
+export interface GuestRequest {
+  id: string
+  reservation_id: string | null
+  request_type: string
+  description: string
+  status: "open" | "in-progress" | "resolved"
+  assigned_to: string | null
+  resolved_at: string | null
+  created_at: string
+}
+
+export interface AISession {
+  id: string
+  agent_id: string | null
+  title: string
+  status: "active" | "completed" | "failed"
+  context_summary: Record<string, any>
+  metadata: Record<string, any>
+  started_at: string
+  ended_at: string | null
+  created_at: string
+}
+
+export interface AIEvent {
+  id: string
+  session_id: string
+  event_type: string
+  event_data: Record<string, any>
+  context_snapshot: Record<string, any> | null
+  created_at: string
+}
+
+export interface AIContext {
+  id: string
+  session_id: string
+  context_type: string
+  context_data: Record<string, any>
+  priority: number
+  is_compacted: boolean
+  expires_at: string | null
+  created_at: string
+}
+
+export interface AIArtifact {
+  id: string
+  session_id: string | null
+  artifact_type: "document" | "image" | "log" | "manual" | "video" | "other"
+  title: string
+  content: string | null
+  file_url: string | null
+  metadata: Record<string, any>
+  tags: string[] | null
+  created_at: string
+}
+
+export interface AIMemory {
+  id: string
+  agent_id: string
+  memory_type: "episodic" | "semantic" | "procedural"
+  content: string
+  embedding: number[] | null
+  metadata: Record<string, any>
+  relevance_score: number
+  access_count: number
+  last_accessed: string | null
+  created_at: string
+}
+
+export interface AIAgentHandoff {
+  id: string
+  session_id: string
+  from_agent_id: string
+  to_agent_id: string
+  handoff_reason: string
+  context_snapshot: Record<string, any>
+  status: "pending" | "accepted" | "completed" | "rejected"
+  completed_at: string | null
+  created_at: string
+}
+
+export interface AIContextCompaction {
+  id: string
+  session_id: string
+  compacted_count: number
+  original_size_kb: number | null
+  compacted_size_kb: number | null
+  compression_ratio: number | null
+  compaction_strategy: string | null
+  created_at: string
+}

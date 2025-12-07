@@ -1,5 +1,8 @@
 import { createClient } from "@/lib/supabase/server"
 import type { AIAgent, AIAgentExecution } from "@/lib/types"
+import { ContextService } from "./context-service"
+import { MemoryService } from "./memory-service"
+import { HandoffService } from "./handoff-service"
 
 export interface AgentExecutionContext {
   agentId: string
@@ -20,11 +23,15 @@ export interface AgentExecutionResult {
  */
 export class AIAgentService {
   /**
-   * Execute an AI agent
+   * Execute an AI agent with ADK context tracking
    */
   static async executeAgent(agentId: string, input: Record<string, any> = {}): Promise<AIAgentExecution> {
     const supabase = await createClient()
     const startTime = Date.now()
+
+    const session = await ContextService.createSession(agentId, `Agent execution at ${new Date().toISOString()}`, {
+      input,
+    })
 
     // Create execution record
     const { data: execution, error: execError } = await supabase
@@ -38,8 +45,14 @@ export class AIAgentService {
       .single()
 
     if (execError || !execution) {
+      await ContextService.endSession(session.id, "failed")
       throw new Error(`Failed to create execution: ${execError?.message}`)
     }
+
+    await ContextService.logEvent(session.id, "execution_started", {
+      execution_id: execution.id,
+      agent_id: agentId,
+    })
 
     try {
       // Get agent configuration
@@ -49,27 +62,44 @@ export class AIAgentService {
         throw new Error("Agent not found")
       }
 
-      // Load agent memory
-      const { data: memory } = await supabase
-        .from("ai_agent_memory")
-        .select("*")
-        .eq("agent_id", agentId)
-        .order("created_at", { ascending: false })
-        .limit(10)
+      await ContextService.storeContext(session.id, "agent_config", agent.config, 8)
 
-      const memoryContext =
-        memory?.reduce(
-          (acc, m) => ({
-            ...acc,
-            [m.memory_type]: m.content,
-          }),
-          {},
-        ) || {}
+      const memories = await MemoryService.getMemories(agentId, undefined, 10)
+      const memoryContext = memories.reduce(
+        (acc, m) => ({
+          ...acc,
+          [`${m.memory_type}_${m.id}`]: m.content,
+        }),
+        {},
+      )
+
+      await ContextService.storeContext(session.id, "agent_memories", memoryContext, 7)
+
+      const pendingHandoffs = await HandoffService.getPendingHandoffs(agentId)
+      if (pendingHandoffs.length > 0) {
+        await ContextService.logEvent(session.id, "handoffs_detected", {
+          count: pendingHandoffs.length,
+        })
+      }
 
       // Execute agent logic based on type
-      const result = await this.runAgentLogic(agent, input, memoryContext)
+      const result = await this.runAgentLogic(agent, input, memoryContext, session.id)
 
       const duration = Date.now() - startTime
+
+      if (result.success) {
+        await MemoryService.storeMemory(
+          agentId,
+          "episodic",
+          `Successfully executed ${agent.name}: ${JSON.stringify(result.output).substring(0, 200)}`,
+          {
+            execution_id: execution.id,
+            duration_ms: duration,
+            output_summary: result.output,
+          },
+          0.9,
+        )
+      }
 
       // Update execution with results
       const { data: updatedExecution } = await supabase
@@ -84,11 +114,23 @@ export class AIAgentService {
         .select()
         .single()
 
+      await ContextService.logEvent(session.id, "execution_completed", {
+        execution_id: execution.id,
+        duration_ms: duration,
+        output: result.output,
+      })
+      await ContextService.endSession(session.id, "completed")
+
       // Log success
       await this.log(agentId, execution.id, "info", `Agent executed successfully in ${duration}ms`)
 
       // Update agent last_run
       await supabase.from("ai_agents").update({ last_run: new Date().toISOString() }).eq("id", agentId)
+
+      const compactedCount = await ContextService.compactContext(session.id)
+      if (compactedCount > 0) {
+        await this.log(agentId, execution.id, "debug", `Compacted ${compactedCount} context items`)
+      }
 
       return updatedExecution!
     } catch (error: any) {
@@ -103,6 +145,23 @@ export class AIAgentService {
         })
         .eq("id", execution.id)
 
+      await MemoryService.storeMemory(
+        agentId,
+        "episodic",
+        `Failed execution: ${error.message}`,
+        {
+          execution_id: execution.id,
+          error: error.message,
+        },
+        0.8,
+      )
+
+      await ContextService.logEvent(session.id, "execution_failed", {
+        execution_id: execution.id,
+        error: error.message,
+      })
+      await ContextService.endSession(session.id, "failed")
+
       // Log error
       await this.log(agentId, execution.id, "error", `Agent execution failed: ${error.message}`)
 
@@ -111,29 +170,28 @@ export class AIAgentService {
   }
 
   /**
-   * Run agent-specific logic
+   * Run agent-specific logic with session tracking
    */
   private static async runAgentLogic(
     agent: AIAgent,
     input: Record<string, any>,
     memory: Record<string, any>,
+    sessionId: string,
   ): Promise<AgentExecutionResult> {
-    console.log("[v0] Running agent logic for:", agent.name, agent.type)
-
     const startTime = Date.now()
 
     try {
       switch (agent.type) {
         case "maintenance":
-          return await this.runMaintenanceAgent(input, memory)
+          return await this.runMaintenanceAgent(input, memory, sessionId, agent.id)
         case "issue_resolution":
-          return await this.runIssueResolutionAgent(input, memory)
+          return await this.runIssueResolutionAgent(input, memory, sessionId, agent.id)
         case "documentation":
-          return await this.runDocumentationAgent(input, memory)
+          return await this.runDocumentationAgent(input, memory, sessionId, agent.id)
         case "communication":
-          return await this.runCommunicationAgent(input, memory)
+          return await this.runCommunicationAgent(input, memory, sessionId, agent.id)
         case "execution":
-          return await this.runExecutionAgent(input, memory)
+          return await this.runExecutionAgent(input, memory, sessionId, agent.id)
         default:
           throw new Error(`Unknown agent type: ${agent.type}`)
       }
@@ -144,14 +202,17 @@ export class AIAgentService {
   }
 
   /**
-   * Maintenance Scheduler Agent
-   * Optimizes maintenance schedules based on asset criticality and history
+   * Maintenance Scheduler Agent with context tracking and handoffs
    */
   private static async runMaintenanceAgent(
     input: Record<string, any>,
     memory: Record<string, any>,
+    sessionId: string,
+    agentId: string,
   ): Promise<AgentExecutionResult> {
     const supabase = await createClient()
+
+    await ContextService.logEvent(sessionId, "analyzing_maintenance_tasks", {})
 
     // Get all pending maintenance tasks
     const { data: tasks } = await supabase
@@ -159,6 +220,8 @@ export class AIAgentService {
       .select("*, assets(*)")
       .eq("status", "pending")
       .is("next_run", null)
+
+    await ContextService.storeContext(sessionId, "pending_tasks", { count: tasks?.length || 0, tasks }, 6)
 
     let optimizedCount = 0
 
@@ -175,6 +238,8 @@ export class AIAgentService {
 
         optimizedCount++
       }
+
+      await ContextService.logEvent(sessionId, "tasks_optimized", { count: optimizedCount })
     }
 
     return {
@@ -188,22 +253,27 @@ export class AIAgentService {
   }
 
   /**
-   * Issue Resolution Agent
-   * Analyzes issues and suggests actions
+   * Issue Resolution Agent with context tracking and smart handoffs
    */
   private static async runIssueResolutionAgent(
     input: Record<string, any>,
     memory: Record<string, any>,
+    sessionId: string,
+    agentId: string,
   ): Promise<AgentExecutionResult> {
     const supabase = await createClient()
+
+    await ContextService.logEvent(sessionId, "analyzing_issues", {})
 
     // Get all open issues
     const { data: issues } = await supabase.from("issues").select("*, assets(*)").eq("status", "open")
 
+    await ContextService.storeContext(sessionId, "open_issues", { count: issues?.length || 0, issues }, 7)
+
     let analyzedCount = 0
 
     if (issues && issues.length > 0) {
-      // For each issue, determine if it needs a maintenance task
+      // For each issue, determine if it needs a maintenance task or handoff
       for (const issue of issues) {
         if (issue.assets && issue.assets.is_critical) {
           // Create maintenance task for critical asset issues
@@ -215,9 +285,30 @@ export class AIAgentService {
             next_run: new Date().toISOString().split("T")[0],
           })
 
+          const maintenanceAgentId = await HandoffService.suggestHandoff("maintenance_required", {
+            issue_id: issue.id,
+            asset_critical: true,
+          })
+
+          if (maintenanceAgentId) {
+            await HandoffService.createHandoff(
+              sessionId,
+              agentId,
+              maintenanceAgentId,
+              "Critical asset requires maintenance scheduling",
+              {
+                issue_id: issue.id,
+                asset_id: issue.asset_id,
+                description: issue.description,
+              },
+            )
+          }
+
           analyzedCount++
         }
       }
+
+      await ContextService.logEvent(sessionId, "issues_resolved", { tasks_created: analyzedCount })
     }
 
     return {
@@ -237,6 +328,8 @@ export class AIAgentService {
   private static async runDocumentationAgent(
     input: Record<string, any>,
     memory: Record<string, any>,
+    sessionId: string,
+    agentId: string,
   ): Promise<AgentExecutionResult> {
     return {
       success: true,
@@ -253,6 +346,8 @@ export class AIAgentService {
   private static async runCommunicationAgent(
     input: Record<string, any>,
     memory: Record<string, any>,
+    sessionId: string,
+    agentId: string,
   ): Promise<AgentExecutionResult> {
     return {
       success: true,
@@ -269,6 +364,8 @@ export class AIAgentService {
   private static async runExecutionAgent(
     input: Record<string, any>,
     memory: Record<string, any>,
+    sessionId: string,
+    agentId: string,
   ): Promise<AgentExecutionResult> {
     return {
       success: true,
