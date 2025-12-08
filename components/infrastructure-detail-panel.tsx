@@ -96,7 +96,7 @@ export function InfrastructureDetailPanel({
   useEffect(() => {
     fetchPhotos()
     fetchDocuments()
-  }, [])
+  }, [infrastructure.id])
 
   const fetchPhotos = async () => {
     const supabase = createClient()
