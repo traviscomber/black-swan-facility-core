@@ -5,7 +5,6 @@ import { useState, useEffect, useRef } from "react"
 import { X, Camera, FileText, MapPin, Calendar, AlertCircle, Pencil, Trash2, Upload, Download } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -62,21 +61,19 @@ type InfrastructureDocument = {
   uploaded_at: string
 }
 
-export function InfrastructureDetailPanel({
-  infrastructure,
-  open,
-  onClose,
-  onUpdate,
-  onEdit,
-  onDelete,
-}: {
+type InfrastructureDetailPanelProps = {
   infrastructure: InfrastructurePlan
-  open: boolean
   onClose: () => void
   onUpdate: () => void
-  onEdit?: (infrastructure: InfrastructurePlan) => void
   onDelete?: () => void
-}) {
+}
+
+export function InfrastructureDetailPanel({
+  infrastructure,
+  onClose,
+  onUpdate,
+  onDelete,
+}: InfrastructureDetailPanelProps) {
   const [photos, setPhotos] = useState<InfrastructurePhoto[]>([])
   const [documents, setDocuments] = useState<InfrastructureDocument[]>([])
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
@@ -89,15 +86,17 @@ export function InfrastructureDetailPanel({
   const [documentFile, setDocumentFile] = useState<File | null>(null)
   const [documentName, setDocumentName] = useState("")
   const [uploading, setUploading] = useState(false)
+  const [viewingPhoto, setViewingPhoto] = useState<InfrastructurePhoto | null>(null)
+  const [editingPhoto, setEditingPhoto] = useState<InfrastructurePhoto | null>(null)
+  const [editCaption, setEditCaption] = useState("")
+  const [activeTab, setActiveTab] = useState<"photos" | "documents">("photos")
   const photoInputRef = useRef<HTMLInputElement>(null)
   const documentInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
-    if (open && infrastructure) {
-      fetchPhotos()
-      fetchDocuments()
-    }
-  }, [open, infrastructure])
+    fetchPhotos()
+    fetchDocuments()
+  }, [])
 
   const fetchPhotos = async () => {
     const supabase = createClient()
@@ -415,12 +414,30 @@ export function InfrastructureDetailPanel({
     }
   }
 
-  const handleOpenPhotoDialog = () => {
-    console.log("[v0] Opening photo dialog")
-    setShowPhotoDialog(true)
-  }
+  const handleEditPhoto = async () => {
+    if (!editingPhoto) return
 
-  if (!open) return null
+    console.log("[v0] Updating photo caption:", editingPhoto.id)
+
+    try {
+      const supabase = createClient()
+
+      const { error } = await supabase
+        .from("infrastructure_photos")
+        .update({ caption: editCaption })
+        .eq("id", editingPhoto.id)
+
+      if (error) throw error
+
+      console.log("[v0] Photo caption updated successfully")
+      await fetchPhotos()
+      setEditingPhoto(null)
+      setEditCaption("")
+    } catch (error) {
+      console.error("[v0] Error updating photo:", error)
+      alert("Failed to update photo caption")
+    }
+  }
 
   return (
     <>
@@ -428,17 +445,13 @@ export function InfrastructureDetailPanel({
         <div className="sticky top-0 bg-white border-b border-gray-200 p-3 sm:p-4 flex items-center justify-between z-10">
           <h2 className="text-base sm:text-lg font-semibold truncate pr-2 sm:pr-4">{infrastructure.name}</h2>
           <div className="flex items-center gap-1 sm:gap-2">
-            {onEdit && (
-              <Button variant="outline" size="sm" onClick={() => onEdit(infrastructure)} className="hidden sm:flex">
-                <Pencil className="h-4 w-4 mr-2" />
-                Edit
-              </Button>
-            )}
-            {onEdit && (
-              <Button variant="outline" size="sm" onClick={() => onEdit(infrastructure)} className="sm:hidden">
-                <Pencil className="h-4 w-4" />
-              </Button>
-            )}
+            <Button variant="outline" size="sm" onClick={onUpdate} className="hidden sm:flex bg-transparent">
+              <Pencil className="h-4 w-4 mr-2" />
+              Edit
+            </Button>
+            <Button variant="outline" size="sm" onClick={onUpdate} className="sm:hidden bg-transparent">
+              <Pencil className="h-4 w-4" />
+            </Button>
             <Button variant="outline" size="sm" onClick={() => setShowDeleteDialog(true)} className="hidden sm:flex">
               <Trash2 className="h-4 w-4 mr-2" />
               Delete
@@ -529,47 +542,60 @@ export function InfrastructureDetailPanel({
             </div>
           )}
 
-          <Tabs defaultValue="photos" className="w-full">
-            <TabsList className="w-full">
-              <TabsTrigger value="photos" className="flex-1 text-xs sm:text-sm">
-                <Camera className="h-4 w-4 mr-1 sm:mr-2" />
+          <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6">
+            <div className="flex items-center justify-between">
+              <Button
+                variant={activeTab === "photos" ? "default" : "outline"}
+                size="sm"
+                onClick={() => setActiveTab("photos")}
+                className="flex-1"
+              >
+                <Camera className="h-4 w-4 mr-2" />
                 Photos ({photos.length})
-              </TabsTrigger>
-              <TabsTrigger value="documents" className="flex-1 text-xs sm:text-sm">
-                <FileText className="h-4 w-4 mr-1 sm:mr-2" />
+              </Button>
+              <Button
+                variant={activeTab === "documents" ? "default" : "outline"}
+                size="sm"
+                onClick={() => setActiveTab("documents")}
+                className="flex-1 ml-2"
+              >
+                <FileText className="h-4 w-4 mr-2" />
                 Documents ({documents.length})
-              </TabsTrigger>
-            </TabsList>
+              </Button>
+            </div>
 
-            <TabsContent value="photos" className="space-y-4 mt-4">
-              {photos.length === 0 ? (
-                <div className="text-center py-8 text-gray-500">
-                  <Camera className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                  <p className="text-sm">No photos yet</p>
-                  <Button size="sm" className="mt-3" onClick={handleOpenPhotoDialog}>
-                    <Camera className="h-4 w-4 mr-2" />
-                    Add Photo
-                  </Button>
-                </div>
-              ) : (
-                <>
-                  <Button size="sm" className="w-full" onClick={handleOpenPhotoDialog}>
-                    <Upload className="h-4 w-4 mr-2" />
-                    Upload Photo
-                  </Button>
+            {activeTab === "photos" && (
+              <>
+                {photos.length === 0 ? (
+                  <div className="text-center py-8 text-gray-500">
+                    <Camera className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                    <p className="text-sm">No photos yet</p>
+                    <Button size="sm" className="mt-3" onClick={() => setShowPhotoDialog(true)}>
+                      <Camera className="h-4 w-4 mr-2" />
+                      Add Photo
+                    </Button>
+                  </div>
+                ) : (
                   <div className="grid grid-cols-2 gap-3">
                     {photos.map((photo) => (
-                      <div key={photo.id} className="rounded-lg overflow-hidden border border-gray-200 relative group">
+                      <div
+                        key={photo.id}
+                        className="rounded-lg overflow-hidden border border-gray-200 relative group cursor-pointer"
+                        onClick={() => setViewingPhoto(photo)}
+                      >
                         <img
                           src={photo.photo_url || "/placeholder.svg"}
                           alt={photo.caption || "Infrastructure photo"}
-                          className="w-full h-32 object-cover"
+                          className="w-full h-32 object-cover hover:scale-105 transition-transform"
                         />
                         <Button
                           size="sm"
                           variant="destructive"
                           className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity h-6 w-6 p-0"
-                          onClick={() => handleDeletePhoto(photo)}
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handleDeletePhoto(photo)
+                          }}
                         >
                           <X className="h-3 w-3" />
                         </Button>
@@ -581,27 +607,28 @@ export function InfrastructureDetailPanel({
                       </div>
                     ))}
                   </div>
-                </>
-              )}
-            </TabsContent>
+                )}
 
-            <TabsContent value="documents" className="space-y-3 mt-4">
-              {documents.length === 0 ? (
-                <div className="text-center py-8 text-gray-500">
-                  <FileText className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                  <p className="text-sm">No documents yet</p>
-                  <Button size="sm" className="mt-3" onClick={() => setShowDocumentDialog(true)}>
-                    <FileText className="h-4 w-4 mr-2" />
-                    Add Document
-                  </Button>
-                </div>
-              ) : (
-                <>
-                  <Button size="sm" className="w-full" onClick={() => setShowDocumentDialog(true)}>
-                    <Upload className="h-4 w-4 mr-2" />
-                    Upload Document
-                  </Button>
-                  {documents.map((doc) => (
+                <Button onClick={() => setShowPhotoDialog(true)} className="w-full" size="sm">
+                  <Upload className="h-4 w-4 mr-2" />
+                  Upload Photo
+                </Button>
+              </>
+            )}
+
+            {activeTab === "documents" && (
+              <>
+                {documents.length === 0 ? (
+                  <div className="text-center py-8 text-gray-500">
+                    <FileText className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                    <p className="text-sm">No documents yet</p>
+                    <Button size="sm" className="mt-3" onClick={() => setShowDocumentDialog(true)}>
+                      <FileText className="h-4 w-4 mr-2" />
+                      Add Document
+                    </Button>
+                  </div>
+                ) : (
+                  documents.map((doc) => (
                     <div
                       key={doc.id}
                       className="flex items-center gap-3 p-3 border border-gray-200 rounded-lg hover:bg-gray-50 group"
@@ -635,11 +662,16 @@ export function InfrastructureDetailPanel({
                         </Button>
                       </div>
                     </div>
-                  ))}
-                </>
-              )}
-            </TabsContent>
-          </Tabs>
+                  ))
+                )}
+
+                <Button onClick={() => setShowDocumentDialog(true)} className="w-full" size="sm">
+                  <Upload className="h-4 w-4 mr-2" />
+                  Upload Document
+                </Button>
+              </>
+            )}
+          </div>
         </div>
       </div>
 
@@ -750,6 +782,85 @@ export function InfrastructureDetailPanel({
             <Button onClick={handleDocumentUpload} disabled={!documentFile || uploading}>
               {uploading ? "Uploading..." : "Upload Document"}
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!viewingPhoto} onOpenChange={(open) => !open && setViewingPhoto(null)}>
+        <DialogContent className="max-w-4xl w-full max-h-[90vh] p-0">
+          <div className="relative">
+            <Button
+              size="icon"
+              variant="ghost"
+              className="absolute top-2 right-2 z-10 bg-black/50 hover:bg-black/70 text-white"
+              onClick={() => setViewingPhoto(null)}
+            >
+              <X className="h-5 w-5" />
+            </Button>
+            <img
+              src={viewingPhoto?.photo_url || "/placeholder.svg"}
+              alt={viewingPhoto?.caption || "Infrastructure photo"}
+              className="w-full h-auto max-h-[80vh] object-contain"
+            />
+            {viewingPhoto?.caption && (
+              <div className="p-4 bg-gray-50 border-t">
+                <p className="text-sm text-gray-700">{viewingPhoto.caption}</p>
+              </div>
+            )}
+            <div className="p-4 bg-white border-t flex gap-2 justify-end">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setEditCaption(viewingPhoto?.caption || "")
+                  setEditingPhoto(viewingPhoto)
+                  setViewingPhoto(null)
+                }}
+              >
+                <Pencil className="h-4 w-4 mr-2" />
+                Edit Caption
+              </Button>
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={() => {
+                  if (viewingPhoto) {
+                    handleDeletePhoto(viewingPhoto)
+                    setViewingPhoto(null)
+                  }
+                }}
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Delete
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!editingPhoto} onOpenChange={(open) => !open && setEditingPhoto(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Photo Caption</DialogTitle>
+            <DialogDescription>Update the caption for this photo</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="edit-caption">Caption</Label>
+              <Textarea
+                id="edit-caption"
+                value={editCaption}
+                onChange={(e) => setEditCaption(e.target.value)}
+                placeholder="Add a description..."
+                rows={3}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditingPhoto(null)}>
+              Cancel
+            </Button>
+            <Button onClick={handleEditPhoto}>Save Changes</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
