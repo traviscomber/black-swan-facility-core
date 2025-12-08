@@ -122,13 +122,17 @@ export default function MapPage() {
   }, [detailPanelOpen, sidebarOpen, addDialogOpen, editDialogOpen])
 
   useEffect(() => {
-    if (!mapRef.current || !leafletLoaded || typeof window === "undefined") return
+    if (!leafletLoaded || !mapRef.current) return
 
     const L = (window as any).L
     const map = mapRef.current
 
+    console.log("[v0] Map type changed to:", mapType)
+
+    // Remove all existing tile layers
     map.eachLayer((layer: any) => {
       if (layer instanceof L.TileLayer) {
+        console.log("[v0] Removing existing tile layer")
         map.removeLayer(layer)
       }
     })
@@ -137,6 +141,9 @@ export default function MapPage() {
     terrainLayerRef.current = null
 
     if (mapType === "hybrid") {
+      console.log("[v0] Creating hybrid map with terrain opacity:", terrainOpacity)
+
+      // Add satellite base layer
       const satelliteLayer = L.tileLayer(
         "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
         {
@@ -146,6 +153,7 @@ export default function MapPage() {
         },
       )
 
+      // Add terrain overlay with opacity
       const terrainLayer = L.tileLayer("https://tile.opentopomap.org/{z}/{x}/{y}.png", {
         attribution: "© OpenTopoMap contributors",
         maxZoom: 22,
@@ -158,6 +166,8 @@ export default function MapPage() {
 
       satelliteLayerRef.current = satelliteLayer
       terrainLayerRef.current = terrainLayer
+
+      console.log("[v0] Hybrid layers added successfully")
     } else {
       let tileUrl = ""
       let attribution = ""
@@ -177,6 +187,7 @@ export default function MapPage() {
           attribution = "© OpenStreetMap contributors"
       }
 
+      console.log("[v0] Adding single tile layer:", mapType)
       L.tileLayer(tileUrl, {
         attribution,
         maxZoom: 22,
@@ -184,13 +195,16 @@ export default function MapPage() {
       }).addTo(map)
     }
 
+    // Force map to recalculate size after layer changes
     setTimeout(() => {
       map.invalidateSize()
+      console.log("[v0] Map size invalidated after layer change")
     }, 100)
   }, [mapType, leafletLoaded])
 
   useEffect(() => {
     if (mapType === "hybrid" && terrainLayerRef.current) {
+      console.log("[v0] Updating terrain opacity to:", terrainOpacity)
       terrainLayerRef.current.setOpacity(terrainOpacity)
     }
   }, [terrainOpacity, mapType])
