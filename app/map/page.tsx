@@ -7,12 +7,25 @@ import { Button } from "@/components/ui/button"
 import { createClient } from "@/lib/supabase/client"
 import { useState, useEffect, useRef, useCallback } from "react"
 import type { InfrastructurePlan } from "@/lib/types"
-import { Layers, X, ChevronLeft, ChevronRight, Maximize, Wifi, Droplet, Zap, Plus, MapPin } from "lucide-react"
+import {
+  Layers,
+  X,
+  ChevronLeft,
+  ChevronRight,
+  Maximize,
+  Wifi,
+  Droplet,
+  Zap,
+  Plus,
+  MapPin,
+  Sparkles,
+} from "lucide-react"
 import { InfrastructureDetailPanel } from "@/components/infrastructure-detail-panel"
 import { AddInfrastructureDialog } from "@/components/add-infrastructure-dialog"
 import { EditInfrastructureDialog } from "@/components/edit-infrastructure-dialog"
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
 import { DeleteDialog } from "@/components/delete-dialog"
+import { InfrastructureSearchDialog } from "@/components/infrastructure-search-dialog"
 
 interface Location {
   id: string
@@ -29,6 +42,8 @@ export default function MapPage() {
   const [editingInfra, setEditingInfra] = useState<InfrastructurePlan | null>(null)
   const [clickedCoordinates, setClickedCoordinates] = useState<{ lat: number; lng: number } | null>(null)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
+  const [searchDialogOpen, setSearchDialogOpen] = useState(false)
+  const [blinkingMarkerId, setBlinkingMarkerId] = useState<string | null>(null)
 
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [mapType, setMapType] = useState<"street" | "satellite" | "terrain" | "hybrid">("street")
@@ -50,6 +65,7 @@ export default function MapPage() {
   const markersRef = useRef<any[]>([])
   const satelliteLayerRef = useRef<any>(null)
   const terrainLayerRef = useRef<any>(null)
+  const currentLayersRef = useRef<any[]>([])
 
   useEffect(() => {
     if (typeof window === "undefined") return
@@ -83,12 +99,14 @@ export default function MapPage() {
     if (!mapRef.current && mapContainerRef.current) {
       const map = L.map(mapContainerRef.current).setView([-39.8255, -73.2215], 14)
 
-      L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      const initialLayer = L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
         attribution: "© OpenStreetMap contributors",
         maxZoom: 22,
         errorTileUrl: "",
         crossOrigin: true,
       }).addTo(map)
+
+      currentLayersRef.current = [initialLayer]
 
       map.on("contextmenu", (e: any) => {
         e.originalEvent.preventDefault()
@@ -124,28 +142,26 @@ export default function MapPage() {
   }, [detailPanelOpen, sidebarOpen, addDialogOpen, editDialogOpen])
 
   useEffect(() => {
-    if (!leafletLoaded || !mapRef.current) return
+    const map = mapRef.current
+    if (!map || !leafletLoaded) return
 
     const L = (window as any).L
-    const map = mapRef.current
 
     console.log("[v0] Map type changed to:", mapType)
 
-    // Remove all existing tile layers
-    map.eachLayer((layer: any) => {
-      if (layer instanceof L.TileLayer) {
-        console.log("[v0] Removing existing tile layer")
+    currentLayersRef.current.forEach((layer) => {
+      if (layer) {
+        console.log("[v0] Removing tile layer")
         map.removeLayer(layer)
       }
     })
-
+    currentLayersRef.current = []
     satelliteLayerRef.current = null
     terrainLayerRef.current = null
 
     if (mapType === "hybrid") {
       console.log("[v0] Creating hybrid map with terrain opacity:", terrainOpacity)
 
-      // Add satellite base layer
       const satelliteLayer = L.tileLayer(
         "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
         {
@@ -155,7 +171,6 @@ export default function MapPage() {
         },
       )
 
-      // Add terrain overlay with opacity
       const terrainLayer = L.tileLayer("https://tile.opentopomap.org/{z}/{x}/{y}.png", {
         attribution: "© OpenTopoMap contributors",
         maxZoom: 22,
@@ -168,6 +183,7 @@ export default function MapPage() {
 
       satelliteLayerRef.current = satelliteLayer
       terrainLayerRef.current = terrainLayer
+      currentLayersRef.current = [satelliteLayer, terrainLayer]
 
       console.log("[v0] Hybrid layers added successfully")
     } else {
@@ -190,26 +206,21 @@ export default function MapPage() {
       }
 
       console.log("[v0] Adding single tile layer:", mapType)
-      L.tileLayer(tileUrl, {
+      const newLayer = L.tileLayer(tileUrl, {
         attribution,
         maxZoom: 22,
         crossOrigin: true,
       }).addTo(map)
+
+      currentLayersRef.current = [newLayer]
     }
 
-    // Force map to recalculate size after layer changes
     setTimeout(() => {
       map.invalidateSize()
-      console.log("[v0] Map size invalidated after layer change")
+      map.setView(map.getCenter(), map.getZoom())
+      console.log("[v0] Map refreshed after layer change")
     }, 100)
   }, [mapType, leafletLoaded])
-
-  useEffect(() => {
-    if (mapType === "hybrid" && terrainLayerRef.current) {
-      console.log("[v0] Updating terrain opacity to:", terrainOpacity)
-      terrainLayerRef.current.setOpacity(terrainOpacity)
-    }
-  }, [terrainOpacity, mapType])
 
   useEffect(() => {
     const fetchInfrastructure = async () => {
@@ -370,16 +381,20 @@ export default function MapPage() {
   }
 
   const blinkMarker = useCallback(
-    (infra: any) => {
+    (infraId: string) => {
       if (!mapRef.current || !leafletLoaded || typeof window === "undefined") return
 
       const L = (window as any).L
       const markerToFind = markersRef.current.find((m) => {
+        const infra = infrastructure.find((i) => i.id === infraId)
+        if (!infra) return false
         const latLng = m.getLatLng()
         return latLng.lat === infra.latitude && latLng.lng === infra.longitude
       })
 
       if (markerToFind) {
+        const infra = infrastructure.find((i) => i.id === infraId)
+        if (!infra) return
         const originalIcon = markerToFind.getIcon()
         const color = getInfraColor(infra)
         const symbol = getIconSymbol(infra.category)
@@ -420,14 +435,14 @@ export default function MapPage() {
         }, 300)
       }
     },
-    [leafletLoaded],
+    [leafletLoaded, infrastructure],
   )
 
   const handleInfraClick = useCallback(
     (infra: any) => {
       if (mapRef.current) {
         mapRef.current.setView([infra.latitude, infra.longitude], 17)
-        blinkMarker(infra)
+        blinkMarker(infra.id)
       }
       setSelectedInfra(infra)
       setDetailPanelOpen(true)
@@ -436,16 +451,32 @@ export default function MapPage() {
     [blinkMarker],
   )
 
+  const handleSelectFromSearch = (infrastructure: any) => {
+    console.log("[v0] Infrastructure selected from search:", infrastructure)
+    setSelectedInfra(infrastructure)
+
+    // Center map on selected infrastructure
+    if (mapRef.current) {
+      mapRef.current.setView([infrastructure.latitude, infrastructure.longitude], 18)
+
+      // Trigger blink effect
+      setBlinkingMarkerId(infrastructure.id)
+      setTimeout(() => setBlinkingMarkerId(null), 1800)
+    }
+  }
+
   return (
     <AppLayout>
       <PageHeader
         title="GIS Infrastructure Map"
         description="Internet, Water, and Electrical systems"
         actions={
-          <Button onClick={() => setAddDialogOpen(true)}>
-            <Plus className="mr-2 h-4 w-4" />
-            Add Infrastructure
-          </Button>
+          <div className="flex gap-2">
+            <Button onClick={() => setAddDialogOpen(true)}>
+              <Plus className="mr-2 h-4 w-4" />
+              Add Infrastructure
+            </Button>
+          </div>
         }
       />
 
@@ -879,6 +910,24 @@ export default function MapPage() {
         />
 
         <DeleteDialog open={showDeleteDialog} onClose={() => setShowDeleteDialog(false)} onDelete={handleDelete} />
+
+        <InfrastructureSearchDialog
+          open={searchDialogOpen}
+          onOpenChange={setSearchDialogOpen}
+          onSelectInfrastructure={handleSelectFromSearch}
+        />
+
+        <button
+          onClick={() => setSearchDialogOpen(true)}
+          className="fixed bottom-6 right-6 z-[1000] h-14 w-14 rounded-full bg-gradient-to-r from-purple-500 to-indigo-600 shadow-lg hover:shadow-xl hover:scale-110 transition-all duration-200 flex items-center justify-center group"
+          aria-label="AI Search"
+        >
+          <Sparkles className="h-6 w-6 text-white group-hover:animate-pulse" />
+          <span className="absolute -top-1 -right-1 flex h-3 w-3">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-purple-400 opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-3 w-3 bg-purple-500"></span>
+          </span>
+        </button>
       </div>
     </AppLayout>
   )

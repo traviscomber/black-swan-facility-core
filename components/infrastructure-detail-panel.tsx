@@ -678,7 +678,7 @@ export function InfrastructureDetailPanel({
       </div>
 
       <Dialog open={showPhotoDialog} onOpenChange={setShowPhotoDialog}>
-        <DialogContent className="sm:max-w-[425px]">
+        <DialogContent className="sm:max-w-[425px] max-w-full h-full sm:h-auto">
           <DialogHeader>
             <DialogTitle>Upload Photo</DialogTitle>
             <DialogDescription>
@@ -698,20 +698,20 @@ export function InfrastructureDetailPanel({
               />
               <Button
                 variant="outline"
-                className="w-full bg-transparent"
+                className="w-full h-14 text-base bg-transparent"
                 onClick={() => {
                   console.log("[v0] Select Photo button clicked")
                   photoInputRef.current?.click()
                 }}
                 type="button"
               >
-                <Upload className="h-4 w-4 mr-2" />
-                {photoFile ? photoFile.name : "Select Photo from Device"}
+                <Camera className="h-5 w-5 mr-2" />
+                {photoFile ? photoFile.name : "Take Photo or Choose from Gallery"}
               </Button>
-              <p className="text-xs text-gray-500">Choose an existing photo or take a new one</p>
+              <p className="text-xs text-gray-500 text-center">Tap to take a photo or select from your gallery</p>
               {photoPreview && (
-                <div className="mt-2 rounded-lg overflow-hidden border border-gray-200">
-                  <img src={photoPreview || "/placeholder.svg"} alt="Preview" className="w-full h-48 object-cover" />
+                <div className="mt-4 rounded-lg overflow-hidden border border-gray-200">
+                  <img src={photoPreview || "/placeholder.svg"} alt="Preview" className="w-full h-64 object-cover" />
                 </div>
               )}
             </div>
@@ -723,14 +723,20 @@ export function InfrastructureDetailPanel({
                 value={photoCaption}
                 onChange={(e) => setPhotoCaption(e.target.value)}
                 rows={3}
+                className="text-base"
               />
             </div>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowPhotoDialog(false)} disabled={uploading}>
+          <DialogFooter className="flex-col sm:flex-row gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setShowPhotoDialog(false)}
+              disabled={uploading}
+              className="w-full sm:w-auto"
+            >
               Cancel
             </Button>
-            <Button onClick={handlePhotoUpload} disabled={!photoFile || uploading}>
+            <Button onClick={handlePhotoUpload} disabled={!photoFile || uploading} className="w-full sm:w-auto">
               {uploading ? "Uploading..." : "Upload Photo"}
             </Button>
           </DialogFooter>
