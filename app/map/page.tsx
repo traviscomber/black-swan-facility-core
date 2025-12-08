@@ -63,9 +63,8 @@ export default function MapPage() {
   const mapRef = useRef<any>(null)
   const mapContainerRef = useRef<HTMLDivElement>(null)
   const markersRef = useRef<any[]>([])
-  const satelliteLayerRef = useRef<any>(null)
-  const terrainLayerRef = useRef<any>(null)
-  const currentLayersRef = useRef<any[]>([])
+  const baseLayerRef = useRef<any>(null)
+  const overlayLayerRef = useRef<any>(null)
 
   useEffect(() => {
     if (typeof window === "undefined") return
@@ -92,103 +91,61 @@ export default function MapPage() {
   }, [])
 
   useEffect(() => {
-    if (!leafletLoaded || typeof window === "undefined") return
+    if (!leafletLoaded || typeof window === "undefined" || mapRef.current) return
 
     const L = (window as any).L
 
-    if (!mapRef.current && mapContainerRef.current) {
-      const map = L.map(mapContainerRef.current).setView([-39.8255, -73.2215], 14)
-
-      const initialLayer = L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
-        attribution: "© OpenStreetMap contributors",
-        maxZoom: 22,
-        errorTileUrl: "",
-        crossOrigin: true,
-      }).addTo(map)
-
-      currentLayersRef.current = [initialLayer]
-
-      map.on("contextmenu", (e: any) => {
-        e.originalEvent.preventDefault()
-        const { lat, lng } = e.latlng
-        console.log("[v0] Map right-clicked at:", lat, lng)
-        setClickedCoordinates({ lat, lng })
-        setAddDialogOpen(true)
-      })
-
-      map.whenReady(() => {
-        setTimeout(() => {
-          map.invalidateSize()
-        }, 100)
-      })
+    if (mapContainerRef.current) {
+      const map = L.map(mapContainerRef.current, {
+        preferCanvas: true,
+        zoomControl: true,
+      }).setView([-39.8255, -73.2215], 14)
 
       mapRef.current = map
-    }
 
-    return () => {
-      if (mapRef.current) {
-        mapRef.current.remove()
-        mapRef.current = null
-      }
+      console.log("[v0] Map initialized successfully")
     }
   }, [leafletLoaded])
 
   useEffect(() => {
-    if (mapRef.current) {
-      setTimeout(() => {
-        mapRef.current.invalidateSize()
-      }, 300)
-    }
-  }, [detailPanelOpen, sidebarOpen, addDialogOpen, editDialogOpen])
+    if (!mapRef.current || !leafletLoaded) return
 
-  useEffect(() => {
     const map = mapRef.current
-    if (!map || !leafletLoaded) return
-
     const L = (window as any).L
 
-    console.log("[v0] Map type changed to:", mapType)
+    console.log("[v0] Changing map type to:", mapType)
 
-    currentLayersRef.current.forEach((layer) => {
-      if (layer) {
-        console.log("[v0] Removing tile layer")
-        map.removeLayer(layer)
-      }
-    })
-    currentLayersRef.current = []
-    satelliteLayerRef.current = null
-    terrainLayerRef.current = null
+    // Remove existing layers
+    if (baseLayerRef.current) {
+      map.removeLayer(baseLayerRef.current)
+      baseLayerRef.current = null
+    }
+    if (overlayLayerRef.current) {
+      map.removeLayer(overlayLayerRef.current)
+      overlayLayerRef.current = null
+    }
 
+    // Add new layers based on map type
     if (mapType === "hybrid") {
-      console.log("[v0] Creating hybrid map with terrain opacity:", terrainOpacity)
-
-      const satelliteLayer = L.tileLayer(
+      // Add satellite base layer
+      baseLayerRef.current = L.tileLayer(
         "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
         {
           attribution: "© Esri",
-          maxZoom: 22,
-          crossOrigin: true,
+          maxZoom: 19,
         },
-      )
+      ).addTo(map)
 
-      const terrainLayer = L.tileLayer("https://tile.opentopomap.org/{z}/{x}/{y}.png", {
+      // Add terrain overlay with opacity
+      overlayLayerRef.current = L.tileLayer("https://tile.opentopomap.org/{z}/{x}/{y}.png", {
         attribution: "© OpenTopoMap contributors",
-        maxZoom: 22,
+        maxZoom: 17,
         opacity: terrainOpacity,
-        crossOrigin: true,
-      })
-
-      satelliteLayer.addTo(map)
-      terrainLayer.addTo(map)
-
-      satelliteLayerRef.current = satelliteLayer
-      terrainLayerRef.current = terrainLayer
-      currentLayersRef.current = [satelliteLayer, terrainLayer]
-
-      console.log("[v0] Hybrid layers added successfully")
+      }).addTo(map)
     } else {
       let tileUrl = ""
       let attribution = ""
+      let maxZoom = 19
 
       switch (mapType) {
         case "satellite":
@@ -198,6 +155,7 @@ export default function MapPage() {
         case "terrain":
           tileUrl = "https://tile.opentopomap.org/{z}/{x}/{y}.png"
           attribution = "© OpenTopoMap contributors"
+          maxZoom = 17
           break
         case "street":
         default:
@@ -205,22 +163,33 @@ export default function MapPage() {
           attribution = "© OpenStreetMap contributors"
       }
 
-      console.log("[v0] Adding single tile layer:", mapType)
-      const newLayer = L.tileLayer(tileUrl, {
+      baseLayerRef.current = L.tileLayer(tileUrl, {
         attribution,
-        maxZoom: 22,
-        crossOrigin: true,
+        maxZoom,
       }).addTo(map)
-
-      currentLayersRef.current = [newLayer]
     }
 
+    // Force map refresh
     setTimeout(() => {
       map.invalidateSize()
-      map.setView(map.getCenter(), map.getZoom())
-      console.log("[v0] Map refreshed after layer change")
     }, 100)
   }, [mapType, leafletLoaded])
+
+  useEffect(() => {
+    if (!mapRef.current || !leafletLoaded || mapType !== "hybrid") return
+    if (!overlayLayerRef.current) return
+
+    console.log("[v0] Updating terrain opacity to:", terrainOpacity)
+    overlayLayerRef.current.setOpacity(terrainOpacity)
+  }, [terrainOpacity, leafletLoaded, mapType])
+
+  useEffect(() => {
+    if (mapRef.current) {
+      setTimeout(() => {
+        mapRef.current.invalidateSize()
+      }, 300)
+    }
+  }, [detailPanelOpen, sidebarOpen, addDialogOpen, editDialogOpen])
 
   useEffect(() => {
     const fetchInfrastructure = async () => {
