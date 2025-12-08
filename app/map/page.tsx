@@ -79,11 +79,13 @@ export default function MapPage() {
     const L = (window as any).L
 
     if (!mapRef.current && mapContainerRef.current) {
-      const map = L.map(mapContainerRef.current).setView([-39.8255, -73.2215], 16)
+      const map = L.map(mapContainerRef.current).setView([-39.8255, -73.2215], 14)
 
-      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
         attribution: "© OpenStreetMap contributors",
-        maxZoom: 19,
+        maxZoom: 22,
+        errorTileUrl: "",
+        crossOrigin: true,
       }).addTo(map)
 
       map.on("contextmenu", (e: any) => {
@@ -92,6 +94,12 @@ export default function MapPage() {
         console.log("[v0] Map right-clicked at:", lat, lng)
         setClickedCoordinates({ lat, lng })
         setAddDialogOpen(true)
+      })
+
+      map.whenReady(() => {
+        setTimeout(() => {
+          map.invalidateSize()
+        }, 100)
       })
 
       mapRef.current = map
@@ -104,6 +112,14 @@ export default function MapPage() {
       }
     }
   }, [leafletLoaded])
+
+  useEffect(() => {
+    if (mapRef.current) {
+      setTimeout(() => {
+        mapRef.current.invalidateSize()
+      }, 300)
+    }
+  }, [detailPanelOpen, sidebarOpen, addDialogOpen, editDialogOpen])
 
   useEffect(() => {
     if (!mapRef.current || !leafletLoaded || typeof window === "undefined") return
@@ -125,14 +141,16 @@ export default function MapPage() {
         "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
         {
           attribution: "© Esri",
-          maxZoom: 19,
+          maxZoom: 22,
+          crossOrigin: true,
         },
       )
 
-      const terrainLayer = L.tileLayer("https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png", {
+      const terrainLayer = L.tileLayer("https://tile.opentopomap.org/{z}/{x}/{y}.png", {
         attribution: "© OpenTopoMap contributors",
-        maxZoom: 19,
+        maxZoom: 22,
         opacity: terrainOpacity,
+        crossOrigin: true,
       })
 
       satelliteLayer.addTo(map)
@@ -150,20 +168,25 @@ export default function MapPage() {
           attribution = "© Esri"
           break
         case "terrain":
-          tileUrl = "https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png"
+          tileUrl = "https://tile.opentopomap.org/{z}/{x}/{y}.png"
           attribution = "© OpenTopoMap contributors"
           break
         case "street":
         default:
-          tileUrl = "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          tileUrl = "https://tile.openstreetmap.org/{z}/{x}/{y}.png"
           attribution = "© OpenStreetMap contributors"
       }
 
       L.tileLayer(tileUrl, {
         attribution,
-        maxZoom: 19,
+        maxZoom: 22,
+        crossOrigin: true,
       }).addTo(map)
     }
+
+    setTimeout(() => {
+      map.invalidateSize()
+    }, 100)
   }, [mapType, leafletLoaded])
 
   useEffect(() => {
