@@ -51,11 +51,28 @@ export interface MaintenanceTask {
 export interface Issue {
   id: string
   asset_id: string | null
+  infrastructure_id: string | null
+  issue_type_id: string | null
   reported_by: string | null
   description: string | null
   status: string
+  severity: string
   photo_url: string | null
+  resolved_at: string | null
+  resolved_by: string | null
   created_at: string
+}
+
+export interface IssueType {
+  id: string
+  name: string
+  category: string
+  description: string | null
+  severity: string
+  is_active: boolean
+  is_custom: boolean
+  created_at: string
+  updated_at: string
 }
 
 export interface Utility {

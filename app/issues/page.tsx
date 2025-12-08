@@ -4,9 +4,10 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { createClient } from "@/lib/supabase/server"
-import type { Issue } from "@/lib/types"
 import Link from "next/link"
-import { Plus, ImageIcon } from "lucide-react"
+import { Plus } from "lucide-react"
+import { EditIssueDialog } from "@/components/edit-issue-dialog"
+import { DeleteIssueButton } from "@/components/delete-issue-button"
 
 function formatDate(dateString: string) {
   return new Date(dateString).toLocaleDateString("en-US", {
@@ -31,13 +32,59 @@ function getStatusColor(status: string) {
   }
 }
 
+function getSeverityColor(severity: string) {
+  switch (severity) {
+    case "low":
+      return "bg-green-50 text-green-700 border-green-200"
+    case "medium":
+      return "bg-yellow-50 text-yellow-700 border-yellow-200"
+    case "high":
+      return "bg-orange-50 text-orange-700 border-orange-200"
+    case "critical":
+      return "bg-red-50 text-red-700 border-red-200"
+    default:
+      return "bg-gray-50 text-gray-700 border-gray-200"
+  }
+}
+
 export default async function IssuesPage() {
   const supabase = await createClient()
 
-  const { data: issues } = await supabase
+  const { data: issues, error } = await supabase
     .from("issues")
-    .select("*, assets(name), employees(name)")
+    .select(`
+      *
+    `)
     .order("created_at", { ascending: false })
+
+  if (error) {
+    console.error("[v0] Error loading issues:", error)
+  }
+
+  console.log("[v0] Loaded issues:", issues?.length || 0)
+
+  const issuesWithDetails = await Promise.all(
+    (issues || []).map(async (issue) => {
+      let assetName = null
+      let employeeName = null
+
+      if (issue.asset_id) {
+        const { data: asset } = await supabase.from("assets").select("name").eq("id", issue.asset_id).single()
+        assetName = asset?.name
+      }
+
+      if (issue.reported_by) {
+        const { data: employee } = await supabase.from("employees").select("name").eq("id", issue.reported_by).single()
+        employeeName = employee?.name
+      }
+
+      return {
+        ...issue,
+        assets: assetName ? { name: assetName } : null,
+        employees: employeeName ? { name: employeeName } : null,
+      }
+    }),
+  )
 
   return (
     <AppLayout>
@@ -59,35 +106,76 @@ export default async function IssuesPage() {
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead>Title</TableHead>
                 <TableHead>Asset</TableHead>
                 <TableHead>Description</TableHead>
+                <TableHead>Priority</TableHead>
                 <TableHead>Reported By</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Photo</TableHead>
                 <TableHead>Date</TableHead>
+                <TableHead>Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {issues && issues.length > 0 ? (
-                issues.map(
-                  (issue: Issue & { assets?: { name: string } | null; employees?: { name: string } | null }) => (
-                    <TableRow key={issue.id}>
-                      <TableCell className="font-medium">{issue.assets?.name || "No asset"}</TableCell>
-                      <TableCell className="max-w-md">{issue.description || "-"}</TableCell>
-                      <TableCell>{issue.employees?.name || "Unknown"}</TableCell>
-                      <TableCell>
-                        <Badge variant="outline" className={getStatusColor(issue.status)}>
-                          {issue.status}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>{issue.photo_url && <ImageIcon className="h-4 w-4 text-gray-600" />}</TableCell>
-                      <TableCell className="text-sm text-gray-600">{formatDate(issue.created_at)}</TableCell>
-                    </TableRow>
-                  ),
-                )
+              {issuesWithDetails && issuesWithDetails.length > 0 ? (
+                issuesWithDetails.map((issue: any) => (
+                  <TableRow key={issue.id}>
+                    <TableCell className="font-medium">
+                      {issue.title || "Untitled"}
+                      {issue.category && <div className="text-xs text-gray-500 mt-1">{issue.category}</div>}
+                    </TableCell>
+                    <TableCell>
+                      {issue.assets?.name ? (
+                        <div>
+                          <div className="font-medium">{issue.assets.name}</div>
+                          <div className="text-xs text-gray-500">Asset</div>
+                        </div>
+                      ) : issue.related_item_type === "infrastructure" ? (
+                        <div className="text-sm text-gray-600">
+                          Infrastructure (ID: {issue.related_item_id?.slice(0, 8)}...)
+                        </div>
+                      ) : issue.related_item_type ? (
+                        <div className="text-sm text-gray-600">{issue.related_item_type}</div>
+                      ) : (
+                        <span className="text-gray-500">-</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="max-w-md">{issue.description || "-"}</TableCell>
+                    <TableCell>
+                      <Badge variant="outline" className={getSeverityColor(issue.priority || "medium")}>
+                        {issue.priority || "medium"}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>{issue.employees?.name || "Unknown"}</TableCell>
+                    <TableCell>
+                      <Badge variant="outline" className={getStatusColor(issue.status)}>
+                        {issue.status}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      {issue.photo_url ? (
+                        <img
+                          src={issue.photo_url || "/placeholder.svg"}
+                          alt="Issue"
+                          className="h-10 w-10 rounded object-cover"
+                        />
+                      ) : (
+                        <span className="text-gray-400 text-xs">No photo</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-sm text-gray-600">{formatDate(issue.created_at)}</TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <EditIssueDialog issue={issue} />
+                        <DeleteIssueButton issueId={issue.id} />
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center text-gray-500">
+                  <TableCell colSpan={9} className="text-center text-gray-500">
                     No issues found
                   </TableCell>
                 </TableRow>
@@ -99,3 +187,6 @@ export default async function IssuesPage() {
     </AppLayout>
   )
 }
+
+export const dynamic = "force-dynamic"
+export const revalidate = 0

@@ -26,6 +26,7 @@ import { EditInfrastructureDialog } from "@/components/edit-infrastructure-dialo
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
 import { DeleteDialog } from "@/components/delete-dialog"
 import { InfrastructureSearchDialog } from "@/components/infrastructure-search-dialog"
+import "./map.css"
 
 interface Location {
   id: string
@@ -125,22 +126,23 @@ export default function MapPage() {
       overlayLayerRef.current = null
     }
 
-    // Add new layers based on map type
     if (mapType === "hybrid") {
-      // Add satellite base layer
       baseLayerRef.current = L.tileLayer(
         "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
         {
           attribution: "© Esri",
           maxZoom: 19,
+          crossOrigin: true,
+          errorTileUrl: "", // Prevents error tile display
         },
       ).addTo(map)
 
-      // Add terrain overlay with opacity
       overlayLayerRef.current = L.tileLayer("https://tile.opentopomap.org/{z}/{x}/{y}.png", {
         attribution: "© OpenTopoMap contributors",
         maxZoom: 17,
         opacity: terrainOpacity,
+        crossOrigin: true,
+        errorTileUrl: "",
       }).addTo(map)
     } else {
       let tileUrl = ""
@@ -159,20 +161,26 @@ export default function MapPage() {
           break
         case "street":
         default:
-          tileUrl = "https://tile.openstreetmap.org/{z}/{x}/{y}.png"
+          tileUrl = "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           attribution = "© OpenStreetMap contributors"
       }
 
       baseLayerRef.current = L.tileLayer(tileUrl, {
         attribution,
         maxZoom,
+        crossOrigin: true,
+        errorTileUrl: "",
+        subdomains: mapType === "street" ? ["a", "b", "c"] : [],
       }).addTo(map)
     }
 
-    // Force map refresh
+    map.invalidateSize()
     setTimeout(() => {
       map.invalidateSize()
     }, 100)
+    setTimeout(() => {
+      map.invalidateSize()
+    }, 300)
   }, [mapType, leafletLoaded])
 
   useEffect(() => {

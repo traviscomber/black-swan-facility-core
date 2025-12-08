@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { createClient } from "@/lib/supabase/server"
-import { Users, Box, Wrench, AlertTriangle, List, Building2 } from "lucide-react"
+import { Users, Box, Wrench, AlertTriangle, List, Building2, AlertCircle } from "lucide-react"
 import Link from "next/link"
 
 export default async function AdminPage() {
@@ -42,6 +42,11 @@ export default async function AdminPage() {
 
   const { count: locationsCount } = await supabase
     .from("locations")
+    .select("*", { count: "exact", head: true })
+    .eq("is_active", true)
+
+  const { count: issueTypesCount } = await supabase
+    .from("issue_types")
     .select("*", { count: "exact", head: true })
     .eq("is_active", true)
 
@@ -156,6 +161,22 @@ export default async function AdminPage() {
                     <p className="mt-1 text-xs text-gray-600">Manage facility locations</p>
                     <Button variant="link" className="mt-2 p-0 h-auto text-blue-600">
                       Manage Locations →
+                    </Button>
+                  </CardContent>
+                </Link>
+              </Card>
+
+              <Card className="hover:border-gray-300 transition-colors">
+                <Link href="/admin/issue-types">
+                  <CardHeader className="flex flex-row items-center justify-between pb-2">
+                    <CardTitle className="text-sm font-medium">Issue Types</CardTitle>
+                    <AlertCircle className="h-4 w-4 text-gray-600" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">{issueTypesCount || 0}</div>
+                    <p className="mt-1 text-xs text-gray-600">Manage issue categories and types</p>
+                    <Button variant="link" className="mt-2 p-0 h-auto text-blue-600">
+                      Manage Issue Types →
                     </Button>
                   </CardContent>
                 </Link>

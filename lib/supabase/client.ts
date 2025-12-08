@@ -1,11 +1,18 @@
 import { createBrowserClient } from "@supabase/ssr"
+import type { SupabaseClient } from "@supabase/supabase-js"
+
+declare global {
+  var supabaseClientInstance: SupabaseClient | undefined
+}
 
 export function createClient() {
+  // Return existing instance if available
+  if (globalThis.supabaseClientInstance) {
+    return globalThis.supabaseClientInstance
+  }
+
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-
-  console.log("[v0] Client - Supabase URL exists:", !!supabaseUrl)
-  console.log("[v0] Client - Supabase Anon Key exists:", !!supabaseAnonKey)
 
   if (!supabaseUrl || !supabaseAnonKey) {
     throw new Error(
@@ -13,7 +20,8 @@ export function createClient() {
     )
   }
 
-  return createBrowserClient(supabaseUrl, supabaseAnonKey)
+  globalThis.supabaseClientInstance = createBrowserClient(supabaseUrl, supabaseAnonKey)
+  return globalThis.supabaseClientInstance
 }
 
 export { createClient as createBrowserClient }

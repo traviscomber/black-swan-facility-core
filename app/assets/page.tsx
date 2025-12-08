@@ -1,17 +1,51 @@
+"use client"
+
 import { AppLayout } from "@/components/app-layout"
 import { PageHeader } from "@/components/page-header"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { createClient } from "@/lib/supabase/server"
+import { createBrowserClient } from "@/lib/supabase/client"
 import type { Asset } from "@/lib/types"
 import Link from "next/link"
-import { Plus, QrCode } from "lucide-react"
+import { Plus, QrCode, Pencil } from "lucide-react"
+import { useEffect, useState } from "react"
+import { AddAssetDialog } from "@/components/add-asset-dialog"
+import { EditAssetDialog } from "@/components/edit-asset-dialog"
+import { DeleteAssetButton } from "@/components/delete-asset-button"
 
-export default async function AssetsPage() {
-  const supabase = await createClient()
+export default function AssetsPage() {
+  const [assets, setAssets] = useState<Asset[]>([])
+  const [loading, setLoading] = useState(true)
+  const [showAddDialog, setShowAddDialog] = useState(false)
+  const [editingAsset, setEditingAsset] = useState<Asset | null>(null)
 
-  const { data: assets } = await supabase.from("assets").select("*").order("name")
+  const loadAssets = async () => {
+    const supabase = createBrowserClient()
+    const { data } = await supabase.from("assets").select("*").order("name")
+    if (data) {
+      setAssets(data)
+    }
+    setLoading(false)
+  }
+
+  useEffect(() => {
+    loadAssets()
+  }, [])
+
+  const handleAssetAdded = () => {
+    loadAssets()
+    setShowAddDialog(false)
+  }
+
+  const handleAssetUpdated = () => {
+    loadAssets()
+    setEditingAsset(null)
+  }
+
+  const handleAssetDeleted = () => {
+    loadAssets()
+  }
 
   return (
     <AppLayout>
@@ -19,7 +53,7 @@ export default async function AssetsPage() {
         title="Assets"
         description="Manage facility infrastructure and equipment"
         actions={
-          <Button>
+          <Button onClick={() => setShowAddDialog(true)}>
             <Plus className="mr-2 h-4 w-4" />
             Add Asset
           </Button>
@@ -40,7 +74,13 @@ export default async function AssetsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {assets && assets.length > 0 ? (
+              {loading ? (
+                <TableRow>
+                  <TableCell colSpan={6} className="text-center text-gray-500">
+                    Loading...
+                  </TableCell>
+                </TableRow>
+              ) : assets && assets.length > 0 ? (
                 assets.map((asset: Asset) => (
                   <TableRow key={asset.id}>
                     <TableCell className="font-medium">
@@ -63,11 +103,17 @@ export default async function AssetsPage() {
                     </TableCell>
                     <TableCell>{asset.is_critical && <QrCode className="h-4 w-4 text-gray-600" />}</TableCell>
                     <TableCell className="text-right">
-                      <Link href={`/assets/${asset.id}`}>
-                        <Button variant="ghost" size="sm">
-                          View
+                      <div className="flex items-center justify-end gap-2">
+                        <Link href={`/assets/${asset.id}`}>
+                          <Button variant="ghost" size="sm">
+                            View
+                          </Button>
+                        </Link>
+                        <Button variant="ghost" size="sm" onClick={() => setEditingAsset(asset)}>
+                          <Pencil className="h-4 w-4" />
                         </Button>
-                      </Link>
+                        <DeleteAssetButton assetId={asset.id} assetName={asset.name} onDeleted={handleAssetDeleted} />
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))
@@ -82,6 +128,17 @@ export default async function AssetsPage() {
           </Table>
         </div>
       </div>
+
+      <AddAssetDialog open={showAddDialog} onOpenChange={setShowAddDialog} onAssetAdded={handleAssetAdded} />
+
+      {editingAsset && (
+        <EditAssetDialog
+          asset={editingAsset}
+          open={!!editingAsset}
+          onOpenChange={(open) => !open && setEditingAsset(null)}
+          onAssetUpdated={handleAssetUpdated}
+        />
+      )}
     </AppLayout>
   )
 }

@@ -1,0 +1,38 @@
+/* Ensure map container takes full space */
+.leaflet-container {
+  width: 100%;
+  height: 100%;
+  background: #f0f0f0;
+}
+
+/* Fix for tile loading issues */
+.leaflet-tile-container {
+  pointer-events: none;
+}
+
+.leaflet-tile {
+  max-width: none !important;
+  max-height: none !important;
+}
+
+/* Ensure tiles render properly */
+.leaflet-layer,
+.leaflet-tile-pane {
+  position: absolute;
+  left: 0;
+  top: 0;
+}
+
+.leaflet-fade-anim .leaflet-tile {
+  will-change: opacity;
+}
+
+.leaflet-fade-anim .leaflet-popup {
+  will-change: opacity;
+}
+
+/* Custom marker styles */
+.custom-marker {
+  background: transparent;
+  border: none;
+}
