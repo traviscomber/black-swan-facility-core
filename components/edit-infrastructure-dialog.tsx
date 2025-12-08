@@ -12,6 +12,22 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { createClient } from "@/lib/supabase/client"
 import { Wifi, Droplet, Zap, MapPin } from "lucide-react"
 
+interface InfrastructurePlan {
+  id: string
+  name: string
+  category: string
+  description: string | null
+  latitude: number
+  longitude: number
+  status: string
+  priority: string
+  installation_date: string | null
+  last_inspection: string | null
+  next_inspection: string | null
+  specifications: any
+  notes: string | null
+}
+
 interface AssetType {
   id: string
   name: string
@@ -19,16 +35,16 @@ interface AssetType {
   description: string | null
 }
 
-export function AddInfrastructureDialog({
+export function EditInfrastructureDialog({
   open,
   onClose,
-  onAdd,
-  initialCoordinates,
+  onUpdate,
+  infrastructure,
 }: {
   open: boolean
   onClose: () => void
-  onAdd: () => void
-  initialCoordinates?: { lat: number; lng: number } | null
+  onUpdate: () => void
+  infrastructure: InfrastructurePlan | null
 }) {
   const [formData, setFormData] = useState({
     name: "",
@@ -38,6 +54,7 @@ export function AddInfrastructureDialog({
     longitude: "",
     status: "planned",
     priority: "normal",
+    notes: "",
   })
   const [loading, setLoading] = useState(false)
   const [assetTypes, setAssetTypes] = useState<AssetType[]>([])
@@ -56,50 +73,55 @@ export function AddInfrastructureDialog({
   }, [])
 
   useEffect(() => {
+    if (infrastructure) {
+      setFormData({
+        name: infrastructure.name,
+        category: infrastructure.category,
+        description: infrastructure.description || "",
+        latitude: infrastructure.latitude.toString(),
+        longitude: infrastructure.longitude.toString(),
+        status: infrastructure.status,
+        priority: infrastructure.priority,
+        notes: infrastructure.notes || "",
+      })
+    }
+  }, [infrastructure])
+
+  useEffect(() => {
     const filtered = assetTypes.filter((type) => type.category === formData.category)
     setFilteredAssetTypes(filtered)
   }, [formData.category, assetTypes])
 
-  useEffect(() => {
-    if (initialCoordinates) {
-      setFormData((prev) => ({
-        ...prev,
-        latitude: initialCoordinates.lat.toFixed(6),
-        longitude: initialCoordinates.lng.toFixed(6),
-      }))
-    }
-  }, [initialCoordinates])
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (!infrastructure) return
+
     setLoading(true)
 
     const supabase = createClient()
-    const { error } = await supabase.from("infrastructure_plans").insert({
-      name: formData.name,
-      category: formData.category,
-      description: formData.description || null,
-      latitude: Number.parseFloat(formData.latitude),
-      longitude: Number.parseFloat(formData.longitude),
-      status: formData.status,
-      priority: formData.priority,
-    })
+    const { error } = await supabase
+      .from("infrastructure_plans")
+      .update({
+        name: formData.name,
+        category: formData.category,
+        description: formData.description || null,
+        latitude: Number.parseFloat(formData.latitude),
+        longitude: Number.parseFloat(formData.longitude),
+        status: formData.status,
+        priority: formData.priority,
+        notes: formData.notes || null,
+      })
+      .eq("id", infrastructure.id)
 
     setLoading(false)
 
     if (!error) {
-      setFormData({
-        name: "",
-        category: "internet",
-        description: "",
-        latitude: "",
-        longitude: "",
-        status: "planned",
-        priority: "normal",
-      })
-      onAdd()
+      onUpdate()
+      onClose()
     }
   }
+
+  if (!infrastructure) return null
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
@@ -107,13 +129,8 @@ export function AddInfrastructureDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <MapPin className="h-5 w-5" />
-            Add Infrastructure
+            Edit Infrastructure
           </DialogTitle>
-          {initialCoordinates && (
-            <p className="text-sm text-gray-600 mt-2">
-              Location selected from map: {initialCoordinates.lat.toFixed(4)}, {initialCoordinates.lng.toFixed(4)}
-            </p>
-          )}
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -172,7 +189,7 @@ export function AddInfrastructureDialog({
           </div>
 
           <div>
-            <Label htmlFor="name">Custom Name (optional if asset type selected)</Label>
+            <Label htmlFor="name">Custom Name *</Label>
             <Input
               id="name"
               value={formData.name}
@@ -180,7 +197,6 @@ export function AddInfrastructureDialog({
               placeholder="e.g., Main Fiber Entry Point"
               required
             />
-            <p className="text-xs text-gray-500 mt-1">Use asset type or enter a custom name for this infrastructure</p>
           </div>
 
           <div>
@@ -196,10 +212,7 @@ export function AddInfrastructureDialog({
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <Label htmlFor="latitude">
-                Latitude *
-                {!initialCoordinates && <span className="text-xs text-gray-500 ml-1">(or right-click map)</span>}
-              </Label>
+              <Label htmlFor="latitude">Latitude *</Label>
               <Input
                 id="latitude"
                 type="number"
@@ -211,10 +224,7 @@ export function AddInfrastructureDialog({
               />
             </div>
             <div>
-              <Label htmlFor="longitude">
-                Longitude *
-                {!initialCoordinates && <span className="text-xs text-gray-500 ml-1">(or right-click map)</span>}
-              </Label>
+              <Label htmlFor="longitude">Longitude *</Label>
               <Input
                 id="longitude"
                 type="number"
@@ -261,12 +271,23 @@ export function AddInfrastructureDialog({
             </div>
           </div>
 
+          <div>
+            <Label htmlFor="notes">Notes</Label>
+            <Textarea
+              id="notes"
+              value={formData.notes}
+              onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+              placeholder="Additional notes"
+              rows={3}
+            />
+          </div>
+
           <div className="flex gap-3 pt-4">
             <Button type="button" variant="outline" onClick={onClose} className="flex-1 bg-transparent">
               Cancel
             </Button>
             <Button type="submit" disabled={loading} className="flex-1">
-              {loading ? "Adding..." : "Add Infrastructure"}
+              {loading ? "Saving..." : "Save Changes"}
             </Button>
           </div>
         </form>

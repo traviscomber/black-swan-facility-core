@@ -2,8 +2,10 @@ import { AppLayout } from "@/components/app-layout"
 import { PageHeader } from "@/components/page-header"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 import { createClient } from "@/lib/supabase/server"
-import { Database, Users, Box, Wrench, AlertTriangle, CheckSquare } from "lucide-react"
+import { Users, Box, Wrench, AlertTriangle, CheckSquare, List } from "lucide-react"
+import Link from "next/link"
 
 export default async function AdminPage() {
   const supabase = await createClient()
@@ -32,6 +34,11 @@ export default async function AdminPage() {
     .from("assets")
     .select("*", { count: "exact", head: true })
     .eq("is_critical", true)
+
+  const { count: assetTypesCount } = await supabase
+    .from("infrastructure_asset_types")
+    .select("*", { count: "exact", head: true })
+    .eq("is_active", true)
 
   return (
     <AppLayout>
@@ -99,9 +106,9 @@ export default async function AdminPage() {
               </Card>
 
               <Card>
-                <CardHeader className="flex flex-row items-center justify-between pb-2">
-                  <CardTitle className="text-sm font-medium">Database</CardTitle>
-                  <Database className="h-4 w-4 text-gray-600" />
+                <CardHeader>
+                  <CardTitle>Database</CardTitle>
+                  <CardDescription>Connected to Supabase with Row Level Security enabled</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
@@ -109,6 +116,28 @@ export default async function AdminPage() {
                   </Badge>
                   <p className="mt-2 text-xs text-gray-600">Supabase</p>
                 </CardContent>
+              </Card>
+            </div>
+          </div>
+
+          {/* Infrastructure Management */}
+          <div>
+            <h2 className="mb-4 text-lg font-semibold text-black">Infrastructure Management</h2>
+            <div className="grid gap-4 md:grid-cols-2">
+              <Card className="hover:border-gray-300 transition-colors">
+                <Link href="/admin/asset-types">
+                  <CardHeader className="flex flex-row items-center justify-between pb-2">
+                    <CardTitle className="text-sm font-medium">Asset Types</CardTitle>
+                    <List className="h-4 w-4 text-gray-600" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">{assetTypesCount || 0}</div>
+                    <p className="mt-1 text-xs text-gray-600">Manage infrastructure asset types</p>
+                    <Button variant="link" className="mt-2 p-0 h-auto text-blue-600">
+                      Manage Asset Types →
+                    </Button>
+                  </CardContent>
+                </Link>
               </Card>
             </div>
           </div>

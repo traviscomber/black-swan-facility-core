@@ -10,12 +10,16 @@ import type { InfrastructurePlan } from "@/lib/types"
 import { Layers, X, ChevronLeft, ChevronRight, Maximize, Wifi, Droplet, Zap, Plus, MapPin } from "lucide-react"
 import { InfrastructureDetailPanel } from "@/components/infrastructure-detail-panel"
 import { AddInfrastructureDialog } from "@/components/add-infrastructure-dialog"
+import { EditInfrastructureDialog } from "@/components/edit-infrastructure-dialog"
 
 export default function MapPage() {
   const [infrastructure, setInfrastructure] = useState<InfrastructurePlan[]>([])
   const [selectedInfra, setSelectedInfra] = useState<InfrastructurePlan | null>(null)
   const [detailPanelOpen, setDetailPanelOpen] = useState(false)
   const [addDialogOpen, setAddDialogOpen] = useState(false)
+  const [editDialogOpen, setEditDialogOpen] = useState(false)
+  const [editingInfra, setEditingInfra] = useState<InfrastructurePlan | null>(null)
+  const [clickedCoordinates, setClickedCoordinates] = useState<{ lat: number; lng: number } | null>(null)
 
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [mapType, setMapType] = useState<"street" | "satellite" | "terrain" | "hybrid">("street")
@@ -65,12 +69,20 @@ export default function MapPage() {
     const L = (window as any).L
 
     if (!mapRef.current && mapContainerRef.current) {
-      const map = L.map(mapContainerRef.current).setView([-39.76, -73.23], 15)
+      const map = L.map(mapContainerRef.current).setView([-39.8255, -73.2215], 16)
 
       L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
         attribution: "© OpenStreetMap contributors",
         maxZoom: 19,
       }).addTo(map)
+
+      map.on("contextmenu", (e: any) => {
+        e.originalEvent.preventDefault()
+        const { lat, lng } = e.latlng
+        console.log("[v0] Map right-clicked at:", lat, lng)
+        setClickedCoordinates({ lat, lng })
+        setAddDialogOpen(true)
+      })
 
       mapRef.current = map
     }
@@ -269,6 +281,22 @@ export default function MapPage() {
     internet: filteredInfrastructure.filter((i) => i.category === "internet"),
     water: filteredInfrastructure.filter((i) => i.category === "water"),
     electricity: filteredInfrastructure.filter((i) => i.category === "electricity"),
+  }
+
+  const handleEdit = (infra: InfrastructurePlan) => {
+    setEditingInfra(infra)
+    setEditDialogOpen(true)
+    setDetailPanelOpen(false)
+  }
+
+  const handleDelete = () => {
+    const fetchInfrastructure = async () => {
+      const supabase = createClient()
+      const { data } = await supabase.from("infrastructure_plans").select("*").order("name")
+
+      if (data) setInfrastructure(data)
+    }
+    fetchInfrastructure()
   }
 
   return (
@@ -515,12 +543,17 @@ export default function MapPage() {
               }
               fetchInfrastructure()
             }}
+            onEdit={handleEdit}
+            onDelete={handleDelete}
           />
         )}
 
         <AddInfrastructureDialog
           open={addDialogOpen}
-          onClose={() => setAddDialogOpen(false)}
+          onClose={() => {
+            setAddDialogOpen(false)
+            setClickedCoordinates(null)
+          }}
           onAdd={() => {
             const fetchInfrastructure = async () => {
               const supabase = createClient()
@@ -530,7 +563,27 @@ export default function MapPage() {
             }
             fetchInfrastructure()
             setAddDialogOpen(false)
+            setClickedCoordinates(null)
           }}
+          initialCoordinates={clickedCoordinates}
+        />
+
+        <EditInfrastructureDialog
+          open={editDialogOpen}
+          onClose={() => {
+            setEditDialogOpen(false)
+            setEditingInfra(null)
+          }}
+          onUpdate={() => {
+            const fetchInfrastructure = async () => {
+              const supabase = createClient()
+              const { data } = await supabase.from("infrastructure_plans").select("*").order("name")
+
+              if (data) setInfrastructure(data)
+            }
+            fetchInfrastructure()
+          }}
+          infrastructure={editingInfra}
         />
       </div>
     </AppLayout>

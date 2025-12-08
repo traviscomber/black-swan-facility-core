@@ -8,6 +8,8 @@ interface IssuesTrendChartProps {
 }
 
 export function IssuesTrendChart({ data }: IssuesTrendChartProps) {
+  const chartData = data && data.length > 0 ? data : [{ date: "No Data", issues: 0 }]
+
   return (
     <ChartContainer
       config={{
@@ -19,7 +21,7 @@ export function IssuesTrendChart({ data }: IssuesTrendChartProps) {
       className="h-[200px]"
     >
       <ResponsiveContainer width="100%" height="100%">
-        <LineChart data={data}>
+        <LineChart data={chartData}>
           <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
           <XAxis
             dataKey="date"
@@ -47,6 +49,8 @@ interface AssetDistributionChartProps {
 }
 
 export function AssetDistributionChart({ data }: AssetDistributionChartProps) {
+  const chartData = data && data.length > 0 ? data : [{ type: "No Data", count: 0 }]
+
   return (
     <ChartContainer
       config={{
@@ -58,7 +62,7 @@ export function AssetDistributionChart({ data }: AssetDistributionChartProps) {
       className="h-[200px]"
     >
       <ResponsiveContainer width="100%" height="100%">
-        <BarChart data={data}>
+        <BarChart data={chartData}>
           <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
           <XAxis
             dataKey="type"
