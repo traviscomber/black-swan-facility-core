@@ -7,8 +7,7 @@ import { createClient } from "@/lib/supabase/server"
 import type { Utility, Issue, MaintenanceTask } from "@/lib/types"
 import Link from "next/link"
 import { MapPin, Plus, AlertTriangle, Wrench, CheckCircle2, XCircle, Clock, TrendingUp, Activity } from "lucide-react"
-import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
-import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, LineChart, Line, CartesianGrid } from "recharts"
+import { IssuesTrendChart, AssetDistributionChart } from "@/components/dashboard-charts"
 
 function getUtilityStatusColor(status: string) {
   switch (status) {
@@ -240,36 +239,7 @@ export default async function DashboardPage() {
               <CardDescription className="text-xs">Last 7 days</CardDescription>
             </CardHeader>
             <CardContent>
-              <ChartContainer
-                config={{
-                  issues: {
-                    label: "Issues Reported",
-                    color: "#1a73e8",
-                  },
-                }}
-                className="h-[200px]"
-              >
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={issuesTrendData}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                    <XAxis
-                      dataKey="date"
-                      tick={{ fill: "#666", fontSize: 12 }}
-                      tickLine={false}
-                      axisLine={{ stroke: "#e0e0e0" }}
-                    />
-                    <YAxis tick={{ fill: "#666", fontSize: 12 }} tickLine={false} axisLine={{ stroke: "#e0e0e0" }} />
-                    <ChartTooltip content={<ChartTooltipContent />} />
-                    <Line
-                      type="monotone"
-                      dataKey="issues"
-                      stroke="var(--color-issues)"
-                      strokeWidth={2}
-                      dot={{ fill: "var(--color-issues)", r: 4 }}
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
-              </ChartContainer>
+              <IssuesTrendChart data={issuesTrendData} />
             </CardContent>
           </Card>
 
@@ -279,30 +249,7 @@ export default async function DashboardPage() {
               <CardDescription className="text-xs">By asset type</CardDescription>
             </CardHeader>
             <CardContent>
-              <ChartContainer
-                config={{
-                  count: {
-                    label: "Assets",
-                    color: "#1a73e8",
-                  },
-                }}
-                className="h-[200px]"
-              >
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={assetTypeData}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                    <XAxis
-                      dataKey="type"
-                      tick={{ fill: "#666", fontSize: 12 }}
-                      tickLine={false}
-                      axisLine={{ stroke: "#e0e0e0" }}
-                    />
-                    <YAxis tick={{ fill: "#666", fontSize: 12 }} tickLine={false} axisLine={{ stroke: "#e0e0e0" }} />
-                    <ChartTooltip content={<ChartTooltipContent />} />
-                    <Bar dataKey="count" fill="var(--color-count)" radius={[4, 4, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </ChartContainer>
+              <AssetDistributionChart data={assetTypeData} />
             </CardContent>
           </Card>
         </div>
