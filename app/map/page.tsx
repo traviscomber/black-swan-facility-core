@@ -12,6 +12,7 @@ import { InfrastructureDetailPanel } from "@/components/infrastructure-detail-pa
 import { AddInfrastructureDialog } from "@/components/add-infrastructure-dialog"
 import { EditInfrastructureDialog } from "@/components/edit-infrastructure-dialog"
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
+import { DeleteDialog } from "@/components/delete-dialog"
 
 interface Location {
   id: string
@@ -27,6 +28,7 @@ export default function MapPage() {
   const [editDialogOpen, setEditDialogOpen] = useState(false)
   const [editingInfra, setEditingInfra] = useState<InfrastructurePlan | null>(null)
   const [clickedCoordinates, setClickedCoordinates] = useState<{ lat: number; lng: number } | null>(null)
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false)
 
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [mapType, setMapType] = useState<"street" | "satellite" | "terrain" | "hybrid">("street")
@@ -354,14 +356,17 @@ export default function MapPage() {
     setDetailPanelOpen(false)
   }
 
-  const handleDelete = () => {
-    const fetchInfrastructure = async () => {
-      const supabase = createClient()
-      const { data } = await supabase.from("infrastructure_plans").select("*").order("name")
+  const handleDelete = async () => {
+    const supabase = createClient()
+    const { error } = await supabase.from("infrastructure_plans").delete().eq("id", selectedInfra?.id)
 
+    if (!error) {
+      const { data } = await supabase.from("infrastructure_plans").select("*").order("name")
       if (data) setInfrastructure(data)
+      setSelectedInfra(null)
+      setDetailPanelOpen(false)
+      setShowDeleteDialog(false)
     }
-    fetchInfrastructure()
   }
 
   const blinkMarker = useCallback(
@@ -814,7 +819,7 @@ export default function MapPage() {
           </div>
         </div>
 
-        {selectedInfra && (
+        {detailPanelOpen && selectedInfra && (
           <InfrastructureDetailPanel
             infrastructure={selectedInfra}
             open={detailPanelOpen}
@@ -826,13 +831,14 @@ export default function MapPage() {
               const fetchInfrastructure = async () => {
                 const supabase = createClient()
                 const { data } = await supabase.from("infrastructure_plans").select("*").order("name")
-
                 if (data) setInfrastructure(data)
               }
               fetchInfrastructure()
             }}
-            onEdit={handleEdit}
-            onDelete={handleDelete}
+            onEdit={() => handleEdit(selectedInfra)}
+            onDelete={() => {
+              setShowDeleteDialog(true)
+            }}
           />
         )}
 
@@ -846,7 +852,6 @@ export default function MapPage() {
             const fetchInfrastructure = async () => {
               const supabase = createClient()
               const { data } = await supabase.from("infrastructure_plans").select("*").order("name")
-
               if (data) setInfrastructure(data)
             }
             fetchInfrastructure()
@@ -866,13 +871,14 @@ export default function MapPage() {
             const fetchInfrastructure = async () => {
               const supabase = createClient()
               const { data } = await supabase.from("infrastructure_plans").select("*").order("name")
-
               if (data) setInfrastructure(data)
             }
             fetchInfrastructure()
           }}
           infrastructure={editingInfra}
         />
+
+        <DeleteDialog open={showDeleteDialog} onClose={() => setShowDeleteDialog(false)} onDelete={handleDelete} />
       </div>
     </AppLayout>
   )

@@ -65,6 +65,7 @@ type InfrastructureDetailPanelProps = {
   infrastructure: InfrastructurePlan
   onClose: () => void
   onUpdate: () => void
+  onEdit: () => void // Added onEdit prop for handling edit button click
   onDelete?: () => void
 }
 
@@ -72,6 +73,7 @@ export function InfrastructureDetailPanel({
   infrastructure,
   onClose,
   onUpdate,
+  onEdit, // Added onEdit prop type
   onDelete,
 }: InfrastructureDetailPanelProps) {
   const [photos, setPhotos] = useState<InfrastructurePhoto[]>([])
@@ -445,11 +447,11 @@ export function InfrastructureDetailPanel({
         <div className="sticky top-0 bg-white border-b border-gray-200 p-3 sm:p-4 flex items-center justify-between z-10">
           <h2 className="text-base sm:text-lg font-semibold truncate pr-2 sm:pr-4">{infrastructure.name}</h2>
           <div className="flex items-center gap-1 sm:gap-2">
-            <Button variant="outline" size="sm" onClick={onUpdate} className="hidden sm:flex bg-transparent">
+            <Button variant="outline" size="sm" onClick={onEdit} className="hidden sm:flex bg-transparent">
               <Pencil className="h-4 w-4 mr-2" />
               Edit
             </Button>
-            <Button variant="outline" size="sm" onClick={onUpdate} className="sm:hidden bg-transparent">
+            <Button variant="outline" size="sm" onClick={onEdit} className="sm:hidden bg-transparent">
               <Pencil className="h-4 w-4" />
             </Button>
             <Button variant="outline" size="sm" onClick={() => setShowDeleteDialog(true)} className="hidden sm:flex">
