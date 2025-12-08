@@ -243,39 +243,26 @@ export function InfrastructureDetailPanel({
     try {
       const supabase = createClient()
 
+      // Compress image first
       let fileToUpload = photoFile
       if (photoFile.type.startsWith("image/")) {
         fileToUpload = await compressImage(photoFile)
       }
 
-      // Generate unique filename
-      const fileExt = fileToUpload.name.split(".").pop()
-      const fileName = `${infrastructure.id}/${Date.now()}.${fileExt}`
+      // Convert compressed image to base64
+      const reader = new FileReader()
+      const base64Data = await new Promise<string>((resolve, reject) => {
+        reader.onload = () => resolve(reader.result as string)
+        reader.onerror = reject
+        reader.readAsDataURL(fileToUpload)
+      })
 
-      // Upload to Supabase Storage bucket
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from("infrastructure-files")
-        .upload(`photos/${fileName}`, fileToUpload, {
-          cacheControl: "3600",
-          upsert: false,
-        })
+      console.log("[v0] Image converted to base64, size:", base64Data.length)
 
-      if (uploadError) {
-        console.error("[v0] Storage upload error:", uploadError)
-        throw uploadError
-      }
-
-      console.log("[v0] File uploaded to storage:", uploadData.path)
-
-      // Get public URL for the uploaded file
-      const { data: urlData } = supabase.storage.from("infrastructure-files").getPublicUrl(uploadData.path)
-
-      console.log("[v0] Public URL generated:", urlData.publicUrl)
-
-      // Store file path in database (not the actual file)
+      // Store base64 data directly in database
       const { error: dbError } = await supabase.from("infrastructure_photos").insert({
         infrastructure_id: infrastructure.id,
-        photo_url: urlData.publicUrl, // Store the public URL
+        photo_url: base64Data, // Store compressed base64 data
         caption: photoCaption || null,
         photo_type: "installation",
         taken_at: new Date().toISOString(),
@@ -286,7 +273,7 @@ export function InfrastructureDetailPanel({
         throw dbError
       }
 
-      console.log("[v0] Photo successfully uploaded and saved")
+      console.log("[v0] Photo successfully uploaded and saved to database")
       await fetchPhotos()
       setShowPhotoDialog(false)
       setPhotoFile(null)
@@ -382,17 +369,6 @@ export function InfrastructureDetailPanel({
 
     try {
       const supabase = createClient()
-
-      // Extract file path from URL
-      if (photo.photo_url.includes("infrastructure-files")) {
-        const urlParts = photo.photo_url.split("/infrastructure-files/")
-        if (urlParts[1]) {
-          const filePath = urlParts[1]
-          console.log("[v0] Deleting file from storage:", filePath)
-
-          await supabase.storage.from("infrastructure-files").remove([filePath])
-        }
-      }
 
       // Delete from database
       const { error } = await supabase.from("infrastructure_photos").delete().eq("id", photo.id)
