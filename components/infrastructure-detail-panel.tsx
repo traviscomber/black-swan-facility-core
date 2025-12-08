@@ -1,7 +1,9 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { X, Camera, FileText, MapPin, Calendar, AlertCircle, Pencil, Trash2 } from "lucide-react"
+import type React from "react"
+
+import { useState, useEffect, useRef } from "react"
+import { X, Camera, FileText, MapPin, Calendar, AlertCircle, Pencil, Trash2, Upload } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -15,6 +17,16 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
 import { createClient } from "@/lib/supabase/client"
 
 type InfrastructurePlan = {
@@ -69,6 +81,12 @@ export function InfrastructureDetailPanel({
   const [documents, setDocuments] = useState<InfrastructureDocument[]>([])
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [showPhotoDialog, setShowPhotoDialog] = useState(false)
+  const [photoCaption, setPhotoCaption] = useState("")
+  const [photoFile, setPhotoFile] = useState<File | null>(null)
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null)
+  const [uploading, setUploading] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     if (open && infrastructure) {
@@ -124,23 +142,84 @@ export function InfrastructureDetailPanel({
     }
   }
 
+  const handlePhotoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      setPhotoFile(file)
+      const reader = new FileReader()
+      reader.onloadend = () => {
+        setPhotoPreview(reader.result as string)
+      }
+      reader.readAsDataURL(file)
+    }
+  }
+
+  const handlePhotoUpload = async () => {
+    if (!photoFile) return
+
+    setUploading(true)
+    console.log("[v0] Uploading photo to Supabase")
+
+    try {
+      const reader = new FileReader()
+      reader.onloadend = async () => {
+        const base64String = reader.result as string
+
+        const supabase = createClient()
+        const { error } = await supabase.from("infrastructure_photos").insert({
+          infrastructure_id: infrastructure.id,
+          photo_url: base64String,
+          caption: photoCaption || null,
+          photo_type: "installation",
+          taken_at: new Date().toISOString(),
+        })
+
+        console.log("[v0] Photo upload result:", { error })
+
+        if (!error) {
+          console.log("[v0] Photo successfully uploaded")
+          await fetchPhotos()
+          setShowPhotoDialog(false)
+          setPhotoFile(null)
+          setPhotoPreview(null)
+          setPhotoCaption("")
+        } else {
+          console.error("[v0] Error uploading photo:", error)
+        }
+        setUploading(false)
+      }
+      reader.readAsDataURL(photoFile)
+    } catch (error) {
+      console.error("[v0] Error uploading photo:", error)
+      setUploading(false)
+    }
+  }
+
   if (!open) return null
 
   return (
     <>
-      <div className="fixed inset-y-0 left-0 w-full md:w-[32rem] bg-white shadow-2xl z-[1002] overflow-y-auto border-r border-gray-200">
-        <div className="sticky top-0 bg-white border-b border-gray-200 p-4 flex items-center justify-between z-10">
-          <h2 className="text-lg font-semibold truncate pr-4">{infrastructure.name}</h2>
-          <div className="flex items-center gap-2">
+      <div className="fixed inset-y-0 left-0 w-full sm:w-[90vw] md:w-[32rem] bg-white shadow-2xl z-[1002] overflow-y-auto border-r border-gray-200">
+        <div className="sticky top-0 bg-white border-b border-gray-200 p-3 sm:p-4 flex items-center justify-between z-10">
+          <h2 className="text-base sm:text-lg font-semibold truncate pr-2 sm:pr-4">{infrastructure.name}</h2>
+          <div className="flex items-center gap-1 sm:gap-2">
             {onEdit && (
-              <Button variant="outline" size="sm" onClick={() => onEdit(infrastructure)}>
+              <Button variant="outline" size="sm" onClick={() => onEdit(infrastructure)} className="hidden sm:flex">
                 <Pencil className="h-4 w-4 mr-2" />
                 Edit
               </Button>
             )}
-            <Button variant="outline" size="sm" onClick={() => setShowDeleteDialog(true)}>
+            {onEdit && (
+              <Button variant="outline" size="sm" onClick={() => onEdit(infrastructure)} className="sm:hidden">
+                <Pencil className="h-4 w-4" />
+              </Button>
+            )}
+            <Button variant="outline" size="sm" onClick={() => setShowDeleteDialog(true)} className="hidden sm:flex">
               <Trash2 className="h-4 w-4 mr-2" />
               Delete
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => setShowDeleteDialog(true)} className="sm:hidden">
+              <Trash2 className="h-4 w-4" />
             </Button>
             <Button variant="ghost" size="sm" onClick={onClose}>
               <X className="h-5 w-5" />
@@ -148,7 +227,7 @@ export function InfrastructureDetailPanel({
           </div>
         </div>
 
-        <div className="p-6 space-y-6">
+        <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
           <div>
             <div className="flex items-center gap-2 mb-3">
               <Badge className="capitalize">{infrastructure.category}</Badge>
@@ -227,12 +306,12 @@ export function InfrastructureDetailPanel({
 
           <Tabs defaultValue="photos" className="w-full">
             <TabsList className="w-full">
-              <TabsTrigger value="photos" className="flex-1">
-                <Camera className="h-4 w-4 mr-2" />
+              <TabsTrigger value="photos" className="flex-1 text-xs sm:text-sm">
+                <Camera className="h-4 w-4 mr-1 sm:mr-2" />
                 Photos ({photos.length})
               </TabsTrigger>
-              <TabsTrigger value="documents" className="flex-1">
-                <FileText className="h-4 w-4 mr-2" />
+              <TabsTrigger value="documents" className="flex-1 text-xs sm:text-sm">
+                <FileText className="h-4 w-4 mr-1 sm:mr-2" />
                 Documents ({documents.length})
               </TabsTrigger>
             </TabsList>
@@ -242,28 +321,34 @@ export function InfrastructureDetailPanel({
                 <div className="text-center py-8 text-gray-500">
                   <Camera className="h-12 w-12 mx-auto mb-3 opacity-50" />
                   <p className="text-sm">No photos yet</p>
-                  <Button size="sm" className="mt-3">
+                  <Button size="sm" className="mt-3" onClick={() => setShowPhotoDialog(true)}>
                     <Camera className="h-4 w-4 mr-2" />
                     Add Photo
                   </Button>
                 </div>
               ) : (
-                <div className="grid grid-cols-2 gap-3">
-                  {photos.map((photo) => (
-                    <div key={photo.id} className="rounded-lg overflow-hidden border border-gray-200">
-                      <img
-                        src={photo.photo_url || "/placeholder.svg"}
-                        alt={photo.caption || "Infrastructure photo"}
-                        className="w-full h-32 object-cover"
-                      />
-                      {photo.caption && (
-                        <div className="p-2 bg-gray-50">
-                          <p className="text-xs text-gray-600 line-clamp-2">{photo.caption}</p>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
+                <>
+                  <Button size="sm" className="w-full" onClick={() => setShowPhotoDialog(true)}>
+                    <Upload className="h-4 w-4 mr-2" />
+                    Upload Photo
+                  </Button>
+                  <div className="grid grid-cols-2 gap-3">
+                    {photos.map((photo) => (
+                      <div key={photo.id} className="rounded-lg overflow-hidden border border-gray-200">
+                        <img
+                          src={photo.photo_url || "/placeholder.svg"}
+                          alt={photo.caption || "Infrastructure photo"}
+                          className="w-full h-32 object-cover"
+                        />
+                        {photo.caption && (
+                          <div className="p-2 bg-gray-50">
+                            <p className="text-xs text-gray-600 line-clamp-2">{photo.caption}</p>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </>
               )}
             </TabsContent>
 
@@ -300,6 +385,61 @@ export function InfrastructureDetailPanel({
           </Tabs>
         </div>
       </div>
+
+      <Dialog open={showPhotoDialog} onOpenChange={setShowPhotoDialog}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Upload Photo</DialogTitle>
+            <DialogDescription>Add a photo for {infrastructure.name}</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="photo">Photo</Label>
+              <input
+                ref={fileInputRef}
+                id="photo"
+                type="file"
+                accept="image/*"
+                capture="environment"
+                onChange={handlePhotoSelect}
+                className="hidden"
+              />
+              <Button
+                variant="outline"
+                className="w-full bg-transparent"
+                onClick={() => fileInputRef.current?.click()}
+                type="button"
+              >
+                <Upload className="h-4 w-4 mr-2" />
+                {photoFile ? "Change Photo" : "Select Photo"}
+              </Button>
+              {photoPreview && (
+                <div className="mt-2 rounded-lg overflow-hidden border border-gray-200">
+                  <img src={photoPreview || "/placeholder.svg"} alt="Preview" className="w-full h-48 object-cover" />
+                </div>
+              )}
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="caption">Caption (optional)</Label>
+              <Textarea
+                id="caption"
+                placeholder="Add a description..."
+                value={photoCaption}
+                onChange={(e) => setPhotoCaption(e.target.value)}
+                rows={3}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowPhotoDialog(false)} disabled={uploading}>
+              Cancel
+            </Button>
+            <Button onClick={handlePhotoUpload} disabled={!photoFile || uploading}>
+              {uploading ? "Uploading..." : "Upload"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <AlertDialogContent>
