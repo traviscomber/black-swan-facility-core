@@ -400,7 +400,6 @@ export function InfrastructureDetailPanel({
                 id="photo"
                 type="file"
                 accept="image/*"
-                capture="environment"
                 onChange={handlePhotoSelect}
                 className="hidden"
               />
