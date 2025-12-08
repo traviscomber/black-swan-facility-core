@@ -26,7 +26,6 @@ import { EditInfrastructureDialog } from "@/components/edit-infrastructure-dialo
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
 import { DeleteDialog } from "@/components/delete-dialog"
 import { InfrastructureSearchDialog } from "@/components/infrastructure-search-dialog"
-import "./map.css"
 
 interface Location {
   id: string
