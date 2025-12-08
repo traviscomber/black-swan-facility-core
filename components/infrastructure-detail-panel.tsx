@@ -1,9 +1,8 @@
 "use client"
 
 import type React from "react"
-
 import { useState, useEffect, useRef } from "react"
-import { X, Camera, FileText, MapPin, Calendar, AlertCircle, Pencil, Trash2, Upload } from "lucide-react"
+import { X, Camera, FileText, MapPin, Calendar, AlertCircle, Pencil, Trash2, Upload, Download } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -27,6 +26,7 @@ import {
 } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
+import { Input } from "@/components/ui/input"
 import { createClient } from "@/lib/supabase/client"
 
 type InfrastructurePlan = {
@@ -82,11 +82,15 @@ export function InfrastructureDetailPanel({
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [showPhotoDialog, setShowPhotoDialog] = useState(false)
+  const [showDocumentDialog, setShowDocumentDialog] = useState(false)
   const [photoCaption, setPhotoCaption] = useState("")
   const [photoFile, setPhotoFile] = useState<File | null>(null)
   const [photoPreview, setPhotoPreview] = useState<string | null>(null)
+  const [documentFile, setDocumentFile] = useState<File | null>(null)
+  const [documentName, setDocumentName] = useState("")
   const [uploading, setUploading] = useState(false)
-  const fileInputRef = useRef<HTMLInputElement>(null)
+  const photoInputRef = useRef<HTMLInputElement>(null)
+  const documentInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     if (open && infrastructure) {
@@ -143,56 +147,301 @@ export function InfrastructureDetailPanel({
   }
 
   const handlePhotoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    console.log("[v0] Photo file selected from input")
     const file = e.target.files?.[0]
     if (file) {
+      console.log("[v0] File details:", {
+        name: file.name,
+        type: file.type,
+        size: file.size,
+      })
       setPhotoFile(file)
       const reader = new FileReader()
       reader.onloadend = () => {
         setPhotoPreview(reader.result as string)
+        console.log("[v0] Photo preview generated")
       }
       reader.readAsDataURL(file)
+    } else {
+      console.log("[v0] No file selected")
     }
   }
 
+  const compressImage = async (file: File): Promise<File> => {
+    console.log("[v0] Compressing image...", { originalSize: file.size })
+
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader()
+      reader.readAsDataURL(file)
+      reader.onload = (event) => {
+        const img = new Image()
+        img.src = event.target?.result as string
+        img.onload = () => {
+          const canvas = document.createElement("canvas")
+          const ctx = canvas.getContext("2d")
+
+          // Calculate new dimensions (max 1920px width/height, maintain aspect ratio)
+          const maxSize = 1920
+          let width = img.width
+          let height = img.height
+
+          if (width > height && width > maxSize) {
+            height = (height * maxSize) / width
+            width = maxSize
+          } else if (height > maxSize) {
+            width = (width * maxSize) / height
+            height = maxSize
+          }
+
+          canvas.width = width
+          canvas.height = height
+
+          // Draw image with compression
+          ctx?.drawImage(img, 0, 0, width, height)
+
+          // Convert to blob with quality 0.8 (80% quality, good balance)
+          canvas.toBlob(
+            (blob) => {
+              if (blob) {
+                const compressedFile = new File([blob], file.name, {
+                  type: "image/jpeg",
+                  lastModified: Date.now(),
+                })
+                console.log("[v0] Image compressed:", {
+                  originalSize: file.size,
+                  compressedSize: compressedFile.size,
+                  reduction: `${Math.round((1 - compressedFile.size / file.size) * 100)}%`,
+                })
+                resolve(compressedFile)
+              } else {
+                reject(new Error("Compression failed"))
+              }
+            },
+            "image/jpeg",
+            0.8, // 80% quality
+          )
+        }
+        img.onerror = reject
+      }
+      reader.onerror = reject
+    })
+  }
+
   const handlePhotoUpload = async () => {
-    if (!photoFile) return
+    if (!photoFile) {
+      console.log("[v0] No photo file to upload")
+      return
+    }
 
     setUploading(true)
-    console.log("[v0] Uploading photo to Supabase")
+    console.log("[v0] Starting photo upload process", {
+      fileName: photoFile.name,
+      fileSize: photoFile.size,
+      fileType: photoFile.type,
+    })
 
     try {
-      const reader = new FileReader()
-      reader.onloadend = async () => {
-        const base64String = reader.result as string
+      const supabase = createClient()
 
-        const supabase = createClient()
-        const { error } = await supabase.from("infrastructure_photos").insert({
-          infrastructure_id: infrastructure.id,
-          photo_url: base64String,
-          caption: photoCaption || null,
-          photo_type: "installation",
-          taken_at: new Date().toISOString(),
+      let fileToUpload = photoFile
+      if (photoFile.type.startsWith("image/")) {
+        fileToUpload = await compressImage(photoFile)
+      }
+
+      // Generate unique filename
+      const fileExt = fileToUpload.name.split(".").pop()
+      const fileName = `${infrastructure.id}/${Date.now()}.${fileExt}`
+
+      // Upload to Supabase Storage bucket
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from("infrastructure-files")
+        .upload(`photos/${fileName}`, fileToUpload, {
+          cacheControl: "3600",
+          upsert: false,
         })
 
-        console.log("[v0] Photo upload result:", { error })
-
-        if (!error) {
-          console.log("[v0] Photo successfully uploaded")
-          await fetchPhotos()
-          setShowPhotoDialog(false)
-          setPhotoFile(null)
-          setPhotoPreview(null)
-          setPhotoCaption("")
-        } else {
-          console.error("[v0] Error uploading photo:", error)
-        }
-        setUploading(false)
+      if (uploadError) {
+        console.error("[v0] Storage upload error:", uploadError)
+        throw uploadError
       }
-      reader.readAsDataURL(photoFile)
+
+      console.log("[v0] File uploaded to storage:", uploadData.path)
+
+      // Get public URL for the uploaded file
+      const { data: urlData } = supabase.storage.from("infrastructure-files").getPublicUrl(uploadData.path)
+
+      console.log("[v0] Public URL generated:", urlData.publicUrl)
+
+      // Store file path in database (not the actual file)
+      const { error: dbError } = await supabase.from("infrastructure_photos").insert({
+        infrastructure_id: infrastructure.id,
+        photo_url: urlData.publicUrl, // Store the public URL
+        caption: photoCaption || null,
+        photo_type: "installation",
+        taken_at: new Date().toISOString(),
+      })
+
+      if (dbError) {
+        console.error("[v0] Database insert error:", dbError)
+        throw dbError
+      }
+
+      console.log("[v0] Photo successfully uploaded and saved")
+      await fetchPhotos()
+      setShowPhotoDialog(false)
+      setPhotoFile(null)
+      setPhotoPreview(null)
+      setPhotoCaption("")
     } catch (error) {
       console.error("[v0] Error uploading photo:", error)
+      alert("Failed to upload photo. Please try again.")
+    } finally {
       setUploading(false)
     }
+  }
+
+  const handleDocumentSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    console.log("[v0] Document file selected")
+    const file = e.target.files?.[0]
+    if (file) {
+      console.log("[v0] Document details:", {
+        name: file.name,
+        type: file.type,
+        size: file.size,
+      })
+      setDocumentFile(file)
+      setDocumentName(file.name)
+    }
+  }
+
+  const handleDocumentUpload = async () => {
+    if (!documentFile) {
+      console.log("[v0] No document file to upload")
+      return
+    }
+
+    setUploading(true)
+    console.log("[v0] Uploading document to Supabase Storage")
+
+    try {
+      const supabase = createClient()
+
+      // Generate unique filename
+      const fileExt = documentFile.name.split(".").pop()
+      const fileName = `${infrastructure.id}/${Date.now()}.${fileExt}`
+
+      // Upload to Supabase Storage bucket
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from("infrastructure-files")
+        .upload(`documents/${fileName}`, documentFile, {
+          cacheControl: "3600",
+          upsert: false,
+        })
+
+      if (uploadError) {
+        console.error("[v0] Storage upload error:", uploadError)
+        throw uploadError
+      }
+
+      console.log("[v0] Document uploaded to storage:", uploadData.path)
+
+      // Get public URL for the uploaded file
+      const { data: urlData } = supabase.storage.from("infrastructure-files").getPublicUrl(uploadData.path)
+
+      // Store file path in database
+      const { error: dbError } = await supabase.from("infrastructure_documents").insert({
+        infrastructure_id: infrastructure.id,
+        document_url: urlData.publicUrl,
+        document_name: documentName || documentFile.name,
+        document_type: fileExt || null,
+        uploaded_at: new Date().toISOString(),
+      })
+
+      if (dbError) {
+        console.error("[v0] Database insert error:", dbError)
+        throw dbError
+      }
+
+      console.log("[v0] Document successfully uploaded and saved")
+      await fetchDocuments()
+      setShowDocumentDialog(false)
+      setDocumentFile(null)
+      setDocumentName("")
+    } catch (error) {
+      console.error("[v0] Error uploading document:", error)
+      alert("Failed to upload document. Please try again.")
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  const handleDeletePhoto = async (photo: InfrastructurePhoto) => {
+    if (!confirm("Delete this photo?")) return
+
+    console.log("[v0] Deleting photo:", photo.id)
+
+    try {
+      const supabase = createClient()
+
+      // Extract file path from URL
+      if (photo.photo_url.includes("infrastructure-files")) {
+        const urlParts = photo.photo_url.split("/infrastructure-files/")
+        if (urlParts[1]) {
+          const filePath = urlParts[1]
+          console.log("[v0] Deleting file from storage:", filePath)
+
+          await supabase.storage.from("infrastructure-files").remove([filePath])
+        }
+      }
+
+      // Delete from database
+      const { error } = await supabase.from("infrastructure_photos").delete().eq("id", photo.id)
+
+      if (error) throw error
+
+      console.log("[v0] Photo deleted successfully")
+      await fetchPhotos()
+    } catch (error) {
+      console.error("[v0] Error deleting photo:", error)
+      alert("Failed to delete photo")
+    }
+  }
+
+  const handleDeleteDocument = async (doc: InfrastructureDocument) => {
+    if (!confirm("Delete this document?")) return
+
+    console.log("[v0] Deleting document:", doc.id)
+
+    try {
+      const supabase = createClient()
+
+      // Extract file path from URL
+      if (doc.document_url.includes("infrastructure-files")) {
+        const urlParts = doc.document_url.split("/infrastructure-files/")
+        if (urlParts[1]) {
+          const filePath = urlParts[1]
+          console.log("[v0] Deleting file from storage:", filePath)
+
+          await supabase.storage.from("infrastructure-files").remove([filePath])
+        }
+      }
+
+      // Delete from database
+      const { error } = await supabase.from("infrastructure_documents").delete().eq("id", doc.id)
+
+      if (error) throw error
+
+      console.log("[v0] Document deleted successfully")
+      await fetchDocuments()
+    } catch (error) {
+      console.error("[v0] Error deleting document:", error)
+      alert("Failed to delete document")
+    }
+  }
+
+  const handleOpenPhotoDialog = () => {
+    console.log("[v0] Opening photo dialog")
+    setShowPhotoDialog(true)
   }
 
   if (!open) return null
@@ -321,25 +570,33 @@ export function InfrastructureDetailPanel({
                 <div className="text-center py-8 text-gray-500">
                   <Camera className="h-12 w-12 mx-auto mb-3 opacity-50" />
                   <p className="text-sm">No photos yet</p>
-                  <Button size="sm" className="mt-3" onClick={() => setShowPhotoDialog(true)}>
+                  <Button size="sm" className="mt-3" onClick={handleOpenPhotoDialog}>
                     <Camera className="h-4 w-4 mr-2" />
                     Add Photo
                   </Button>
                 </div>
               ) : (
                 <>
-                  <Button size="sm" className="w-full" onClick={() => setShowPhotoDialog(true)}>
+                  <Button size="sm" className="w-full" onClick={handleOpenPhotoDialog}>
                     <Upload className="h-4 w-4 mr-2" />
                     Upload Photo
                   </Button>
                   <div className="grid grid-cols-2 gap-3">
                     {photos.map((photo) => (
-                      <div key={photo.id} className="rounded-lg overflow-hidden border border-gray-200">
+                      <div key={photo.id} className="rounded-lg overflow-hidden border border-gray-200 relative group">
                         <img
                           src={photo.photo_url || "/placeholder.svg"}
                           alt={photo.caption || "Infrastructure photo"}
                           className="w-full h-32 object-cover"
                         />
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity h-6 w-6 p-0"
+                          onClick={() => handleDeletePhoto(photo)}
+                        >
+                          <X className="h-3 w-3" />
+                        </Button>
                         {photo.caption && (
                           <div className="p-2 bg-gray-50">
                             <p className="text-xs text-gray-600 line-clamp-2">{photo.caption}</p>
@@ -357,29 +614,53 @@ export function InfrastructureDetailPanel({
                 <div className="text-center py-8 text-gray-500">
                   <FileText className="h-12 w-12 mx-auto mb-3 opacity-50" />
                   <p className="text-sm">No documents yet</p>
-                  <Button size="sm" className="mt-3">
+                  <Button size="sm" className="mt-3" onClick={() => setShowDocumentDialog(true)}>
                     <FileText className="h-4 w-4 mr-2" />
                     Add Document
                   </Button>
                 </div>
               ) : (
-                documents.map((doc) => (
-                  <div
-                    key={doc.id}
-                    className="flex items-center gap-3 p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer"
-                  >
-                    <FileText className="h-5 w-5 text-blue-600 flex-shrink-0" />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium truncate">{doc.document_name}</p>
-                      <p className="text-xs text-gray-500">{new Date(doc.uploaded_at).toLocaleDateString()}</p>
+                <>
+                  <Button size="sm" className="w-full" onClick={() => setShowDocumentDialog(true)}>
+                    <Upload className="h-4 w-4 mr-2" />
+                    Upload Document
+                  </Button>
+                  {documents.map((doc) => (
+                    <div
+                      key={doc.id}
+                      className="flex items-center gap-3 p-3 border border-gray-200 rounded-lg hover:bg-gray-50 group"
+                    >
+                      <FileText className="h-5 w-5 text-blue-600 flex-shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">{doc.document_name}</p>
+                        <p className="text-xs text-gray-500">{new Date(doc.uploaded_at).toLocaleDateString()}</p>
+                      </div>
+                      {doc.document_type && (
+                        <Badge variant="outline" className="text-xs uppercase">
+                          {doc.document_type}
+                        </Badge>
+                      )}
+                      <div className="flex gap-1">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-8 w-8 p-0"
+                          onClick={() => window.open(doc.document_url, "_blank")}
+                        >
+                          <Download className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
+                          onClick={() => handleDeleteDocument(doc)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
-                    {doc.document_type && (
-                      <Badge variant="outline" className="text-xs">
-                        {doc.document_type}
-                      </Badge>
-                    )}
-                  </div>
-                ))
+                  ))}
+                </>
               )}
             </TabsContent>
           </Tabs>
@@ -390,13 +671,15 @@ export function InfrastructureDetailPanel({
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
             <DialogTitle>Upload Photo</DialogTitle>
-            <DialogDescription>Add a photo for {infrastructure.name}</DialogDescription>
+            <DialogDescription>
+              Add a photo for {infrastructure.name}. Supports JPG, PNG, HEIC and other image formats.
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
               <Label htmlFor="photo">Photo</Label>
               <input
-                ref={fileInputRef}
+                ref={photoInputRef}
                 id="photo"
                 type="file"
                 accept="image/*"
@@ -406,12 +689,16 @@ export function InfrastructureDetailPanel({
               <Button
                 variant="outline"
                 className="w-full bg-transparent"
-                onClick={() => fileInputRef.current?.click()}
+                onClick={() => {
+                  console.log("[v0] Select Photo button clicked")
+                  photoInputRef.current?.click()
+                }}
                 type="button"
               >
                 <Upload className="h-4 w-4 mr-2" />
-                {photoFile ? "Change Photo" : "Select Photo"}
+                {photoFile ? photoFile.name : "Select Photo from Device"}
               </Button>
+              <p className="text-xs text-gray-500">Choose an existing photo or take a new one</p>
               {photoPreview && (
                 <div className="mt-2 rounded-lg overflow-hidden border border-gray-200">
                   <img src={photoPreview || "/placeholder.svg"} alt="Preview" className="w-full h-48 object-cover" />
@@ -434,7 +721,58 @@ export function InfrastructureDetailPanel({
               Cancel
             </Button>
             <Button onClick={handlePhotoUpload} disabled={!photoFile || uploading}>
-              {uploading ? "Uploading..." : "Upload"}
+              {uploading ? "Uploading..." : "Upload Photo"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showDocumentDialog} onOpenChange={setShowDocumentDialog}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Upload Document</DialogTitle>
+            <DialogDescription>
+              Add a document for {infrastructure.name}. Supports PDF, Word, Excel, and other file types.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="document">Document File</Label>
+              <input
+                ref={documentInputRef}
+                id="document"
+                type="file"
+                accept=".pdf,.doc,.docx,.xls,.xlsx,.txt,.csv"
+                onChange={handleDocumentSelect}
+                className="hidden"
+              />
+              <Button
+                variant="outline"
+                className="w-full bg-transparent"
+                onClick={() => documentInputRef.current?.click()}
+                type="button"
+              >
+                <Upload className="h-4 w-4 mr-2" />
+                {documentFile ? documentFile.name : "Select Document"}
+              </Button>
+              <p className="text-xs text-gray-500">PDF, Word, Excel, text files supported</p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="docName">Document Name</Label>
+              <Input
+                id="docName"
+                placeholder="Enter document name..."
+                value={documentName}
+                onChange={(e) => setDocumentName(e.target.value)}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowDocumentDialog(false)} disabled={uploading}>
+              Cancel
+            </Button>
+            <Button onClick={handleDocumentUpload} disabled={!documentFile || uploading}>
+              {uploading ? "Uploading..." : "Upload Document"}
             </Button>
           </DialogFooter>
         </DialogContent>
