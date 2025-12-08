@@ -76,8 +76,19 @@ export default function AssetTypesPage() {
   const handleDelete = async (id: string) => {
     if (!confirm("Are you sure you want to delete this asset type?")) return
 
+    console.log("[v0] Deleting asset type from Supabase:", id)
+
     const supabase = createClient()
-    await supabase.from("infrastructure_asset_types").delete().eq("id", id)
+    const { error } = await supabase.from("infrastructure_asset_types").delete().eq("id", id)
+
+    console.log("[v0] Delete result:", { error })
+
+    if (!error) {
+      console.log("[v0] Asset type successfully deleted from Supabase")
+    } else {
+      console.error("[v0] Error deleting asset type:", error)
+    }
+
     fetchAssetTypes()
   }
 
@@ -87,7 +98,13 @@ export default function AssetTypesPage() {
     const supabase = createClient()
 
     if (editingType) {
-      await supabase
+      console.log("[v0] Updating asset type in Supabase:", {
+        id: editingType.id,
+        name: formData.name,
+        category: formData.category,
+      })
+
+      const { error } = await supabase
         .from("infrastructure_asset_types")
         .update({
           name: formData.name,
@@ -96,13 +113,34 @@ export default function AssetTypesPage() {
           is_active: formData.is_active,
         })
         .eq("id", editingType.id)
+
+      console.log("[v0] Update result:", { error })
+
+      if (!error) {
+        console.log("[v0] Asset type successfully updated in Supabase")
+      } else {
+        console.error("[v0] Error updating asset type:", error)
+      }
     } else {
-      await supabase.from("infrastructure_asset_types").insert({
+      console.log("[v0] Adding asset type to Supabase:", {
+        name: formData.name,
+        category: formData.category,
+      })
+
+      const { error } = await supabase.from("infrastructure_asset_types").insert({
         name: formData.name,
         category: formData.category,
         description: formData.description || null,
         is_active: formData.is_active,
       })
+
+      console.log("[v0] Insert result:", { error })
+
+      if (!error) {
+        console.log("[v0] Asset type successfully added to Supabase")
+      } else {
+        console.error("[v0] Error adding asset type:", error)
+      }
     }
 
     setDialogOpen(false)

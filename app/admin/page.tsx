@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { createClient } from "@/lib/supabase/server"
-import { Users, Box, Wrench, AlertTriangle, CheckSquare, List } from "lucide-react"
+import { Users, Box, Wrench, AlertTriangle, List, Building2 } from "lucide-react"
 import Link from "next/link"
 
 export default async function AdminPage() {
@@ -37,6 +37,11 @@ export default async function AdminPage() {
 
   const { count: assetTypesCount } = await supabase
     .from("infrastructure_asset_types")
+    .select("*", { count: "exact", head: true })
+    .eq("is_active", true)
+
+  const { count: locationsCount } = await supabase
+    .from("locations")
     .select("*", { count: "exact", head: true })
     .eq("is_active", true)
 
@@ -95,9 +100,9 @@ export default async function AdminPage() {
               </Card>
 
               <Card>
-                <CardHeader className="flex flex-row items-center justify-between pb-2">
-                  <CardTitle className="text-sm font-medium">Checklists</CardTitle>
-                  <CheckSquare className="h-4 w-4 text-gray-600" />
+                <CardHeader>
+                  <CardTitle>Checklists</CardTitle>
+                  <CardDescription>Manage checklists</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">{checklistsCount || 0}</div>
@@ -135,6 +140,22 @@ export default async function AdminPage() {
                     <p className="mt-1 text-xs text-gray-600">Manage infrastructure asset types</p>
                     <Button variant="link" className="mt-2 p-0 h-auto text-blue-600">
                       Manage Asset Types →
+                    </Button>
+                  </CardContent>
+                </Link>
+              </Card>
+
+              <Card className="hover:border-gray-300 transition-colors">
+                <Link href="/admin/locations">
+                  <CardHeader className="flex flex-row items-center justify-between pb-2">
+                    <CardTitle className="text-sm font-medium">Locations</CardTitle>
+                    <Building2 className="h-4 w-4 text-gray-600" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">{locationsCount || 0}</div>
+                    <p className="mt-1 text-xs text-gray-600">Manage facility locations</p>
+                    <Button variant="link" className="mt-2 p-0 h-auto text-blue-600">
+                      Manage Locations →
                     </Button>
                   </CardContent>
                 </Link>

@@ -26,12 +26,19 @@ interface InfrastructurePlan {
   next_inspection: string | null
   specifications: any
   notes: string | null
+  location_id: string | null // Added location_id field
 }
 
 interface AssetType {
   id: string
   name: string
   category: string
+  description: string | null
+}
+
+interface Location {
+  id: string
+  name: string
   description: string | null
 }
 
@@ -55,10 +62,12 @@ export function EditInfrastructureDialog({
     status: "planned",
     priority: "normal",
     notes: "",
+    location_id: "", // Added location_id field
   })
   const [loading, setLoading] = useState(false)
   const [assetTypes, setAssetTypes] = useState<AssetType[]>([])
   const [filteredAssetTypes, setFilteredAssetTypes] = useState<AssetType[]>([])
+  const [locations, setLocations] = useState<Location[]>([]) // Added locations state
 
   useEffect(() => {
     const fetchAssetTypes = async () => {
@@ -69,7 +78,16 @@ export function EditInfrastructureDialog({
         setAssetTypes(data)
       }
     }
+    const fetchLocations = async () => {
+      const supabase = createClient()
+      const { data } = await supabase.from("locations").select("*").eq("is_active", true).order("name")
+
+      if (data) {
+        setLocations(data)
+      }
+    }
     fetchAssetTypes()
+    fetchLocations()
   }, [])
 
   useEffect(() => {
@@ -83,6 +101,7 @@ export function EditInfrastructureDialog({
         status: infrastructure.status,
         priority: infrastructure.priority,
         notes: infrastructure.notes || "",
+        location_id: infrastructure.location_id || "", // Include location_id
       })
     }
   }, [infrastructure])
@@ -98,8 +117,17 @@ export function EditInfrastructureDialog({
 
     setLoading(true)
 
+    console.log("[v0] Updating infrastructure in Supabase:", {
+      id: infrastructure.id,
+      name: formData.name,
+      category: formData.category,
+      latitude: Number.parseFloat(formData.latitude),
+      longitude: Number.parseFloat(formData.longitude),
+      location_id: formData.location_id || null, // Include location_id
+    })
+
     const supabase = createClient()
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from("infrastructure_plans")
       .update({
         name: formData.name,
@@ -110,14 +138,21 @@ export function EditInfrastructureDialog({
         status: formData.status,
         priority: formData.priority,
         notes: formData.notes || null,
+        location_id: formData.location_id || null, // Include location_id
       })
       .eq("id", infrastructure.id)
+      .select()
+
+    console.log("[v0] Update result:", { data, error })
 
     setLoading(false)
 
     if (!error) {
+      console.log("[v0] Infrastructure successfully updated in Supabase")
       onUpdate()
       onClose()
+    } else {
+      console.error("[v0] Error updating infrastructure:", error)
     }
   }
 
@@ -134,6 +169,26 @@ export function EditInfrastructureDialog({
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <Label htmlFor="location">Location</Label>
+            <Select
+              value={formData.location_id || "none"}
+              onValueChange={(value) => setFormData({ ...formData, location_id: value === "none" ? "" : value })}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select a location (optional)" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">No Location</SelectItem>
+                {locations.map((location) => (
+                  <SelectItem key={location.id} value={location.id}>
+                    {location.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
           <div>
             <Label htmlFor="category">Category *</Label>
             <Select value={formData.category} onValueChange={(value) => setFormData({ ...formData, category: value })}>
@@ -180,9 +235,9 @@ export function EditInfrastructureDialog({
                     </SelectItem>
                   ))
                 ) : (
-                  <SelectItem value="" disabled>
+                  <SelectItem value="none" disabled>
                     No asset types available
-                  </SelectItem>
+                  </SelectItem> // Updated default value
                 )}
               </SelectContent>
             </Select>

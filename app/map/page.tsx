@@ -7,10 +7,28 @@ import { Button } from "@/components/ui/button"
 import { createClient } from "@/lib/supabase/client"
 import { useState, useEffect, useRef } from "react"
 import type { InfrastructurePlan } from "@/lib/types"
-import { Layers, X, ChevronLeft, ChevronRight, Maximize, Wifi, Droplet, Zap, Plus, MapPin } from "lucide-react"
+import {
+  Layers,
+  X,
+  ChevronLeft,
+  ChevronRight,
+  Maximize,
+  Wifi,
+  Droplet,
+  Zap,
+  Plus,
+  MapPin,
+  Building2,
+} from "lucide-react"
 import { InfrastructureDetailPanel } from "@/components/infrastructure-detail-panel"
 import { AddInfrastructureDialog } from "@/components/add-infrastructure-dialog"
 import { EditInfrastructureDialog } from "@/components/edit-infrastructure-dialog"
+
+interface Location {
+  id: string
+  name: string
+  description: string | null
+}
 
 export default function MapPage() {
   const [infrastructure, setInfrastructure] = useState<InfrastructurePlan[]>([])
@@ -30,6 +48,9 @@ export default function MapPage() {
     water: true,
     electricity: true,
   })
+
+  const [locations, setLocations] = useState<Location[]>([])
+  const [groupBy, setGroupBy] = useState<"category" | "location">("category")
 
   const [leafletLoaded, setLeafletLoaded] = useState(false)
 
@@ -170,7 +191,15 @@ export default function MapPage() {
       if (data) setInfrastructure(data)
     }
 
+    const fetchLocations = async () => {
+      const supabase = createClient()
+      const { data } = await supabase.from("locations").select("*").eq("is_active", true).order("name")
+
+      if (data) setLocations(data)
+    }
+
     fetchInfrastructure()
+    fetchLocations()
   }, [])
 
   useEffect(() => {
@@ -282,6 +311,16 @@ export default function MapPage() {
     water: filteredInfrastructure.filter((i) => i.category === "water"),
     electricity: filteredInfrastructure.filter((i) => i.category === "electricity"),
   }
+
+  const infraByLocation = locations.reduce(
+    (acc, location) => {
+      acc[location.id] = filteredInfrastructure.filter((i) => i.location_id === location.id)
+      return acc
+    },
+    {} as Record<string, InfrastructurePlan[]>,
+  )
+
+  const infraWithoutLocation = filteredInfrastructure.filter((i) => !i.location_id)
 
   const handleEdit = (infra: InfrastructurePlan) => {
     setEditingInfra(infra)
@@ -461,56 +500,198 @@ export default function MapPage() {
               </div>
             </div>
 
-            {Object.entries(infraByCategory).map(([category, items]) => {
-              if (items.length === 0) return null
-              const Icon = getInfraIcon(category)
+            <div>
+              <div className="flex items-center gap-2 mb-3">
+                <h4 className="font-medium text-sm">Group By</h4>
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  variant={groupBy === "category" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setGroupBy("category")}
+                  className="flex-1"
+                >
+                  Category
+                </Button>
+                <Button
+                  variant={groupBy === "location" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setGroupBy("location")}
+                  className="flex-1"
+                >
+                  Location
+                </Button>
+              </div>
+            </div>
 
-              return (
-                <div key={category}>
-                  <div className="flex items-center gap-2 mb-3">
-                    <Icon className="h-4 w-4" />
-                    <h4 className="font-medium text-sm capitalize">{category}</h4>
-                  </div>
-                  <div className="space-y-2">
-                    {items.map((infra) => (
-                      <div
-                        key={infra.id}
-                        className="rounded-lg border border-gray-200 p-3 cursor-pointer transition-all hover:bg-gray-50 hover:border-gray-300"
-                        onClick={() => {
-                          if (mapRef.current) {
-                            mapRef.current.setView([infra.latitude, infra.longitude], 17)
-                          }
-                          setSelectedInfra(infra)
-                          setDetailPanelOpen(true)
-                          setSidebarOpen(false)
-                        }}
-                      >
-                        <div className="flex items-start gap-2">
+            {groupBy === "category" ? (
+              // Group by category (original display)
+              <>
+                {Object.entries(infraByCategory).map(([category, items]) => {
+                  if (items.length === 0) return null
+                  const Icon = getInfraIcon(category)
+
+                  return (
+                    <div key={category}>
+                      <div className="flex items-center gap-2 mb-3">
+                        <Icon className="h-4 w-4" />
+                        <h4 className="font-medium text-sm capitalize">{category}</h4>
+                      </div>
+                      <div className="space-y-2">
+                        {items.map((infra) => (
                           <div
-                            className="h-3 w-3 rounded-full flex-shrink-0 mt-1"
-                            style={{ backgroundColor: getInfraColor(infra) }}
-                          />
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium text-black truncate">{infra.name}</p>
-                            <p className="text-xs text-gray-600 mt-1 line-clamp-2">{infra.description}</p>
-                            <div className="flex items-center gap-2 mt-2 flex-wrap">
-                              <Badge variant="outline" className="text-xs">
-                                {infra.status}
-                              </Badge>
-                              {infra.priority === "critical" && (
-                                <Badge variant="outline" className="text-xs bg-red-50 text-red-700 border-red-200">
-                                  Critical
-                                </Badge>
-                              )}
+                            key={infra.id}
+                            className="rounded-lg border border-gray-200 p-3 cursor-pointer transition-all hover:bg-gray-50 hover:border-gray-300"
+                            onClick={() => {
+                              if (mapRef.current) {
+                                mapRef.current.setView([infra.latitude, infra.longitude], 17)
+                              }
+                              setSelectedInfra(infra)
+                              setDetailPanelOpen(true)
+                              setSidebarOpen(false)
+                            }}
+                          >
+                            <div className="flex items-start gap-2">
+                              <div
+                                className="h-3 w-3 rounded-full flex-shrink-0 mt-1"
+                                style={{ backgroundColor: getInfraColor(infra) }}
+                              />
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium text-black truncate">{infra.name}</p>
+                                <p className="text-xs text-gray-600 mt-1 line-clamp-2">{infra.description}</p>
+                                <div className="flex items-center gap-2 mt-2 flex-wrap">
+                                  <Badge variant="outline" className="text-xs">
+                                    {infra.status}
+                                  </Badge>
+                                  {infra.priority === "critical" && (
+                                    <Badge variant="outline" className="text-xs bg-red-50 text-red-700 border-red-200">
+                                      Critical
+                                    </Badge>
+                                  )}
+                                </div>
+                              </div>
                             </div>
                           </div>
-                        </div>
+                        ))}
                       </div>
-                    ))}
+                    </div>
+                  )
+                })}
+              </>
+            ) : (
+              // Group by location
+              <>
+                {locations.map((location) => {
+                  const items = infraByLocation[location.id] || []
+                  if (items.length === 0) return null
+
+                  return (
+                    <div key={location.id}>
+                      <div className="flex items-center gap-2 mb-3">
+                        <Building2 className="h-4 w-4 text-gray-700" />
+                        <h4 className="font-medium text-sm">{location.name}</h4>
+                        <Badge variant="outline" className="text-xs">
+                          {items.length}
+                        </Badge>
+                      </div>
+                      <div className="space-y-2">
+                        {items.map((infra) => {
+                          const Icon = getInfraIcon(infra.category)
+                          return (
+                            <div
+                              key={infra.id}
+                              className="rounded-lg border border-gray-200 p-3 cursor-pointer transition-all hover:bg-gray-50 hover:border-gray-300"
+                              onClick={() => {
+                                if (mapRef.current) {
+                                  mapRef.current.setView([infra.latitude, infra.longitude], 17)
+                                }
+                                setSelectedInfra(infra)
+                                setDetailPanelOpen(true)
+                                setSidebarOpen(false)
+                              }}
+                            >
+                              <div className="flex items-start gap-2">
+                                <Icon
+                                  className="h-4 w-4 flex-shrink-0 mt-0.5"
+                                  style={{ color: getInfraColor(infra) }}
+                                />
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-sm font-medium text-black truncate">{infra.name}</p>
+                                  <p className="text-xs text-gray-500 capitalize">{infra.category}</p>
+                                  <div className="flex items-center gap-2 mt-2 flex-wrap">
+                                    <Badge variant="outline" className="text-xs">
+                                      {infra.status}
+                                    </Badge>
+                                    {infra.priority === "critical" && (
+                                      <Badge
+                                        variant="outline"
+                                        className="text-xs bg-red-50 text-red-700 border-red-200"
+                                      >
+                                        Critical
+                                      </Badge>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )
+                })}
+
+                {/* Infrastructure without location */}
+                {infraWithoutLocation.length > 0 && (
+                  <div>
+                    <div className="flex items-center gap-2 mb-3">
+                      <MapPin className="h-4 w-4 text-gray-400" />
+                      <h4 className="font-medium text-sm text-gray-600">No Location</h4>
+                      <Badge variant="outline" className="text-xs">
+                        {infraWithoutLocation.length}
+                      </Badge>
+                    </div>
+                    <div className="space-y-2">
+                      {infraWithoutLocation.map((infra) => {
+                        const Icon = getInfraIcon(infra.category)
+                        return (
+                          <div
+                            key={infra.id}
+                            className="rounded-lg border border-gray-200 p-3 cursor-pointer transition-all hover:bg-gray-50 hover:border-gray-300"
+                            onClick={() => {
+                              if (mapRef.current) {
+                                mapRef.current.setView([infra.latitude, infra.longitude], 17)
+                              }
+                              setSelectedInfra(infra)
+                              setDetailPanelOpen(true)
+                              setSidebarOpen(false)
+                            }}
+                          >
+                            <div className="flex items-start gap-2">
+                              <Icon className="h-4 w-4 flex-shrink-0 mt-0.5" style={{ color: getInfraColor(infra) }} />
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium text-black truncate">{infra.name}</p>
+                                <p className="text-xs text-gray-500 capitalize">{infra.category}</p>
+                                <div className="flex items-center gap-2 mt-2 flex-wrap">
+                                  <Badge variant="outline" className="text-xs">
+                                    {infra.status}
+                                  </Badge>
+                                  {infra.priority === "critical" && (
+                                    <Badge variant="outline" className="text-xs bg-red-50 text-red-700 border-red-200">
+                                      Critical
+                                    </Badge>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
                   </div>
-                </div>
-              )
-            })}
+                )}
+              </>
+            )}
 
             {filteredInfrastructure.length === 0 && (
               <div className="text-center py-8 text-gray-500">
@@ -521,10 +702,6 @@ export default function MapPage() {
             )}
           </div>
         </div>
-
-        {sidebarOpen && (
-          <div className="md:hidden fixed inset-0 bg-black/30 z-[1000]" onClick={() => setSidebarOpen(false)} />
-        )}
 
         {selectedInfra && (
           <InfrastructureDetailPanel

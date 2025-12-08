@@ -101,16 +101,26 @@ export function InfrastructureDetailPanel({
 
   const handleDelete = async () => {
     setDeleting(true)
-    const supabase = createClient()
 
+    console.log("[v0] Deleting infrastructure from Supabase:", {
+      id: infrastructure.id,
+      name: infrastructure.name,
+    })
+
+    const supabase = createClient()
     const { error } = await supabase.from("infrastructure_plans").delete().eq("id", infrastructure.id)
+
+    console.log("[v0] Delete result:", { error })
 
     setDeleting(false)
 
     if (!error) {
+      console.log("[v0] Infrastructure successfully deleted from Supabase")
       setShowDeleteDialog(false)
       onDelete?.()
       onClose()
+    } else {
+      console.error("[v0] Error deleting infrastructure:", error)
     }
   }
 

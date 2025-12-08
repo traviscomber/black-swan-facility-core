@@ -19,6 +19,12 @@ interface AssetType {
   description: string | null
 }
 
+interface Location {
+  id: string
+  name: string
+  description: string | null
+}
+
 export function AddInfrastructureDialog({
   open,
   onClose,
@@ -38,10 +44,12 @@ export function AddInfrastructureDialog({
     longitude: "",
     status: "planned",
     priority: "normal",
+    location_id: "", // Added location_id field
   })
   const [loading, setLoading] = useState(false)
   const [assetTypes, setAssetTypes] = useState<AssetType[]>([])
   const [filteredAssetTypes, setFilteredAssetTypes] = useState<AssetType[]>([])
+  const [locations, setLocations] = useState<Location[]>([]) // Added locations state
 
   useEffect(() => {
     const fetchAssetTypes = async () => {
@@ -52,7 +60,16 @@ export function AddInfrastructureDialog({
         setAssetTypes(data)
       }
     }
+    const fetchLocations = async () => {
+      const supabase = createClient()
+      const { data } = await supabase.from("locations").select("*").eq("is_active", true).order("name")
+
+      if (data) {
+        setLocations(data)
+      }
+    }
     fetchAssetTypes()
+    fetchLocations()
   }, [])
 
   useEffect(() => {
@@ -74,20 +91,35 @@ export function AddInfrastructureDialog({
     e.preventDefault()
     setLoading(true)
 
-    const supabase = createClient()
-    const { error } = await supabase.from("infrastructure_plans").insert({
+    console.log("[v0] Adding infrastructure to Supabase:", {
       name: formData.name,
       category: formData.category,
-      description: formData.description || null,
       latitude: Number.parseFloat(formData.latitude),
       longitude: Number.parseFloat(formData.longitude),
-      status: formData.status,
-      priority: formData.priority,
+      location_id: formData.location_id || null, // Include location_id
     })
+
+    const supabase = createClient()
+    const { data, error } = await supabase
+      .from("infrastructure_plans")
+      .insert({
+        name: formData.name,
+        category: formData.category,
+        description: formData.description || null,
+        latitude: Number.parseFloat(formData.latitude),
+        longitude: Number.parseFloat(formData.longitude),
+        status: formData.status,
+        priority: formData.priority,
+        location_id: formData.location_id || null, // Include location_id
+      })
+      .select()
+
+    console.log("[v0] Insert result:", { data, error })
 
     setLoading(false)
 
     if (!error) {
+      console.log("[v0] Infrastructure successfully added to Supabase")
       setFormData({
         name: "",
         category: "internet",
@@ -96,8 +128,11 @@ export function AddInfrastructureDialog({
         longitude: "",
         status: "planned",
         priority: "normal",
+        location_id: "", // Reset location_id
       })
       onAdd()
+    } else {
+      console.error("[v0] Error adding infrastructure:", error)
     }
   }
 
@@ -117,6 +152,27 @@ export function AddInfrastructureDialog({
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <Label htmlFor="location">Location</Label>
+            <Select
+              value={formData.location_id}
+              onValueChange={(value) => setFormData({ ...formData, location_id: value === "none" ? "" : value })}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select a location (optional)" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">No Location</SelectItem>
+                {locations.map((location) => (
+                  <SelectItem key={location.id} value={location.id}>
+                    {location.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-gray-500 mt-1">Group this infrastructure by location</p>
+          </div>
+
           <div>
             <Label htmlFor="category">Category *</Label>
             <Select value={formData.category} onValueChange={(value) => setFormData({ ...formData, category: value })}>
@@ -163,7 +219,7 @@ export function AddInfrastructureDialog({
                     </SelectItem>
                   ))
                 ) : (
-                  <SelectItem value="" disabled>
+                  <SelectItem value="none" disabled>
                     No asset types available
                   </SelectItem>
                 )}
