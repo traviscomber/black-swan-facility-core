@@ -3,7 +3,19 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
-import { LayoutDashboard, Map, Box, AlertCircle, Wrench, Users, CheckSquare, Settings, X, Bot } from "lucide-react"
+import {
+  LayoutDashboard,
+  Map,
+  Box,
+  AlertCircle,
+  Wrench,
+  Users,
+  CheckSquare,
+  Settings,
+  X,
+  Bot,
+  Calendar,
+} from "lucide-react"
 
 const navigation = [
   { name: "Dashboard", href: "/", icon: LayoutDashboard },
@@ -11,6 +23,7 @@ const navigation = [
   { name: "Assets", href: "/assets", icon: Box },
   { name: "Issues", href: "/issues", icon: AlertCircle },
   { name: "Maintenance", href: "/maintenance", icon: Wrench },
+  { name: "Bookings", href: "/bookings", icon: Calendar },
   { name: "Employees", href: "/employees", icon: Users },
   { name: "Checklists", href: "/checklists", icon: CheckSquare },
   { name: "AI Operations", href: "/ai-ops", icon: Bot },

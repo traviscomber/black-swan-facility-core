@@ -1,11 +1,15 @@
 import { AppLayout } from "@/components/app-layout"
 import { PageHeader } from "@/components/page-header"
-import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { createClient } from "@/lib/supabase/server"
 import type { Employee } from "@/lib/types"
-import { Plus, Mail, Phone } from "lucide-react"
+import { Mail, Phone } from "lucide-react"
+import { AddEmployeeDialog } from "@/components/add-employee-dialog"
+import { EditEmployeeDialog } from "@/components/edit-employee-dialog"
+import { DeleteEmployeeButton } from "@/components/delete-employee-button"
+
+export const dynamic = "force-dynamic"
 
 export default async function EmployeesPage() {
   const supabase = await createClient()
@@ -14,16 +18,7 @@ export default async function EmployeesPage() {
 
   return (
     <AppLayout>
-      <PageHeader
-        title="Employees"
-        description="Manage facility staff"
-        actions={
-          <Button>
-            <Plus className="mr-2 h-4 w-4" />
-            Add Employee
-          </Button>
-        }
-      />
+      <PageHeader title="Employees" description="Manage facility staff" actions={<AddEmployeeDialog />} />
 
       <div className="p-8">
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -48,11 +43,11 @@ export default async function EmployeesPage() {
                     </Badge>
                   </div>
                 </CardHeader>
-                <CardContent className="space-y-2">
+                <CardContent className="space-y-3">
                   {employee.email && (
                     <div className="flex items-center gap-2 text-sm text-gray-600">
                       <Mail className="h-4 w-4" />
-                      <a href={`mailto:${employee.email}`} className="hover:text-blue-600">
+                      <a href={`mailto:${employee.email}`} className="hover:text-blue-600 truncate">
                         {employee.email}
                       </a>
                     </div>
@@ -65,6 +60,10 @@ export default async function EmployeesPage() {
                       </a>
                     </div>
                   )}
+                  <div className="flex items-center gap-2 pt-2 border-t">
+                    <EditEmployeeDialog employee={employee} />
+                    <DeleteEmployeeButton employeeId={employee.id} employeeName={employee.name} />
+                  </div>
                 </CardContent>
               </Card>
             ))

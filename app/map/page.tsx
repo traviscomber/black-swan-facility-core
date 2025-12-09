@@ -44,6 +44,7 @@ export default function MapPage() {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [searchDialogOpen, setSearchDialogOpen] = useState(false)
   const [blinkingMarkerId, setBlinkingMarkerId] = useState<string | null>(null)
+  const [newInfraLocation, setNewInfraLocation] = useState<{ lat: number; lng: number } | null>(null)
 
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [mapType, setMapType] = useState<"street" | "satellite" | "terrain" | "hybrid">("street")
@@ -100,6 +101,11 @@ export default function MapPage() {
         preferCanvas: true,
         zoomControl: true,
       }).setView([-39.8255, -73.2215], 14)
+
+      map.on("contextmenu", (e: any) => {
+        setNewInfraLocation(e.latlng)
+        setAddDialogOpen(true)
+      })
 
       mapRef.current = map
 
@@ -854,6 +860,7 @@ export default function MapPage() {
           onClose={() => {
             setAddDialogOpen(false)
             setClickedCoordinates(null)
+            setNewInfraLocation(null)
           }}
           onAdd={() => {
             const fetchInfrastructure = async () => {
@@ -864,8 +871,9 @@ export default function MapPage() {
             fetchInfrastructure()
             setAddDialogOpen(false)
             setClickedCoordinates(null)
+            setNewInfraLocation(null)
           }}
-          initialCoordinates={clickedCoordinates}
+          initialCoordinates={newInfraLocation}
         />
 
         <EditInfrastructureDialog
