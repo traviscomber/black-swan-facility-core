@@ -100,7 +100,16 @@ export default function MapPage() {
       const map = L.map(mapContainerRef.current, {
         preferCanvas: true,
         zoomControl: true,
+        attributionControl: true,
       }).setView([-39.8255, -73.2215], 14)
+
+      const initialTileLayer = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        attribution: "© OpenStreetMap contributors",
+        maxZoom: 19,
+        subdomains: ["a", "b", "c"],
+      })
+      initialTileLayer.addTo(map)
+      baseLayerRef.current = initialTileLayer
 
       map.on("contextmenu", (e: any) => {
         setNewInfraLocation(e.latlng)
@@ -109,23 +118,25 @@ export default function MapPage() {
 
       mapRef.current = map
 
+      setTimeout(() => {
+        map.invalidateSize()
+      }, 100)
+
       console.log("[v0] Map initialized successfully")
     }
   }, [leafletLoaded])
 
   useEffect(() => {
-    if (!mapRef.current || !leafletLoaded) return
+    if (!mapRef.current || !leafletLoaded || typeof window === "undefined") return
 
-    const map = mapRef.current
     const L = (window as any).L
+    const map = mapRef.current
 
-    console.log("[v0] Changing map type to:", mapType)
-
-    // Remove existing layers
     if (baseLayerRef.current) {
       map.removeLayer(baseLayerRef.current)
       baseLayerRef.current = null
     }
+
     if (overlayLayerRef.current) {
       map.removeLayer(overlayLayerRef.current)
       overlayLayerRef.current = null
@@ -137,8 +148,6 @@ export default function MapPage() {
         {
           attribution: "© Esri",
           maxZoom: 19,
-          crossOrigin: true,
-          errorTileUrl: "", // Prevents error tile display
         },
       ).addTo(map)
 
@@ -146,13 +155,12 @@ export default function MapPage() {
         attribution: "© OpenTopoMap contributors",
         maxZoom: 17,
         opacity: terrainOpacity,
-        crossOrigin: true,
-        errorTileUrl: "",
       }).addTo(map)
     } else {
       let tileUrl = ""
       let attribution = ""
       let maxZoom = 19
+      let subdomains: string[] = []
 
       switch (mapType) {
         case "satellite":
@@ -168,14 +176,13 @@ export default function MapPage() {
         default:
           tileUrl = "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           attribution = "© OpenStreetMap contributors"
+          subdomains = ["a", "b", "c"]
       }
 
       baseLayerRef.current = L.tileLayer(tileUrl, {
         attribution,
         maxZoom,
-        crossOrigin: true,
-        errorTileUrl: "",
-        subdomains: mapType === "street" ? ["a", "b", "c"] : [],
+        subdomains,
       }).addTo(map)
     }
 
@@ -183,10 +190,7 @@ export default function MapPage() {
     setTimeout(() => {
       map.invalidateSize()
     }, 100)
-    setTimeout(() => {
-      map.invalidateSize()
-    }, 300)
-  }, [mapType, leafletLoaded])
+  }, [mapType, leafletLoaded, terrainOpacity])
 
   useEffect(() => {
     if (!mapRef.current || !leafletLoaded || mapType !== "hybrid") return
@@ -381,11 +385,9 @@ export default function MapPage() {
         const color = getInfraColor(infra)
         const symbol = getIconSymbol(infra.category)
 
-        // Create blinking effect by toggling between highlighted and normal
         let blinkCount = 0
         const blinkInterval = setInterval(() => {
           if (blinkCount >= 6) {
-            // After 3 blinks, restore original icon
             clearInterval(blinkInterval)
             markerToFind.setIcon(originalIcon)
             return
@@ -437,11 +439,9 @@ export default function MapPage() {
     console.log("[v0] Infrastructure selected from search:", infrastructure)
     setSelectedInfra(infrastructure)
 
-    // Center map on selected infrastructure
     if (mapRef.current) {
       mapRef.current.setView([infrastructure.latitude, infrastructure.longitude], 18)
 
-      // Trigger blink effect
       setBlinkingMarkerId(infrastructure.id)
       setTimeout(() => setBlinkingMarkerId(null), 1800)
     }
@@ -636,7 +636,6 @@ export default function MapPage() {
             </div>
 
             {groupBy === "category" ? (
-              // Group by category with collapsible sections
               <Accordion type="multiple" defaultValue={["internet", "water", "electricity"]} className="space-y-2">
                 {Object.entries(infraByCategory).map(([category, items]) => {
                   if (items.length === 0) return null
@@ -717,7 +716,6 @@ export default function MapPage() {
                 })}
               </Accordion>
             ) : (
-              // Group by location with collapsible sections
               <Accordion type="multiple" defaultValue={locations.map((l) => l.id)} className="space-y-2">
                 {locations.map((location) => {
                   const items = infraByLocation[location.id] || []
@@ -774,7 +772,6 @@ export default function MapPage() {
                   )
                 })}
 
-                {/* Show items without location */}
                 {infraWithoutLocation.length > 0 && (
                   <AccordionItem value="no-location" className="border rounded-lg border-gray-300 bg-gray-100">
                     <AccordionTrigger className="px-4 py-3 hover:no-underline">
