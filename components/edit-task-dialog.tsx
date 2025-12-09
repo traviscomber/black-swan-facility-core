@@ -114,7 +114,7 @@ export function EditTaskDialog({ open, onOpenChange, onTaskUpdated, task }: Edit
 
   async function handleSubmit() {
     if (!title || selectedEmployees.length === 0) {
-      alert("Por favor completa el título y asigna al menos un empleado")
+      alert("Please complete the title and assign at least one employee")
       return
     }
 
@@ -168,7 +168,7 @@ export function EditTaskDialog({ open, onOpenChange, onTaskUpdated, task }: Edit
       onOpenChange(false)
     } catch (error) {
       console.error("[v0] Error updating task:", error)
-      alert("Error al actualizar la tarea")
+      alert("Error updating task")
     } finally {
       setIsSubmitting(false)
     }
@@ -178,26 +178,26 @@ export function EditTaskDialog({ open, onOpenChange, onTaskUpdated, task }: Edit
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Editar Tarea</DialogTitle>
-          <p className="text-sm text-muted-foreground">Actualiza los detalles de la tarea</p>
+          <DialogTitle>Edit Task</DialogTitle>
+          <p className="text-sm text-muted-foreground">Update task details</p>
         </DialogHeader>
 
         <div className="space-y-4 py-4">
           <div>
-            <Label htmlFor="title">Título *</Label>
+            <Label htmlFor="title">Title *</Label>
             <Input
               id="title"
-              placeholder="ej: Llamar para cotizar campo Cholchol"
+              placeholder="e.g.: Call to quote Campo Cholchol"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
             />
           </div>
 
           <div>
-            <Label htmlFor="description">Descripción</Label>
+            <Label htmlFor="description">Description</Label>
             <Textarea
               id="description"
-              placeholder="Detalles de la tarea..."
+              placeholder="Task details..."
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               rows={3}
@@ -206,46 +206,46 @@ export function EditTaskDialog({ open, onOpenChange, onTaskUpdated, task }: Edit
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <Label htmlFor="priority">Prioridad</Label>
+              <Label htmlFor="priority">Priority</Label>
               <Select value={priority} onValueChange={setPriority}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="baja">Baja</SelectItem>
-                  <SelectItem value="media">Media</SelectItem>
-                  <SelectItem value="alta">Alta</SelectItem>
-                  <SelectItem value="urgente">Urgente</SelectItem>
+                  <SelectItem value="baja">Low</SelectItem>
+                  <SelectItem value="media">Medium</SelectItem>
+                  <SelectItem value="alta">High</SelectItem>
+                  <SelectItem value="urgente">Urgent</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
             <div>
-              <Label htmlFor="status">Estado</Label>
+              <Label htmlFor="status">Status</Label>
               <Select value={status} onValueChange={setStatus}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="nueva">Nueva</SelectItem>
-                  <SelectItem value="en_progreso">En Progreso</SelectItem>
-                  <SelectItem value="completada">Completada</SelectItem>
-                  <SelectItem value="cancelada">Cancelada</SelectItem>
+                  <SelectItem value="nueva">New</SelectItem>
+                  <SelectItem value="en_progreso">In Progress</SelectItem>
+                  <SelectItem value="completada">Completed</SelectItem>
+                  <SelectItem value="cancelada">Cancelled</SelectItem>
                 </SelectContent>
               </Select>
             </div>
           </div>
 
           <div>
-            <Label htmlFor="dueDate">Fecha límite</Label>
+            <Label htmlFor="dueDate">Due Date</Label>
             <Input id="dueDate" type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
           </div>
 
           <div>
-            <Label htmlFor="location">Ubicación</Label>
+            <Label htmlFor="location">Location</Label>
             <Select value={selectedLocationId} onValueChange={handleLocationSelect}>
               <SelectTrigger>
-                <SelectValue placeholder="Seleccionar ubicación" />
+                <SelectValue placeholder="Select location" />
               </SelectTrigger>
               <SelectContent>
                 {locations.map((location) => (
@@ -263,23 +263,23 @@ export function EditTaskDialog({ open, onOpenChange, onTaskUpdated, task }: Edit
           {selectedLocationId && (
             <>
               <div>
-                <Label>Nombre de ubicación</Label>
+                <Label>Location Name</Label>
                 <Input
                   value={locationName}
                   onChange={(e) => setLocationName(e.target.value)}
-                  placeholder="ej: Campo Cholchol, Lote 45"
+                  placeholder="e.g.: Campo Cholchol, Lot 45"
                 />
               </div>
 
               <div>
-                <Label>Coordenadas (lat,lng)</Label>
+                <Label>Coordinates (lat,lng)</Label>
                 <Input value={coordinates} onChange={(e) => setCoordinates(e.target.value)} placeholder="-38.5,-72.3" />
               </div>
             </>
           )}
 
           <div>
-            <Label className="mb-3 block">Asignar a Usuarios *</Label>
+            <Label className="mb-3 block">Assign to Users *</Label>
             <div className="border rounded-lg p-4 max-h-48 overflow-y-auto space-y-2">
               {employees.map((employee) => (
                 <div key={employee.id} className="flex items-center space-x-2">
@@ -295,19 +295,17 @@ export function EditTaskDialog({ open, onOpenChange, onTaskUpdated, task }: Edit
               ))}
             </div>
             {selectedEmployees.length > 0 && (
-              <p className="text-xs text-muted-foreground mt-2">
-                {selectedEmployees.length} usuario(s) seleccionado(s)
-              </p>
+              <p className="text-xs text-muted-foreground mt-2">{selectedEmployees.length} user(s) selected</p>
             )}
           </div>
         </div>
 
         <div className="flex justify-end gap-3">
           <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Cancelar
+            Cancel
           </Button>
           <Button onClick={handleSubmit} disabled={isSubmitting}>
-            {isSubmitting ? "Actualizando..." : "Actualizar Tarea"}
+            {isSubmitting ? "Updating..." : "Update Task"}
           </Button>
         </div>
       </DialogContent>

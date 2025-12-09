@@ -63,7 +63,7 @@ export function EditReservationDialog({ open, onOpenChange, reservation, onSucce
       onOpenChange(false)
     } catch (error) {
       console.error("Error updating reservation:", error)
-      alert("Error al actualizar la reserva")
+      alert("Error updating reservation")
     } finally {
       setLoading(false)
     }
@@ -73,13 +73,13 @@ export function EditReservationDialog({ open, onOpenChange, reservation, onSucce
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
-          <DialogTitle>Editar Reserva</DialogTitle>
+          <DialogTitle>Edit Reservation</DialogTitle>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
-              <Label htmlFor="guest_name">Nombre del Huésped</Label>
+              <Label htmlFor="guest_name">Guest Name</Label>
               <Input
                 id="guest_name"
                 value={formData.guest_name}
@@ -99,7 +99,7 @@ export function EditReservationDialog({ open, onOpenChange, reservation, onSucce
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="guest_phone">Teléfono</Label>
+              <Label htmlFor="guest_phone">Phone</Label>
               <Input
                 id="guest_phone"
                 value={formData.guest_phone}
@@ -108,7 +108,7 @@ export function EditReservationDialog({ open, onOpenChange, reservation, onSucce
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="num_guests">Número de Personas</Label>
+              <Label htmlFor="num_guests">Number of Guests</Label>
               <Input
                 id="num_guests"
                 type="number"
@@ -142,7 +142,7 @@ export function EditReservationDialog({ open, onOpenChange, reservation, onSucce
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="total_amount">Monto Total</Label>
+              <Label htmlFor="total_amount">Total Amount</Label>
               <Input
                 id="total_amount"
                 type="number"
@@ -154,24 +154,24 @@ export function EditReservationDialog({ open, onOpenChange, reservation, onSucce
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="status">Estado</Label>
+              <Label htmlFor="status">Status</Label>
               <Select value={formData.status} onValueChange={(value) => setFormData({ ...formData, status: value })}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="confirmed">Confirmada</SelectItem>
-                  <SelectItem value="pending">Pendiente</SelectItem>
-                  <SelectItem value="checked_in">Check-in</SelectItem>
-                  <SelectItem value="checked_out">Check-out</SelectItem>
-                  <SelectItem value="cancelled">Cancelada</SelectItem>
+                  <SelectItem value="confirmed">Confirmed</SelectItem>
+                  <SelectItem value="pending">Pending</SelectItem>
+                  <SelectItem value="checked_in">Checked In</SelectItem>
+                  <SelectItem value="checked_out">Checked Out</SelectItem>
+                  <SelectItem value="cancelled">Cancelled</SelectItem>
                 </SelectContent>
               </Select>
             </div>
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="special_requests">Solicitudes Especiales</Label>
+            <Label htmlFor="special_requests">Special Requests</Label>
             <Textarea
               id="special_requests"
               value={formData.special_requests || ""}
@@ -182,10 +182,10 @@ export function EditReservationDialog({ open, onOpenChange, reservation, onSucce
 
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              Cancelar
+              Cancel
             </Button>
             <Button type="submit" disabled={loading}>
-              {loading ? "Actualizando..." : "Actualizar Reserva"}
+              {loading ? "Updating..." : "Update Reservation"}
             </Button>
           </DialogFooter>
         </form>

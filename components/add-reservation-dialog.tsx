@@ -102,7 +102,7 @@ export function AddReservationDialog({
       resetForm()
     } catch (error) {
       console.error("Error creating reservation:", error)
-      alert("Error al crear la reserva")
+      alert("Error creating reservation")
     } finally {
       setLoading(false)
     }
@@ -144,19 +144,19 @@ export function AddReservationDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
-          <DialogTitle>Nueva Reserva de Cama</DialogTitle>
+          <DialogTitle>New Bed Reservation</DialogTitle>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2 sm:col-span-2">
-              <Label htmlFor="location_filter">Filtrar por Locación</Label>
+              <Label htmlFor="location_filter">Filter by Location</Label>
               <Select value={selectedLocationFilter} onValueChange={setSelectedLocationFilter}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Todas las locaciones" />
+                  <SelectValue placeholder="All locations" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">Todas las Locaciones</SelectItem>
+                  <SelectItem value="all">All Locations</SelectItem>
                   {locations.map((loc) => (
                     <SelectItem key={loc.id} value={loc.name}>
                       {loc.name}
@@ -167,16 +167,16 @@ export function AddReservationDialog({
             </div>
 
             <div className="space-y-2 sm:col-span-2">
-              <Label htmlFor="bed_id">Cama</Label>
+              <Label htmlFor="bed_id">Bed</Label>
               <Select value={formData.bed_id} onValueChange={(value) => setFormData({ ...formData, bed_id: value })}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Seleccionar cama" />
+                  <SelectValue placeholder="Select bed" />
                 </SelectTrigger>
                 <SelectContent>
                   {filteredBeds.map((bed) => (
                     <SelectItem key={bed.id} value={bed.id}>
                       {bed.room?.room_number} - {bed.bed_number} ({bed.bed_type})
-                      {bed.room?.location && ` • ${bed.room.location}`} - ${bed.room?.rate_per_night || 0}/noche
+                      {bed.room?.location && ` • ${bed.room.location}`} - ${bed.room?.rate_per_night || 0}/night
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -184,10 +184,10 @@ export function AddReservationDialog({
             </div>
 
             <div className="space-y-2 sm:col-span-2">
-              <Label htmlFor="guest_id">Huésped Existente (Opcional)</Label>
+              <Label htmlFor="guest_id">Existing Guest (Optional)</Label>
               <Select value={formData.guest_id} onValueChange={handleGuestSelect}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Seleccionar huésped" />
+                  <SelectValue placeholder="Select guest" />
                 </SelectTrigger>
                 <SelectContent>
                   {guests.map((guest) => (
@@ -200,7 +200,7 @@ export function AddReservationDialog({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="guest_name">Nombre del Huésped *</Label>
+              <Label htmlFor="guest_name">Guest Name *</Label>
               <Input
                 id="guest_name"
                 value={formData.guest_name}
@@ -220,7 +220,7 @@ export function AddReservationDialog({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="guest_phone">Teléfono</Label>
+              <Label htmlFor="guest_phone">Phone</Label>
               <Input
                 id="guest_phone"
                 value={formData.guest_phone}
@@ -229,7 +229,7 @@ export function AddReservationDialog({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="num_guests">Número de Personas</Label>
+              <Label htmlFor="num_guests">Number of Guests</Label>
               <Input
                 id="num_guests"
                 type="number"
@@ -263,7 +263,7 @@ export function AddReservationDialog({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="total_amount">Monto Total</Label>
+              <Label htmlFor="total_amount">Total Amount</Label>
               <Input
                 id="total_amount"
                 type="number"
@@ -275,24 +275,24 @@ export function AddReservationDialog({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="status">Estado</Label>
+              <Label htmlFor="status">Status</Label>
               <Select value={formData.status} onValueChange={(value) => setFormData({ ...formData, status: value })}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="confirmed">Confirmada</SelectItem>
-                  <SelectItem value="pending">Pendiente</SelectItem>
-                  <SelectItem value="checked_in">Check-in</SelectItem>
-                  <SelectItem value="checked_out">Check-out</SelectItem>
-                  <SelectItem value="cancelled">Cancelada</SelectItem>
+                  <SelectItem value="confirmed">Confirmed</SelectItem>
+                  <SelectItem value="pending">Pending</SelectItem>
+                  <SelectItem value="checked_in">Checked In</SelectItem>
+                  <SelectItem value="checked_out">Checked Out</SelectItem>
+                  <SelectItem value="cancelled">Cancelled</SelectItem>
                 </SelectContent>
               </Select>
             </div>
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="special_requests">Solicitudes Especiales</Label>
+            <Label htmlFor="special_requests">Special Requests</Label>
             <Textarea
               id="special_requests"
               value={formData.special_requests || ""}
@@ -303,10 +303,10 @@ export function AddReservationDialog({
 
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              Cancelar
+              Cancel
             </Button>
             <Button type="submit" disabled={loading}>
-              {loading ? "Creando..." : "Crear Reserva"}
+              {loading ? "Creating..." : "Create Reservation"}
             </Button>
           </DialogFooter>
         </form>

@@ -8,7 +8,6 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { createBrowserClient } from "@/lib/supabase/client"
 import { format } from "date-fns"
-import { es } from "date-fns/locale"
 import { Calendar, MapPin, Users, X, MessageSquare, Send, Pencil, Trash2 } from "lucide-react"
 
 interface Task {
@@ -36,6 +35,7 @@ interface TaskDetailPanelProps {
   task: Task
   onUpdate: () => void
   onClose: () => void
+  onEdit: () => void
 }
 
 const statusColors = {
@@ -46,13 +46,13 @@ const statusColors = {
 }
 
 const statusLabels = {
-  nueva: "Nueva",
-  en_progreso: "En Progreso",
-  completada: "Completada",
-  cancelada: "Cancelada",
+  nueva: "New",
+  en_progreso: "In Progress",
+  completada: "Completed",
+  cancelada: "Cancelled",
 }
 
-export function TaskDetailPanel({ task, onUpdate, onClose }: TaskDetailPanelProps) {
+export function TaskDetailPanel({ task, onUpdate, onClose, onEdit }: TaskDetailPanelProps) {
   const [newStatus, setNewStatus] = useState(task.status)
   const [comment, setComment] = useState("")
   const [isSendingWhatsApp, setIsSendingWhatsApp] = useState(false)
@@ -73,7 +73,7 @@ export function TaskDetailPanel({ task, onUpdate, onClose }: TaskDetailPanelProp
 
     if (error) {
       console.error("[v0] Error updating task status:", error)
-      alert("Error al actualizar el estado")
+      alert("Error updating status")
     } else {
       // Add status history
       await supabase.from("task_status_history").insert({
@@ -96,7 +96,7 @@ export function TaskDetailPanel({ task, onUpdate, onClose }: TaskDetailPanelProp
 
     if (error) {
       console.error("[v0] Error adding comment:", error)
-      alert("Error al agregar comentario")
+      alert("Error adding comment")
     } else {
       setComment("")
       onUpdate()
@@ -115,7 +115,7 @@ export function TaskDetailPanel({ task, onUpdate, onClose }: TaskDetailPanelProp
 
       for (const employee of employees || []) {
         if (employee.phone) {
-          const message = `Recordatorio: Tarea "${task.title}" - Estado: ${statusLabels[task.status]}. ${task.due_date ? `Fecha límite: ${format(new Date(task.due_date), "d 'de' MMMM", { locale: es })}` : ""}`
+          const message = `Reminder: Task "${task.title}" - Status: ${statusLabels[task.status]}. ${task.due_date ? `Due date: ${format(new Date(task.due_date), "MMMM d")}` : ""}`
 
           // Get WhatsApp Web URL
           const response = await fetch("/api/send-whatsapp", {
@@ -147,14 +147,14 @@ export function TaskDetailPanel({ task, onUpdate, onClose }: TaskDetailPanelProp
       }
     } catch (error) {
       console.error("[v0] Error sending WhatsApp reminders:", error)
-      alert("Error al enviar recordatorios por WhatsApp")
+      alert("Error sending WhatsApp reminders")
     } finally {
       setIsSendingWhatsApp(false)
     }
   }
 
   async function handleDeleteTask() {
-    if (!confirm("¿Estás seguro de eliminar esta tarea? Esta acción no se puede deshacer.")) {
+    if (!confirm("Are you sure you want to delete this task? This action cannot be undone.")) {
       return
     }
 
@@ -169,7 +169,7 @@ export function TaskDetailPanel({ task, onUpdate, onClose }: TaskDetailPanelProp
       onUpdate()
     } catch (error) {
       console.error("[v0] Error deleting task:", error)
-      alert("Error al eliminar la tarea")
+      alert("Error deleting task")
     } finally {
       setIsDeleting(false)
     }
@@ -178,7 +178,7 @@ export function TaskDetailPanel({ task, onUpdate, onClose }: TaskDetailPanelProp
   return (
     <div className="h-full flex flex-col">
       <div className="p-6 border-b flex items-center justify-between">
-        <h2 className="text-xl font-bold">Detalles y Acciones de Tarea</h2>
+        <h2 className="text-xl font-bold">Task Details and Actions</h2>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="icon" onClick={() => setIsEditDialogOpen(true)}>
             <Pencil className="h-4 w-4" />
@@ -204,7 +204,7 @@ export function TaskDetailPanel({ task, onUpdate, onClose }: TaskDetailPanelProp
             {task.due_date && (
               <div className="flex items-center gap-2 text-sm">
                 <Calendar className="h-4 w-4 text-muted-foreground" />
-                <span>Vence: {format(new Date(task.due_date), "d 'de' MMMM, yyyy", { locale: es })}</span>
+                <span>Due: {format(new Date(task.due_date), "MMMM d, yyyy")}</span>
               </div>
             )}
 
@@ -217,7 +217,7 @@ export function TaskDetailPanel({ task, onUpdate, onClose }: TaskDetailPanelProp
 
             {task.latitude && task.longitude && (
               <div className="text-xs text-muted-foreground">
-                Coordenadas: {task.latitude}, {task.longitude}
+                Coordinates: {task.latitude}, {task.longitude}
               </div>
             )}
           </CardContent>
@@ -229,7 +229,7 @@ export function TaskDetailPanel({ task, onUpdate, onClose }: TaskDetailPanelProp
             <CardHeader>
               <CardTitle className="text-sm flex items-center gap-2">
                 <Users className="h-4 w-4" />
-                Usuarios Asignados
+                Assigned Users
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -244,10 +244,10 @@ export function TaskDetailPanel({ task, onUpdate, onClose }: TaskDetailPanelProp
                 onClick={handleSendWhatsAppReminders}
                 disabled={isSendingWhatsApp}
                 variant="outline"
-                className="w-full bg-transparent"
+                className="w-full mt-3 bg-transparent"
               >
                 <Send className="h-4 w-4 mr-2" />
-                {isSendingWhatsApp ? "Enviando..." : "Enviar Recordatorio por WhatsApp"}
+                {isSendingWhatsApp ? "Sending..." : "Send WhatsApp Reminder"}
               </Button>
             </CardContent>
           </Card>
@@ -256,11 +256,11 @@ export function TaskDetailPanel({ task, onUpdate, onClose }: TaskDetailPanelProp
         {/* Status Update */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-sm">Estado de la Tarea</CardTitle>
+            <CardTitle className="text-sm">Task Status</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             <div className="flex items-center gap-2">
-              <span className="text-sm">Estado actual:</span>
+              <span className="text-sm">Current status:</span>
               <Badge className={statusColors[task.status]}>{statusLabels[task.status]}</Badge>
             </div>
 
@@ -269,15 +269,15 @@ export function TaskDetailPanel({ task, onUpdate, onClose }: TaskDetailPanelProp
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="nueva">Nueva</SelectItem>
-                <SelectItem value="en_progreso">En Progreso</SelectItem>
-                <SelectItem value="completada">Completada</SelectItem>
-                <SelectItem value="cancelada">Cancelada</SelectItem>
+                <SelectItem value="nueva">New</SelectItem>
+                <SelectItem value="en_progreso">In Progress</SelectItem>
+                <SelectItem value="completada">Completed</SelectItem>
+                <SelectItem value="cancelada">Cancelled</SelectItem>
               </SelectContent>
             </Select>
 
             <Button onClick={handleStatusChange} disabled={newStatus === task.status} className="w-full">
-              Actualizar Estado
+              Update Status
             </Button>
           </CardContent>
         </Card>
@@ -287,18 +287,18 @@ export function TaskDetailPanel({ task, onUpdate, onClose }: TaskDetailPanelProp
           <CardHeader>
             <CardTitle className="text-sm flex items-center gap-2">
               <MessageSquare className="h-4 w-4" />
-              Agregar Nota o Comentario
+              Add Note or Comment
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             <Textarea
-              placeholder="Escribe una nota o comentario..."
+              placeholder="Write a note or comment..."
               value={comment}
               onChange={(e) => setComment(e.target.value)}
               rows={4}
             />
             <Button onClick={handleAddComment} className="w-full">
-              Agregar Comentario
+              Add Comment
             </Button>
           </CardContent>
         </Card>

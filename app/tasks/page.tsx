@@ -12,6 +12,7 @@ import { TaskDetailPanel } from "@/components/task-detail-panel"
 import { EditTaskDialog } from "@/components/edit-task-dialog"
 import { format, isToday, isThisWeek } from "date-fns"
 import { es } from "date-fns/locale"
+import { AppLayout } from "@/components/app-layout"
 
 interface Task {
   id: string
@@ -42,17 +43,17 @@ const priorityColors = {
 }
 
 const priorityLabels = {
-  baja: "Baja",
-  media: "Media",
-  alta: "Alta",
-  urgente: "Urgente",
+  baja: "Low",
+  media: "Medium",
+  alta: "High",
+  urgente: "Urgent",
 }
 
 const statusLabels = {
-  nueva: "Nueva",
-  en_progreso: "En Progreso",
-  completada: "Completada",
-  cancelada: "Cancelada",
+  nueva: "New",
+  en_progreso: "In Progress",
+  completada: "Completed",
+  cancelada: "Cancelled",
 }
 
 export default function TasksPage() {
@@ -108,154 +109,158 @@ export default function TasksPage() {
   })
 
   return (
-    <div className="flex h-screen bg-background">
-      {/* Left Panel - Task List */}
-      <div className="w-1/3 border-r flex flex-col">
-        <div className="p-6 border-b">
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <h1 className="text-2xl font-bold">Gestión y Tracking</h1>
-              <p className="text-sm text-muted-foreground">Sistema de tareas y coordinación</p>
+    <AppLayout>
+      <div className="flex h-full bg-background">
+        {/* Left Panel - Task List */}
+        <div className="w-1/3 border-r flex flex-col">
+          <div className="p-6 border-b">
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h1 className="text-2xl font-bold">Task Management & Tracking</h1>
+                <p className="text-sm text-muted-foreground">Task coordination system</p>
+              </div>
             </div>
+
+            {/* Stats Cards */}
+            <div className="grid grid-cols-2 gap-3 mb-4">
+              <Card>
+                <CardContent className="p-3">
+                  <div className="flex items-center gap-2">
+                    <Clock className="h-4 w-4 text-blue-600" />
+                    <div>
+                      <p className="text-xs text-muted-foreground">New Tasks Today</p>
+                      <p className="text-2xl font-bold">{stats.nuevasHoy}</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="p-3">
+                  <div className="flex items-center gap-2">
+                    <AlertCircle className="h-4 w-4 text-orange-600" />
+                    <div>
+                      <p className="text-xs text-muted-foreground">Pending</p>
+                      <p className="text-2xl font-bold">{stats.pendientes}</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="p-3">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="h-4 w-4 text-green-600" />
+                    <div>
+                      <p className="text-xs text-muted-foreground">Completed (Week)</p>
+                      <p className="text-2xl font-bold">{stats.completadasSemana}</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="p-3">
+                  <div className="flex items-center gap-2">
+                    <Users className="h-4 w-4 text-purple-600" />
+                    <div>
+                      <p className="text-xs text-muted-foreground">Users</p>
+                      <p className="text-2xl font-bold">{stats.totalUsuarios}</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            <Button onClick={() => setIsAddDialogOpen(true)} className="w-full">
+              <Plus className="h-4 w-4 mr-2" />
+              New Task
+            </Button>
           </div>
 
-          {/* Stats Cards */}
-          <div className="grid grid-cols-2 gap-3 mb-4">
-            <Card>
-              <CardContent className="p-3">
-                <div className="flex items-center gap-2">
-                  <Clock className="h-4 w-4 text-blue-600" />
-                  <div>
-                    <p className="text-xs text-muted-foreground">Nuevas Tareas Hoy</p>
-                    <p className="text-2xl font-bold">{stats.nuevasHoy}</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-3">
-                <div className="flex items-center gap-2">
-                  <AlertCircle className="h-4 w-4 text-orange-600" />
-                  <div>
-                    <p className="text-xs text-muted-foreground">Pendientes</p>
-                    <p className="text-2xl font-bold">{stats.pendientes}</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-3">
-                <div className="flex items-center gap-2">
-                  <CheckCircle2 className="h-4 w-4 text-green-600" />
-                  <div>
-                    <p className="text-xs text-muted-foreground">Completadas (Semana)</p>
-                    <p className="text-2xl font-bold">{stats.completadasSemana}</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-3">
-                <div className="flex items-center gap-2">
-                  <Users className="h-4 w-4 text-purple-600" />
-                  <div>
-                    <p className="text-xs text-muted-foreground">Usuarios</p>
-                    <p className="text-2xl font-bold">{stats.totalUsuarios}</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
+          {/* Tabs */}
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
+            <TabsList className="mx-6 mt-4">
+              <TabsTrigger value="nuevas">New</TabsTrigger>
+              <TabsTrigger value="en_progreso">In Progress</TabsTrigger>
+              <TabsTrigger value="completadas">Completed</TabsTrigger>
+              <TabsTrigger value="todas">All</TabsTrigger>
+            </TabsList>
 
-          <Button onClick={() => setIsAddDialogOpen(true)} className="w-full">
-            <Plus className="h-4 w-4 mr-2" />
-            Nueva Tarea
-          </Button>
+            <div className="flex-1 overflow-auto p-6">
+              {isLoading ? (
+                <p className="text-center text-muted-foreground">Loading tasks...</p>
+              ) : filteredTasks.length === 0 ? (
+                <p className="text-center text-muted-foreground">No tasks</p>
+              ) : (
+                <div className="space-y-3">
+                  {filteredTasks.map((task) => (
+                    <Card
+                      key={task.id}
+                      className={`cursor-pointer hover:shadow-md transition-shadow ${
+                        selectedTask?.id === task.id ? "ring-2 ring-primary" : ""
+                      }`}
+                      onClick={() => setSelectedTask(task)}
+                    >
+                      <CardContent className="p-4">
+                        <div className="flex items-start justify-between mb-2">
+                          <h3 className="font-semibold text-sm">{task.title}</h3>
+                          <Badge className={priorityColors[task.priority]}>{priorityLabels[task.priority]}</Badge>
+                        </div>
+                        {task.location_name && (
+                          <p className="text-xs text-muted-foreground mb-2">{task.location_name}</p>
+                        )}
+                        {task.due_date && (
+                          <div className="flex items-center gap-1 text-xs text-muted-foreground mb-2">
+                            <Calendar className="h-3 w-3" />
+                            {format(new Date(task.due_date), "d 'de' MMMM, yyyy", { locale: es })}
+                          </div>
+                        )}
+                        {task.task_assignments.length > 0 && (
+                          <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                            <Users className="h-3 w-3" />
+                            {task.task_assignments.length} assigned
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </div>
+          </Tabs>
         </div>
 
-        {/* Tabs */}
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
-          <TabsList className="mx-6 mt-4">
-            <TabsTrigger value="nuevas">Nuevas</TabsTrigger>
-            <TabsTrigger value="en_progreso">En Progreso</TabsTrigger>
-            <TabsTrigger value="completadas">Completadas</TabsTrigger>
-            <TabsTrigger value="todas">Todas</TabsTrigger>
-          </TabsList>
+        {/* Right Panel - Task Details */}
+        <div className="flex-1">
+          {selectedTask ? (
+            <TaskDetailPanel
+              task={selectedTask}
+              onUpdate={fetchTasks}
+              onClose={() => setSelectedTask(null)}
+              onEdit={(task) => {
+                setTaskToEdit(task)
+                setIsEditDialogOpen(true)
+              }}
+            />
+          ) : (
+            <div className="h-full flex items-center justify-center text-muted-foreground">
+              Select a task to view details
+            </div>
+          )}
+        </div>
 
-          <div className="flex-1 overflow-auto p-6">
-            {isLoading ? (
-              <p className="text-center text-muted-foreground">Cargando tareas...</p>
-            ) : filteredTasks.length === 0 ? (
-              <p className="text-center text-muted-foreground">No hay tareas</p>
-            ) : (
-              <div className="space-y-3">
-                {filteredTasks.map((task) => (
-                  <Card
-                    key={task.id}
-                    className={`cursor-pointer hover:shadow-md transition-shadow ${
-                      selectedTask?.id === task.id ? "ring-2 ring-primary" : ""
-                    }`}
-                    onClick={() => setSelectedTask(task)}
-                  >
-                    <CardContent className="p-4">
-                      <div className="flex items-start justify-between mb-2">
-                        <h3 className="font-semibold text-sm">{task.title}</h3>
-                        <Badge className={priorityColors[task.priority]}>{priorityLabels[task.priority]}</Badge>
-                      </div>
-                      {task.location_name && <p className="text-xs text-muted-foreground mb-2">{task.location_name}</p>}
-                      {task.due_date && (
-                        <div className="flex items-center gap-1 text-xs text-muted-foreground mb-2">
-                          <Calendar className="h-3 w-3" />
-                          {format(new Date(task.due_date), "d 'de' MMMM, yyyy", { locale: es })}
-                        </div>
-                      )}
-                      {task.task_assignments.length > 0 && (
-                        <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                          <Users className="h-3 w-3" />
-                          {task.task_assignments.length} asignado(s)
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            )}
-          </div>
-        </Tabs>
-      </div>
+        <AddTaskDialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen} onTaskCreated={fetchTasks} />
 
-      {/* Right Panel - Task Details */}
-      <div className="flex-1">
-        {selectedTask ? (
-          <TaskDetailPanel
-            task={selectedTask}
-            onUpdate={fetchTasks}
-            onClose={() => setSelectedTask(null)}
-            onEdit={(task) => {
-              setTaskToEdit(task)
-              setIsEditDialogOpen(true)
+        {taskToEdit && (
+          <EditTaskDialog
+            open={isEditDialogOpen}
+            onOpenChange={setIsEditDialogOpen}
+            onTaskUpdated={() => {
+              fetchTasks()
+              setTaskToEdit(null)
             }}
+            task={taskToEdit}
           />
-        ) : (
-          <div className="h-full flex items-center justify-center text-muted-foreground">
-            Selecciona una tarea para ver los detalles
-          </div>
         )}
       </div>
-
-      <AddTaskDialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen} onTaskCreated={fetchTasks} />
-
-      {taskToEdit && (
-        <EditTaskDialog
-          open={isEditDialogOpen}
-          onOpenChange={setIsEditDialogOpen}
-          onTaskUpdated={() => {
-            fetchTasks()
-            setTaskToEdit(null)
-          }}
-          task={taskToEdit}
-        />
-      )}
-    </div>
+    </AppLayout>
   )
 }

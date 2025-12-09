@@ -34,7 +34,7 @@ interface Location {
 export function AddTaskDialog({ open, onOpenChange, onTaskCreated }: AddTaskDialogProps) {
   const [title, setTitle] = useState("")
   const [description, setDescription] = useState("")
-  const [priority, setPriority] = useState("media")
+  const [priority, setPriority] = useState("medium")
   const [dueDate, setDueDate] = useState("")
   const [locationName, setLocationName] = useState("")
   const [selectedLocationId, setSelectedLocationId] = useState<string>("")
@@ -85,7 +85,7 @@ export function AddTaskDialog({ open, onOpenChange, onTaskCreated }: AddTaskDial
 
   async function handleSubmit() {
     if (!title || selectedEmployees.length === 0) {
-      alert("Por favor completa el título y asigna al menos un empleado")
+      alert("Please complete the title and assign at least one employee")
       return
     }
 
@@ -138,7 +138,7 @@ export function AddTaskDialog({ open, onOpenChange, onTaskCreated }: AddTaskDial
       // Reset form
       setTitle("")
       setDescription("")
-      setPriority("media")
+      setPriority("medium")
       setDueDate("")
       setLocationName("")
       setSelectedLocationId("")
@@ -149,7 +149,7 @@ export function AddTaskDialog({ open, onOpenChange, onTaskCreated }: AddTaskDial
       onOpenChange(false)
     } catch (error) {
       console.error("[v0] Error creating task:", error)
-      alert("Error al crear la tarea")
+      alert("Error creating task")
     } finally {
       setIsSubmitting(false)
     }
@@ -162,7 +162,7 @@ export function AddTaskDialog({ open, onOpenChange, onTaskCreated }: AddTaskDial
 
       for (const employee of employeesData) {
         if (employee.phone) {
-          const message = `Hola ${employee.name}, se te ha asignado una nueva tarea: "${title}". Prioridad: ${priority.toUpperCase()}. ${dueDate ? `Fecha límite: ${dueDate}` : ""}`
+          const message = `Hello ${employee.name}, you have been assigned a new task: "${title}". Priority: ${priority.toUpperCase()}. ${dueDate ? `Due date: ${dueDate}` : ""}`
 
           // Get WhatsApp Web URL
           const response = await fetch("/api/send-whatsapp", {
@@ -201,26 +201,26 @@ export function AddTaskDialog({ open, onOpenChange, onTaskCreated }: AddTaskDial
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Crear Nueva Tarea</DialogTitle>
-          <p className="text-sm text-muted-foreground">Crea una tarea y vincúlala a una ubicación en el mapa</p>
+          <DialogTitle>Create New Task</DialogTitle>
+          <p className="text-sm text-muted-foreground">Create a task and link it to a map location</p>
         </DialogHeader>
 
         <div className="space-y-4 py-4">
           <div>
-            <Label htmlFor="title">Título *</Label>
+            <Label htmlFor="title">Title *</Label>
             <Input
               id="title"
-              placeholder="ej: Llamar para cotizar campo Cholchol"
+              placeholder="e.g.: Call to quote Campo Cholchol"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
             />
           </div>
 
           <div>
-            <Label htmlFor="description">Descripción</Label>
+            <Label htmlFor="description">Description</Label>
             <Textarea
               id="description"
-              placeholder="Detalles de la tarea..."
+              placeholder="Task details..."
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               rows={3}
@@ -229,31 +229,31 @@ export function AddTaskDialog({ open, onOpenChange, onTaskCreated }: AddTaskDial
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <Label htmlFor="priority">Prioridad</Label>
+              <Label htmlFor="priority">Priority</Label>
               <Select value={priority} onValueChange={setPriority}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="baja">Baja</SelectItem>
-                  <SelectItem value="media">Media</SelectItem>
-                  <SelectItem value="alta">Alta</SelectItem>
-                  <SelectItem value="urgente">Urgente</SelectItem>
+                  <SelectItem value="baja">Low</SelectItem>
+                  <SelectItem value="media">Medium</SelectItem>
+                  <SelectItem value="alta">High</SelectItem>
+                  <SelectItem value="urgente">Urgent</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
             <div>
-              <Label htmlFor="dueDate">Fecha límite</Label>
+              <Label htmlFor="dueDate">Due Date</Label>
               <Input id="dueDate" type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
             </div>
           </div>
 
           <div>
-            <Label htmlFor="location">Ubicación</Label>
+            <Label htmlFor="location">Location</Label>
             <Select value={selectedLocationId} onValueChange={handleLocationSelect}>
               <SelectTrigger>
-                <SelectValue placeholder="Seleccionar ubicación" />
+                <SelectValue placeholder="Select location" />
               </SelectTrigger>
               <SelectContent>
                 {locations.map((location) => (
@@ -271,23 +271,23 @@ export function AddTaskDialog({ open, onOpenChange, onTaskCreated }: AddTaskDial
           {selectedLocationId && (
             <>
               <div>
-                <Label>Nombre de ubicación</Label>
+                <Label>Location Name</Label>
                 <Input
                   value={locationName}
                   onChange={(e) => setLocationName(e.target.value)}
-                  placeholder="ej: Campo Cholchol, Lote 45"
+                  placeholder="e.g.: Campo Cholchol, Lot 45"
                 />
               </div>
 
               <div>
-                <Label>Coordenadas (lat,lng)</Label>
+                <Label>Coordinates (lat,lng)</Label>
                 <Input value={coordinates} onChange={(e) => setCoordinates(e.target.value)} placeholder="-38.5,-72.3" />
               </div>
             </>
           )}
 
           <div>
-            <Label className="mb-3 block">Asignar a Usuarios *</Label>
+            <Label className="mb-3 block">Assign to Users *</Label>
             <div className="border rounded-lg p-4 max-h-48 overflow-y-auto space-y-2">
               {employees.map((employee) => (
                 <div key={employee.id} className="flex items-center space-x-2">
@@ -303,19 +303,17 @@ export function AddTaskDialog({ open, onOpenChange, onTaskCreated }: AddTaskDial
               ))}
             </div>
             {selectedEmployees.length > 0 && (
-              <p className="text-xs text-muted-foreground mt-2">
-                {selectedEmployees.length} usuario(s) seleccionado(s)
-              </p>
+              <p className="text-xs text-muted-foreground mt-2">{selectedEmployees.length} user(s) selected</p>
             )}
           </div>
         </div>
 
         <div className="flex justify-end gap-3">
           <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Cancelar
+            Cancel
           </Button>
           <Button onClick={handleSubmit} disabled={isSubmitting}>
-            {isSubmitting ? "Creando..." : "Crear Tarea"}
+            {isSubmitting ? "Creating..." : "Create Task"}
           </Button>
         </div>
       </DialogContent>
