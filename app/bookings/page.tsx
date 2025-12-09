@@ -3,7 +3,9 @@
 import { useState, useEffect } from "react"
 import { createBrowserClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
-import { ChevronLeft, ChevronRight, Calendar, Plus, Edit, Trash2 } from "lucide-react"
+import { Input } from "@/components/ui/input"
+import { Badge } from "@/components/ui/badge"
+import { ChevronLeft, ChevronRight, Calendar, Plus, Edit, Trash2, Search, Download, List, Grid } from "lucide-react"
 import { format, addDays, startOfMonth, eachDayOfInterval, addMonths, subMonths, isSameDay, isToday } from "date-fns"
 import { AddReservationDialog } from "@/components/add-reservation-dialog"
 import { EditReservationDialog } from "@/components/edit-reservation-dialog"
@@ -12,12 +14,22 @@ interface Room {
   id: string
   room_number: string
   room_type: string
+  capacity: number
+  location: string | null
+}
+
+interface Bed {
+  id: string
+  room_id: string
+  bed_number: string
+  bed_type: string
   status: string
+  room?: Room
 }
 
 interface Reservation {
   id: string
-  room_id: string
+  bed_id: string
   guest_name: string
   check_in: string
   check_out: string
@@ -25,9 +37,20 @@ interface Reservation {
   num_guests: number
 }
 
+interface Location {
+  id: string
+  name: string
+  description: string | null
+}
+
 export default function BookingsPage() {
-  const [rooms, setRooms] = useState<Room[]>([])
+  const [beds, setBeds] = useState<Bed[]>([])
   const [reservations, setReservations] = useState<Reservation[]>([])
+  const [locations, setLocations] = useState<Location[]>([])
+  const [searchTerm, setSearchTerm] = useState("")
+  const [selectedLocation, setSelectedLocation] = useState<string>("all")
+  const [selectedStatus, setSelectedStatus] = useState<string>("all")
+  const [view, setView] = useState<"calendar" | "list">("calendar")
   const [currentDate, setCurrentDate] = useState(new Date())
   const [viewDays, setViewDays] = useState(31)
   const [loading, setLoading] = useState(true)
@@ -37,39 +60,51 @@ export default function BookingsPage() {
 
   const supabase = createBrowserClient()
 
-  // Calculate date range
   const startDate = startOfMonth(currentDate)
   const endDate = addDays(startDate, viewDays - 1)
   const dateRange = eachDayOfInterval({ start: startDate, end: endDate })
 
   useEffect(() => {
     loadData()
+    loadLocations()
   }, [currentDate])
+
+  async function loadLocations() {
+    const { data } = await supabase.from("locations").select("*").eq("is_active", true).order("name")
+    setLocations(data || [])
+  }
 
   async function loadData() {
     setLoading(true)
 
-    // Load rooms
-    const { data: roomsData } = await supabase.from("rooms").select("*").order("room_number")
+    const { data: bedsData } = await supabase
+      .from("beds")
+      .select(`
+        *,
+        room:rooms(*)
+      `)
+      .order("room_id")
 
-    // Load reservations for the current month
     const { data: reservationsData } = await supabase
       .from("reservations")
       .select("*")
       .gte("check_in", format(startDate, "yyyy-MM-dd"))
       .lte("check_out", format(endDate, "yyyy-MM-dd"))
 
-    setRooms(roomsData || [])
+    console.log("[v0] Loaded beds:", bedsData?.length)
+    console.log("[v0] Loaded reservations:", reservationsData?.length)
+
+    setBeds(bedsData || [])
     setReservations(reservationsData || [])
     setLoading(false)
   }
 
-  function getReservationForRoomAndDate(roomId: string, date: Date): Reservation | null {
+  function getReservationForBedAndDate(bedId: string, date: Date): Reservation | null {
     return (
       reservations.find((res) => {
         const checkIn = new Date(res.check_in)
         const checkOut = new Date(res.check_out)
-        return res.room_id === roomId && date >= checkIn && date < checkOut
+        return res.bed_id === bedId && date >= checkIn && date < checkOut
       }) || null
     )
   }
@@ -101,13 +136,100 @@ export default function BookingsPage() {
   }
 
   async function handleDeleteReservation(reservationId: string) {
-    if (!confirm("Are you sure you want to delete this reservation?")) return
+    if (!confirm("¿Seguro que deseas eliminar esta reserva?")) return
 
     const { error } = await supabase.from("reservations").delete().eq("id", reservationId)
 
     if (error) {
       console.error("Error deleting reservation:", error)
-      alert("Failed to delete reservation")
+      alert("Error al eliminar la reserva")
+    } else {
+      loadData()
+    }
+  }
+
+  const filteredBeds = selectedLocation === "all" ? beds : beds.filter((bed) => bed.room?.location === selectedLocation)
+
+  const bedsByRoom = filteredBeds.reduce(
+    (acc, bed) => {
+      const roomId = bed.room_id
+      if (!acc[roomId]) {
+        acc[roomId] = []
+      }
+      acc[roomId].push(bed)
+      return acc
+    },
+    {} as Record<string, Bed[]>,
+  )
+
+  function calculateStats() {
+    const totalBeds = filteredBeds.length
+    const occupiedBeds = new Set(
+      reservations
+        .filter((r) => {
+          const checkIn = new Date(r.check_in)
+          const checkOut = new Date(r.check_out)
+          const today = new Date()
+          return today >= checkIn && today < checkOut && r.status === "confirmed"
+        })
+        .map((r) => r.bed_id),
+    ).size
+
+    const occupancyRate = totalBeds > 0 ? ((occupiedBeds / totalBeds) * 100).toFixed(1) : "0"
+
+    const confirmedReservations = reservations.filter((r) => r.status === "confirmed").length
+    const pendingReservations = reservations.filter((r) => r.status === "pending").length
+
+    return {
+      totalBeds,
+      occupiedBeds,
+      occupancyRate,
+      confirmedReservations,
+      pendingReservations,
+      totalReservations: reservations.length,
+    }
+  }
+
+  const stats = calculateStats()
+
+  const filteredReservations = reservations.filter((res) => {
+    const matchesSearch = searchTerm === "" || res.guest_name.toLowerCase().includes(searchTerm.toLowerCase())
+    const matchesStatus = selectedStatus === "all" || res.status === selectedStatus
+    return matchesSearch && matchesStatus
+  })
+
+  function exportToCSV() {
+    const csvContent = [
+      ["Habitación", "Cama", "Huésped", "Check-in", "Check-out", "Estado", "Personas"].join(","),
+      ...filteredReservations.map((res) => {
+        const bed = beds.find((b) => b.id === res.bed_id)
+        return [
+          bed?.room?.room_number || "",
+          bed?.bed_number || "",
+          res.guest_name,
+          format(new Date(res.check_in), "yyyy-MM-dd"),
+          format(new Date(res.check_out), "yyyy-MM-dd"),
+          res.status,
+          res.num_guests,
+        ].join(",")
+      }),
+    ].join("\n")
+
+    const blob = new Blob([csvContent], { type: "text/csv" })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement("a")
+    a.href = url
+    a.download = `reservas-${format(currentDate, "yyyy-MM")}.csv`
+    a.click()
+  }
+
+  async function handleQuickAction(reservationId: string, action: "check_in" | "check_out") {
+    const newStatus = action === "check_in" ? "checked_in" : "checked_out"
+    const { error } = await supabase.from("reservations").update({ status: newStatus }).eq("id", reservationId)
+
+    if (error) {
+      console.error("Error updating reservation:", error)
+      alert("Error al actualizar la reserva")
     } else {
       loadData()
     }
@@ -118,16 +240,46 @@ export default function BookingsPage() {
       {/* Header */}
       <div className="flex items-center justify-between border-b bg-card px-6 py-4">
         <div>
-          <h1 className="text-2xl font-bold">Booking Calendar</h1>
-          <p className="text-sm text-muted-foreground">Room availability and reservations</p>
+          <h1 className="text-2xl font-bold">Calendario de Reservas por Camas</h1>
+          <p className="text-sm text-muted-foreground">Disponibilidad de camas individuales</p>
         </div>
-        <Button className="gap-2" onClick={() => setShowAddDialog(true)}>
-          <Plus className="h-4 w-4" />
-          Add Reservation
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" className="gap-2 bg-transparent" onClick={exportToCSV}>
+            <Download className="h-4 w-4" />
+            Exportar
+          </Button>
+          <Button className="gap-2" onClick={() => setShowAddDialog(true)}>
+            <Plus className="h-4 w-4" />
+            Nueva Reserva
+          </Button>
+        </div>
       </div>
 
-      {/* Calendar Controls */}
+      {/* Stats Bar */}
+      <div className="flex items-center gap-4 border-b bg-card px-6 py-3">
+        <div className="flex items-center gap-2">
+          <div className="text-sm font-medium">Ocupación:</div>
+          <Badge variant="secondary" className="text-base font-bold">
+            {stats.occupancyRate}%
+          </Badge>
+        </div>
+        <div className="h-4 w-px bg-border" />
+        <div className="text-sm">
+          <span className="font-medium">{stats.occupiedBeds}</span>
+          <span className="text-muted-foreground">/{stats.totalBeds} camas</span>
+        </div>
+        <div className="h-4 w-px bg-border" />
+        <div className="text-sm">
+          <span className="font-medium">{stats.confirmedReservations}</span>
+          <span className="text-muted-foreground"> confirmadas</span>
+        </div>
+        <div className="text-sm">
+          <span className="font-medium">{stats.pendingReservations}</span>
+          <span className="text-muted-foreground"> pendientes</span>
+        </div>
+      </div>
+
+      {/* Filters & Controls */}
       <div className="flex items-center gap-4 border-b bg-card px-6 py-3">
         <div className="flex items-center gap-2">
           <Button variant="outline" size="icon" onClick={() => setCurrentDate(subMonths(currentDate, 1))}>
@@ -142,121 +294,325 @@ export default function BookingsPage() {
           </Button>
         </div>
 
-        <div className="ml-auto flex gap-2">
-          <Button variant={viewDays === 7 ? "default" : "outline"} size="sm" onClick={() => setViewDays(7)}>
-            Week
-          </Button>
-          <Button variant={viewDays === 14 ? "default" : "outline"} size="sm" onClick={() => setViewDays(14)}>
-            2 Weeks
-          </Button>
-          <Button variant={viewDays === 31 ? "default" : "outline"} size="sm" onClick={() => setViewDays(31)}>
-            Month
-          </Button>
-        </div>
-      </div>
+        <div className="h-6 w-px bg-border" />
 
-      {/* Calendar Grid */}
-      <div className="flex-1 overflow-auto">
-        <div className="inline-block min-w-full">
-          {/* Date Headers */}
-          <div className="sticky top-0 z-20 flex bg-card">
-            <div className="sticky left-0 z-30 w-40 border-r bg-card"></div>
-            <div className="flex">
-              {dateRange.map((date) => (
-                <div
-                  key={date.toISOString()}
-                  className={`flex min-w-[120px] flex-col items-center border-r py-2 ${
-                    isToday(date) ? "bg-primary/10" : ""
-                  }`}
-                >
-                  <div className="text-xs text-muted-foreground">{format(date, "EEE")}</div>
-                  <div className={`text-lg font-semibold ${isToday(date) ? "text-primary" : ""}`}>
-                    {format(date, "d")}
-                  </div>
-                </div>
-              ))}
-            </div>
+        {/* Search */}
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            placeholder="Buscar huésped..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-[200px] pl-9"
+          />
+        </div>
+
+        {/* Location Filter */}
+        <select
+          value={selectedLocation}
+          onChange={(e) => setSelectedLocation(e.target.value)}
+          className="rounded-md border border-input bg-background px-3 py-2 text-sm"
+        >
+          <option value="all">Todas las Locaciones</option>
+          {locations.map((loc) => (
+            <option key={loc.id} value={loc.name}>
+              {loc.name}
+            </option>
+          ))}
+        </select>
+
+        {/* Status Filter */}
+        <select
+          value={selectedStatus}
+          onChange={(e) => setSelectedStatus(e.target.value)}
+          className="rounded-md border border-input bg-background px-3 py-2 text-sm"
+        >
+          <option value="all">Todos los Estados</option>
+          <option value="confirmed">Confirmada</option>
+          <option value="pending">Pendiente</option>
+          <option value="checked_in">Check-in</option>
+          <option value="checked_out">Check-out</option>
+          <option value="cancelled">Cancelada</option>
+        </select>
+
+        <div className="ml-auto flex gap-2">
+          {/* View Mode Toggle */}
+          <div className="flex rounded-md border">
+            <Button
+              variant={view === "calendar" ? "default" : "ghost"}
+              size="sm"
+              onClick={() => setView("calendar")}
+              className="rounded-r-none"
+            >
+              <Grid className="h-4 w-4" />
+            </Button>
+            <Button
+              variant={view === "list" ? "default" : "ghost"}
+              size="sm"
+              onClick={() => setView("list")}
+              className="rounded-l-none"
+            >
+              <List className="h-4 w-4" />
+            </Button>
           </div>
 
-          {/* Room Rows */}
-          {loading ? (
-            <div className="flex items-center justify-center p-8">
-              <div className="text-muted-foreground">Loading...</div>
-            </div>
-          ) : (
-            rooms.map((room) => (
-              <div key={room.id} className="flex border-b hover:bg-accent/50">
-                {/* Room Info */}
-                <div className="sticky left-0 z-10 flex w-40 flex-col justify-center border-r bg-card px-4 py-3">
-                  <div className="font-semibold">{room.room_number}</div>
-                  <div className="text-xs text-muted-foreground">{room.room_type}</div>
-                </div>
+          <div className="h-6 w-px bg-border" />
 
-                {/* Date Cells */}
-                <div className="flex">
-                  {dateRange.map((date) => {
-                    const reservation = getReservationForRoomAndDate(room.id, date)
-                    const position = reservation ? getReservationPosition(reservation, date) : null
-
-                    return (
-                      <div key={`${room.id}-${date.toISOString()}`} className="relative min-w-[120px] border-r p-1">
-                        {reservation && position === "start" && (
-                          <div
-                            className={`group absolute left-1 top-1 z-10 flex h-[calc(100%-8px)] cursor-pointer items-center justify-between rounded-l px-2 text-xs font-medium text-white transition-all hover:shadow-lg ${getStatusColor(
-                              reservation.status,
-                            )}`}
-                            style={{
-                              width: `calc(${
-                                Math.min(
-                                  Math.ceil(
-                                    (new Date(reservation.check_out).getTime() -
-                                      new Date(reservation.check_in).getTime()) /
-                                      (1000 * 60 * 60 * 24),
-                                  ),
-                                  dateRange.length - dateRange.findIndex((d) => isSameDay(d, date)),
-                                ) * 120
-                              }px - 8px)`,
-                            }}
-                            onClick={() => handleReservationClick(reservation)}
-                          >
-                            <div className="truncate">{reservation.guest_name}</div>
-                            <div className="ml-2 hidden gap-1 group-hover:flex">
-                              <Button
-                                size="icon"
-                                variant="ghost"
-                                className="h-6 w-6 text-white hover:bg-white/20"
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  handleReservationClick(reservation)
-                                }}
-                              >
-                                <Edit className="h-3 w-3" />
-                              </Button>
-                              <Button
-                                size="icon"
-                                variant="ghost"
-                                className="h-6 w-6 text-white hover:bg-white/20"
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  handleDeleteReservation(reservation.id)
-                                }}
-                              >
-                                <Trash2 className="h-3 w-3" />
-                              </Button>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    )
-                  })}
-                </div>
-              </div>
-            ))
-          )}
+          {/* Time Range Buttons */}
+          <Button variant={viewDays === 7 ? "default" : "outline"} size="sm" onClick={() => setViewDays(7)}>
+            Semana
+          </Button>
+          <Button variant={viewDays === 14 ? "default" : "outline"} size="sm" onClick={() => setViewDays(14)}>
+            2 Semanas
+          </Button>
+          <Button variant={viewDays === 31 ? "default" : "outline"} size="sm" onClick={() => setViewDays(31)}>
+            Mes
+          </Button>
         </div>
       </div>
 
-      {/* Dialogs */}
+      {/* Status Legend */}
+      <div className="flex items-center gap-4 border-b bg-muted/30 px-6 py-2 text-xs">
+        <span className="font-medium">Leyenda:</span>
+        <div className="flex items-center gap-1.5">
+          <div className="h-3 w-3 rounded bg-blue-400" />
+          <span>Confirmada</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <div className="h-3 w-3 rounded bg-green-400" />
+          <span>Check-in</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <div className="h-3 w-3 rounded bg-gray-300" />
+          <span>Check-out</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <div className="h-3 w-3 rounded bg-yellow-300" />
+          <span>Pendiente</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <div className="h-3 w-3 rounded bg-red-300" />
+          <span>Cancelada</span>
+        </div>
+      </div>
+
+      {/* Content */}
+      <div className="flex-1 overflow-auto">
+        {view === "calendar" ? (
+          <div className="inline-block min-w-full">
+            {/* Date Headers */}
+            <div className="sticky top-0 z-20 flex bg-card">
+              <div className="sticky left-0 z-30 w-48 border-r bg-card"></div>
+              <div className="flex">
+                {dateRange.map((date) => (
+                  <div
+                    key={date.toISOString()}
+                    className={`flex min-w-[120px] flex-col items-center border-r py-2 ${
+                      isToday(date) ? "bg-primary/10" : ""
+                    }`}
+                  >
+                    <div className="text-xs text-muted-foreground">{format(date, "EEE")}</div>
+                    <div className={`text-lg font-semibold ${isToday(date) ? "text-primary" : ""}`}>
+                      {format(date, "d")}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Room Rows */}
+            {loading ? (
+              <div className="flex items-center justify-center p-8">
+                <div className="text-muted-foreground">Cargando...</div>
+              </div>
+            ) : (
+              Object.entries(bedsByRoom).map(([roomId, roomBeds]) => (
+                <div key={roomId}>
+                  {/* Room Header */}
+                  {roomBeds[0]?.room && (
+                    <div className="sticky left-0 z-10 border-b bg-accent/30 px-4 py-2">
+                      <div className="flex items-center justify-between">
+                        <div className="font-bold text-sm">
+                          {roomBeds[0].room.room_number} - {roomBeds[0].room.room_type}
+                        </div>
+                        {roomBeds[0].room.location && (
+                          <Badge variant="outline" className="text-xs">
+                            {roomBeds[0].room.location}
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Bed Rows */}
+                  {roomBeds.map((bed) => (
+                    <div key={bed.id} className="flex border-b hover:bg-accent/50">
+                      <div className="sticky left-0 z-10 flex w-48 flex-col justify-center border-r bg-card px-4 py-2">
+                        <div className="font-medium text-sm">{bed.bed_number}</div>
+                        <div className="text-xs text-muted-foreground capitalize">{bed.bed_type}</div>
+                      </div>
+
+                      <div className="flex">
+                        {dateRange.map((date) => {
+                          const reservation = getReservationForBedAndDate(bed.id, date)
+                          const position = reservation ? getReservationPosition(reservation, date) : null
+                          const isFiltered = reservation && !filteredReservations.includes(reservation)
+
+                          return (
+                            <div
+                              key={`${bed.id}-${date.toISOString()}`}
+                              className="relative min-w-[120px] border-r p-1"
+                            >
+                              {reservation && position === "start" && !isFiltered && (
+                                <div
+                                  className={`group absolute left-1 top-1 z-10 flex h-[calc(100%-8px)] cursor-pointer items-center justify-between rounded-l px-2 text-xs font-medium text-white transition-all hover:shadow-lg ${getStatusColor(
+                                    reservation.status,
+                                  )}`}
+                                  style={{
+                                    width: `calc(${
+                                      Math.min(
+                                        Math.ceil(
+                                          (new Date(reservation.check_out).getTime() -
+                                            new Date(reservation.check_in).getTime()) /
+                                            (1000 * 60 * 60 * 24),
+                                        ),
+                                        dateRange.length - dateRange.findIndex((d) => isSameDay(d, date)),
+                                      ) * 120
+                                    }px - 8px)`,
+                                  }}
+                                  onClick={() => handleReservationClick(reservation)}
+                                >
+                                  <div className="truncate">{reservation.guest_name}</div>
+                                  <div className="ml-2 hidden gap-1 group-hover:flex">
+                                    {reservation.status === "confirmed" && (
+                                      <Button
+                                        size="icon"
+                                        variant="ghost"
+                                        className="h-6 w-6 text-white hover:bg-white/20"
+                                        onClick={(e) => {
+                                          e.stopPropagation()
+                                          handleQuickAction(reservation.id, "check_in")
+                                        }}
+                                        title="Check-in"
+                                      >
+                                        ✓
+                                      </Button>
+                                    )}
+                                    {reservation.status === "checked_in" && (
+                                      <Button
+                                        size="icon"
+                                        variant="ghost"
+                                        className="h-6 w-6 text-white hover:bg-white/20"
+                                        onClick={(e) => {
+                                          e.stopPropagation()
+                                          handleQuickAction(reservation.id, "check_out")
+                                        }}
+                                        title="Check-out"
+                                      >
+                                        ✓✓
+                                      </Button>
+                                    )}
+                                    <Button
+                                      size="icon"
+                                      variant="ghost"
+                                      className="h-6 w-6 text-white hover:bg-white/20"
+                                      onClick={(e) => {
+                                        e.stopPropagation()
+                                        handleReservationClick(reservation)
+                                      }}
+                                    >
+                                      <Edit className="h-3 w-3" />
+                                    </Button>
+                                    <Button
+                                      size="icon"
+                                      variant="ghost"
+                                      className="h-6 w-6 text-white hover:bg-white/20"
+                                      onClick={(e) => {
+                                        e.stopPropagation()
+                                        handleDeleteReservation(reservation.id)
+                                      }}
+                                    >
+                                      <Trash2 className="h-3 w-3" />
+                                    </Button>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ))
+            )}
+          </div>
+        ) : (
+          <div className="p-6">
+            <div className="space-y-3">
+              {filteredReservations.map((reservation) => {
+                const bed = beds.find((b) => b.id === reservation.bed_id)
+                return (
+                  <div
+                    key={reservation.id}
+                    className="flex items-center justify-between rounded-lg border bg-card p-4 hover:shadow-md"
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className={`h-12 w-1 rounded ${getStatusColor(reservation.status)}`} />
+                      <div>
+                        <div className="font-semibold">{reservation.guest_name}</div>
+                        <div className="text-sm text-muted-foreground">
+                          {bed?.room?.room_number} - {bed?.bed_number}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-6">
+                      <div className="text-sm">
+                        <div className="text-muted-foreground">Check-in</div>
+                        <div className="font-medium">{format(new Date(reservation.check_in), "dd MMM yyyy")}</div>
+                      </div>
+                      <div className="text-sm">
+                        <div className="text-muted-foreground">Check-out</div>
+                        <div className="font-medium">{format(new Date(reservation.check_out), "dd MMM yyyy")}</div>
+                      </div>
+                      <Badge variant="secondary" className="capitalize">
+                        {reservation.status}
+                      </Badge>
+                      <div className="flex gap-2">
+                        {reservation.status === "confirmed" && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleQuickAction(reservation.id, "check_in")}
+                          >
+                            Check-in
+                          </Button>
+                        )}
+                        {reservation.status === "checked_in" && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleQuickAction(reservation.id, "check_out")}
+                          >
+                            Check-out
+                          </Button>
+                        )}
+                        <Button size="sm" variant="ghost" onClick={() => handleReservationClick(reservation)}>
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button size="sm" variant="ghost" onClick={() => handleDeleteReservation(reservation.id)}>
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )}
+      </div>
+
       <AddReservationDialog open={showAddDialog} onOpenChange={setShowAddDialog} onSuccess={loadData} />
 
       {selectedReservation && (

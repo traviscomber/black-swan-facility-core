@@ -16,7 +16,7 @@ interface AddReservationDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   onSuccess: () => void
-  preselectedRoom?: string
+  preselectedBed?: string
   preselectedDate?: Date
 }
 
@@ -24,14 +24,16 @@ export function AddReservationDialog({
   open,
   onOpenChange,
   onSuccess,
-  preselectedRoom,
+  preselectedBed,
   preselectedDate,
 }: AddReservationDialogProps) {
-  const [rooms, setRooms] = useState<any[]>([])
+  const [beds, setBeds] = useState<any[]>([])
   const [guests, setGuests] = useState<any[]>([])
+  const [locations, setLocations] = useState<any[]>([])
+  const [selectedLocationFilter, setSelectedLocationFilter] = useState<string>("all")
   const [loading, setLoading] = useState(false)
   const [formData, setFormData] = useState({
-    room_id: preselectedRoom || "",
+    bed_id: preselectedBed || "",
     guest_id: "",
     guest_name: "",
     guest_email: "",
@@ -53,12 +55,24 @@ export function AddReservationDialog({
   }, [open])
 
   async function loadData() {
-    const { data: roomsData } = await supabase.from("rooms").select("*").eq("status", "available").order("room_number")
+    const [bedsResult, guestsResult, locationsResult] = await Promise.all([
+      supabase
+        .from("beds")
+        .select(`
+          *,
+          room:rooms(room_number, room_type, rate_per_night, location)
+        `)
+        .eq("is_available", true)
+        .order("room_id"),
+      supabase.from("guests").select("*").order("name"),
+      supabase.from("locations").select("*").eq("is_active", true).order("name"),
+    ])
 
-    const { data: guestsData } = await supabase.from("guests").select("*").order("name")
+    console.log("[v0] Loaded available beds:", bedsResult.data?.length)
 
-    setRooms(roomsData || [])
-    setGuests(guestsData || [])
+    setBeds(bedsResult.data || [])
+    setGuests(guestsResult.data || [])
+    setLocations(locationsResult.data || [])
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -66,10 +80,9 @@ export function AddReservationDialog({
     setLoading(true)
 
     try {
-      // Insert reservation
       const { error } = await supabase.from("reservations").insert([
         {
-          room_id: formData.room_id,
+          bed_id: formData.bed_id,
           guest_name: formData.guest_name,
           guest_email: formData.guest_email,
           guest_phone: formData.guest_phone,
@@ -89,7 +102,7 @@ export function AddReservationDialog({
       resetForm()
     } catch (error) {
       console.error("Error creating reservation:", error)
-      alert("Failed to create reservation")
+      alert("Error al crear la reserva")
     } finally {
       setLoading(false)
     }
@@ -97,7 +110,7 @@ export function AddReservationDialog({
 
   function resetForm() {
     setFormData({
-      room_id: "",
+      bed_id: "",
       guest_id: "",
       guest_name: "",
       guest_email: "",
@@ -124,36 +137,57 @@ export function AddReservationDialog({
     }
   }
 
+  const filteredBeds =
+    selectedLocationFilter === "all" ? beds : beds.filter((bed) => bed.room?.location === selectedLocationFilter)
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
-          <DialogTitle>New Reservation</DialogTitle>
+          <DialogTitle>Nueva Reserva de Cama</DialogTitle>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-2">
-              <Label htmlFor="room_id">Room</Label>
-              <Select value={formData.room_id} onValueChange={(value) => setFormData({ ...formData, room_id: value })}>
+            <div className="space-y-2 sm:col-span-2">
+              <Label htmlFor="location_filter">Filtrar por Locación</Label>
+              <Select value={selectedLocationFilter} onValueChange={setSelectedLocationFilter}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Select room" />
+                  <SelectValue placeholder="Todas las locaciones" />
                 </SelectTrigger>
                 <SelectContent>
-                  {rooms.map((room) => (
-                    <SelectItem key={room.id} value={room.id}>
-                      {room.room_number} - {room.room_type} (${room.rate_per_night}/night)
+                  <SelectItem value="all">Todas las Locaciones</SelectItem>
+                  {locations.map((loc) => (
+                    <SelectItem key={loc.id} value={loc.name}>
+                      {loc.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="guest_id">Existing Guest (Optional)</Label>
+            <div className="space-y-2 sm:col-span-2">
+              <Label htmlFor="bed_id">Cama</Label>
+              <Select value={formData.bed_id} onValueChange={(value) => setFormData({ ...formData, bed_id: value })}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Seleccionar cama" />
+                </SelectTrigger>
+                <SelectContent>
+                  {filteredBeds.map((bed) => (
+                    <SelectItem key={bed.id} value={bed.id}>
+                      {bed.room?.room_number} - {bed.bed_number} ({bed.bed_type})
+                      {bed.room?.location && ` • ${bed.room.location}`} - ${bed.room?.rate_per_night || 0}/noche
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2 sm:col-span-2">
+              <Label htmlFor="guest_id">Huésped Existente (Opcional)</Label>
               <Select value={formData.guest_id} onValueChange={handleGuestSelect}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Select guest" />
+                  <SelectValue placeholder="Seleccionar huésped" />
                 </SelectTrigger>
                 <SelectContent>
                   {guests.map((guest) => (
@@ -166,7 +200,7 @@ export function AddReservationDialog({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="guest_name">Guest Name</Label>
+              <Label htmlFor="guest_name">Nombre del Huésped *</Label>
               <Input
                 id="guest_name"
                 value={formData.guest_name}
@@ -186,7 +220,7 @@ export function AddReservationDialog({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="guest_phone">Phone</Label>
+              <Label htmlFor="guest_phone">Teléfono</Label>
               <Input
                 id="guest_phone"
                 value={formData.guest_phone}
@@ -195,7 +229,7 @@ export function AddReservationDialog({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="num_guests">Number of Guests</Label>
+              <Label htmlFor="num_guests">Número de Personas</Label>
               <Input
                 id="num_guests"
                 type="number"
@@ -207,7 +241,7 @@ export function AddReservationDialog({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="check_in">Check-in</Label>
+              <Label htmlFor="check_in">Check-in *</Label>
               <Input
                 id="check_in"
                 type="date"
@@ -218,7 +252,7 @@ export function AddReservationDialog({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="check_out">Check-out</Label>
+              <Label htmlFor="check_out">Check-out *</Label>
               <Input
                 id="check_out"
                 type="date"
@@ -229,7 +263,7 @@ export function AddReservationDialog({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="total_amount">Total Amount</Label>
+              <Label htmlFor="total_amount">Monto Total</Label>
               <Input
                 id="total_amount"
                 type="number"
@@ -241,24 +275,24 @@ export function AddReservationDialog({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="status">Status</Label>
+              <Label htmlFor="status">Estado</Label>
               <Select value={formData.status} onValueChange={(value) => setFormData({ ...formData, status: value })}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="confirmed">Confirmed</SelectItem>
-                  <SelectItem value="pending">Pending</SelectItem>
-                  <SelectItem value="checked_in">Checked In</SelectItem>
-                  <SelectItem value="checked_out">Checked Out</SelectItem>
-                  <SelectItem value="cancelled">Cancelled</SelectItem>
+                  <SelectItem value="confirmed">Confirmada</SelectItem>
+                  <SelectItem value="pending">Pendiente</SelectItem>
+                  <SelectItem value="checked_in">Check-in</SelectItem>
+                  <SelectItem value="checked_out">Check-out</SelectItem>
+                  <SelectItem value="cancelled">Cancelada</SelectItem>
                 </SelectContent>
               </Select>
             </div>
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="special_requests">Special Requests</Label>
+            <Label htmlFor="special_requests">Solicitudes Especiales</Label>
             <Textarea
               id="special_requests"
               value={formData.special_requests || ""}
@@ -269,10 +303,10 @@ export function AddReservationDialog({
 
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              Cancel
+              Cancelar
             </Button>
             <Button type="submit" disabled={loading}>
-              {loading ? "Creating..." : "Create Reservation"}
+              {loading ? "Creando..." : "Crear Reserva"}
             </Button>
           </DialogFooter>
         </form>
