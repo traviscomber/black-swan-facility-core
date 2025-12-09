@@ -15,6 +15,7 @@ import {
   X,
   Bot,
   Calendar,
+  ClipboardList,
 } from "lucide-react"
 
 const navigation = [
@@ -24,6 +25,7 @@ const navigation = [
   { name: "Issues", href: "/issues", icon: AlertCircle },
   { name: "Maintenance", href: "/maintenance", icon: Wrench },
   { name: "Bookings", href: "/bookings", icon: Calendar },
+  { name: "Tasks", href: "/tasks", icon: ClipboardList }, // Added Tasks navigation
   { name: "Employees", href: "/employees", icon: Users },
   { name: "Checklists", href: "/checklists", icon: CheckSquare },
   { name: "AI Operations", href: "/ai-ops", icon: Bot },
