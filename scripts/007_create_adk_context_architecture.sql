@@ -55,6 +55,12 @@ ALTER TABLE ai_events ENABLE ROW LEVEL SECURITY;
 ALTER TABLE ai_context ENABLE ROW LEVEL SECURITY;
 ALTER TABLE ai_artifacts ENABLE ROW LEVEL SECURITY;
 
+-- Drop policies if they exist before creating (prevents duplicate policy errors)
+DROP POLICY IF EXISTS "Allow all on ai_sessions" ON ai_sessions;
+DROP POLICY IF EXISTS "Allow all on ai_events" ON ai_events;
+DROP POLICY IF EXISTS "Allow all on ai_context" ON ai_context;
+DROP POLICY IF EXISTS "Allow all on ai_artifacts" ON ai_artifacts;
+
 -- Create policies
 CREATE POLICY "Allow all on ai_sessions" ON ai_sessions FOR ALL USING (true);
 CREATE POLICY "Allow all on ai_events" ON ai_events FOR ALL USING (true);

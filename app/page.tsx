@@ -45,13 +45,13 @@ export default function Dashboard() {
               track availability, and optimize occupancy rates.
             </p>
             <div className="flex gap-3 pt-4">
-              <Link href="/bookings">
+              <Link href="/bookings" className="inline-block relative z-10">
                 <Button size="lg" className="gap-2">
                   <Calendar className="h-5 w-5" />
                   View Bookings
                 </Button>
               </Link>
-              <Link href="/bookings?tab=locations">
+              <Link href="/property-management" className="inline-block relative z-10">
                 <Button variant="outline" size="lg" className="gap-2 bg-transparent">
                   <Home className="h-5 w-5" />
                   Manage Property
@@ -118,7 +118,7 @@ export default function Dashboard() {
           </div>
 
           <div className="grid gap-4 md:grid-cols-2">
-            <Card className="border-secondary hover:shadow-lg transition-shadow cursor-pointer group">
+            <Card className="border-secondary hover:shadow-lg transition-shadow cursor-pointer group relative">
               <CardHeader>
                 <div className="flex items-start justify-between">
                   <div>
@@ -136,10 +136,10 @@ export default function Dashboard() {
                   Check availability, create new bookings, and track guest check-ins across all rooms and beds.
                 </p>
               </CardContent>
-              <Link href="/bookings" className="absolute inset-0" />
+              <Link href="/bookings" className="absolute inset-0 z-0" />
             </Card>
 
-            <Card className="border-secondary hover:shadow-lg transition-shadow cursor-pointer group">
+            <Card className="border-secondary hover:shadow-lg transition-shadow cursor-pointer group relative">
               <CardHeader>
                 <div className="flex items-start justify-between">
                   <div>
@@ -157,10 +157,10 @@ export default function Dashboard() {
                   Edit room details, manage bed configurations, set rates, and update property availability settings.
                 </p>
               </CardContent>
-              <Link href="/bookings?tab=locations" className="absolute inset-0" />
+              <Link href="/property-management" className="absolute inset-0 z-0" />
             </Card>
 
-            <Card className="border-secondary hover:shadow-lg transition-shadow cursor-pointer group">
+            <Card className="border-secondary hover:shadow-lg transition-shadow cursor-pointer group relative">
               <CardHeader>
                 <div className="flex items-start justify-between">
                   <div>
@@ -178,10 +178,10 @@ export default function Dashboard() {
                   Keep track of property maintenance schedules, repairs, and facility improvements.
                 </p>
               </CardContent>
-              <Link href="/maintenance" className="absolute inset-0" />
+              <Link href="/maintenance" className="absolute inset-0 z-0" />
             </Card>
 
-            <Card className="border-secondary hover:shadow-lg transition-shadow cursor-pointer group">
+            <Card className="border-secondary hover:shadow-lg transition-shadow cursor-pointer group relative">
               <CardHeader>
                 <div className="flex items-start justify-between">
                   <div>

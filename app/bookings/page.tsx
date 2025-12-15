@@ -5,6 +5,7 @@ import { createBrowserClient } from "@supabase/ssr"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { ChevronLeft, ChevronRight, AlertCircle, MapPin, Home, Plus } from "lucide-react"
+import Link from "next/link"
 import {
   format,
   addDays,
@@ -293,19 +294,24 @@ export default function BookingsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <div className="border-b border-secondary bg-gradient-to-r from-secondary/50 to-transparent">
-        <div className="max-w-7xl mx-auto px-4 py-6">
-          <h1 className="text-3xl font-bold text-accent">Booking Management</h1>
-          <p className="text-muted-foreground mt-2">Manage reservations across all properties</p>
+    <div className="bg-background">
+      {/* Header with back button */}
+      <div className="border-b border-secondary bg-gradient-to-r from-secondary/50 to-transparent sticky top-0 z-20">
+        <div className="max-w-7xl mx-auto px-4 py-6 flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-accent">Booking Management</h1>
+            <p className="text-muted-foreground mt-2">Manage reservations across all properties</p>
+          </div>
+          <Link href="/" className="text-muted-foreground hover:text-accent transition-colors">
+            ← Back to Home
+          </Link>
         </div>
       </div>
 
       {/* Two-column layout: Locations sidebar + Calendar */}
       <div className="flex">
         {/* Left Sidebar - Locations List */}
-        <div className="w-64 border-r border-secondary bg-secondary/30 overflow-y-auto max-h-[calc(100vh-200px)]">
+        <div className="w-64 border-r border-secondary bg-secondary/30 overflow-y-auto">
           <div className="p-4 space-y-2">
             <h2 className="text-sm font-semibold text-accent px-3 py-2">Properties</h2>
             {locations.map((location) => (
@@ -332,7 +338,7 @@ export default function BookingsPage() {
         </div>
 
         {/* Right Content - Calendar and Details */}
-        <div className="flex-1 overflow-y-auto max-h-[calc(100vh-200px)]">
+        <div className="flex-1 overflow-y-auto">
           <div className="max-w-7xl mx-auto px-4 py-6">
             {/* Property Overview Cards */}
             {selectedLocation && (
