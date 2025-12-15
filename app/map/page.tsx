@@ -193,11 +193,17 @@ export default function MapPage() {
   }, [mapType, leafletLoaded, terrainOpacity])
 
   useEffect(() => {
-    if (!mapRef.current || !leafletLoaded || mapType !== "hybrid") return
-    if (!overlayLayerRef.current) return
+    if (!mapRef.current || !leafletLoaded || typeof window === "undefined") return
 
-    console.log("[v0] Updating terrain opacity to:", terrainOpacity)
-    overlayLayerRef.current.setOpacity(terrainOpacity)
+    const L = (window as any).L
+    const map = mapRef.current
+
+    if (mapType === "hybrid") {
+      if (overlayLayerRef.current) {
+        console.log("[v0] Updating terrain opacity to:", terrainOpacity)
+        overlayLayerRef.current.setOpacity(terrainOpacity)
+      }
+    }
   }, [terrainOpacity, leafletLoaded, mapType])
 
   useEffect(() => {
@@ -247,20 +253,21 @@ export default function MapPage() {
       const icon = L.divIcon({
         className: "custom-marker",
         html: `<div style="
-          width: 32px;
-          height: 32px;
-          border-radius: 50%;
+          width: 16px;
+          height: 16px;
+          border-radius: 2px;
           background-color: ${color};
-          border: 3px solid white;
-          box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+          border: 2px solid white;
+          box-shadow: 0 1px 4px rgba(0,0,0,0.3);
           display: flex;
           align-items: center;
           justify-content: center;
           color: white;
           font-weight: bold;
+          font-size: 8px;
         ">${getIconSymbol(infra.category)}</div>`,
-        iconSize: [32, 32],
-        iconAnchor: [16, 16],
+        iconSize: [16, 16],
+        iconAnchor: [8, 8],
       })
 
       const marker = L.marker([infra.latitude, infra.longitude], { icon })
@@ -397,21 +404,22 @@ export default function MapPage() {
           const icon = L.divIcon({
             className: "custom-marker",
             html: `<div style="
-            width: ${isHighlighted ? "44px" : "32px"};
-            height: ${isHighlighted ? "44px" : "32px"};
-            border-radius: 50%;
+            width: ${isHighlighted ? "24px" : "16px"};
+            height: ${isHighlighted ? "24px" : "16px"};
+            border-radius: ${isHighlighted ? "3px" : "2px"};
             background-color: ${isHighlighted ? "#fff" : color};
-            border: ${isHighlighted ? `4px solid ${color}` : "3px solid white"};
-            box-shadow: 0 ${isHighlighted ? "4" : "2"}px ${isHighlighted ? "12" : "8"}px rgba(0,0,0,${isHighlighted ? "0.4" : "0.3"});
+            border: ${isHighlighted ? `3px solid ${color}` : "2px solid white"};
+            box-shadow: 0 ${isHighlighted ? "2" : "1"}px ${isHighlighted ? "6" : "4"}px rgba(0,0,0,${isHighlighted ? "0.4" : "0.3"});
             display: flex;
             align-items: center;
             justify-content: center;
             color: ${isHighlighted ? color : "white"};
             font-weight: bold;
+            font-size: ${isHighlighted ? "10px" : "8px"};
             transition: all 0.2s ease;
           ">${symbol}</div>`,
-            iconSize: [isHighlighted ? 44 : 32, isHighlighted ? 44 : 32],
-            iconAnchor: [isHighlighted ? 22 : 16, isHighlighted ? 22 : 16],
+            iconSize: [isHighlighted ? 24 : 16, isHighlighted ? 24 : 16],
+            iconAnchor: [isHighlighted ? 12 : 8, isHighlighted ? 12 : 8],
           })
 
           markerToFind.setIcon(icon)
