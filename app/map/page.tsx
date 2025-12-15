@@ -2,7 +2,6 @@
 
 import { AppLayout } from "@/components/app-layout"
 import { PageHeader } from "@/components/page-header"
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { createClient } from "@/lib/supabase/client"
 import { useState, useEffect, useRef, useCallback } from "react"
@@ -23,7 +22,6 @@ import {
 import { InfrastructureDetailPanel } from "@/components/infrastructure-detail-panel"
 import { AddInfrastructureDialog } from "@/components/add-infrastructure-dialog"
 import { EditInfrastructureDialog } from "@/components/edit-infrastructure-dialog"
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
 import { DeleteDialog } from "@/components/delete-dialog"
 import { InfrastructureSearchDialog } from "@/components/infrastructure-search-dialog"
 
@@ -55,6 +53,8 @@ export default function MapPage() {
     water: true,
     electricity: true,
   })
+
+  const [expandedCategory, setExpandedCategory] = useState<"internet" | "water" | "electricity" | null>("internet")
 
   const [locations, setLocations] = useState<Location[]>([])
   const [groupBy, setGroupBy] = useState<"category" | "location">("category")
@@ -579,11 +579,38 @@ export default function MapPage() {
                       onChange={(e) => setFilters({ ...filters, internet: e.target.checked })}
                       className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                     />
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-1">
                       <Wifi className="h-4 w-4 text-blue-600" />
-                      <span className="text-sm text-gray-700">Internet ({infraByCategory.internet.length})</span>
+                      <button
+                        onClick={() => setExpandedCategory(expandedCategory === "internet" ? null : "internet")}
+                        className="text-sm text-gray-700 hover:text-gray-900 flex-1 text-left flex items-center justify-between"
+                      >
+                        <span>Internet ({infraByCategory.internet.length})</span>
+                        <ChevronRight
+                          className={`h-4 w-4 transition-transform ${expandedCategory === "internet" ? "rotate-90" : ""}`}
+                        />
+                      </button>
                     </div>
                   </label>
+
+                  {expandedCategory === "internet" && filters.internet && (
+                    <div className="ml-8 space-y-2 max-h-64 overflow-y-auto border-l border-blue-200 pl-3">
+                      {infraByCategory.internet.length === 0 ? (
+                        <p className="text-xs text-gray-500 italic">No Internet points</p>
+                      ) : (
+                        infraByCategory.internet.map((item) => (
+                          <button
+                            key={item.id}
+                            onClick={() => handleInfraClick(item)}
+                            className="block w-full text-left p-2 rounded hover:bg-blue-50 transition-colors text-xs text-gray-600 hover:text-gray-900"
+                          >
+                            <div className="font-medium text-gray-800">{item.name}</div>
+                            <div className="text-xs text-gray-500">{item.type || "Infrastructure"}</div>
+                          </button>
+                        ))
+                      )}
+                    </div>
+                  )}
 
                   <label className="flex items-center gap-3 cursor-pointer">
                     <input
@@ -613,214 +640,6 @@ export default function MapPage() {
                 </div>
               </div>
 
-              <div>
-                <div className="flex items-center gap-2 mb-3">
-                  <h4 className="font-medium text-sm">Group By</h4>
-                </div>
-                <div className="flex gap-2">
-                  <Button
-                    variant={groupBy === "category" ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => setGroupBy("category")}
-                    className="flex-1"
-                  >
-                    Category
-                  </Button>
-                  <Button
-                    variant={groupBy === "location" ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => setGroupBy("location")}
-                    className="flex-1"
-                  >
-                    Location
-                  </Button>
-                </div>
-              </div>
-
-              {groupBy === "category" ? (
-                <Accordion type="multiple" defaultValue={["internet", "water", "electricity"]} className="space-y-2">
-                  {Object.entries(infraByCategory).map(([category, items]) => {
-                    if (items.length === 0) return null
-                    const Icon = getInfraIcon(category)
-
-                    const categoryColors = {
-                      internet: {
-                        bg: "bg-blue-50",
-                        border: "border-blue-200",
-                        text: "text-blue-700",
-                        icon: "text-blue-600",
-                      },
-                      water: {
-                        bg: "bg-cyan-50",
-                        border: "border-cyan-200",
-                        text: "text-cyan-700",
-                        icon: "text-cyan-600",
-                      },
-                      electricity: {
-                        bg: "bg-yellow-50",
-                        border: "border-yellow-200",
-                        text: "text-yellow-700",
-                        icon: "text-yellow-600",
-                      },
-                    }[category]
-
-                    return (
-                      <AccordionItem
-                        key={category}
-                        value={category}
-                        className={`border rounded-lg ${categoryColors.border} ${categoryColors.bg}`}
-                      >
-                        <AccordionTrigger className="px-4 py-3 hover:no-underline">
-                          <div className="flex items-center gap-2">
-                            <Icon className={`h-4 w-4 ${categoryColors.icon}`} />
-                            <span className={`font-medium text-sm capitalize ${categoryColors.text}`}>
-                              {category} ({items.length})
-                            </span>
-                          </div>
-                        </AccordionTrigger>
-                        <AccordionContent className="px-4 pb-3">
-                          <div className="space-y-2">
-                            {items.map((infra) => (
-                              <div
-                                key={infra.id}
-                                className="rounded-lg border border-gray-200 bg-white p-3 cursor-pointer transition-all hover:bg-gray-50 hover:border-gray-300 hover:shadow-sm"
-                                onClick={() => handleInfraClick(infra)}
-                              >
-                                <div className="flex items-start gap-2">
-                                  <div
-                                    className="h-3 w-3 rounded-full flex-shrink-0 mt-1"
-                                    style={{ backgroundColor: getInfraColor(infra) }}
-                                  />
-                                  <div className="flex-1 min-w-0">
-                                    <p className="text-sm font-medium text-black truncate">{infra.name}</p>
-                                    <p className="text-xs text-gray-600 mt-1 line-clamp-2">{infra.description}</p>
-                                    <div className="flex items-center gap-2 mt-2 flex-wrap">
-                                      <Badge variant="outline" className="text-xs">
-                                        {infra.status}
-                                      </Badge>
-                                      {infra.priority === "critical" && (
-                                        <Badge
-                                          variant="outline"
-                                          className="text-xs bg-red-50 text-red-700 border-red-200"
-                                        >
-                                          Critical
-                                        </Badge>
-                                      )}
-                                    </div>
-                                  </div>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        </AccordionContent>
-                      </AccordionItem>
-                    )
-                  })}
-                </Accordion>
-              ) : (
-                <Accordion type="multiple" defaultValue={locations.map((l) => l.id)} className="space-y-2">
-                  {locations.map((location) => {
-                    const items = infraByLocation[location.id] || []
-                    if (items.length === 0) return null
-
-                    return (
-                      <AccordionItem
-                        key={location.id}
-                        value={location.id}
-                        className="border rounded-lg border-gray-200 bg-gray-50"
-                      >
-                        <AccordionTrigger className="px-4 py-3 hover:no-underline">
-                          <div className="flex items-center gap-2">
-                            <MapPin className="h-4 w-4 text-gray-600" />
-                            <span className="font-medium text-sm text-gray-700">
-                              {location.name} ({items.length})
-                            </span>
-                          </div>
-                        </AccordionTrigger>
-                        <AccordionContent className="px-4 pb-3">
-                          <div className="space-y-2">
-                            {items.map((infra) => {
-                              const Icon = getInfraIcon(infra.category)
-                              return (
-                                <div
-                                  key={infra.id}
-                                  className="rounded-lg border border-gray-200 bg-white p-3 cursor-pointer transition-all hover:bg-gray-50 hover:border-gray-300 hover:shadow-sm"
-                                  onClick={() => handleInfraClick(infra)}
-                                >
-                                  <div className="flex items-start gap-2">
-                                    <Icon
-                                      className="h-4 w-4 flex-shrink-0 mt-0.5"
-                                      style={{ color: getInfraColor(infra) }}
-                                    />
-                                    <div className="flex-1 min-w-0">
-                                      <p className="text-sm font-medium text-black truncate">{infra.name}</p>
-                                      <p className="text-xs text-gray-600 mt-1 line-clamp-2">{infra.description}</p>
-                                      <div className="flex items-center gap-2 mt-2 flex-wrap">
-                                        <Badge variant="outline" className="text-xs capitalize">
-                                          {infra.category}
-                                        </Badge>
-                                        <Badge variant="outline" className="text-xs">
-                                          {infra.status}
-                                        </Badge>
-                                      </div>
-                                    </div>
-                                  </div>
-                                </div>
-                              )
-                            })}
-                          </div>
-                        </AccordionContent>
-                      </AccordionItem>
-                    )
-                  })}
-
-                  {infraWithoutLocation.length > 0 && (
-                    <AccordionItem value="no-location" className="border rounded-lg border-gray-300 bg-gray-100">
-                      <AccordionTrigger className="px-4 py-3 hover:no-underline">
-                        <div className="flex items-center gap-2">
-                          <MapPin className="h-4 w-4 text-gray-400" />
-                          <span className="font-medium text-sm text-gray-600">
-                            No Location ({infraWithoutLocation.length})
-                          </span>
-                        </div>
-                      </AccordionTrigger>
-                      <AccordionContent className="px-4 pb-3">
-                        <div className="space-y-2">
-                          {infraWithoutLocation.map((infra) => {
-                            const Icon = getInfraIcon(infra.category)
-                            return (
-                              <div
-                                key={infra.id}
-                                className="rounded-lg border border-gray-200 bg-white p-3 cursor-pointer transition-all hover:bg-gray-50 hover:border-gray-300 hover:shadow-sm"
-                                onClick={() => handleInfraClick(infra)}
-                              >
-                                <div className="flex items-start gap-2">
-                                  <Icon
-                                    className="h-4 w-4 flex-shrink-0 mt-0.5"
-                                    style={{ color: getInfraColor(infra) }}
-                                  />
-                                  <div className="flex-1 min-w-0">
-                                    <p className="text-sm font-medium text-black truncate">{infra.name}</p>
-                                    <p className="text-xs text-gray-600 mt-1 line-clamp-2">{infra.description}</p>
-                                    <div className="flex items-center gap-2 mt-2 flex-wrap">
-                                      <Badge variant="outline" className="text-xs capitalize">
-                                        {infra.category}
-                                      </Badge>
-                                      <Badge variant="outline" className="text-xs">
-                                        {infra.status}
-                                      </Badge>
-                                    </div>
-                                  </div>
-                                </div>
-                              </div>
-                            )
-                          })}
-                        </div>
-                      </AccordionContent>
-                    </AccordionItem>
-                  )}
-                </Accordion>
-              )}
               {filteredInfrastructure.length === 0 && (
                 <div className="text-center py-8 text-gray-500">
                   <MapPin className="h-12 w-12 mx-auto mb-3 opacity-50" />

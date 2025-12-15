@@ -130,20 +130,26 @@ export function InfrastructureDetailPanel({
       name: infrastructure.name,
     })
 
-    const supabase = createClient()
-    const { error } = await supabase.from("infrastructure_plans").delete().eq("id", infrastructure.id)
+    try {
+      const supabase = createClient()
+      const { error } = await supabase.from("infrastructure_plans").delete().eq("id", infrastructure.id)
 
-    console.log("[v0] Delete result:", { error })
+      console.log("[v0] Delete result:", { error })
 
-    setDeleting(false)
-
-    if (!error) {
-      console.log("[v0] Infrastructure successfully deleted from Supabase")
-      setShowDeleteDialog(false)
-      onDelete?.()
-      onClose()
-    } else {
-      console.error("[v0] Error deleting infrastructure:", error)
+      if (!error) {
+        console.log("[v0] Infrastructure successfully deleted from Supabase")
+        setShowDeleteDialog(false)
+        onDelete?.()
+        onClose()
+      } else {
+        console.error("[v0] Error deleting infrastructure:", error)
+        alert(`Error deleting infrastructure: ${error.message}`)
+      }
+    } catch (err) {
+      console.error("[v0] Exception during delete:", err)
+      alert("An unexpected error occurred while deleting. Please try again.")
+    } finally {
+      setDeleting(false)
     }
   }
 
@@ -795,7 +801,7 @@ export function InfrastructureDetailPanel({
       </Dialog>
 
       <Dialog open={!!viewingPhoto} onOpenChange={(open) => !open && setViewingPhoto(null)}>
-        <DialogContent className="max-w-4xl w-full max-h-[90vh] p-0 z-50">
+        <DialogContent className="max-w-4xl w-full max-h-[90vh] p-0 z-[9999]">
           <DialogHeader className="sr-only">
             <DialogTitle>View Infrastructure Photo</DialogTitle>
             <DialogDescription>Photo viewer for {viewingPhoto?.caption || "infrastructure"}</DialogDescription>
