@@ -449,295 +449,344 @@ export default function MapPage() {
 
   return (
     <AppLayout>
-      <PageHeader
-        title="GIS Infrastructure Map"
-        description="Internet, Water, and Electrical systems"
-        actions={
-          <div className="flex gap-2">
-            <Button onClick={() => setAddDialogOpen(true)}>
-              <Plus className="mr-2 h-4 w-4" />
-              Add Infrastructure
-            </Button>
-          </div>
-        }
-      />
-
-      <div className="relative h-[calc(100vh-8rem)] md:h-[calc(100vh-5rem)]">
-        <div ref={mapContainerRef} className="absolute inset-0 z-0" style={{ height: "100%", width: "100%" }} />
-
-        {!leafletLoaded && (
-          <div className="absolute inset-0 flex items-center justify-center bg-gray-50">
-            <div className="text-center">
-              <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mb-3" />
-              <p className="text-sm text-gray-600">Loading map...</p>
+      <div className="flex flex-col h-full w-full">
+        <PageHeader
+          title="GIS Infrastructure Map"
+          description="Internet, Water, and Electrical systems"
+          actions={
+            <div className="flex gap-2">
+              <Button onClick={() => setAddDialogOpen(true)}>
+                <Plus className="mr-2 h-4 w-4" />
+                Add Infrastructure
+              </Button>
             </div>
-          </div>
-        )}
+          }
+        />
 
-        <div className="absolute top-4 left-4 z-[1000] space-y-2">
-          <div className="bg-white rounded-lg shadow-lg border border-gray-200 overflow-hidden">
-            <button
-              onClick={() => setMapType("street")}
-              className={`px-3 py-2 text-xs md:text-sm font-medium transition-colors border-b border-gray-200 block w-full text-left ${
-                mapType === "street" ? "bg-blue-50 text-blue-700" : "bg-white text-gray-700 hover:bg-gray-50"
-              }`}
-            >
-              Street
-            </button>
-            <button
-              onClick={() => setMapType("satellite")}
-              className={`px-3 py-2 text-xs md:text-sm font-medium transition-colors border-b border-gray-200 block w-full text-left ${
-                mapType === "satellite" ? "bg-blue-50 text-blue-700" : "bg-white text-gray-700 hover:bg-gray-50"
-              }`}
-            >
-              Satellite
-            </button>
-            <button
-              onClick={() => setMapType("terrain")}
-              className={`px-3 py-2 text-xs md:text-sm font-medium transition-colors border-b border-gray-200 block w-full text-left ${
-                mapType === "terrain" ? "bg-blue-50 text-blue-700" : "bg-white text-gray-700 hover:bg-gray-50"
-              }`}
-            >
-              Terrain
-            </button>
-            <button
-              onClick={() => setMapType("hybrid")}
-              className={`px-3 py-2 text-xs md:text-sm font-medium transition-colors block w-full text-left ${
-                mapType === "hybrid" ? "bg-blue-50 text-blue-700" : "bg-white text-gray-700 hover:bg-gray-50"
-              }`}
-            >
-              Hybrid
-            </button>
-          </div>
+        <div className="relative flex-1 w-full overflow-hidden">
+          <div ref={mapContainerRef} className="absolute inset-0 h-full w-full" />
 
-          {mapType === "hybrid" && (
-            <div className="bg-white rounded-lg shadow-lg border border-gray-200 p-3 w-48">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-medium text-gray-700">Terrain Overlay</span>
-                <span className="text-xs text-gray-500">{Math.round(terrainOpacity * 100)}%</span>
-              </div>
-              <input
-                type="range"
-                min="0"
-                max="1"
-                step="0.05"
-                value={terrainOpacity}
-                onChange={(e) => setTerrainOpacity(Number.parseFloat(e.target.value))}
-                className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
-              />
-              <div className="flex justify-between text-xs text-gray-500 mt-1">
-                <span>Satellite</span>
-                <span>Terrain</span>
+          {!leafletLoaded && (
+            <div className="absolute inset-0 flex items-center justify-center bg-gray-50 z-[100]">
+              <div className="text-center">
+                <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mb-3" />
+                <p className="text-sm text-gray-600">Loading map...</p>
               </div>
             </div>
           )}
-        </div>
 
-        <button
-          onClick={toggleFullscreen}
-          className="absolute top-4 left-[13.5rem] z-[1000] bg-white rounded-lg shadow-lg p-2 border border-gray-200 hover:bg-gray-50 transition-colors"
-          title="Toggle fullscreen"
-        >
-          <Maximize className="h-4 w-4 md:h-5 md:w-5 text-gray-700" />
-        </button>
-
-        <button
-          onClick={() => setSidebarOpen(!sidebarOpen)}
-          className="md:hidden absolute top-4 right-4 z-[1000] bg-white rounded-lg shadow-lg p-2 border border-gray-200"
-        >
-          {sidebarOpen ? <ChevronRight className="h-5 w-5" /> : <ChevronLeft className="h-5 w-5" />}
-        </button>
-
-        <div
-          className={`
-            fixed md:absolute top-0 right-0 h-full w-[85vw] max-w-md md:w-96
-            bg-white border-l border-gray-200 shadow-xl md:shadow-none
-            transform transition-transform duration-300 ease-in-out z-[1001]
-            ${sidebarOpen ? "translate-x-0" : "translate-x-full md:translate-x-0"}
-          `}
-        >
-          <div className="h-full overflow-y-auto p-4 md:p-6 space-y-6">
-            <div className="flex items-center justify-between md:hidden mb-4">
-              <h2 className="text-lg font-semibold">Infrastructure</h2>
-              <button onClick={() => setSidebarOpen(false)} className="p-2">
-                <X className="h-5 w-5" />
+          {/* Map controls remain the same */}
+          <div className="absolute top-4 left-4 z-[1000] space-y-2">
+            <div className="bg-white rounded-lg shadow-lg border border-gray-200 overflow-hidden">
+              <button
+                onClick={() => setMapType("street")}
+                className={`px-3 py-2 text-xs md:text-sm font-medium transition-colors border-b border-gray-200 block w-full text-left ${
+                  mapType === "street" ? "bg-blue-50 text-blue-700" : "bg-white text-gray-700 hover:bg-gray-50"
+                }`}
+              >
+                Street
+              </button>
+              <button
+                onClick={() => setMapType("satellite")}
+                className={`px-3 py-2 text-xs md:text-sm font-medium transition-colors border-b border-gray-200 block w-full text-left ${
+                  mapType === "satellite" ? "bg-blue-50 text-blue-700" : "bg-white text-gray-700 hover:bg-gray-50"
+                }`}
+              >
+                Satellite
+              </button>
+              <button
+                onClick={() => setMapType("terrain")}
+                className={`px-3 py-2 text-xs md:text-sm font-medium transition-colors border-b border-gray-200 block w-full text-left ${
+                  mapType === "terrain" ? "bg-blue-50 text-blue-700" : "bg-white text-gray-700 hover:bg-gray-50"
+                }`}
+              >
+                Terrain
+              </button>
+              <button
+                onClick={() => setMapType("hybrid")}
+                className={`px-3 py-2 text-xs md:text-sm font-medium transition-colors block w-full text-left ${
+                  mapType === "hybrid" ? "bg-blue-50 text-blue-700" : "bg-white text-gray-700 hover:bg-gray-50"
+                }`}
+              >
+                Hybrid
               </button>
             </div>
 
-            <div>
-              <div className="flex items-center gap-2 mb-4">
-                <Layers className="h-4 w-4 md:h-5 md:w-5 text-gray-700" />
-                <h3 className="font-semibold text-sm md:text-base text-black">Infrastructure Layers</h3>
+            {mapType === "hybrid" && (
+              <div className="bg-white rounded-lg shadow-lg border border-gray-200 p-3 w-48">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs font-medium text-gray-700">Terrain Overlay</span>
+                  <span className="text-xs text-gray-500">{Math.round(terrainOpacity * 100)}%</span>
+                </div>
+                <input
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.05"
+                  value={terrainOpacity}
+                  onChange={(e) => setTerrainOpacity(Number.parseFloat(e.target.value))}
+                  className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                />
+                <div className="flex justify-between text-xs text-gray-500 mt-1">
+                  <span>Satellite</span>
+                  <span>Terrain</span>
+                </div>
               </div>
-              <div className="space-y-3">
-                <label className="flex items-center gap-3 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={filters.internet}
-                    onChange={(e) => setFilters({ ...filters, internet: e.target.checked })}
-                    className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                  />
-                  <div className="flex items-center gap-2">
-                    <Wifi className="h-4 w-4 text-blue-600" />
-                    <span className="text-sm text-gray-700">Internet ({infraByCategory.internet.length})</span>
-                  </div>
-                </label>
+            )}
+          </div>
 
-                <label className="flex items-center gap-3 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={filters.water}
-                    onChange={(e) => setFilters({ ...filters, water: e.target.checked })}
-                    className="h-4 w-4 rounded border-gray-300 text-cyan-600 focus:ring-cyan-500"
-                  />
-                  <div className="flex items-center gap-2">
-                    <Droplet className="h-4 w-4 text-cyan-600" />
-                    <span className="text-sm text-gray-700">Water ({infraByCategory.water.length})</span>
-                  </div>
-                </label>
+          <button
+            onClick={toggleFullscreen}
+            className="absolute top-4 left-[13.5rem] z-[1000] bg-white rounded-lg shadow-lg p-2 border border-gray-200 hover:bg-gray-50 transition-colors"
+            title="Toggle fullscreen"
+          >
+            <Maximize className="h-4 w-4 md:h-5 md:w-5 text-gray-700" />
+          </button>
 
-                <label className="flex items-center gap-3 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={filters.electricity}
-                    onChange={(e) => setFilters({ ...filters, electricity: e.target.checked })}
-                    className="h-4 w-4 rounded border-gray-300 text-yellow-600 focus:ring-yellow-500"
-                  />
-                  <div className="flex items-center gap-2">
-                    <Zap className="h-4 w-4 text-yellow-600" />
-                    <span className="text-sm text-gray-700">Electricity ({infraByCategory.electricity.length})</span>
-                  </div>
-                </label>
+          <button
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+            className="md:hidden absolute top-4 right-4 z-[1000] bg-white rounded-lg shadow-lg p-2 border border-gray-200"
+          >
+            {sidebarOpen ? <ChevronRight className="h-5 w-5" /> : <ChevronLeft className="h-5 w-5" />}
+          </button>
+
+          <div
+            className={`
+              fixed md:absolute top-0 right-0 h-full w-[85vw] max-w-md md:w-96
+              bg-white border-l border-gray-200 shadow-xl md:shadow-none
+              transform transition-transform duration-300 ease-in-out z-[1001]
+              ${sidebarOpen ? "translate-x-0" : "translate-x-full md:translate-x-0"}
+            `}
+          >
+            <div className="h-full overflow-y-auto p-4 md:p-6 space-y-6">
+              <div className="flex items-center justify-between md:hidden mb-4">
+                <h2 className="text-lg font-semibold">Infrastructure</h2>
+                <button onClick={() => setSidebarOpen(false)} className="p-2">
+                  <X className="h-5 w-5" />
+                </button>
               </div>
-            </div>
 
-            <div>
-              <div className="flex items-center gap-2 mb-3">
-                <h4 className="font-medium text-sm">Group By</h4>
+              <div>
+                <div className="flex items-center gap-2 mb-4">
+                  <Layers className="h-4 w-4 md:h-5 md:w-5 text-gray-700" />
+                  <h3 className="font-semibold text-sm md:text-base text-black">Infrastructure Layers</h3>
+                </div>
+                <div className="space-y-3">
+                  <label className="flex items-center gap-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={filters.internet}
+                      onChange={(e) => setFilters({ ...filters, internet: e.target.checked })}
+                      className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    />
+                    <div className="flex items-center gap-2">
+                      <Wifi className="h-4 w-4 text-blue-600" />
+                      <span className="text-sm text-gray-700">Internet ({infraByCategory.internet.length})</span>
+                    </div>
+                  </label>
+
+                  <label className="flex items-center gap-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={filters.water}
+                      onChange={(e) => setFilters({ ...filters, water: e.target.checked })}
+                      className="h-4 w-4 rounded border-gray-300 text-cyan-600 focus:ring-cyan-500"
+                    />
+                    <div className="flex items-center gap-2">
+                      <Droplet className="h-4 w-4 text-cyan-600" />
+                      <span className="text-sm text-gray-700">Water ({infraByCategory.water.length})</span>
+                    </div>
+                  </label>
+
+                  <label className="flex items-center gap-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={filters.electricity}
+                      onChange={(e) => setFilters({ ...filters, electricity: e.target.checked })}
+                      className="h-4 w-4 rounded border-gray-300 text-yellow-600 focus:ring-yellow-500"
+                    />
+                    <div className="flex items-center gap-2">
+                      <Zap className="h-4 w-4 text-yellow-600" />
+                      <span className="text-sm text-gray-700">Electricity ({infraByCategory.electricity.length})</span>
+                    </div>
+                  </label>
+                </div>
               </div>
-              <div className="flex gap-2">
-                <Button
-                  variant={groupBy === "category" ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setGroupBy("category")}
-                  className="flex-1"
-                >
-                  Category
-                </Button>
-                <Button
-                  variant={groupBy === "location" ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setGroupBy("location")}
-                  className="flex-1"
-                >
-                  Location
-                </Button>
+
+              <div>
+                <div className="flex items-center gap-2 mb-3">
+                  <h4 className="font-medium text-sm">Group By</h4>
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    variant={groupBy === "category" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setGroupBy("category")}
+                    className="flex-1"
+                  >
+                    Category
+                  </Button>
+                  <Button
+                    variant={groupBy === "location" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setGroupBy("location")}
+                    className="flex-1"
+                  >
+                    Location
+                  </Button>
+                </div>
               </div>
-            </div>
 
-            {groupBy === "category" ? (
-              <Accordion type="multiple" defaultValue={["internet", "water", "electricity"]} className="space-y-2">
-                {Object.entries(infraByCategory).map(([category, items]) => {
-                  if (items.length === 0) return null
-                  const Icon = getInfraIcon(category)
+              {groupBy === "category" ? (
+                <Accordion type="multiple" defaultValue={["internet", "water", "electricity"]} className="space-y-2">
+                  {Object.entries(infraByCategory).map(([category, items]) => {
+                    if (items.length === 0) return null
+                    const Icon = getInfraIcon(category)
 
-                  const categoryColors = {
-                    internet: {
-                      bg: "bg-blue-50",
-                      border: "border-blue-200",
-                      text: "text-blue-700",
-                      icon: "text-blue-600",
-                    },
-                    water: {
-                      bg: "bg-cyan-50",
-                      border: "border-cyan-200",
-                      text: "text-cyan-700",
-                      icon: "text-cyan-600",
-                    },
-                    electricity: {
-                      bg: "bg-yellow-50",
-                      border: "border-yellow-200",
-                      text: "text-yellow-700",
-                      icon: "text-yellow-600",
-                    },
-                  }[category]
+                    const categoryColors = {
+                      internet: {
+                        bg: "bg-blue-50",
+                        border: "border-blue-200",
+                        text: "text-blue-700",
+                        icon: "text-blue-600",
+                      },
+                      water: {
+                        bg: "bg-cyan-50",
+                        border: "border-cyan-200",
+                        text: "text-cyan-700",
+                        icon: "text-cyan-600",
+                      },
+                      electricity: {
+                        bg: "bg-yellow-50",
+                        border: "border-yellow-200",
+                        text: "text-yellow-700",
+                        icon: "text-yellow-600",
+                      },
+                    }[category]
 
-                  return (
-                    <AccordionItem
-                      key={category}
-                      value={category}
-                      className={`border rounded-lg ${categoryColors.border} ${categoryColors.bg}`}
-                    >
-                      <AccordionTrigger className="px-4 py-3 hover:no-underline">
-                        <div className="flex items-center gap-2">
-                          <Icon className={`h-4 w-4 ${categoryColors.icon}`} />
-                          <span className={`font-medium text-sm capitalize ${categoryColors.text}`}>
-                            {category} ({items.length})
-                          </span>
-                        </div>
-                      </AccordionTrigger>
-                      <AccordionContent className="px-4 pb-3">
-                        <div className="space-y-2">
-                          {items.map((infra) => (
-                            <div
-                              key={infra.id}
-                              className="rounded-lg border border-gray-200 bg-white p-3 cursor-pointer transition-all hover:bg-gray-50 hover:border-gray-300 hover:shadow-sm"
-                              onClick={() => handleInfraClick(infra)}
-                            >
-                              <div className="flex items-start gap-2">
-                                <div
-                                  className="h-3 w-3 rounded-full flex-shrink-0 mt-1"
-                                  style={{ backgroundColor: getInfraColor(infra) }}
-                                />
-                                <div className="flex-1 min-w-0">
-                                  <p className="text-sm font-medium text-black truncate">{infra.name}</p>
-                                  <p className="text-xs text-gray-600 mt-1 line-clamp-2">{infra.description}</p>
-                                  <div className="flex items-center gap-2 mt-2 flex-wrap">
-                                    <Badge variant="outline" className="text-xs">
-                                      {infra.status}
-                                    </Badge>
-                                    {infra.priority === "critical" && (
-                                      <Badge
-                                        variant="outline"
-                                        className="text-xs bg-red-50 text-red-700 border-red-200"
-                                      >
-                                        Critical
+                    return (
+                      <AccordionItem
+                        key={category}
+                        value={category}
+                        className={`border rounded-lg ${categoryColors.border} ${categoryColors.bg}`}
+                      >
+                        <AccordionTrigger className="px-4 py-3 hover:no-underline">
+                          <div className="flex items-center gap-2">
+                            <Icon className={`h-4 w-4 ${categoryColors.icon}`} />
+                            <span className={`font-medium text-sm capitalize ${categoryColors.text}`}>
+                              {category} ({items.length})
+                            </span>
+                          </div>
+                        </AccordionTrigger>
+                        <AccordionContent className="px-4 pb-3">
+                          <div className="space-y-2">
+                            {items.map((infra) => (
+                              <div
+                                key={infra.id}
+                                className="rounded-lg border border-gray-200 bg-white p-3 cursor-pointer transition-all hover:bg-gray-50 hover:border-gray-300 hover:shadow-sm"
+                                onClick={() => handleInfraClick(infra)}
+                              >
+                                <div className="flex items-start gap-2">
+                                  <div
+                                    className="h-3 w-3 rounded-full flex-shrink-0 mt-1"
+                                    style={{ backgroundColor: getInfraColor(infra) }}
+                                  />
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-sm font-medium text-black truncate">{infra.name}</p>
+                                    <p className="text-xs text-gray-600 mt-1 line-clamp-2">{infra.description}</p>
+                                    <div className="flex items-center gap-2 mt-2 flex-wrap">
+                                      <Badge variant="outline" className="text-xs">
+                                        {infra.status}
                                       </Badge>
-                                    )}
+                                      {infra.priority === "critical" && (
+                                        <Badge
+                                          variant="outline"
+                                          className="text-xs bg-red-50 text-red-700 border-red-200"
+                                        >
+                                          Critical
+                                        </Badge>
+                                      )}
+                                    </div>
                                   </div>
                                 </div>
                               </div>
-                            </div>
-                          ))}
-                        </div>
-                      </AccordionContent>
-                    </AccordionItem>
-                  )
-                })}
-              </Accordion>
-            ) : (
-              <Accordion type="multiple" defaultValue={locations.map((l) => l.id)} className="space-y-2">
-                {locations.map((location) => {
-                  const items = infraByLocation[location.id] || []
-                  if (items.length === 0) return null
+                            ))}
+                          </div>
+                        </AccordionContent>
+                      </AccordionItem>
+                    )
+                  })}
+                </Accordion>
+              ) : (
+                <Accordion type="multiple" defaultValue={locations.map((l) => l.id)} className="space-y-2">
+                  {locations.map((location) => {
+                    const items = infraByLocation[location.id] || []
+                    if (items.length === 0) return null
 
-                  return (
-                    <AccordionItem
-                      key={location.id}
-                      value={location.id}
-                      className="border rounded-lg border-gray-200 bg-gray-50"
-                    >
+                    return (
+                      <AccordionItem
+                        key={location.id}
+                        value={location.id}
+                        className="border rounded-lg border-gray-200 bg-gray-50"
+                      >
+                        <AccordionTrigger className="px-4 py-3 hover:no-underline">
+                          <div className="flex items-center gap-2">
+                            <MapPin className="h-4 w-4 text-gray-600" />
+                            <span className="font-medium text-sm text-gray-700">
+                              {location.name} ({items.length})
+                            </span>
+                          </div>
+                        </AccordionTrigger>
+                        <AccordionContent className="px-4 pb-3">
+                          <div className="space-y-2">
+                            {items.map((infra) => {
+                              const Icon = getInfraIcon(infra.category)
+                              return (
+                                <div
+                                  key={infra.id}
+                                  className="rounded-lg border border-gray-200 bg-white p-3 cursor-pointer transition-all hover:bg-gray-50 hover:border-gray-300 hover:shadow-sm"
+                                  onClick={() => handleInfraClick(infra)}
+                                >
+                                  <div className="flex items-start gap-2">
+                                    <Icon
+                                      className="h-4 w-4 flex-shrink-0 mt-0.5"
+                                      style={{ color: getInfraColor(infra) }}
+                                    />
+                                    <div className="flex-1 min-w-0">
+                                      <p className="text-sm font-medium text-black truncate">{infra.name}</p>
+                                      <p className="text-xs text-gray-600 mt-1 line-clamp-2">{infra.description}</p>
+                                      <div className="flex items-center gap-2 mt-2 flex-wrap">
+                                        <Badge variant="outline" className="text-xs capitalize">
+                                          {infra.category}
+                                        </Badge>
+                                        <Badge variant="outline" className="text-xs">
+                                          {infra.status}
+                                        </Badge>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                              )
+                            })}
+                          </div>
+                        </AccordionContent>
+                      </AccordionItem>
+                    )
+                  })}
+
+                  {infraWithoutLocation.length > 0 && (
+                    <AccordionItem value="no-location" className="border rounded-lg border-gray-300 bg-gray-100">
                       <AccordionTrigger className="px-4 py-3 hover:no-underline">
                         <div className="flex items-center gap-2">
-                          <MapPin className="h-4 w-4 text-gray-600" />
-                          <span className="font-medium text-sm text-gray-700">
-                            {location.name} ({items.length})
+                          <MapPin className="h-4 w-4 text-gray-400" />
+                          <span className="font-medium text-sm text-gray-600">
+                            No Location ({infraWithoutLocation.length})
                           </span>
                         </div>
                       </AccordionTrigger>
                       <AccordionContent className="px-4 pb-3">
                         <div className="space-y-2">
-                          {items.map((infra) => {
+                          {infraWithoutLocation.map((infra) => {
                             const Icon = getInfraIcon(infra.category)
                             return (
                               <div
@@ -769,73 +818,68 @@ export default function MapPage() {
                         </div>
                       </AccordionContent>
                     </AccordionItem>
-                  )
-                })}
-
-                {infraWithoutLocation.length > 0 && (
-                  <AccordionItem value="no-location" className="border rounded-lg border-gray-300 bg-gray-100">
-                    <AccordionTrigger className="px-4 py-3 hover:no-underline">
-                      <div className="flex items-center gap-2">
-                        <MapPin className="h-4 w-4 text-gray-400" />
-                        <span className="font-medium text-sm text-gray-600">
-                          No Location ({infraWithoutLocation.length})
-                        </span>
-                      </div>
-                    </AccordionTrigger>
-                    <AccordionContent className="px-4 pb-3">
-                      <div className="space-y-2">
-                        {infraWithoutLocation.map((infra) => {
-                          const Icon = getInfraIcon(infra.category)
-                          return (
-                            <div
-                              key={infra.id}
-                              className="rounded-lg border border-gray-200 bg-white p-3 cursor-pointer transition-all hover:bg-gray-50 hover:border-gray-300 hover:shadow-sm"
-                              onClick={() => handleInfraClick(infra)}
-                            >
-                              <div className="flex items-start gap-2">
-                                <Icon
-                                  className="h-4 w-4 flex-shrink-0 mt-0.5"
-                                  style={{ color: getInfraColor(infra) }}
-                                />
-                                <div className="flex-1 min-w-0">
-                                  <p className="text-sm font-medium text-black truncate">{infra.name}</p>
-                                  <p className="text-xs text-gray-600 mt-1 line-clamp-2">{infra.description}</p>
-                                  <div className="flex items-center gap-2 mt-2 flex-wrap">
-                                    <Badge variant="outline" className="text-xs capitalize">
-                                      {infra.category}
-                                    </Badge>
-                                    <Badge variant="outline" className="text-xs">
-                                      {infra.status}
-                                    </Badge>
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-                          )
-                        })}
-                      </div>
-                    </AccordionContent>
-                  </AccordionItem>
-                )}
-              </Accordion>
-            )}
-            {filteredInfrastructure.length === 0 && (
-              <div className="text-center py-8 text-gray-500">
-                <MapPin className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                <p className="text-sm">No infrastructure visible</p>
-                <p className="text-xs mt-1">Enable layers above</p>
-              </div>
-            )}
+                  )}
+                </Accordion>
+              )}
+              {filteredInfrastructure.length === 0 && (
+                <div className="text-center py-8 text-gray-500">
+                  <MapPin className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                  <p className="text-sm">No infrastructure visible</p>
+                  <p className="text-xs mt-1">Enable layers above</p>
+                </div>
+              )}
+            </div>
           </div>
-        </div>
 
-        {detailPanelOpen && selectedInfra && (
-          <InfrastructureDetailPanel
-            infrastructure={selectedInfra}
-            open={detailPanelOpen}
+          {detailPanelOpen && selectedInfra && (
+            <InfrastructureDetailPanel
+              infrastructure={selectedInfra}
+              open={detailPanelOpen}
+              onClose={() => {
+                setDetailPanelOpen(false)
+                setSelectedInfra(null)
+              }}
+              onUpdate={() => {
+                const fetchInfrastructure = async () => {
+                  const supabase = createClient()
+                  const { data } = await supabase.from("infrastructure_plans").select("*").order("name")
+                  if (data) setInfrastructure(data)
+                }
+                fetchInfrastructure()
+              }}
+              onEdit={() => handleEdit(selectedInfra)}
+              onDelete={() => {
+                setShowDeleteDialog(true)
+              }}
+            />
+          )}
+
+          <AddInfrastructureDialog
+            open={addDialogOpen}
             onClose={() => {
-              setDetailPanelOpen(false)
-              setSelectedInfra(null)
+              setAddDialogOpen(false)
+              setClickedCoordinates(null)
+              setNewInfraLocation(null)
+            }}
+            onAdd={() => {
+              const fetchInfrastructure = async () => {
+                const supabase = createClient()
+                const { data } = await supabase.from("infrastructure_plans").select("*").order("name")
+                if (data) setInfrastructure(data)
+              }
+              fetchInfrastructure()
+              setAddDialogOpen(false)
+              setClickedCoordinates(null)
+              setNewInfraLocation(null)
+            }}
+            initialCoordinates={newInfraLocation}
+          />
+
+          <EditInfrastructureDialog
+            open={editDialogOpen}
+            onClose={() => {
+              setEditDialogOpen(false)
+              setEditingInfra(null)
             }}
             onUpdate={() => {
               const fetchInfrastructure = async () => {
@@ -845,70 +889,29 @@ export default function MapPage() {
               }
               fetchInfrastructure()
             }}
-            onEdit={() => handleEdit(selectedInfra)}
-            onDelete={() => {
-              setShowDeleteDialog(true)
-            }}
+            infrastructure={editingInfra}
           />
-        )}
 
-        <AddInfrastructureDialog
-          open={addDialogOpen}
-          onClose={() => {
-            setAddDialogOpen(false)
-            setClickedCoordinates(null)
-            setNewInfraLocation(null)
-          }}
-          onAdd={() => {
-            const fetchInfrastructure = async () => {
-              const supabase = createClient()
-              const { data } = await supabase.from("infrastructure_plans").select("*").order("name")
-              if (data) setInfrastructure(data)
-            }
-            fetchInfrastructure()
-            setAddDialogOpen(false)
-            setClickedCoordinates(null)
-            setNewInfraLocation(null)
-          }}
-          initialCoordinates={newInfraLocation}
-        />
+          <DeleteDialog open={showDeleteDialog} onClose={() => setShowDeleteDialog(false)} onDelete={handleDelete} />
 
-        <EditInfrastructureDialog
-          open={editDialogOpen}
-          onClose={() => {
-            setEditDialogOpen(false)
-            setEditingInfra(null)
-          }}
-          onUpdate={() => {
-            const fetchInfrastructure = async () => {
-              const supabase = createClient()
-              const { data } = await supabase.from("infrastructure_plans").select("*").order("name")
-              if (data) setInfrastructure(data)
-            }
-            fetchInfrastructure()
-          }}
-          infrastructure={editingInfra}
-        />
+          <InfrastructureSearchDialog
+            open={searchDialogOpen}
+            onOpenChange={setSearchDialogOpen}
+            onSelectInfrastructure={handleSelectFromSearch}
+          />
 
-        <DeleteDialog open={showDeleteDialog} onClose={() => setShowDeleteDialog(false)} onDelete={handleDelete} />
-
-        <InfrastructureSearchDialog
-          open={searchDialogOpen}
-          onOpenChange={setSearchDialogOpen}
-          onSelectInfrastructure={handleSelectFromSearch}
-        />
-
-        <button
-          onClick={() => setSearchDialogOpen(true)}
-          className="fixed bottom-6 right-6 z-[1000] h-14 w-14 rounded-full bg-gradient-to-r from-purple-500 to-indigo-600 shadow-lg hover:shadow-xl hover:scale-110 transition-all duration-200 flex items-center justify-center group"
-          aria-label="AI Search"
-        >
-          <Sparkles className="h-6 w-6 text-white group-hover:animate-pulse" />
-          <span className="absolute -top-1 -right-1 flex h-3 w-3">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-purple-400 opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-3 w-3 bg-purple-500"></span>
-          </span>
-        </button>
+          <button
+            onClick={() => setSearchDialogOpen(true)}
+            className="fixed bottom-6 right-6 z-[1000] h-14 w-14 rounded-full bg-gradient-to-r from-purple-500 to-indigo-600 shadow-lg hover:shadow-xl hover:scale-110 transition-all duration-200 flex items-center justify-center group"
+            aria-label="AI Search"
+          >
+            <Sparkles className="h-6 w-6 text-white group-hover:animate-pulse" />
+            <span className="absolute -top-1 -right-1 flex h-3 w-3">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-purple-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-3 w-3 bg-purple-500"></span>
+            </span>
+          </button>
+        </div>
       </div>
     </AppLayout>
   )

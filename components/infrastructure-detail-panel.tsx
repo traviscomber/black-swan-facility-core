@@ -795,7 +795,11 @@ export function InfrastructureDetailPanel({
       </Dialog>
 
       <Dialog open={!!viewingPhoto} onOpenChange={(open) => !open && setViewingPhoto(null)}>
-        <DialogContent className="max-w-4xl w-full max-h-[90vh] p-0">
+        <DialogContent className="max-w-4xl w-full max-h-[90vh] p-0 z-50">
+          <DialogHeader className="sr-only">
+            <DialogTitle>View Infrastructure Photo</DialogTitle>
+            <DialogDescription>Photo viewer for {viewingPhoto?.caption || "infrastructure"}</DialogDescription>
+          </DialogHeader>
           <div className="relative">
             <Button
               size="icon"
@@ -808,7 +812,11 @@ export function InfrastructureDetailPanel({
             <img
               src={viewingPhoto?.photo_url || "/placeholder.svg"}
               alt={viewingPhoto?.caption || "Infrastructure photo"}
-              className="w-full h-auto max-h-[80vh] object-contain"
+              className="w-full h-auto max-h-[80vh] object-contain bg-gray-100"
+              onError={(e) => {
+                console.error("[v0] Image failed to load:", viewingPhoto?.photo_url?.substring(0, 50))
+                e.currentTarget.src = "/placeholder.svg"
+              }}
             />
             {viewingPhoto?.caption && (
               <div className="p-4 bg-gray-50 border-t">
@@ -852,6 +860,7 @@ export function InfrastructureDetailPanel({
             <DialogTitle>Edit Photo Caption</DialogTitle>
             <DialogDescription>Update the caption for this photo</DialogDescription>
           </DialogHeader>
+
           <div className="space-y-4">
             <div>
               <Label htmlFor="edit-caption">Caption</Label>
