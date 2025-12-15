@@ -14,6 +14,7 @@ import {
   startOfMonth,
   endOfMonth,
   getDaysInMonth,
+  isSameDay,
 } from "date-fns"
 import { AddReservationDialog } from "@/components/add-reservation-dialog"
 import { EditReservationModal } from "@/components/edit-reservation-modal"
@@ -78,6 +79,7 @@ export default function BookingsPage() {
   const daysInMonth = getDaysInMonth(startDate)
   const dateArray = Array.from({ length: daysInMonth }, (_, i) => addDays(firstDayOfMonth, i))
   const endDate = lastDayOfMonth
+  const today = new Date() // Get today's date for highlighting
 
   useEffect(() => {
     fetchData()
@@ -154,12 +156,16 @@ export default function BookingsPage() {
   const selectedLocation = locations.find((loc) => loc.id === selectedLocationId)
   const roomGroups = Array.from(new Map(selectedLocationBeds.map((b) => [b.room.room_number, b.room])).values())
 
+  // - Confirmed: Cool Pope (purple #834693)
+  // - Checked-in: Warm Princess (light pink #FDD7D4)
+  // - Pending: Warm Orange (#FFA114)
+  // - Cancelled: Warm Fire (red #EC2B02)
   const getStatusColor = (status: string) => {
     const colors: Record<string, string> = {
-      confirmed: "bg-green-100 text-green-800 border-green-300",
-      "checked-in": "bg-blue-100 text-blue-800 border-blue-300",
-      pending: "bg-yellow-100 text-yellow-800 border-yellow-300",
-      cancelled: "bg-red-100 text-red-800 border-red-300",
+      confirmed: "bg-[#834693] text-white border-[#6d3878]",
+      "checked-in": "bg-[#FDD7D4] text-[#834693] border-[#FDBBB7]",
+      pending: "bg-[#FFA114] text-white border-[#FF8C00]",
+      cancelled: "bg-[#EC2B02] text-white border-[#D42301]",
     }
     return colors[status] || "bg-gray-100 text-gray-800 border-gray-300"
   }
@@ -479,15 +485,27 @@ export default function BookingsPage() {
                           <th className="text-left font-semibold text-accent px-4 py-3 sticky left-0 bg-secondary/50 w-32 min-w-32 z-10">
                             Room
                           </th>
-                          {dateArray.map((date) => (
-                            <th
-                              key={date.toISOString()}
-                              className="text-center font-semibold text-accent px-1.5 py-3 w-16 min-w-16 whitespace-nowrap"
-                            >
-                              <div className="text-xs font-semibold text-muted-foreground">{format(date, "EEE")}</div>
-                              <div className="text-sm font-bold text-accent">{format(date, "d")}</div>
-                            </th>
-                          ))}
+                          {dateArray.map((date) => {
+                            const isToday = isSameDay(date, today)
+                            return (
+                              <th
+                                key={date.toISOString()}
+                                className={`text-center font-semibold px-1.5 py-3 w-16 min-w-16 whitespace-nowrap ${
+                                  isToday ? "bg-amber-100 border-2 border-amber-400 rounded" : "text-accent"
+                                }`}
+                              >
+                                <div
+                                  className={`text-xs font-semibold ${isToday ? "text-amber-900" : "text-muted-foreground"}`}
+                                >
+                                  {format(date, "EEE")}
+                                </div>
+                                <div className={`text-sm font-bold ${isToday ? "text-amber-900" : "text-accent"}`}>
+                                  {format(date, "d")}
+                                </div>
+                                {isToday && <div className="text-xs font-semibold text-amber-900 mt-1">TODAY</div>}
+                              </th>
+                            )
+                          })}
                         </tr>
                       </thead>
                       <tbody>
@@ -595,19 +613,19 @@ export default function BookingsPage() {
             {/* Legend */}
             <div className="mt-6 flex flex-wrap gap-4 text-sm">
               <div className="flex items-center gap-2">
-                <div className="w-4 h-4 bg-green-100 border border-green-300 rounded"></div>
+                <div className="w-4 h-4 bg-[#834693] border border-[#6d3878] rounded"></div>
                 <span className="text-muted-foreground">Confirmed</span>
               </div>
               <div className="flex items-center gap-2">
-                <div className="w-4 h-4 bg-blue-100 border border-blue-300 rounded"></div>
+                <div className="w-4 h-4 bg-[#FDD7D4] border border-[#FDBBB7] rounded"></div>
                 <span className="text-muted-foreground">Checked In</span>
               </div>
               <div className="flex items-center gap-2">
-                <div className="w-4 h-4 bg-yellow-100 border border-yellow-300 rounded"></div>
+                <div className="w-4 h-4 bg-[#FFA114] border border-[#FF8C00] rounded"></div>
                 <span className="text-muted-foreground">Pending</span>
               </div>
               <div className="flex items-center gap-2">
-                <div className="w-4 h-4 bg-red-100 border border-red-300 rounded"></div>
+                <div className="w-4 h-4 bg-[#EC2B02] border border-[#D42301] rounded"></div>
                 <span className="text-muted-foreground">Cancelled</span>
               </div>
               <div className="flex items-center gap-2">

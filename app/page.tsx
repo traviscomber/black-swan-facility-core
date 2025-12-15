@@ -25,14 +25,26 @@ export default function Dashboard() {
   return (
     <AppLayout>
       <div className="bg-gradient-to-br from-secondary via-background to-background border-b border-secondary">
-        <div className="mx-auto max-w-7xl px-4 py-12 md:py-16 md:px-6">
-          <div className="space-y-4">
-            <h1 className="text-4xl md:text-5xl font-bold text-accent leading-tight">Blackswan Facility Core System</h1>
+        <div className="mx-auto max-w-7xl px-4 py-16 md:py-20 md:px-6">
+          <div className="space-y-6">
+            <div className="flex flex-col md:flex-row items-start md:items-center gap-6 mb-6">
+              <img
+                src="/blackswan-logo.png"
+                alt="Blackswan Logo"
+                className="h-32 w-32 object-contain flex-shrink-0 drop-shadow-lg"
+              />
+              <div>
+                <h1 className="text-5xl md:text-6xl font-bold text-accent leading-tight">
+                  Blackswan Facility Core System
+                </h1>
+                <p className="text-base text-muted-foreground mt-2">BFCS v1.0 - Luxury Property Management</p>
+              </div>
+            </div>
             <p className="text-lg text-muted-foreground max-w-2xl">
-              BFCS - Professional facility management and booking system for your luxury vacation rental. Manage
-              reservations, track availability, and optimize occupancy rates.
+              Professional facility management and booking system for your luxury vacation rental. Manage reservations,
+              track availability, and optimize occupancy rates.
             </p>
-            <div className="flex gap-3 pt-2">
+            <div className="flex gap-3 pt-4">
               <Link href="/bookings">
                 <Button size="lg" className="gap-2">
                   <Calendar className="h-5 w-5" />

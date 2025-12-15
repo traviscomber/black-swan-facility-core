@@ -77,11 +77,14 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
           isOpen ? "translate-x-0" : "-translate-x-full",
         )}
       >
-        <div className="flex h-16 items-center justify-between border-b border-secondary bg-gradient-to-r from-primary/10 to-transparent px-4">
-          <div>
-            <h1 className="text-base font-bold text-accent">BFCS</h1>
-            <p className="text-xs text-muted-foreground">Facility Core System</p>
-          </div>
+        <div className="flex h-24 items-center justify-between border-b border-secondary bg-gradient-to-r from-primary/10 to-transparent px-4">
+          <Link href="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
+            <img src="/blackswan-logo.png" alt="Blackswan Logo" className="h-16 w-16 object-contain flex-shrink-0" />
+            <div>
+              <h1 className="text-lg font-bold text-accent">BFCS</h1>
+              <p className="text-xs text-muted-foreground">Facility Core System</p>
+            </div>
+          </Link>
           <button onClick={onClose} className="md:hidden p-1 hover:bg-secondary rounded">
             <X className="h-5 w-5 text-muted-foreground" />
           </button>
