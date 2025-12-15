@@ -13,19 +13,19 @@ export function AppLayout({ children }: AppLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
   return (
-    <div className="flex h-screen bg-white">
+    <div className="flex h-screen bg-background">
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
       <div className="flex flex-1 flex-col overflow-hidden">
-        <div className="flex h-14 items-center justify-between border-b border-gray-100 px-4 md:hidden">
-          <button onClick={() => setSidebarOpen(true)} className="p-1 hover:bg-gray-100 rounded">
-            <Menu className="h-5 w-5 text-gray-700" />
+        <div className="flex h-16 items-center justify-between border-b border-secondary bg-gradient-to-r from-secondary/50 to-transparent px-4 md:hidden">
+          <button onClick={() => setSidebarOpen(true)} className="p-2 hover:bg-secondary rounded-lg transition-colors">
+            <Menu className="h-5 w-5 text-accent" />
           </button>
-          <h1 className="text-sm font-semibold text-black">Black Swan Facility Core</h1>
-          <div className="w-6" /> {/* Spacer for centering */}
+          <h1 className="text-sm font-bold text-accent">Black Swan Facility</h1>
+          <div className="w-10" />
         </div>
 
-        <main className="flex-1 overflow-y-auto">{children}</main>
+        <main className="flex-1 overflow-y-auto bg-background">{children}</main>
       </div>
     </div>
   )

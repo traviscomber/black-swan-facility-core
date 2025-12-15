@@ -16,20 +16,47 @@ import {
   Bot,
   Calendar,
   ClipboardList,
+  MessageSquare,
+  HelpCircle,
 } from "lucide-react"
 
-const navigation = [
-  { name: "Dashboard", href: "/", icon: LayoutDashboard },
-  { name: "GIS Map", href: "/map", icon: Map },
-  { name: "Assets", href: "/assets", icon: Box },
-  { name: "Issues", href: "/issues", icon: AlertCircle },
-  { name: "Maintenance", href: "/maintenance", icon: Wrench },
-  { name: "Bookings", href: "/bookings", icon: Calendar },
-  { name: "Tasks", href: "/tasks", icon: ClipboardList }, // Added Tasks navigation
-  { name: "Employees", href: "/employees", icon: Users },
-  { name: "Checklists", href: "/checklists", icon: CheckSquare },
-  { name: "AI Operations", href: "/ai-ops", icon: Bot },
-  { name: "Admin", href: "/admin", icon: Settings },
+const navigationGroups = [
+  {
+    label: "Core Operations",
+    description: "Manage your property bookings and reservations",
+    items: [
+      { name: "Dashboard", href: "/", icon: LayoutDashboard, tip: "Overview of your property" },
+      { name: "Bookings", href: "/bookings", icon: Calendar, tip: "Manage reservations and availability" },
+      { name: "Tasks", href: "/tasks", icon: ClipboardList, tip: "Daily management tasks" },
+    ],
+  },
+  {
+    label: "Property Management",
+    description: "Configure and maintain your facility",
+    items: [
+      { name: "Assets", href: "/assets", icon: Box, tip: "Inventory and equipment" },
+      { name: "Maintenance", href: "/maintenance", icon: Wrench, tip: "Schedule and track repairs" },
+      { name: "GIS Map", href: "/map", icon: Map, tip: "Property location and layout" },
+    ],
+  },
+  {
+    label: "People & Operations",
+    description: "Staff management and guest services",
+    items: [
+      { name: "Employees", href: "/employees", icon: Users, tip: "Team management" },
+      { name: "Concierge", href: "/concierge", icon: MessageSquare, tip: "Guest communication" },
+      { name: "Checklists", href: "/checklists", icon: CheckSquare, tip: "Operational checklists" },
+    ],
+  },
+  {
+    label: "Advanced",
+    description: "Analytics and system settings",
+    items: [
+      { name: "Issues", href: "/issues", icon: AlertCircle, tip: "Track and resolve problems" },
+      { name: "AI Operations", href: "/ai-ops", icon: Bot, tip: "AI-powered insights" },
+      { name: "Admin", href: "/admin", icon: Settings, tip: "System configuration" },
+    ],
+  },
 ]
 
 interface SidebarProps {
@@ -46,43 +73,66 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
 
       <div
         className={cn(
-          "fixed inset-y-0 left-0 z-50 flex h-screen w-64 flex-col border-r border-gray-200 bg-white transition-transform duration-300 md:relative md:translate-x-0",
+          "fixed inset-y-0 left-0 z-50 flex h-screen w-64 flex-col border-r border-secondary bg-white transition-transform duration-300 md:relative md:translate-x-0 overflow-y-auto",
           isOpen ? "translate-x-0" : "-translate-x-full",
         )}
       >
-        {/* Logo/Header */}
-        <div className="flex h-14 items-center justify-between border-b border-gray-100 px-4">
-          <h1 className="text-base font-semibold text-black">Black Swan</h1>
-          <button onClick={onClose} className="md:hidden p-1 hover:bg-gray-100 rounded">
-            <X className="h-5 w-5 text-gray-700" />
+        <div className="flex h-16 items-center justify-between border-b border-secondary bg-gradient-to-r from-primary/10 to-transparent px-4">
+          <div>
+            <h1 className="text-base font-bold text-accent">Black Swan</h1>
+            <p className="text-xs text-muted-foreground">Facility Management</p>
+          </div>
+          <button onClick={onClose} className="md:hidden p-1 hover:bg-secondary rounded">
+            <X className="h-5 w-5 text-muted-foreground" />
           </button>
         </div>
 
-        {/* Navigation */}
-        <nav className="flex-1 space-y-0.5 px-2 py-4">
-          {navigation.map((item) => {
-            const isActive = pathname === item.href || (item.href !== "/" && pathname?.startsWith(item.href))
+        <nav className="flex-1 space-y-6 px-3 py-6">
+          {navigationGroups.map((group) => (
+            <div key={group.label} className="space-y-2">
+              <div className="px-3">
+                <h3 className="text-xs font-bold uppercase tracking-wider text-primary">{group.label}</h3>
+                <p className="text-xs text-muted-foreground mt-1">{group.description}</p>
+              </div>
+              <div className="space-y-1">
+                {group.items.map((item) => {
+                  const isActive = pathname === item.href || (item.href !== "/" && pathname?.startsWith(item.href))
 
-            return (
-              <Link
-                key={item.name}
-                href={item.href}
-                onClick={onClose}
-                className={cn(
-                  "flex items-center gap-3 rounded px-3 py-2 text-sm font-medium transition-colors",
-                  isActive ? "bg-blue-50 text-blue-600" : "text-gray-700 hover:bg-gray-50",
-                )}
-              >
-                <item.icon className="h-4 w-4" />
-                {item.name}
-              </Link>
-            )
-          })}
+                  return (
+                    <Link
+                      key={item.name}
+                      href={item.href}
+                      onClick={onClose}
+                      className={cn(
+                        "group flex items-center gap-3 rounded px-3 py-2.5 text-sm font-medium transition-all duration-200",
+                        isActive
+                          ? "bg-primary text-white shadow-md"
+                          : "text-accent hover:bg-secondary/40 hover:text-accent",
+                      )}
+                      title={item.tip}
+                    >
+                      <item.icon className="h-4 w-4 flex-shrink-0" />
+                      <span className="flex-1">{item.name}</span>
+                      {isActive && <div className="h-1.5 w-1.5 rounded-full bg-white flex-shrink-0"></div>}
+                    </Link>
+                  )
+                })}
+              </div>
+            </div>
+          ))}
         </nav>
 
-        {/* Footer */}
-        <div className="border-t border-gray-100 p-3">
-          <p className="text-xs text-gray-400">Facility Core v1.0</p>
+        <div className="border-t border-secondary bg-secondary/20 p-4 space-y-3">
+          <div className="flex items-start gap-3">
+            <HelpCircle className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
+            <div>
+              <p className="text-xs font-semibold text-accent">Need Help?</p>
+              <p className="text-xs text-muted-foreground mt-1">Press ⌘K to search and learn</p>
+            </div>
+          </div>
+          <div className="pt-2 border-t border-secondary/50">
+            <p className="text-xs text-muted-foreground">Facility Core v1.0</p>
+          </div>
         </div>
       </div>
     </>

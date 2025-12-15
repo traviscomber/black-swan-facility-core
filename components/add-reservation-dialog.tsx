@@ -60,7 +60,14 @@ export function AddReservationDialog({
         .from("beds")
         .select(`
           *,
-          room:rooms(room_number, room_type, rate_per_night, location)
+          room:rooms(
+            room_number, 
+            room_type, 
+            rate_per_night, 
+            location,
+            location_id,
+            location_ref:locations!rooms_location_id_fkey(id, name)
+          )
         `)
         .eq("is_available", true)
         .order("room_id"),
@@ -69,6 +76,15 @@ export function AddReservationDialog({
     ])
 
     console.log("[v0] Loaded available beds:", bedsResult.data?.length)
+    console.log(
+      "[v0] Beds with location data:",
+      bedsResult.data?.map((b) => ({
+        bed: b.bed_number,
+        room: b.room?.room_number,
+        location: b.room?.location,
+        location_ref: b.room?.location_ref,
+      })),
+    )
 
     setBeds(bedsResult.data || [])
     setGuests(guestsResult.data || [])
@@ -138,7 +154,16 @@ export function AddReservationDialog({
   }
 
   const filteredBeds =
-    selectedLocationFilter === "all" ? beds : beds.filter((bed) => bed.room?.location === selectedLocationFilter)
+    selectedLocationFilter === "all"
+      ? beds
+      : beds.filter((bed) => {
+          // Support both old text location field and new location_ref relationship
+          const locationName = bed.room?.location_ref?.name || bed.room?.location
+          return locationName === selectedLocationFilter
+        })
+
+  console.log("[v0] Selected location filter:", selectedLocationFilter)
+  console.log("[v0] Filtered beds count:", filteredBeds.length)
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

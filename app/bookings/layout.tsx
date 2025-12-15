@@ -3,13 +3,12 @@
 import type React from "react"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useRouter, usePathname } from "next/navigation"
-import { Calendar, Users, TrendingUp } from "lucide-react"
+import { Calendar, Users, TrendingUp, Home, MapPin } from "lucide-react"
 
 export default function BookingsLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter()
   const pathname = usePathname()
 
-  // Determine active tab based on pathname
   const activeTab =
     pathname === "/bookings"
       ? "calendar"
@@ -17,7 +16,11 @@ export default function BookingsLayout({ children }: { children: React.ReactNode
         ? "guests"
         : pathname?.includes("/reports")
           ? "reports"
-          : "calendar"
+          : pathname?.includes("/rooms")
+            ? "rooms"
+            : pathname?.includes("/locations")
+              ? "locations"
+              : "calendar"
 
   function handleTabChange(value: string) {
     switch (value) {
@@ -29,6 +32,12 @@ export default function BookingsLayout({ children }: { children: React.ReactNode
         break
       case "reports":
         router.push("/bookings/reports")
+        break
+      case "rooms":
+        router.push("/bookings/rooms")
+        break
+      case "locations":
+        router.push("/bookings/locations")
         break
     }
   }
@@ -42,6 +51,14 @@ export default function BookingsLayout({ children }: { children: React.ReactNode
             <TabsTrigger value="calendar" className="gap-2">
               <Calendar className="h-4 w-4" />
               Calendar
+            </TabsTrigger>
+            <TabsTrigger value="locations" className="gap-2">
+              <MapPin className="h-4 w-4" />
+              Locations
+            </TabsTrigger>
+            <TabsTrigger value="rooms" className="gap-2">
+              <Home className="h-4 w-4" />
+              Rooms
             </TabsTrigger>
             <TabsTrigger value="guests" className="gap-2">
               <Users className="h-4 w-4" />

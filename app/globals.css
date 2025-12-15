@@ -4,43 +4,88 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  /* Updated colors for minimalist blue accent design */
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.55 0.18 245);
-  --primary-foreground: oklch(1 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.145 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.55 0.18 245);
-  --accent-foreground: oklch(1 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --destructive-foreground: oklch(1 0 0);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.55 0.18 245);
-  --chart-1: oklch(0.646 0.222 41.116);
-  --chart-2: oklch(0.6 0.118 184.704);
-  --chart-3: oklch(0.398 0.07 227.392);
-  --chart-4: oklch(0.828 0.189 84.429);
-  --chart-5: oklch(0.769 0.188 70.08);
+  /* Applied Black Swan Facility brandbook colors - earthy neutral palette */
+  /* Primary backgrounds and neutrals */
+  --background: #ffffff;
+  --foreground: #3a3d42;
+  --card: #ffffff;
+  --card-foreground: #3a3d42;
+  --popover: #ffffff;
+  --popover-foreground: #3a3d42;
+
+  /* Primary color - Mud brown for main brand accent */
+  --primary: #726658;
+  --primary-foreground: #ffffff;
+
+  /* Secondary - Neutral Sand for subtle backgrounds */
+  --secondary: #e5e1db;
+  --secondary-foreground: #3a3d42;
+
+  /* Muted - Neutral Taupe for disabled/muted states */
+  --muted: #cac6c0;
+  --muted-foreground: #726658;
+
+  /* Accent - Neutral Darkshadow for emphasis */
+  --accent: #3a3d42;
+  --accent-foreground: #ffffff;
+
+  /* Destructive - Red for delete/danger actions */
+  --destructive: #dc2626;
+  --destructive-foreground: #ffffff;
+
+  /* Borders and inputs */
+  --border: #e5e1db;
+  --input: #f5f5f5;
+  --ring: #726658;
+
+  /* Chart colors using brandbook palette */
+  --chart-1: #726658;
+  --chart-2: #cac6c0;
+  --chart-3: #e5e1db;
+  --chart-4: #3a3d42;
+  --chart-5: #000000;
+
   --radius: 0.5rem;
-  --sidebar: oklch(1 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.55 0.18 245);
-  --sidebar-primary-foreground: oklch(1 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.145 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.55 0.18 245);
+
+  /* Added typography scale */
+  --font-size-xs: 0.75rem;
+  --font-size-sm: 0.875rem;
+  --font-size-base: 1rem;
+  --font-size-lg: 1.125rem;
+  --font-size-xl: 1.25rem;
+  --font-size-2xl: 1.5rem;
+  --font-size-3xl: 1.875rem;
+  --font-size-4xl: 2.25rem;
+
+  /* Added line height scale */
+  --line-height-tight: 1.2;
+  --line-height-snug: 1.375;
+  --line-height-normal: 1.5;
+  --line-height-relaxed: 1.625;
+  --line-height-loose: 2;
+
+  /* Added spacing scale */
+  --space-0: 0;
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-12: 3rem;
+  --space-16: 4rem;
+
+  /* Sidebar styling */
+  --sidebar: #ffffff;
+  --sidebar-foreground: #3a3d42;
+  --sidebar-primary: #726658;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #e5e1db;
+  --sidebar-accent-foreground: #3a3d42;
+  --sidebar-border: #e5e1db;
+  --sidebar-ring: #726658;
 }
 
-/* Replaced // comments with valid CSS comments */
 @theme inline {
   --font-sans: "Geist", "Geist Fallback";
   --font-mono: "Geist Mono", "Geist Mono Fallback";
@@ -80,4 +125,70 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
+}
+
+/* Added global typography styles */
+@layer base {
+  body {
+    @apply font-sans text-foreground bg-background antialiased;
+    font-size: var(--font-size-base);
+    line-height: var(--line-height-normal);
+    letter-spacing: -0.5px;
+  }
+
+  h1 {
+    @apply font-bold;
+    font-size: var(--font-size-4xl);
+    line-height: var(--line-height-tight);
+    letter-spacing: -1px;
+  }
+
+  h2 {
+    @apply font-bold;
+    font-size: var(--font-size-3xl);
+    line-height: var(--line-height-tight);
+    letter-spacing: -0.75px;
+  }
+
+  h3 {
+    @apply font-semibold;
+    font-size: var(--font-size-2xl);
+    line-height: var(--line-height-snug);
+    letter-spacing: -0.5px;
+  }
+
+  h4 {
+    @apply font-semibold;
+    font-size: var(--font-size-xl);
+    line-height: var(--line-height-snug);
+  }
+
+  h5 {
+    @apply font-semibold;
+    font-size: var(--font-size-lg);
+    line-height: var(--line-height-normal);
+  }
+
+  h6 {
+    @apply font-semibold;
+    font-size: var(--font-size-base);
+    line-height: var(--line-height-normal);
+  }
+
+  p {
+    line-height: var(--line-height-relaxed);
+  }
+
+  small {
+    font-size: var(--font-size-sm);
+  }
+
+  /* Added consistent spacing classes */
+  main {
+    @apply space-y-8;
+  }
+
+  section {
+    @apply space-y-6;
+  }
 }

@@ -8,8 +8,8 @@ const _geist = Geist({ subsets: ["latin"] })
 const _geistMono = Geist_Mono({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "Black Swan Facility Core",
-  description: "Facility management system for infrastructure, assets, and operations",
+  title: "Black Swan Facility - Luxury Property Management",
+  description: "Professional property management and booking system for luxury vacation rentals and facilities",
   generator: "v0.app",
   icons: {
     icon: [
