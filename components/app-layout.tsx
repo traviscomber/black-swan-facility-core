@@ -21,7 +21,7 @@ export function AppLayout({ children }: AppLayoutProps) {
           <button onClick={() => setSidebarOpen(true)} className="p-2 hover:bg-secondary rounded-lg transition-colors">
             <Menu className="h-5 w-5 text-accent" />
           </button>
-          <h1 className="text-sm font-bold text-accent">Black Swan Facility</h1>
+          <h1 className="text-sm font-bold text-accent">BFCS</h1>
           <div className="w-10" />
         </div>
 

@@ -27,10 +27,10 @@ export default function Dashboard() {
       <div className="bg-gradient-to-br from-secondary via-background to-background border-b border-secondary">
         <div className="mx-auto max-w-7xl px-4 py-12 md:py-16 md:px-6">
           <div className="space-y-4">
-            <h1 className="text-4xl md:text-5xl font-bold text-accent leading-tight">Prairy House 2</h1>
+            <h1 className="text-4xl md:text-5xl font-bold text-accent leading-tight">Blackswan Facility Core System</h1>
             <p className="text-lg text-muted-foreground max-w-2xl">
-              Professional property management and booking system for your luxury vacation rental. Manage reservations,
-              track availability, and optimize occupancy rates.
+              BFCS - Professional facility management and booking system for your luxury vacation rental. Manage
+              reservations, track availability, and optimize occupancy rates.
             </p>
             <div className="flex gap-3 pt-2">
               <Link href="/bookings">
@@ -201,9 +201,7 @@ export default function Dashboard() {
                 </div>
                 <span className="font-semibold text-accent">Set Up Your Property</span>
               </div>
-              <p className="text-muted-foreground text-xs ml-8">
-                Configure rooms, beds, and pricing for Prairy House 2
-              </p>
+              <p className="text-muted-foreground text-xs ml-8">Configure rooms, beds, and pricing for your facility</p>
             </div>
             <div className="space-y-2">
               <div className="flex items-center gap-2">

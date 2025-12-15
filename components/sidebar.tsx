@@ -79,8 +79,8 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
       >
         <div className="flex h-16 items-center justify-between border-b border-secondary bg-gradient-to-r from-primary/10 to-transparent px-4">
           <div>
-            <h1 className="text-base font-bold text-accent">Black Swan</h1>
-            <p className="text-xs text-muted-foreground">Facility Management</p>
+            <h1 className="text-base font-bold text-accent">BFCS</h1>
+            <p className="text-xs text-muted-foreground">Facility Core System</p>
           </div>
           <button onClick={onClose} className="md:hidden p-1 hover:bg-secondary rounded">
             <X className="h-5 w-5 text-muted-foreground" />
@@ -131,7 +131,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
             </div>
           </div>
           <div className="pt-2 border-t border-secondary/50">
-            <p className="text-xs text-muted-foreground">Facility Core v1.0</p>
+            <p className="text-xs text-muted-foreground">BFCS v1.0</p>
           </div>
         </div>
       </div>

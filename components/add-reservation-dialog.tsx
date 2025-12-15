@@ -18,6 +18,7 @@ interface AddReservationDialogProps {
   onSuccess: () => void
   preselectedBed?: string
   preselectedDate?: Date
+  preselectedLocation?: string
 }
 
 export function AddReservationDialog({
@@ -26,6 +27,7 @@ export function AddReservationDialog({
   onSuccess,
   preselectedBed,
   preselectedDate,
+  preselectedLocation,
 }: AddReservationDialogProps) {
   const [beds, setBeds] = useState<any[]>([])
   const [guests, setGuests] = useState<any[]>([])
@@ -75,25 +77,61 @@ export function AddReservationDialog({
       supabase.from("locations").select("*").eq("is_active", true).order("name"),
     ])
 
-    console.log("[v0] Loaded available beds:", bedsResult.data?.length)
-    console.log(
-      "[v0] Beds with location data:",
-      bedsResult.data?.map((b) => ({
-        bed: b.bed_number,
-        room: b.room?.room_number,
-        location: b.room?.location,
-        location_ref: b.room?.location_ref,
-      })),
-    )
-
     setBeds(bedsResult.data || [])
     setGuests(guestsResult.data || [])
     setLocations(locationsResult.data || [])
+
+    if (preselectedLocation && locationsResult.data) {
+      const matchingLocation = locationsResult.data.find((loc: any) => loc.name === preselectedLocation)
+      if (matchingLocation) {
+        setSelectedLocationFilter(preselectedLocation)
+      }
+    }
   }
+
+  useEffect(() => {
+    if (preselectedBed && preselectedLocation && beds.length > 0) {
+      // Find the bed and verify it matches the selected location
+      const matchingBed = beds.find((bed) => {
+        const bedLocationName = bed.room?.location_ref?.name || bed.room?.location
+        return bed.id === preselectedBed && bedLocationName === preselectedLocation
+      })
+
+      if (matchingBed) {
+        setFormData((prev) => ({
+          ...prev,
+          bed_id: preselectedBed,
+        }))
+      }
+    }
+  }, [beds, preselectedBed, preselectedLocation])
+
+  useEffect(() => {
+    if (preselectedDate) {
+      const checkInDate = new Date(preselectedDate)
+      const checkOutDate = new Date(checkInDate)
+      checkOutDate.setDate(checkOutDate.getDate() + 1) // Add 1 day for default single-night stay
+
+      setFormData((prev) => ({
+        ...prev,
+        check_in: format(preselectedDate, "yyyy-MM-dd"),
+        check_out: format(checkOutDate, "yyyy-MM-dd"),
+      }))
+    }
+  }, [preselectedDate])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setLoading(true)
+
+    const checkIn = new Date(formData.check_in)
+    const checkOut = new Date(formData.check_out)
+
+    if (checkOut <= checkIn) {
+      alert("Check-out date must be after check-in date")
+      setLoading(false)
+      return
+    }
 
     try {
       const { error } = await supabase.from("reservations").insert([
@@ -157,13 +195,9 @@ export function AddReservationDialog({
     selectedLocationFilter === "all"
       ? beds
       : beds.filter((bed) => {
-          // Support both old text location field and new location_ref relationship
           const locationName = bed.room?.location_ref?.name || bed.room?.location
           return locationName === selectedLocationFilter
         })
-
-  console.log("[v0] Selected location filter:", selectedLocationFilter)
-  console.log("[v0] Filtered beds count:", filteredBeds.length)
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -201,7 +235,8 @@ export function AddReservationDialog({
                   {filteredBeds.map((bed) => (
                     <SelectItem key={bed.id} value={bed.id}>
                       {bed.room?.room_number} - {bed.bed_number} ({bed.bed_type})
-                      {bed.room?.location && ` • ${bed.room.location}`} - ${bed.room?.rate_per_night || 0}/night
+                      {bed.room?.location_ref?.name && ` • ${bed.room.location_ref.name}`} - $
+                      {bed.room?.rate_per_night || 0}/night
                     </SelectItem>
                   ))}
                 </SelectContent>
