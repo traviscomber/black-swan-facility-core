@@ -5,8 +5,19 @@ import { createBrowserClient } from "@supabase/ssr"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { ChevronLeft, ChevronRight, AlertCircle, MapPin, Home, Plus } from "lucide-react"
-import { format, addDays, subDays, isWithinInterval, parseISO } from "date-fns"
+import {
+  format,
+  addDays,
+  subDays,
+  isWithinInterval,
+  parseISO,
+  startOfMonth,
+  endOfMonth,
+  getDaysInMonth,
+} from "date-fns"
 import { AddReservationDialog } from "@/components/add-reservation-dialog"
+import { EditReservationModal } from "@/components/edit-reservation-modal"
+import { GuestHistoryModal } from "@/components/guest-history-modal"
 
 interface Location {
   id: string
@@ -37,6 +48,8 @@ interface Reservation {
   guest_email?: string
   guest_phone?: string
   num_guests?: number
+  special_requests?: string
+  total_amount?: number
 }
 
 export default function BookingsPage() {
@@ -49,13 +62,22 @@ export default function BookingsPage() {
   const [newReservationOpen, setNewReservationOpen] = useState(false)
   const [selectedDateForReservation, setSelectedDateForReservation] = useState<Date | null>(null)
   const [selectedBedForReservation, setSelectedBedForReservation] = useState<Bed | null>(null)
+  const [editingReservation, setEditingReservation] = useState<any>(null)
+  const [selectedGuestForHistory, setSelectedGuestForHistory] = useState<any>(null)
+  const [guestHistoryData, setGuestHistoryData] = useState<any[]>([])
+  const [resizingReservation, setResizingReservation] = useState<any>(null)
+  const [resizeStart, setResizeStart] = useState<{ x: number; y: number; originalCheckOut: string } | null>(null)
 
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
   )
 
-  const CALENDAR_DAYS = 35
+  const firstDayOfMonth = startOfMonth(startDate)
+  const lastDayOfMonth = endOfMonth(startDate)
+  const daysInMonth = getDaysInMonth(startDate)
+  const dateArray = Array.from({ length: daysInMonth }, (_, i) => addDays(firstDayOfMonth, i))
+  const endDate = lastDayOfMonth
 
   useEffect(() => {
     fetchData()
@@ -130,8 +152,6 @@ export default function BookingsPage() {
 
   const selectedLocationBeds = beds.filter((bed) => bed.room.location_id === selectedLocationId)
   const selectedLocation = locations.find((loc) => loc.id === selectedLocationId)
-  const endDate = addDays(startDate, CALENDAR_DAYS)
-  const dateArray = Array.from({ length: CALENDAR_DAYS }, (_, i) => addDays(startDate, i))
   const roomGroups = Array.from(new Map(selectedLocationBeds.map((b) => [b.room.room_number, b.room])).values())
 
   const getStatusColor = (status: string) => {
@@ -194,6 +214,67 @@ export default function BookingsPage() {
     return ranges.find((r) => dateIndex >= r.startIndex && dateIndex <= r.endIndex)
   }
 
+  const loadGuestHistory = async (guestName: string) => {
+    try {
+      const { data, error } = await supabase
+        .from("reservations")
+        .select("*")
+        .eq("guest_name", guestName)
+        .order("check_in", { ascending: false })
+
+      if (error) throw error
+      setGuestHistoryData(data || [])
+      setSelectedGuestForHistory({ name: guestName, email: "", phone: "", vip_status: false })
+    } catch (error) {
+      console.error("Error loading guest history:", error)
+    }
+  }
+
+  const handleReservationClick = (reservation: Reservation) => {
+    const bed = beds.find((b) => b.id === reservation.bed_id)
+    setEditingReservation({
+      ...reservation,
+      bed_info: bed ? `${bed.room?.room_number} - ${bed.bed_number}` : "Unknown",
+    })
+  }
+
+  const updateReservation = async (data: any) => {
+    try {
+      const { error } = await supabase
+        .from("reservations")
+        .update({
+          guest_name: data.guest_name,
+          guest_email: data.guest_email,
+          guest_phone: data.guest_phone,
+          check_in: data.check_in,
+          check_out: data.check_out,
+          status: data.status,
+          special_requests: data.special_requests,
+          num_guests: data.num_guests,
+          total_amount: data.total_amount,
+        })
+        .eq("id", data.id)
+
+      if (error) throw error
+      fetchData()
+    } catch (error) {
+      console.error("Error updating reservation:", error)
+      alert("Error updating reservation")
+    }
+  }
+
+  const deleteReservation = async (reservationId: string) => {
+    try {
+      const { error } = await supabase.from("reservations").delete().eq("id", reservationId)
+
+      if (error) throw error
+      fetchData()
+    } catch (error) {
+      console.error("Error deleting reservation:", error)
+      alert("Error deleting reservation")
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -216,9 +297,9 @@ export default function BookingsPage() {
       </div>
 
       {/* Two-column layout: Locations sidebar + Calendar */}
-      <div className="flex min-h-[calc(100vh-200px)]">
+      <div className="flex">
         {/* Left Sidebar - Locations List */}
-        <div className="w-64 border-r border-secondary bg-secondary/30 overflow-y-auto">
+        <div className="w-64 border-r border-secondary bg-secondary/30 overflow-y-auto max-h-[calc(100vh-200px)]">
           <div className="p-4 space-y-2">
             <h2 className="text-sm font-semibold text-accent px-3 py-2">Properties</h2>
             {locations.map((location) => (
@@ -245,7 +326,7 @@ export default function BookingsPage() {
         </div>
 
         {/* Right Content - Calendar and Details */}
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 overflow-y-auto max-h-[calc(100vh-200px)]">
           <div className="max-w-7xl mx-auto px-4 py-6">
             {/* Property Overview Cards */}
             {selectedLocation && (
@@ -320,10 +401,10 @@ export default function BookingsPage() {
             {/* Calendar Controls */}
             <div className="flex items-center justify-between mb-6">
               <div>
-                <h2 className="text-lg font-semibold text-accent">
-                  {format(startDate, "MMMM yyyy")} - {format(endDate, "MMMM yyyy")}
-                </h2>
-                <p className="text-sm text-muted-foreground mt-1">Showing {CALENDAR_DAYS} days of availability</p>
+                <h2 className="text-lg font-semibold text-accent">{format(startDate, "MMMM yyyy")}</h2>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Showing {daysInMonth} days in {format(startDate, "MMMM")}
+                </p>
               </div>
               <div className="flex gap-2">
                 <Button
@@ -391,17 +472,17 @@ export default function BookingsPage() {
             {selectedLocationBeds.length > 0 ? (
               <Card className="border-0 shadow-lg">
                 <CardContent className="p-0">
-                  <div className="overflow-x-auto">
+                  <div className="overflow-x-auto bg-white rounded-b-lg">
                     <table className="w-full text-sm">
                       <thead>
                         <tr className="bg-secondary/50 border-b border-secondary">
-                          <th className="text-left font-semibold text-accent px-4 py-3 sticky left-0 bg-secondary/50 w-32">
+                          <th className="text-left font-semibold text-accent px-4 py-3 sticky left-0 bg-secondary/50 w-32 min-w-32 z-10">
                             Room
                           </th>
                           {dateArray.map((date) => (
                             <th
                               key={date.toISOString()}
-                              className="text-center font-semibold text-accent px-2 py-3 min-w-20 whitespace-nowrap"
+                              className="text-center font-semibold text-accent px-1.5 py-3 w-16 min-w-16 whitespace-nowrap"
                             >
                               <div className="text-xs font-semibold text-muted-foreground">{format(date, "EEE")}</div>
                               <div className="text-sm font-bold text-accent">{format(date, "d")}</div>
@@ -419,7 +500,7 @@ export default function BookingsPage() {
                               key={bed.id}
                               className="border-b border-secondary/30 hover:bg-secondary/20 transition-colors"
                             >
-                              <td className="text-left font-medium text-accent px-4 py-4 sticky left-0 bg-white">
+                              <td className="text-left font-medium text-accent px-4 py-4 sticky left-0 bg-white z-10 w-32 min-w-32">
                                 <div>{bed.room.room_number}</div>
                                 <div className="text-xs text-muted-foreground">{bed.bed_number}</div>
                               </td>
@@ -440,12 +521,12 @@ export default function BookingsPage() {
                                     <td
                                       key={`${bed.id}-${dateIndex}`}
                                       colSpan={colspan}
-                                      className="text-center px-2 py-4"
+                                      className="text-center px-1.5 py-4"
                                     >
                                       <div
-                                        className={`rounded p-3 text-xs font-semibold border ${getStatusColor(
+                                        className={`rounded p-2 text-xs font-semibold border ${getStatusColor(
                                           reservation.status,
-                                        )} cursor-pointer hover:shadow-md transition-shadow h-full flex items-center justify-center`}
+                                        )} cursor-pointer hover:shadow-md transition-shadow h-full flex items-center justify-center relative group`}
                                         title={`${reservation.guest_name} - ${format(
                                           parseISO(reservation.check_in),
                                           "MMM d",
@@ -453,18 +534,31 @@ export default function BookingsPage() {
                                           new Date(parseISO(reservation.check_out).getTime() - 86400000),
                                           "MMM d",
                                         )} - ${reservation.guest_email || ""}`}
+                                        onClick={() => handleReservationClick(reservation)}
+                                        onMouseDown={(e) => {
+                                          if (e.clientX > e.currentTarget.getBoundingClientRect().right - 10) {
+                                            setResizingReservation(reservation)
+                                            setResizeStart({
+                                              x: e.clientX,
+                                              y: e.clientY,
+                                              originalCheckOut: reservation.check_out,
+                                            })
+                                          }
+                                        }}
                                       >
                                         {reservation.guest_name}
                                         <div className="text-xs opacity-75 mt-1">
                                           ({colspan} {colspan === 1 ? "night" : "nights"})
                                         </div>
+                                        {/* Drag handle at the right edge */}
+                                        <div className="absolute right-0 top-0 bottom-0 w-1.5 bg-green-600 hover:bg-green-700 cursor-col-resize opacity-0 group-hover:opacity-100" />
                                       </div>
                                     </td>
                                   )
                                 }
 
                                 return (
-                                  <td key={`${bed.id}-${dateIndex}`} className="text-center px-2 py-4 min-w-20">
+                                  <td key={`${bed.id}-${dateIndex}`} className="text-center px-1.5 py-4 w-16 min-w-16">
                                     <button
                                       onClick={() => handleCalendarCellClick(bed, date)}
                                       className="flex items-center justify-center w-full h-full hover:bg-green-50 rounded transition-colors cursor-pointer group"
@@ -482,6 +576,10 @@ export default function BookingsPage() {
                         })}
                       </tbody>
                     </table>
+                  </div>
+
+                  <div className="bg-secondary/20 px-4 py-2 text-xs text-muted-foreground italic">
+                    ← Scroll right to see remaining days →
                   </div>
                 </CardContent>
               </Card>
@@ -533,6 +631,30 @@ export default function BookingsPage() {
           fetchData()
         }}
       />
+
+      {/* Edit Modal */}
+      {editingReservation && (
+        <EditReservationModal
+          open={!!editingReservation}
+          onOpenChange={(open) => !open && setEditingReservation(null)}
+          reservation={editingReservation}
+          onUpdate={updateReservation}
+          onDelete={() => {
+            deleteReservation(editingReservation.id)
+            setEditingReservation(null)
+          }}
+        />
+      )}
+
+      {/* Guest History Modal */}
+      {selectedGuestForHistory && (
+        <GuestHistoryModal
+          open={!!selectedGuestForHistory}
+          onOpenChange={(open) => !open && setSelectedGuestForHistory(null)}
+          guest={selectedGuestForHistory}
+          reservationHistory={guestHistoryData}
+        />
+      )}
     </div>
   )
 }

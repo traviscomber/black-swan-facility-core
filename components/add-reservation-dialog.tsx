@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-
+import { ReservationConfirmationModal } from "@/components/reservation-confirmation-modal"
 import { useState, useEffect } from "react"
 import { createBrowserClient } from "@/lib/supabase/client"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
@@ -34,6 +34,9 @@ export function AddReservationDialog({
   const [locations, setLocations] = useState<any[]>([])
   const [selectedLocationFilter, setSelectedLocationFilter] = useState<string>("all")
   const [loading, setLoading] = useState(false)
+  const [showConfirmation, setShowConfirmation] = useState(false)
+  const [confirmationData, setConfirmationData] = useState<any>(null)
+
   const [formData, setFormData] = useState({
     bed_id: preselectedBed || "",
     guest_id: "",
@@ -122,17 +125,32 @@ export function AddReservationDialog({
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    setLoading(true)
 
     const checkIn = new Date(formData.check_in)
     const checkOut = new Date(formData.check_out)
 
     if (checkOut <= checkIn) {
       alert("Check-out date must be after check-in date")
-      setLoading(false)
       return
     }
 
+    const selectedBed = beds.find((b) => b.id === formData.bed_id)
+    const nights = Math.ceil((checkOut.getTime() - checkIn.getTime()) / (1000 * 60 * 60 * 24))
+
+    setConfirmationData({
+      guestName: formData.guest_name,
+      bedInfo: `${selectedBed?.room?.room_number} - ${selectedBed?.bed_number}`,
+      checkIn: formData.check_in,
+      checkOut: formData.check_out,
+      nights,
+      totalAmount: formData.total_amount,
+      locationName: selectedLocationFilter === "all" ? "Multiple" : selectedLocationFilter,
+    })
+    setShowConfirmation(true)
+  }
+
+  async function confirmAndCreateReservation() {
+    setLoading(true)
     try {
       const { error } = await supabase.from("reservations").insert([
         {
@@ -151,6 +169,7 @@ export function AddReservationDialog({
 
       if (error) throw error
 
+      setShowConfirmation(false)
       onSuccess()
       onOpenChange(false)
       resetForm()
@@ -200,177 +219,187 @@ export function AddReservationDialog({
         })
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
-        <DialogHeader>
-          <DialogTitle>New Bed Reservation</DialogTitle>
-        </DialogHeader>
+    <>
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>New Bed Reservation</DialogTitle>
+          </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-2 sm:col-span-2">
-              <Label htmlFor="location_filter">Filter by Location</Label>
-              <Select value={selectedLocationFilter} onValueChange={setSelectedLocationFilter}>
-                <SelectTrigger>
-                  <SelectValue placeholder="All locations" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Locations</SelectItem>
-                  {locations.map((loc) => (
-                    <SelectItem key={loc.id} value={loc.name}>
-                      {loc.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2 sm:col-span-2">
+                <Label htmlFor="location_filter">Filter by Location</Label>
+                <Select value={selectedLocationFilter} onValueChange={setSelectedLocationFilter}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="All locations" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Locations</SelectItem>
+                    {locations.map((loc) => (
+                      <SelectItem key={loc.id} value={loc.name}>
+                        {loc.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
 
-            <div className="space-y-2 sm:col-span-2">
-              <Label htmlFor="bed_id">Bed</Label>
-              <Select value={formData.bed_id} onValueChange={(value) => setFormData({ ...formData, bed_id: value })}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select bed" />
-                </SelectTrigger>
-                <SelectContent>
-                  {filteredBeds.map((bed) => (
-                    <SelectItem key={bed.id} value={bed.id}>
-                      {bed.room?.room_number} - {bed.bed_number} ({bed.bed_type})
-                      {bed.room?.location_ref?.name && ` • ${bed.room.location_ref.name}`} - $
-                      {bed.room?.rate_per_night || 0}/night
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+              <div className="space-y-2 sm:col-span-2">
+                <Label htmlFor="bed_id">Bed</Label>
+                <Select value={formData.bed_id} onValueChange={(value) => setFormData({ ...formData, bed_id: value })}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select bed" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {filteredBeds.map((bed) => (
+                      <SelectItem key={bed.id} value={bed.id}>
+                        {bed.room?.room_number} - {bed.bed_number} ({bed.bed_type})
+                        {bed.room?.location_ref?.name && ` • ${bed.room.location_ref.name}`} - $
+                        {bed.room?.rate_per_night || 0}/night
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
 
-            <div className="space-y-2 sm:col-span-2">
-              <Label htmlFor="guest_id">Existing Guest (Optional)</Label>
-              <Select value={formData.guest_id} onValueChange={handleGuestSelect}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select guest" />
-                </SelectTrigger>
-                <SelectContent>
-                  {guests.map((guest) => (
-                    <SelectItem key={guest.id} value={guest.id}>
-                      {guest.name} - {guest.email}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <div className="space-y-2 sm:col-span-2">
+                <Label htmlFor="guest_id">Existing Guest (Optional)</Label>
+                <Select value={formData.guest_id} onValueChange={handleGuestSelect}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select guest" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {guests.map((guest) => (
+                      <SelectItem key={guest.id} value={guest.id}>
+                        {guest.name} - {guest.email}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="guest_name">Guest Name *</Label>
+                <Input
+                  id="guest_name"
+                  value={formData.guest_name}
+                  onChange={(e) => setFormData({ ...formData, guest_name: e.target.value })}
+                  required
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="guest_email">Email</Label>
+                <Input
+                  id="guest_email"
+                  type="email"
+                  value={formData.guest_email}
+                  onChange={(e) => setFormData({ ...formData, guest_email: e.target.value })}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="guest_phone">Phone</Label>
+                <Input
+                  id="guest_phone"
+                  value={formData.guest_phone}
+                  onChange={(e) => setFormData({ ...formData, guest_phone: e.target.value })}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="num_guests">Number of Guests</Label>
+                <Input
+                  id="num_guests"
+                  type="number"
+                  min="1"
+                  value={formData.num_guests}
+                  onChange={(e) => setFormData({ ...formData, num_guests: Number.parseInt(e.target.value) })}
+                  required
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="check_in">Check-in *</Label>
+                <Input
+                  id="check_in"
+                  type="date"
+                  value={formData.check_in}
+                  onChange={(e) => setFormData({ ...formData, check_in: e.target.value })}
+                  required
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="check_out">Check-out *</Label>
+                <Input
+                  id="check_out"
+                  type="date"
+                  value={formData.check_out}
+                  onChange={(e) => setFormData({ ...formData, check_out: e.target.value })}
+                  required
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="total_amount">Total Amount</Label>
+                <Input
+                  id="total_amount"
+                  type="number"
+                  step="0.01"
+                  value={formData.total_amount}
+                  onChange={(e) => setFormData({ ...formData, total_amount: Number.parseFloat(e.target.value) })}
+                  required
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="status">Status</Label>
+                <Select value={formData.status} onValueChange={(value) => setFormData({ ...formData, status: value })}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="confirmed">Confirmed</SelectItem>
+                    <SelectItem value="pending">Pending</SelectItem>
+                    <SelectItem value="checked_in">Checked In</SelectItem>
+                    <SelectItem value="checked_out">Checked Out</SelectItem>
+                    <SelectItem value="cancelled">Cancelled</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="guest_name">Guest Name *</Label>
-              <Input
-                id="guest_name"
-                value={formData.guest_name}
-                onChange={(e) => setFormData({ ...formData, guest_name: e.target.value })}
-                required
+              <Label htmlFor="special_requests">Special Requests</Label>
+              <Textarea
+                id="special_requests"
+                value={formData.special_requests || ""}
+                onChange={(e) => setFormData({ ...formData, special_requests: e.target.value })}
+                rows={3}
               />
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="guest_email">Email</Label>
-              <Input
-                id="guest_email"
-                type="email"
-                value={formData.guest_email}
-                onChange={(e) => setFormData({ ...formData, guest_email: e.target.value })}
-              />
-            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={loading}>
+                {loading ? "Creating..." : "Create Reservation"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
 
-            <div className="space-y-2">
-              <Label htmlFor="guest_phone">Phone</Label>
-              <Input
-                id="guest_phone"
-                value={formData.guest_phone}
-                onChange={(e) => setFormData({ ...formData, guest_phone: e.target.value })}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="num_guests">Number of Guests</Label>
-              <Input
-                id="num_guests"
-                type="number"
-                min="1"
-                value={formData.num_guests}
-                onChange={(e) => setFormData({ ...formData, num_guests: Number.parseInt(e.target.value) })}
-                required
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="check_in">Check-in *</Label>
-              <Input
-                id="check_in"
-                type="date"
-                value={formData.check_in}
-                onChange={(e) => setFormData({ ...formData, check_in: e.target.value })}
-                required
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="check_out">Check-out *</Label>
-              <Input
-                id="check_out"
-                type="date"
-                value={formData.check_out}
-                onChange={(e) => setFormData({ ...formData, check_out: e.target.value })}
-                required
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="total_amount">Total Amount</Label>
-              <Input
-                id="total_amount"
-                type="number"
-                step="0.01"
-                value={formData.total_amount}
-                onChange={(e) => setFormData({ ...formData, total_amount: Number.parseFloat(e.target.value) })}
-                required
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="status">Status</Label>
-              <Select value={formData.status} onValueChange={(value) => setFormData({ ...formData, status: value })}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="confirmed">Confirmed</SelectItem>
-                  <SelectItem value="pending">Pending</SelectItem>
-                  <SelectItem value="checked_in">Checked In</SelectItem>
-                  <SelectItem value="checked_out">Checked Out</SelectItem>
-                  <SelectItem value="cancelled">Cancelled</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="special_requests">Special Requests</Label>
-            <Textarea
-              id="special_requests"
-              value={formData.special_requests || ""}
-              onChange={(e) => setFormData({ ...formData, special_requests: e.target.value })}
-              rows={3}
-            />
-          </div>
-
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              Cancel
-            </Button>
-            <Button type="submit" disabled={loading}>
-              {loading ? "Creating..." : "Create Reservation"}
-            </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
+      <ReservationConfirmationModal
+        open={showConfirmation}
+        onOpenChange={setShowConfirmation}
+        onConfirm={confirmAndCreateReservation}
+        reservationDetails={confirmationData}
+        loading={loading}
+      />
+    </>
   )
 }
