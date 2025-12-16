@@ -18,6 +18,7 @@ import {
   ClipboardList,
   MessageSquare,
   HelpCircle,
+  Beef,
 } from "lucide-react"
 
 const navigationGroups = [
@@ -37,6 +38,7 @@ const navigationGroups = [
       { name: "Assets", href: "/assets", icon: Box, tip: "Inventory and equipment" },
       { name: "Maintenance", href: "/maintenance", icon: Wrench, tip: "Schedule and track repairs" },
       { name: "GIS Map", href: "/map", icon: Map, tip: "Property location and layout" },
+      { name: "Cattle", href: "/cattle", icon: Beef, tip: "Livestock and pasture management" },
     ],
   },
   {

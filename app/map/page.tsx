@@ -18,6 +18,7 @@ import {
   Plus,
   MapPin,
   Sparkles,
+  Cog as Cow,
 } from "lucide-react"
 import { InfrastructureDetailPanel } from "@/components/infrastructure-detail-panel"
 import { AddInfrastructureDialog } from "@/components/add-infrastructure-dialog"
@@ -52,9 +53,12 @@ export default function MapPage() {
     internet: true,
     water: true,
     electricity: true,
+    cattle: true,
   })
 
-  const [expandedCategory, setExpandedCategory] = useState<"internet" | "water" | "electricity" | null>("internet")
+  const [expandedCategory, setExpandedCategory] = useState<"internet" | "water" | "electricity" | "cattle" | null>(
+    "internet",
+  )
 
   const [locations, setLocations] = useState<Location[]>([])
   const [groupBy, setGroupBy] = useState<"category" | "location">("category")
@@ -295,6 +299,8 @@ export default function MapPage() {
         return "#06b6d4"
       case "electricity":
         return "#eab308"
+      case "cattle":
+        return "#fbbf24"
       default:
         return "#6b7280"
     }
@@ -308,6 +314,8 @@ export default function MapPage() {
         return Droplet
       case "electricity":
         return Zap
+      case "cattle":
+        return Cow
       default:
         return MapPin
     }
@@ -321,6 +329,8 @@ export default function MapPage() {
         return "💧"
       case "electricity":
         return "⚡"
+      case "cattle":
+        return "🐄"
       default:
         return "📍"
     }
@@ -339,9 +349,10 @@ export default function MapPage() {
   const filteredInfrastructure = infrastructure.filter((infra) => filters[infra.category])
 
   const infraByCategory = {
-    internet: filteredInfrastructure.filter((i) => i.category === "internet"),
-    water: filteredInfrastructure.filter((i) => i.category === "water"),
-    electricity: filteredInfrastructure.filter((i) => i.category === "electricity"),
+    internet: filteredInfrastructure.filter((item) => item.category === "internet"),
+    water: filteredInfrastructure.filter((item) => item.category === "water"),
+    electricity: filteredInfrastructure.filter((item) => item.category === "electricity"),
+    cattle: filteredInfrastructure.filter((item) => item.category === "cattle"),
   }
 
   const infraByLocation = locations.reduce(
@@ -460,7 +471,7 @@ export default function MapPage() {
       <div className="flex flex-col h-full w-full">
         <PageHeader
           title="GIS Infrastructure Map"
-          description="Internet, Water, and Electrical systems"
+          description="Internet, Water, Electricity, and Cattle systems"
           actions={
             <div className="flex gap-2">
               <Button onClick={() => setAddDialogOpen(true)}>
@@ -645,6 +656,46 @@ export default function MapPage() {
                       <span className="text-sm text-gray-700">Electricity ({infraByCategory.electricity.length})</span>
                     </div>
                   </label>
+
+                  <label className="flex items-center gap-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={filters.cattle}
+                      onChange={(e) => setFilters({ ...filters, cattle: e.target.checked })}
+                      className="h-4 w-4 rounded border-gray-300 text-amber-600 focus:ring-amber-500"
+                    />
+                    <div className="flex items-center gap-2 flex-1">
+                      <Cow className="h-4 w-4 text-amber-600" />
+                      <button
+                        onClick={() => setExpandedCategory(expandedCategory === "cattle" ? null : "cattle")}
+                        className="text-sm text-gray-700 hover:text-gray-900 flex-1 text-left flex items-center justify-between"
+                      >
+                        <span>Cattle ({infraByCategory.cattle.length})</span>
+                        <ChevronRight
+                          className={`h-4 w-4 transition-transform ${expandedCategory === "cattle" ? "rotate-90" : ""}`}
+                        />
+                      </button>
+                    </div>
+                  </label>
+
+                  {expandedCategory === "cattle" && filters.cattle && (
+                    <div className="ml-8 space-y-2 max-h-64 overflow-y-auto border-l border-amber-200 pl-3">
+                      {infraByCategory.cattle.length === 0 ? (
+                        <p className="text-xs text-gray-500 italic">No Cattle points</p>
+                      ) : (
+                        infraByCategory.cattle.map((item) => (
+                          <button
+                            key={item.id}
+                            onClick={() => handleInfraClick(item)}
+                            className="block w-full text-left p-2 rounded hover:bg-amber-50 transition-colors text-xs text-gray-600 hover:text-gray-900"
+                          >
+                            <div className="font-medium text-gray-800">{item.name}</div>
+                            <div className="text-xs text-gray-500">{item.description}</div>
+                          </button>
+                        ))
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
 
