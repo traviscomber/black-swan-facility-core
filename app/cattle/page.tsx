@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { createBrowserClient } from "@/lib/supabase/client"
-import { Plus } from "lucide-react"
+import { Plus, Brain } from "lucide-react"
 import { useEffect, useState } from "react"
 import Link from "next/link"
 
@@ -255,15 +255,48 @@ export default function CattlePage() {
           </div>
         )}
 
-        <div className="mt-8 p-6 bg-gradient-to-r from-blue-50 to-purple-50 border border-blue-200 rounded-lg">
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="font-semibold text-lg text-blue-900">Business Plan Dashboard</h3>
-              <p className="text-sm text-blue-700 mt-1">View detailed financial projections and investment analysis</p>
+        {/* Expert Agent and Business Planning Section */}
+        <div className="mt-8 space-y-4">
+          {/* Expert Agent Card */}
+          <div className="p-6 bg-gradient-to-r from-purple-50 to-blue-50 border border-purple-200 rounded-lg hover:shadow-lg transition-shadow">
+            <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+              <div className="flex-1">
+                <div className="flex items-center gap-2 mb-2">
+                  <Brain className="h-5 w-5 text-purple-600" />
+                  <h3 className="font-semibold text-lg text-purple-900">Cattle Management Expert AI</h3>
+                </div>
+                <p className="text-sm text-purple-700">
+                  Ask your AI advisor about profitability analysis, cost optimization, breeding strategies, and
+                  operational recommendations based on your business plan.
+                </p>
+              </div>
+              <Link href="/cattle/expert-agent" className="inline-block relative z-10 flex-shrink-0">
+                <Button className="bg-purple-600 hover:bg-purple-700 gap-2">
+                  <Brain className="h-4 w-4" />
+                  Expert Chat
+                </Button>
+              </Link>
             </div>
-            <Link href="/cattle/business-plan" className="inline-block relative z-10">
-              <Button className="bg-blue-600 hover:bg-blue-700">View Business Plan</Button>
-            </Link>
+          </div>
+
+          {/* Business Planning Card */}
+          <div className="p-6 bg-gradient-to-r from-blue-50 to-cyan-50 border border-blue-200 rounded-lg">
+            <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+              <div>
+                <h3 className="font-semibold text-lg text-blue-900">Business Planning</h3>
+                <p className="text-sm text-blue-700 mt-1">View detailed financial projections and pricing structure</p>
+              </div>
+              <div className="flex gap-3 flex-shrink-0">
+                <Link href="/cattle/pricing-costs" className="inline-block relative z-10">
+                  <Button variant="outline" className="border-blue-300 text-blue-700 hover:bg-blue-50 bg-transparent">
+                    Pricing & Costs
+                  </Button>
+                </Link>
+                <Link href="/cattle/business-plan" className="inline-block relative z-10">
+                  <Button className="bg-blue-600 hover:bg-blue-700">Business Plan</Button>
+                </Link>
+              </div>
+            </div>
           </div>
         </div>
       </div>
