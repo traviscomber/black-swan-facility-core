@@ -89,7 +89,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
             <img src="/blackswan-logo.png" alt="Blackswan Logo" className="h-16 w-16 object-contain flex-shrink-0" />
             <div>
               <h1 className="text-lg font-bold text-accent">BFCS</h1>
-              <p className="text-xs text-muted-foreground">Facility Core System</p>
+              <p className="text-xs text-gray-600">Facility Core System</p>
             </div>
           </Link>
           <button onClick={onClose} className="md:hidden p-1 hover:bg-secondary rounded">
@@ -101,8 +101,8 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
           {navigationGroups.map((group) => (
             <div key={group.label} className="space-y-2">
               <div className="px-3">
-                <h3 className="text-xs font-bold uppercase tracking-wider text-primary">{group.label}</h3>
-                <p className="text-xs text-muted-foreground mt-1">{group.description}</p>
+                <h3 className="text-xs font-bold uppercase tracking-wider text-gray-700">{group.label}</h3>
+                <p className="text-xs text-gray-500 mt-1">{group.description}</p>
               </div>
               <div className="space-y-1">
                 {group.items.map((item) => {
@@ -117,7 +117,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                         "group flex items-center gap-3 rounded px-3 py-2.5 text-sm font-medium transition-all duration-200",
                         isActive
                           ? "bg-primary text-white shadow-md"
-                          : "text-accent hover:bg-secondary/40 hover:text-accent",
+                          : "text-gray-700 hover:bg-gray-100 hover:text-gray-900",
                       )}
                       title={item.tip}
                     >
@@ -136,12 +136,12 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
           <div className="flex items-start gap-3">
             <HelpCircle className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
             <div>
-              <p className="text-xs font-semibold text-accent">Need Help?</p>
-              <p className="text-xs text-muted-foreground mt-1">Press ⌘K to search and learn</p>
+              <p className="text-xs font-semibold text-gray-800">Need Help?</p>
+              <p className="text-xs text-gray-600 mt-1">Press ⌘K to search and learn</p>
             </div>
           </div>
           <div className="pt-2 border-t border-secondary/50">
-            <p className="text-xs text-muted-foreground">BFCS v1.0</p>
+            <p className="text-xs text-gray-500">BFCS v1.0</p>
           </div>
         </div>
       </div>
