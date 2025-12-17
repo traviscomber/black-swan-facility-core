@@ -4,31 +4,32 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  /* Applied Black Swan Facility brandbook colors - earthy neutral palette */
-  --background: #ffffff;
-  --foreground: #3a3d42;
-  --card: #ffffff;
-  --card-foreground: #3a3d42;
-  --popover: #ffffff;
-  --popover-foreground: #3a3d42;
+  /* Dark theme - Black Swan Facility with WCAG AA+ contrast */
+  --background: #0f0f0f;
+  --foreground: #ffffff;
+  --card: #1a1a1a;
+  --card-foreground: #ffffff;
+  --popover: #1a1a1a;
+  --popover-foreground: #ffffff;
   --primary: #726658;
   --primary-foreground: #ffffff;
-  --secondary: #e5e1db;
-  --secondary-foreground: #3a3d42;
-  --muted: #cac6c0;
-  --muted-foreground: #726658;
-  --accent: #3a3d42;
+  --secondary: #2d2d2d;
+  --secondary-foreground: #ffffff;
+  /* increased muted-foreground from #d0d0d0 to #e8e8e8 for better readability */
+  --muted: #404040;
+  --muted-foreground: #e8e8e8;
+  --accent: #726658;
   --accent-foreground: #ffffff;
-  --destructive: #dc2626;
+  --destructive: #ff4444;
   --destructive-foreground: #ffffff;
-  --border: #e5e1db;
-  --input: #f5f5f5;
+  --border: #2d2d2d;
+  --input: #2d2d2d;
   --ring: #726658;
   --chart-1: #726658;
-  --chart-2: #cac6c0;
-  --chart-3: #e5e1db;
-  --chart-4: #3a3d42;
-  --chart-5: #000000;
+  --chart-2: #4a4a4a;
+  --chart-3: #6b6b6b;
+  --chart-4: #3a3a3a;
+  --chart-5: #5a5a5a;
   --radius: 0.5rem;
   --font-size-xs: 0.75rem;
   --font-size-sm: 0.875rem;
@@ -52,53 +53,52 @@
   --space-8: 2rem;
   --space-12: 3rem;
   --space-16: 4rem;
-  --sidebar: #ffffff;
-  --sidebar-foreground: #3a3d42;
+  --sidebar: #0f0f0f;
+  --sidebar-foreground: #ffffff;
   --sidebar-primary: #726658;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #e5e1db;
-  --sidebar-accent-foreground: #3a3d42;
-  --sidebar-border: #e5e1db;
+  --sidebar-accent: #2d2d2d;
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: #2d2d2d;
   --sidebar-ring: #726658;
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.145 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.145 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.985 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.396 0.141 25.723);
-  --destructive-foreground: oklch(0.637 0.237 25.331);
-  --border: oklch(0.269 0 0);
-  --input: oklch(0.269 0 0);
-  --ring: oklch(0.439 0 0);
-  --chart-1: oklch(0.488 0.243 264.376);
-  --chart-2: oklch(0.696 0.17 162.48);
-  --chart-3: oklch(0.769 0.188 70.08);
-  --chart-4: oklch(0.627 0.265 303.9);
-  --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(0.269 0 0);
-  --sidebar-ring: oklch(0.439 0 0);
+  --background: #0f0f0f;
+  --foreground: #ffffff;
+  --card: #1a1a1a;
+  --card-foreground: #ffffff;
+  --popover: #1a1a1a;
+  --popover-foreground: #ffffff;
+  --primary: #726658;
+  --primary-foreground: #ffffff;
+  --secondary: #2d2d2d;
+  --secondary-foreground: #ffffff;
+  --muted: #404040;
+  --muted-foreground: #e8e8e8;
+  --accent: #726658;
+  --accent-foreground: #ffffff;
+  --destructive: #ff4444;
+  --destructive-foreground: #ffffff;
+  --border: #2d2d2d;
+  --input: #2d2d2d;
+  --ring: #726658;
+  --chart-1: #726658;
+  --chart-2: #4a4a4a;
+  --chart-3: #6b6b6b;
+  --chart-4: #3a3a3a;
+  --chart-5: #5a5a5a;
+  --sidebar: #0f0f0f;
+  --sidebar-foreground: #ffffff;
+  --sidebar-primary: #726658;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #2d2d2d;
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: #2d2d2d;
+  --sidebar-ring: #726658;
 }
 
 @theme inline {
-  /* optional: --font-sans, --font-serif, --font-mono if they are applied in the layout.tsx */
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -145,56 +145,60 @@
     @apply bg-background text-foreground;
   }
   body {
-    @apply font-sans text-foreground bg-background antialiased;
+    @apply font-sans text-white bg-background antialiased;
     font-size: var(--font-size-base);
     line-height: var(--line-height-normal);
     letter-spacing: -0.5px;
   }
 
   h1 {
-    @apply font-bold;
+    @apply font-bold text-white;
     font-size: var(--font-size-4xl);
     line-height: var(--line-height-tight);
     letter-spacing: -1px;
   }
 
   h2 {
-    @apply font-bold;
+    @apply font-bold text-white;
     font-size: var(--font-size-3xl);
     line-height: var(--line-height-tight);
     letter-spacing: -0.75px;
   }
 
   h3 {
-    @apply font-semibold;
+    @apply font-semibold text-white;
     font-size: var(--font-size-2xl);
     line-height: var(--line-height-snug);
     letter-spacing: -0.5px;
   }
 
   h4 {
-    @apply font-semibold;
+    @apply font-semibold text-white;
     font-size: var(--font-size-xl);
     line-height: var(--line-height-snug);
   }
 
   h5 {
-    @apply font-semibold;
+    @apply font-semibold text-white;
     font-size: var(--font-size-lg);
     line-height: var(--line-height-normal);
   }
 
   h6 {
-    @apply font-semibold;
+    @apply font-semibold text-white;
     font-size: var(--font-size-base);
     line-height: var(--line-height-normal);
   }
 
   p {
+    @apply text-white;
     line-height: var(--line-height-relaxed);
   }
 
-  small {
+  /* bright white text for muted and secondary elements */
+  small,
+  .text-muted {
+    @apply text-white;
     font-size: var(--font-size-sm);
   }
 

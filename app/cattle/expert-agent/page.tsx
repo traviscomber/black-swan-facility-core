@@ -1,42 +1,26 @@
 "use client"
 
 import type React from "react"
-
-import { useState } from "react"
-
 import { useChat } from "@ai-sdk/react"
-import { DefaultChatTransport, lastAssistantMessageIsCompleteWithToolCalls, type UIMessage } from "ai"
+import { DefaultChatTransport } from "ai"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Loader2, Send, MessageSquare } from "lucide-react"
-import { useEffect, useRef } from "react"
+import { useRef, useEffect, useState } from "react"
 import { AppLayout } from "@/components/app-layout"
 
-interface CattleMessage extends UIMessage {
-  parts?: any[]
-}
-
 export default function CattleExpertAgent() {
-  const {
-    messages,
-    sendMessage,
-    status,
-    input: chatInput = "",
-    setInput: setChatInput,
-  } = useChat<CattleMessage>({
-    transport: new DefaultChatTransport({ api: "/api/cattle/expert-agent" }),
-    sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithToolCalls,
+  const [inputValue, setInputValue] = useState("")
+
+  const { messages, sendMessage, status } = useChat({
+    transport: new DefaultChatTransport({
+      api: "/api/cattle/expert-agent",
+    }),
   })
 
-  const [input, setInput] = useState(chatInput)
-
   const scrollRef = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    setInput(chatInput)
-  }, [chatInput])
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -46,11 +30,18 @@ export default function CattleExpertAgent() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    if (input && typeof input === "string" && input.trim()) {
-      sendMessage({ text: input })
-      setInput("")
-      setChatInput("")
+    if (inputValue && inputValue.trim()) {
+      sendMessage({ text: inputValue })
+      setInputValue("")
     }
+  }
+
+  const handleQuickQuestion = (question: string) => {
+    setInputValue(question)
+    setTimeout(() => {
+      sendMessage({ text: question })
+      setInputValue("")
+    }, 100)
   }
 
   return (
@@ -96,14 +87,11 @@ export default function CattleExpertAgent() {
                           : "bg-secondary text-secondary-foreground"
                       }`}
                     >
-                      {message.parts && message.parts.length > 0 ? (
-                        message.parts.map((part, i) => (
-                          <div key={i}>
-                            {part.type === "text" && <p className="text-sm">{part.text}</p>}
-                            {part.type === "tool-call" && (
-                              <div className="text-xs opacity-75 italic">Using tool: {part.toolName}</div>
-                            )}
-                          </div>
+                      {message.parts ? (
+                        message.parts.map((part: any, partIndex: number) => (
+                          <p key={partIndex} className="text-sm">
+                            {typeof part === "string" ? part : part.text}
+                          </p>
                         ))
                       ) : (
                         <p className="text-sm">{message.content}</p>
@@ -126,16 +114,13 @@ export default function CattleExpertAgent() {
           <div className="border-t border-secondary p-4">
             <form onSubmit={handleSubmit} className="flex gap-2">
               <Input
-                value={input || ""}
-                onChange={(e) => {
-                  setInput(e.target.value)
-                  setChatInput(e.target.value)
-                }}
+                value={inputValue}
+                onChange={(e) => setInputValue(e.target.value)}
                 placeholder="Ask about your cattle business..."
                 disabled={status === "in_progress"}
                 className="flex-1"
               />
-              <Button type="submit" disabled={status === "in_progress" || !input?.trim?.()} size="icon">
+              <Button type="submit" disabled={status === "in_progress" || !inputValue.trim()} size="icon">
                 {status === "in_progress" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
               </Button>
             </form>
@@ -149,45 +134,25 @@ export default function CattleExpertAgent() {
           <CardContent>
             <div className="grid gap-2 md:grid-cols-2">
               <button
-                onClick={() => {
-                  const question = "What is my current profitability margin for Crianza?"
-                  setInput(question)
-                  setChatInput(question)
-                  setTimeout(() => sendMessage({ text: question }), 100)
-                }}
+                onClick={() => handleQuickQuestion("What is my current profitability margin for Crianza?")}
                 className="text-left text-sm p-3 rounded border border-secondary hover:bg-secondary/50 transition-colors"
               >
                 → Current profitability margins
               </button>
               <button
-                onClick={() => {
-                  const question = "When will I break even on my investment?"
-                  setInput(question)
-                  setChatInput(question)
-                  setTimeout(() => sendMessage({ text: question }), 100)
-                }}
+                onClick={() => handleQuickQuestion("When will I break even on my investment?")}
                 className="text-left text-sm p-3 rounded border border-secondary hover:bg-secondary/50 transition-colors"
               >
                 → Break-even timeline
               </button>
               <button
-                onClick={() => {
-                  const question = "How can I optimize my Engorda costs?"
-                  setInput(question)
-                  setChatInput(question)
-                  setTimeout(() => sendMessage({ text: question }), 100)
-                }}
+                onClick={() => handleQuickQuestion("How can I optimize my Engorda costs?")}
                 className="text-left text-sm p-3 rounded border border-secondary hover:bg-secondary/50 transition-colors"
               >
                 → Cost optimization strategies
               </button>
               <button
-                onClick={() => {
-                  const question = "What breeding recommendations do you have?"
-                  setInput(question)
-                  setChatInput(question)
-                  setTimeout(() => sendMessage({ text: question }), 100)
-                }}
+                onClick={() => handleQuickQuestion("What breeding recommendations do you have?")}
                 className="text-left text-sm p-3 rounded border border-secondary hover:bg-secondary/50 transition-colors"
               >
                 → Breeding recommendations
