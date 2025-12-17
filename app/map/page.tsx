@@ -18,7 +18,11 @@ import {
   Plus,
   MapPin,
   Sparkles,
-  Cog as Cow,
+  Flower as Shower,
+  Circle,
+  Package,
+  Wrench,
+  CastleIcon as CattleIcon,
 } from "lucide-react"
 import { InfrastructureDetailPanel } from "@/components/infrastructure-detail-panel"
 import { AddInfrastructureDialog } from "@/components/add-infrastructure-dialog"
@@ -80,8 +84,8 @@ const UTILITY_SPECS = {
     requirements: ["Router Maps", "Bandwidth", "Coverage Issues", "Monitoring", "Improvement Plan"],
   },
   drinking_water: {
-    icon: "🚰",
-    color: "#0ea5e9",
+    icon: "🔵",
+    color: "#06d6d4",
     label: "Drinking Water",
     requirements: ["Treatment", "Storage", "Maintenance"],
   },
@@ -93,7 +97,7 @@ const UTILITY_SPECS = {
   },
   gasoline: {
     icon: "⛽",
-    color: "#fbbf24",
+    color: "#dc2626",
     label: "Gasoline Storage",
     requirements: ["Tank Location", "Capacity", "Safety Protocol"],
   },
@@ -116,32 +120,32 @@ const UTILITY_SPECS = {
     requirements: ["Collection Points", "Schedule", "Disposal"],
   },
   sewage: {
-    icon: "🚰",
+    icon: "🚿",
     color: "#8b5cf6",
     label: "Sewage System",
     requirements: ["Treatment Plant", "Pipes", "Maintenance"],
   },
   storage: {
     icon: "📦",
-    color: "#64748b",
+    color: "#10b981",
     label: "Storage Systems",
     requirements: ["Inventory", "Capacity", "Organization"],
   },
   equipment_inventory: {
     icon: "🔧",
-    color: "#4b5563",
+    color: "#6366f1",
     label: "Equipment",
     requirements: ["List", "Condition", "Location"],
   },
   food_storage: {
     icon: "🥫",
-    color: "#d97706",
+    color: "#fbbf24",
     label: "Food Storage",
     requirements: ["Capacity", "Temperature", "Inventory"],
   },
   security: {
     icon: "🛡️",
-    color: "#dc2626",
+    color: "#ec4899",
     label: "Security Systems",
     requirements: ["Cameras", "Access Control", "Monitoring"],
   },
@@ -149,7 +153,13 @@ const UTILITY_SPECS = {
     icon: "🚒",
     color: "#991b1b",
     label: "Fire Safety",
-    requirements: ["Extinguishers", "Sprinklers", "Exits"],
+    requirements: ["Extinguishers", "Alarms", "Emergency Exits"],
+  },
+  cattle: {
+    icon: "🐄",
+    color: "#8b7355",
+    label: "Cattle",
+    requirements: ["Pasture", "Facilities", "Inventory"],
   },
 }
 
@@ -177,12 +187,38 @@ export default function MapPage() {
     water: true,
     electricity: true,
     cattle: true,
-    phase1: true,
-    phase2: false,
+    drinking_water: true,
+    heating: true,
+    gasoline: true,
+    gas: true,
+    wood_supply: true,
+    trash: true,
+    sewage: true,
+    storage: true,
+    equipment_inventory: true,
+    food_storage: true,
+    security: true,
+    fire_safety: true,
   })
 
   const [expandedCategory, setExpandedCategory] = useState<
-    "internet" | "water" | "electricity" | "cattle" | "phase1" | "phase2" | null
+    | "internet"
+    | "water"
+    | "electricity"
+    | "cattle"
+    | "drinking_water"
+    | "heating"
+    | "gasoline"
+    | "gas"
+    | "wood_supply"
+    | "trash"
+    | "sewage"
+    | "storage"
+    | "equipment_inventory"
+    | "food_storage"
+    | "security"
+    | "fire_safety"
+    | null
   >("phase1")
 
   const [locations, setLocations] = useState<Location[]>([])
@@ -459,7 +495,7 @@ export default function MapPage() {
       case "electricity":
         return "#eab308"
       case "cattle":
-        return "#fbbf24"
+        return "#8b7355"
       default:
         return "#6b7280"
     }
@@ -474,7 +510,31 @@ export default function MapPage() {
       case "electricity":
         return Zap
       case "cattle":
-        return Cow
+        return CattleIcon
+      case "drinking_water":
+        return Circle
+      case "heating":
+        return Zap
+      case "gasoline":
+        return Zap
+      case "gas":
+        return Zap
+      case "wood_supply":
+        return Zap
+      case "trash":
+        return Zap
+      case "sewage":
+        return Shower
+      case "storage":
+        return Package
+      case "equipment_inventory":
+        return Wrench
+      case "food_storage":
+        return Zap
+      case "security":
+        return Zap
+      case "fire_safety":
+        return Zap
       default:
         return MapPin
     }
@@ -490,6 +550,30 @@ export default function MapPage() {
         return "⚡"
       case "cattle":
         return "🐄"
+      case "drinking_water":
+        return "🔵"
+      case "heating":
+        return "🔥"
+      case "gasoline":
+        return "⛽"
+      case "gas":
+        return "💨"
+      case "wood_supply":
+        return "🪵"
+      case "trash":
+        return "🗑️"
+      case "sewage":
+        return "🚿"
+      case "storage":
+        return "📦"
+      case "equipment_inventory":
+        return "🔧"
+      case "food_storage":
+        return "🥫"
+      case "security":
+        return "🛡️"
+      case "fire_safety":
+        return "🚒"
       default:
         return "📍"
     }
@@ -511,10 +595,24 @@ export default function MapPage() {
   })
 
   const infraByCategory = {
+    // Phase 1 utilities
     internet: filteredInfrastructure.filter((item) => item.category === "internet"),
     water: filteredInfrastructure.filter((item) => item.category === "water"),
     electricity: filteredInfrastructure.filter((item) => item.category === "electricity"),
     cattle: filteredInfrastructure.filter((item) => item.category === "cattle"),
+    // Phase 2 utilities
+    drinking_water: filteredInfrastructure.filter((item) => item.category === "drinking_water"),
+    heating: filteredInfrastructure.filter((item) => item.category === "heating"),
+    gasoline: filteredInfrastructure.filter((item) => item.category === "gasoline"),
+    gas: filteredInfrastructure.filter((item) => item.category === "gas"),
+    wood_supply: filteredInfrastructure.filter((item) => item.category === "wood_supply"),
+    trash: filteredInfrastructure.filter((item) => item.category === "trash"),
+    sewage: filteredInfrastructure.filter((item) => item.category === "sewage"),
+    storage: filteredInfrastructure.filter((item) => item.category === "storage"),
+    equipment_inventory: filteredInfrastructure.filter((item) => item.category === "equipment_inventory"),
+    food_storage: filteredInfrastructure.filter((item) => item.category === "food_storage"),
+    security: filteredInfrastructure.filter((item) => item.category === "security"),
+    fire_safety: filteredInfrastructure.filter((item) => item.category === "fire_safety"),
   }
 
   const infraByLocation = locations.reduce(
@@ -629,7 +727,7 @@ export default function MapPage() {
   }
 
   const getPhaseLabel = (phase: string) => {
-    if (phase === "phase1") return "Phase 1 (Due: 13 Dec 2025)"
+    if (phase === "phase1") return "Phase 1"
     if (phase === "phase2") return "Phase 2 (After Phase 1)"
     return "General"
   }
@@ -653,7 +751,7 @@ export default function MapPage() {
       <div className="flex flex-col h-full w-full">
         <PageHeader
           title="GIS Infrastructure Map"
-          description="Internet, Water, Electricity, and Cattle systems"
+          description="Internet, Water, Electricity, Cattle, Drinking Water, Heating, Gasoline, Gas, Wood Supply, Trash, Sewage, Storage, Equipment Inventory, Food Storage, Security, Fire Safety"
           actions={
             <div className="flex gap-2">
               <Button onClick={() => setAddDialogOpen(true)}>
@@ -773,111 +871,165 @@ export default function MapPage() {
                   <h3 className="font-semibold text-sm md:text-base text-black">Infrastructure Layers</h3>
                 </div>
                 <div className="space-y-3">
-                  <label className="flex items-center gap-3 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={filters.internet}
-                      onChange={(e) => setFilters({ ...filters, internet: e.target.checked })}
-                      className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                    />
-                    <div className="flex items-center gap-2 flex-1">
-                      <Wifi className="h-4 w-4 text-blue-600" />
-                      <button
-                        onClick={() => setExpandedCategory(expandedCategory === "internet" ? null : "internet")}
-                        className="text-sm text-gray-700 hover:text-gray-900 flex-1 text-left flex items-center justify-between"
-                      >
-                        <span>Internet ({infraByCategory.internet.length})</span>
-                        <ChevronRight
-                          className={`h-4 w-4 transition-transform ${expandedCategory === "internet" ? "rotate-90" : ""}`}
-                        />
-                      </button>
-                    </div>
-                  </label>
+                  {/* Phase 1 Utilities */}
+                  <div className="mb-4">
+                    <p className="text-xs font-semibold text-red-600 mb-2">PHASE 1</p>
+                    {/* Internet */}
+                    <label className="flex items-center gap-3 cursor-pointer mb-2">
+                      <input
+                        type="checkbox"
+                        checked={filters.internet}
+                        onChange={(e) => setFilters({ ...filters, internet: e.target.checked })}
+                        className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                      />
+                      <div className="flex items-center gap-2 flex-1">
+                        <span className="text-lg">{getUtilityIcon("internet")}</span>
+                        <button
+                          onClick={() => setExpandedCategory(expandedCategory === "internet" ? null : "internet")}
+                          className="text-sm text-gray-700 hover:text-gray-900 flex-1 text-left flex items-center justify-between"
+                        >
+                          <span>Internet ({infraByCategory.internet.length})</span>
+                          <ChevronRight
+                            className={`h-4 w-4 transition-transform ${expandedCategory === "internet" ? "rotate-90" : ""}`}
+                          />
+                        </button>
+                      </div>
+                    </label>
 
-                  {expandedCategory === "internet" && filters.internet && (
-                    <div className="ml-8 space-y-2 max-h-64 overflow-y-auto border-l border-blue-200 pl-3">
-                      {infraByCategory.internet.length === 0 ? (
-                        <p className="text-xs text-gray-500 italic">No Internet points</p>
-                      ) : (
-                        infraByCategory.internet.map((item) => (
-                          <button
-                            key={item.id}
-                            onClick={() => handleInfraClick(item)}
-                            className="block w-full text-left p-2 rounded hover:bg-blue-50 transition-colors text-xs text-gray-600 hover:text-gray-900"
-                          >
-                            <div className="font-medium text-gray-800">{item.name}</div>
-                            <div className="text-xs text-gray-500">{item.type || "Infrastructure"}</div>
-                          </button>
-                        ))
-                      )}
-                    </div>
-                  )}
+                    {expandedCategory === "internet" && filters.internet && (
+                      <div className="ml-8 space-y-2 max-h-64 overflow-y-auto border-l border-blue-200 pl-3 mb-2">
+                        {infraByCategory.internet.length === 0 ? (
+                          <p className="text-xs text-gray-500 italic">No Internet points</p>
+                        ) : (
+                          infraByCategory.internet.map((item) => (
+                            <button
+                              key={item.id}
+                              onClick={() => handleInfraClick(item)}
+                              className="block w-full text-left p-2 rounded hover:bg-blue-50 transition-colors text-xs text-gray-600 hover:text-gray-900"
+                            >
+                              <div className="font-medium text-gray-800">{item.name}</div>
+                              <div className="text-xs text-gray-500">{item.type || "Infrastructure"}</div>
+                            </button>
+                          ))
+                        )}
+                      </div>
+                    )}
 
-                  <label className="flex items-center gap-3 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={filters.water}
-                      onChange={(e) => setFilters({ ...filters, water: e.target.checked })}
-                      className="h-4 w-4 rounded border-gray-300 text-cyan-600 focus:ring-cyan-500"
-                    />
-                    <div className="flex items-center gap-2">
-                      <Droplet className="h-4 w-4 text-cyan-600" />
-                      <span className="text-sm text-gray-700">Water ({infraByCategory.water.length})</span>
-                    </div>
-                  </label>
+                    {/* Water */}
+                    <label className="flex items-center gap-3 cursor-pointer mb-2">
+                      <input
+                        type="checkbox"
+                        checked={filters.water}
+                        onChange={(e) => setFilters({ ...filters, water: e.target.checked })}
+                        className="h-4 w-4 rounded border-gray-300 text-cyan-600 focus:ring-cyan-500"
+                      />
+                      <div className="flex items-center gap-2">
+                        <span className="text-lg">{getUtilityIcon("water")}</span>
+                        <span className="text-sm text-gray-700">Water ({infraByCategory.water.length})</span>
+                      </div>
+                    </label>
 
-                  <label className="flex items-center gap-3 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={filters.electricity}
-                      onChange={(e) => setFilters({ ...filters, electricity: e.target.checked })}
-                      className="h-4 w-4 rounded border-gray-300 text-yellow-600 focus:ring-yellow-500"
-                    />
-                    <div className="flex items-center gap-2">
-                      <Zap className="h-4 w-4 text-yellow-600" />
-                      <span className="text-sm text-gray-700">Electricity ({infraByCategory.electricity.length})</span>
-                    </div>
-                  </label>
+                    {/* Electricity */}
+                    <label className="flex items-center gap-3 cursor-pointer mb-2">
+                      <input
+                        type="checkbox"
+                        checked={filters.electricity}
+                        onChange={(e) => setFilters({ ...filters, electricity: e.target.checked })}
+                        className="h-4 w-4 rounded border-gray-300 text-yellow-600 focus:ring-yellow-500"
+                      />
+                      <div className="flex items-center gap-2">
+                        <span className="text-lg">{getUtilityIcon("electricity")}</span>
+                        <span className="text-sm text-gray-700">
+                          Electricity ({infraByCategory.electricity.length})
+                        </span>
+                      </div>
+                    </label>
+                  </div>
 
-                  <label className="flex items-center gap-3 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={filters.cattle}
-                      onChange={(e) => setFilters({ ...filters, cattle: e.target.checked })}
-                      className="h-4 w-4 rounded border-gray-300 text-amber-600 focus:ring-amber-500"
-                    />
-                    <div className="flex items-center gap-2 flex-1">
-                      <Cow className="h-4 w-4 text-amber-600" />
-                      <button
-                        onClick={() => setExpandedCategory(expandedCategory === "cattle" ? null : "cattle")}
-                        className="text-sm text-gray-700 hover:text-gray-900 flex-1 text-left flex items-center justify-between"
-                      >
-                        <span>Cattle ({infraByCategory.cattle.length})</span>
-                        <ChevronRight
-                          className={`h-4 w-4 transition-transform ${expandedCategory === "cattle" ? "rotate-90" : ""}`}
-                        />
-                      </button>
-                    </div>
-                  </label>
+                  {/* Phase 2 Utilities */}
+                  <div className="border-t border-gray-200 pt-4">
+                    <p className="text-xs font-semibold text-blue-600 mb-2">PHASE 2 UTILITIES</p>
+                    {/* Cattle */}
+                    <label className="flex items-center gap-3 cursor-pointer mb-2">
+                      <input
+                        type="checkbox"
+                        checked={filters.cattle}
+                        onChange={(e) => setFilters({ ...filters, cattle: e.target.checked })}
+                        className="h-4 w-4 rounded border-gray-300 text-amber-600 focus:ring-amber-500"
+                      />
+                      <div className="flex items-center gap-2 flex-1">
+                        <span className="text-lg">{getUtilityIcon("cattle")}</span>
+                        <button
+                          onClick={() => setExpandedCategory(expandedCategory === "cattle" ? null : "cattle")}
+                          className="text-sm text-gray-700 hover:text-gray-900 flex-1 text-left flex items-center justify-between"
+                        >
+                          <span>Cattle ({infraByCategory.cattle.length})</span>
+                          <ChevronRight
+                            className={`h-4 w-4 transition-transform ${expandedCategory === "cattle" ? "rotate-90" : ""}`}
+                          />
+                        </button>
+                      </div>
+                    </label>
 
-                  {expandedCategory === "cattle" && filters.cattle && (
-                    <div className="ml-8 space-y-2 max-h-64 overflow-y-auto border-l border-amber-200 pl-3">
-                      {infraByCategory.cattle.length === 0 ? (
-                        <p className="text-xs text-gray-500 italic">No Cattle points</p>
-                      ) : (
-                        infraByCategory.cattle.map((item) => (
-                          <button
-                            key={item.id}
-                            onClick={() => handleInfraClick(item)}
-                            className="block w-full text-left p-2 rounded hover:bg-amber-50 transition-colors text-xs text-gray-600 hover:text-gray-900"
-                          >
-                            <div className="font-medium text-gray-800">{item.name}</div>
-                            <div className="text-xs text-gray-500">{item.description}</div>
-                          </button>
-                        ))
-                      )}
-                    </div>
-                  )}
+                    {expandedCategory === "cattle" && filters.cattle && (
+                      <div className="ml-8 space-y-2 max-h-64 overflow-y-auto border-l border-amber-200 pl-3 mb-2">
+                        {infraByCategory.cattle.length === 0 ? (
+                          <p className="text-xs text-gray-500 italic">No Cattle points</p>
+                        ) : (
+                          infraByCategory.cattle.map((item) => (
+                            <button
+                              key={item.id}
+                              onClick={() => handleInfraClick(item)}
+                              className="block w-full text-left p-2 rounded hover:bg-amber-50 transition-colors text-xs text-gray-600 hover:text-gray-900"
+                            >
+                              <div className="font-medium text-gray-800">{item.name}</div>
+                              <div className="text-xs text-gray-500">{item.description}</div>
+                            </button>
+                          ))
+                        )}
+                      </div>
+                    )}
+
+                    {/* Other Phase 2 Utilities */}
+                    {[
+                      "drinking_water",
+                      "heating",
+                      "gasoline",
+                      "gas",
+                      "wood_supply",
+                      "trash",
+                      "sewage",
+                      "storage",
+                      "equipment_inventory",
+                      "food_storage",
+                      "security",
+                      "fire_safety",
+                    ].map((category) => {
+                      const spec = UTILITY_SPECS[category as keyof typeof UTILITY_SPECS]
+                      if (!spec) return null
+                      const items = infraByCategory[category as keyof typeof infraByCategory] || []
+
+                      return (
+                        <label key={category} className="flex items-center gap-3 cursor-pointer mb-2">
+                          <input
+                            type="checkbox"
+                            checked={filters[category as keyof typeof filters]}
+                            onChange={(e) => setFilters({ ...filters, [category]: e.target.checked })}
+                            className="h-4 w-4 rounded border-gray-300 focus:ring-offset-0"
+                            style={{
+                              accentColor: spec.color,
+                            }}
+                          />
+                          <div className="flex items-center gap-2">
+                            <span className="text-lg">{spec.icon}</span>
+                            <span className="text-sm text-gray-700">
+                              {spec.label} ({items.length})
+                            </span>
+                          </div>
+                        </label>
+                      )
+                    })}
+                  </div>
                 </div>
               </div>
 
