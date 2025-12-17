@@ -19,6 +19,7 @@ import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Edit } from "lucide-react"
 import { createBrowserClient } from "@/lib/supabase/client"
+import { EmployeePhotoUpload } from "@/components/employee-photo-upload"
 import type { Employee } from "@/lib/types"
 
 interface EditEmployeeDialogProps {
@@ -35,6 +36,7 @@ export function EditEmployeeDialog({ employee }: EditEmployeeDialogProps) {
     phone: employee.phone || "",
     role: employee.role || "",
     is_active: employee.is_active ?? true,
+    photo_url: employee.photo_url || "",
   })
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -52,6 +54,7 @@ export function EditEmployeeDialog({ employee }: EditEmployeeDialogProps) {
           phone: formData.phone || null,
           role: formData.role || null,
           is_active: formData.is_active,
+          photo_url: formData.photo_url || null,
         })
         .eq("id", employee.id)
 
@@ -82,6 +85,12 @@ export function EditEmployeeDialog({ employee }: EditEmployeeDialogProps) {
             <DialogDescription>Update employee information</DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
+            <EmployeePhotoUpload
+              employeeId={employee.id}
+              employeeName={employee.name}
+              currentPhotoUrl={formData.photo_url}
+              onPhotoUploaded={(url) => setFormData({ ...formData, photo_url: url })}
+            />
             <div className="grid gap-2">
               <Label htmlFor="edit-name">Name *</Label>
               <Input

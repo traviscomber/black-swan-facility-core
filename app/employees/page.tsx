@@ -25,11 +25,20 @@ export default async function EmployeesPage() {
           {employees && employees.length > 0 ? (
             employees.map((employee: Employee) => (
               <Card key={employee.id}>
+                {employee.photo_url && (
+                  <div className="w-full h-32 bg-slate-200 overflow-hidden">
+                    <img
+                      src={employee.photo_url || "/placeholder.svg"}
+                      alt={employee.name}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                )}
                 <CardHeader>
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
-                      <h3 className="font-semibold text-black">{employee.name}</h3>
-                      {employee.role && <p className="mt-1 text-sm text-gray-600">{employee.role}</p>}
+                      <h3 className="font-semibold text-white">{employee.name}</h3>
+                      {employee.role && <p className="mt-1 text-sm text-gray-300">{employee.role}</p>}
                     </div>
                     <Badge
                       variant="outline"
@@ -45,22 +54,22 @@ export default async function EmployeesPage() {
                 </CardHeader>
                 <CardContent className="space-y-3">
                   {employee.email && (
-                    <div className="flex items-center gap-2 text-sm text-gray-600">
+                    <div className="flex items-center gap-2 text-sm text-gray-300">
                       <Mail className="h-4 w-4" />
-                      <a href={`mailto:${employee.email}`} className="hover:text-blue-600 truncate">
+                      <a href={`mailto:${employee.email}`} className="hover:text-blue-400 truncate">
                         {employee.email}
                       </a>
                     </div>
                   )}
                   {employee.phone && (
-                    <div className="flex items-center gap-2 text-sm text-gray-600">
+                    <div className="flex items-center gap-2 text-sm text-gray-300">
                       <Phone className="h-4 w-4" />
-                      <a href={`tel:${employee.phone}`} className="hover:text-blue-600">
+                      <a href={`tel:${employee.phone}`} className="hover:text-blue-400">
                         {employee.phone}
                       </a>
                     </div>
                   )}
-                  <div className="flex items-center gap-2 pt-2 border-t">
+                  <div className="flex items-center gap-2 pt-2 border-t border-gray-700">
                     <EditEmployeeDialog employee={employee} />
                     <DeleteEmployeeButton employeeId={employee.id} employeeName={employee.name} />
                   </div>
