@@ -209,4 +209,18 @@
   section {
     @apply space-y-6;
   }
+
+  /* add Leaflet map styling to prevent black background issues */
+  .leaflet-container {
+    @apply bg-white;
+    z-index: 0;
+  }
+
+  .leaflet-tile-container {
+    @apply bg-white;
+  }
+
+  .leaflet-control-attribution {
+    @apply text-xs;
+  }
 }

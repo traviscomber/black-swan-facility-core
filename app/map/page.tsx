@@ -32,9 +32,132 @@ interface Location {
   description: string | null
 }
 
+interface Utility {
+  id: string
+  category: string
+  status: string
+  notes: string | null
+  phase: "phase1" | "phase2" | "general"
+  last_update: string
+}
+
+// Phase 1 utilities (Deadline: 13 December 2025)
+const PHASE_1_UTILITIES = ["electricity", "water", "internet"]
+
+// Phase 2 utilities
+const PHASE_2_UTILITIES = [
+  "drinking_water",
+  "heating",
+  "gasoline",
+  "gas",
+  "wood_supply",
+  "trash",
+  "sewage",
+  "storage",
+  "equipment_inventory",
+  "food_storage",
+  "security",
+  "fire_safety",
+]
+
+const UTILITY_SPECS = {
+  electricity: {
+    icon: "⚡",
+    color: "#eab308",
+    label: "Electricity",
+    requirements: ["SLD", "Maps", "Equipment Specs", "Monitoring", "Issues", "Improvement Plan"],
+  },
+  water: {
+    icon: "💧",
+    color: "#06b6d4",
+    label: "Water Supply",
+    requirements: ["Sources & Pumps", "Distribution Maps", "Maintenance Logs", "Issues", "Improvement Plan"],
+  },
+  internet: {
+    icon: "📡",
+    color: "#3b82f6",
+    label: "Internet & Network",
+    requirements: ["Router Maps", "Bandwidth", "Coverage Issues", "Monitoring", "Improvement Plan"],
+  },
+  drinking_water: {
+    icon: "🚰",
+    color: "#0ea5e9",
+    label: "Drinking Water",
+    requirements: ["Treatment", "Storage", "Maintenance"],
+  },
+  heating: {
+    icon: "🔥",
+    color: "#f97316",
+    label: "Heating System",
+    requirements: ["Equipment", "Distribution", "Maintenance"],
+  },
+  gasoline: {
+    icon: "⛽",
+    color: "#fbbf24",
+    label: "Gasoline Storage",
+    requirements: ["Tank Location", "Capacity", "Safety Protocol"],
+  },
+  gas: {
+    icon: "💨",
+    color: "#60a5fa",
+    label: "Gas System",
+    requirements: ["Piping", "Valves", "Maintenance"],
+  },
+  wood_supply: {
+    icon: "🪵",
+    color: "#92400e",
+    label: "Wood Supply",
+    requirements: ["Storage Location", "Quantity", "Maintenance"],
+  },
+  trash: {
+    icon: "🗑️",
+    color: "#6b7280",
+    label: "Trash Management",
+    requirements: ["Collection Points", "Schedule", "Disposal"],
+  },
+  sewage: {
+    icon: "🚰",
+    color: "#8b5cf6",
+    label: "Sewage System",
+    requirements: ["Treatment Plant", "Pipes", "Maintenance"],
+  },
+  storage: {
+    icon: "📦",
+    color: "#64748b",
+    label: "Storage Systems",
+    requirements: ["Inventory", "Capacity", "Organization"],
+  },
+  equipment_inventory: {
+    icon: "🔧",
+    color: "#4b5563",
+    label: "Equipment",
+    requirements: ["List", "Condition", "Location"],
+  },
+  food_storage: {
+    icon: "🥫",
+    color: "#d97706",
+    label: "Food Storage",
+    requirements: ["Capacity", "Temperature", "Inventory"],
+  },
+  security: {
+    icon: "🛡️",
+    color: "#dc2626",
+    label: "Security Systems",
+    requirements: ["Cameras", "Access Control", "Monitoring"],
+  },
+  fire_safety: {
+    icon: "🚒",
+    color: "#991b1b",
+    label: "Fire Safety",
+    requirements: ["Extinguishers", "Sprinklers", "Exits"],
+  },
+}
+
 export default function MapPage() {
   const [infrastructure, setInfrastructure] = useState<InfrastructurePlan[]>([])
+  const [utilities, setUtilities] = useState<Utility[]>([])
   const [selectedInfra, setSelectedInfra] = useState<InfrastructurePlan | null>(null)
+  const [selectedUtility, setSelectedUtility] = useState<Utility | null>(null)
   const [detailPanelOpen, setDetailPanelOpen] = useState(false)
   const [addDialogOpen, setAddDialogOpen] = useState(false)
   const [editDialogOpen, setEditDialogOpen] = useState(false)
@@ -54,14 +177,16 @@ export default function MapPage() {
     water: true,
     electricity: true,
     cattle: true,
+    phase1: true,
+    phase2: false,
   })
 
-  const [expandedCategory, setExpandedCategory] = useState<"internet" | "water" | "electricity" | "cattle" | null>(
-    "internet",
-  )
+  const [expandedCategory, setExpandedCategory] = useState<
+    "internet" | "water" | "electricity" | "cattle" | "phase1" | "phase2" | null
+  >("phase1")
 
   const [locations, setLocations] = useState<Location[]>([])
-  const [groupBy, setGroupBy] = useState<"category" | "location">("category")
+  const [groupBy, setGroupBy] = useState<"category" | "location" | "phase">("phase")
 
   const [leafletLoaded, setLeafletLoaded] = useState(false)
 
@@ -86,12 +211,18 @@ export default function MapPage() {
 
     const script = document.createElement("script")
     script.src = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-    script.onload = () => setLeafletLoaded(true)
+    script.onload = () => {
+      setTimeout(() => setLeafletLoaded(true), 100)
+    }
+    script.onerror = () => {
+      console.error("[v0] Failed to load Leaflet library")
+    }
     document.head.appendChild(script)
 
     return () => {
-      document.head.removeChild(link)
-      document.head.removeChild(script)
+      // Clean up only if they haven't been removed already
+      if (document.head.contains(link)) document.head.removeChild(link)
+      if (document.head.contains(script)) document.head.removeChild(script)
     }
   }, [])
 
@@ -101,15 +232,19 @@ export default function MapPage() {
     const L = (window as any).L
 
     if (mapContainerRef.current) {
+      mapContainerRef.current.style.height = "100%"
+      mapContainerRef.current.style.width = "100%"
+
       const map = L.map(mapContainerRef.current, {
         preferCanvas: true,
         zoomControl: true,
         attributionControl: true,
       }).setView([-39.8255, -73.2215], 14)
 
-      const initialTileLayer = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-        attribution: "© OpenStreetMap contributors",
-        maxZoom: 19,
+      const initialTileLayer = L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
+        attribution:
+          '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+        maxZoom: 20,
         subdomains: ["a", "b", "c"],
       })
       initialTileLayer.addTo(map)
@@ -125,8 +260,11 @@ export default function MapPage() {
       setTimeout(() => {
         map.invalidateSize()
       }, 100)
+      setTimeout(() => {
+        map.invalidateSize()
+      }, 300)
 
-      console.log("[v0] Map initialized successfully")
+      console.log("[v0] Map initialized successfully with Carto tiles")
     }
   }, [leafletLoaded])
 
@@ -178,8 +316,9 @@ export default function MapPage() {
           break
         case "street":
         default:
-          tileUrl = "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          attribution = "© OpenStreetMap contributors"
+          tileUrl = "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
+          attribution =
+            '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
           subdomains = ["a", "b", "c"]
       }
 
@@ -195,47 +334,6 @@ export default function MapPage() {
       map.invalidateSize()
     }, 100)
   }, [mapType, leafletLoaded, terrainOpacity])
-
-  useEffect(() => {
-    if (!mapRef.current || !leafletLoaded || typeof window === "undefined") return
-
-    const L = (window as any).L
-    const map = mapRef.current
-
-    if (mapType === "hybrid") {
-      if (overlayLayerRef.current) {
-        console.log("[v0] Updating terrain opacity to:", terrainOpacity)
-        overlayLayerRef.current.setOpacity(terrainOpacity)
-      }
-    }
-  }, [terrainOpacity, leafletLoaded, mapType])
-
-  useEffect(() => {
-    if (mapRef.current) {
-      setTimeout(() => {
-        mapRef.current.invalidateSize()
-      }, 300)
-    }
-  }, [detailPanelOpen, sidebarOpen, addDialogOpen, editDialogOpen])
-
-  useEffect(() => {
-    const fetchInfrastructure = async () => {
-      const supabase = createClient()
-      const { data } = await supabase.from("infrastructure_plans").select("*").order("name")
-
-      if (data) setInfrastructure(data)
-    }
-
-    const fetchLocations = async () => {
-      const supabase = createClient()
-      const { data } = await supabase.from("locations").select("*").eq("is_active", true).order("name")
-
-      if (data) setLocations(data)
-    }
-
-    fetchInfrastructure()
-    fetchLocations()
-  }, [])
 
   useEffect(() => {
     if (!mapRef.current || !leafletLoaded || typeof window === "undefined") return
@@ -289,6 +387,67 @@ export default function MapPage() {
       map.fitBounds(bounds, { padding: [50, 50] })
     }
   }, [infrastructure, filters, leafletLoaded])
+
+  useEffect(() => {
+    const fetchUtilities = async () => {
+      const supabase = createClient()
+      const { data, error } = await supabase.from("utilities").select("*")
+
+      if (error) {
+        console.error("Error fetching utilities:", error)
+        return
+      }
+
+      const enrichedUtilities = (data || []).map((util: any) => ({
+        ...util,
+        phase: PHASE_1_UTILITIES.includes(util.category)
+          ? "phase1"
+          : PHASE_2_UTILITIES.includes(util.category)
+            ? "phase2"
+            : "general",
+      }))
+
+      setUtilities(enrichedUtilities)
+    }
+
+    fetchUtilities()
+  }, [])
+
+  useEffect(() => {
+    const loadInfrastructure = async () => {
+      const supabase = createClient()
+      const { data, error } = await supabase.from("infrastructure_plans").select("*").order("name")
+
+      if (error) {
+        console.error("[v0] Error loading infrastructure:", error)
+        return
+      }
+
+      if (data) {
+        setInfrastructure(data)
+      }
+    }
+
+    loadInfrastructure()
+  }, [])
+
+  useEffect(() => {
+    const loadLocations = async () => {
+      const supabase = createClient()
+      const { data, error } = await supabase.from("locations").select("*").order("name")
+
+      if (error) {
+        console.error("[v0] Error loading locations:", error)
+        return
+      }
+
+      if (data) {
+        setLocations(data)
+      }
+    }
+
+    loadLocations()
+  }, [])
 
   const getInfraColor = (infra: InfrastructurePlan) => {
     if (infra.priority === "critical") return "#dc2626"
@@ -346,7 +505,10 @@ export default function MapPage() {
     }
   }
 
-  const filteredInfrastructure = infrastructure.filter((infra) => filters[infra.category])
+  const filteredInfrastructure = infrastructure.filter((infra) => {
+    // Check if the category is in the filters object and is enabled
+    return filters[infra.category as keyof typeof filters]
+  })
 
   const infraByCategory = {
     internet: filteredInfrastructure.filter((item) => item.category === "internet"),
@@ -464,6 +626,26 @@ export default function MapPage() {
       setBlinkingMarkerId(infrastructure.id)
       setTimeout(() => setBlinkingMarkerId(null), 1800)
     }
+  }
+
+  const getPhaseLabel = (phase: string) => {
+    if (phase === "phase1") return "Phase 1 (Due: 13 Dec 2025)"
+    if (phase === "phase2") return "Phase 2 (After Phase 1)"
+    return "General"
+  }
+
+  const getUtilityColor = (category: string) => {
+    return (UTILITY_SPECS as any)[category]?.color || "#6b7280"
+  }
+
+  const getUtilityIcon = (category: string) => {
+    return (UTILITY_SPECS as any)[category]?.icon || "📍"
+  }
+
+  const getPhaseColor = (category: string) => {
+    if (PHASE_1_UTILITIES.includes(category)) return "#dc2626" // Red for Phase 1
+    if (PHASE_2_UTILITIES.includes(category)) return "#3b82f6" // Blue for Phase 2
+    return "#6b7280"
   }
 
   return (
