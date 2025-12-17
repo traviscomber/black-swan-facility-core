@@ -42,6 +42,11 @@ const navigationGroups = [
     ],
   },
   {
+    label: "Supply Chain",
+    description: "Procurement, suppliers, and acquisitions",
+    items: [{ name: "Procurement", href: "/procurement", icon: Box, tip: "Purchase orders and acquisitions" }],
+  },
+  {
     label: "People & Operations",
     description: "Staff management and guest services",
     items: [

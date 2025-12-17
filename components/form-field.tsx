@@ -15,7 +15,7 @@ export function FormField({ label, error, hint, required, children, className }:
   return (
     <div className={cn("flex flex-col gap-2", className)}>
       {label && (
-        <label className="text-sm font-semibold text-accent">
+        <label className="text-sm font-semibold text-white">
           {label}
           {required && <span className="text-destructive ml-1">*</span>}
         </label>
