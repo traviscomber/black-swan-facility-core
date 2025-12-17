@@ -4,7 +4,7 @@ import type React from "react"
 
 import { useState, useEffect } from "react"
 import { useParams, useRouter } from "next/navigation"
-import { createBrowserClient } from "@supabase/ssr"
+import { createBrowserClient } from "@/lib/supabase/client"
 import { Plus, Pencil, Trash2, ArrowLeft, Home, BedIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -69,10 +69,7 @@ export default function LocationDetailPage() {
   const [isEditBedDialogOpen, setIsEditBedDialogOpen] = useState(false)
   const [editingBed, setEditingBed] = useState<Bed | null>(null)
 
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-  )
+  const supabase = createBrowserClient()
 
   useEffect(() => {
     loadLocationData()

@@ -5,7 +5,7 @@ import { PageHeader } from "@/components/page-header"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { useEffect, useState } from "react"
-import { createBrowserClient } from "@supabase/ssr"
+import { createBrowserClient } from "@/lib/supabase/client"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 
 interface PricingData {
@@ -36,10 +36,7 @@ export default function PricingCostsPage() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const supabase = createBrowserClient(
-          process.env.NEXT_PUBLIC_SUPABASE_URL!,
-          process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-        )
+        const supabase = createBrowserClient()
 
         const [pricingRes, costsRes] = await Promise.all([
           supabase.from("cattle_pricing").select("*").eq("is_active", true),

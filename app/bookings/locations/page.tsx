@@ -3,10 +3,11 @@
 import type React from "react"
 import { useToast } from "@/components/ui/use-toast"
 import { useState, useEffect } from "react"
-import { createBrowserClient } from "@supabase/ssr"
+import { createBrowserClient } from "@/lib/supabase/client"
 import { Plus, Pencil, Trash2, MapPin, Eye } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import Link from "next/link"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import {
   Dialog,
@@ -18,7 +19,6 @@ import {
 } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import Link from "next/link"
 
 interface Location {
   id: string
@@ -38,10 +38,7 @@ export default function LocationsPage() {
   const [searchQuery, setSearchQuery] = useState("")
   const { toast } = useToast()
 
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-  )
+  const supabase = createBrowserClient()
 
   useEffect(() => {
     loadLocations()

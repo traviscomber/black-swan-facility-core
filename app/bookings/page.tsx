@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { createBrowserClient } from "@supabase/ssr"
+import { createBrowserClient } from "@/lib/supabase/client"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { ChevronLeft, ChevronRight, AlertCircle, MapPin, Home, Plus } from "lucide-react"
@@ -69,10 +69,7 @@ export default function BookingsPage() {
   const [resizingReservation, setResizingReservation] = useState<any>(null)
   const [resizeStart, setResizeStart] = useState<{ x: number; y: number; originalCheckOut: string } | null>(null)
 
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-  )
+  const supabase = createBrowserClient()
 
   const firstDayOfMonth = startOfMonth(startDate)
   const lastDayOfMonth = endOfMonth(startDate)

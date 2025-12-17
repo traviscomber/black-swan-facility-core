@@ -4,7 +4,7 @@ import type React from "react"
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import { createBrowserClient } from "@supabase/ssr"
+import { createBrowserClient } from "@/lib/supabase/client"
 import { AppLayout } from "@/components/app-layout"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -129,10 +129,7 @@ export default function PropertyManagementPage() {
     facility_type: "rental",
   })
 
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL || "",
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "",
-  )
+  const supabase = createBrowserClient()
 
   useEffect(() => {
     fetchLocations()

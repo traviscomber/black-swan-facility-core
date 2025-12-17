@@ -19,7 +19,7 @@ import {
 } from "recharts"
 import { TrendingUp, Download, Award } from "lucide-react"
 import { useEffect, useState } from "react"
-import { createBrowserClient } from "@supabase/ssr"
+import { createBrowserClient } from "@/lib/supabase/client"
 
 export default function CattleBusinessPlanPage() {
   const [data, setData] = useState<any>(null)
@@ -28,10 +28,7 @@ export default function CattleBusinessPlanPage() {
   useEffect(() => {
     const fetchBusinessPlanData = async () => {
       try {
-        const supabase = createBrowserClient(
-          process.env.NEXT_PUBLIC_SUPABASE_URL!,
-          process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-        )
+        const supabase = createBrowserClient()
 
         const { data: plans, error } = await supabase
           .from("cattle_business_plan")

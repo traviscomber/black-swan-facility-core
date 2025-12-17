@@ -1,5 +1,5 @@
-import { createBrowserClient } from "@supabase/ssr"
 import type { SupabaseClient } from "@supabase/supabase-js"
+import { createClient as createSupabaseClient } from "@supabase/supabase-js"
 
 declare global {
   var supabaseClientInstance: SupabaseClient | undefined
@@ -20,7 +20,7 @@ export function createClient() {
     )
   }
 
-  globalThis.supabaseClientInstance = createBrowserClient(supabaseUrl, supabaseAnonKey)
+  globalThis.supabaseClientInstance = createSupabaseClient(supabaseUrl, supabaseAnonKey)
   return globalThis.supabaseClientInstance
 }
 
