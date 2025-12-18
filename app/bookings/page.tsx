@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 import { createBrowserClient } from "@/lib/supabase/client"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { cn } from "@/lib/utils"
 import { ChevronLeft, ChevronRight, AlertCircle, MapPin, Home, Plus } from "lucide-react"
 import {
   format,
@@ -68,6 +69,7 @@ export default function BookingsPage() {
   const [guestHistoryData, setGuestHistoryData] = useState<any[]>([])
   const [resizingReservation, setResizingReservation] = useState<any>(null)
   const [resizeStart, setResizeStart] = useState<{ x: number; y: number; originalCheckOut: string } | null>(null)
+  const [showLocationsPicker, setShowLocationsPicker] = useState(false)
 
   const supabase = createBrowserClient()
 
@@ -300,9 +302,15 @@ export default function BookingsPage() {
       </div>
 
       {/* Two-column layout: Locations sidebar + Calendar */}
-      <div className="flex">
+      <div className="flex flex-col md:flex-row overflow-hidden">
         {/* Left Sidebar - Locations List */}
-        <div className="w-64 border-r border-secondary bg-secondary/30 overflow-y-auto max-h-[calc(100vh-200px)]">
+        <div
+          className={cn(
+            "absolute inset-0 z-40 md:static md:z-auto md:w-48 lg:w-64 border-r border-secondary bg-secondary/30",
+            "max-h-96 md:max-h-[calc(100vh-200px)] overflow-y-auto",
+            showLocationsPicker ? "block" : "hidden md:block",
+          )}
+        >
           <div className="p-4 space-y-2">
             <h2 className="text-sm font-semibold text-accent px-3 py-2">Properties</h2>
             {locations.map((location) => (
@@ -311,6 +319,7 @@ export default function BookingsPage() {
                 onClick={() => {
                   setSelectedLocationId(location.id)
                   setStartDate(new Date())
+                  setShowLocationsPicker(false)
                 }}
                 className={`w-full text-left px-3 py-2 rounded-lg transition-colors ${
                   selectedLocationId === location.id

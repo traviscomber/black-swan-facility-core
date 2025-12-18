@@ -76,33 +76,37 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
 
   return (
     <>
-      {isOpen && <div className="fixed inset-0 z-40 bg-black/20 md:hidden" onClick={onClose} />}
+      {isOpen && <div className="fixed inset-0 z-40 bg-black/20 lg:hidden" onClick={onClose} />}
 
       <div
         className={cn(
-          "fixed inset-y-0 left-0 z-50 flex h-screen w-64 flex-col border-r border-secondary bg-white transition-transform duration-300 md:relative md:translate-x-0 overflow-hidden",
+          "fixed inset-y-0 left-0 z-50 flex h-screen w-64 flex-col border-r border-secondary bg-white transition-transform duration-300 lg:relative lg:translate-x-0 overflow-hidden",
           isOpen ? "translate-x-0" : "-translate-x-full",
         )}
       >
-        <div className="flex h-20 items-center justify-between border-b border-secondary bg-gradient-to-r from-primary/10 to-transparent px-4">
-          <Link href="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
-            <img src="/blackswan-logo.png" alt="Blackswan Logo" className="h-14 w-14 object-contain flex-shrink-0" />
-            <div>
-              <h1 className="text-base font-bold text-accent">BFCS</h1>
+        <div className="flex h-16 sm:h-20 items-center justify-between border-b border-secondary bg-gradient-to-r from-primary/10 to-transparent px-3 sm:px-4">
+          <Link href="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity min-w-0">
+            <img
+              src="/blackswan-logo.png"
+              alt="Blackswan Logo"
+              className="h-12 sm:h-14 w-12 sm:w-14 object-contain flex-shrink-0"
+            />
+            <div className="min-w-0">
+              <h1 className="text-sm sm:text-base font-bold text-accent truncate">BFCS</h1>
               <p className="text-xs text-gray-600">Core System</p>
             </div>
           </Link>
-          <button onClick={onClose} className="md:hidden p-1 hover:bg-secondary rounded">
+          <button onClick={onClose} className="lg:hidden p-1 hover:bg-secondary rounded">
             <X className="h-5 w-5 text-muted-foreground" />
           </button>
         </div>
 
-        <nav className="flex-1 space-y-4 px-3 py-4 overflow-y-auto">
+        <nav className="flex-1 space-y-3 sm:space-y-4 px-2 sm:px-3 py-3 sm:py-4 overflow-y-auto">
           {navigationGroups.map((group) => (
             <div key={group.label} className="space-y-2">
               <div className="px-2">
                 <h3 className="text-xs font-bold uppercase tracking-wider text-gray-700">{group.label}</h3>
-                <p className="text-xs text-gray-500 mt-1 leading-tight">{group.description}</p>
+                <p className="text-xs text-gray-500 mt-1 leading-tight hidden sm:block">{group.description}</p>
               </div>
               <div className="space-y-1">
                 {group.items.map((item) => {
@@ -114,7 +118,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                       href={item.href}
                       onClick={onClose}
                       className={cn(
-                        "group flex items-center gap-3 rounded px-3 py-2 text-sm font-medium transition-all duration-200",
+                        "group flex items-center gap-2 sm:gap-3 rounded px-2 sm:px-3 py-2 text-xs sm:text-sm font-medium transition-all duration-200",
                         isActive
                           ? "bg-primary text-white shadow-md"
                           : "text-gray-700 hover:bg-gray-100 hover:text-gray-900",
@@ -132,11 +136,11 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
           ))}
         </nav>
 
-        <div className="border-t border-secondary bg-secondary/20 p-4 space-y-3">
+        <div className="border-t border-secondary bg-secondary/20 p-3 sm:p-4 space-y-3">
           <div className="flex items-start gap-2">
             <HelpCircle className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
             <div>
-              <p className="text-sm font-semibold text-gray-800">Need Help?</p>
+              <p className="text-xs sm:text-sm font-semibold text-gray-800">Need Help?</p>
               <p className="text-xs text-gray-600 mt-1">Press ⌘K to search</p>
             </div>
           </div>

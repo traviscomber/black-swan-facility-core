@@ -10,7 +10,22 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { createClient } from "@/lib/supabase/client"
-import { Wifi, Droplet, Zap, MapPin } from "lucide-react"
+import {
+  Wifi,
+  Droplet,
+  Zap,
+  MapPin,
+  Flame,
+  Cloud,
+  Leaf,
+  Trash2,
+  Dices as Pipes,
+  Box,
+  Wrench,
+  Apple,
+  Lock,
+  AlertTriangle,
+} from "lucide-react"
 
 interface AssetType {
   id: string
@@ -23,6 +38,25 @@ interface Location {
   id: string
   name: string
   description: string | null
+}
+
+const UTILITY_SPECS: Record<string, { label: string; icon: React.ReactNode }> = {
+  electricity: { label: "Electricity", icon: <Zap className="h-4 w-4" /> },
+  water: { label: "Water Supply", icon: <Droplet className="h-4 w-4" /> },
+  internet: { label: "Internet & Network", icon: <Wifi className="h-4 w-4" /> },
+  drinking_water: { label: "Drinking Water", icon: <Cloud className="h-4 w-4" /> },
+  heating: { label: "Heating System", icon: <Flame className="h-4 w-4" /> },
+  gasoline: { label: "Gasoline Storage", icon: <AlertTriangle className="h-4 w-4" /> },
+  gas: { label: "Gas System", icon: <Cloud className="h-4 w-4" /> },
+  wood_supply: { label: "Wood Supply", icon: <Leaf className="h-4 w-4" /> },
+  trash: { label: "Trash Management", icon: <Trash2 className="h-4 w-4" /> },
+  sewage: { label: "Sewage System", icon: <Pipes className="h-4 w-4" /> },
+  storage: { label: "Storage Systems", icon: <Box className="h-4 w-4" /> },
+  equipment_inventory: { label: "Equipment", icon: <Wrench className="h-4 w-4" /> },
+  food_storage: { label: "Food Storage", icon: <Apple className="h-4 w-4" /> },
+  security: { label: "Security Systems", icon: <Lock className="h-4 w-4" /> },
+  fire_safety: { label: "Fire Safety", icon: <AlertTriangle className="h-4 w-4" /> },
+  cattle: { label: "Cattle", icon: <Wifi className="h-4 w-4" /> },
 }
 
 export function AddInfrastructureDialog({
@@ -44,12 +78,12 @@ export function AddInfrastructureDialog({
     longitude: "",
     status: "planned",
     priority: "normal",
-    location_id: "", // Added location_id field
+    location_id: "",
   })
   const [loading, setLoading] = useState(false)
   const [assetTypes, setAssetTypes] = useState<AssetType[]>([])
   const [filteredAssetTypes, setFilteredAssetTypes] = useState<AssetType[]>([])
-  const [locations, setLocations] = useState<Location[]>([]) // Added locations state
+  const [locations, setLocations] = useState<Location[]>([])
 
   useEffect(() => {
     const fetchAssetTypes = async () => {
@@ -91,14 +125,6 @@ export function AddInfrastructureDialog({
     e.preventDefault()
     setLoading(true)
 
-    console.log("[v0] Adding infrastructure to Supabase:", {
-      name: formData.name,
-      category: formData.category,
-      latitude: Number.parseFloat(formData.latitude),
-      longitude: Number.parseFloat(formData.longitude),
-      location_id: formData.location_id || null, // Include location_id
-    })
-
     const supabase = createClient()
     const { data, error } = await supabase
       .from("infrastructure_plans")
@@ -110,16 +136,13 @@ export function AddInfrastructureDialog({
         longitude: Number.parseFloat(formData.longitude),
         status: formData.status,
         priority: formData.priority,
-        location_id: formData.location_id || null, // Include location_id
+        location_id: formData.location_id || null,
       })
       .select()
-
-    console.log("[v0] Insert result:", { data, error })
 
     setLoading(false)
 
     if (!error) {
-      console.log("[v0] Infrastructure successfully added to Supabase")
       setFormData({
         name: "",
         category: "internet",
@@ -128,7 +151,7 @@ export function AddInfrastructureDialog({
         longitude: "",
         status: "planned",
         priority: "normal",
-        location_id: "", // Reset location_id
+        location_id: "",
       })
       onAdd()
     } else {
@@ -180,24 +203,14 @@ export function AddInfrastructureDialog({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="internet">
-                  <div className="flex items-center gap-2">
-                    <Wifi className="h-4 w-4" />
-                    Internet
-                  </div>
-                </SelectItem>
-                <SelectItem value="water">
-                  <div className="flex items-center gap-2">
-                    <Droplet className="h-4 w-4" />
-                    Water
-                  </div>
-                </SelectItem>
-                <SelectItem value="electricity">
-                  <div className="flex items-center gap-2">
-                    <Zap className="h-4 w-4" />
-                    Electricity
-                  </div>
-                </SelectItem>
+                {Object.entries(UTILITY_SPECS).map(([key, spec]) => (
+                  <SelectItem key={key} value={key}>
+                    <div className="flex items-center gap-2">
+                      {spec.icon}
+                      {spec.label}
+                    </div>
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
