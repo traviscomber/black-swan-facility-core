@@ -19,6 +19,7 @@ import {
   MessageSquare,
   HelpCircle,
   Beef,
+  Anchor,
 } from "lucide-react"
 
 const navigationGroups = [
@@ -39,6 +40,7 @@ const navigationGroups = [
       { name: "Maintenance", href: "/maintenance", icon: Wrench, tip: "Schedule and track repairs" },
       { name: "GIS Map", href: "/map", icon: Map, tip: "Property location and layout" },
       { name: "Cattle", href: "/cattle", icon: Beef, tip: "Livestock and pasture management" },
+      { name: "Ports & Boats", href: "/ports-boats", icon: Anchor, tip: "Manage port facilities and boat fleet" },
     ],
   },
   {
