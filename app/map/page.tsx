@@ -762,7 +762,7 @@ export default function MapPage() {
 
   return (
     <AppLayout>
-      <div className="flex flex-col h-full w-full">
+      <div className="flex flex-col h-screen w-full overflow-hidden bg-background">
         <PageHeader
           title="GIS Infrastructure Map"
           description="Internet, Water, Electricity, Cattle, Drinking Water, Heating, Gasoline, Gas, Wood Supply, Trash, Sewage, Storage, Equipment Inventory, Food Storage, Security, Fire Safety"
@@ -776,13 +776,13 @@ export default function MapPage() {
           }
         />
 
-        <div className="relative flex-1 w-full overflow-hidden h-full">
-          <div ref={mapContainerRef} className="absolute inset-0 h-full w-full" />
+        <div className="relative flex-1 w-full overflow-hidden">
+          <div ref={mapContainerRef} className="absolute inset-0 w-full h-full" />
 
           {!leafletLoaded && (
-            <div className="absolute inset-0 flex items-center justify-center bg-gray-50 z-[100]">
+            <div className="absolute inset-0 flex items-center justify-center bg-background z-[100]">
               <div className="text-center">
-                <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mb-3" />
+                <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary mb-3" />
                 <p className="text-sm text-gray-600">Loading map...</p>
               </div>
             </div>
