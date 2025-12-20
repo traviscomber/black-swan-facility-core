@@ -3,7 +3,8 @@
 import type React from "react"
 import { useState } from "react"
 import { Sidebar } from "./sidebar"
-import { Menu } from "lucide-react"
+import { Menu, ArrowLeft } from "lucide-react"
+import { useRouter } from "next/navigation"
 
 interface AppLayoutProps {
   children: React.ReactNode
@@ -11,6 +12,7 @@ interface AppLayoutProps {
 
 export function AppLayout({ children }: AppLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const router = useRouter()
 
   const isOpen = sidebarOpen
   const onClose = () => setSidebarOpen(false)
@@ -31,10 +33,22 @@ export function AppLayout({ children }: AppLayoutProps) {
       )}
 
       <div className="flex flex-1 flex-col overflow-hidden">
-        <div className="flex h-14 sm:h-16 items-center justify-between border-b border-secondary bg-gradient-to-r from-secondary/50 to-transparent px-3 sm:px-4 lg:hidden">
-          <button onClick={() => setSidebarOpen(true)} className="p-2 hover:bg-secondary rounded-lg transition-colors">
-            <Menu className="h-5 w-5 text-accent" />
-          </button>
+        <div className="sticky top-0 z-40 flex h-14 sm:h-16 items-center justify-between border-b border-secondary bg-gradient-to-r from-secondary/50 to-transparent px-3 sm:px-4 lg:hidden">
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setSidebarOpen(true)}
+              className="p-2 hover:bg-secondary rounded-lg transition-colors"
+            >
+              <Menu className="h-5 w-5 text-accent" />
+            </button>
+            <button
+              onClick={() => router.back()}
+              className="p-2 hover:bg-secondary rounded-lg transition-colors"
+              title="Go back"
+            >
+              <ArrowLeft className="h-5 w-5 text-accent" />
+            </button>
+          </div>
           <div className="flex items-center gap-2 flex-1 justify-center">
             <img src="/blackswan-logo.png" alt="Blackswan Logo" className="h-6 w-6 object-contain" />
             <span className="text-xs sm:text-sm font-bold text-accent">BFCS</span>
