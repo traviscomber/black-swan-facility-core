@@ -295,10 +295,24 @@ export default function MapPage() {
 
       setTimeout(() => {
         map.invalidateSize()
-      }, 100)
+      }, 50)
       setTimeout(() => {
         map.invalidateSize()
-      }, 300)
+      }, 200)
+      setTimeout(() => {
+        map.invalidateSize()
+      }, 500)
+
+      if (typeof ResizeObserver !== "undefined") {
+        const resizeObserver = new ResizeObserver(() => {
+          map.invalidateSize()
+        })
+        resizeObserver.observe(mapContainerRef.current)
+
+        return () => {
+          resizeObserver.disconnect()
+        }
+      }
 
       console.log("[v0] Map initialized successfully with Carto tiles")
     }
@@ -762,7 +776,7 @@ export default function MapPage() {
           }
         />
 
-        <div className="relative flex-1 w-full overflow-hidden">
+        <div className="relative flex-1 w-full overflow-hidden h-full">
           <div ref={mapContainerRef} className="absolute inset-0 h-full w-full" />
 
           {!leafletLoaded && (
