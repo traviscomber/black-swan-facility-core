@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Plus, Anchor, Ship, Trash2, Edit2, Filter } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
@@ -31,49 +31,6 @@ interface PortBoat {
   last_maintenance?: string
 }
 
-const MOCK_DATA: PortBoat[] = [
-  {
-    id: "1",
-    name: "Embarcadero Rebelin",
-    type: "port",
-    location: "Rebelin",
-    capacity: "4 boats",
-    status: "operational",
-    description: "Primary docking facility",
-    last_maintenance: "14-12-2024",
-  },
-  {
-    id: "2",
-    name: "Corovado",
-    type: "boat",
-    location: "Rebelin",
-    capacity: "10 meters",
-    status: "operational",
-    description: "Main transport vessel",
-    last_maintenance: "10-12-2024",
-  },
-  {
-    id: "3",
-    name: "Embarcadero Puerto Claro",
-    type: "port",
-    location: "Puerto Claro",
-    capacity: "6 boats",
-    status: "operational",
-    description: "Secondary port facility",
-    last_maintenance: "12-12-2024",
-  },
-  {
-    id: "4",
-    name: "Nativa",
-    type: "boat",
-    location: "Rebelin",
-    capacity: "15 meters",
-    status: "operational",
-    description: "Secondary transport vessel",
-    last_maintenance: "08-12-2024",
-  },
-]
-
 function PortsBoatsContent({
   boats,
   setBoats,
@@ -90,7 +47,6 @@ function PortsBoatsContent({
   handleDelete,
   getStatusColor,
   getTypeIcon,
-  getCardBorderColor,
 }) {
   const filteredBoats = boats.filter((boat) => {
     if (filterType === "all") return true
@@ -144,13 +100,13 @@ function PortsBoatsContent({
               {boats
                 .filter((b) => b.type === "port")
                 .map((port) => (
-                  <Card key={port.id} className={`p-6 ${getCardBorderColor(port.type)}`}>
+                  <Card key={port.id} className="border-l-4 border-l-[#726658] p-6">
                     <div className="flex items-start justify-between mb-3">
                       <div className="flex items-center gap-3">
                         <div className="text-[#726658]">{getTypeIcon(port.type)}</div>
                         <div>
                           <h3 className="font-semibold text-foreground">{port.name}</h3>
-                          <p className="text-xs text-muted-foreground">{port.location}</p>
+                          <p className="text-xs text-foreground opacity-80">{port.location}</p>
                         </div>
                       </div>
                       <span className={`text-xs px-2 py-1 rounded-full ${getStatusColor(port.status)}`}>
@@ -160,19 +116,19 @@ function PortsBoatsContent({
 
                     <div className="space-y-2 mb-4">
                       <div>
-                        <p className="text-xs text-muted-foreground">Capacity</p>
-                        <p className="text-sm font-medium">{port.capacity}</p>
+                        <p className="text-xs text-foreground opacity-80">Capacity</p>
+                        <p className="text-sm font-medium text-foreground">{port.capacity}</p>
                       </div>
                       {port.last_maintenance && (
                         <div>
-                          <p className="text-xs text-muted-foreground">Last maintenance</p>
-                          <p className="text-sm font-medium">{port.last_maintenance}</p>
+                          <p className="text-xs text-foreground opacity-80">Last maintenance</p>
+                          <p className="text-sm font-medium text-foreground">{port.last_maintenance}</p>
                         </div>
                       )}
                       {port.description && (
                         <div>
-                          <p className="text-xs text-muted-foreground">Description</p>
-                          <p className="text-sm">{port.description}</p>
+                          <p className="text-xs text-foreground opacity-80">Description</p>
+                          <p className="text-sm text-foreground">{port.description}</p>
                         </div>
                       )}
                     </div>
@@ -182,7 +138,7 @@ function PortsBoatsContent({
                         variant="ghost"
                         size="sm"
                         onClick={() => handleEdit(port)}
-                        className="text-muted-foreground hover:text-foreground"
+                        className="text-foreground opacity-80 hover:text-foreground hover:opacity-100"
                       >
                         <Edit2 className="h-4 w-4 mr-1" />
                         Edit
@@ -201,7 +157,7 @@ function PortsBoatsContent({
                 ))}
             </div>
           ) : (
-            <div className="text-center py-8 text-muted-foreground">
+            <div className="text-center py-8 text-foreground opacity-60">
               <Anchor className="h-12 w-12 text-muted mx-auto mb-2" />
               <p>No ports registered yet</p>
             </div>
@@ -223,13 +179,13 @@ function PortsBoatsContent({
               {boats
                 .filter((b) => b.type === "boat")
                 .map((boat) => (
-                  <Card key={boat.id} className={`p-6 ${getCardBorderColor(boat.type)}`}>
+                  <Card key={boat.id} className="border-l-4 border-l-[#726658] p-6">
                     <div className="flex items-start justify-between mb-3">
                       <div className="flex items-center gap-3">
                         <div className="text-[#726658]">{getTypeIcon(boat.type)}</div>
                         <div>
                           <h3 className="font-semibold text-foreground">{boat.name}</h3>
-                          <p className="text-xs text-muted-foreground">{boat.location}</p>
+                          <p className="text-xs text-foreground opacity-80">{boat.location}</p>
                         </div>
                       </div>
                       <span className={`text-xs px-2 py-1 rounded-full ${getStatusColor(boat.status)}`}>
@@ -239,19 +195,19 @@ function PortsBoatsContent({
 
                     <div className="space-y-2 mb-4">
                       <div>
-                        <p className="text-xs text-muted-foreground">Size</p>
-                        <p className="text-sm font-medium">{boat.capacity}</p>
+                        <p className="text-xs text-foreground opacity-80">Size</p>
+                        <p className="text-sm font-medium text-foreground">{boat.capacity}</p>
                       </div>
                       {boat.last_maintenance && (
                         <div>
-                          <p className="text-xs text-muted-foreground">Last maintenance</p>
-                          <p className="text-sm font-medium">{boat.last_maintenance}</p>
+                          <p className="text-xs text-foreground opacity-80">Last maintenance</p>
+                          <p className="text-sm font-medium text-foreground">{boat.last_maintenance}</p>
                         </div>
                       )}
                       {boat.description && (
                         <div>
-                          <p className="text-xs text-muted-foreground">Description</p>
-                          <p className="text-sm">{boat.description}</p>
+                          <p className="text-xs text-foreground opacity-80">Description</p>
+                          <p className="text-sm text-foreground">{boat.description}</p>
                         </div>
                       )}
                     </div>
@@ -261,7 +217,7 @@ function PortsBoatsContent({
                         variant="ghost"
                         size="sm"
                         onClick={() => handleEdit(boat)}
-                        className="text-muted-foreground hover:text-foreground"
+                        className="text-foreground opacity-80 hover:text-foreground hover:opacity-100"
                       >
                         <Edit2 className="h-4 w-4 mr-1" />
                         Edit
@@ -280,7 +236,7 @@ function PortsBoatsContent({
                 ))}
             </div>
           ) : (
-            <div className="text-center py-8 text-muted-foreground">
+            <div className="text-center py-8 text-foreground opacity-60">
               <Ship className="h-12 w-12 text-muted mx-auto mb-2" />
               <p>No boats registered yet</p>
             </div>
@@ -296,8 +252,8 @@ export default function PortsBoatsPage() {
     createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!),
   )
 
-  const [boats, setBoats] = useState<PortBoat[]>(MOCK_DATA)
-  const [loading, setLoading] = useState(false)
+  const [boats, setBoats] = useState<PortBoat[]>([])
+  const [loading, setLoading] = useState(true)
   const [isOpen, setIsOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [formData, setFormData] = useState<Partial<PortBoat>>({
@@ -306,30 +262,64 @@ export default function PortsBoatsPage() {
   })
   const [filterType, setFilterType] = useState<"all" | "port" | "boat">("all")
 
-  // When the database table is created, uncomment this useEffect to enable database integration
+  useEffect(() => {
+    fetchPortsBoats()
+  }, [])
 
-  const handleAddOrEdit = () => {
+  const fetchPortsBoats = async () => {
+    try {
+      setLoading(true)
+      const { data, error } = await supabase.from("ports_boats").select("*").order("created_at", { ascending: false })
+
+      if (error) {
+        console.error("[v0] Error fetching ports and boats:", error)
+        return
+      }
+
+      if (data) {
+        setBoats(data as PortBoat[])
+      }
+    } catch (err) {
+      console.error("[v0] Exception fetching ports and boats:", err)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleAddOrEdit = async () => {
     if (!formData.name || !formData.location) return
 
-    if (editingId) {
-      setBoats(boats.map((b) => (b.id === editingId ? { ...b, ...formData } : b)))
-      setEditingId(null)
-    } else {
-      const newBoat: PortBoat = {
-        id: Date.now().toString(),
-        name: formData.name || "",
-        type: formData.type || "boat",
-        location: formData.location || "",
-        capacity: formData.capacity,
-        status: formData.status || "operational",
-        description: formData.description || "",
-        last_maintenance: formData.last_maintenance,
-      }
-      setBoats([newBoat, ...boats])
-    }
+    try {
+      if (editingId) {
+        const { error } = await supabase
+          .from("ports_boats")
+          .update({
+            ...formData,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", editingId)
 
-    setFormData({ type: "boat", status: "operational" })
-    setIsOpen(false)
+        if (error) throw error
+        console.log("[v0] Port/boat updated successfully")
+      } else {
+        const { error } = await supabase.from("ports_boats").insert([
+          {
+            ...formData,
+            created_at: new Date().toISOString(),
+          },
+        ])
+
+        if (error) throw error
+        console.log("[v0] Port/boat created successfully")
+      }
+
+      await fetchPortsBoats()
+      setFormData({ type: "boat", status: "operational" })
+      setEditingId(null)
+      setIsOpen(false)
+    } catch (err) {
+      console.error("[v0] Error saving port/boat:", err)
+    }
   }
 
   const handleEdit = (boat: PortBoat) => {
@@ -338,8 +328,17 @@ export default function PortsBoatsPage() {
     setIsOpen(true)
   }
 
-  const handleDelete = (id: string) => {
-    setBoats(boats.filter((b) => b.id !== id))
+  const handleDelete = async (id: string) => {
+    try {
+      const { error } = await supabase.from("ports_boats").delete().eq("id", id)
+
+      if (error) throw error
+
+      console.log("[v0] Port/boat deleted successfully")
+      await fetchPortsBoats()
+    } catch (err) {
+      console.error("[v0] Error deleting port/boat:", err)
+    }
   }
 
   const getStatusColor = (status: string) => {
@@ -358,7 +357,20 @@ export default function PortsBoatsPage() {
   const getTypeIcon = (type: string) =>
     type === "port" ? <Anchor className="h-5 w-5" /> : <Ship className="h-5 w-5" />
 
-  const getCardBorderColor = (type: string) => "border-l-4 border-l-[#726658]"
+  if (loading) {
+    return (
+      <AppLayout>
+        <PageHeader
+          title="Ports & Boats"
+          description="Manage your port facilities and boat fleet"
+          icon={<Anchor className="h-6 w-6" />}
+        />
+        <div className="flex items-center justify-center py-12">
+          <p className="text-muted-foreground">Loading ports and boats...</p>
+        </div>
+      </AppLayout>
+    )
+  }
 
   return (
     <AppLayout>
@@ -495,7 +507,6 @@ export default function PortsBoatsPage() {
           handleDelete={handleDelete}
           getStatusColor={getStatusColor}
           getTypeIcon={getTypeIcon}
-          getCardBorderColor={getCardBorderColor}
         />
       </div>
     </AppLayout>

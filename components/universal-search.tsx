@@ -10,7 +10,7 @@ import { useRouter } from "next/navigation"
 
 interface SearchResult {
   id: string
-  type: "asset" | "issue" | "maintenance" | "employee" | "room" | "reservation" | "guest" | "location"
+  type: "asset" | "issue" | "maintenance" | "employee" | "room" | "reservation" | "guest" | "location" | "port" | "boat"
   title: string
   subtitle?: string
   status?: string
@@ -50,24 +50,26 @@ export function UniversalSearch() {
     try {
       const searchPattern = `%${searchQuery}%`
 
-      const [assets, issues, maintenance, employees, rooms, reservations, guests, locations] = await Promise.all([
-        supabase.from("assets").select("id, name, type, location").ilike("name", searchPattern).limit(5),
-        supabase.from("issues").select("id, description, status").ilike("description", searchPattern).limit(5),
-        supabase.from("maintenance_tasks").select("id, title, status").ilike("title", searchPattern).limit(5),
-        supabase.from("employees").select("id, name, role, email").ilike("name", searchPattern).limit(5),
-        supabase
-          .from("rooms")
-          .select("id, room_number, room_type, status")
-          .ilike("room_number", searchPattern)
-          .limit(5),
-        supabase
-          .from("reservations")
-          .select("id, guest_name, check_in, check_out, status")
-          .ilike("guest_name", searchPattern)
-          .limit(5),
-        supabase.from("guests").select("id, name, email").ilike("name", searchPattern).limit(5),
-        supabase.from("locations").select("id, name, description").ilike("name", searchPattern).limit(5),
-      ])
+      const [assets, issues, maintenance, employees, rooms, reservations, guests, locations, portsBoats] =
+        await Promise.all([
+          supabase.from("assets").select("id, name, type, location").ilike("name", searchPattern).limit(5),
+          supabase.from("issues").select("id, description, status").ilike("description", searchPattern).limit(5),
+          supabase.from("maintenance_tasks").select("id, title, status").ilike("title", searchPattern).limit(5),
+          supabase.from("employees").select("id, name, role, email").ilike("name", searchPattern).limit(5),
+          supabase
+            .from("rooms")
+            .select("id, room_number, room_type, status")
+            .ilike("room_number", searchPattern)
+            .limit(5),
+          supabase
+            .from("reservations")
+            .select("id, guest_name, check_in, check_out, status")
+            .ilike("guest_name", searchPattern)
+            .limit(5),
+          supabase.from("guests").select("id, name, email").ilike("name", searchPattern).limit(5),
+          supabase.from("locations").select("id, name, description").ilike("name", searchPattern).limit(5),
+          supabase.from("ports_boats").select("id, name, type, location, status").ilike("name", searchPattern).limit(5),
+        ])
 
       const combinedResults: SearchResult[] = [
         ...(assets.data || []).map((a) => ({
@@ -122,6 +124,14 @@ export function UniversalSearch() {
           title: l.name,
           subtitle: l.description,
         })),
+        ...(portsBoats.data || []).map((pb) => ({
+          id: pb.id,
+          type: pb.type === "port" ? "port" : "boat",
+          title: pb.name,
+          subtitle: pb.location,
+          badge: pb.type === "port" ? "Port" : "Vessel",
+          status: pb.status,
+        })),
       ]
 
       setResults(combinedResults)
@@ -158,6 +168,10 @@ export function UniversalSearch() {
         return <Users className="h-4 w-4" />
       case "location":
         return <MapPin className="h-4 w-4" />
+      case "port":
+        return <MapPin className="h-4 w-4" />
+      case "boat":
+        return <Users className="h-4 w-4" />
       default:
         return <Search className="h-4 w-4" />
     }
@@ -176,6 +190,8 @@ export function UniversalSearch() {
       reservation: "/hospitality",
       guest: "/guests",
       location: "/locations",
+      port: "/ports-boats",
+      boat: "/ports-boats",
     }
 
     const route = routes[result.type]
@@ -214,7 +230,9 @@ export function UniversalSearch() {
             <div className="flex flex-col items-center justify-center py-8 text-sm text-muted-foreground">
               <Search className="h-8 w-8 mb-2 opacity-50" />
               <p>Start typing to search...</p>
-              <p className="text-xs mt-2">Assets, Issues, Maintenance, Employees, Rooms, Guests, Locations</p>
+              <p className="text-xs mt-2">
+                Assets, Issues, Maintenance, Employees, Rooms, Guests, Locations, Ports, Boats
+              </p>
             </div>
           )}
 

@@ -29,6 +29,7 @@ import {
   ChevronDown,
 } from "lucide-react"
 import { useState } from "react"
+// import { UniversalSearchDialog } from "@/components/universal-search-dialog" // Assuming UniversalSearchDialog is in a separate file
 
 const navigationGroups = [
   {
@@ -110,6 +111,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
       "Advanced",
     ]),
   )
+  const [openSearch, setOpenSearch] = useState(false)
 
   const toggleGroup = (label: string) => {
     const newExpanded = new Set(expandedGroups)
@@ -119,6 +121,16 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
       newExpanded.add(label)
     }
     setExpandedGroups(newExpanded)
+  }
+
+  const handleOpenSearch = () => {
+    const event = new KeyboardEvent("keydown", {
+      key: "k",
+      code: "KeyK",
+      metaKey: true,
+      bubbles: true,
+    })
+    document.dispatchEvent(event)
   }
 
   return (
@@ -200,18 +212,33 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
         </nav>
 
         <div className="border-t border-secondary bg-secondary/20 p-3 sm:p-4 space-y-3">
-          <div className="flex items-start gap-2">
+          <button
+            onClick={handleOpenSearch}
+            className="w-full flex items-start gap-2 hover:opacity-80 transition-opacity text-left"
+          >
             <HelpCircle className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
             <div>
               <p className="text-xs sm:text-sm font-semibold text-gray-800">Need Help?</p>
               <p className="text-xs text-gray-600 mt-1">Press ⌘K to search</p>
             </div>
-          </div>
+          </button>
           <div className="pt-2 border-t border-secondary/50">
             <p className="text-xs text-gray-500">BFCS v1.0</p>
           </div>
         </div>
       </div>
+
+      {/* Using a portal wrapper to ensure dialog displays correctly */}
+      {/* {openSearch && <UniversalSearchDialog open={openSearch} onOpenChange={setOpenSearch} />} */}
     </>
   )
+}
+
+interface SearchResult {
+  id: string
+  type: "asset" | "issue" | "maintenance" | "employee" | "room" | "reservation" | "guest" | "location"
+  title: string
+  subtitle?: string
+  status?: string
+  badge?: string
 }
