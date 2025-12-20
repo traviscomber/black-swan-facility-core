@@ -20,6 +20,8 @@ import {
   HelpCircle,
   Beef,
   Anchor,
+  ChefHat,
+  Zap,
 } from "lucide-react"
 
 const navigationGroups = [
@@ -39,6 +41,7 @@ const navigationGroups = [
       { name: "Assets", href: "/assets", icon: Box, tip: "Inventory and equipment" },
       { name: "Maintenance", href: "/maintenance", icon: Wrench, tip: "Schedule and track repairs" },
       { name: "GIS Map", href: "/map", icon: Map, tip: "Property location and layout" },
+      { name: "Energy", href: "/energy", icon: Zap, tip: "Solar panels and electricity consumption" },
       { name: "Cattle", href: "/cattle", icon: Beef, tip: "Livestock and pasture management" },
       { name: "Ports & Boats", href: "/ports-boats", icon: Anchor, tip: "Manage port facilities and boat fleet" },
     ],
@@ -54,6 +57,7 @@ const navigationGroups = [
     items: [
       { name: "Employees", href: "/employees", icon: Users, tip: "Team management" },
       { name: "Concierge", href: "/concierge", icon: MessageSquare, tip: "Guest communication" },
+      { name: "Kitchen", href: "/kitchen", icon: ChefHat, tip: "Kitchen and food preparation facilities" },
       { name: "Checklists", href: "/checklists", icon: CheckSquare, tip: "Operational checklists" },
     ],
   },
