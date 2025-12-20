@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { createBrowserClient } from "@/lib/supabase/client"
-import { Plus, Brain } from "lucide-react"
+import { Plus, Brain, Edit2, Trash2, X } from "lucide-react"
 import { useEffect, useState } from "react"
 import Link from "next/link"
 
@@ -26,9 +26,36 @@ interface CattleArea {
   notes: string
 }
 
+interface CattleAreaFormData {
+  name: string
+  description: string
+  status: string
+  priority: string
+  business_unit: string
+  hectares: number
+  capacity: number
+  grass_type: string
+  breeding_type: string
+  notes: string
+}
+
 export default function CattlePage() {
   const [areas, setAreas] = useState<CattleArea[]>([])
   const [loading, setLoading] = useState(true)
+  const [showForm, setShowForm] = useState(false)
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [formData, setFormData] = useState<CattleAreaFormData>({
+    name: "",
+    description: "",
+    status: "active",
+    priority: "medium",
+    business_unit: "Fattening",
+    hectares: 0,
+    capacity: 0,
+    grass_type: "",
+    breeding_type: "",
+    notes: "",
+  })
 
   const loadCattleAreas = async () => {
     const supabase = createBrowserClient()
@@ -43,6 +70,101 @@ export default function CattlePage() {
   useEffect(() => {
     loadCattleAreas()
   }, [])
+
+  const handleAddNew = () => {
+    setEditingId(null)
+    setFormData({
+      name: "",
+      description: "",
+      status: "active",
+      priority: "medium",
+      business_unit: "Fattening",
+      hectares: 0,
+      capacity: 0,
+      grass_type: "",
+      breeding_type: "",
+      notes: "",
+    })
+    setShowForm(true)
+  }
+
+  const handleEdit = (area: CattleArea) => {
+    setEditingId(area.id)
+    setFormData({
+      name: area.name,
+      description: area.description,
+      status: area.status,
+      priority: area.priority,
+      business_unit: area.specifications.business_unit,
+      hectares: area.specifications.hectares,
+      capacity: area.specifications.capacity,
+      grass_type: area.specifications.grass_type || "",
+      breeding_type: area.specifications.breeding_type || "",
+      notes: area.notes,
+    })
+    setShowForm(true)
+  }
+
+  const handleDelete = async (id: string) => {
+    if (!confirm("Are you sure you want to delete this cattle area?")) return
+
+    const supabase = createBrowserClient()
+    await supabase.from("infrastructure_plans").delete().eq("id", id)
+
+    setAreas(areas.filter((a) => a.id !== id))
+  }
+
+  const handleSave = async () => {
+    if (!formData.name.trim()) {
+      alert("Please enter an area name")
+      return
+    }
+
+    const supabase = createBrowserClient()
+    const payload = {
+      name: formData.name,
+      description: formData.description,
+      status: formData.status,
+      priority: formData.priority,
+      category: "Cattle",
+      specifications: {
+        hectares: formData.hectares,
+        capacity: formData.capacity,
+        grass_type: formData.grass_type,
+        breeding_type: formData.breeding_type,
+        business_unit: formData.business_unit,
+      },
+      notes: formData.notes,
+    }
+
+    if (editingId) {
+      // Update existing
+      const { error } = await supabase.from("infrastructure_plans").update(payload).eq("id", editingId)
+
+      if (!error) {
+        setAreas(
+          areas.map((a) =>
+            a.id === editingId
+              ? {
+                  ...a,
+                  ...payload,
+                  specifications: payload.specifications,
+                }
+              : a,
+          ),
+        )
+      }
+    } else {
+      // Create new
+      const { data, error } = await supabase.from("infrastructure_plans").insert([payload]).select()
+
+      if (!error && data) {
+        setAreas([...areas, data[0] as CattleArea])
+      }
+    }
+
+    setShowForm(false)
+  }
 
   const totalHectares = areas.reduce((sum, area) => sum + (area.specifications?.hectares || 0), 0)
   const totalCapacity = areas.reduce((sum, area) => sum + (area.specifications?.capacity || 0), 0)
@@ -79,7 +201,7 @@ export default function CattlePage() {
         title="Cattle Management"
         description="Manage cattle operations across pasture areas - Fattening (Engorda) and Breeding (Crianza)"
         actions={
-          <Button>
+          <Button onClick={handleAddNew} className="bg-amber-600 hover:bg-amber-700">
             <Plus className="mr-2 h-4 w-4" />
             Add Area
           </Button>
@@ -130,11 +252,152 @@ export default function CattlePage() {
           </Card>
         </div>
 
+        {showForm && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <Card className="w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+              <CardHeader className="flex flex-row items-center justify-between pb-4">
+                <CardTitle>{editingId ? "Edit Cattle Area" : "Add New Cattle Area"}</CardTitle>
+                <button onClick={() => setShowForm(false)} className="text-gray-500 hover:text-gray-700">
+                  <X className="h-5 w-5" />
+                </button>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Area Name *</label>
+                    <input
+                      type="text"
+                      value={formData.name}
+                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-amber-500"
+                      placeholder="e.g., Pasture North"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Business Unit</label>
+                    <select
+                      value={formData.business_unit}
+                      onChange={(e) => setFormData({ ...formData, business_unit: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-amber-500"
+                    >
+                      <option value="Fattening">Fattening (Engorda)</option>
+                      <option value="Breeding">Breeding (Crianza)</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                  <input
+                    type="text"
+                    value={formData.description}
+                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-amber-500"
+                    placeholder="Area description"
+                  />
+                </div>
+
+                <div className="grid grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Hectares</label>
+                    <input
+                      type="number"
+                      value={formData.hectares}
+                      onChange={(e) => setFormData({ ...formData, hectares: Number.parseFloat(e.target.value) || 0 })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-amber-500"
+                      placeholder="0"
+                      min="0"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Capacity (head)</label>
+                    <input
+                      type="number"
+                      value={formData.capacity}
+                      onChange={(e) => setFormData({ ...formData, capacity: Number.parseFloat(e.target.value) || 0 })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-amber-500"
+                      placeholder="0"
+                      min="0"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                    <select
+                      value={formData.status}
+                      onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-amber-500"
+                    >
+                      <option value="active">Active</option>
+                      <option value="inactive">Inactive</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Grass Type</label>
+                    <input
+                      type="text"
+                      value={formData.grass_type}
+                      onChange={(e) => setFormData({ ...formData, grass_type: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-amber-500"
+                      placeholder="e.g., Brachiaria"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Breeding Type</label>
+                    <input
+                      type="text"
+                      value={formData.breeding_type}
+                      onChange={(e) => setFormData({ ...formData, breeding_type: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-amber-500"
+                      placeholder="e.g., Beef cattle"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Priority</label>
+                  <select
+                    value={formData.priority}
+                    onChange={(e) => setFormData({ ...formData, priority: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-amber-500"
+                  >
+                    <option value="low">Low</option>
+                    <option value="medium">Medium</option>
+                    <option value="high">High</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+                  <textarea
+                    value={formData.notes}
+                    onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-amber-500"
+                    placeholder="Additional notes"
+                    rows={3}
+                  />
+                </div>
+
+                <div className="flex justify-end gap-3 pt-4">
+                  <Button variant="outline" onClick={() => setShowForm(false)}>
+                    Cancel
+                  </Button>
+                  <Button onClick={handleSave} className="bg-amber-600 hover:bg-amber-700">
+                    {editingId ? "Update Area" : "Add Area"}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
         {/* Areas Grid */}
         {loading ? (
           <div className="text-center text-gray-500">Loading cattle areas...</div>
         ) : areas.length === 0 ? (
-          <div className="text-center text-gray-500">No cattle areas found</div>
+          <div className="text-center text-gray-500 py-8">No cattle areas found. Click "Add Area" to get started.</div>
         ) : (
           <div className="space-y-6">
             {/* Fattening Section */}
@@ -186,6 +449,21 @@ export default function CattlePage() {
                             <Badge variant="outline" className={getPriorityColor(area.priority)}>
                               {area.priority} priority
                             </Badge>
+                          </div>
+                          <div className="flex gap-2 pt-4 border-t">
+                            <Button variant="outline" size="sm" onClick={() => handleEdit(area)} className="flex-1">
+                              <Edit2 className="h-4 w-4 mr-1" />
+                              Edit
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleDelete(area.id)}
+                              className="flex-1 text-red-600 hover:text-red-700 hover:bg-red-50"
+                            >
+                              <Trash2 className="h-4 w-4 mr-1" />
+                              Delete
+                            </Button>
                           </div>
                         </div>
                       </CardContent>
@@ -244,6 +522,21 @@ export default function CattlePage() {
                             <Badge variant="outline" className={getPriorityColor(area.priority)}>
                               {area.priority} priority
                             </Badge>
+                          </div>
+                          <div className="flex gap-2 pt-4 border-t">
+                            <Button variant="outline" size="sm" onClick={() => handleEdit(area)} className="flex-1">
+                              <Edit2 className="h-4 w-4 mr-1" />
+                              Edit
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleDelete(area.id)}
+                              className="flex-1 text-red-600 hover:text-red-700 hover:bg-red-50"
+                            >
+                              <Trash2 className="h-4 w-4 mr-1" />
+                              Delete
+                            </Button>
                           </div>
                         </div>
                       </CardContent>
