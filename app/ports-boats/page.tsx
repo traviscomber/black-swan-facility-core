@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Plus, Anchor, Trash2, Edit2 } from "lucide-react"
+import { Plus, Anchor, Ship, Trash2, Edit2, Filter } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import {
@@ -32,13 +32,43 @@ export default function PortsBoatsPage() {
   const [boats, setBoats] = useState<PortBoat[]>([
     {
       id: "1",
-      name: "Main Dock",
+      name: "Embarcadero Rebelin",
       type: "port",
-      location: "North Harbor",
-      capacity: "5 boats",
+      location: "Rebelin",
+      capacity: "4 boats",
       status: "operational",
       description: "Primary docking facility",
-      lastMaintenance: "2024-12-15",
+      lastMaintenance: "2024-12-14",
+    },
+    {
+      id: "2",
+      name: "Corovado",
+      type: "boat",
+      location: "Rebelin",
+      capacity: "10 meters",
+      status: "operational",
+      description: "Corovado vessel",
+      lastMaintenance: "2024-12-19",
+    },
+    {
+      id: "3",
+      name: "Embarcadero Puerto Claro",
+      type: "port",
+      location: "Puerto Claro",
+      capacity: "8 boats",
+      status: "operational",
+      description: "Secondary port facility",
+      lastMaintenance: "2024-12-14",
+    },
+    {
+      id: "4",
+      name: "Nativa",
+      type: "boat",
+      location: "Rebelin",
+      capacity: "15 meters",
+      status: "operational",
+      description: "Nativa vessel",
+      lastMaintenance: "2024-12-19",
     },
   ])
   const [isOpen, setIsOpen] = useState(false)
@@ -47,6 +77,7 @@ export default function PortsBoatsPage() {
     type: "boat",
     status: "operational",
   })
+  const [filterType, setFilterType] = useState<"all" | "port" | "boat">("all")
 
   const handleAddOrEdit = () => {
     if (!formData.name || !formData.location) return
@@ -85,34 +116,44 @@ export default function PortsBoatsPage() {
   const getStatusColor = (status: string) => {
     switch (status) {
       case "operational":
-        return "bg-green-100 text-green-800"
+        return "bg-green-500/20 text-green-400 border border-green-500/30"
       case "maintenance":
-        return "bg-yellow-100 text-yellow-800"
+        return "bg-yellow-500/20 text-yellow-400 border border-yellow-500/30"
       case "inactive":
-        return "bg-gray-100 text-gray-800"
+        return "bg-gray-500/20 text-gray-400 border border-gray-500/30"
       default:
-        return "bg-gray-100 text-gray-800"
+        return "bg-gray-500/20 text-gray-400 border border-gray-500/30"
     }
   }
 
   const getTypeIcon = (type: string) => {
-    return type === "port" ? "⚓" : "🚤"
+    return type === "port" ? <Anchor className="h-5 w-5 text-blue-400" /> : <Ship className="h-5 w-5 text-orange-400" />
   }
+
+  const getCardBorderColor = (type: string) => {
+    return type === "port" ? "border-l-4 border-l-blue-500" : "border-l-4 border-l-orange-500"
+  }
+
+  const filteredBoats = boats.filter((boat) => {
+    if (filterType === "all") return true
+    return boat.type === filterType
+  })
+
+  const ports = filteredBoats.filter((b) => b.type === "port")
+  const vessels = filteredBoats.filter((b) => b.type === "boat")
 
   return (
     <div className="min-h-screen bg-background p-4 sm:p-6">
-      <div className="max-w-6xl mx-auto">
+      <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <div className="mb-6 sm:mb-8">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="mb-8">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
             <div>
-              <h1 className="text-2xl sm:text-3xl font-bold text-foreground flex items-center gap-2">
+              <h1 className="text-3xl font-bold text-foreground flex items-center gap-2">
                 <Anchor className="h-8 w-8 text-primary" />
                 Ports & Boats
               </h1>
-              <p className="text-muted-foreground text-sm sm:text-base mt-1">
-                Manage your port facilities and boat fleet
-              </p>
+              <p className="text-muted-foreground mt-1">Manage your port facilities and boat fleet</p>
             </div>
 
             <Dialog open={isOpen} onOpenChange={setIsOpen}>
@@ -122,7 +163,6 @@ export default function PortsBoatsPage() {
                     setEditingId(null)
                     setFormData({ type: "boat", status: "operational" })
                   }}
-                  className="w-full sm:w-auto"
                 >
                   <Plus className="h-4 w-4 mr-2" />
                   Add Port or Boat
@@ -231,69 +271,190 @@ export default function PortsBoatsPage() {
               </DialogContent>
             </Dialog>
           </div>
-        </div>
 
-        {/* Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-          {boats.map((boat) => (
-            <Card key={boat.id} className="overflow-hidden hover:shadow-lg transition-shadow bg-card border-border">
-              <div className="p-4 sm:p-6 space-y-4">
-                <div className="flex items-start justify-between">
-                  <div className="flex items-start gap-3">
-                    <span className="text-2xl">{getTypeIcon(boat.type)}</span>
-                    <div>
-                      <h3 className="font-semibold text-card-foreground text-sm sm:text-base">{boat.name}</h3>
-                      <p className="text-xs sm:text-sm text-muted-foreground">{boat.location}</p>
-                    </div>
-                  </div>
-                  <span className={`text-xs font-semibold px-2 py-1 rounded-full ${getStatusColor(boat.status)}`}>
-                    {boat.status}
-                  </span>
-                </div>
-
-                {boat.capacity && (
-                  <p className="text-xs sm:text-sm text-muted-foreground">
-                    <span className="font-medium text-card-foreground">Capacity:</span> {boat.capacity}
-                  </p>
-                )}
-
-                {boat.description && (
-                  <p className="text-xs sm:text-sm text-card-foreground line-clamp-2">{boat.description}</p>
-                )}
-
-                {boat.lastMaintenance && (
-                  <p className="text-xs text-muted-foreground">
-                    Last maintained: {new Date(boat.lastMaintenance).toLocaleDateString()}
-                  </p>
-                )}
-
-                <div className="flex gap-2 pt-2 border-t border-border">
-                  <Button variant="ghost" size="sm" className="flex-1" onClick={() => handleEdit(boat)}>
-                    <Edit2 className="h-4 w-4 mr-1" />
-                    Edit
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="flex-1 text-red-600 hover:text-red-700 hover:bg-red-50"
-                    onClick={() => handleDelete(boat.id)}
-                  >
-                    <Trash2 className="h-4 w-4 mr-1" />
-                    Delete
-                  </Button>
-                </div>
-              </div>
-            </Card>
-          ))}
-        </div>
-
-        {boats.length === 0 && (
-          <div className="text-center py-12">
-            <Anchor className="h-16 w-16 text-muted mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-foreground">No ports or boats yet</h3>
-            <p className="text-muted-foreground mt-2">Start by adding your first port or boat to the system</p>
+          {/* Filter Tabs */}
+          <div className="flex gap-2 border-b border-border">
+            <button
+              onClick={() => setFilterType("all")}
+              className={`px-4 py-2 font-medium text-sm transition-colors ${
+                filterType === "all"
+                  ? "text-primary border-b-2 border-primary"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <Filter className="h-4 w-4 inline mr-2" />
+              All ({boats.length})
+            </button>
+            <button
+              onClick={() => setFilterType("port")}
+              className={`px-4 py-2 font-medium text-sm transition-colors flex items-center gap-2 ${
+                filterType === "port"
+                  ? "text-blue-400 border-b-2 border-blue-400"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <Anchor className="h-4 w-4" />
+              Ports ({ports.length})
+            </button>
+            <button
+              onClick={() => setFilterType("boat")}
+              className={`px-4 py-2 font-medium text-sm transition-colors flex items-center gap-2 ${
+                filterType === "boat"
+                  ? "text-orange-400 border-b-2 border-orange-400"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <Ship className="h-4 w-4" />
+              Boats ({vessels.length})
+            </button>
           </div>
-        )}
+        </div>
+
+        {/* Port Facilities Section */}
+        {filterType === "all" || filterType === "port" ? (
+          <div className="mb-12">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="h-10 w-1 bg-blue-500 rounded"></div>
+              <h2 className="text-2xl font-bold text-foreground">Port Facilities</h2>
+              <span className="text-sm text-muted-foreground ml-auto">({ports.length})</span>
+            </div>
+            {ports.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {ports.map((port) => (
+                  <Card
+                    key={port.id}
+                    className={`overflow-hidden hover:shadow-lg transition-all bg-card border-border ${getCardBorderColor(port.type)}`}
+                  >
+                    <div className="p-6 space-y-4">
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-start gap-3">
+                          {getTypeIcon(port.type)}
+                          <div>
+                            <h3 className="font-semibold text-card-foreground">{port.name}</h3>
+                            <p className="text-sm text-muted-foreground">{port.location}</p>
+                          </div>
+                        </div>
+                        <span className={`text-xs font-semibold px-3 py-1 rounded-full ${getStatusColor(port.status)}`}>
+                          {port.status}
+                        </span>
+                      </div>
+
+                      {port.capacity && (
+                        <p className="text-sm text-muted-foreground">
+                          <span className="font-medium text-card-foreground">Capacity:</span> {port.capacity}
+                        </p>
+                      )}
+
+                      {port.description && (
+                        <p className="text-sm text-card-foreground line-clamp-2">{port.description}</p>
+                      )}
+
+                      {port.lastMaintenance && (
+                        <p className="text-xs text-muted-foreground">
+                          Last maintained: {new Date(port.lastMaintenance).toLocaleDateString()}
+                        </p>
+                      )}
+
+                      <div className="flex gap-2 pt-2 border-t border-border">
+                        <Button variant="ghost" size="sm" className="flex-1" onClick={() => handleEdit(port)}>
+                          <Edit2 className="h-4 w-4 mr-1" />
+                          Edit
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="flex-1 text-red-600 hover:text-red-700 hover:bg-red-50"
+                          onClick={() => handleDelete(port.id)}
+                        >
+                          <Trash2 className="h-4 w-4 mr-1" />
+                          Delete
+                        </Button>
+                      </div>
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8 text-muted-foreground">
+                <Anchor className="h-12 w-12 text-muted mx-auto mb-2" />
+                <p>No port facilities registered yet</p>
+              </div>
+            )}
+          </div>
+        ) : null}
+
+        {/* Boat Fleet Section */}
+        {filterType === "all" || filterType === "boat" ? (
+          <div>
+            <div className="flex items-center gap-3 mb-6">
+              <div className="h-10 w-1 bg-orange-500 rounded"></div>
+              <h2 className="text-2xl font-bold text-foreground">Boat Fleet</h2>
+              <span className="text-sm text-muted-foreground ml-auto">({vessels.length})</span>
+            </div>
+            {vessels.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {vessels.map((boat) => (
+                  <Card
+                    key={boat.id}
+                    className={`overflow-hidden hover:shadow-lg transition-all bg-card border-border ${getCardBorderColor(boat.type)}`}
+                  >
+                    <div className="p-6 space-y-4">
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-start gap-3">
+                          {getTypeIcon(boat.type)}
+                          <div>
+                            <h3 className="font-semibold text-card-foreground">{boat.name}</h3>
+                            <p className="text-sm text-muted-foreground">{boat.location}</p>
+                          </div>
+                        </div>
+                        <span className={`text-xs font-semibold px-3 py-1 rounded-full ${getStatusColor(boat.status)}`}>
+                          {boat.status}
+                        </span>
+                      </div>
+
+                      {boat.capacity && (
+                        <p className="text-sm text-muted-foreground">
+                          <span className="font-medium text-card-foreground">Size:</span> {boat.capacity}
+                        </p>
+                      )}
+
+                      {boat.description && (
+                        <p className="text-sm text-card-foreground line-clamp-2">{boat.description}</p>
+                      )}
+
+                      {boat.lastMaintenance && (
+                        <p className="text-xs text-muted-foreground">
+                          Last maintained: {new Date(boat.lastMaintenance).toLocaleDateString()}
+                        </p>
+                      )}
+
+                      <div className="flex gap-2 pt-2 border-t border-border">
+                        <Button variant="ghost" size="sm" className="flex-1" onClick={() => handleEdit(boat)}>
+                          <Edit2 className="h-4 w-4 mr-1" />
+                          Edit
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="flex-1 text-red-600 hover:text-red-700 hover:bg-red-50"
+                          onClick={() => handleDelete(boat.id)}
+                        >
+                          <Trash2 className="h-4 w-4 mr-1" />
+                          Delete
+                        </Button>
+                      </div>
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8 text-muted-foreground">
+                <Ship className="h-12 w-12 text-muted mx-auto mb-2" />
+                <p>No boats registered yet</p>
+              </div>
+            )}
+          </div>
+        ) : null}
       </div>
     </div>
   )
