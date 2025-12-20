@@ -26,7 +26,9 @@ import {
   TrendingUp,
   FileText,
   Lightbulb,
+  ChevronDown,
 } from "lucide-react"
+import { useState } from "react"
 
 const navigationGroups = [
   {
@@ -98,6 +100,26 @@ interface SidebarProps {
 
 export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const pathname = usePathname()
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(
+    new Set([
+      "Core Operations",
+      "Property Management",
+      "Off Grid Energy",
+      "Supply Chain",
+      "People & Operations",
+      "Advanced",
+    ]),
+  )
+
+  const toggleGroup = (label: string) => {
+    const newExpanded = new Set(expandedGroups)
+    if (newExpanded.has(label)) {
+      newExpanded.delete(label)
+    } else {
+      newExpanded.add(label)
+    }
+    setExpandedGroups(newExpanded)
+  }
 
   return (
     <>
@@ -129,34 +151,50 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
         <nav className="flex-1 space-y-3 sm:space-y-4 px-2 sm:px-3 py-3 sm:py-4 overflow-y-auto">
           {navigationGroups.map((group) => (
             <div key={group.label} className="space-y-2">
-              <div className="px-2">
-                <h3 className="text-xs font-bold uppercase tracking-wider text-gray-700">{group.label}</h3>
-                <p className="text-xs text-gray-500 mt-1 leading-tight hidden sm:block">{group.description}</p>
+              <div className="flex items-center justify-between px-2">
+                <div className="flex-1">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-gray-700">{group.label}</h3>
+                  <p className="text-xs text-gray-500 mt-1 leading-tight hidden sm:block">{group.description}</p>
+                </div>
+                <button
+                  onClick={() => toggleGroup(group.label)}
+                  className="ml-2 p-1 hover:bg-gray-100 rounded transition-colors flex-shrink-0"
+                  aria-label={`Toggle ${group.label}`}
+                >
+                  <ChevronDown
+                    className={cn(
+                      "h-4 w-4 text-gray-600 transition-transform duration-200",
+                      expandedGroups.has(group.label) ? "rotate-0" : "-rotate-90",
+                    )}
+                  />
+                </button>
               </div>
-              <div className="space-y-1">
-                {group.items.map((item) => {
-                  const isActive = pathname === item.href || (item.href !== "/" && pathname?.startsWith(item.href))
+              {expandedGroups.has(group.label) && (
+                <div className="space-y-1">
+                  {group.items.map((item) => {
+                    const isActive = pathname === item.href || (item.href !== "/" && pathname?.startsWith(item.href))
 
-                  return (
-                    <Link
-                      key={item.name}
-                      href={item.href}
-                      onClick={onClose}
-                      className={cn(
-                        "group flex items-center gap-2 sm:gap-3 rounded px-2 sm:px-3 py-2 text-xs sm:text-sm font-medium transition-all duration-200",
-                        isActive
-                          ? "bg-primary text-white shadow-md"
-                          : "text-gray-700 hover:bg-gray-100 hover:text-gray-900",
-                      )}
-                      title={item.tip}
-                    >
-                      <item.icon className="h-5 w-5 flex-shrink-0" />
-                      <span className="flex-1">{item.name}</span>
-                      {isActive && <div className="h-2 w-2 rounded-full bg-white flex-shrink-0"></div>}
-                    </Link>
-                  )
-                })}
-              </div>
+                    return (
+                      <Link
+                        key={item.name}
+                        href={item.href}
+                        onClick={onClose}
+                        className={cn(
+                          "group flex items-center gap-2 sm:gap-3 rounded px-2 sm:px-3 py-2 text-xs sm:text-sm font-medium transition-all duration-200",
+                          isActive
+                            ? "bg-primary text-white shadow-md"
+                            : "text-gray-700 hover:bg-gray-100 hover:text-gray-900",
+                        )}
+                        title={item.tip}
+                      >
+                        <item.icon className="h-5 w-5 flex-shrink-0" />
+                        <span className="flex-1">{item.name}</span>
+                        {isActive && <div className="h-2 w-2 rounded-full bg-white flex-shrink-0"></div>}
+                      </Link>
+                    )
+                  })}
+                </div>
+              )}
             </div>
           ))}
         </nav>
