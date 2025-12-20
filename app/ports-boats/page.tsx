@@ -18,6 +18,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
+import { createBrowserClient } from "@supabase/ssr"
 
 interface PortBoat {
   id: string
@@ -27,8 +28,51 @@ interface PortBoat {
   capacity?: string
   status: "operational" | "maintenance" | "inactive"
   description: string
-  lastMaintenance?: string
+  last_maintenance?: string
 }
+
+const MOCK_DATA: PortBoat[] = [
+  {
+    id: "1",
+    name: "Embarcadero Rebelin",
+    type: "port",
+    location: "Rebelin",
+    capacity: "4 boats",
+    status: "operational",
+    description: "Primary docking facility",
+    last_maintenance: "14-12-2024",
+  },
+  {
+    id: "2",
+    name: "Corovado",
+    type: "boat",
+    location: "Rebelin",
+    capacity: "10 meters",
+    status: "operational",
+    description: "Main transport vessel",
+    last_maintenance: "10-12-2024",
+  },
+  {
+    id: "3",
+    name: "Embarcadero Puerto Claro",
+    type: "port",
+    location: "Puerto Claro",
+    capacity: "6 boats",
+    status: "operational",
+    description: "Secondary port facility",
+    last_maintenance: "12-12-2024",
+  },
+  {
+    id: "4",
+    name: "Nativa",
+    type: "boat",
+    location: "Rebelin",
+    capacity: "15 meters",
+    status: "operational",
+    description: "Secondary transport vessel",
+    last_maintenance: "08-12-2024",
+  },
+]
 
 function PortsBoatsContent({
   boats,
@@ -53,309 +97,187 @@ function PortsBoatsContent({
     return boat.type === filterType
   })
 
-  const ports = filteredBoats.filter((b) => b.type === "port")
-  const vessels = filteredBoats.filter((b) => b.type === "boat")
+  const portCount = boats.filter((b) => b.type === "port").length
+  const boatCount = boats.filter((b) => b.type === "boat").length
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div>
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
-          <div>
-            <h1 className="text-3xl font-bold text-foreground flex items-center gap-2">
-              <Anchor className="h-8 w-8 text-primary" />
-              Ports & Boats
-            </h1>
-            <p className="text-muted-foreground mt-1">Manage your port facilities and boat fleet</p>
-          </div>
-
-          <Dialog open={isOpen} onOpenChange={setIsOpen}>
-            <DialogTrigger asChild>
-              <Button
-                onClick={() => {
-                  setEditingId(null)
-                  setFormData({ type: "boat", status: "operational" })
-                }}
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                Add Port or Boat
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-md">
-              <DialogHeader>
-                <DialogTitle>{editingId ? "Edit" : "Add"} Port or Boat</DialogTitle>
-                <DialogDescription>
-                  {editingId ? "Update the port or boat details" : "Create a new port or boat entry"}
-                </DialogDescription>
-              </DialogHeader>
-
-              <div className="space-y-4">
-                <div>
-                  <Label htmlFor="name">Name *</Label>
-                  <Input
-                    id="name"
-                    placeholder="e.g., Main Dock, Yacht A"
-                    value={formData.name || ""}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="type">Type</Label>
-                  <Select
-                    value={formData.type}
-                    onValueChange={(v) => setFormData({ ...formData, type: v as "port" | "boat" })}
-                  >
-                    <SelectTrigger id="type">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="port">Port/Dock</SelectItem>
-                      <SelectItem value="boat">Boat/Vessel</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div>
-                  <Label htmlFor="location">Location *</Label>
-                  <Input
-                    id="location"
-                    placeholder="e.g., North Harbor"
-                    value={formData.location || ""}
-                    onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="capacity">Capacity/Size</Label>
-                  <Input
-                    id="capacity"
-                    placeholder="e.g., 5 boats, 25 meters"
-                    value={formData.capacity || ""}
-                    onChange={(e) => setFormData({ ...formData, capacity: e.target.value })}
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="status">Status</Label>
-                  <Select value={formData.status} onValueChange={(v) => setFormData({ ...formData, status: v as any })}>
-                    <SelectTrigger id="status">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="operational">Operational</SelectItem>
-                      <SelectItem value="maintenance">Maintenance</SelectItem>
-                      <SelectItem value="inactive">Inactive</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div>
-                  <Label htmlFor="description">Description</Label>
-                  <Textarea
-                    id="description"
-                    placeholder="Add details about this port or boat..."
-                    value={formData.description || ""}
-                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                    rows={3}
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="maintenance">Last Maintenance</Label>
-                  <Input
-                    id="maintenance"
-                    type="date"
-                    value={formData.lastMaintenance || ""}
-                    onChange={(e) => setFormData({ ...formData, lastMaintenance: e.target.value })}
-                  />
-                </div>
-
-                <div className="flex gap-2 justify-end pt-4">
-                  <Button variant="outline" onClick={() => setIsOpen(false)}>
-                    Cancel
-                  </Button>
-                  <Button onClick={handleAddOrEdit}>{editingId ? "Update" : "Add"}</Button>
-                </div>
-              </div>
-            </DialogContent>
-          </Dialog>
-        </div>
-
-        {/* Filter Tabs */}
-        <div className="flex gap-2 border-b border-border">
-          <button
-            onClick={() => setFilterType("all")}
-            className={`px-4 py-2 font-medium text-sm transition-colors ${
-              filterType === "all"
-                ? "text-primary border-b-2 border-primary"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            <Filter className="h-4 w-4 inline mr-2" />
-            All ({boats.length})
-          </button>
-          <button
-            onClick={() => setFilterType("port")}
-            className={`px-4 py-2 font-medium text-sm transition-colors flex items-center gap-2 ${
-              filterType === "port"
-                ? "text-primary border-b-2 border-primary"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            <Anchor className="h-4 w-4" />
-            Ports ({ports.length})
-          </button>
-          <button
-            onClick={() => setFilterType("boat")}
-            className={`px-4 py-2 font-medium text-sm transition-colors flex items-center gap-2 ${
-              filterType === "boat"
-                ? "text-primary border-b-2 border-primary"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            <Ship className="h-4 w-4" />
-            Boats ({vessels.length})
-          </button>
-        </div>
+    <div className="space-y-8">
+      {/* Filter Tabs */}
+      <div className="flex gap-2 flex-wrap">
+        <Button
+          variant={filterType === "all" ? "default" : "outline"}
+          onClick={() => setFilterType("all")}
+          className="gap-2"
+        >
+          <Filter className="h-4 w-4" />
+          All Items ({boats.length})
+        </Button>
+        <Button
+          variant={filterType === "port" ? "default" : "outline"}
+          onClick={() => setFilterType("port")}
+          className="gap-2"
+        >
+          <Anchor className="h-4 w-4" />
+          Ports ({portCount})
+        </Button>
+        <Button
+          variant={filterType === "boat" ? "default" : "outline"}
+          onClick={() => setFilterType("boat")}
+          className="gap-2"
+        >
+          <Ship className="h-4 w-4" />
+          Boats ({boatCount})
+        </Button>
       </div>
 
-      {/* Port Facilities Section */}
-      {filterType === "all" || filterType === "port" ? (
-        <div className="mb-12">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="h-10 w-1 bg-primary rounded"></div>
-            <h2 className="text-2xl font-bold text-foreground">Port Facilities</h2>
-            <span className="text-sm text-muted-foreground ml-auto">({ports.length})</span>
+      {/* Ports Section */}
+      {(filterType === "all" || filterType === "port") && (
+        <div>
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-1 h-6 bg-[#726658]"></div>
+            <h2 className="text-xl font-semibold">Ports</h2>
+            <span className="text-sm text-muted-foreground">({boats.filter((b) => b.type === "port").length})</span>
           </div>
-          {ports.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {ports.map((port) => (
-                <Card
-                  key={port.id}
-                  className={`overflow-hidden hover:shadow-lg transition-all bg-card border-border ${getCardBorderColor(port.type)}`}
-                >
-                  <div className="p-6 space-y-4">
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-start gap-3">
-                        {getTypeIcon(port.type)}
+
+          {boats.filter((b) => b.type === "port").length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {boats
+                .filter((b) => b.type === "port")
+                .map((port) => (
+                  <Card key={port.id} className={`p-6 ${getCardBorderColor(port.type)}`}>
+                    <div className="flex items-start justify-between mb-3">
+                      <div className="flex items-center gap-3">
+                        <div className="text-[#726658]">{getTypeIcon(port.type)}</div>
                         <div>
-                          <h3 className="font-semibold text-card-foreground">{port.name}</h3>
-                          <p className="text-sm text-muted-foreground">{port.location}</p>
+                          <h3 className="font-semibold text-foreground">{port.name}</h3>
+                          <p className="text-xs text-muted-foreground">{port.location}</p>
                         </div>
                       </div>
-                      <span className={`text-xs font-semibold px-3 py-1 rounded-full ${getStatusColor(port.status)}`}>
+                      <span className={`text-xs px-2 py-1 rounded-full ${getStatusColor(port.status)}`}>
                         {port.status}
                       </span>
                     </div>
 
-                    {port.capacity && (
-                      <p className="text-sm text-muted-foreground">
-                        <span className="font-medium text-card-foreground">Capacity:</span> {port.capacity}
-                      </p>
-                    )}
+                    <div className="space-y-2 mb-4">
+                      <div>
+                        <p className="text-xs text-muted-foreground">Capacity</p>
+                        <p className="text-sm font-medium">{port.capacity}</p>
+                      </div>
+                      {port.last_maintenance && (
+                        <div>
+                          <p className="text-xs text-muted-foreground">Last maintenance</p>
+                          <p className="text-sm font-medium">{port.last_maintenance}</p>
+                        </div>
+                      )}
+                      {port.description && (
+                        <div>
+                          <p className="text-xs text-muted-foreground">Description</p>
+                          <p className="text-sm">{port.description}</p>
+                        </div>
+                      )}
+                    </div>
 
-                    {port.description && (
-                      <p className="text-sm text-card-foreground line-clamp-2">{port.description}</p>
-                    )}
-
-                    {port.lastMaintenance && (
-                      <p className="text-xs text-muted-foreground">
-                        Last maintained: {new Date(port.lastMaintenance).toLocaleDateString()}
-                      </p>
-                    )}
-
-                    <div className="flex gap-2 pt-2 border-t border-border">
-                      <Button variant="ghost" size="sm" className="flex-1" onClick={() => handleEdit(port)}>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleEdit(port)}
+                        className="text-muted-foreground hover:text-foreground"
+                      >
                         <Edit2 className="h-4 w-4 mr-1" />
                         Edit
                       </Button>
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="flex-1 text-destructive hover:text-destructive hover:bg-destructive/10"
                         onClick={() => handleDelete(port.id)}
+                        className="text-red-600 hover:text-red-700"
                       >
                         <Trash2 className="h-4 w-4 mr-1" />
                         Delete
                       </Button>
                     </div>
-                  </div>
-                </Card>
-              ))}
+                  </Card>
+                ))}
             </div>
           ) : (
             <div className="text-center py-8 text-muted-foreground">
               <Anchor className="h-12 w-12 text-muted mx-auto mb-2" />
-              <p>No port facilities registered yet</p>
+              <p>No ports registered yet</p>
             </div>
           )}
         </div>
-      ) : null}
+      )}
 
-      {/* Boat Fleet Section */}
-      {filterType === "all" || filterType === "boat" ? (
+      {/* Boats Section */}
+      {(filterType === "all" || filterType === "boat") && (
         <div>
-          <div className="flex items-center gap-3 mb-6">
-            <div className="h-10 w-1 bg-primary rounded"></div>
-            <h2 className="text-2xl font-bold text-foreground">Boat Fleet</h2>
-            <span className="text-sm text-muted-foreground ml-auto">({vessels.length})</span>
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-1 h-6 bg-[#726658]"></div>
+            <h2 className="text-xl font-semibold">Boats</h2>
+            <span className="text-sm text-muted-foreground">({boats.filter((b) => b.type === "boat").length})</span>
           </div>
-          {vessels.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {vessels.map((boat) => (
-                <Card
-                  key={boat.id}
-                  className={`overflow-hidden hover:shadow-lg transition-all bg-card border-border ${getCardBorderColor(boat.type)}`}
-                >
-                  <div className="p-6 space-y-4">
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-start gap-3">
-                        {getTypeIcon(boat.type)}
+
+          {boats.filter((b) => b.type === "boat").length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {boats
+                .filter((b) => b.type === "boat")
+                .map((boat) => (
+                  <Card key={boat.id} className={`p-6 ${getCardBorderColor(boat.type)}`}>
+                    <div className="flex items-start justify-between mb-3">
+                      <div className="flex items-center gap-3">
+                        <div className="text-[#726658]">{getTypeIcon(boat.type)}</div>
                         <div>
-                          <h3 className="font-semibold text-card-foreground">{boat.name}</h3>
-                          <p className="text-sm text-muted-foreground">{boat.location}</p>
+                          <h3 className="font-semibold text-foreground">{boat.name}</h3>
+                          <p className="text-xs text-muted-foreground">{boat.location}</p>
                         </div>
                       </div>
-                      <span className={`text-xs font-semibold px-3 py-1 rounded-full ${getStatusColor(boat.status)}`}>
+                      <span className={`text-xs px-2 py-1 rounded-full ${getStatusColor(boat.status)}`}>
                         {boat.status}
                       </span>
                     </div>
 
-                    {boat.capacity && (
-                      <p className="text-sm text-muted-foreground">
-                        <span className="font-medium text-card-foreground">Size:</span> {boat.capacity}
-                      </p>
-                    )}
+                    <div className="space-y-2 mb-4">
+                      <div>
+                        <p className="text-xs text-muted-foreground">Size</p>
+                        <p className="text-sm font-medium">{boat.capacity}</p>
+                      </div>
+                      {boat.last_maintenance && (
+                        <div>
+                          <p className="text-xs text-muted-foreground">Last maintenance</p>
+                          <p className="text-sm font-medium">{boat.last_maintenance}</p>
+                        </div>
+                      )}
+                      {boat.description && (
+                        <div>
+                          <p className="text-xs text-muted-foreground">Description</p>
+                          <p className="text-sm">{boat.description}</p>
+                        </div>
+                      )}
+                    </div>
 
-                    {boat.description && (
-                      <p className="text-sm text-card-foreground line-clamp-2">{boat.description}</p>
-                    )}
-
-                    {boat.lastMaintenance && (
-                      <p className="text-xs text-muted-foreground">
-                        Last maintained: {new Date(boat.lastMaintenance).toLocaleDateString()}
-                      </p>
-                    )}
-
-                    <div className="flex gap-2 pt-2 border-t border-border">
-                      <Button variant="ghost" size="sm" className="flex-1" onClick={() => handleEdit(boat)}>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleEdit(boat)}
+                        className="text-muted-foreground hover:text-foreground"
+                      >
                         <Edit2 className="h-4 w-4 mr-1" />
                         Edit
                       </Button>
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="flex-1 text-destructive hover:text-destructive hover:bg-destructive/10"
                         onClick={() => handleDelete(boat.id)}
+                        className="text-red-600 hover:text-red-700"
                       >
                         <Trash2 className="h-4 w-4 mr-1" />
                         Delete
                       </Button>
                     </div>
-                  </div>
-                </Card>
-              ))}
+                  </Card>
+                ))}
             </div>
           ) : (
             <div className="text-center py-8 text-muted-foreground">
@@ -364,54 +286,18 @@ function PortsBoatsContent({
             </div>
           )}
         </div>
-      ) : null}
+      )}
     </div>
   )
 }
 
 export default function PortsBoatsPage() {
-  const [boats, setBoats] = useState<PortBoat[]>([
-    {
-      id: "1",
-      name: "Embarcadero Rebelin",
-      type: "port",
-      location: "Rebelin",
-      capacity: "4 boats",
-      status: "operational",
-      description: "Primary docking facility",
-      lastMaintenance: "2024-12-14",
-    },
-    {
-      id: "2",
-      name: "Corovado",
-      type: "boat",
-      location: "Rebelin",
-      capacity: "10 meters",
-      status: "operational",
-      description: "Corovado vessel",
-      lastMaintenance: "2024-12-19",
-    },
-    {
-      id: "3",
-      name: "Embarcadero Puerto Claro",
-      type: "port",
-      location: "Puerto Claro",
-      capacity: "8 boats",
-      status: "operational",
-      description: "Secondary port facility",
-      lastMaintenance: "2024-12-14",
-    },
-    {
-      id: "4",
-      name: "Nativa",
-      type: "boat",
-      location: "Rebelin",
-      capacity: "15 meters",
-      status: "operational",
-      description: "Nativa vessel",
-      lastMaintenance: "2024-12-19",
-    },
-  ])
+  const [supabase] = useState(() =>
+    createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!),
+  )
+
+  const [boats, setBoats] = useState<PortBoat[]>(MOCK_DATA)
+  const [loading, setLoading] = useState(false)
   const [isOpen, setIsOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [formData, setFormData] = useState<Partial<PortBoat>>({
@@ -419,6 +305,8 @@ export default function PortsBoatsPage() {
     status: "operational",
   })
   const [filterType, setFilterType] = useState<"all" | "port" | "boat">("all")
+
+  // When the database table is created, uncomment this useEffect to enable database integration
 
   const handleAddOrEdit = () => {
     if (!formData.name || !formData.location) return
@@ -435,9 +323,9 @@ export default function PortsBoatsPage() {
         capacity: formData.capacity,
         status: formData.status || "operational",
         description: formData.description || "",
-        lastMaintenance: formData.lastMaintenance,
+        last_maintenance: formData.last_maintenance,
       }
-      setBoats([...boats, newBoat])
+      setBoats([newBoat, ...boats])
     }
 
     setFormData({ type: "boat", status: "operational" })
@@ -457,45 +345,159 @@ export default function PortsBoatsPage() {
   const getStatusColor = (status: string) => {
     switch (status) {
       case "operational":
-        return "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
+        return "bg-emerald-500/10 text-emerald-600"
       case "maintenance":
-        return "bg-amber-500/20 text-amber-300 border border-amber-500/30"
+        return "bg-amber-500/10 text-amber-600"
       case "inactive":
-        return "bg-slate-500/20 text-slate-300 border border-slate-500/30"
+        return "bg-slate-500/10 text-slate-600"
       default:
-        return "bg-slate-500/20 text-slate-300 border border-slate-500/30"
+        return "bg-slate-500/10 text-slate-600"
     }
   }
 
-  const getTypeIcon = (type: string) => {
-    return type === "port" ? <Anchor className="h-5 w-5 text-primary" /> : <Ship className="h-5 w-5 text-primary" />
-  }
+  const getTypeIcon = (type: string) =>
+    type === "port" ? <Anchor className="h-5 w-5" /> : <Ship className="h-5 w-5" />
 
-  const getCardBorderColor = (type: string) => {
-    return type === "port" ? "border-l-4 border-l-primary/60" : "border-l-4 border-l-primary/40"
-  }
+  const getCardBorderColor = (type: string) => "border-l-4 border-l-[#726658]"
 
   return (
     <AppLayout>
-      <PageHeader title="Ports & Boats" description="Manage your port facilities and boat fleet" />
-      <PortsBoatsContent
-        boats={boats}
-        setBoats={setBoats}
-        isOpen={isOpen}
-        setIsOpen={setIsOpen}
-        editingId={editingId}
-        setEditingId={setEditingId}
-        formData={formData}
-        setFormData={setFormData}
-        filterType={filterType}
-        setFilterType={setFilterType}
-        handleAddOrEdit={handleAddOrEdit}
-        handleEdit={handleEdit}
-        handleDelete={handleDelete}
-        getStatusColor={getStatusColor}
-        getTypeIcon={getTypeIcon}
-        getCardBorderColor={getCardBorderColor}
-      />
+      <div className="space-y-6">
+        <PageHeader
+          title="Ports & Boats"
+          description="Manage your port facilities and boat fleet"
+          icon={<Anchor className="h-6 w-6" />}
+        />
+
+        {/* Add Port/Boat Dialog */}
+        <div className="flex justify-end">
+          <Dialog open={isOpen} onOpenChange={setIsOpen}>
+            <DialogTrigger asChild>
+              <Button onClick={() => setFormData({ type: "boat", status: "operational" })} className="gap-2">
+                <Plus className="h-4 w-4" />
+                Add Port or Boat
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>{editingId ? "Edit" : "Add"} Port or Boat</DialogTitle>
+                <DialogDescription>
+                  {editingId ? "Update the details" : "Fill in the details for the new"} port or boat
+                </DialogDescription>
+              </DialogHeader>
+
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="type">Type</Label>
+                  <Select
+                    value={formData.type}
+                    onValueChange={(value: any) => setFormData({ ...formData, type: value })}
+                  >
+                    <SelectTrigger id="type">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="port">Port</SelectItem>
+                      <SelectItem value="boat">Boat</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <Label htmlFor="name">Name</Label>
+                  <Input
+                    id="name"
+                    placeholder="Port or boat name"
+                    value={formData.name || ""}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="location">Location</Label>
+                  <Input
+                    id="location"
+                    placeholder="Location"
+                    value={formData.location || ""}
+                    onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="capacity">{formData.type === "port" ? "Capacity (boats)" : "Size (meters)"}</Label>
+                  <Input
+                    id="capacity"
+                    placeholder={formData.type === "port" ? "4 boats" : "15 meters"}
+                    value={formData.capacity || ""}
+                    onChange={(e) => setFormData({ ...formData, capacity: e.target.value })}
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="status">Status</Label>
+                  <Select
+                    value={formData.status}
+                    onValueChange={(value: any) => setFormData({ ...formData, status: value })}
+                  >
+                    <SelectTrigger id="status">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="operational">Operational</SelectItem>
+                      <SelectItem value="maintenance">Maintenance</SelectItem>
+                      <SelectItem value="inactive">Inactive</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <Label htmlFor="description">Description</Label>
+                  <Textarea
+                    id="description"
+                    placeholder="Description"
+                    value={formData.description || ""}
+                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="lastMaintenance">Last Maintenance</Label>
+                  <Input
+                    id="lastMaintenance"
+                    placeholder="DD-MM-YYYY"
+                    value={formData.last_maintenance || ""}
+                    onChange={(e) => setFormData({ ...formData, last_maintenance: e.target.value })}
+                  />
+                </div>
+
+                <Button onClick={handleAddOrEdit} className="w-full">
+                  {editingId ? "Update" : "Add"} {formData.type === "port" ? "Port" : "Boat"}
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+        </div>
+
+        {/* Content */}
+        <PortsBoatsContent
+          boats={boats}
+          setBoats={setBoats}
+          isOpen={isOpen}
+          setIsOpen={setIsOpen}
+          editingId={editingId}
+          setEditingId={setEditingId}
+          formData={formData}
+          setFormData={setFormData}
+          filterType={filterType}
+          setFilterType={setFilterType}
+          handleAddOrEdit={handleAddOrEdit}
+          handleEdit={handleEdit}
+          handleDelete={handleDelete}
+          getStatusColor={getStatusColor}
+          getTypeIcon={getTypeIcon}
+          getCardBorderColor={getCardBorderColor}
+        />
+      </div>
     </AppLayout>
   )
 }
