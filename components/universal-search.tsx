@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
-import { Search, MapPin, AlertCircle, Wrench, Users, Home, Calendar } from "lucide-react"
+import { Search, MapPin, AlertCircle, Wrench, Users, Home, Calendar, Anchor } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import { Dialog, DialogContent } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
@@ -10,12 +10,119 @@ import { useRouter } from "next/navigation"
 
 interface SearchResult {
   id: string
-  type: "asset" | "issue" | "maintenance" | "employee" | "room" | "reservation" | "guest" | "location" | "port" | "boat"
+  type:
+    | "asset"
+    | "issue"
+    | "maintenance"
+    | "employee"
+    | "room"
+    | "reservation"
+    | "guest"
+    | "location"
+    | "port"
+    | "boat"
+    | "page"
   title: string
   subtitle?: string
   status?: string
   badge?: string
 }
+
+const navigationPages = [
+  { id: "dashboard", title: "Dashboard", subtitle: "Overview of your property", href: "/", type: "page" as const },
+  {
+    id: "bookings",
+    title: "Bookings",
+    subtitle: "Manage reservations and availability",
+    href: "/bookings",
+    type: "page" as const,
+  },
+  { id: "tasks", title: "Tasks", subtitle: "Daily management tasks", href: "/tasks", type: "page" as const },
+  { id: "assets", title: "Assets", subtitle: "Inventory and equipment", href: "/assets", type: "page" as const },
+  {
+    id: "maintenance",
+    title: "Maintenance",
+    subtitle: "Schedule and track repairs",
+    href: "/maintenance",
+    type: "page" as const,
+  },
+  { id: "map", title: "GIS Map", subtitle: "Property location and layout", href: "/map", type: "page" as const },
+  {
+    id: "cattle",
+    title: "Cattle",
+    subtitle: "Livestock and pasture management",
+    href: "/cattle",
+    type: "page" as const,
+  },
+  {
+    id: "ports-boats",
+    title: "Ports & Boats",
+    subtitle: "Manage port facilities and boat fleet",
+    href: "/ports-boats",
+    type: "page" as const,
+  },
+  {
+    id: "energy",
+    title: "Off Grid Energy",
+    subtitle: "Solar panels and electricity consumption",
+    href: "/energy",
+    type: "page" as const,
+  },
+  {
+    id: "energy-dashboard",
+    title: "Energy Dashboard",
+    subtitle: "Real-time energy monitoring",
+    href: "/energy-dashboard",
+    type: "page" as const,
+  },
+  {
+    id: "energy-reports",
+    title: "Energy Reports",
+    subtitle: "Historical reports and analytics",
+    href: "/energy-reports",
+    type: "page" as const,
+  },
+  {
+    id: "victron-setup",
+    title: "Victron Setup",
+    subtitle: "Victron integration guide",
+    href: "/victron-setup",
+    type: "page" as const,
+  },
+  {
+    id: "integration-docs",
+    title: "Integration Docs",
+    subtitle: "MQTT, Node-RED, and VRM API documentation",
+    href: "/integration-docs",
+    type: "page" as const,
+  },
+  {
+    id: "procurement",
+    title: "Procurement",
+    subtitle: "Purchase orders and acquisitions",
+    href: "/procurement",
+    type: "page" as const,
+  },
+  { id: "employees", title: "Employees", subtitle: "Team management", href: "/employees", type: "page" as const },
+  { id: "concierge", title: "Concierge", subtitle: "Guest communication", href: "/concierge", type: "page" as const },
+  {
+    id: "kitchen",
+    title: "Kitchen",
+    subtitle: "Kitchen and food preparation facilities",
+    href: "/kitchen",
+    type: "page" as const,
+  },
+  {
+    id: "checklists",
+    title: "Checklists",
+    subtitle: "Operational checklists",
+    href: "/checklists",
+    type: "page" as const,
+  },
+  { id: "issues", title: "Issues", subtitle: "Track and resolve problems", href: "/issues", type: "page" as const },
+  { id: "ai-ops", title: "AI Operations", subtitle: "AI-powered insights", href: "/ai-ops", type: "page" as const },
+  { id: "admin", title: "Admin", subtitle: "System configuration", href: "/admin", type: "page" as const },
+]
 
 export function UniversalSearch() {
   const [open, setOpen] = useState(false)
@@ -71,7 +178,14 @@ export function UniversalSearch() {
           supabase.from("ports_boats").select("id, name, type, location, status").ilike("name", searchPattern).limit(5),
         ])
 
+      const navigationResults = navigationPages.filter(
+        (page) =>
+          page.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          page.subtitle.toLowerCase().includes(searchQuery.toLowerCase()),
+      )
+
       const combinedResults: SearchResult[] = [
+        // Database results first
         ...(assets.data || []).map((a) => ({
           id: a.id,
           type: "asset" as const,
@@ -132,6 +246,14 @@ export function UniversalSearch() {
           badge: pb.type === "port" ? "Port" : "Vessel",
           status: pb.status,
         })),
+        // Navigation pages second
+        ...navigationResults.map((page) => ({
+          id: page.id,
+          type: "page" as const,
+          title: page.title,
+          subtitle: page.subtitle,
+          badge: "Go to",
+        })),
       ]
 
       setResults(combinedResults)
@@ -169,9 +291,11 @@ export function UniversalSearch() {
       case "location":
         return <MapPin className="h-4 w-4" />
       case "port":
-        return <MapPin className="h-4 w-4" />
+        return <Anchor className="h-4 w-4" />
       case "boat":
-        return <Users className="h-4 w-4" />
+        return <Anchor className="h-4 w-4" />
+      case "page":
+        return <Home className="h-4 w-4" />
       default:
         return <Search className="h-4 w-4" />
     }
@@ -192,9 +316,11 @@ export function UniversalSearch() {
       location: "/locations",
       port: "/ports-boats",
       boat: "/ports-boats",
+      page: "", // Will be handled separately
     }
 
-    const route = routes[result.type]
+    const pageResult = navigationPages.find((p) => p.id === result.id)
+    const route = pageResult?.href || routes[result.type]
     if (route) {
       router.push(route)
     }
@@ -206,7 +332,7 @@ export function UniversalSearch() {
         <div className="flex items-center border-b px-4">
           <Search className="h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Search assets, issues, maintenance, employees, rooms..."
+            placeholder="Search pages, assets, issues, employees, ports, boats..."
             className="border-0 focus-visible:ring-0 focus-visible:ring-offset-0"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
@@ -231,7 +357,7 @@ export function UniversalSearch() {
               <Search className="h-8 w-8 mb-2 opacity-50" />
               <p>Start typing to search...</p>
               <p className="text-xs mt-2">
-                Assets, Issues, Maintenance, Employees, Rooms, Guests, Locations, Ports, Boats
+                Pages, Assets, Issues, Maintenance, Employees, Rooms, Guests, Locations, Ports, Boats
               </p>
             </div>
           )}
