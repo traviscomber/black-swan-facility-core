@@ -3,7 +3,7 @@
 import type React from "react"
 
 import { useState, useEffect } from "react"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -172,6 +172,10 @@ export function AddInfrastructureDialog({ open, onClose, onAdd, initialCoordinat
             <MapPin className="h-5 w-5" />
             Add Infrastructure
           </DialogTitle>
+          <DialogDescription>
+            Create a new infrastructure item by selecting a category, providing a name, and setting coordinates on the
+            map.
+          </DialogDescription>
           {initialCoordinates && (
             <p className="text-sm text-gray-600 mt-2">
               Location selected from map: {initialCoordinates.lat.toFixed(4)}, {initialCoordinates.lng.toFixed(4)}
