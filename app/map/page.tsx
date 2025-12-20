@@ -271,11 +271,15 @@ export default function MapPage() {
       mapContainerRef.current.style.height = "100%"
       mapContainerRef.current.style.width = "100%"
 
+      const isMobile = window.innerWidth < 768
+      const isTablet = window.innerWidth < 1024
+      const initialZoom = isMobile ? 9 : isTablet ? 10 : 11
+
       const map = L.map(mapContainerRef.current, {
         preferCanvas: true,
         zoomControl: true,
         attributionControl: true,
-      }).setView([-39.8255, -73.2215], 14)
+      }).setView([-39.8255, -73.2215], initialZoom)
 
       const initialTileLayer = L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
         attribution:
