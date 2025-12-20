@@ -54,7 +54,8 @@ export function EditInfrastructureDialog({
   infrastructure: InfrastructurePlan | null
 }) {
   const [formData, setFormData] = useState({
-    name: "",
+    assetTypeId: "", // separate field for selected asset type
+    name: "", // now only for custom name input
     category: "internet",
     description: "",
     latitude: "",
@@ -62,7 +63,7 @@ export function EditInfrastructureDialog({
     status: "planned",
     priority: "normal",
     notes: "",
-    location_id: "", // Added location_id field
+    location_id: "",
   })
   const [loading, setLoading] = useState(false)
   const [assetTypes, setAssetTypes] = useState<AssetType[]>([])
@@ -93,6 +94,7 @@ export function EditInfrastructureDialog({
   useEffect(() => {
     if (infrastructure) {
       setFormData({
+        assetTypeId: "", // asset types are for selection, not stored
         name: infrastructure.name,
         category: infrastructure.category,
         description: infrastructure.description || "",
@@ -101,7 +103,7 @@ export function EditInfrastructureDialog({
         status: infrastructure.status,
         priority: infrastructure.priority,
         notes: infrastructure.notes || "",
-        location_id: infrastructure.location_id || "", // Include location_id
+        location_id: infrastructure.location_id || "",
       })
     }
   }, [infrastructure])
@@ -115,6 +117,11 @@ export function EditInfrastructureDialog({
     e.preventDefault()
     if (!infrastructure) return
 
+    if (!formData.name) {
+      alert("Please enter a name for this infrastructure")
+      return
+    }
+
     setLoading(true)
 
     console.log("[v0] Updating infrastructure in Supabase:", {
@@ -123,7 +130,7 @@ export function EditInfrastructureDialog({
       category: formData.category,
       latitude: Number.parseFloat(formData.latitude),
       longitude: Number.parseFloat(formData.longitude),
-      location_id: formData.location_id || null, // Include location_id
+      location_id: formData.location_id || null,
     })
 
     const supabase = createClient()
@@ -138,7 +145,7 @@ export function EditInfrastructureDialog({
         status: formData.status,
         priority: formData.priority,
         notes: formData.notes || null,
-        location_id: formData.location_id || null, // Include location_id
+        location_id: formData.location_id || null,
       })
       .eq("id", infrastructure.id)
       .select()
@@ -219,12 +226,13 @@ export function EditInfrastructureDialog({
           </div>
 
           <div>
-            <Label htmlFor="asset-type">
-              Asset Type *<span className="text-xs text-gray-500 ml-1">(or enter custom name below)</span>
-            </Label>
-            <Select value={formData.name} onValueChange={(value) => setFormData({ ...formData, name: value })}>
+            <Label htmlFor="asset-type">Asset Type (reference)</Label>
+            <Select
+              value={formData.assetTypeId}
+              onValueChange={(value) => setFormData({ ...formData, assetTypeId: value })}
+            >
               <SelectTrigger>
-                <SelectValue placeholder="Select an asset type or enter custom" />
+                <SelectValue placeholder="Select a predefined asset type" />
               </SelectTrigger>
               <SelectContent>
                 {filteredAssetTypes.length > 0 ? (
@@ -237,14 +245,15 @@ export function EditInfrastructureDialog({
                 ) : (
                   <SelectItem value="none" disabled>
                     No asset types available
-                  </SelectItem> // Updated default value
+                  </SelectItem>
                 )}
               </SelectContent>
             </Select>
+            <p className="text-xs text-gray-500 mt-1">For reference only</p>
           </div>
 
           <div>
-            <Label htmlFor="name">Custom Name *</Label>
+            <Label htmlFor="name">Infrastructure Name *</Label>
             <Input
               id="name"
               value={formData.name}

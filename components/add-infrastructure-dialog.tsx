@@ -40,6 +40,13 @@ interface Location {
   description: string | null
 }
 
+interface AddInfrastructureDialogProps {
+  open: boolean
+  onClose: () => void
+  onAdd: () => void
+  initialCoordinates?: { lat: number; lng: number } | null
+}
+
 const UTILITY_SPECS: Record<string, { label: string; icon: React.ReactNode }> = {
   electricity: { label: "Electricity", icon: <Zap className="h-4 w-4" /> },
   water: { label: "Water Supply", icon: <Droplet className="h-4 w-4" /> },
@@ -59,19 +66,10 @@ const UTILITY_SPECS: Record<string, { label: string; icon: React.ReactNode }> = 
   cattle: { label: "Cattle", icon: <Wifi className="h-4 w-4" /> },
 }
 
-export function AddInfrastructureDialog({
-  open,
-  onClose,
-  onAdd,
-  initialCoordinates,
-}: {
-  open: boolean
-  onClose: () => void
-  onAdd: () => void
-  initialCoordinates?: { lat: number; lng: number } | null
-}) {
+export function AddInfrastructureDialog({ open, onClose, onAdd, initialCoordinates }: AddInfrastructureDialogProps) {
   const [formData, setFormData] = useState({
-    name: "",
+    assetTypeId: "", // separate field for selected asset type
+    name: "", // now only for custom name input
     category: "internet",
     description: "",
     latitude: "",
@@ -123,13 +121,19 @@ export function AddInfrastructureDialog({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    const finalName = formData.name || formData.assetTypeId
+    if (!finalName) {
+      alert("Please select an asset type or enter a custom name")
+      return
+    }
+
     setLoading(true)
 
     const supabase = createClient()
     const { data, error } = await supabase
       .from("infrastructure_plans")
       .insert({
-        name: formData.name,
+        name: finalName,
         category: formData.category,
         description: formData.description || null,
         latitude: Number.parseFloat(formData.latitude),
@@ -144,6 +148,7 @@ export function AddInfrastructureDialog({
 
     if (!error) {
       setFormData({
+        assetTypeId: "",
         name: "",
         category: "internet",
         description: "",
@@ -216,12 +221,13 @@ export function AddInfrastructureDialog({
           </div>
 
           <div>
-            <Label htmlFor="asset-type">
-              Asset Type *<span className="text-xs text-gray-500 ml-1">(or enter custom name below)</span>
-            </Label>
-            <Select value={formData.name} onValueChange={(value) => setFormData({ ...formData, name: value })}>
+            <Label htmlFor="asset-type">Asset Type (optional)</Label>
+            <Select
+              value={formData.assetTypeId}
+              onValueChange={(value) => setFormData({ ...formData, assetTypeId: value })}
+            >
               <SelectTrigger>
-                <SelectValue placeholder="Select an asset type or enter custom" />
+                <SelectValue placeholder="Select a predefined asset type" />
               </SelectTrigger>
               <SelectContent>
                 {filteredAssetTypes.length > 0 ? (
@@ -238,18 +244,18 @@ export function AddInfrastructureDialog({
                 )}
               </SelectContent>
             </Select>
+            <p className="text-xs text-gray-500 mt-1">Or enter a custom name below</p>
           </div>
 
           <div>
-            <Label htmlFor="name">Custom Name (optional if asset type selected)</Label>
+            <Label htmlFor="name">Custom Name *</Label>
             <Input
               id="name"
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
               placeholder="e.g., Main Fiber Entry Point"
-              required
             />
-            <p className="text-xs text-gray-500 mt-1">Use asset type or enter a custom name for this infrastructure</p>
+            <p className="text-xs text-gray-500 mt-1">Required if no asset type selected</p>
           </div>
 
           <div>
