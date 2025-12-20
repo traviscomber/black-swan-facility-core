@@ -457,10 +457,10 @@ export default function EnergyManagementPage() {
           <div>
             <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-foreground flex items-center gap-2">
               <Zap className="h-8 w-8 sm:h-10 sm:w-10 text-yellow-500" />
-              Energy Management
+              Off Grid Energy Management
             </h1>
             <p className="text-sm sm:text-base text-muted-foreground mt-1">
-              Monitor solar panels and track electricity consumption with Victron integration
+              Track solar panels, batteries, and Victron equipment for off-grid power systems
             </p>
           </div>
         </div>

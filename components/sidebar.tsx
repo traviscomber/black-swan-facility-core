@@ -22,6 +22,7 @@ import {
   Anchor,
   ChefHat,
   Zap,
+  Code,
 } from "lucide-react"
 
 const navigationGroups = [
@@ -42,6 +43,18 @@ const navigationGroups = [
       { name: "Maintenance", href: "/maintenance", icon: Wrench, tip: "Schedule and track repairs" },
       { name: "GIS Map", href: "/map", icon: Map, tip: "Property location and layout" },
       { name: "Energy", href: "/energy", icon: Zap, tip: "Solar panels and electricity consumption" },
+      {
+        name: "Energy Dashboard",
+        href: "/energy-dashboard",
+        icon: LayoutDashboard,
+        tip: "Real-time energy monitoring",
+      },
+      {
+        name: "Energy Reports",
+        href: "/energy-reports",
+        icon: LayoutDashboard,
+        tip: "Historical reports and analytics",
+      },
       { name: "Cattle", href: "/cattle", icon: Beef, tip: "Livestock and pasture management" },
       { name: "Ports & Boats", href: "/ports-boats", icon: Anchor, tip: "Manage port facilities and boat fleet" },
     ],
@@ -68,6 +81,12 @@ const navigationGroups = [
       { name: "Issues", href: "/issues", icon: AlertCircle, tip: "Track and resolve problems" },
       { name: "AI Operations", href: "/ai-ops", icon: Bot, tip: "AI-powered insights" },
       { name: "Admin", href: "/admin", icon: Settings, tip: "System configuration" },
+      {
+        name: "Integration Docs",
+        href: "/integration-docs",
+        icon: Code,
+        tip: "MQTT, Node-RED, and VRM API documentation",
+      },
     ],
   },
 ]
