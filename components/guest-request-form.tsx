@@ -142,10 +142,13 @@ export function GuestRequestForm() {
     try {
       const locationForRequest = location || assignedLocation
 
+      const categoryLabel = REQUEST_CATEGORIES.find((c) => c.id === selectedCategory)?.label || selectedCategory
+
       const { error: insertError } = await supabase.from("issues").insert({
+        title: categoryLabel, // Save category label as title
         asset_id: null,
         reported_by: null,
-        description: `[HOSPITALITY REQUEST]\n\n👤 Guest: ${guestName}\n🛏️ Room: ${roomNumber || room?.room_number}\n📍 Location: ${locationForRequest?.name}\n📋 Request Type: ${selectedCategory}\n📱 Tablet ID: ${deviceId}`,
+        description: `[HOSPITALITY REQUEST]\n\n👤 Guest: ${guestName}\n🛏️ Room: ${roomNumber || room?.room_number}\n📍 Location: ${locationForRequest?.name}\n📋 Request Type: ${categoryLabel}\n📱 Tablet ID: ${deviceId}`,
         status: "open",
         photo_url: null,
       })
@@ -172,7 +175,7 @@ export function GuestRequestForm() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           to: "+56979752758",
-          message: `🏨 *New Hospitality Request*\n\n👤 Guest: ${guestName}\n🛏️ Room: ${roomNumber || room?.room_number}\n📍 Location: ${locationForRequest?.name}\n📋 Request: ${selectedCategory}\n📱 Tablet: ${deviceId}\n\nPlease confirm when handled.`,
+          message: `🏨 *New Hospitality Request*\n\n👤 Guest: ${guestName}\n🛏️ Room: ${roomNumber || room?.room_number}\n📍 Location: ${locationForRequest?.name}\n📋 Request: ${categoryLabel}\n📱 Tablet: ${deviceId}\n\nPlease confirm when handled.`,
         }),
       })
 

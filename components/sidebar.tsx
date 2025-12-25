@@ -87,7 +87,12 @@ const navigationGroups = [
     label: "Advanced",
     description: "Analytics and system settings",
     items: [
-      { name: "Issues", href: "/issues", icon: AlertCircle, tip: "Track and resolve problems" },
+      {
+        name: "Facility Requests",
+        href: "/issues",
+        icon: AlertCircle,
+        tip: "Track facility requests and service tickets",
+      },
       { name: "AI Operations", href: "/ai-ops", icon: Bot, tip: "AI-powered insights" },
       { name: "Admin", href: "/admin", icon: Settings, tip: "System configuration" },
     ],

@@ -46,16 +46,16 @@ function getSeverityColor(severity: string) {
   }
 }
 
-export default async function IssuesPage() {
+export default async function FacilityRequestsPage() {
   const supabase = await createClient()
 
   const { data: issues, error } = await supabase.from("issues").select(`*`).order("created_at", { ascending: false })
 
   if (error) {
-    console.error("[v0] Error loading issues:", error)
+    console.error("[v0] Error loading facility requests:", error)
   }
 
-  const issuesWithDetails = await Promise.all(
+  const requestsWithDetails = await Promise.all(
     (issues || []).map(async (issue) => {
       let assetName = null
       let employeeName = null
@@ -81,72 +81,74 @@ export default async function IssuesPage() {
   return (
     <AppLayout>
       <PageHeader
-        title="Issues"
-        description="Track and manage facility issues"
+        title="Facility Requests"
+        description="Track and manage facility requests and service tickets"
         actions={
           <Link href="/issues/report">
             <Button>
               <Plus className="mr-2 h-4 w-4" />
-              Report Issue
+              New Request
             </Button>
           </Link>
         }
       />
 
       <div className="p-8">
-        {issuesWithDetails && issuesWithDetails.length > 0 ? (
+        {requestsWithDetails && requestsWithDetails.length > 0 ? (
           <div className="space-y-4">
-            {issuesWithDetails.map((issue: any) => (
+            {requestsWithDetails.map((request: any) => (
               <div
-                key={issue.id}
+                key={request.id}
                 className="border border-gray-700 rounded-lg bg-gray-900 p-6 hover:border-gray-600 transition-colors"
               >
                 {/* Header with title and status */}
                 <div className="flex items-start justify-between gap-4 mb-4">
                   <div className="flex-1">
-                    <h3 className="text-lg font-semibold text-foreground mb-1">{issue.title || "Untitled"}</h3>
-                    {issue.category && <p className="text-sm text-muted-foreground">{issue.category}</p>}
+                    <h3 className="text-lg font-semibold text-foreground mb-1">{request.title || "Untitled"}</h3>
+                    {request.category && <p className="text-sm text-muted-foreground">{request.category}</p>}
                   </div>
-                  <Badge className={`whitespace-nowrap ${getStatusColor(issue.status)}`}>{issue.status}</Badge>
+                  <Badge className={`whitespace-nowrap ${getStatusColor(request.status)}`}>{request.status}</Badge>
                 </div>
 
                 {/* Description */}
-                {issue.description && <p className="text-foreground mb-4 leading-relaxed">{issue.description}</p>}
+                {request.description && <p className="text-foreground mb-4 leading-relaxed">{request.description}</p>}
 
                 {/* Metadata row */}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4 pb-4 border-t border-gray-700 pt-4">
                   <div>
                     <p className="text-xs text-muted-foreground mb-1">Priority</p>
-                    <Badge className={getSeverityColor(issue.priority || "medium")}>{issue.priority || "medium"}</Badge>
+                    <Badge className={getSeverityColor(request.priority || "medium")}>
+                      {request.priority || "medium"}
+                    </Badge>
                   </div>
                   <div>
                     <p className="text-xs text-muted-foreground mb-1">Reported By</p>
-                    <p className="text-foreground font-medium">{issue.employees?.name || "Unknown"}</p>
+                    <p className="text-foreground font-medium">{request.employees?.name || "Unknown"}</p>
                   </div>
                   <div>
                     <p className="text-xs text-muted-foreground mb-1">Date</p>
-                    <p className="text-foreground text-sm">{formatDate(issue.created_at)}</p>
+                    <p className="text-foreground text-sm">{formatDate(request.created_at)}</p>
                   </div>
                   <div>
                     <p className="text-xs text-muted-foreground mb-1">Asset</p>
                     <p className="text-foreground text-sm">
-                      {issue.assets?.name || (issue.related_item_type ? issue.related_item_type : "-")}
+                      {request.assets?.name || (request.related_item_type ? request.related_item_type : "-")}
                     </p>
                   </div>
                 </div>
 
                 {/* Photo and actions */}
                 <div className="flex items-center justify-between">
-                  {issue.photo_url && (
+                  {request.photo_url && (
                     <img
-                      src={issue.photo_url || "/placeholder.svg"}
-                      alt="Issue"
+                      src={request.photo_url || "/placeholder.svg"}
+                      alt="Request"
                       className="h-12 w-12 rounded object-cover"
                     />
                   )}
                   <div className="flex items-center gap-2 ml-auto">
-                    <EditIssueDialog issue={issue} />
-                    <DeleteIssueButton issueId={issue.id} />
+                    <EditIssueDialog issue={request} />
+                    <DeleteIssueButton issueId={request.id} />
                   </div>
                 </div>
               </div>
@@ -154,11 +156,11 @@ export default async function IssuesPage() {
           </div>
         ) : (
           <div className="text-center py-12">
-            <p className="text-muted-foreground mb-4">No issues found</p>
+            <p className="text-muted-foreground mb-4">No facility requests found</p>
             <Link href="/issues/report">
               <Button>
                 <Plus className="mr-2 h-4 w-4" />
-                Report First Issue
+                Create First Request
               </Button>
             </Link>
           </div>
