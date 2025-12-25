@@ -26,6 +26,15 @@ const REQUEST_CATEGORIES = [
 
 const ADMIN_PASSWORD = "Global2025..." // Updated to new secure password
 
+const generateDeviceId = () => {
+  let deviceId = localStorage.getItem("tablet_device_id")
+  if (!deviceId) {
+    deviceId = `TABLET-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+    localStorage.setItem("tablet_device_id", deviceId)
+  }
+  return deviceId
+}
+
 export function GuestRequestForm() {
   const searchParams = useSearchParams()
   const roomId = searchParams.get("room_id")
@@ -46,6 +55,7 @@ export function GuestRequestForm() {
   const [selectedCategory, setSelectedCategory] = useState("")
   const [guestName, setGuestName] = useState("")
   const [submitting, setSubmitting] = useState(false)
+  const [deviceId] = useState(() => generateDeviceId())
 
   const supabase = createBrowserClient()
 
@@ -135,19 +145,34 @@ export function GuestRequestForm() {
       const { error: insertError } = await supabase.from("issues").insert({
         asset_id: null,
         reported_by: null,
-        description: `[HOSPITALITY REQUEST]\n\n👤 Guest: ${guestName}\n🛏️ Room: ${roomNumber || room?.room_number}\n📍 Location: ${locationForRequest?.name}\n📋 Request Type: ${selectedCategory}`,
+        description: `[HOSPITALITY REQUEST]\n\n👤 Guest: ${guestName}\n🛏️ Room: ${roomNumber || room?.room_number}\n📍 Location: ${locationForRequest?.name}\n📋 Request Type: ${selectedCategory}\n📱 Tablet ID: ${deviceId}`,
         status: "open",
         photo_url: null,
       })
 
       if (insertError) throw insertError
 
+      try {
+        await supabase
+          .from("tablet_devices")
+          .upsert({
+            device_id: deviceId,
+            device_name: `${locationForRequest?.name} Tablet`,
+            location_id: locationForRequest?.id,
+            last_active_at: new Date().toISOString(),
+            is_active: true,
+          })
+          .eq("device_id", deviceId)
+      } catch (error) {
+        console.error("Error updating tablet registry:", error)
+      }
+
       const whatsappResponse = await fetch("/api/send-whatsapp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           to: "+56979752758",
-          message: `🏨 *New Hospitality Request*\n\n👤 Guest: ${guestName}\n🛏️ Room: ${roomNumber || room?.room_number}\n📍 Location: ${locationForRequest?.name}\n📋 Request: ${selectedCategory}\n\nPlease confirm when handled.`,
+          message: `🏨 *New Hospitality Request*\n\n👤 Guest: ${guestName}\n🛏️ Room: ${roomNumber || room?.room_number}\n📍 Location: ${locationForRequest?.name}\n📋 Request: ${selectedCategory}\n📱 Tablet: ${deviceId}\n\nPlease confirm when handled.`,
         }),
       })
 

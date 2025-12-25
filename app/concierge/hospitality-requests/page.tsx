@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
-import { ClipboardList, User, MapPin, Phone } from "lucide-react"
+import { ClipboardList, User, MapPin, Phone, Smartphone } from "lucide-react"
 import { format } from "date-fns"
 
 interface HospitalityRequest {
@@ -50,6 +50,7 @@ export default function HospitalityRequestsPage() {
   const [filteredRequests, setFilteredRequests] = useState<HospitalityRequest[]>([])
   const [loading, setLoading] = useState(true)
   const [statusFilter, setStatusFilter] = useState("all")
+  const [locationFilter, setLocationFilter] = useState("all")
   const [selectedRequest, setSelectedRequest] = useState<HospitalityRequest | null>(null)
   const [updateDialogOpen, setUpdateDialogOpen] = useState(false)
   const [newStatus, setNewStatus] = useState("")
@@ -64,7 +65,7 @@ export default function HospitalityRequestsPage() {
 
   useEffect(() => {
     filterRequests()
-  }, [requests, statusFilter])
+  }, [requests, statusFilter, locationFilter])
 
   async function loadRequests() {
     try {
@@ -87,11 +88,17 @@ export default function HospitalityRequestsPage() {
   }
 
   function filterRequests() {
-    if (statusFilter === "all") {
-      setFilteredRequests(requests)
-    } else {
-      setFilteredRequests(requests.filter((r) => r.status === statusFilter))
+    let filtered = requests
+
+    if (statusFilter !== "all") {
+      filtered = filtered.filter((r) => r.status === statusFilter)
     }
+
+    if (locationFilter !== "all") {
+      filtered = filtered.filter((r) => r.location_id === locationFilter)
+    }
+
+    setFilteredRequests(filtered)
   }
 
   async function handleUpdateRequest() {
@@ -177,17 +184,34 @@ export default function HospitalityRequestsPage() {
         </div>
 
         {/* Filter */}
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           <Select value={statusFilter} onValueChange={setStatusFilter}>
             <SelectTrigger className="w-48">
               <SelectValue placeholder="Filter by status" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Requests</SelectItem>
+              <SelectItem value="all">All Statuses</SelectItem>
               <SelectItem value="pending">Pending</SelectItem>
               <SelectItem value="in_progress">In Progress</SelectItem>
               <SelectItem value="completed">Completed</SelectItem>
               <SelectItem value="declined">Declined</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <Select value={locationFilter} onValueChange={setLocationFilter}>
+            <SelectTrigger className="w-48">
+              <SelectValue placeholder="Filter by location" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Locations</SelectItem>
+              {requests
+                .map((r) => r.location)
+                .filter((loc, idx, arr) => loc && arr.findIndex((l) => l?.id === loc?.id) === idx)
+                .map((location) => (
+                  <SelectItem key={location?.id} value={location?.id || ""}>
+                    {location?.name}
+                  </SelectItem>
+                ))}
             </SelectContent>
           </Select>
         </div>
@@ -197,7 +221,9 @@ export default function HospitalityRequestsPage() {
           <div className="text-center py-12 text-muted-foreground">Loading requests...</div>
         ) : filteredRequests.length === 0 ? (
           <div className="text-center py-12 text-muted-foreground">
-            {statusFilter === "all" ? "No requests yet" : `No ${statusFilter} requests`}
+            {statusFilter === "all" && locationFilter === "all"
+              ? "No requests yet"
+              : `No ${statusFilter} requests at ${locationFilter}`}
           </div>
         ) : (
           <div className="space-y-4">
@@ -280,6 +306,16 @@ export default function HospitalityRequestsPage() {
                         <p className="text-sm text-muted-foreground">
                           <strong>Staff Notes:</strong> {request.notes}
                         </p>
+                      </div>
+                    )}
+
+                    {/* Tablet Info */}
+                    {request.description?.includes("Tablet ID:") && (
+                      <div className="mt-4 pt-4 border-t border-border/50 text-xs text-muted-foreground">
+                        <div className="flex items-center gap-2">
+                          <Smartphone className="h-3 w-3" />
+                          <span>From: {request.description.split("Tablet ID: ")[1]?.split("\n")[0] || "Unknown"}</span>
+                        </div>
                       </div>
                     )}
                   </div>
