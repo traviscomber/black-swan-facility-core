@@ -19,6 +19,7 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { createBrowserClient } from "@supabase/ssr"
+import PortBoatPhotoUpload from "@/components/ports-boats-photo-upload"
 
 interface PortBoat {
   id: string
@@ -29,6 +30,7 @@ interface PortBoat {
   status: "operational" | "maintenance" | "inactive"
   description: string
   last_maintenance?: string
+  photo_url?: string
 }
 
 function PortsBoatsContent({
@@ -101,6 +103,16 @@ function PortsBoatsContent({
                 .filter((b) => b.type === "port")
                 .map((port) => (
                   <Card key={port.id} className="border-l-4 border-l-[#726658] p-6">
+                    {port.photo_url && (
+                      <div className="mb-4 -mx-6 -mt-6 h-40 overflow-hidden rounded-t-lg">
+                        <img
+                          src={port.photo_url || "/placeholder.svg"}
+                          alt={port.name}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                    )}
+
                     <div className="flex items-start justify-between mb-3">
                       <div className="flex items-center gap-3">
                         <div className="text-[#726658]">{getTypeIcon(port.type)}</div>
@@ -180,6 +192,16 @@ function PortsBoatsContent({
                 .filter((b) => b.type === "boat")
                 .map((boat) => (
                   <Card key={boat.id} className="border-l-4 border-l-[#726658] p-6">
+                    {boat.photo_url && (
+                      <div className="mb-4 -mx-6 -mt-6 h-40 overflow-hidden rounded-t-lg">
+                        <img
+                          src={boat.photo_url || "/placeholder.svg"}
+                          alt={boat.name}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                    )}
+
                     <div className="flex items-start justify-between mb-3">
                       <div className="flex items-center gap-3">
                         <div className="text-[#726658]">{getTypeIcon(boat.type)}</div>
@@ -399,6 +421,15 @@ export default function PortsBoatsPage() {
               </DialogHeader>
 
               <div className="space-y-4">
+                {editingId && formData.id && (
+                  <PortBoatPhotoUpload
+                    portBoatId={formData.id as string}
+                    portBoatName={formData.name || "Port or Boat"}
+                    currentPhotoUrl={formData.photo_url}
+                    onPhotoUploaded={(url) => setFormData({ ...formData, photo_url: url })}
+                  />
+                )}
+
                 <div>
                   <Label htmlFor="type">Type</Label>
                   <Select
