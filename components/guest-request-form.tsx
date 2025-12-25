@@ -12,9 +12,8 @@ import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Phone, Mail, Send, CheckCircle } from "lucide-react"
+import { Phone, Mail, Send, CheckCircle, Lock, LogOut } from "lucide-react"
 
-// Pre-defined request categories
 const REQUEST_CATEGORIES = [
   { id: "blankets", label: "Extra Blankets", icon: "🛏️" },
   { id: "towels", label: "Towels", icon: "🛁" },
@@ -26,11 +25,20 @@ const REQUEST_CATEGORIES = [
   { id: "other", label: "Other Request", icon: "📝" },
 ]
 
+const ADMIN_PASSWORD = "Global2025..." // Updated to new secure password
+
 export function GuestRequestForm() {
   const searchParams = useSearchParams()
   const roomId = searchParams.get("room_id")
   const locationId = searchParams.get("location_id")
   const roomNumber = searchParams.get("room_number")
+
+  const [assignedLocation, setAssignedLocation] = useState<any>(null)
+  const [locations, setLocations] = useState<any[]>([])
+  const [isAdminMode, setIsAdminMode] = useState(false)
+  const [adminPassword, setAdminPassword] = useState("")
+  const [showAdminPanel, setShowAdminPanel] = useState(false)
+  const [adminError, setAdminError] = useState("")
 
   const [room, setRoom] = useState<any>(null)
   const [location, setLocation] = useState<any>(null)
@@ -47,11 +55,34 @@ export function GuestRequestForm() {
   const supabase = createBrowserClient()
 
   useEffect(() => {
-    loadRoomInfo()
-  }, [roomId, locationId])
+    loadInitialData()
+  }, [])
 
-  async function loadRoomInfo() {
+  async function loadInitialData() {
     try {
+      // Load all locations
+      const { data: locationsData } = await supabase.from("locations").select("*").eq("is_active", true)
+
+      setLocations(locationsData || [])
+
+      // Check localStorage for assigned location, default to "Prairie House 2"
+      const savedLocationId = localStorage.getItem("tablet_assigned_location_id")
+      if (savedLocationId && locationsData) {
+        const saved = locationsData.find((l: any) => l.id === savedLocationId)
+        if (saved) {
+          setAssignedLocation(saved)
+        } else {
+          // Default to Prairie House 2
+          const defaultLocation = locationsData.find((l: any) => l.name === "Prairie House 2")
+          setAssignedLocation(defaultLocation || locationsData[0])
+        }
+      } else {
+        // Default to Prairie House 2
+        const defaultLocation = locationsData?.find((l: any) => l.name === "Prairie House 2")
+        setAssignedLocation(defaultLocation || locationsData?.[0])
+      }
+
+      // If specific room/location provided via URL params, use those
       if (roomId && locationId) {
         const { data: roomData } = await supabase.from("rooms").select("*").eq("id", roomId).single()
         const { data: locationData } = await supabase.from("locations").select("*").eq("id", locationId).single()
@@ -60,10 +91,37 @@ export function GuestRequestForm() {
         setLocation(locationData)
       }
     } catch (error) {
-      console.error("Error loading room info:", error)
+      console.error("Error loading initial data:", error)
     } finally {
       setLoading(false)
     }
+  }
+
+  function handleAdminLogin() {
+    setAdminError("")
+    if (adminPassword === ADMIN_PASSWORD) {
+      setIsAdminMode(true)
+      setShowAdminPanel(false)
+      setAdminPassword("")
+    } else {
+      setAdminError("Incorrect password")
+      setAdminPassword("")
+    }
+  }
+
+  function handleLocationChange(locationId: string) {
+    const selected = locations.find((l) => l.id === locationId)
+    if (selected) {
+      setAssignedLocation(selected)
+      localStorage.setItem("tablet_assigned_location_id", locationId)
+    }
+  }
+
+  function handleAdminLogout() {
+    setIsAdminMode(false)
+    setShowAdminPanel(false)
+    setAdminPassword("")
+    setAdminError("")
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -77,10 +135,12 @@ export function GuestRequestForm() {
     setSubmitting(true)
 
     try {
+      const locationForRequest = location || assignedLocation
+
       // Insert the request into database
       const { error: insertError } = await supabase.from("hospitality_requests").insert({
         room_id: roomId,
-        location_id: locationId,
+        location_id: locationForRequest?.id,
         guest_name: guestName,
         guest_phone: guestPhone,
         guest_email: guestEmail,
@@ -97,8 +157,8 @@ export function GuestRequestForm() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          to: "+56979752758", // Antonia Valencia's WhatsApp
-          message: `🏨 *New Hospitality Request*\n\n👤 Guest: ${guestName}\n🛏️ Room: ${roomNumber || room?.room_number}\n📍 Location: ${location?.name}\n📋 Request: ${selectedCategory}\n⚡ Priority: ${priority.toUpperCase()}\n\n${description ? `📝 Details: ${description}` : ""}\n\nPlease confirm when handled.`,
+          to: "+56979752758",
+          message: `🏨 *New Hospitality Request*\n\n👤 Guest: ${guestName}\n🛏️ Room: ${roomNumber || room?.room_number}\n📍 Location: ${locationForRequest?.name}\n📋 Request: ${selectedCategory}\n⚡ Priority: ${priority.toUpperCase()}\n\n${description ? `📝 Details: ${description}` : ""}\n\nPlease confirm when handled.`,
         }),
       })
 
@@ -108,7 +168,6 @@ export function GuestRequestForm() {
 
       setSubmitted(true)
 
-      // Reset form after 3 seconds
       setTimeout(() => {
         setSubmitted(false)
         setSelectedCategory("")
@@ -151,24 +210,117 @@ export function GuestRequestForm() {
     )
   }
 
+  if (showAdminPanel && !isAdminMode) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 p-4">
+        <Card className="w-full max-w-md bg-card border-accent/20">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Lock className="h-5 w-5 text-accent" />
+              Admin Access
+            </CardTitle>
+            <CardDescription>Enter password to configure tablet assignment</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="password">Admin Password</Label>
+              <Input
+                id="password"
+                type="password"
+                value={adminPassword}
+                onChange={(e) => setAdminPassword(e.target.value)}
+                onKeyPress={(e) => e.key === "Enter" && handleAdminLogin()}
+                placeholder="Enter password"
+                className="bg-input"
+              />
+              {adminError && <p className="text-sm text-red-500">{adminError}</p>}
+            </div>
+            <div className="flex gap-2">
+              <Button onClick={handleAdminLogin} className="flex-1 bg-primary hover:bg-primary/90">
+                Unlock
+              </Button>
+              <Button
+                onClick={() => {
+                  setShowAdminPanel(false)
+                  setAdminPassword("")
+                  setAdminError("")
+                }}
+                variant="outline"
+                className="flex-1"
+              >
+                Cancel
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 p-4 md:p-8">
       <div className="max-w-2xl mx-auto">
+        {/* Admin Controls - Only visible to admin */}
+        {isAdminMode && (
+          <div className="mb-6 bg-accent/10 border border-accent rounded-lg p-4 space-y-3">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="font-semibold text-white flex items-center gap-2">
+                <Lock className="h-4 w-4 text-accent" />
+                Admin Mode: Tablet Configuration
+              </h3>
+              <Button onClick={handleAdminLogout} variant="outline" size="sm" className="gap-2 bg-transparent">
+                <LogOut className="h-4 w-4" />
+                Exit Admin
+              </Button>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="location-select" className="text-white">
+                Assign This Tablet To:
+              </Label>
+              <Select value={assignedLocation?.id || ""} onValueChange={handleLocationChange}>
+                <SelectTrigger className="bg-input">
+                  <SelectValue placeholder="Select facility..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {locations.map((loc) => (
+                    <SelectItem key={loc.id} value={loc.id}>
+                      {loc.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Current: <span className="font-semibold text-accent">{assignedLocation?.name}</span>
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold text-white mb-2">Hospitality Requests</h1>
-          <p className="text-muted-foreground text-lg">How can we help make your stay more comfortable?</p>
+        <div className="mb-8 flex items-center justify-between">
+          <div>
+            <h1 className="text-4xl font-bold text-white mb-2">Hospitality Requests</h1>
+            <p className="text-muted-foreground text-lg">How can we help make your stay more comfortable?</p>
+          </div>
+          <button
+            onClick={() => setShowAdminPanel(true)}
+            className="text-xs text-muted-foreground hover:text-accent transition-colors opacity-50 hover:opacity-100"
+            title="Admin settings"
+          >
+            ⚙️
+          </button>
         </div>
 
-        {/* Room Information */}
-        {room && location && (
+        {/* Room Information - Show assigned location or URL-provided location */}
+        {(location || assignedLocation) && (
           <Card className="mb-6 bg-card border-accent/20">
             <CardContent className="pt-4">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground">You're in</p>
                   <p className="text-lg font-semibold text-white">
-                    {room.room_number} • {location.name}
+                    {roomNumber || room?.room_number || "Room TBD"} • {(location || assignedLocation)?.name}
                   </p>
                 </div>
                 <Badge variant="outline" className="text-accent border-accent">
@@ -291,11 +443,11 @@ export function GuestRequestForm() {
                 <p className="text-muted-foreground">Need immediate assistance? Contact hospitality directly:</p>
                 <div className="flex items-center gap-2 text-white">
                   <Phone className="h-4 w-4 text-accent" />
-                  <span>+57 1 234 5678</span>
+                  <span>+56 9 7975 2758</span>
                 </div>
                 <div className="flex items-center gap-2 text-white">
                   <Mail className="h-4 w-4 text-accent" />
-                  <span>hospitality@example.com</span>
+                  <span>antonis@blackswn.org</span>
                 </div>
               </div>
             </form>
