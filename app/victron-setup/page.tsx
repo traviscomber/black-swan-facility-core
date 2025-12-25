@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { EnergyPasswordGuard } from "@/components/energy-password-guard"
 import { AppLayout } from "@/components/app-layout"
 import { PageHeader } from "@/components/page-header"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -173,169 +174,171 @@ export default function VictronSetup() {
   }
 
   return (
-    <AppLayout>
-      <div className="space-y-6 p-4 sm:p-6">
-        <PageHeader title="Victron Setup Guide" description="Complete integration and configuration steps" />
-        <div className="mx-auto max-w-7xl">
-          {/* System Architecture Overview */}
-          <Card className="bg-card border-border mb-8">
-            <CardHeader>
-              <CardTitle>System Architecture</CardTitle>
-              <CardDescription>Data flow from Victron hardware to cloud and dashboards</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div className="flex items-center justify-between p-4 bg-accent rounded-lg">
-                  <div className="text-sm font-mono text-foreground">Cerbo GX + MPPT + Batteries</div>
-                  <ArrowRight className="w-5 h-5 text-primary" />
-                  <div className="text-sm font-mono text-foreground">MQTT Broker</div>
+    <EnergyPasswordGuard>
+      <AppLayout>
+        <div className="space-y-6 p-4 sm:p-6">
+          <PageHeader title="Victron Setup Guide" description="Complete integration and configuration steps" />
+          <div className="mx-auto max-w-7xl">
+            {/* System Architecture Overview */}
+            <Card className="bg-card border-border mb-8">
+              <CardHeader>
+                <CardTitle>System Architecture</CardTitle>
+                <CardDescription>Data flow from Victron hardware to cloud and dashboards</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between p-4 bg-accent rounded-lg">
+                    <div className="text-sm font-mono text-foreground">Cerbo GX + MPPT + Batteries</div>
+                    <ArrowRight className="w-5 h-5 text-primary" />
+                    <div className="text-sm font-mono text-foreground">MQTT Broker</div>
+                  </div>
+                  <div className="flex items-center justify-between p-4 bg-accent rounded-lg">
+                    <div className="text-sm font-mono text-foreground">MQTT Broker</div>
+                    <ArrowRight className="w-5 h-5 text-primary" />
+                    <div className="text-sm font-mono text-foreground">Node-RED</div>
+                  </div>
+                  <div className="flex items-center justify-between p-4 bg-accent rounded-lg">
+                    <div className="text-sm font-mono text-foreground">Node-RED</div>
+                    <ArrowRight className="w-5 h-5 text-primary" />
+                    <div className="text-sm font-mono text-foreground">InfluxDB + Grafana</div>
+                  </div>
+                  <div className="flex items-center justify-between p-4 bg-accent rounded-lg">
+                    <div className="text-sm font-mono text-foreground">VRM API</div>
+                    <ArrowRight className="w-5 h-5 text-primary" />
+                    <div className="text-sm font-mono text-foreground">Cloud Dashboard</div>
+                  </div>
                 </div>
-                <div className="flex items-center justify-between p-4 bg-accent rounded-lg">
-                  <div className="text-sm font-mono text-foreground">MQTT Broker</div>
-                  <ArrowRight className="w-5 h-5 text-primary" />
-                  <div className="text-sm font-mono text-foreground">Node-RED</div>
-                </div>
-                <div className="flex items-center justify-between p-4 bg-accent rounded-lg">
-                  <div className="text-sm font-mono text-foreground">Node-RED</div>
-                  <ArrowRight className="w-5 h-5 text-primary" />
-                  <div className="text-sm font-mono text-foreground">InfluxDB + Grafana</div>
-                </div>
-                <div className="flex items-center justify-between p-4 bg-accent rounded-lg">
-                  <div className="text-sm font-mono text-foreground">VRM API</div>
-                  <ArrowRight className="w-5 h-5 text-primary" />
-                  <div className="text-sm font-mono text-foreground">Cloud Dashboard</div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
 
-          {/* Setup Steps */}
-          <div className="space-y-6 mb-8">
-            {steps.map((step) => (
-              <Card
-                key={step.number}
-                className={`bg-card border-border cursor-pointer transition-all ${
-                  activeStep === step.number ? "ring-2 ring-primary" : ""
-                }`}
-                onClick={() => setActiveStep(step.number)}
-              >
-                <CardHeader>
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-center gap-3">
-                      <div
-                        className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold text-white ${
-                          activeStep === step.number ? "bg-primary" : "bg-muted"
-                        }`}
-                      >
-                        {activeStep === step.number ? <Check className="w-5 h-5" /> : step.number}
-                      </div>
-                      <div>
-                        <h2 className="text-lg font-semibold text-foreground">{step.title}</h2>
-                        <p className="text-sm text-muted-foreground">{step.description}</p>
+            {/* Setup Steps */}
+            <div className="space-y-6 mb-8">
+              {steps.map((step) => (
+                <Card
+                  key={step.number}
+                  className={`bg-card border-border cursor-pointer transition-all ${
+                    activeStep === step.number ? "ring-2 ring-primary" : ""
+                  }`}
+                  onClick={() => setActiveStep(step.number)}
+                >
+                  <CardHeader>
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-center gap-3">
+                        <div
+                          className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold text-white ${
+                            activeStep === step.number ? "bg-primary" : "bg-muted"
+                          }`}
+                        >
+                          {activeStep === step.number ? <Check className="w-5 h-5" /> : step.number}
+                        </div>
+                        <div>
+                          <h2 className="text-lg font-semibold text-foreground">{step.title}</h2>
+                          <p className="text-sm text-muted-foreground">{step.description}</p>
+                        </div>
                       </div>
                     </div>
+                  </CardHeader>
+
+                  {activeStep === step.number && (
+                    <CardContent>
+                      <ul className="space-y-2">
+                        {step.details.map((detail, idx) => (
+                          <li key={idx} className="flex items-start gap-3 text-sm text-foreground">
+                            <div className="w-2 h-2 rounded-full bg-primary mt-2 flex-shrink-0"></div>
+                            {detail}
+                          </li>
+                        ))}
+                      </ul>
+                    </CardContent>
+                  )}
+                </Card>
+              ))}
+            </div>
+
+            {/* Python Script Example */}
+            <Card className="bg-card border-border mb-8">
+              <CardHeader>
+                <CardTitle>Python VRM API Client</CardTitle>
+                <CardDescription>Example script for fetching data from Victron VRM</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <p className="text-sm text-muted-foreground">
+                  Run this script on any system with Python 3.7+ to continuously fetch and log data from your Victron
+                  installation via the VRM API.
+                </p>
+
+                <div className="bg-accent/50 rounded-lg p-4 border border-border">
+                  <div className="flex items-center justify-between mb-3">
+                    <p className="text-xs font-semibold text-foreground">vrm_data_fetcher.py</p>
+                    <button
+                      onClick={() => copyToClipboard(pythonScript, "python")}
+                      className="flex items-center gap-1 px-2 py-1 text-xs bg-primary text-primary-foreground rounded hover:bg-primary/90"
+                    >
+                      {copiedCode === "python" ? (
+                        <>
+                          <Check className="w-3 h-3" /> Copied
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="w-3 h-3" /> Copy
+                        </>
+                      )}
+                    </button>
                   </div>
-                </CardHeader>
-
-                {activeStep === step.number && (
-                  <CardContent>
-                    <ul className="space-y-2">
-                      {step.details.map((detail, idx) => (
-                        <li key={idx} className="flex items-start gap-3 text-sm text-foreground">
-                          <div className="w-2 h-2 rounded-full bg-primary mt-2 flex-shrink-0"></div>
-                          {detail}
-                        </li>
-                      ))}
-                    </ul>
-                  </CardContent>
-                )}
-              </Card>
-            ))}
-          </div>
-
-          {/* Python Script Example */}
-          <Card className="bg-card border-border mb-8">
-            <CardHeader>
-              <CardTitle>Python VRM API Client</CardTitle>
-              <CardDescription>Example script for fetching data from Victron VRM</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <p className="text-sm text-muted-foreground">
-                Run this script on any system with Python 3.7+ to continuously fetch and log data from your Victron
-                installation via the VRM API.
-              </p>
-
-              <div className="bg-accent/50 rounded-lg p-4 border border-border">
-                <div className="flex items-center justify-between mb-3">
-                  <p className="text-xs font-semibold text-foreground">vrm_data_fetcher.py</p>
-                  <button
-                    onClick={() => copyToClipboard(pythonScript, "python")}
-                    className="flex items-center gap-1 px-2 py-1 text-xs bg-primary text-primary-foreground rounded hover:bg-primary/90"
-                  >
-                    {copiedCode === "python" ? (
-                      <>
-                        <Check className="w-3 h-3" /> Copied
-                      </>
-                    ) : (
-                      <>
-                        <Copy className="w-3 h-3" /> Copy
-                      </>
-                    )}
-                  </button>
+                  <pre className="bg-background rounded p-3 text-xs font-mono text-foreground overflow-x-auto max-h-80">
+                    {pythonScript}
+                  </pre>
                 </div>
-                <pre className="bg-background rounded p-3 text-xs font-mono text-foreground overflow-x-auto max-h-80">
-                  {pythonScript}
-                </pre>
-              </div>
 
-              <div className="bg-blue-500/10 border border-blue-500/50 rounded-lg p-4 flex gap-3">
-                <AlertCircle className="w-5 h-5 text-blue-400 flex-shrink-0 mt-0.5" />
-                <p className="text-sm text-foreground">
-                  Install required package: <code className="bg-background px-1 rounded">pip install requests</code>
-                </p>
-              </div>
-            </CardContent>
-          </Card>
+                <div className="bg-blue-500/10 border border-blue-500/50 rounded-lg p-4 flex gap-3">
+                  <AlertCircle className="w-5 h-5 text-blue-400 flex-shrink-0 mt-0.5" />
+                  <p className="text-sm text-foreground">
+                    Install required package: <code className="bg-background px-1 rounded">pip install requests</code>
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
 
-          {/* Troubleshooting */}
-          <Card className="bg-card border-border">
-            <CardHeader>
-              <CardTitle>Troubleshooting</CardTitle>
-              <CardDescription>Common issues and solutions</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <p className="font-semibold text-foreground mb-2">MQTT not connecting?</p>
-                <p className="text-sm text-muted-foreground">
-                  Verify dbus-mqtt is enabled on Cerbo GX settings. Check firewall allows port 1883. Use
-                  <code className="bg-background px-1 rounded">mosquitto_sub</code> to test connectivity.
-                </p>
-              </div>
-              <div className="border-t border-border pt-4">
-                <p className="font-semibold text-foreground mb-2">VRM API returning 401 errors?</p>
-                <p className="text-sm text-muted-foreground">
-                  Verify your API token is valid and not expired. Check Authorization header format:
-                  <code className="bg-background px-1 rounded">Bearer YOUR_TOKEN_HERE</code>
-                </p>
-              </div>
-              <div className="border-t border-border pt-4">
-                <p className="font-semibold text-foreground mb-2">Grafana not showing data?</p>
-                <p className="text-sm text-muted-foreground">
-                  Ensure InfluxDB data source is configured correctly. Verify Node-RED is writing data to InfluxDB.
-                  Check InfluxDB logs for errors.
-                </p>
-              </div>
-              <div className="border-t border-border pt-4">
-                <p className="font-semibold text-foreground mb-2">Missing data points in historical view?</p>
-                <p className="text-sm text-muted-foreground">
-                  Data retention is limited by InfluxDB configuration. Check retention policy in InfluxDB settings.
-                  Consider using 30-day retention for monthly reports.
-                </p>
-              </div>
-            </CardContent>
-          </Card>
+            {/* Troubleshooting */}
+            <Card className="bg-card border-border">
+              <CardHeader>
+                <CardTitle>Troubleshooting</CardTitle>
+                <CardDescription>Common issues and solutions</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <p className="font-semibold text-foreground mb-2">MQTT not connecting?</p>
+                  <p className="text-sm text-muted-foreground">
+                    Verify dbus-mqtt is enabled on Cerbo GX settings. Check firewall allows port 1883. Use
+                    <code className="bg-background px-1 rounded">mosquitto_sub</code> to test connectivity.
+                  </p>
+                </div>
+                <div className="border-t border-border pt-4">
+                  <p className="font-semibold text-foreground mb-2">VRM API returning 401 errors?</p>
+                  <p className="text-sm text-muted-foreground">
+                    Verify your API token is valid and not expired. Check Authorization header format:
+                    <code className="bg-background px-1 rounded">Bearer YOUR_TOKEN_HERE</code>
+                  </p>
+                </div>
+                <div className="border-t border-border pt-4">
+                  <p className="font-semibold text-foreground mb-2">Grafana not showing data?</p>
+                  <p className="text-sm text-muted-foreground">
+                    Ensure InfluxDB data source is configured correctly. Verify Node-RED is writing data to InfluxDB.
+                    Check InfluxDB logs for errors.
+                  </p>
+                </div>
+                <div className="border-t border-border pt-4">
+                  <p className="font-semibold text-foreground mb-2">Missing data points in historical view?</p>
+                  <p className="text-sm text-muted-foreground">
+                    Data retention is limited by InfluxDB configuration. Check retention policy in InfluxDB settings.
+                    Consider using 30-day retention for monthly reports.
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         </div>
-      </div>
-    </AppLayout>
+      </AppLayout>
+    </EnergyPasswordGuard>
   )
 }

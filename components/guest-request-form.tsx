@@ -420,7 +420,7 @@ export function GuestRequestForm() {
                 </div>
                 <div className="flex items-center gap-2 text-white">
                   <Mail className="h-4 w-4 text-accent" />
-                  <span>antonis@blackswn.org</span>
+                  <span>antonia@blackswn.org</span>
                 </div>
               </div>
             </form>
