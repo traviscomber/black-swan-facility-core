@@ -93,17 +93,18 @@ export function GuestRequestForm() {
 
       if (insertError) throw insertError
 
-      // Send WhatsApp notification to manager
-      const { data: whatsappData, error: whatsappError } = await fetch("/api/send-whatsapp", {
+      const whatsappResponse = await fetch("/api/send-whatsapp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          to: "+56979752758", // Updated phone number to Antonia Valencia's WhatsApp
+          to: "+56979752758", // Antonia Valencia's WhatsApp
           message: `🏨 *New Hospitality Request*\n\n👤 Guest: ${guestName}\n🛏️ Room: ${roomNumber || room?.room_number}\n📍 Location: ${location?.name}\n📋 Request: ${selectedCategory}\n⚡ Priority: ${priority.toUpperCase()}\n\n${description ? `📝 Details: ${description}` : ""}\n\nPlease confirm when handled.`,
         }),
-      }).then((r) => r.json())
+      })
 
-      if (whatsappError) throw whatsappError
+      if (!whatsappResponse.ok) {
+        console.error("WhatsApp notification failed, but request saved to database")
+      }
 
       setSubmitted(true)
 
