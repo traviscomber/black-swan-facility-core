@@ -32,7 +32,27 @@ export interface Employee {
   phone: string | null
   email: string | null
   is_active: boolean
+  photo_url: string | null
   created_at: string
+}
+
+export interface Volunteer {
+  id: string
+  name: string
+  email: string | null
+  phone: string | null
+  volunteer_role: string | null
+  status: string
+  start_date: string | null
+  end_date: string | null
+  hours_logged: number
+  skills: string[] | null
+  availability: string | null
+  photo_url: string | null
+  notes: string | null
+  is_active: boolean
+  created_at: string
+  updated_at: string
 }
 
 export interface MaintenanceTask {

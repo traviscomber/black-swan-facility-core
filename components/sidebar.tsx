@@ -28,6 +28,7 @@ import {
   Lightbulb,
   ChevronDown,
   Tablet,
+  Heart,
 } from "lucide-react"
 import { useState } from "react"
 // import { UniversalSearchDialog } from "@/components/universal-search-dialog" // Assuming UniversalSearchDialog is in a separate file
@@ -79,6 +80,7 @@ const navigationGroups = [
     description: "Staff management and guest services",
     items: [
       { name: "Employees", href: "/employees", icon: Users, tip: "Team management" },
+      { name: "Volunteers", href: "/volunteers", icon: Heart, tip: "Volunteer coordination and tracking" },
       { name: "Concierge", href: "/concierge", icon: MessageSquare, tip: "Guest communication" },
       {
         name: "Guest Requests",
