@@ -8,9 +8,11 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 
 export default function Dashboard() {
+  console.log("[v0] Dashboard component rendering")
   const [searchDialogOpen, setSearchDialogOpen] = useState(false)
 
   useEffect(() => {
+    console.log("[v0] Dashboard mounted successfully")
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key === "k") {
         e.preventDefault()
