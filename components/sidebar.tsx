@@ -29,6 +29,7 @@ import {
   ChevronDown,
   Tablet,
   Heart,
+  Crown,
 } from "lucide-react"
 import { useState } from "react"
 // import { UniversalSearchDialog } from "@/components/universal-search-dialog" // Assuming UniversalSearchDialog is in a separate file
@@ -42,6 +43,11 @@ const navigationGroups = [
       { name: "Bookings", href: "/bookings", icon: Calendar, tip: "Manage reservations and availability" },
       { name: "Tasks", href: "/tasks", icon: ClipboardList, tip: "Daily management tasks" },
     ],
+  },
+  {
+    label: "Sovereignty",
+    description: "Track facility independence and self-sufficiency",
+    items: [{ name: "Dashboard", href: "/sovereignty", icon: Crown, tip: "Track facility autonomy and independence" }],
   },
   {
     label: "Property Management",
@@ -118,6 +124,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(
     new Set([
       "Core Operations",
+      "Sovereignty",
       "Property Management",
       "Off Grid Energy",
       "Supply Chain",
@@ -165,7 +172,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
               className="h-12 sm:h-14 w-12 sm:w-14 object-contain flex-shrink-0"
             />
             <div className="min-w-0">
-              <h1 className="text-sm sm:text-base font-bold text-accent truncate">BFCS</h1>
+              <h1 className="text-sm sm:text-base font-bold uppercase tracking-wider text-accent truncate">BFCS</h1>
               <p className="text-xs text-gray-600">Core System</p>
             </div>
           </Link>

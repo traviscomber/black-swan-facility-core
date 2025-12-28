@@ -31,34 +31,26 @@ export function PortBoatPhotoUpload({
     setIsUploading(true)
     try {
       const supabase = createBrowserClient()
-      const fileName = `port-boat-${portBoatId}-${Date.now()}.${file.name.split(".").pop()}`
 
-      const { data, error: uploadError } = await supabase.storage
-        .from("facility-photos")
-        .upload(`ports-boats/${fileName}`, file, {
-          contentType: file.type,
-          upsert: true,
-        })
+      const response = await fetch("/api/upload", {
+        method: "POST",
+        headers: { "Content-Type": "application/octet-stream" },
+        body: file,
+        // @ts-ignore
+        blobMetadata: { pathname: `ports-boats/port-boat-${portBoatId}-${Date.now()}` },
+      })
 
-      if (uploadError) throw uploadError
+      if (!response.ok) throw new Error("Upload failed")
 
-      // Get public URL
-      const { data: urlData } = supabase.storage.from("facility-photos").getPublicUrl(data.path)
-
-      const photoUrl = urlData.publicUrl
-
-      console.log("[v0] Port/boat photo uploaded:", photoUrl)
+      const { url } = await response.json()
 
       // Update port/boat record with photo URL
-      const { error: updateError } = await supabase
-        .from("ports_boats")
-        .update({ photo_url: photoUrl })
-        .eq("id", portBoatId)
+      const { error: updateError } = await supabase.from("ports_boats").update({ photo_url: url }).eq("id", portBoatId)
 
       if (updateError) throw updateError
 
-      setPreview(photoUrl)
-      onPhotoUploaded?.(photoUrl)
+      setPreview(url)
+      onPhotoUploaded?.(url)
     } catch (error) {
       console.error("Error uploading photo:", error)
       alert("Failed to upload photo. Please try again.")
