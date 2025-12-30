@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Plus, Search, Edit, Trash2, Mail, Phone, Star } from "lucide-react"
+import { Plus, Search, Edit, Trash2, Mail, Phone, Star, FileText, MessageCircle, Building2 } from "lucide-react"
 import { AddGuestDialog } from "@/components/add-guest-dialog"
 import { EditGuestDialog } from "@/components/edit-guest-dialog"
 import { format } from "date-fns"
@@ -17,6 +17,7 @@ interface Guest {
   email: string
   phone: string
   address: string
+  company_name: string // Added company_name field
   notes: string
   vip_status: boolean
   created_at: string
@@ -45,21 +46,34 @@ export default function GuestsPage() {
   async function loadGuests() {
     setLoading(true)
 
-    const { data: guestsData } = await supabase.from("guests").select("*").order("name")
+    const { data: guestsData } = await supabase
+      .from("guests")
+      .select(`
+        *,
+        reservations:reservations(count)
+      `)
+      .order("name")
 
-    setGuests(guestsData || [])
-
-    // Load booking counts for each guest
     if (guestsData) {
-      const bookingCounts: Record<string, number> = {}
-      for (const guest of guestsData) {
-        const { count } = await supabase
-          .from("reservations")
-          .select("*", { count: "exact", head: true })
-          .eq("guest_name", guest.name)
+      // Transform the data to extract booking counts
+      const transformedGuests = guestsData.map((guest) => ({
+        id: guest.id,
+        name: guest.name,
+        email: guest.email,
+        phone: guest.phone,
+        address: guest.address,
+        company_name: guest.company_name,
+        notes: guest.notes,
+        vip_status: guest.vip_status,
+        created_at: guest.created_at,
+      }))
 
-        bookingCounts[guest.id] = count || 0
-      }
+      const bookingCounts: Record<string, number> = {}
+      guestsData.forEach((guest) => {
+        bookingCounts[guest.id] = guest.reservations?.[0]?.count || 0
+      })
+
+      setGuests(transformedGuests)
       setGuestBookings(bookingCounts)
     }
 
@@ -98,6 +112,22 @@ export default function GuestsPage() {
   function handleEditGuest(guest: Guest) {
     setSelectedGuest(guest)
     setShowEditDialog(true)
+  }
+
+  function handleSendInvoice(guest: Guest) {
+    // Navigate to invoice creation with pre-filled customer data
+    window.location.href = `/bookings/invoices?customer=${encodeURIComponent(guest.name)}&email=${encodeURIComponent(guest.email || "")}`
+  }
+
+  function handleWhatsApp(guest: Guest) {
+    if (!guest.phone) {
+      alert("Guest has no phone number")
+      return
+    }
+    // Clean phone number (remove spaces, dashes, etc)
+    const cleanPhone = guest.phone.replace(/\D/g, "")
+    // Open WhatsApp Web with the phone number
+    window.open(`https://wa.me/${cleanPhone}`, "_blank")
   }
 
   return (
@@ -172,6 +202,12 @@ export default function GuestsPage() {
                         <span>{guest.phone}</span>
                       </div>
                     )}
+                    {guest.company_name && (
+                      <div className="flex items-center gap-2 text-muted-foreground">
+                        <Building2 className="h-4 w-4" />
+                        <span className="truncate">{guest.company_name}</span>
+                      </div>
+                    )}
                   </div>
 
                   {guest.address && (
@@ -187,6 +223,28 @@ export default function GuestsPage() {
                       <div className="line-clamp-2">{guest.notes}</div>
                     </div>
                   )}
+
+                  <div className="flex gap-2 border-t pt-4">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="flex-1 gap-2 bg-transparent"
+                      onClick={() => handleSendInvoice(guest)}
+                    >
+                      <FileText className="h-4 w-4" />
+                      Invoice
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="flex-1 gap-2 bg-transparent"
+                      onClick={() => handleWhatsApp(guest)}
+                      disabled={!guest.phone}
+                    >
+                      <MessageCircle className="h-4 w-4" />
+                      WhatsApp
+                    </Button>
+                  </div>
 
                   <div className="flex items-center justify-between border-t pt-4">
                     <div className="text-sm text-muted-foreground">

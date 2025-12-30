@@ -24,6 +24,8 @@ interface InvoiceData {
   customer_name: string
   customer_email: string
   customer_phone: string
+  customer_address: string // Added customer_address field
+  customer_company: string // Added customer_company field
   invoice_date: string
   due_date: string
   line_items: LineItem[]
@@ -51,6 +53,8 @@ export function InvoiceEditorModal({ open, onOpenChange, invoice, onSave }: Invo
     customer_name: "",
     customer_email: "",
     customer_phone: "",
+    customer_address: "", // Initialize customer_address
+    customer_company: "", // Initialize customer_company
     invoice_date: new Date().toISOString().split("T")[0],
     due_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
     line_items: [{ description: "", quantity: 1, unitPrice: 0, total: 0 }],
@@ -197,6 +201,35 @@ export function InvoiceEditorModal({ open, onOpenChange, invoice, onSave }: Invo
                         customer_phone: e.target.value,
                       }))
                     }
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label>Company Name</Label>
+                  <Input
+                    value={formData.customer_company}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        customer_company: e.target.value,
+                      }))
+                    }
+                    placeholder="Optional company or organization"
+                  />
+                </div>
+                <div>
+                  <Label>Address</Label>
+                  <Textarea
+                    value={formData.customer_address}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        customer_address: e.target.value,
+                      }))
+                    }
+                    rows={2}
+                    placeholder="Customer address"
                   />
                 </div>
               </div>

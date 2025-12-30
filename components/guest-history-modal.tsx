@@ -3,16 +3,20 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button" // Added Button import
 import { format } from "date-fns"
-import { User, Mail, Phone, Calendar, DollarSign } from "lucide-react"
+import { User, Mail, Phone, Calendar, DollarSign, Building2, MapPin, FileText, MessageCircle } from "lucide-react" // Added Building2, MapPin, FileText, MessageCircle icons
 
 interface GuestHistoryModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   guest: {
+    id: string // Added id
     name: string
     email: string
     phone: string
+    company_name?: string // Added company_name
+    address?: string // Added address
     vip_status: boolean
   } | null
   reservationHistory: Array<{
@@ -32,6 +36,22 @@ export function GuestHistoryModal({ open, onOpenChange, guest, reservationHistor
   const completedBookings = reservationHistory.filter((r) => r.status === "checked_out").length
   const upcomingBookings = reservationHistory.filter((r) => new Date(r.check_in) > new Date()).length
 
+  function handleSendInvoice() {
+    // Open invoice modal or redirect to invoice page
+    window.location.href = `/bookings/invoices?guest=${guest.id}`
+  }
+
+  function handleSendWhatsApp() {
+    if (!guest.phone) {
+      alert("This guest has no phone number registered")
+      return
+    }
+    // Clean phone number and open WhatsApp Web
+    const cleanPhone = guest.phone.replace(/\D/g, "")
+    const message = encodeURIComponent(`Hello ${guest.name}, this is Black Swan Facility. How can we assist you today?`)
+    window.open(`https://wa.me/${cleanPhone}?text=${message}`, "_blank")
+  }
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
@@ -47,6 +67,12 @@ export function GuestHistoryModal({ open, onOpenChange, guest, reservationHistor
           {/* Guest Contact Info */}
           <Card className="bg-secondary/10 border-secondary">
             <CardContent className="pt-6 space-y-2">
+              {guest.company_name && (
+                <div className="flex items-center gap-2">
+                  <Building2 className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm font-medium">{guest.company_name}</span>
+                </div>
+              )}
               <div className="flex items-center gap-2">
                 <Mail className="h-4 w-4 text-muted-foreground" />
                 <span className="text-sm">{guest.email || "No email"}</span>
@@ -55,8 +81,30 @@ export function GuestHistoryModal({ open, onOpenChange, guest, reservationHistor
                 <Phone className="h-4 w-4 text-muted-foreground" />
                 <span className="text-sm">{guest.phone || "No phone"}</span>
               </div>
+              {guest.address && (
+                <div className="flex items-start gap-2">
+                  <MapPin className="h-4 w-4 text-muted-foreground mt-0.5" />
+                  <span className="text-sm">{guest.address}</span>
+                </div>
+              )}
             </CardContent>
           </Card>
+
+          <div className="flex gap-2">
+            <Button onClick={handleSendInvoice} variant="outline" className="flex-1 bg-transparent">
+              <FileText className="h-4 w-4 mr-2" />
+              Send Invoice
+            </Button>
+            <Button
+              onClick={handleSendWhatsApp}
+              variant="outline"
+              className="flex-1 bg-transparent"
+              disabled={!guest.phone}
+            >
+              <MessageCircle className="h-4 w-4 mr-2" />
+              WhatsApp
+            </Button>
+          </div>
 
           {/* Guest Statistics */}
           <div className="grid gap-3 sm:grid-cols-3">

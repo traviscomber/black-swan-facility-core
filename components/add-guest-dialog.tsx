@@ -23,6 +23,7 @@ export function AddGuestDialog({ open, onOpenChange, onSuccess }: AddGuestDialog
     name: "",
     email: "",
     phone: "",
+    company_name: "", // Added company_name field
     address: "",
     notes: "",
     vip_status: false,
@@ -55,6 +56,7 @@ export function AddGuestDialog({ open, onOpenChange, onSuccess }: AddGuestDialog
       name: "",
       email: "",
       phone: "",
+      company_name: "", // Reset company_name
       address: "",
       notes: "",
       vip_status: false,
@@ -63,7 +65,7 @@ export function AddGuestDialog({ open, onOpenChange, onSuccess }: AddGuestDialog
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>New Guest</DialogTitle>
         </DialogHeader>
@@ -95,6 +97,16 @@ export function AddGuestDialog({ open, onOpenChange, onSuccess }: AddGuestDialog
               id="phone"
               value={formData.phone}
               onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="company_name">Company Name</Label>
+            <Input
+              id="company_name"
+              value={formData.company_name}
+              onChange={(e) => setFormData({ ...formData, company_name: e.target.value })}
+              placeholder="Optional company or organization"
             />
           </div>
 
