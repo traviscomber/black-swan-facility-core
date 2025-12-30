@@ -30,6 +30,7 @@ import {
   Tablet,
   Heart,
   Crown,
+  Brain,
 } from "lucide-react"
 import { useState } from "react"
 // import { UniversalSearchDialog } from "@/components/universal-search-dialog" // Assuming UniversalSearchDialog is in a separate file
@@ -47,7 +48,21 @@ const navigationGroups = [
   {
     label: "Sovereignty",
     description: "Track facility independence and self-sufficiency",
-    items: [{ name: "Dashboard", href: "/sovereignty", icon: Crown, tip: "Track facility autonomy and independence" }],
+    items: [
+      { name: "Dashboard", href: "/sovereignty", icon: Crown, tip: "Track facility autonomy and independence" },
+      { name: "Coach", href: "/sovereignty/coach", icon: Brain, tip: "AI advisor for achieving independence" },
+      { name: "Layers", href: "/sovereignty/layers", icon: TrendingUp, tip: "View 5-layer sovereignty pyramid" },
+    ],
+  },
+  {
+    label: "Cattle Operations",
+    description: "Livestock management and breeding operations",
+    items: [
+      { name: "Dashboard", href: "/cattle", icon: Beef, tip: "Cattle areas and pasture management" },
+      { name: "Expert Coach", href: "/cattle/expert-agent", icon: Brain, tip: "AI advisor for cattle business" },
+      { name: "Business Plan", href: "/cattle/business-plan", icon: TrendingUp, tip: "Financial projections" },
+      { name: "Pricing & Costs", href: "/cattle/pricing-costs", icon: Box, tip: "Cost analysis and pricing" },
+    ],
   },
   {
     label: "Property Management",
@@ -56,7 +71,6 @@ const navigationGroups = [
       { name: "Assets", href: "/assets", icon: Box, tip: "Inventory and equipment" },
       { name: "Maintenance", href: "/maintenance", icon: Wrench, tip: "Schedule and track repairs" },
       { name: "GIS Map", href: "/map", icon: Map, tip: "Property location and layout" },
-      { name: "Cattle", href: "/cattle", icon: Beef, tip: "Livestock and pasture management" },
       { name: "Ports & Boats", href: "/ports-boats", icon: Anchor, tip: "Manage port facilities and boat fleet" },
     ],
   },
@@ -130,6 +144,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
       "Supply Chain",
       "People & Operations",
       "Advanced",
+      "Cattle Operations",
     ]),
   )
   const [openSearch, setOpenSearch] = useState(false)

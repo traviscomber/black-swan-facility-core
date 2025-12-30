@@ -36,6 +36,7 @@ export function AddReservationDialog({
   const [loading, setLoading] = useState(false)
   const [showConfirmation, setShowConfirmation] = useState(false)
   const [confirmationData, setConfirmationData] = useState<any>(null)
+  const [capacityWarning, setCapacityWarning] = useState<string | null>(null)
 
   const [formData, setFormData] = useState({
     bed_id: preselectedBed || "",
@@ -122,6 +123,22 @@ export function AddReservationDialog({
       }))
     }
   }, [preselectedDate])
+
+  useEffect(() => {
+    if (formData.bed_id && formData.num_guests) {
+      const selectedBed = beds.find((b) => b.id === formData.bed_id)
+      if (selectedBed?.room) {
+        const roomCapacity = selectedBed.room.capacity || selectedBed.room.max_guests || 2
+        if (formData.num_guests > roomCapacity) {
+          setCapacityWarning(
+            `⚠️ Warning: You're adding ${formData.num_guests} guests to a room with capacity of ${roomCapacity}`,
+          )
+        } else {
+          setCapacityWarning(null)
+        }
+      }
+    }
+  }, [formData.bed_id, formData.num_guests, beds])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -227,6 +244,15 @@ export function AddReservationDialog({
           </DialogHeader>
 
           <form onSubmit={handleSubmit} className="space-y-4">
+            {capacityWarning && (
+              <div className="rounded-md bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 p-3">
+                <p className="text-sm text-yellow-800 dark:text-yellow-200">{capacityWarning}</p>
+                <p className="text-xs text-yellow-700 dark:text-yellow-300 mt-1">
+                  You can proceed, but please ensure the guest is aware of the capacity limits.
+                </p>
+              </div>
+            )}
+
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2 sm:col-span-2">
                 <Label htmlFor="location_filter">Filter by Location</Label>
@@ -318,6 +344,7 @@ export function AddReservationDialog({
                   onChange={(e) => setFormData({ ...formData, num_guests: Number.parseInt(e.target.value) })}
                   required
                 />
+                <p className="text-xs text-muted-foreground">You can add more guests than room capacity if needed</p>
               </div>
 
               <div className="space-y-2">

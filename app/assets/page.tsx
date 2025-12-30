@@ -61,22 +61,22 @@ export default function AssetsPage() {
       />
 
       <div className="p-8">
-        <div className="rounded-lg border border-gray-200 bg-white">
+        <div className="rounded-lg border border-secondary bg-card">
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Type</TableHead>
-                <TableHead>Location</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>QR</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+                <TableHead className="text-muted-foreground">Name</TableHead>
+                <TableHead className="text-muted-foreground">Type</TableHead>
+                <TableHead className="text-muted-foreground">Location</TableHead>
+                <TableHead className="text-muted-foreground">Status</TableHead>
+                <TableHead className="text-muted-foreground">QR</TableHead>
+                <TableHead className="text-muted-foreground text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center text-gray-500">
+                  <TableCell colSpan={6} className="text-center text-muted-foreground">
                     Loading...
                   </TableCell>
                 </TableRow>
@@ -84,32 +84,41 @@ export default function AssetsPage() {
                 assets.map((asset: Asset) => (
                   <TableRow key={asset.id}>
                     <TableCell className="font-medium">
-                      <Link href={`/assets/${asset.id}`} className="text-blue-600 hover:text-blue-800">
-                        {asset.name}
-                      </Link>
+                      <div className="flex flex-col gap-1">
+                        <Link
+                          href={`/assets/${asset.id}`}
+                          className="text-primary hover:text-primary/80 transition-colors"
+                        >
+                          {asset.name}
+                        </Link>
+                        {asset.description && (
+                          <span className="text-xs text-muted-foreground">{asset.description}</span>
+                        )}
+                      </div>
                     </TableCell>
-                    <TableCell>{asset.type}</TableCell>
-                    <TableCell>{asset.location || "-"}</TableCell>
+                    <TableCell className="text-foreground">{asset.type}</TableCell>
+                    <TableCell className="text-foreground">{asset.location || "-"}</TableCell>
                     <TableCell>
                       {asset.is_critical ? (
-                        <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">
-                          Critical
-                        </Badge>
+                        <Badge className="bg-red-900/30 text-red-200 border-red-700/50">Critical</Badge>
                       ) : (
-                        <Badge variant="outline" className="bg-gray-50 text-gray-700">
-                          Normal
-                        </Badge>
+                        <Badge className="bg-green-900/30 text-green-200 border-green-700/50">Normal</Badge>
                       )}
                     </TableCell>
-                    <TableCell>{asset.is_critical && <QrCode className="h-4 w-4 text-gray-600" />}</TableCell>
+                    <TableCell>{asset.is_critical && <QrCode className="h-4 w-4 text-primary" />}</TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-2">
                         <Link href={`/assets/${asset.id}`}>
-                          <Button variant="ghost" size="sm">
+                          <Button variant="ghost" size="sm" className="text-accent hover:text-accent/80">
                             View
                           </Button>
                         </Link>
-                        <Button variant="ghost" size="sm" onClick={() => setEditingAsset(asset)}>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setEditingAsset(asset)}
+                          className="text-accent hover:text-accent/80"
+                        >
                           <Pencil className="h-4 w-4" />
                         </Button>
                         <DeleteAssetButton assetId={asset.id} assetName={asset.name} onDeleted={handleAssetDeleted} />
@@ -119,7 +128,7 @@ export default function AssetsPage() {
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center text-gray-500">
+                  <TableCell colSpan={6} className="text-center text-muted-foreground">
                     No assets found
                   </TableCell>
                 </TableRow>
