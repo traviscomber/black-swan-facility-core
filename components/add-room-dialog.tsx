@@ -15,9 +15,10 @@ interface AddRoomDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   onSuccess: () => void
+  locationId?: string
 }
 
-export function AddRoomDialog({ open, onOpenChange, onSuccess }: AddRoomDialogProps) {
+export function AddRoomDialog({ open, onOpenChange, onSuccess, locationId }: AddRoomDialogProps) {
   const [roomNumber, setRoomNumber] = useState("")
   const [roomType, setRoomType] = useState("")
   const [capacity, setCapacity] = useState("")
@@ -40,7 +41,7 @@ export function AddRoomDialog({ open, onOpenChange, onSuccess }: AddRoomDialogPr
       .map((a) => a.trim())
       .filter((a) => a)
 
-    const { error } = await supabase.from("rooms").insert({
+    const roomData: any = {
       room_number: roomNumber,
       room_type: roomType,
       capacity: Number.parseInt(capacity) || 1,
@@ -50,7 +51,13 @@ export function AddRoomDialog({ open, onOpenChange, onSuccess }: AddRoomDialogPr
       amenities: amenitiesArray,
       notes,
       floor,
-    })
+    }
+
+    if (locationId) {
+      roomData.location_id = locationId
+    }
+
+    const { error } = await supabase.from("rooms").insert(roomData)
 
     setSubmitting(false)
 
@@ -58,6 +65,9 @@ export function AddRoomDialog({ open, onOpenChange, onSuccess }: AddRoomDialogPr
       onSuccess()
       onOpenChange(false)
       resetForm()
+    } else {
+      console.error("[v0] Error adding room:", error.message)
+      alert(`Error creating room: ${error.message}`)
     }
   }
 

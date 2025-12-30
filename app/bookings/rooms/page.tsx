@@ -5,7 +5,7 @@ import { createBrowserClient } from "@/lib/supabase/client"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Plus, DollarSign, Users, MapPin, Pencil, Trash2, BedDouble } from "lucide-react"
+import { Plus, DollarSign, Users, Pencil, Trash2, BedDouble } from "lucide-react"
 import { AddRoomDialog } from "@/components/add-room-dialog"
 import { EditRoomDialog } from "@/components/edit-room-dialog"
 import { AddBedDialog } from "@/components/add-bed-dialog"
@@ -20,6 +20,17 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 
+const FACILITY_COLORS = [
+  { bg: "bg-red-200", border: "border-l-4 border-red-400", text: "text-red-900" },
+  { bg: "bg-blue-200", border: "border-l-4 border-blue-400", text: "text-blue-900" },
+  { bg: "bg-emerald-200", border: "border-l-4 border-emerald-400", text: "text-emerald-900" },
+  { bg: "bg-amber-200", border: "border-l-4 border-amber-400", text: "text-amber-900" },
+  { bg: "bg-violet-200", border: "border-l-4 border-violet-400", text: "text-violet-900" },
+  { bg: "bg-rose-200", border: "border-l-4 border-rose-400", text: "text-rose-900" },
+  { bg: "bg-indigo-200", border: "border-l-4 border-indigo-400", text: "text-indigo-900" },
+  { bg: "bg-teal-200", border: "border-l-4 border-teal-400", text: "text-teal-900" },
+]
+
 interface Room {
   id: string
   room_number: string
@@ -28,6 +39,8 @@ interface Room {
   rate_per_night: number
   status: string
   location: string
+  location_id?: string
+  locationName?: string
   amenities: string[]
   notes?: string
   floor?: string
@@ -44,9 +57,15 @@ interface Bed {
   notes?: string
 }
 
+interface Location {
+  id: string
+  name: string
+}
+
 export default function RoomsPage() {
   const [rooms, setRooms] = useState<Room[]>([])
   const [beds, setBeds] = useState<Bed[]>([])
+  const [locations, setLocations] = useState<Location[]>([])
   const [loading, setLoading] = useState(true)
   const [isAddRoomOpen, setIsAddRoomOpen] = useState(false)
   const [isEditRoomOpen, setIsEditRoomOpen] = useState(false)
@@ -63,12 +82,25 @@ export default function RoomsPage() {
   }, [])
 
   async function loadData() {
-    const { data: roomsData } = await supabase.from("rooms").select("*").order("room_number")
+    const { data: locationsData } = await supabase.from("locations").select("id, name").order("name")
+    const { data: roomsData } = await supabase.from("rooms").select("*, locations!inner(name, id)").order("room_number")
     const { data: bedsData } = await supabase.from("beds").select("*").order("bed_number")
 
-    setRooms(roomsData || [])
+    const transformedRooms = (roomsData || []).map((room: any) => ({
+      ...room,
+      locationName: room.locations?.name || room.location || "Unknown Location",
+    }))
+
+    setLocations(locationsData || [])
+    setRooms(transformedRooms || [])
     setBeds(bedsData || [])
     setLoading(false)
+  }
+
+  function getFacilityColor(locationId?: string) {
+    if (!locationId) return FACILITY_COLORS[0]
+    const index = locations.findIndex((loc) => loc.id === locationId)
+    return FACILITY_COLORS[Math.max(0, index) % FACILITY_COLORS.length]
   }
 
   function getStatusColor(status: string) {
@@ -91,7 +123,6 @@ export default function RoomsPage() {
   }
 
   async function handleDeleteRoom(roomId: string) {
-    // Check if room has beds
     const roomBeds = beds.filter((bed) => bed.room_id === roomId)
     if (roomBeds.length > 0) {
       alert("Cannot delete room with assigned beds. Please delete all beds first.")
@@ -140,16 +171,22 @@ export default function RoomsPage() {
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {rooms.map((room) => {
               const roomBeds = beds.filter((bed) => bed.room_id === room.id)
+              const facilityColor = getFacilityColor(room.location_id)
               return (
-                <Card key={room.id}>
+                <Card key={room.id} className={`${facilityColor.bg} ${facilityColor.border}`}>
                   <CardHeader className="pb-3">
                     <div className="flex items-start justify-between">
-                      <CardTitle className="text-lg">{room.room_number}</CardTitle>
+                      <div className="flex flex-col">
+                        <CardTitle className={`${facilityColor.text} text-lg`}>{room.room_number}</CardTitle>
+                        {room.locationName && (
+                          <p className={`${facilityColor.text}/80 text-sm font-medium mt-1`}>{room.locationName}</p>
+                        )}
+                      </div>
                       <div className="flex gap-1">
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-7 w-7"
+                          className={`h-7 w-7 ${facilityColor.text} hover:bg-black/10`}
                           onClick={() => {
                             setRoomToEdit(room)
                             setIsEditRoomOpen(true)
@@ -160,49 +197,46 @@ export default function RoomsPage() {
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-7 w-7 text-destructive"
+                          className={`h-7 w-7 ${facilityColor.text} hover:bg-black/10`}
                           onClick={() => confirmDelete("room", room.id)}
                         >
                           <Trash2 className="h-3.5 w-3.5" />
                         </Button>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <p className="text-sm text-muted-foreground">{room.room_type}</p>
+                    <div className="flex items-center gap-2 text-sm mt-2">
+                      <p className={`${facilityColor.text}/80`}>{room.room_type}</p>
                       <Badge className={getStatusColor(room.status)} variant="secondary">
                         {room.status}
                       </Badge>
                     </div>
                   </CardHeader>
                   <CardContent className="space-y-3">
-                    <div className="flex items-center gap-2 text-sm">
-                      <Users className="h-4 w-4 text-muted-foreground" />
+                    <div className={`flex items-center gap-2 text-sm ${facilityColor.text}/90`}>
+                      <Users className={`h-4 w-4 ${facilityColor.text}/60`} />
                       <span>Up to {room.capacity || room.max_guests || 2} guests</span>
                     </div>
 
-                    <div className="flex items-center gap-2 text-sm">
-                      <DollarSign className="h-4 w-4 text-muted-foreground" />
+                    <div className={`flex items-center gap-2 text-sm ${facilityColor.text}/90`}>
+                      <DollarSign className={`h-4 w-4 ${facilityColor.text}/60`} />
                       <span className="font-semibold">${room.rate_per_night}</span>
-                      <span className="text-muted-foreground">/ night</span>
+                      <span className={`${facilityColor.text}/70`}>/ night</span>
                     </div>
 
-                    {room.location && (
-                      <div className="flex items-center gap-2 text-sm">
-                        <MapPin className="h-4 w-4 text-muted-foreground" />
-                        <span className="text-muted-foreground">{room.location}</span>
-                      </div>
-                    )}
-
                     {room.amenities && room.amenities.length > 0 && (
-                      <div className="border-t pt-3">
+                      <div className={`border-t border-${facilityColor.text.split("-")[1]}-300 pt-3`}>
                         <div className="flex flex-wrap gap-1">
                           {room.amenities.slice(0, 3).map((amenity, idx) => (
-                            <Badge key={idx} variant="secondary" className="text-xs">
+                            <Badge
+                              key={idx}
+                              variant="secondary"
+                              className={`text-xs bg-black/10 ${facilityColor.text}`}
+                            >
                               {amenity}
                             </Badge>
                           ))}
                           {room.amenities.length > 3 && (
-                            <Badge variant="secondary" className="text-xs">
+                            <Badge variant="secondary" className={`text-xs bg-black/10 ${facilityColor.text}`}>
                               +{room.amenities.length - 3}
                             </Badge>
                           )}
@@ -210,13 +244,13 @@ export default function RoomsPage() {
                       </div>
                     )}
 
-                    <div className="border-t pt-3">
+                    <div className={`border-t border-${facilityColor.text.split("-")[1]}-300 pt-3`}>
                       <div className="mb-2 flex items-center justify-between text-sm">
-                        <span className="font-medium">Beds ({roomBeds.length})</span>
+                        <span className={`font-medium ${facilityColor.text}`}>Beds ({roomBeds.length})</span>
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="h-7 gap-1.5 px-2"
+                          className={`h-7 gap-1.5 px-2 ${facilityColor.text} hover:bg-black/10`}
                           onClick={() => {
                             setSelectedRoomForBed(room)
                             setIsAddBedOpen(true)
@@ -231,17 +265,17 @@ export default function RoomsPage() {
                           {roomBeds.map((bed) => (
                             <div
                               key={bed.id}
-                              className="flex items-center justify-between rounded-md bg-muted/50 px-2 py-1.5 text-xs"
+                              className={`flex items-center justify-between rounded-md bg-black/10 px-2 py-1.5 text-xs ${facilityColor.text}/90`}
                             >
                               <div className="flex items-center gap-2">
-                                <BedDouble className="h-3 w-3 text-muted-foreground" />
+                                <BedDouble className={`h-3 w-3 ${facilityColor.text}/60`} />
                                 <span className="font-medium">{bed.bed_number}</span>
-                                <span className="text-muted-foreground">({bed.bed_type})</span>
+                                <span className={`${facilityColor.text}/70`}>({bed.bed_type})</span>
                               </div>
                               <Button
                                 variant="ghost"
                                 size="icon"
-                                className="h-5 w-5 text-destructive"
+                                className={`h-5 w-5 ${facilityColor.text} hover:bg-black/10`}
                                 onClick={() => confirmDelete("bed", bed.id)}
                               >
                                 <Trash2 className="h-3 w-3" />
@@ -250,7 +284,7 @@ export default function RoomsPage() {
                           ))}
                         </div>
                       ) : (
-                        <p className="text-xs text-muted-foreground">No beds added yet</p>
+                        <p className={`text-xs ${facilityColor.text}/60`}>No beds added yet</p>
                       )}
                     </div>
                   </CardContent>

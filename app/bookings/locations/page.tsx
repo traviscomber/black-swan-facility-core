@@ -20,6 +20,17 @@ import {
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 
+const FACILITY_COLORS = [
+  { bg: "bg-red-200", border: "border-l-4 border-red-400", text: "text-red-900" },
+  { bg: "bg-blue-200", border: "border-l-4 border-blue-400", text: "text-blue-900" },
+  { bg: "bg-emerald-200", border: "border-l-4 border-emerald-400", text: "text-emerald-900" },
+  { bg: "bg-amber-200", border: "border-l-4 border-amber-400", text: "text-amber-900" },
+  { bg: "bg-violet-200", border: "border-l-4 border-violet-400", text: "text-violet-900" },
+  { bg: "bg-rose-200", border: "border-l-4 border-rose-400", text: "text-rose-900" },
+  { bg: "bg-indigo-200", border: "border-l-4 border-indigo-400", text: "text-indigo-900" },
+  { bg: "bg-teal-200", border: "border-l-4 border-teal-400", text: "text-teal-900" },
+]
+
 interface Location {
   id: string
   name: string
@@ -57,6 +68,10 @@ export default function LocationsPage() {
     } else {
       setLocations(data || [])
     }
+  }
+
+  function getFacilityColor(index: number) {
+    return FACILITY_COLORS[Math.max(0, index) % FACILITY_COLORS.length]
   }
 
   async function handleAddLocation(e: React.FormEvent<HTMLFormElement>) {
@@ -184,62 +199,82 @@ export default function LocationsPage() {
         </div>
 
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {filteredLocations.map((location) => (
-            <Card key={location.id}>
-              <CardHeader>
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-2">
-                    <MapPin className="h-5 w-5 text-primary" />
-                    <CardTitle>{location.name}</CardTitle>
-                  </div>
-                  <div className="flex gap-1">
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      onClick={() => {
-                        setEditingLocation(location)
-                        setIsEditDialogOpen(true)
-                      }}
-                    >
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                    <Button size="icon" variant="ghost" onClick={() => handleDeleteLocation(location.id)}>
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-                <CardDescription>{location.description || "No description"}</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2 text-sm">
-                  {location.latitude && location.longitude && (
-                    <div className="text-muted-foreground">
-                      Coordinates: {location.latitude.toFixed(6)}, {location.longitude.toFixed(6)}
+          {filteredLocations.map((location, index) => {
+            const facilityColor = getFacilityColor(index)
+            return (
+              <Card key={location.id} className={`${facilityColor.bg} ${facilityColor.border}`}>
+                <CardHeader>
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-center gap-2">
+                      <MapPin className={`h-5 w-5 ${facilityColor.text}`} />
+                      <CardTitle className={facilityColor.text}>{location.name}</CardTitle>
                     </div>
-                  )}
-                  <div className="flex items-center justify-between">
-                    <span className={location.is_active ? "text-green-600" : "text-gray-400"}>
-                      {location.is_active ? "Active" : "Inactive"}
-                    </span>
-                    <div className="flex gap-2">
-                      <Link href={`/bookings/locations/${location.id}`}>
-                        <Button size="sm" variant="default">
-                          <Eye className="mr-2 h-4 w-4" />
-                          Manage Rooms & Beds
-                        </Button>
-                      </Link>
-                      <Button size="sm" variant="outline" onClick={() => toggleActive(location)}>
-                        {location.is_active ? "Deactivate" : "Activate"}
+                    <div className="flex gap-1">
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        onClick={() => {
+                          setEditingLocation(location)
+                          setIsEditDialogOpen(true)
+                        }}
+                        className={`${facilityColor.text} hover:bg-black/10`}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        onClick={() => handleDeleteLocation(location.id)}
+                        className={`${facilityColor.text} hover:bg-black/10`}
+                      >
+                        <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                  <CardDescription className={`${facilityColor.text}/70`}>
+                    {location.description || "No description"}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2 text-sm">
+                    {location.latitude && location.longitude && (
+                      <div className={`${facilityColor.text}/70`}>
+                        Coordinates: {location.latitude.toFixed(6)}, {location.longitude.toFixed(6)}
+                      </div>
+                    )}
+                    <div className="flex items-center justify-between">
+                      <span className={location.is_active ? `${facilityColor.text}` : `${facilityColor.text}/60`}>
+                        {location.is_active ? "Active" : "Inactive"}
+                      </span>
+                      <div className="flex gap-2">
+                        <Link href={`/bookings/locations/${location.id}`}>
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            className={`${facilityColor.bg} ${facilityColor.text} hover:opacity-90`}
+                          >
+                            <Eye className="mr-2 h-4 w-4" />
+                            Manage Rooms & Beds
+                          </Button>
+                        </Link>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => toggleActive(location)}
+                          className={`${facilityColor.text} border-current hover:bg-black/10`}
+                        >
+                          {location.is_active ? "Deactivate" : "Activate"}
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )
+          })}
         </div>
 
-        {/* Add Location Dialog */}
+        {/* ... existing dialogs ... */}
         <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
           <DialogContent>
             <form onSubmit={handleAddLocation}>
@@ -268,7 +303,7 @@ export default function LocationsPage() {
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="longitude">Longitude</Label>
-                    <Input id="longitude" name="longitude" type="number" step="any" placeholder="-83.12345" />
+                    <Input id="edit-longitude" name="longitude" type="number" step="any" placeholder="-83.12345" />
                   </div>
                 </div>
               </div>
@@ -282,7 +317,6 @@ export default function LocationsPage() {
           </DialogContent>
         </Dialog>
 
-        {/* Edit Location Dialog */}
         <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
           <DialogContent>
             <form onSubmit={handleEditLocation}>

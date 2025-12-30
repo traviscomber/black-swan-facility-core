@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/client"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { ChevronLeft, ChevronRight, AlertCircle, MapPin, Home, Plus, Calendar } from "lucide-react"
+import { ChevronLeft, ChevronRight, MapPin, Home, Calendar } from "lucide-react"
 import { format, addDays, isWithinInterval, parseISO, isSameDay } from "date-fns"
 import { AddReservationDialog } from "@/components/add-reservation-dialog"
 import { EditReservationModal } from "@/components/edit-reservation-modal"
@@ -46,14 +46,14 @@ interface Reservation {
 }
 
 const FACILITY_COLORS = [
-  { bg: "bg-blue-100", border: "border-blue-400", text: "text-blue-900", hover: "hover:bg-blue-200" },
-  { bg: "bg-green-100", border: "border-green-400", text: "text-green-900", hover: "hover:bg-green-200" },
-  { bg: "bg-purple-100", border: "border-purple-400", text: "text-purple-900", hover: "hover:bg-purple-200" },
-  { bg: "bg-orange-100", border: "border-orange-400", text: "text-orange-900", hover: "hover:bg-orange-200" },
-  { bg: "bg-pink-100", border: "border-pink-400", text: "text-pink-900", hover: "hover:bg-pink-200" },
-  { bg: "bg-cyan-100", border: "border-cyan-400", text: "text-cyan-900", hover: "hover:bg-cyan-200" },
-  { bg: "bg-amber-100", border: "border-amber-400", text: "text-amber-900", hover: "hover:bg-amber-200" },
-  { bg: "bg-teal-100", border: "border-teal-400", text: "text-teal-900", hover: "hover:bg-teal-200" },
+  { bg: "bg-red-200", border: "border-red-300", text: "text-red-900", hover: "hover:bg-red-100" },
+  { bg: "bg-blue-200", border: "border-blue-300", text: "text-blue-900", hover: "hover:bg-blue-100" },
+  { bg: "bg-emerald-200", border: "border-emerald-300", text: "text-emerald-900", hover: "hover:bg-emerald-100" },
+  { bg: "bg-amber-200", border: "border-amber-300", text: "text-amber-900", hover: "hover:bg-amber-100" },
+  { bg: "bg-violet-200", border: "border-violet-300", text: "text-violet-900", hover: "hover:bg-violet-100" },
+  { bg: "bg-rose-200", border: "border-rose-300", text: "text-rose-900", hover: "hover:bg-rose-100" },
+  { bg: "bg-indigo-200", border: "border-indigo-300", text: "text-indigo-900", hover: "hover:bg-indigo-100" },
+  { bg: "bg-teal-200", border: "border-teal-300", text: "text-teal-900", hover: "hover:bg-teal-100" },
 ]
 
 export default function BookingManagement() {
@@ -83,7 +83,8 @@ export default function BookingManagement() {
     vip_status: boolean
   }>({ name: "", email: "", phone: "", vip_status: false })
 
-  const dateRange = 14
+  const [singlePropertyDateRange] = useState(365) // Added full-year date range for single property view
+  const dateRange = viewMode === "single" ? singlePropertyDateRange : 14 // Use 365 days for single property, 14 for multi
   const dateArray = Array.from({ length: dateRange }, (_, i) => addDays(startDate, i))
   const today = new Date() // Get today's date for highlighting
 
@@ -349,50 +350,50 @@ export default function BookingManagement() {
         </div>
 
         {viewMode === "single" ? (
-          /* Single facility view - existing code */
-          <div className="flex flex-col md:flex-row overflow-hidden">
+          /* Single facility view - now shows full year in table format like multi-property view */
+          <div className="space-y-6">
             {/* Left Sidebar - Locations List */}
-            <div className="w-full md:w-48 lg:w-64 border-r border-secondary bg-card mb-4 md:mb-0 rounded-lg md:rounded-none">
-              <div className="p-4 space-y-2">
-                <h2 className="text-sm font-semibold text-foreground px-3 py-2 flex items-center gap-2">
-                  <Home className="h-4 w-4" />
-                  Properties ({locations.length})
-                </h2>
-                {locations.length === 0 && !loading && (
-                  <div className="text-sm text-muted-foreground px-3 py-4 text-center">
-                    No properties found. Add locations first.
-                  </div>
-                )}
-                {locations.map((location) => (
-                  <button
-                    key={location.id}
-                    onClick={() => {
-                      setSelectedLocationId(location.id)
-                      setStartDate(new Date())
-                      setShowLocationsPicker(false)
-                    }}
-                    className={`w-full text-left px-3 py-2 rounded-lg transition-colors ${
-                      selectedLocationId === location.id
-                        ? "bg-primary text-primary-foreground shadow-md"
-                        : "hover:bg-secondary text-foreground"
-                    }`}
-                  >
-                    <div className="flex items-center gap-2">
-                      <Home className="h-4 w-4" />
-                      <span className="font-medium text-sm">{location.name}</span>
+            <div className="flex flex-col md:flex-row gap-6">
+              <div className="w-full md:w-48 lg:w-64 border-r border-secondary bg-card rounded-lg md:rounded-none">
+                <div className="p-4 space-y-2">
+                  <h2 className="text-sm font-semibold text-foreground px-3 py-2 flex items-center gap-2">
+                    <Home className="h-4 w-4" />
+                    Properties ({locations.length})
+                  </h2>
+                  {locations.length === 0 && !loading && (
+                    <div className="text-sm text-muted-foreground px-3 py-4 text-center">
+                      No properties found. Add locations first.
                     </div>
-                    {location.description && <p className="text-xs mt-1 opacity-75 ml-6">{location.description}</p>}
-                  </button>
-                ))}
+                  )}
+                  {locations.map((location) => (
+                    <button
+                      key={location.id}
+                      onClick={() => {
+                        setSelectedLocationId(location.id)
+                        setStartDate(new Date())
+                        setShowLocationsPicker(false)
+                      }}
+                      className={`w-full text-left px-3 py-2 rounded-lg transition-colors ${
+                        selectedLocationId === location.id
+                          ? "bg-primary text-primary-foreground shadow-md"
+                          : "hover:bg-secondary text-foreground"
+                      }`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <Home className="h-4 w-4" />
+                        <span className="font-medium text-sm">{location.name}</span>
+                      </div>
+                      {location.description && <p className="text-xs mt-1 opacity-75 ml-6">{location.description}</p>}
+                    </button>
+                  ))}
+                </div>
               </div>
-            </div>
 
-            {/* Right Content - Calendar and Details */}
-            <div className="flex-1 overflow-y-auto max-h-[calc(100vh-200px)]">
-              <div className="max-w-7xl mx-auto px-4 py-6">
+              {/* Right Content - Full Year Calendar Table */}
+              <div className="flex-1 space-y-6">
                 {/* Property Overview Cards */}
                 {selectedLocation && (
-                  <div className="grid gap-4 md:grid-cols-4 mb-6">
+                  <div className="grid gap-4 md:grid-cols-4">
                     <Card className="border-0 bg-white/60 backdrop-blur">
                       <CardHeader className="pb-2">
                         <CardTitle className="text-sm font-medium text-muted-foreground">Total Beds</CardTitle>
@@ -457,228 +458,136 @@ export default function BookingManagement() {
                   </div>
                 )}
 
-                {/* Calendar Controls */}
-                <div className="flex justify-between items-center mb-6">
-                  <div>
-                    <h2 className="text-lg font-semibold text-accent">{format(startDate, "MMMM yyyy")}</h2>
-                    <p className="text-sm text-muted-foreground mt-1">
-                      Showing {dateArray.length} days in {format(startDate, "MMMM")}
-                    </p>
-                  </div>
-                  <div className="flex gap-2">
-                    <Button
-                      variant="default"
-                      size="sm"
-                      onClick={() => {
-                        setSelectedDateForReservation(new Date())
-                        setSelectedBedForReservation(null)
-                        setNewReservationOpen(true)
-                      }}
-                      className="gap-2"
-                    >
-                      <Plus className="h-4 w-4" />
-                      New Reservation
-                    </Button>
-                    <Button variant="outline" size="sm" onClick={goToPreviousPeriod} className="gap-2 bg-transparent">
-                      <ChevronLeft className="h-4 w-4" />
-                      Previous Week
-                    </Button>
+                {/* Navigation Controls */}
+                <div className="flex justify-between items-center">
+                  <Button variant="outline" size="sm" onClick={goToPreviousPeriod}>
+                    <ChevronLeft className="h-4 w-4" />
+                    Previous Year
+                  </Button>
+                  <div className="flex items-center gap-2">
                     <Button variant="outline" size="sm" onClick={goToToday}>
+                      <Calendar className="h-4 w-4 mr-2" />
                       Today
                     </Button>
-                    <Button variant="outline" size="sm" onClick={goToNextPeriod} className="gap-2 bg-transparent">
-                      Next Week
-                      <ChevronRight className="h-4 w-4" />
-                    </Button>
+                    <Badge variant="outline" className="text-sm font-semibold px-4 py-2">
+                      {format(startDate, "MMM d")} - {format(dateArray[dateArray.length - 1], "MMM d, yyyy")}
+                    </Badge>
                   </div>
+                  <Button variant="outline" size="sm" onClick={goToNextPeriod}>
+                    Next Year
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
                 </div>
 
-                {/* Helper Card */}
-                <Card className="mb-6 border-primary/20 bg-primary/5">
-                  <CardHeader>
-                    <CardTitle className="text-sm flex items-center gap-2">
-                      <AlertCircle className="h-4 w-4" />
-                      How to Use This Calendar
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="text-sm text-muted-foreground space-y-2">
-                    <p>
-                      • <strong>Green checkmarks</strong> show available beds with no bookings
-                    </p>
-                    <p>
-                      • <strong>Colored blocks</strong> show active reservations with guest names
-                    </p>
-                    <p>
-                      • <strong>Click a reservation</strong> to view full booking details
-                    </p>
-                    <p>
-                      • <strong>Switch properties</strong> in the left sidebar to see different locations
-                    </p>
-                  </CardContent>
-                </Card>
-
-                {/* Calendar Table */}
-                {selectedLocationBeds.length > 0 ? (
-                  <Card className="border-0 shadow-lg">
-                    <CardContent className="p-0">
-                      <div className="overflow-x-auto bg-white rounded-b-lg">
-                        <table className="w-full text-sm">
-                          <thead>
-                            <tr className="bg-secondary/50 border-b border-secondary">
-                              <th className="text-left font-semibold text-accent px-4 py-3 sticky left-0 bg-secondary/50 w-32 min-w-32 z-10">
-                                Room
-                              </th>
-                              {dateArray.map((date) => {
-                                const isToday = isSameDay(date, today)
-                                return (
-                                  <th
-                                    key={date.toISOString()}
-                                    className={`text-center font-semibold px-1.5 py-3 w-16 min-w-16 whitespace-nowrap ${
-                                      isToday ? "bg-amber-100 border-2 border-amber-400 rounded" : "text-accent"
-                                    }`}
-                                  >
-                                    <div
-                                      className={`text-xs font-semibold ${isToday ? "text-amber-900" : "text-muted-foreground"}`}
-                                    >
-                                      {format(date, "EEE")}
-                                    </div>
-                                    <div className={`text-sm font-bold ${isToday ? "text-amber-900" : "text-accent"}`}>
-                                      {format(date, "d")}
-                                    </div>
-                                    {isToday && <div className="text-xs font-semibold text-amber-900 mt-1">TODAY</div>}
-                                  </th>
-                                )
-                              })}
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {selectedLocationBeds.map((bed) => {
-                              const reservationRanges = getReservationRanges(bed.id)
-                              const renderedIndices = new Set<number>()
-
+                {/* Full Year Calendar Table */}
+                <Card className="border-0 shadow-lg overflow-hidden">
+                  <CardContent className="p-0">
+                    <div className="overflow-x-auto">
+                      <table className="w-full border-collapse">
+                        <thead>
+                          <tr className="border-b-2 border-secondary bg-secondary/50">
+                            <th className="text-left font-semibold text-accent px-4 py-3 sticky left-0 bg-secondary/50 w-48 min-w-48 z-20">
+                              Room / Bed
+                            </th>
+                            {dateArray.map((date) => {
+                              const isToday = isSameDay(date, today)
                               return (
-                                <tr
-                                  key={bed.id}
-                                  className="border-b border-secondary/30 hover:bg-secondary/20 transition-colors"
+                                <th
+                                  key={date.toISOString()}
+                                  className={`text-center font-semibold px-1.5 py-3 w-16 min-w-16 whitespace-nowrap ${
+                                    isToday ? "bg-amber-100 border-2 border-amber-400 rounded" : "text-accent"
+                                  }`}
                                 >
-                                  <td className="text-left font-medium text-accent px-4 py-4 sticky left-0 bg-white z-10 w-32 min-w-32">
-                                    <div>{bed.room.room_number}</div>
-                                    <div className="text-xs text-muted-foreground">{bed.bed_number}</div>
-                                  </td>
-                                  {dateArray.map((date, dateIndex) => {
-                                    if (renderedIndices.has(dateIndex)) return null
+                                  <div
+                                    className={`text-xs font-semibold ${isToday ? "text-amber-900" : "text-muted-foreground"}`}
+                                  >
+                                    {format(date, "EEE")}
+                                  </div>
+                                  <div className={`text-sm font-bold ${isToday ? "text-amber-900" : "text-accent"}`}>
+                                    {format(date, "d")}
+                                  </div>
+                                  {isToday && <div className="text-xs font-semibold text-amber-900 mt-1">TODAY</div>}
+                                </th>
+                              )
+                            })}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {selectedLocationBeds.map((bed, bedIndex) => {
+                            const reservationRanges = getReservationRanges(bed.id)
+                            const renderedIndices = new Set<number>()
+                            const facilityColor = getFacilityColor(selectedLocationId!)
 
-                                    const reservationRange = reservationRanges.find(
-                                      (r) => dateIndex >= r.startIndex && dateIndex <= r.endIndex,
-                                    )
+                            return (
+                              <tr
+                                key={bed.id}
+                                className={`border-b border-secondary/30 ${facilityColor.hover} transition-colors`}
+                              >
+                                <td
+                                  className={`text-left font-medium px-4 py-3 sticky left-0 ${facilityColor.bg} z-10 w-48 min-w-48 border-r-2 ${facilityColor.border}`}
+                                >
+                                  <div className={`text-sm ${facilityColor.text}`}>{bed.room.room_number}</div>
+                                  <div className={`text-xs ${facilityColor.text} opacity-70`}>{bed.bed_number}</div>
+                                </td>
+                                {dateArray.map((date, dateIndex) => {
+                                  if (renderedIndices.has(dateIndex)) return null
 
-                                    if (reservationRange) {
-                                      for (let i = reservationRange.startIndex; i <= reservationRange.endIndex; i++) {
-                                        renderedIndices.add(i)
-                                      }
+                                  const reservationRange = reservationRanges.find(
+                                    (r) => dateIndex >= r.startIndex && dateIndex <= r.endIndex,
+                                  )
 
-                                      const { reservation, colspan } = reservationRange
-                                      return (
-                                        <td
-                                          key={`${bed.id}-${dateIndex}`}
-                                          colSpan={colspan}
-                                          className="text-center px-1.5 py-4"
-                                        >
-                                          <div
-                                            className={`rounded p-2 text-xs font-semibold border ${getStatusColor(
-                                              reservation.status,
-                                            )} cursor-pointer hover:shadow-md transition-shadow h-full flex items-center justify-center relative group`}
-                                            title={`${reservation.guest_name} - ${format(
-                                              parseISO(reservation.check_in),
-                                              "MMM d",
-                                            )} to ${format(
-                                              new Date(parseISO(reservation.check_out).getTime() - 86400000),
-                                              "MMM d",
-                                            )} - ${reservation.guest_email || ""}`}
-                                            onClick={() => handleReservationClick(reservation)}
-                                            onMouseDown={(e) => {
-                                              if (e.clientX > e.currentTarget.getBoundingClientRect().right - 10) {
-                                                setResizingReservation(reservation)
-                                                setResizeStart({
-                                                  x: e.clientX,
-                                                  y: e.clientY,
-                                                  originalCheckOut: reservation.check_out,
-                                                })
-                                              }
-                                            }}
-                                          >
-                                            {reservation.guest_name}
-                                            <div className="text-xs opacity-75 mt-1">
-                                              ({colspan} {colspan === 1 ? "night" : "nights"})
-                                            </div>
-                                            {/* Drag handle at the right edge */}
-                                            <div className="absolute right-0 top-0 bottom-0 w-1.5 bg-green-600 hover:bg-green-700 cursor-col-resize opacity-0 group-hover:opacity-100" />
-                                          </div>
-                                        </td>
-                                      )
+                                  if (reservationRange) {
+                                    for (let i = reservationRange.startIndex; i <= reservationRange.endIndex; i++) {
+                                      renderedIndices.add(i)
                                     }
 
+                                    const { reservation, colspan } = reservationRange
                                     return (
                                       <td
                                         key={`${bed.id}-${dateIndex}`}
-                                        className="text-center px-1.5 py-4 w-16 min-w-16"
+                                        colSpan={colspan}
+                                        className="text-center px-1.5 py-3"
                                       >
-                                        <button
-                                          onClick={() => handleCalendarCellClick(bed, date)}
-                                          className="flex items-center justify-center w-full h-full hover:bg-green-50 rounded transition-colors cursor-pointer group"
-                                          title="Click to create reservation"
+                                        <div
+                                          className={`rounded p-2 text-xs font-semibold border-2 ${getStatusColor(
+                                            reservation.status,
+                                          )} cursor-pointer hover:shadow-lg transition-all h-full flex flex-col items-center justify-center relative group`}
+                                          title={`${bed.room.room_number}\n${reservation.guest_name}\n${format(
+                                            parseISO(reservation.check_in),
+                                            "MMM d",
+                                          )} to ${format(
+                                            new Date(parseISO(reservation.check_out).getTime() - 86400000),
+                                            "MMM d",
+                                          )}`}
+                                          onClick={() => handleReservationClick(reservation)}
                                         >
-                                          <div className="text-green-600 text-lg group-hover:scale-125 transition-transform">
-                                            ✓
+                                          <div className="font-bold">{reservation.guest_name}</div>
+                                          <div className="text-xs opacity-75 mt-0.5">
+                                            {colspan} {colspan === 1 ? "night" : "nights"}
                                           </div>
-                                        </button>
+                                        </div>
                                       </td>
                                     )
-                                  })}
-                                </tr>
-                              )
-                            })}
-                          </tbody>
-                        </table>
-                      </div>
+                                  }
 
-                      <div className="bg-secondary/20 px-4 py-2 text-xs text-muted-foreground italic">
-                        ← Scroll right to see remaining days →
-                      </div>
-                    </CardContent>
-                  </Card>
-                ) : (
-                  <Card className="border-0 shadow-lg">
-                    <CardContent className="p-8 text-center">
-                      <MapPin className="h-12 w-12 text-muted-foreground mx-auto mb-2 opacity-50" />
-                      <p className="text-muted-foreground">No beds found for this location</p>
-                    </CardContent>
-                  </Card>
-                )}
-
-                {/* Legend */}
-                <div className="mt-6 flex flex-wrap gap-4 text-sm">
-                  <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 bg-[#834693] border border-[#6d3878] rounded"></div>
-                    <span className="text-muted-foreground">Confirmed</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 bg-[#FDD7D4] border border-[#FDBBB7] rounded"></div>
-                    <span className="text-muted-foreground">Checked In</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 bg-[#FFA114] border border-[#FF8C00] rounded"></div>
-                    <span className="text-muted-foreground">Pending</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 bg-[#EC2B02] border border-[#D42301] rounded"></div>
-                    <span className="text-muted-foreground">Cancelled</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="text-green-600 text-lg">✓</div>
-                    <span className="text-muted-foreground">Available</span>
-                  </div>
-                </div>
+                                  return (
+                                    <td
+                                      key={`${bed.id}-${dateIndex}`}
+                                      className="text-center px-1.5 py-3 cursor-pointer hover:bg-accent/10 transition-colors border border-secondary/20"
+                                      onClick={() => handleCalendarCellClick(bed, date)}
+                                    >
+                                      <div className="text-lg text-muted-foreground">+</div>
+                                    </td>
+                                  )
+                                })}
+                              </tr>
+                            )
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </CardContent>
+                </Card>
               </div>
             </div>
           </div>
