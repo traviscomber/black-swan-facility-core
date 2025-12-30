@@ -149,19 +149,19 @@ export function InvoiceEditorModal({ open, onOpenChange, invoice, onSave }: Invo
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
+      <DialogContent className="max-w-[95vw] max-h-[95vh] overflow-y-auto p-0">
+        <DialogHeader className="px-4 pt-4 pb-0">
           <DialogTitle>{invoice ? "Edit Invoice" : "Create New Invoice"}</DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-6">
+        <div className="space-y-3 px-4 pb-4">
           {/* Customer Information */}
           <Card>
             <CardHeader>
               <CardTitle>Customer Information</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+            <CardContent className="space-y-3">
+              <div className="grid grid-cols-3 gap-3">
                 <div>
                   <Label>Customer Name *</Label>
                   <Input
@@ -208,8 +208,8 @@ export function InvoiceEditorModal({ open, onOpenChange, invoice, onSave }: Invo
             <CardHeader>
               <CardTitle>Invoice Dates</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+            <CardContent className="space-y-3">
+              <div className="grid grid-cols-2 gap-3">
                 <div>
                   <Label>Invoice Date</Label>
                   <Input
@@ -258,50 +258,55 @@ export function InvoiceEditorModal({ open, onOpenChange, invoice, onSave }: Invo
               </Button>
             </CardHeader>
             <CardContent>
-              <div className="space-y-3">
+              <div className="space-y-2">
                 {formData.line_items.map((item, index) => (
-                  <div key={index} className="flex gap-3 items-end">
-                    <div className="flex-1">
+                  <div key={index} className="grid grid-cols-12 gap-2 items-end">
+                    <div className="col-span-5">
                       <Label className="text-xs">Description</Label>
                       <Input
                         placeholder="Item description"
                         value={item.description}
                         onChange={(e) => updateLineItem(index, "description", e.target.value)}
+                        className="text-sm"
                       />
                     </div>
-                    <div className="w-24">
+                    <div className="col-span-2">
                       <Label className="text-xs">Qty</Label>
                       <Input
                         type="number"
                         value={item.quantity}
                         onChange={(e) => updateLineItem(index, "quantity", e.target.value)}
+                        className="text-sm"
                       />
                     </div>
-                    <div className="w-32">
+                    <div className="col-span-2">
                       <Label className="text-xs">Unit Price</Label>
                       <Input
                         type="number"
                         step="0.01"
                         value={item.unitPrice}
                         onChange={(e) => updateLineItem(index, "unitPrice", e.target.value)}
+                        className="text-sm"
                       />
                     </div>
-                    <div className="w-32">
+                    <div className="col-span-2">
                       <Label className="text-xs">Total</Label>
-                      <Input type="number" disabled value={item.total.toFixed(2)} />
+                      <Input type="number" disabled value={item.total.toFixed(2)} className="text-sm" />
                     </div>
-                    <Button
-                      size="sm"
-                      variant="destructive"
-                      onClick={() =>
-                        setFormData((prev) => ({
-                          ...prev,
-                          line_items: prev.line_items.filter((_, i) => i !== index),
-                        }))
-                      }
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                    <div className="col-span-1">
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        onClick={() =>
+                          setFormData((prev) => ({
+                            ...prev,
+                            line_items: prev.line_items.filter((_, i) => i !== index),
+                          }))
+                        }
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -313,8 +318,8 @@ export function InvoiceEditorModal({ open, onOpenChange, invoice, onSave }: Invo
             <CardHeader>
               <CardTitle>Financial Details</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+            <CardContent className="space-y-3">
+              <div className="grid grid-cols-4 gap-3">
                 <div>
                   <Label>Discount Amount ($)</Label>
                   <Input
@@ -400,7 +405,7 @@ export function InvoiceEditorModal({ open, onOpenChange, invoice, onSave }: Invo
             <CardHeader>
               <CardTitle>Status</CardTitle>
             </CardHeader>
-            <CardContent className="grid grid-cols-2 gap-4">
+            <CardContent className="grid grid-cols-2 gap-3">
               <div>
                 <Label>Invoice Status</Label>
                 <Select
@@ -463,7 +468,7 @@ export function InvoiceEditorModal({ open, onOpenChange, invoice, onSave }: Invo
                     notes: e.target.value,
                   }))
                 }
-                rows={4}
+                rows={3}
               />
             </CardContent>
           </Card>
