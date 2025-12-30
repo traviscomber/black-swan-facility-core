@@ -123,35 +123,106 @@ export default function LocationDetailPage() {
     }
   }
 
-  async function handleAddRoom(e: React.FormEvent<HTMLFormElement>) {
+  const handleAddRoom = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
-    const formData = new FormData(e.currentTarget)
+    console.log("[v0] Add Room form submitted")
 
-    const { error } = await supabase.from("rooms").insert({
+    const formData = new FormData(e.currentTarget)
+    const data = {
       room_number: formData.get("room_number") as string,
       room_type: formData.get("room_type") as string,
       capacity: Number(formData.get("capacity")),
       rate_per_night: Number(formData.get("rate_per_night")),
       status: formData.get("status") as string,
-      location_id: locationId,
       floor: formData.get("floor") as string,
-      amenities: formData.get("amenities") ? (formData.get("amenities") as string).split(",").map((a) => a.trim()) : [],
-      notes: formData.get("notes") as string,
-    })
+      amenities: (formData.get("amenities") as string)
+        .split(",")
+        .map((a) => a.trim())
+        .filter(Boolean),
+      location_id: locationId,
+    }
 
-    if (error) {
+    console.log("[v0] Form data:", data)
+
+    if (!data.room_type) {
       toast({
         variant: "destructive",
-        title: "Error",
-        description: "Failed to add room",
+        title: "Validation Error",
+        description: "Please select a room type",
       })
-    } else {
+      return
+    }
+
+    try {
+      const { error: checkError } = await supabase
+        .from("rooms")
+        .select("id, room_number")
+        .eq("room_number", data.room_number)
+        .maybeSingle()
+
+      if (checkError) {
+        console.error("[v0] Error checking room:", checkError)
+        throw checkError
+      }
+
+      if (checkError) {
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "Failed to check room existence",
+        })
+        return
+      }
+
+      if (checkError && checkError.message?.includes("Row exists")) {
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "Room number already exists. Please use a different room number.",
+        })
+        return
+      }
+
+      const { error } = await supabase.from("rooms").insert([
+        {
+          location_id: data.location_id,
+          room_number: data.room_number,
+          room_type: data.room_type,
+          capacity: data.capacity,
+          rate_per_night: data.rate_per_night,
+          status: data.status,
+          floor: data.floor,
+          amenities: data.amenities,
+        },
+      ])
+
+      if (error) {
+        console.error("[v0] Error adding room:", error.message)
+        throw error
+      }
+
+      console.log("[v0] Room added successfully")
       toast({
         title: "Success",
         description: "Room added successfully",
       })
       setIsAddRoomDialogOpen(false)
       loadLocationData()
+    } catch (error: any) {
+      console.error("[v0] Error adding room:", error.message)
+      if (error.message?.includes("duplicate key")) {
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "This room number already exists. Please use a different room number.",
+        })
+      } else {
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: `Failed to add room: ${error.message}`,
+        })
+      }
     }
   }
 
@@ -170,9 +241,10 @@ export default function LocationDetailPage() {
         rate_per_night: Number(formData.get("rate_per_night")),
         status: formData.get("status") as string,
         floor: formData.get("floor") as string,
-        amenities: formData.get("amenities")
-          ? (formData.get("amenities") as string).split(",").map((a) => a.trim())
-          : [],
+        amenities: (formData.get("amenities") as string)
+          .split(",")
+          .map((a) => a.trim())
+          .filter(Boolean),
         notes: formData.get("notes") as string,
       })
       .eq("id", editingRoom.id)
