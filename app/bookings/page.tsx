@@ -5,12 +5,13 @@ import { createClient } from "@/lib/supabase/client"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { ChevronLeft, ChevronRight, MapPin, Home, Calendar } from "lucide-react"
+import { ChevronLeft, ChevronRight, MapPin, Home, Calendar, TrendingUp } from "lucide-react"
 import { format, addDays, isWithinInterval, parseISO, isSameDay } from "date-fns"
 import { AddReservationDialog } from "@/components/add-reservation-dialog"
 import { EditReservationModal } from "@/components/edit-reservation-modal"
 import { GuestHistoryModal } from "@/components/guest-history-modal"
 import { ReservationConfirmationModal } from "@/components/reservation-confirmation-modal"
+import { DailySummaryModal } from "@/components/daily-summary-modal" // Import DailySummaryModal
 
 interface Location {
   id: string
@@ -82,6 +83,8 @@ export default function BookingManagement() {
     phone: string
     vip_status: boolean
   }>({ name: "", email: "", phone: "", vip_status: false })
+
+  const [dailySummaryOpen, setDailySummaryOpen] = useState(false)
 
   const [singlePropertyDateRange] = useState(365) // Added full-year date range for single property view
   const dateRange = viewMode === "single" ? singlePropertyDateRange : 14 // Use 365 days for single property, 14 for multi
@@ -469,6 +472,15 @@ export default function BookingManagement() {
                       <Calendar className="h-4 w-4 mr-2" />
                       Today
                     </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setDailySummaryOpen(true)}
+                      className="bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100"
+                    >
+                      <TrendingUp className="h-4 w-4 mr-2" />
+                      Daily Summary
+                    </Button>
                     <Badge variant="outline" className="text-sm font-semibold px-4 py-2">
                       {format(startDate, "MMM d")} - {format(dateArray[dateArray.length - 1], "MMM d, yyyy")}
                     </Badge>
@@ -604,6 +616,15 @@ export default function BookingManagement() {
                 <Button variant="outline" size="sm" onClick={goToToday}>
                   <Calendar className="h-4 w-4 mr-2" />
                   Today
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setDailySummaryOpen(true)}
+                  className="bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100"
+                >
+                  <TrendingUp className="h-4 w-4 mr-2" />
+                  Daily Summary
                 </Button>
                 <Badge variant="outline" className="text-sm font-semibold px-4 py-2">
                   {format(startDate, "MMM d")} - {format(dateArray[dateArray.length - 1], "MMM d, yyyy")}
@@ -792,6 +813,8 @@ export default function BookingManagement() {
         preSelectedDate={selectedDateForReservation}
         onSuccess={handleNewReservationSuccess}
       />
+
+      <DailySummaryModal open={dailySummaryOpen} onOpenChange={setDailySummaryOpen} />
 
       {/* Edit Modal */}
       {selectedReservation && (
