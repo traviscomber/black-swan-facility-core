@@ -31,6 +31,7 @@ import {
   Heart,
   Crown,
   Brain,
+  Receipt,
 } from "lucide-react"
 import { useState } from "react"
 // import { UniversalSearchDialog } from "@/components/universal-search-dialog" // Assuming UniversalSearchDialog is in a separate file
@@ -42,6 +43,7 @@ const navigationGroups = [
     items: [
       { name: "Dashboard", href: "/", icon: LayoutDashboard, tip: "Overview of your property" },
       { name: "Bookings", href: "/bookings", icon: Calendar, tip: "Manage reservations and availability" },
+      { name: "Invoices", href: "/bookings/invoices", icon: Receipt, tip: "Manage invoices and payments" },
       { name: "Tasks", href: "/tasks", icon: ClipboardList, tip: "Daily management tasks" },
     ],
   },

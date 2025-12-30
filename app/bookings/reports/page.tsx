@@ -5,7 +5,18 @@ import { createBrowserClient } from "@/lib/supabase/client"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { DollarSign, BedDouble, TrendingUp, Calendar, Download, ArrowUpRight, ArrowDownRight } from "lucide-react"
+import {
+  DollarSign,
+  BedDouble,
+  TrendingUp,
+  Calendar,
+  Download,
+  ArrowUpRight,
+  ArrowDownRight,
+  MapPin,
+  Users,
+  CreditCard,
+} from "lucide-react"
 import { format, startOfMonth, endOfMonth, subMonths } from "date-fns"
 
 interface Statistics {
@@ -23,6 +34,35 @@ interface MonthlyData {
   bookings: number
 }
 
+interface LocationStats {
+  locationName: string
+  revenue: number
+  bookings: number
+  occupancyRate: number
+  roomCount: number
+}
+
+interface RoomPerformance {
+  roomName: string
+  revenue: number
+  bookings: number
+  occupancyRate: number
+  location: string
+}
+
+interface PaymentStats {
+  method: string
+  amount: number
+  count: number
+}
+
+interface GuestStats {
+  repeatGuests: number
+  vipGuests: number
+  newGuests: number
+  totalGuests: number
+}
+
 export default function ReportsPage() {
   const [stats, setStats] = useState<Statistics>({
     totalRevenue: 0,
@@ -33,15 +73,35 @@ export default function ReportsPage() {
     bookingsChange: 0,
   })
   const [monthlyData, setMonthlyData] = useState<MonthlyData[]>([])
+  const [locationStats, setLocationStats] = useState<LocationStats[]>([])
+  const [roomPerformance, setRoomPerformance] = useState<RoomPerformance[]>([])
+  const [paymentStats, setPaymentStats] = useState<PaymentStats[]>([])
+  const [guestStats, setGuestStats] = useState<GuestStats>({
+    repeatGuests: 0,
+    vipGuests: 0,
+    newGuests: 0,
+    totalGuests: 0,
+  })
   const [recentBookings, setRecentBookings] = useState<any[]>([])
   const [selectedPeriod, setSelectedPeriod] = useState("current_month")
+  const [selectedLocation, setSelectedLocation] = useState("all")
+  const [locations, setLocations] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
 
   const supabase = createBrowserClient()
 
   useEffect(() => {
+    loadLocations()
+  }, [])
+
+  useEffect(() => {
     loadReports()
-  }, [selectedPeriod])
+  }, [selectedPeriod, selectedLocation])
+
+  async function loadLocations() {
+    const { data } = await supabase.from("locations").select("*").eq("is_active", true)
+    setLocations(data || [])
+  }
 
   async function loadReports() {
     setLoading(true)
@@ -73,24 +133,31 @@ export default function ReportsPage() {
         endDate = endOfMonth(now)
     }
 
-    // Fetch reservations for the period
-    const { data: reservations } = await supabase
+    let reservationQuery = supabase
       .from("reservations")
-      .select("*")
+      .select("*, rooms(location_id, room_number, max_guests, location:locations(name)), guests(vip_status)")
       .gte("check_in", format(startDate, "yyyy-MM-dd"))
       .lte("check_out", format(endDate, "yyyy-MM-dd"))
       .neq("status", "cancelled")
 
+    if (selectedLocation !== "all") {
+      reservationQuery = reservationQuery.eq("location_id", selectedLocation)
+    }
+
+    const { data: reservations } = await reservationQuery
+
     // Fetch all rooms to calculate occupancy
     const { data: rooms } = await supabase.from("rooms").select("*")
 
-    // Calculate statistics
+    // Calculate base statistics
     const totalRevenue = reservations?.reduce((sum, res) => sum + (Number(res.total_amount) || 0), 0) || 0
     const totalBookings = reservations?.length || 0
     const averageRate = totalBookings > 0 ? totalRevenue / totalBookings : 0
 
     // Calculate occupancy rate
-    const totalRooms = rooms?.length || 1
+    const applicableRooms =
+      selectedLocation !== "all" ? rooms?.filter((r) => r.location_id === selectedLocation) : rooms
+    const totalRooms = applicableRooms?.length || 1
     const daysInPeriod = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24))
     const totalRoomNights = totalRooms * daysInPeriod
     const bookedRoomNights =
@@ -101,6 +168,127 @@ export default function ReportsPage() {
         return sum + nights
       }, 0) || 0
     const occupancyRate = totalRoomNights > 0 ? (bookedRoomNights / totalRoomNights) * 100 : 0
+
+    const locationBreakdown: { [key: string]: LocationStats } = {}
+    reservations?.forEach((res) => {
+      const locId = res.location_id
+      const locName = res.rooms?.location || "Unknown"
+
+      if (!locationBreakdown[locId]) {
+        locationBreakdown[locId] = {
+          locationName: locName,
+          revenue: 0,
+          bookings: 0,
+          occupancyRate: 0,
+          roomCount: rooms?.filter((r) => r.location_id === locId).length || 0,
+        }
+      }
+
+      locationBreakdown[locId].revenue += Number(res.total_amount) || 0
+      locationBreakdown[locId].bookings += 1
+    })
+
+    // Calculate occupancy rate for each location
+    Object.values(locationBreakdown).forEach((loc) => {
+      const locRoomNights = loc.roomCount * daysInPeriod
+      const locBookedNights =
+        reservations
+          ?.filter((r) => r.location_id === Object.keys(locationBreakdown).find((k) => locationBreakdown[k] === loc))
+          .reduce((sum, res) => {
+            const nights = Math.ceil(
+              (new Date(res.check_out).getTime() - new Date(res.check_in).getTime()) / (1000 * 60 * 60 * 24),
+            )
+            return sum + nights
+          }, 0) || 0
+
+      loc.occupancyRate = locRoomNights > 0 ? (locBookedNights / locRoomNights) * 100 : 0
+    })
+
+    setLocationStats(Object.values(locationBreakdown).sort((a, b) => b.revenue - a.revenue))
+
+    const roomStats: { [key: string]: RoomPerformance } = {}
+    reservations?.forEach((res) => {
+      const roomId = res.room_id
+      const roomName = res.rooms?.room_number || "Unknown"
+      const locName = res.rooms?.location || "Unknown"
+
+      if (!roomStats[roomId]) {
+        roomStats[roomId] = {
+          roomName,
+          revenue: 0,
+          bookings: 0,
+          occupancyRate: 0,
+          location: locName,
+        }
+      }
+
+      roomStats[roomId].revenue += Number(res.total_amount) || 0
+      roomStats[roomId].bookings += 1
+    })
+
+    // Calculate occupancy for each room
+    Object.entries(roomStats).forEach(([roomId, room]) => {
+      const roomBookedNights =
+        reservations
+          ?.filter((r) => r.room_id === roomId)
+          .reduce((sum, res) => {
+            const nights = Math.ceil(
+              (new Date(res.check_out).getTime() - new Date(res.check_in).getTime()) / (1000 * 60 * 60 * 24),
+            )
+            return sum + nights
+          }, 0) || 0
+
+      room.occupancyRate = daysInPeriod > 0 ? (roomBookedNights / daysInPeriod) * 100 : 0
+    })
+
+    setRoomPerformance(
+      Object.values(roomStats)
+        .sort((a, b) => b.revenue - a.revenue)
+        .slice(0, 5),
+    )
+
+    const { data: payments } = await supabase
+      .from("payments")
+      .select("*")
+      .gte("created_at", format(startDate, "yyyy-MM-dd"))
+      .lte("created_at", format(endDate, "yyyy-MM-dd"))
+
+    const paymentBreakdown: { [key: string]: PaymentStats } = {}
+    payments?.forEach((payment) => {
+      const method = payment.payment_method || "Unknown"
+      if (!paymentBreakdown[method]) {
+        paymentBreakdown[method] = {
+          method,
+          amount: 0,
+          count: 0,
+        }
+      }
+      paymentBreakdown[method].amount += Number(payment.amount) || 0
+      paymentBreakdown[method].count += 1
+    })
+
+    setPaymentStats(Object.values(paymentBreakdown).sort((a, b) => b.amount - a.amount))
+
+    const { data: guests } = await supabase.from("guests").select("*")
+    const { data: allReservations } = await supabase.from("reservations").select("guest_id")
+
+    const guestReservationCount: { [key: string]: number } = {}
+    allReservations?.forEach((res) => {
+      if (res.guest_id) {
+        guestReservationCount[res.guest_id] = (guestReservationCount[res.guest_id] || 0) + 1
+      }
+    })
+
+    const vipGuestCount = guests?.filter((g) => g.vip_status).length || 0
+    const repeatGuestCount = Object.values(guestReservationCount).filter((count) => count > 1).length
+    const newGuestCount = Object.values(guestReservationCount).filter((count) => count === 1).length
+
+    setGuestStats({
+      repeatGuests: repeatGuestCount,
+      vipGuests: vipGuestCount,
+      newGuests: newGuestCount,
+      totalGuests: guests?.length || 0,
+    })
 
     // Fetch previous period data for comparison
     const prevStartDate = new Date(startDate.getTime() - (endDate.getTime() - startDate.getTime()))
@@ -165,10 +353,10 @@ export default function ReportsPage() {
   }
 
   function exportReport() {
-    // Create CSV content
     const csvContent = [
       ["Booking Reports", ""],
       ["Period", selectedPeriod],
+      ["Location", selectedLocation === "all" ? "All Locations" : selectedLocation],
       ["", ""],
       ["Summary", ""],
       ["Total Revenue", `$${stats.totalRevenue.toFixed(2)}`],
@@ -176,14 +364,34 @@ export default function ReportsPage() {
       ["Occupancy Rate", `${stats.occupancyRate.toFixed(1)}%`],
       ["Average Rate", `$${stats.averageRate.toFixed(2)}`],
       ["", ""],
-      ["Monthly Breakdown", ""],
-      ["Month", "Revenue", "Bookings"],
-      ...monthlyData.map((data) => [data.month, `$${data.revenue.toFixed(2)}`, data.bookings.toString()]),
+      ["Location Performance", ""],
+      ["Location", "Revenue", "Bookings", "Occupancy %"],
+      ...locationStats.map((loc) => [
+        loc.locationName,
+        `$${loc.revenue.toFixed(2)}`,
+        loc.bookings.toString(),
+        `${loc.occupancyRate.toFixed(1)}%`,
+      ]),
+      ["", ""],
+      ["Top Rooms", ""],
+      ["Room", "Location", "Revenue", "Bookings", "Occupancy %"],
+      ...roomPerformance.map((room) => [
+        room.roomName,
+        room.location,
+        `$${room.revenue.toFixed(2)}`,
+        room.bookings.toString(),
+        `${room.occupancyRate.toFixed(1)}%`,
+      ]),
+      ["", ""],
+      ["Guest Statistics", ""],
+      ["Total Guests", guestStats.totalGuests.toString()],
+      ["Repeat Guests", guestStats.repeatGuests.toString()],
+      ["VIP Guests", guestStats.vipGuests.toString()],
+      ["New Guests", guestStats.newGuests.toString()],
     ]
       .map((row) => row.join(","))
       .join("\n")
 
-    // Download CSV
     const blob = new Blob([csvContent], { type: "text/csv" })
     const url = URL.createObjectURL(blob)
     const link = document.createElement("a")
@@ -195,10 +403,10 @@ export default function ReportsPage() {
   return (
     <div className="flex h-screen flex-col bg-background">
       {/* Header */}
-      <div className="flex items-center justify-between border-b bg-card px-6 py-4">
-        <div>
-          <h1 className="text-2xl font-bold">Reports and Finances</h1>
-          <p className="text-sm text-muted-foreground">Revenue analytics and booking statistics</p>
+      <div className="border-b bg-card px-6 py-4">
+        <div className="mb-4">
+          <h1 className="text-2xl font-bold">Reports and Analytics</h1>
+          <p className="text-sm text-muted-foreground">Comprehensive revenue, occupancy, and performance insights</p>
         </div>
         <div className="flex gap-2">
           <Select value={selectedPeriod} onValueChange={setSelectedPeriod}>
@@ -210,6 +418,19 @@ export default function ReportsPage() {
               <SelectItem value="last_month">Last Month</SelectItem>
               <SelectItem value="last_3_months">Last 3 Months</SelectItem>
               <SelectItem value="last_6_months">Last 6 Months</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={selectedLocation} onValueChange={setSelectedLocation}>
+            <SelectTrigger className="w-[200px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Locations</SelectItem>
+              {locations.map((loc) => (
+                <SelectItem key={loc.id} value={loc.id}>
+                  {loc.name}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
           <Button variant="outline" onClick={exportReport}>
@@ -293,6 +514,157 @@ export default function ReportsPage() {
                 </CardContent>
               </Card>
             </div>
+
+            {/* Guest Analytics */}
+            <div className="grid gap-4 md:grid-cols-4">
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Total Guests</CardTitle>
+                  <Users className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{guestStats.totalGuests}</div>
+                  <p className="text-xs text-muted-foreground">Registered guests</p>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Repeat Guests</CardTitle>
+                  <Users className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{guestStats.repeatGuests}</div>
+                  <p className="text-xs text-muted-foreground">Returning visitors</p>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">VIP Guests</CardTitle>
+                  <Users className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{guestStats.vipGuests}</div>
+                  <p className="text-xs text-muted-foreground">Premium members</p>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">New Guests</CardTitle>
+                  <Users className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{guestStats.newGuests}</div>
+                  <p className="text-xs text-muted-foreground">First time bookings</p>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Location Performance */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <MapPin className="h-4 w-4" />
+                  Location Performance
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {locationStats.map((loc, index) => (
+                    <div key={index} className="space-y-2">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="font-medium">{loc.locationName}</span>
+                        <div className="flex gap-4">
+                          <span className="text-muted-foreground">{loc.bookings} bookings</span>
+                          <span className="font-semibold">${loc.revenue.toFixed(2)}</span>
+                          <span className="text-muted-foreground">{loc.occupancyRate.toFixed(1)}% occupied</span>
+                        </div>
+                      </div>
+                      <div className="h-2 w-full rounded-full bg-muted">
+                        <div
+                          className="h-full rounded-full bg-primary transition-all"
+                          style={{ width: `${loc.occupancyRate}%` }}
+                        ></div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Top Performing Rooms */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <BedDouble className="h-4 w-4" />
+                  Top Performing Rooms
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b">
+                        <th className="py-2 text-left font-medium">Room</th>
+                        <th className="py-2 text-left font-medium">Location</th>
+                        <th className="py-2 text-right font-medium">Revenue</th>
+                        <th className="py-2 text-right font-medium">Bookings</th>
+                        <th className="py-2 text-right font-medium">Occupancy</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {roomPerformance.map((room, index) => (
+                        <tr key={index} className="border-b last:border-0">
+                          <td className="py-3 font-medium">{room.roomName}</td>
+                          <td className="py-3 text-muted-foreground">{room.location}</td>
+                          <td className="py-3 text-right font-semibold">${room.revenue.toFixed(2)}</td>
+                          <td className="py-3 text-right">{room.bookings}</td>
+                          <td className="py-3 text-right">{room.occupancyRate.toFixed(1)}%</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Payment Methods */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <CreditCard className="h-4 w-4" />
+                  Payment Methods
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {paymentStats.map((stat, index) => {
+                    const maxAmount = Math.max(...paymentStats.map((s) => s.amount))
+                    const percentage = maxAmount > 0 ? (stat.amount / maxAmount) * 100 : 0
+
+                    return (
+                      <div key={index} className="space-y-2">
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="font-medium capitalize">{stat.method}</span>
+                          <div className="flex gap-4">
+                            <span className="text-muted-foreground">{stat.count} transactions</span>
+                            <span className="font-semibold">${stat.amount.toFixed(2)}</span>
+                          </div>
+                        </div>
+                        <div className="h-2 w-full rounded-full bg-muted">
+                          <div
+                            className="h-full rounded-full bg-accent transition-all"
+                            style={{ width: `${percentage}%` }}
+                          ></div>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </CardContent>
+            </Card>
 
             {/* Monthly Revenue Chart */}
             <Card>
