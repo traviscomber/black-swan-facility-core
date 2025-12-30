@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { ChevronLeft, ChevronRight, MapPin, Home, Calendar, TrendingUp } from "lucide-react"
-import { format, addDays, isWithinInterval, parseISO, isSameDay } from "date-fns"
+import { format, addDays, isWithinInterval, parseISO, isSameDay, startOfYear } from "date-fns"
 import { AddReservationDialog } from "@/components/add-reservation-dialog"
 import { EditReservationModal } from "@/components/edit-reservation-modal"
 import { GuestHistoryModal } from "@/components/guest-history-modal"
@@ -66,7 +66,7 @@ export default function BookingManagement() {
   const [reservations, setReservations] = useState<Reservation[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedLocationId, setSelectedLocationId] = useState<string | null>(null)
-  const [startDate, setStartDate] = useState(new Date())
+  const [startDate, setStartDate] = useState(startOfYear(new Date()))
   const [selectedReservation, setSelectedReservation] = useState<Reservation | null>(null)
   const [newReservationOpen, setNewReservationOpen] = useState(false)
   const [selectedBedForReservation, setSelectedBedForReservation] = useState<Bed | null>(null)
@@ -85,6 +85,7 @@ export default function BookingManagement() {
   }>({ name: "", email: "", phone: "", vip_status: false })
 
   const [dailySummaryOpen, setDailySummaryOpen] = useState(false)
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear()) // Declare setSelectedYear variable
 
   const [singlePropertyDateRange] = useState(365) // Added full-year date range for single property view
   const dateRange = viewMode === "single" ? singlePropertyDateRange : 14 // Use 365 days for single property, 14 for multi
@@ -309,7 +310,28 @@ export default function BookingManagement() {
 
   const goToPreviousPeriod = () => setStartDate(addDays(startDate, -dateRange))
   const goToNextPeriod = () => setStartDate(addDays(startDate, dateRange))
-  const goToToday = () => setStartDate(new Date())
+  const goToToday = () => {
+    const now = new Date()
+    setStartDate(startOfYear(now))
+    setSelectedYear(now.getFullYear())
+  }
+
+  const goToPreviousYear = () => {
+    const newYear = selectedYear - 1
+    setSelectedYear(newYear)
+    setStartDate(startOfYear(new Date(newYear, 0, 1)))
+  }
+
+  const goToNextYear = () => {
+    const newYear = selectedYear + 1
+    setSelectedYear(newYear)
+    setStartDate(startOfYear(new Date(newYear, 0, 1)))
+  }
+
+  const handleYearSelect = (year: number) => {
+    setSelectedYear(year)
+    setStartDate(startOfYear(new Date(year, 0, 1)))
+  }
 
   if (loading) {
     return (
@@ -462,15 +484,27 @@ export default function BookingManagement() {
                 )}
 
                 {/* Navigation Controls */}
-                <div className="flex justify-between items-center">
-                  <Button variant="outline" size="sm" onClick={goToPreviousPeriod}>
+                <div className="flex justify-between items-center gap-4">
+                  <Button variant="outline" size="sm" onClick={goToPreviousYear}>
                     <ChevronLeft className="h-4 w-4" />
                     Previous Year
                   </Button>
                   <div className="flex items-center gap-2">
+                    {/* Year Selector */}
+                    <select
+                      value={selectedYear}
+                      onChange={(e) => handleYearSelect(Number(e.target.value))}
+                      className="px-3 py-2 border rounded-md text-sm font-medium bg-background"
+                    >
+                      {Array.from({ length: 10 }, (_, i) => new Date().getFullYear() - 5 + i).map((year) => (
+                        <option key={year} value={year}>
+                          {year}
+                        </option>
+                      ))}
+                    </select>
                     <Button variant="outline" size="sm" onClick={goToToday}>
                       <Calendar className="h-4 w-4 mr-2" />
-                      Today
+                      Current Year
                     </Button>
                     <Button
                       variant="outline"
@@ -482,10 +516,10 @@ export default function BookingManagement() {
                       Daily Summary
                     </Button>
                     <Badge variant="outline" className="text-sm font-semibold px-4 py-2">
-                      {format(startDate, "MMM d")} - {format(dateArray[dateArray.length - 1], "MMM d, yyyy")}
+                      Year {selectedYear}
                     </Badge>
                   </div>
-                  <Button variant="outline" size="sm" onClick={goToNextPeriod}>
+                  <Button variant="outline" size="sm" onClick={goToNextYear}>
                     Next Year
                     <ChevronRight className="h-4 w-4" />
                   </Button>
@@ -607,12 +641,24 @@ export default function BookingManagement() {
           /* Multi-facility unified calendar view */
           <div className="space-y-6">
             {/* Navigation Controls */}
-            <div className="flex justify-between items-center">
+            <div className="flex justify-between items-center gap-4">
               <Button variant="outline" size="sm" onClick={goToPreviousPeriod}>
                 <ChevronLeft className="h-4 w-4" />
                 Previous
               </Button>
               <div className="flex items-center gap-2">
+                {/* Month/Year Selector */}
+                <select
+                  value={selectedYear}
+                  onChange={(e) => handleYearSelect(Number(e.target.value))}
+                  className="px-3 py-2 border rounded-md text-sm font-medium bg-background"
+                >
+                  {Array.from({ length: 10 }, (_, i) => new Date().getFullYear() - 5 + i).map((year) => (
+                    <option key={year} value={year}>
+                      {year}
+                    </option>
+                  ))}
+                </select>
                 <Button variant="outline" size="sm" onClick={goToToday}>
                   <Calendar className="h-4 w-4 mr-2" />
                   Today
