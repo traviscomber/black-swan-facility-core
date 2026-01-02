@@ -36,6 +36,9 @@ interface SovereigntyMetric {
   current_value: number
   target_value: number
   self_sufficiency_percentage: number
+  trending?: number // percentage change
+  last_updated?: string
+  notes?: string
 }
 
 interface Dependency {
@@ -74,6 +77,176 @@ const CATEGORY_COLORS: Record<string, string> = {
   People: "#a78bfa",
   Software: "#f87171",
   Assets: "#94a3b8",
+}
+
+function MetricCard({ metric }: { metric: SovereigntyMetric }) {
+  const [isExpanded, setIsExpanded] = useState(false)
+  const [isEditing, setIsEditing] = useState(false)
+  const [editData, setEditData] = useState(metric)
+
+  const progress = (metric.current_value / metric.target_value) * 100
+  const isOnTrack = metric.self_sufficiency_percentage >= 50
+  const trending = metric.trending || 0
+
+  return (
+    <>
+      <Card
+        className={`border-2 transition-all hover:shadow-lg cursor-pointer ${isExpanded ? "ring-2" : ""}`}
+        style={{
+          borderColor: isOnTrack ? `${CATEGORY_COLORS[metric.category]}60` : `${CATEGORY_COLORS[metric.category]}40`,
+          backgroundColor: isExpanded ? `${CATEGORY_COLORS[metric.category]}08` : "transparent",
+        }}
+        onClick={() => setIsExpanded(!isExpanded)}
+      >
+        <CardHeader className="pb-3">
+          <div className="flex items-start justify-between gap-2">
+            <div className="flex items-center gap-2 flex-1 min-w-0">
+              <div
+                className="p-2 rounded-lg flex-shrink-0"
+                style={{ backgroundColor: `${CATEGORY_COLORS[metric.category]}20` }}
+              >
+                {CATEGORY_ICONS[metric.category]}
+              </div>
+              <div className="flex-1 min-w-0">
+                <CardTitle className="text-sm leading-tight line-clamp-1">{metric.metric_name}</CardTitle>
+                <CardDescription className="text-xs mt-1">{metric.category}</CardDescription>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 flex-shrink-0">
+              {trending !== 0 && (
+                <div className={`flex items-center gap-1 ${trending > 0 ? "text-green-400" : "text-red-400"}`}>
+                  {trending > 0 ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />}
+                  <span className="text-xs font-bold">{Math.abs(trending)}%</span>
+                </div>
+              )}
+              {!isOnTrack && <AlertCircle className="h-4 w-4 text-yellow-400 flex-shrink-0" />}
+            </div>
+          </div>
+        </CardHeader>
+
+        <CardContent className="space-y-4">
+          {/* Progress Section */}
+          <div>
+            <div className="flex justify-between mb-2">
+              <span className="text-xs text-muted-foreground">Progress</span>
+              <span className="text-sm font-bold text-accent">
+                {metric.current_value.toFixed(1)}/{metric.target_value} {metric.unit}
+              </span>
+            </div>
+            <Progress value={Math.min(progress, 100)} className="h-2" />
+          </div>
+
+          {/* Main Metric Display */}
+          <div
+            className="rounded-lg bg-gradient-to-br"
+            style={{ backgroundColor: `${CATEGORY_COLORS[metric.category]}10` }}
+            style={{ padding: "12px" }}
+          >
+            <div className="text-3xl font-bold text-primary" style={{ color: CATEGORY_COLORS[metric.category] }}>
+              {metric.self_sufficiency_percentage || 0}%
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">Self-Sufficient</p>
+          </div>
+
+          {/* Expanded Details */}
+          {isExpanded && (
+            <div className="space-y-4 border-t border-secondary pt-4 animate-in fade-in">
+              {/* Status & Context */}
+              <div className="space-y-2">
+                <p className="text-sm text-muted-foreground">{metric.description}</p>
+                {metric.last_updated && (
+                  <p className="text-xs text-muted-foreground">Last updated: {metric.last_updated}</p>
+                )}
+              </div>
+
+              {/* Achievement Status */}
+              <div className="grid grid-cols-2 gap-2 bg-secondary/30 p-3 rounded-lg">
+                <div>
+                  <span className="text-xs text-muted-foreground">Current</span>
+                  <div className="font-bold text-sm mt-1">{metric.current_value.toFixed(1)}</div>
+                </div>
+                <div>
+                  <span className="text-xs text-muted-foreground">Target</span>
+                  <div className="font-bold text-sm mt-1">{metric.target_value}</div>
+                </div>
+              </div>
+
+              {/* Notes Section */}
+              {metric.notes && (
+                <div className="border-l-2 border-amber-400/30 pl-3 py-1">
+                  <p className="text-xs font-semibold text-amber-400 mb-1">Notes</p>
+                  <p className="text-xs text-muted-foreground">{metric.notes}</p>
+                </div>
+              )}
+
+              {/* Action Buttons */}
+              <div className="grid grid-cols-2 gap-2 pt-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setIsEditing(true)
+                  }}
+                  className="text-xs"
+                >
+                  Update Value
+                </Button>
+                <Button size="sm" variant="outline" className="text-xs bg-transparent">
+                  View History
+                </Button>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Edit Dialog */}
+      {isEditing && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <Card className="w-full max-w-md">
+            <CardHeader>
+              <CardTitle>Update {metric.metric_name}</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <label className="text-sm font-semibold mb-2 block">Current Value ({metric.unit})</label>
+                <input
+                  type="number"
+                  value={editData.current_value}
+                  onChange={(e) => setEditData({ ...editData, current_value: Number.parseFloat(e.target.value) })}
+                  className="w-full px-3 py-2 bg-secondary rounded border border-secondary"
+                />
+              </div>
+              <div>
+                <label className="text-sm font-semibold mb-2 block">Target Value ({metric.unit})</label>
+                <input
+                  type="number"
+                  value={editData.target_value}
+                  onChange={(e) => setEditData({ ...editData, target_value: Number.parseFloat(e.target.value) })}
+                  className="w-full px-3 py-2 bg-secondary rounded border border-secondary"
+                />
+              </div>
+              <div className="flex gap-2">
+                <Button variant="outline" className="flex-1 bg-transparent" onClick={() => setIsEditing(false)}>
+                  Cancel
+                </Button>
+                <Button
+                  className="flex-1"
+                  onClick={() => {
+                    setIsEditing(false)
+                    // TODO: Save to API
+                  }}
+                >
+                  Save Changes
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+    </>
+  )
 }
 
 export default function SovereigntyPage() {
@@ -236,7 +409,7 @@ export default function SovereigntyPage() {
           </CardContent>
         </Card>
 
-        {/* Detailed Metrics with Filtering */}
+        {/* Detailed Metrics with Enhanced Cards */}
         <div className="space-y-4">
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <h2 className="text-2xl font-bold text-accent">Sovereignty Metrics</h2>
@@ -254,43 +427,7 @@ export default function SovereigntyPage() {
 
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {filteredMetrics.map((metric) => (
-              <Card key={metric.id} className="border-secondary hover:border-primary/40 transition-all hover:shadow-lg">
-                <CardHeader className="pb-3">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex items-center gap-2 flex-1">
-                      <div className="text-primary">{CATEGORY_ICONS[metric.category]}</div>
-                      <div className="flex-1">
-                        <CardTitle className="text-sm leading-tight">{metric.metric_name}</CardTitle>
-                        <CardDescription className="text-xs mt-1">{metric.category}</CardDescription>
-                      </div>
-                    </div>
-                    <div
-                      className={`flex items-center gap-1 ${metric.self_sufficiency_percentage && metric.self_sufficiency_percentage > 50 ? "text-green-400" : "text-yellow-400"}`}
-                    >
-                      {metric.self_sufficiency_percentage && metric.self_sufficiency_percentage > 50 ? (
-                        <ArrowUp className="h-3 w-3" />
-                      ) : (
-                        <AlertCircle className="h-3 w-3" />
-                      )}
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div>
-                    <div className="flex justify-between mb-2">
-                      <span className="text-xs text-muted-foreground">Current / Target</span>
-                      <span className="text-sm font-bold text-accent">
-                        {metric.current_value.toFixed(1)}/{metric.target_value} {metric.unit}
-                      </span>
-                    </div>
-                    <Progress value={(metric.current_value / metric.target_value) * 100} className="h-2" />
-                  </div>
-                  <div className="rounded-lg bg-primary/10 p-3 text-center">
-                    <div className="text-3xl font-bold text-primary">{metric.self_sufficiency_percentage || 0}%</div>
-                    <p className="text-xs text-muted-foreground mt-1">Self-Sufficient</p>
-                  </div>
-                </CardContent>
-              </Card>
+              <MetricCard key={metric.id} metric={metric} />
             ))}
           </div>
         </div>
@@ -388,6 +525,59 @@ export default function SovereigntyPage() {
               <TrendingUp className="h-4 w-4" /> View Reports
             </Button>
           </div>
+        </div>
+
+        {/* Comprehensive Achievement Roadmap and Guidance */}
+        <div className="space-y-4">
+          <Card className="border-secondary">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <ArrowUp className="h-5 w-5 text-primary" />
+                Achievement Roadmap
+              </CardTitle>
+              <CardDescription>Guidance for achieving higher sovereignty levels</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-3 md:grid-cols-2">
+                <div className="border border-primary/20 rounded-lg p-3">
+                  <h4 className="font-semibold text-sm">Step 1: Identify Key Metrics</h4>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Understand the metrics that define sovereignty in each category.
+                  </p>
+                </div>
+                <div className="border border-primary/20 rounded-lg p-3">
+                  <h4 className="font-semibold text-sm">Step 2: Set Target Values</h4>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Establish realistic target values for each metric to strive towards.
+                  </p>
+                </div>
+                <div className="border border-primary/20 rounded-lg p-3">
+                  <h4 className="font-semibold text-sm">Step 3: Monitor Progress</h4>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Regularly track and update your progress towards these targets.
+                  </p>
+                </div>
+                <div className="border border-primary/20 rounded-lg p-3">
+                  <h4 className="font-semibold text-sm">Step 4: Address Dependencies</h4>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Identify and mitigate high-risk dependencies to enhance sovereignty.
+                  </p>
+                </div>
+                <div className="border border-primary/20 rounded-lg p-3">
+                  <h4 className="font-semibold text-sm">Step 5: Optimize Resources</h4>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Allocate resources efficiently to improve self-sufficiency in weaker areas.
+                  </p>
+                </div>
+                <div className="border border-primary/20 rounded-lg p-3">
+                  <h4 className="font-semibold text-sm">Step 6: Continuous Improvement</h4>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Continuously refine strategies and adapt to new challenges for sustained sovereignty.
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       </div>
     </AppLayout>
