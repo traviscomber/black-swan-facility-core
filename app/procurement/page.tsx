@@ -7,10 +7,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { createBrowserClient } from "@/lib/supabase/client"
-import { Plus, Pencil } from "lucide-react"
+import { Plus, Pencil, Download } from "lucide-react"
 import { useEffect, useState } from "react"
 import { AddProcurementDialog } from "@/components/add-procurement-dialog"
 import { EditProcurementDialog } from "@/components/edit-procurement-dialog"
+import { DeleteProcurementButton } from "@/components/delete-procurement-button"
 
 interface ProcurementItem {
   id: string
@@ -60,16 +61,50 @@ export default function ProcurementPage() {
   const getStatusColor = (status: string) => {
     switch (status) {
       case "pending":
-        return "bg-yellow-100 text-yellow-800"
+        return "bg-yellow-500/20 text-yellow-400 border-yellow-500/30"
       case "ordered":
-        return "bg-blue-100 text-blue-800"
+        return "bg-blue-500/20 text-blue-400 border-blue-500/30"
       case "delivered":
-        return "bg-green-100 text-green-800"
+        return "bg-green-500/20 text-green-400 border-green-500/30"
       case "cancelled":
-        return "bg-red-100 text-red-800"
+        return "bg-red-500/20 text-red-400 border-red-500/30"
       default:
-        return "bg-gray-100 text-gray-800"
+        return "bg-gray-500/20 text-gray-400 border-gray-500/30"
     }
+  }
+
+  const exportToCSV = () => {
+    const headers = [
+      "Item Name",
+      "Category",
+      "Supplier",
+      "Unit Price",
+      "Quantity",
+      "Total Cost",
+      "Status",
+      "Expected Delivery",
+      "Priority",
+    ]
+    const rows = items.map((item) => [
+      item.item_name,
+      item.category,
+      getSupplierName(item.supplier_id),
+      item.unit_price,
+      item.quantity,
+      item.total_cost,
+      item.status,
+      item.expected_delivery || "-",
+      item.priority,
+    ])
+
+    const csv = [headers, ...rows].map((row) => row.map((cell) => `"${cell}"`).join(",")).join("\n")
+    const blob = new Blob([csv], { type: "text/csv" })
+    const url = window.URL.createObjectURL(blob)
+    const a = document.createElement("a")
+    a.href = url
+    a.download = `procurement_${new Date().toISOString().split("T")[0]}.csv`
+    a.click()
+    window.URL.revokeObjectURL(url)
   }
 
   const stats = {
@@ -85,17 +120,23 @@ export default function ProcurementPage() {
         title="Procurement & Acquisitions"
         description="Manage supplier relationships, purchase orders, and acquisitions"
         actions={
-          <Button onClick={() => setShowAddDialog(true)}>
-            <Plus className="mr-2 h-4 w-4" />
-            New Purchase Order
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={exportToCSV} disabled={items.length === 0}>
+              <Download className="mr-2 h-4 w-4" />
+              Export CSV
+            </Button>
+            <Button onClick={() => setShowAddDialog(true)}>
+              <Plus className="mr-2 h-4 w-4" />
+              New Purchase Order
+            </Button>
+          </div>
         }
       />
 
       <div className="p-8 space-y-6">
         {/* KPI Cards */}
         <div className="grid gap-4 md:grid-cols-4">
-          <Card>
+          <Card className="border-secondary hover:border-primary/50 transition-colors">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">Pending Orders</CardTitle>
             </CardHeader>
@@ -104,7 +145,7 @@ export default function ProcurementPage() {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="border-secondary hover:border-primary/50 transition-colors">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">Ordered</CardTitle>
             </CardHeader>
@@ -113,7 +154,7 @@ export default function ProcurementPage() {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="border-secondary hover:border-primary/50 transition-colors">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">Delivered</CardTitle>
             </CardHeader>
@@ -122,7 +163,7 @@ export default function ProcurementPage() {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="border-secondary hover:border-primary/50 transition-colors">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">Total Budget Used</CardTitle>
             </CardHeader>
@@ -164,7 +205,7 @@ export default function ProcurementPage() {
                     </TableRow>
                   ) : items.length > 0 ? (
                     items.map((item) => (
-                      <TableRow key={item.id}>
+                      <TableRow key={item.id} className="hover:bg-secondary/30">
                         <TableCell className="font-medium">{item.item_name}</TableCell>
                         <TableCell>{item.category}</TableCell>
                         <TableCell>{getSupplierName(item.supplier_id)}</TableCell>
@@ -172,22 +213,23 @@ export default function ProcurementPage() {
                         <TableCell>{item.quantity}</TableCell>
                         <TableCell className="font-semibold">${item.total_cost?.toLocaleString()}</TableCell>
                         <TableCell>
-                          <Badge className={getStatusColor(item.status)}>{item.status}</Badge>
+                          <Badge className={`${getStatusColor(item.status)} border`}>{item.status}</Badge>
                         </TableCell>
-                        <TableCell>{item.expected_delivery || "-"}</TableCell>
+                        <TableCell className="text-sm">{item.expected_delivery || "-"}</TableCell>
                         <TableCell>
                           <Badge
                             variant="outline"
-                            className={item.priority === "high" ? "border-red-500 text-red-600" : ""}
+                            className={item.priority === "high" ? "border-red-500/50 text-red-400" : ""}
                           >
                             {item.priority}
                           </Badge>
                         </TableCell>
                         <TableCell className="text-right">
-                          <div className="flex items-center justify-end gap-2">
+                          <div className="flex items-center justify-end gap-1">
                             <Button variant="ghost" size="sm" onClick={() => setEditingItem(item)}>
                               <Pencil className="h-4 w-4" />
                             </Button>
+                            <DeleteProcurementButton itemId={item.id} itemName={item.item_name} onDeleted={loadData} />
                           </div>
                         </TableCell>
                       </TableRow>
