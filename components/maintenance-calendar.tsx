@@ -4,8 +4,8 @@ import { useEffect, useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { ChevronLeft, ChevronRight, AlertCircle } from "lucide-react"
-import { format, addDays, subDays, startOfMonth, endOfMonth, getDaysInMonth, isSameDay } from "date-fns"
+import { ChevronLeft, ChevronRight, AlertCircle, Calendar } from "lucide-react"
+import { format, addDays, startOfYear, isSameDay } from "date-fns"
 
 interface MaintenanceTask {
   id: string
@@ -24,13 +24,12 @@ interface MaintenanceCalendarProps {
 }
 
 export function MaintenanceCalendar({ tasks }: MaintenanceCalendarProps) {
-  const [startDate, setStartDate] = useState(new Date())
+  const [startDate, setStartDate] = useState(startOfYear(new Date()))
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear())
   const [displayedTasks, setDisplayedTasks] = useState<MaintenanceTask[]>(tasks)
 
-  const firstDayOfMonth = startOfMonth(startDate)
-  const lastDayOfMonth = endOfMonth(startDate)
-  const daysInMonth = getDaysInMonth(startDate)
-  const dateArray = Array.from({ length: daysInMonth }, (_, i) => addDays(firstDayOfMonth, i))
+  const dateRange = 365
+  const dateArray = Array.from({ length: dateRange }, (_, i) => addDays(startDate, i))
   const today = new Date()
 
   useEffect(() => {
@@ -62,6 +61,29 @@ export function MaintenanceCalendar({ tasks }: MaintenanceCalendarProps) {
     total: displayedTasks.length,
     completed: displayedTasks.filter((t) => t.status === "completed").length,
     overdue: displayedTasks.filter((t) => t.status === "overdue").length,
+  }
+
+  const goToPreviousYear = () => {
+    const newYear = selectedYear - 1
+    setSelectedYear(newYear)
+    setStartDate(startOfYear(new Date(newYear, 0, 1)))
+  }
+
+  const goToNextYear = () => {
+    const newYear = selectedYear + 1
+    setSelectedYear(newYear)
+    setStartDate(startOfYear(new Date(newYear, 0, 1)))
+  }
+
+  const handleYearSelect = (year: number) => {
+    setSelectedYear(year)
+    setStartDate(startOfYear(new Date(year, 0, 1)))
+  }
+
+  const goToToday = () => {
+    const now = new Date()
+    setSelectedYear(now.getFullYear())
+    setStartDate(startOfYear(now))
   }
 
   return (
@@ -100,21 +122,31 @@ export function MaintenanceCalendar({ tasks }: MaintenanceCalendarProps) {
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <div>
-            <CardTitle className="text-white">{format(startDate, "MMMM yyyy")}</CardTitle>
-            <p className="text-sm text-muted-foreground mt-1">
-              {daysInMonth} days in {format(startDate, "MMMM")}
-            </p>
+            <CardTitle className="text-white">Full Year Schedule {selectedYear}</CardTitle>
+            <p className="text-sm text-muted-foreground mt-1">View maintenance tasks across all days</p>
           </div>
           <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={() => setStartDate(subDays(startDate, 30))} className="gap-2">
+            <Button variant="outline" size="sm" onClick={goToPreviousYear} className="gap-2 bg-transparent">
               <ChevronLeft className="h-4 w-4" />
-              Previous
+              Previous Year
             </Button>
-            <Button variant="outline" size="sm" onClick={() => setStartDate(new Date())}>
-              Today
+            <select
+              value={selectedYear}
+              onChange={(e) => handleYearSelect(Number(e.target.value))}
+              className="px-3 py-2 border rounded-md text-sm font-medium bg-background"
+            >
+              {Array.from({ length: 10 }, (_, i) => new Date().getFullYear() - 5 + i).map((year) => (
+                <option key={year} value={year}>
+                  {year}
+                </option>
+              ))}
+            </select>
+            <Button variant="outline" size="sm" onClick={goToToday} className="gap-2 bg-transparent">
+              <Calendar className="h-4 w-4" />
+              Current Year
             </Button>
-            <Button variant="outline" size="sm" onClick={() => setStartDate(addDays(startDate, 30))} className="gap-2">
-              Next
+            <Button variant="outline" size="sm" onClick={goToNextYear} className="gap-2 bg-transparent">
+              Next Year
               <ChevronRight className="h-4 w-4" />
             </Button>
           </div>
@@ -127,7 +159,7 @@ export function MaintenanceCalendar({ tasks }: MaintenanceCalendarProps) {
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-slate-800 border-b border-slate-700">
-                <th className="text-left font-semibold text-white px-4 py-3 w-48 sticky left-0 bg-slate-800">
+                <th className="text-left font-semibold text-white px-4 py-3 w-48 sticky left-0 bg-slate-800 z-20">
                   Asset / Task
                 </th>
                 {dateArray.map((date) => {
@@ -145,6 +177,7 @@ export function MaintenanceCalendar({ tasks }: MaintenanceCalendarProps) {
                       <div className={`text-sm ${isToday ? "text-amber-300 font-bold" : "text-gray-300"}`}>
                         {format(date, "d")}
                       </div>
+                      <div className="text-xs text-gray-500">{format(date, "MMM")}</div>
                     </th>
                   )
                 })}

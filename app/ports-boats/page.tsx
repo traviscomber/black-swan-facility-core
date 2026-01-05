@@ -1,9 +1,9 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Plus, Anchor, Ship, Trash2, Edit2, Filter } from "lucide-react"
+import { Plus, Anchor, Ship, Trash2, Edit2, Filter, Calendar, AlertCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Card } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { AppLayout } from "@/components/app-layout"
 import { PageHeader } from "@/components/page-header"
 import {
@@ -20,6 +20,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea"
 import { createBrowserClient } from "@supabase/ssr"
 import PortBoatPhotoUpload from "@/components/ports-boats-photo-upload"
+import { VesselScheduleCalendar } from "@/components/vessel-schedule-calendar"
+import { ScheduleDialog } from "@/components/schedule-dialog"
 
 interface PortBoat {
   id: string
@@ -539,6 +541,35 @@ export default function PortsBoatsPage() {
           getStatusColor={getStatusColor}
           getTypeIcon={getTypeIcon}
         />
+
+        {/* Vessel Schedule Calendar Section */}
+        <div className="mt-8 border-t pt-8">
+          <h2 className="text-2xl font-bold mb-6 flex items-center gap-2">
+            <Calendar className="h-6 w-6" />
+            Daily Vessel Schedules
+          </h2>
+
+          {/* Migration Script Instruction Card */}
+          <Card className="border-amber-500/20 bg-amber-500/5 mb-6">
+            <CardHeader>
+              <CardTitle className="text-sm flex items-center gap-2 text-white">
+                <AlertCircle className="h-4 w-4 text-amber-500" />
+                Setup Vessel Schedules
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="text-sm text-gray-300">
+              <p className="mb-3">
+                To set up vessel schedules, run the migration script{" "}
+                <code className="bg-slate-800 px-2 py-1 rounded text-xs">019_create_vessel_schedules_table.sql</code>{" "}
+                from the scripts folder.
+              </p>
+              <p>Once set up, you can add vessel schedules through the calendar interface.</p>
+            </CardContent>
+          </Card>
+
+          <VesselScheduleCalendar vessels={boats} />
+          <ScheduleDialog />
+        </div>
       </div>
     </AppLayout>
   )

@@ -3,7 +3,6 @@
 import { AppLayout } from "@/components/app-layout"
 import { PageHeader } from "@/components/page-header"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { createBrowserClient } from "@/lib/supabase/client"
 import type { Asset } from "@/lib/types"
@@ -68,7 +67,7 @@ export default function AssetsPage() {
                 <TableHead className="text-muted-foreground">Name</TableHead>
                 <TableHead className="text-muted-foreground">Type</TableHead>
                 <TableHead className="text-muted-foreground">Location</TableHead>
-                <TableHead className="text-muted-foreground">Status</TableHead>
+                <TableHead className="text-muted-foreground">Last Audit</TableHead>
                 <TableHead className="text-muted-foreground">QR</TableHead>
                 <TableHead className="text-muted-foreground text-right">Actions</TableHead>
               </TableRow>
@@ -98,11 +97,11 @@ export default function AssetsPage() {
                     </TableCell>
                     <TableCell className="text-foreground">{asset.type}</TableCell>
                     <TableCell className="text-foreground">{asset.location || "-"}</TableCell>
-                    <TableCell>
-                      {asset.is_critical ? (
-                        <Badge className="bg-red-900/30 text-red-200 border-red-700/50">Critical</Badge>
+                    <TableCell className="text-foreground">
+                      {asset.last_audit_date ? (
+                        new Date(asset.last_audit_date).toLocaleDateString()
                       ) : (
-                        <Badge className="bg-green-900/30 text-green-200 border-green-700/50">Normal</Badge>
+                        <span className="text-muted-foreground">Never</span>
                       )}
                     </TableCell>
                     <TableCell>{asset.is_critical && <QrCode className="h-4 w-4 text-primary" />}</TableCell>

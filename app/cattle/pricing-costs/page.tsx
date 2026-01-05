@@ -4,9 +4,13 @@ import { AppLayout } from "@/components/app-layout"
 import { PageHeader } from "@/components/page-header"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 import { useEffect, useState } from "react"
 import { createBrowserClient } from "@/lib/supabase/client"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { EditPricingDialog } from "@/components/edit-pricing-dialog"
+import { EditCostDialog } from "@/components/edit-cost-dialog"
+import { Pencil } from "lucide-react"
 
 interface PricingData {
   id: string
@@ -32,6 +36,10 @@ export default function PricingCostsPage() {
   const [pricing, setPricing] = useState<PricingData[]>([])
   const [costs, setCosts] = useState<CostData[]>([])
   const [loading, setLoading] = useState(true)
+  const [editingPricing, setEditingPricing] = useState<PricingData | null>(null)
+  const [editingCost, setEditingCost] = useState<CostData | null>(null)
+  const [showPricingDialog, setShowPricingDialog] = useState(false)
+  const [showCostDialog, setShowCostDialog] = useState(false)
 
   useEffect(() => {
     const fetchData = async () => {
@@ -54,6 +62,26 @@ export default function PricingCostsPage() {
 
     fetchData()
   }, [])
+
+  const handlePricingUpdated = async () => {
+    try {
+      const supabase = createBrowserClient()
+      const { data } = await supabase.from("cattle_pricing").select("*").eq("is_active", true)
+      if (data) setPricing(data)
+    } catch (error) {
+      console.error("Error refreshing pricing:", error)
+    }
+  }
+
+  const handleCostUpdated = async () => {
+    try {
+      const supabase = createBrowserClient()
+      const { data } = await supabase.from("cattle_operational_costs").select("*")
+      if (data) setCosts(data)
+    } catch (error) {
+      console.error("Error refreshing costs:", error)
+    }
+  }
 
   const breedingPrices = pricing.filter((p) => p.category === "Breeding")
   const fatteningPrices = pricing.filter((p) => p.category === "Fattening")
@@ -102,6 +130,7 @@ export default function PricingCostsPage() {
                       <TableHead className="text-right">Price</TableHead>
                       <TableHead>Unit</TableHead>
                       <TableHead className="text-right">Standard Qty</TableHead>
+                      <TableHead className="w-12">Action</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -112,6 +141,18 @@ export default function PricingCostsPage() {
                         <TableCell className="text-right font-semibold">{formatPrice(item.price_pesos)}</TableCell>
                         <TableCell>{item.unit}</TableCell>
                         <TableCell className="text-right">{item.quantity_standard}</TableCell>
+                        <TableCell>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => {
+                              setEditingPricing(item)
+                              setShowPricingDialog(true)
+                            }}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                        </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -138,6 +179,7 @@ export default function PricingCostsPage() {
                       <TableHead className="text-right">Price</TableHead>
                       <TableHead>Unit</TableHead>
                       <TableHead className="text-right">Standard Qty</TableHead>
+                      <TableHead className="w-12">Action</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -148,6 +190,18 @@ export default function PricingCostsPage() {
                         <TableCell className="text-right font-semibold">{formatPrice(item.price_pesos)}</TableCell>
                         <TableCell>{item.unit}</TableCell>
                         <TableCell className="text-right">{item.quantity_standard}</TableCell>
+                        <TableCell>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => {
+                              setEditingPricing(item)
+                              setShowPricingDialog(true)
+                            }}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                        </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -168,15 +222,29 @@ export default function PricingCostsPage() {
               <Card key={cost.id}>
                 <CardHeader className="pb-3">
                   <div className="flex items-start justify-between">
-                    <CardTitle className="text-base">{cost.cost_type}</CardTitle>
-                    <Badge
-                      variant="outline"
-                      className={cost.is_fixed ? "bg-red-50 text-red-700" : "bg-blue-50 text-blue-700"}
-                    >
-                      {cost.is_fixed ? "Fixed" : "Variable"}
-                    </Badge>
+                    <div className="flex-1">
+                      <CardTitle className="text-base">{cost.cost_type}</CardTitle>
+                      <CardDescription className="text-xs mt-1">{cost.description}</CardDescription>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Badge
+                        variant="outline"
+                        className={cost.is_fixed ? "bg-red-50 text-red-700" : "bg-blue-50 text-blue-700"}
+                      >
+                        {cost.is_fixed ? "Fixed" : "Variable"}
+                      </Badge>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => {
+                          setEditingCost(cost)
+                          setShowCostDialog(true)
+                        }}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </div>
-                  <CardDescription className="text-xs mt-1">{cost.description}</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-2">
@@ -223,6 +291,25 @@ export default function PricingCostsPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Edit dialogs for pricing and costs */}
+      {editingPricing && (
+        <EditPricingDialog
+          open={showPricingDialog}
+          onOpenChange={setShowPricingDialog}
+          onPricingUpdated={handlePricingUpdated}
+          pricing={editingPricing}
+        />
+      )}
+
+      {editingCost && (
+        <EditCostDialog
+          open={showCostDialog}
+          onOpenChange={setShowCostDialog}
+          onCostUpdated={handleCostUpdated}
+          cost={editingCost}
+        />
+      )}
     </AppLayout>
   )
 }
