@@ -36,6 +36,23 @@ import {
 import { useState } from "react"
 // import { UniversalSearchDialog } from "@/components/universal-search-dialog" // Assuming UniversalSearchDialog is in a separate file
 
+const Building = ({ className }: { className?: string }) => (
+  <svg
+    className={className}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+    <line x1="3" y1="9" x2="21" y2="9"></line>
+    <line x1="9" y1="21" x2="9" y2="9"></line>
+    <line x1="15" y1="21" x2="15" y2="9"></line>
+  </svg>
+)
+
 const navigationGroups = [
   {
     label: "Core Operations",
@@ -73,6 +90,7 @@ const navigationGroups = [
       { name: "Assets", href: "/assets", icon: Box, tip: "Inventory and equipment" },
       { name: "Maintenance", href: "/maintenance", icon: Wrench, tip: "Schedule and track repairs" },
       { name: "GIS Map", href: "/map", icon: Map, tip: "Property location and layout" },
+      { name: "KMZ Viewer", href: "/map/kmz-viewer", icon: Map, tip: "Upload and view KMZ overlays" },
       { name: "Ports & Boats", href: "/ports-boats", icon: Anchor, tip: "Manage port facilities and boat fleet" },
     ],
   },
@@ -108,6 +126,12 @@ const navigationGroups = [
         href: "/procurement/analytics",
         icon: TrendingUp,
         tip: "Spending analysis and supplier performance",
+      },
+      {
+        name: "Facilities",
+        href: "/procurement/facilities",
+        icon: Building,
+        tip: "Manage facilities and their procurement needs",
       },
     ],
   },
@@ -284,13 +308,4 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
       {/* {openSearch && <UniversalSearchDialog open={openSearch} onOpenChange={setOpenSearch} />} */}
     </>
   )
-}
-
-interface SearchResult {
-  id: string
-  type: "asset" | "issue" | "maintenance" | "employee" | "room" | "reservation" | "guest" | "location"
-  title: string
-  subtitle?: string
-  status?: string
-  badge?: string
 }

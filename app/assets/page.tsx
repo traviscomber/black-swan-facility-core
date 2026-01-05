@@ -7,17 +7,24 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { createBrowserClient } from "@/lib/supabase/client"
 import type { Asset } from "@/lib/types"
 import Link from "next/link"
-import { Plus, QrCode, Pencil } from "lucide-react"
+import { Plus, QrCode, Pencil, Download } from "lucide-react"
 import { useEffect, useState } from "react"
 import { AddAssetDialog } from "@/components/add-asset-dialog"
 import { EditAssetDialog } from "@/components/edit-asset-dialog"
 import { DeleteAssetButton } from "@/components/delete-asset-button"
+import { Input } from "@/components/ui/input"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 export default function AssetsPage() {
   const [assets, setAssets] = useState<Asset[]>([])
+  const [filteredAssets, setFilteredAssets] = useState<Asset[]>([])
   const [loading, setLoading] = useState(true)
   const [showAddDialog, setShowAddDialog] = useState(false)
   const [editingAsset, setEditingAsset] = useState<Asset | null>(null)
+  const [filterType, setFilterType] = useState("all")
+  const [filterCritical, setFilterCritical] = useState("all")
+  const [sortBy, setSortBy] = useState("name")
+  const [searchTerm, setSearchTerm] = useState("")
 
   const loadAssets = async () => {
     const supabase = createBrowserClient()
@@ -27,6 +34,45 @@ export default function AssetsPage() {
     }
     setLoading(false)
   }
+
+  useEffect(() => {
+    let filtered = [...assets]
+
+    // Filter by type
+    if (filterType !== "all") {
+      filtered = filtered.filter((a) => a.type === filterType)
+    }
+
+    // Filter by critical
+    if (filterCritical !== "all") {
+      filtered = filtered.filter((a) => (filterCritical === "critical" ? a.is_critical : !a.is_critical))
+    }
+
+    // Filter by search term
+    if (searchTerm) {
+      filtered = filtered.filter(
+        (a) =>
+          a.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          a.description?.toLowerCase().includes(searchTerm.toLowerCase()),
+      )
+    }
+
+    // Sort
+    filtered.sort((a, b) => {
+      switch (sortBy) {
+        case "name":
+          return a.name.localeCompare(b.name)
+        case "type":
+          return (a.type || "").localeCompare(b.type || "")
+        case "last_audit":
+          return new Date(b.last_audit_date || 0).getTime() - new Date(a.last_audit_date || 0).getTime()
+        default:
+          return 0
+      }
+    })
+
+    setFilteredAssets(filtered)
+  }, [assets, filterType, filterCritical, searchTerm, sortBy])
 
   useEffect(() => {
     loadAssets()
@@ -46,20 +92,90 @@ export default function AssetsPage() {
     loadAssets()
   }
 
+  const handleExport = () => {
+    const headers = ["Name", "Type", "Location", "Critical", "Last Audit", "Description"]
+    const rows = filteredAssets.map((asset) => [
+      asset.name,
+      asset.type,
+      asset.location || "-",
+      asset.is_critical ? "Yes" : "No",
+      asset.last_audit_date ? new Date(asset.last_audit_date).toLocaleDateString() : "Never",
+      asset.description || "-",
+    ])
+
+    const csv = [headers, ...rows].map((row) => row.map((cell) => `"${cell}"`).join(",")).join("\n")
+    const blob = new Blob([csv], { type: "text/csv" })
+    const url = window.URL.createObjectURL(blob)
+    const a = document.createElement("a")
+    a.href = url
+    a.download = `assets-${new Date().toISOString().split("T")[0]}.csv`
+    a.click()
+  }
+
   return (
     <AppLayout>
       <PageHeader
         title="Assets"
         description="Manage facility infrastructure and equipment"
         actions={
-          <Button onClick={() => setShowAddDialog(true)}>
-            <Plus className="mr-2 h-4 w-4" />
-            Add Asset
-          </Button>
+          <div className="flex gap-2">
+            <Button onClick={handleExport} variant="outline">
+              <Download className="mr-2 h-4 w-4" />
+              Export
+            </Button>
+            <Button onClick={() => setShowAddDialog(true)}>
+              <Plus className="mr-2 h-4 w-4" />
+              Add Asset
+            </Button>
+          </div>
         }
       />
 
-      <div className="p-8">
+      <div className="p-8 space-y-6">
+        <div className="rounded-lg border border-secondary bg-card p-4 space-y-4">
+          <div className="grid gap-4 md:grid-cols-4">
+            <Input
+              placeholder="Search assets..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="bg-background"
+            />
+            <Select value={filterType} onValueChange={setFilterType}>
+              <SelectTrigger className="bg-background">
+                <SelectValue placeholder="Filter by type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Types</SelectItem>
+                {Array.from(new Set(assets.map((a) => a.type))).map((type) => (
+                  <SelectItem key={type} value={type}>
+                    {type}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={filterCritical} onValueChange={setFilterCritical}>
+              <SelectTrigger className="bg-background">
+                <SelectValue placeholder="Filter by criticality" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Assets</SelectItem>
+                <SelectItem value="critical">Critical Only</SelectItem>
+                <SelectItem value="non-critical">Non-Critical</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={sortBy} onValueChange={setSortBy}>
+              <SelectTrigger className="bg-background">
+                <SelectValue placeholder="Sort by" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="name">Name A-Z</SelectItem>
+                <SelectItem value="type">Type</SelectItem>
+                <SelectItem value="last_audit">Last Audit (Newest)</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
         <div className="rounded-lg border border-secondary bg-card">
           <Table>
             <TableHeader>
@@ -79,8 +195,8 @@ export default function AssetsPage() {
                     Loading...
                   </TableCell>
                 </TableRow>
-              ) : assets && assets.length > 0 ? (
-                assets.map((asset: Asset) => (
+              ) : filteredAssets && filteredAssets.length > 0 ? (
+                filteredAssets.map((asset: Asset) => (
                   <TableRow key={asset.id}>
                     <TableCell className="font-medium">
                       <div className="flex flex-col gap-1">
@@ -128,7 +244,9 @@ export default function AssetsPage() {
               ) : (
                 <TableRow>
                   <TableCell colSpan={6} className="text-center text-muted-foreground">
-                    No assets found
+                    {searchTerm || filterType !== "all" || filterCritical !== "all"
+                      ? "No assets match your filters"
+                      : "No assets found"}
                   </TableCell>
                 </TableRow>
               )}

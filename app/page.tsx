@@ -6,9 +6,39 @@ import { Calendar, Home, TrendingUp, Wrench, Sparkles, ArrowRight, Bed, Users } 
 import { AppLayout } from "@/components/app-layout"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { createBrowserClient } from "@/lib/supabase/client"
+import { format, parseISO, isWithinInterval } from "date-fns"
+
+interface DashboardMetrics {
+  totalRooms: number
+  totalBeds: number
+  availableBeds: number
+  occupiedBeds: number
+  occupancyRate: number
+  activeGuests: number
+  todayCheckIns: number
+  todayCheckOuts: number
+  totalRevenue: number
+  activeReservations: number
+}
 
 export default function Dashboard() {
   const [searchDialogOpen, setSearchDialogOpen] = useState(false)
+  const [metrics, setMetrics] = useState<DashboardMetrics>({
+    totalRooms: 0,
+    totalBeds: 0,
+    availableBeds: 0,
+    occupiedBeds: 0,
+    occupancyRate: 0,
+    activeGuests: 0,
+    todayCheckIns: 0,
+    todayCheckOuts: 0,
+    totalRevenue: 0,
+    activeReservations: 0,
+  })
+  const [loading, setLoading] = useState(true)
+
+  const supabase = createBrowserClient()
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -21,6 +51,82 @@ export default function Dashboard() {
     window.addEventListener("keydown", handleKeyDown)
     return () => window.removeEventListener("keydown", handleKeyDown)
   }, [])
+
+  useEffect(() => {
+    loadMetrics()
+  }, [])
+
+  async function loadMetrics() {
+    try {
+      setLoading(true)
+      const today = new Date()
+
+      const [bedsResult, roomsResult, reservationsResult] = await Promise.all([
+        supabase.from("beds").select("id, is_available"),
+        supabase.from("rooms").select("id"),
+        supabase
+          .from("reservations")
+          .select("check_in, check_out, num_guests, status, total_amount")
+          .eq("status", "confirmed"),
+      ])
+
+      const beds = bedsResult.data || []
+      const rooms = roomsResult.data || []
+      const reservations = reservationsResult.data || []
+
+      const totalBeds = beds.length
+      const availableBeds = beds.filter((b) => b.is_available).length
+      const occupiedBeds = totalBeds - availableBeds
+
+      // Calculate today's check-ins/outs and active guests
+      let todayCheckIns = 0
+      let todayCheckOuts = 0
+      let activeGuests = 0
+      let totalRevenue = 0
+
+      reservations.forEach((res) => {
+        const checkInDate = parseISO(res.check_in)
+        const checkOutDate = parseISO(res.check_out)
+
+        // Check if reservation spans today
+        if (isWithinInterval(today, { start: checkInDate, end: checkOutDate })) {
+          activeGuests += res.num_guests || 0
+        }
+
+        // Check for today's check-ins
+        if (format(checkInDate, "yyyy-MM-dd") === format(today, "yyyy-MM-dd")) {
+          todayCheckIns++
+        }
+
+        // Check for today's check-outs
+        if (format(checkOutDate, "yyyy-MM-dd") === format(today, "yyyy-MM-dd")) {
+          todayCheckOuts++
+        }
+
+        // Add to total revenue
+        totalRevenue += res.total_amount || 0
+      })
+
+      const occupancyRate = totalBeds > 0 ? Math.round((occupiedBeds / totalBeds) * 100) : 0
+
+      setMetrics({
+        totalRooms: rooms.length,
+        totalBeds,
+        availableBeds,
+        occupiedBeds,
+        occupancyRate,
+        activeGuests,
+        todayCheckIns,
+        todayCheckOuts,
+        totalRevenue,
+        activeReservations: reservations.length,
+      })
+    } catch (error) {
+      console.error("Error loading metrics:", error)
+    } finally {
+      setLoading(false)
+    }
+  }
 
   return (
     <AppLayout>
@@ -71,7 +177,7 @@ export default function Dashboard() {
             <h2 className="text-xl sm:text-2xl font-bold text-accent">Property Overview</h2>
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
             <Card className="border-primary/20 hover:border-primary/40 transition-colors">
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
@@ -80,34 +186,95 @@ export default function Dashboard() {
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl sm:text-3xl font-bold text-accent">3</div>
-                <p className="text-xs text-muted-foreground mt-2">Dorm-style accommodations</p>
+                <div className="text-2xl sm:text-3xl font-bold text-accent">{loading ? "-" : metrics.totalRooms}</div>
+                <p className="text-xs text-muted-foreground mt-2">Active properties</p>
               </CardContent>
             </Card>
 
             <Card className="border-primary/20 hover:border-primary/40 transition-colors">
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
-                  <CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground">Available Beds</CardTitle>
+                  <CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground">Total Beds</CardTitle>
                   <Bed className="h-4 w-4 text-primary" />
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl sm:text-3xl font-bold text-accent">6</div>
-                <p className="text-xs text-muted-foreground mt-2">Single beds across all rooms</p>
+                <div className="text-2xl sm:text-3xl font-bold text-accent">{loading ? "-" : metrics.totalBeds}</div>
+                <p className="text-xs text-muted-foreground mt-2">Available inventory</p>
               </CardContent>
             </Card>
 
-            <Card className="border-primary/20 hover:border-primary/40 transition-colors">
+            <Card className="border-emerald-200 hover:border-emerald-400 transition-colors">
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
-                  <CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground">Occupancy</CardTitle>
-                  <Users className="h-4 w-4 text-primary" />
+                  <CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground">Available</CardTitle>
+                  <Bed className="h-4 w-4 text-emerald-600" />
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl sm:text-3xl font-bold text-accent">0%</div>
-                <p className="text-xs text-muted-foreground mt-2">No active reservations</p>
+                <div className="text-2xl sm:text-3xl font-bold text-emerald-600">
+                  {loading ? "-" : metrics.availableBeds}
+                </div>
+                <p className="text-xs text-muted-foreground mt-2">Ready for booking</p>
+              </CardContent>
+            </Card>
+
+            <Card className="border-orange-200 hover:border-orange-400 transition-colors">
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground">Occupied</CardTitle>
+                  <Users className="h-4 w-4 text-orange-600" />
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl sm:text-3xl font-bold text-orange-600">
+                  {loading ? "-" : metrics.occupiedBeds}
+                </div>
+                <p className="text-xs text-muted-foreground mt-2">Currently booked</p>
+              </CardContent>
+            </Card>
+
+            <Card className="border-blue-200 hover:border-blue-400 transition-colors">
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground">Occupancy</CardTitle>
+                  <TrendingUp className="h-4 w-4 text-blue-600" />
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl sm:text-3xl font-bold text-blue-600">
+                  {loading ? "-" : `${metrics.occupancyRate}%`}
+                </div>
+                <p className="text-xs text-muted-foreground mt-2">Utilization rate</p>
+              </CardContent>
+            </Card>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-3 mt-6">
+            <Card className="border-blue-200 bg-blue-50">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-blue-900">Today's Check-ins</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-blue-600">{loading ? "-" : metrics.todayCheckIns}</div>
+              </CardContent>
+            </Card>
+
+            <Card className="border-red-200 bg-red-50">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-red-900">Today's Check-outs</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-red-600">{loading ? "-" : metrics.todayCheckOuts}</div>
+              </CardContent>
+            </Card>
+
+            <Card className="border-green-200 bg-green-50">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-green-900">Active Guests</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-green-600">{loading ? "-" : metrics.activeGuests}</div>
               </CardContent>
             </Card>
           </div>

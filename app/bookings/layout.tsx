@@ -18,8 +18,8 @@ export default function BookingsLayout({ children }: { children: React.ReactNode
           ? "reports"
           : pathname?.includes("/rooms")
             ? "rooms"
-            : pathname?.includes("/locations")
-              ? "locations"
+            : pathname?.includes("/facilities")
+              ? "facilities"
               : "calendar"
 
   function handleTabChange(value: string) {
@@ -36,8 +36,8 @@ export default function BookingsLayout({ children }: { children: React.ReactNode
       case "rooms":
         router.push("/bookings/rooms")
         break
-      case "locations":
-        router.push("/bookings/locations")
+      case "facilities":
+        router.push("/bookings/facilities")
         break
     }
   }
@@ -52,9 +52,9 @@ export default function BookingsLayout({ children }: { children: React.ReactNode
               <Calendar className="h-4 w-4" />
               Calendar
             </TabsTrigger>
-            <TabsTrigger value="locations" className="gap-2">
+            <TabsTrigger value="facilities" className="gap-2">
               <MapPin className="h-4 w-4" />
-              Locations
+              Facilities
             </TabsTrigger>
             <TabsTrigger value="rooms" className="gap-2">
               <Home className="h-4 w-4" />

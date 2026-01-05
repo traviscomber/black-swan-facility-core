@@ -123,7 +123,7 @@ export default function LocationDetailPage() {
     }
   }
 
-  const handleAddRoom = async (e: React.FormEvent<HTMLFormElement>) => {
+  async function handleAddRoom(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     console.log("[v0] Add Room form submitted")
 

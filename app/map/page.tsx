@@ -23,12 +23,15 @@ import {
   Package,
   Wrench,
   CastleIcon as CattleIcon,
+  Upload,
+  MapIcon,
 } from "lucide-react"
 import { InfrastructureDetailPanel } from "@/components/infrastructure-detail-panel"
 import { AddInfrastructureDialog } from "@/components/add-infrastructure-dialog"
 import { EditInfrastructureDialog } from "@/components/edit-infrastructure-dialog"
 import { DeleteDialog } from "@/components/delete-dialog"
 import { InfrastructureSearchDialog } from "@/components/infrastructure-search-dialog"
+import { KmzUploadDialog } from "@/components/kmz-upload-dialog"
 
 interface Location {
   id: string
@@ -177,6 +180,10 @@ export default function MapPage() {
   const [searchDialogOpen, setSearchDialogOpen] = useState(false)
   const [blinkingMarkerId, setBlinkingMarkerId] = useState<string | null>(null)
   const [newInfraLocation, setNewInfraLocation] = useState<{ lat: number; lng: number } | null>(null)
+  const [kmzLayers, setKmzLayers] = useState<any[]>([])
+  const [kmzLoadedIds, setKmzLoadedIds] = useState<Set<string>>(new Set())
+  const [showKmzUploadDialog, setShowKmzUploadDialog] = useState(false)
+  const [kmzFilterEnabled, setKmzFilterEnabled] = useState(false)
 
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [mapType, setMapType] = useState<"street" | "satellite" | "terrain" | "hybrid">("street")
@@ -231,6 +238,7 @@ export default function MapPage() {
   const markersRef = useRef<any[]>([])
   const baseLayerRef = useRef<any>(null)
   const overlayLayerRef = useRef<any>(null)
+  const kmzLayersRef = useRef<any>([])
 
   useEffect(() => {
     if (typeof window === "undefined") return
@@ -503,6 +511,62 @@ export default function MapPage() {
     loadLocations()
   }, [])
 
+  useEffect(() => {
+    const loadKmzFiles = async () => {
+      const supabase = createClient()
+      const { data, error } = await supabase.from("kmz_files").select("*").eq("is_active", true)
+
+      if (error) {
+        console.error("[v0] Error loading KMZ files:", error)
+        return
+      }
+
+      if (data) {
+        setKmzLayers(data)
+      }
+    }
+
+    loadKmzFiles()
+  }, [])
+
+  useEffect(() => {
+    if (!mapRef.current || !leafletLoaded || typeof window === "undefined") return
+
+    const L = (window as any).L
+    const map = mapRef.current
+
+    // Remove existing KMZ layers
+    kmzLayersRef.current.forEach((layer: any) => {
+      if (map.hasLayer(layer)) {
+        map.removeLayer(layer)
+      }
+    })
+    kmzLayersRef.current = []
+    setKmzLoadedIds(new Set())
+
+    if (!kmzFilterEnabled) return
+
+    // Add KMZ layers
+    kmzLayers.forEach((kmzFile) => {
+      try {
+        // Parse KMZ (which is a ZIP file containing KML)
+        fetch(kmzFile.file_url)
+          .then((response) => response.blob())
+          .then((blob) => {
+            // For now, we'll note that full KMZ parsing requires a library
+            // This is a placeholder that shows the KMZ is being loaded
+            console.log(`[v0] KMZ file loaded: ${kmzFile.name}`)
+            setKmzLoadedIds((prev) => new Set(prev).add(kmzFile.id))
+          })
+          .catch((error) => {
+            console.error(`[v0] Error loading KMZ ${kmzFile.name}:`, error)
+          })
+      } catch (error) {
+        console.error(`[v0] Error processing KMZ ${kmzFile.name}:`, error)
+      }
+    })
+  }, [kmzFilterEnabled, kmzLayers, leafletLoaded])
+
   const getInfraColor = (infra: InfrastructurePlan) => {
     if (infra.priority === "critical") return "#dc2626"
     switch (infra.category) {
@@ -766,7 +830,9 @@ export default function MapPage() {
 
   return (
     <AppLayout>
-      <div className="flex flex-col h-screen w-full overflow-hidden bg-background">
+      <div className="relative w-full h-[calc(100vh-3.5rem)] bg-gray-100 overflow-hidden">
+        <div ref={mapContainerRef} className="w-full h-full" />
+
         <PageHeader
           title="GIS Infrastructure Map"
           description="Internet, Water, Electricity, Cattle, Drinking Water, Heating, Gasoline, Gas, Wood Supply, Trash, Sewage, Storage, Equipment Inventory, Food Storage, Security, Fire Safety"
@@ -780,337 +846,307 @@ export default function MapPage() {
           }
         />
 
-        <div className="relative flex-1 w-full overflow-hidden">
-          <div ref={mapContainerRef} className="absolute inset-0 w-full h-full" />
+        {/* Map controls remain the same */}
+        <div className="absolute top-4 left-4 z-[1000] space-y-2">
+          <div className="bg-white rounded-lg shadow-lg border border-gray-200 overflow-hidden">
+            <button
+              onClick={() => setMapType("street")}
+              className={`px-3 py-2 text-xs md:text-sm font-medium transition-colors border-b border-gray-200 block w-full text-left ${
+                mapType === "street" ? "bg-blue-50 text-blue-700" : "bg-white text-gray-700 hover:bg-gray-50"
+              }`}
+            >
+              Street
+            </button>
+            <button
+              onClick={() => setMapType("satellite")}
+              className={`px-3 py-2 text-xs md:text-sm font-medium transition-colors border-b border-gray-200 block w-full text-left ${
+                mapType === "satellite" ? "bg-blue-50 text-blue-700" : "bg-white text-gray-700 hover:bg-gray-50"
+              }`}
+            >
+              Satellite
+            </button>
+            <button
+              onClick={() => setMapType("terrain")}
+              className={`px-3 py-2 text-xs md:text-sm font-medium transition-colors border-b border-gray-200 block w-full text-left ${
+                mapType === "terrain" ? "bg-blue-50 text-blue-700" : "bg-white text-gray-700 hover:bg-gray-50"
+              }`}
+            >
+              Terrain
+            </button>
+            <button
+              onClick={() => setMapType("hybrid")}
+              className={`px-3 py-2 text-xs md:text-sm font-medium transition-colors block w-full text-left ${
+                mapType === "hybrid" ? "bg-blue-50 text-blue-700" : "bg-white text-gray-700 hover:bg-gray-50"
+              }`}
+            >
+              Hybrid
+            </button>
+          </div>
 
-          {!leafletLoaded && (
-            <div className="absolute inset-0 flex items-center justify-center bg-background z-[100]">
-              <div className="text-center">
-                <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary mb-3" />
-                <p className="text-sm text-muted-foreground">Loading map...</p>
+          {mapType === "hybrid" && (
+            <div className="bg-white rounded-lg shadow-lg border border-gray-200 p-3 w-48">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-medium text-gray-700">Terrain Overlay</span>
+                <span className="text-xs text-gray-500">{Math.round(terrainOpacity * 100)}%</span>
+              </div>
+              <input
+                type="range"
+                min="0"
+                max="1"
+                step="0.05"
+                value={terrainOpacity}
+                onChange={(e) => setTerrainOpacity(Number.parseFloat(e.target.value))}
+                className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
+              />
+              <div className="flex justify-between text-xs text-gray-500 mt-1">
+                <span>Satellite</span>
+                <span>Terrain</span>
               </div>
             </div>
           )}
+        </div>
 
-          {/* Map controls remain the same */}
-          <div className="absolute top-4 left-4 z-[1000] space-y-2">
-            <div className="bg-white rounded-lg shadow-lg border border-gray-200 overflow-hidden">
-              <button
-                onClick={() => setMapType("street")}
-                className={`px-3 py-2 text-xs md:text-sm font-medium transition-colors border-b border-gray-200 block w-full text-left ${
-                  mapType === "street" ? "bg-blue-50 text-blue-700" : "bg-white text-gray-700 hover:bg-gray-50"
-                }`}
-              >
-                Street
-              </button>
-              <button
-                onClick={() => setMapType("satellite")}
-                className={`px-3 py-2 text-xs md:text-sm font-medium transition-colors border-b border-gray-200 block w-full text-left ${
-                  mapType === "satellite" ? "bg-blue-50 text-blue-700" : "bg-white text-gray-700 hover:bg-gray-50"
-                }`}
-              >
-                Satellite
-              </button>
-              <button
-                onClick={() => setMapType("terrain")}
-                className={`px-3 py-2 text-xs md:text-sm font-medium transition-colors border-b border-gray-200 block w-full text-left ${
-                  mapType === "terrain" ? "bg-blue-50 text-blue-700" : "bg-white text-gray-700 hover:bg-gray-50"
-                }`}
-              >
-                Terrain
-              </button>
-              <button
-                onClick={() => setMapType("hybrid")}
-                className={`px-3 py-2 text-xs md:text-sm font-medium transition-colors block w-full text-left ${
-                  mapType === "hybrid" ? "bg-blue-50 text-blue-700" : "bg-white text-gray-700 hover:bg-gray-50"
-                }`}
-              >
-                Hybrid
+        <button
+          onClick={toggleFullscreen}
+          className="absolute top-4 left-[13.5rem] z-[1000] bg-white rounded-lg shadow-lg p-2 border border-gray-200 hover:bg-gray-50 transition-colors"
+          title="Toggle fullscreen"
+        >
+          <Maximize className="h-4 w-4 md:h-5 md:w-5 text-gray-700" />
+        </button>
+
+        <button
+          onClick={() => setSidebarOpen(!sidebarOpen)}
+          className="md:hidden absolute top-4 right-4 z-[1000] bg-white rounded-lg shadow-lg p-2 border border-gray-200"
+        >
+          {sidebarOpen ? <ChevronRight className="h-5 w-5" /> : <ChevronLeft className="h-5 w-5" />}
+        </button>
+
+        {/* Map Layers Sidebar */}
+        <div className="absolute top-4 left-4 z-[999] bg-white rounded-lg shadow-lg p-4 md:hidden">
+          <button
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+            className="flex items-center gap-2 text-gray-700 hover:text-gray-900"
+          >
+            <MapIcon className="h-5 w-5" />
+            <span className="font-semibold">Layers</span>
+          </button>
+        </div>
+
+        <div
+          className={`
+            ${sidebarOpen ? "fixed md:absolute" : "absolute"} top-0 right-0 bottom-0
+            w-[85vw] max-w-md md:max-w-96 md:w-96
+            bg-white border-l border-gray-200 shadow-xl md:shadow-none
+            transform transition-transform duration-300 ease-in-out z-[1001]
+            ${sidebarOpen ? "translate-x-0" : "translate-x-full md:translate-x-0"}
+          `}
+        >
+          <div className="h-full overflow-y-auto p-4 md:p-6 space-y-6">
+            <div className="flex items-center justify-between md:hidden mb-4">
+              <h2 className="text-lg font-semibold">Infrastructure</h2>
+              <button onClick={() => setSidebarOpen(false)} className="p-2">
+                <X className="h-5 w-5" />
               </button>
             </div>
 
-            {mapType === "hybrid" && (
-              <div className="bg-white rounded-lg shadow-lg border border-gray-200 p-3 w-48">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs font-medium text-gray-700">Terrain Overlay</span>
-                  <span className="text-xs text-gray-500">{Math.round(terrainOpacity * 100)}%</span>
+            <div>
+              <div className="flex items-center gap-2 mb-4">
+                <Layers className="h-4 w-4 md:h-5 md:w-5 text-gray-700" />
+                <h3 className="font-semibold text-sm md:text-base text-black">Infrastructure Layers</h3>
+              </div>
+              <div className="space-y-3">
+                {/* Phase 1 Utilities */}
+                <div className="mb-4">
+                  <p className="text-xs font-semibold text-red-600 mb-2">PHASE 1</p>
+                  {/* Internet */}
+                  <label className="flex items-center gap-3 cursor-pointer mb-2">
+                    <input
+                      type="checkbox"
+                      checked={filters.internet}
+                      onChange={(e) => setFilters({ ...filters, internet: e.target.checked })}
+                      className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    />
+                    <div className="flex items-center gap-2 flex-1">
+                      <span className="text-lg">{getUtilityIcon("internet")}</span>
+                      <button
+                        onClick={() => setExpandedCategory(expandedCategory === "internet" ? null : "internet")}
+                        className="text-sm text-gray-700 hover:text-gray-900 flex-1 text-left flex items-center justify-between"
+                      >
+                        <span>Internet ({infraByCategory.internet.length})</span>
+                        <ChevronRight
+                          className={`h-4 w-4 transition-transform ${expandedCategory === "internet" ? "rotate-90" : ""}`}
+                        />
+                      </button>
+                    </div>
+                  </label>
+
+                  {expandedCategory === "internet" && filters.internet && (
+                    <div className="ml-8 space-y-2 max-h-64 overflow-y-auto border-l border-blue-200 pl-3 mb-2">
+                      {infraByCategory.internet.length === 0 ? (
+                        <p className="text-xs text-gray-500 italic">No Internet points</p>
+                      ) : (
+                        infraByCategory.internet.map((item) => (
+                          <button
+                            key={item.id}
+                            onClick={() => handleInfraClick(item)}
+                            className="block w-full text-left p-2 rounded hover:bg-blue-50 transition-colors text-xs text-gray-600 hover:text-gray-900"
+                          >
+                            <div className="font-medium text-gray-800">{item.name}</div>
+                            <div className="text-xs text-gray-500">{item.type || "Infrastructure"}</div>
+                          </button>
+                        ))
+                      )}
+                    </div>
+                  )}
+
+                  {/* Water */}
+                  <label className="flex items-center gap-3 cursor-pointer mb-2">
+                    <input
+                      type="checkbox"
+                      checked={filters.water}
+                      onChange={(e) => setFilters({ ...filters, water: e.target.checked })}
+                      className="h-4 w-4 rounded border-gray-300 text-cyan-600 focus:ring-cyan-500"
+                    />
+                    <div className="flex items-center gap-2">
+                      <span className="text-lg">{getUtilityIcon("water")}</span>
+                      <span className="text-sm text-gray-700">Water ({infraByCategory.water.length})</span>
+                    </div>
+                  </label>
+
+                  {/* Electricity */}
+                  <label className="flex items-center gap-3 cursor-pointer mb-2">
+                    <input
+                      type="checkbox"
+                      checked={filters.electricity}
+                      onChange={(e) => setFilters({ ...filters, electricity: e.target.checked })}
+                      className="h-4 w-4 rounded border-gray-300 text-yellow-600 focus:ring-yellow-500"
+                    />
+                    <div className="flex items-center gap-2">
+                      <span className="text-lg">{getUtilityIcon("electricity")}</span>
+                      <span className="text-sm text-gray-700">Electricity ({infraByCategory.electricity.length})</span>
+                    </div>
+                  </label>
                 </div>
-                <input
-                  type="range"
-                  min="0"
-                  max="1"
-                  step="0.05"
-                  value={terrainOpacity}
-                  onChange={(e) => setTerrainOpacity(Number.parseFloat(e.target.value))}
-                  className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
-                />
-                <div className="flex justify-between text-xs text-gray-500 mt-1">
-                  <span>Satellite</span>
-                  <span>Terrain</span>
+
+                {/* Phase 2 Utilities */}
+                <div className="border-t border-gray-200 pt-4">
+                  <p className="text-xs font-semibold text-blue-600 mb-2">PHASE 2 UTILITIES</p>
+                  {/* Cattle */}
+                  <label className="flex items-center gap-3 cursor-pointer mb-2">
+                    <input
+                      type="checkbox"
+                      checked={filters.cattle}
+                      onChange={(e) => setFilters({ ...filters, cattle: e.target.checked })}
+                      className="h-4 w-4 rounded border-gray-300 text-amber-600 focus:ring-amber-500"
+                    />
+                    <div className="flex items-center gap-2 flex-1">
+                      <span className="text-lg">{getUtilityIcon("cattle")}</span>
+                      <button
+                        onClick={() => setExpandedCategory(expandedCategory === "cattle" ? null : "cattle")}
+                        className="text-sm text-gray-700 hover:text-gray-900 flex-1 text-left flex items-center justify-between"
+                      >
+                        <span>Cattle ({infraByCategory.cattle.length})</span>
+                        <ChevronRight
+                          className={`h-4 w-4 transition-transform ${expandedCategory === "cattle" ? "rotate-90" : ""}`}
+                        />
+                      </button>
+                    </div>
+                  </label>
+
+                  {expandedCategory === "cattle" && filters.cattle && (
+                    <div className="ml-8 space-y-2 max-h-64 overflow-y-auto border-l border-amber-200 pl-3 mb-2">
+                      {infraByCategory.cattle.length === 0 ? (
+                        <p className="text-xs text-gray-500 italic">No Cattle points</p>
+                      ) : (
+                        infraByCategory.cattle.map((item) => (
+                          <button
+                            key={item.id}
+                            onClick={() => handleInfraClick(item)}
+                            className="block w-full text-left p-2 rounded hover:bg-amber-50 transition-colors text-xs text-gray-600 hover:text-gray-900"
+                          >
+                            <div className="font-medium text-gray-800">{item.name}</div>
+                            <div className="text-xs text-gray-500">{item.description}</div>
+                          </button>
+                        ))
+                      )}
+                    </div>
+                  )}
+
+                  {/* Other Phase 2 Utilities */}
+                  {[
+                    "drinking_water",
+                    "heating",
+                    "gasoline",
+                    "gas",
+                    "wood_supply",
+                    "trash",
+                    "sewage",
+                    "storage",
+                    "equipment_inventory",
+                    "food_storage",
+                    "security",
+                    "fire_safety",
+                  ].map((category) => {
+                    const spec = UTILITY_SPECS[category as keyof typeof UTILITY_SPECS]
+                    if (!spec) return null
+                    const items = infraByCategory[category as keyof typeof infraByCategory] || []
+
+                    return (
+                      <label key={category} className="flex items-center gap-3 cursor-pointer mb-2">
+                        <input
+                          type="checkbox"
+                          checked={filters[category as keyof typeof filters]}
+                          onChange={(e) => setFilters({ ...filters, [category]: e.target.checked })}
+                          className="h-4 w-4 rounded border-gray-300 focus:ring-offset-0"
+                          style={{
+                            accentColor: spec.color,
+                          }}
+                        />
+                        <div className="flex items-center gap-2">
+                          <span className="text-lg">{spec.icon}</span>
+                          <span className="text-sm text-gray-700">
+                            {spec.label} ({items.length})
+                          </span>
+                        </div>
+                      </label>
+                    )
+                  })}
                 </div>
+              </div>
+            </div>
+
+            {/* KMZ Overlays section */}
+            <div className="border-t border-gray-200 pt-4">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <MapIcon className="h-4 w-4 md:h-5 md:w-5 text-gray-700" />
+                  <h3 className="font-semibold text-sm md:text-base text-black">GIS Overlays</h3>
+                </div>
+              </div>
+
+              <Button onClick={() => setShowKmzUploadDialog(true)} className="w-full text-xs" variant="outline">
+                <Upload className="mr-2 h-3 w-3" />
+                Upload KMZ
+              </Button>
+            </div>
+
+            {filteredInfrastructure.length === 0 && (
+              <div className="text-center py-8 text-gray-500">
+                <MapPin className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                <p className="text-sm">No infrastructure visible</p>
+                <p className="text-xs mt-1">Enable layers above</p>
               </div>
             )}
           </div>
+        </div>
 
-          <button
-            onClick={toggleFullscreen}
-            className="absolute top-4 left-[13.5rem] z-[1000] bg-white rounded-lg shadow-lg p-2 border border-gray-200 hover:bg-gray-50 transition-colors"
-            title="Toggle fullscreen"
-          >
-            <Maximize className="h-4 w-4 md:h-5 md:w-5 text-gray-700" />
-          </button>
-
-          <button
-            onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="md:hidden absolute top-4 right-4 z-[1000] bg-white rounded-lg shadow-lg p-2 border border-gray-200"
-          >
-            {sidebarOpen ? <ChevronRight className="h-5 w-5" /> : <ChevronLeft className="h-5 w-5" />}
-          </button>
-
-          <div
-            className={`
-              ${sidebarOpen ? "fixed md:absolute" : "absolute"} top-0 right-0 bottom-0
-              w-[85vw] max-w-md md:max-w-96 md:w-96
-              bg-white border-l border-gray-200 shadow-xl md:shadow-none
-              transform transition-transform duration-300 ease-in-out z-[1001]
-              ${sidebarOpen ? "translate-x-0" : "translate-x-full md:translate-x-0"}
-            `}
-          >
-            <div className="h-full overflow-y-auto p-4 md:p-6 space-y-6">
-              <div className="flex items-center justify-between md:hidden mb-4">
-                <h2 className="text-lg font-semibold">Infrastructure</h2>
-                <button onClick={() => setSidebarOpen(false)} className="p-2">
-                  <X className="h-5 w-5" />
-                </button>
-              </div>
-
-              <div>
-                <div className="flex items-center gap-2 mb-4">
-                  <Layers className="h-4 w-4 md:h-5 md:w-5 text-gray-700" />
-                  <h3 className="font-semibold text-sm md:text-base text-black">Infrastructure Layers</h3>
-                </div>
-                <div className="space-y-3">
-                  {/* Phase 1 Utilities */}
-                  <div className="mb-4">
-                    <p className="text-xs font-semibold text-red-600 mb-2">PHASE 1</p>
-                    {/* Internet */}
-                    <label className="flex items-center gap-3 cursor-pointer mb-2">
-                      <input
-                        type="checkbox"
-                        checked={filters.internet}
-                        onChange={(e) => setFilters({ ...filters, internet: e.target.checked })}
-                        className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                      />
-                      <div className="flex items-center gap-2 flex-1">
-                        <span className="text-lg">{getUtilityIcon("internet")}</span>
-                        <button
-                          onClick={() => setExpandedCategory(expandedCategory === "internet" ? null : "internet")}
-                          className="text-sm text-gray-700 hover:text-gray-900 flex-1 text-left flex items-center justify-between"
-                        >
-                          <span>Internet ({infraByCategory.internet.length})</span>
-                          <ChevronRight
-                            className={`h-4 w-4 transition-transform ${expandedCategory === "internet" ? "rotate-90" : ""}`}
-                          />
-                        </button>
-                      </div>
-                    </label>
-
-                    {expandedCategory === "internet" && filters.internet && (
-                      <div className="ml-8 space-y-2 max-h-64 overflow-y-auto border-l border-blue-200 pl-3 mb-2">
-                        {infraByCategory.internet.length === 0 ? (
-                          <p className="text-xs text-gray-500 italic">No Internet points</p>
-                        ) : (
-                          infraByCategory.internet.map((item) => (
-                            <button
-                              key={item.id}
-                              onClick={() => handleInfraClick(item)}
-                              className="block w-full text-left p-2 rounded hover:bg-blue-50 transition-colors text-xs text-gray-600 hover:text-gray-900"
-                            >
-                              <div className="font-medium text-gray-800">{item.name}</div>
-                              <div className="text-xs text-gray-500">{item.type || "Infrastructure"}</div>
-                            </button>
-                          ))
-                        )}
-                      </div>
-                    )}
-
-                    {/* Water */}
-                    <label className="flex items-center gap-3 cursor-pointer mb-2">
-                      <input
-                        type="checkbox"
-                        checked={filters.water}
-                        onChange={(e) => setFilters({ ...filters, water: e.target.checked })}
-                        className="h-4 w-4 rounded border-gray-300 text-cyan-600 focus:ring-cyan-500"
-                      />
-                      <div className="flex items-center gap-2">
-                        <span className="text-lg">{getUtilityIcon("water")}</span>
-                        <span className="text-sm text-gray-700">Water ({infraByCategory.water.length})</span>
-                      </div>
-                    </label>
-
-                    {/* Electricity */}
-                    <label className="flex items-center gap-3 cursor-pointer mb-2">
-                      <input
-                        type="checkbox"
-                        checked={filters.electricity}
-                        onChange={(e) => setFilters({ ...filters, electricity: e.target.checked })}
-                        className="h-4 w-4 rounded border-gray-300 text-yellow-600 focus:ring-yellow-500"
-                      />
-                      <div className="flex items-center gap-2">
-                        <span className="text-lg">{getUtilityIcon("electricity")}</span>
-                        <span className="text-sm text-gray-700">
-                          Electricity ({infraByCategory.electricity.length})
-                        </span>
-                      </div>
-                    </label>
-                  </div>
-
-                  {/* Phase 2 Utilities */}
-                  <div className="border-t border-gray-200 pt-4">
-                    <p className="text-xs font-semibold text-blue-600 mb-2">PHASE 2 UTILITIES</p>
-                    {/* Cattle */}
-                    <label className="flex items-center gap-3 cursor-pointer mb-2">
-                      <input
-                        type="checkbox"
-                        checked={filters.cattle}
-                        onChange={(e) => setFilters({ ...filters, cattle: e.target.checked })}
-                        className="h-4 w-4 rounded border-gray-300 text-amber-600 focus:ring-amber-500"
-                      />
-                      <div className="flex items-center gap-2 flex-1">
-                        <span className="text-lg">{getUtilityIcon("cattle")}</span>
-                        <button
-                          onClick={() => setExpandedCategory(expandedCategory === "cattle" ? null : "cattle")}
-                          className="text-sm text-gray-700 hover:text-gray-900 flex-1 text-left flex items-center justify-between"
-                        >
-                          <span>Cattle ({infraByCategory.cattle.length})</span>
-                          <ChevronRight
-                            className={`h-4 w-4 transition-transform ${expandedCategory === "cattle" ? "rotate-90" : ""}`}
-                          />
-                        </button>
-                      </div>
-                    </label>
-
-                    {expandedCategory === "cattle" && filters.cattle && (
-                      <div className="ml-8 space-y-2 max-h-64 overflow-y-auto border-l border-amber-200 pl-3 mb-2">
-                        {infraByCategory.cattle.length === 0 ? (
-                          <p className="text-xs text-gray-500 italic">No Cattle points</p>
-                        ) : (
-                          infraByCategory.cattle.map((item) => (
-                            <button
-                              key={item.id}
-                              onClick={() => handleInfraClick(item)}
-                              className="block w-full text-left p-2 rounded hover:bg-amber-50 transition-colors text-xs text-gray-600 hover:text-gray-900"
-                            >
-                              <div className="font-medium text-gray-800">{item.name}</div>
-                              <div className="text-xs text-gray-500">{item.description}</div>
-                            </button>
-                          ))
-                        )}
-                      </div>
-                    )}
-
-                    {/* Other Phase 2 Utilities */}
-                    {[
-                      "drinking_water",
-                      "heating",
-                      "gasoline",
-                      "gas",
-                      "wood_supply",
-                      "trash",
-                      "sewage",
-                      "storage",
-                      "equipment_inventory",
-                      "food_storage",
-                      "security",
-                      "fire_safety",
-                    ].map((category) => {
-                      const spec = UTILITY_SPECS[category as keyof typeof UTILITY_SPECS]
-                      if (!spec) return null
-                      const items = infraByCategory[category as keyof typeof infraByCategory] || []
-
-                      return (
-                        <label key={category} className="flex items-center gap-3 cursor-pointer mb-2">
-                          <input
-                            type="checkbox"
-                            checked={filters[category as keyof typeof filters]}
-                            onChange={(e) => setFilters({ ...filters, [category]: e.target.checked })}
-                            className="h-4 w-4 rounded border-gray-300 focus:ring-offset-0"
-                            style={{
-                              accentColor: spec.color,
-                            }}
-                          />
-                          <div className="flex items-center gap-2">
-                            <span className="text-lg">{spec.icon}</span>
-                            <span className="text-sm text-gray-700">
-                              {spec.label} ({items.length})
-                            </span>
-                          </div>
-                        </label>
-                      )
-                    })}
-                  </div>
-                </div>
-              </div>
-
-              {filteredInfrastructure.length === 0 && (
-                <div className="text-center py-8 text-gray-500">
-                  <MapPin className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                  <p className="text-sm">No infrastructure visible</p>
-                  <p className="text-xs mt-1">Enable layers above</p>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {detailPanelOpen && selectedInfra && (
-            <InfrastructureDetailPanel
-              infrastructure={selectedInfra}
-              open={detailPanelOpen}
-              onClose={() => {
-                setDetailPanelOpen(false)
-                setSelectedInfra(null)
-              }}
-              onUpdate={() => {
-                const fetchInfrastructure = async () => {
-                  const supabase = createClient()
-                  const { data } = await supabase.from("infrastructure_plans").select("*").order("name")
-                  if (data) setInfrastructure(data)
-                }
-                fetchInfrastructure()
-              }}
-              onEdit={() => handleEdit(selectedInfra)}
-              onDelete={() => {
-                setShowDeleteDialog(true)
-              }}
-            />
-          )}
-
-          <AddInfrastructureDialog
-            open={addDialogOpen}
+        {detailPanelOpen && selectedInfra && (
+          <InfrastructureDetailPanel
+            infrastructure={selectedInfra}
+            open={detailPanelOpen}
             onClose={() => {
-              setAddDialogOpen(false)
-              setClickedCoordinates(null)
-              setNewInfraLocation(null)
-            }}
-            onAdd={() => {
-              const fetchInfrastructure = async () => {
-                const supabase = createClient()
-                const { data } = await supabase.from("infrastructure_plans").select("*").order("name")
-                if (data) setInfrastructure(data)
-              }
-              fetchInfrastructure()
-              setAddDialogOpen(false)
-              setClickedCoordinates(null)
-              setNewInfraLocation(null)
-            }}
-            initialCoordinates={newInfraLocation}
-          />
-
-          <EditInfrastructureDialog
-            open={editDialogOpen}
-            onClose={() => {
-              setEditDialogOpen(false)
-              setEditingInfra(null)
+              setDetailPanelOpen(false)
+              setSelectedInfra(null)
             }}
             onUpdate={() => {
               const fetchInfrastructure = async () => {
@@ -1120,29 +1156,84 @@ export default function MapPage() {
               }
               fetchInfrastructure()
             }}
-            infrastructure={editingInfra}
+            onEdit={() => handleEdit(selectedInfra)}
+            onDelete={() => {
+              setShowDeleteDialog(true)
+            }}
           />
+        )}
 
-          <DeleteDialog open={showDeleteDialog} onClose={() => setShowDeleteDialog(false)} onDelete={handleDelete} />
+        <AddInfrastructureDialog
+          open={addDialogOpen}
+          onClose={() => {
+            setAddDialogOpen(false)
+            setClickedCoordinates(null)
+            setNewInfraLocation(null)
+          }}
+          onAdd={() => {
+            const fetchInfrastructure = async () => {
+              const supabase = createClient()
+              const { data } = await supabase.from("infrastructure_plans").select("*").order("name")
+              if (data) setInfrastructure(data)
+            }
+            fetchInfrastructure()
+            setAddDialogOpen(false)
+            setClickedCoordinates(null)
+            setNewInfraLocation(null)
+          }}
+          initialCoordinates={newInfraLocation}
+        />
 
-          <InfrastructureSearchDialog
-            open={searchDialogOpen}
-            onOpenChange={setSearchDialogOpen}
-            onSelectInfrastructure={handleSelectFromSearch}
-          />
+        <EditInfrastructureDialog
+          open={editDialogOpen}
+          onClose={() => {
+            setEditDialogOpen(false)
+            setEditingInfra(null)
+          }}
+          onUpdate={() => {
+            const fetchInfrastructure = async () => {
+              const supabase = createClient()
+              const { data } = await supabase.from("infrastructure_plans").select("*").order("name")
+              if (data) setInfrastructure(data)
+            }
+            fetchInfrastructure()
+          }}
+          infrastructure={editingInfra}
+        />
 
-          <button
-            onClick={() => setSearchDialogOpen(true)}
-            className="fixed bottom-6 right-6 z-[1000] h-14 w-14 rounded-full bg-gradient-to-r from-purple-500 to-indigo-600 shadow-lg hover:shadow-xl hover:scale-110 transition-all duration-200 flex items-center justify-center group"
-            aria-label="AI Search"
-          >
-            <Sparkles className="h-6 w-6 text-white group-hover:animate-pulse" />
-            <span className="absolute -top-1 -right-1 flex h-3 w-3">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-purple-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-3 w-3 bg-purple-500"></span>
-            </span>
-          </button>
-        </div>
+        <DeleteDialog open={showDeleteDialog} onClose={() => setShowDeleteDialog(false)} onDelete={handleDelete} />
+
+        <InfrastructureSearchDialog
+          open={searchDialogOpen}
+          onOpenChange={setSearchDialogOpen}
+          onSelectInfrastructure={handleSelectFromSearch}
+        />
+
+        <KmzUploadDialog
+          open={showKmzUploadDialog}
+          onOpenChange={setShowKmzUploadDialog}
+          onUploadSuccess={() => {
+            // Reload KMZ files
+            const loadKmzFiles = async () => {
+              const supabase = createClient()
+              const { data } = await supabase.from("kmz_files").select("*").eq("is_active", true)
+              if (data) setKmzLayers(data)
+            }
+            loadKmzFiles()
+          }}
+        />
+
+        <button
+          onClick={() => setSearchDialogOpen(true)}
+          className="fixed bottom-6 right-6 z-[1000] h-14 w-14 rounded-full bg-gradient-to-r from-purple-500 to-indigo-600 shadow-lg hover:shadow-xl hover:scale-110 transition-all duration-200 flex items-center justify-center group"
+          aria-label="AI Search"
+        >
+          <Sparkles className="h-6 w-6 text-white group-hover:animate-pulse" />
+          <span className="absolute -top-1 -right-1 flex h-3 w-3">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-purple-400 opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-3 w-3 bg-purple-500"></span>
+          </span>
+        </button>
       </div>
     </AppLayout>
   )

@@ -103,7 +103,6 @@ export default function GuestsPage() {
 
     if (error) {
       console.error("Error deleting guest:", error)
-      alert("Failed to delete guest")
     } else {
       loadGuests()
     }

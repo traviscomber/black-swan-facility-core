@@ -12,6 +12,7 @@ export interface Asset {
   manual_url: string | null
   latitude: number | null
   longitude: number | null
+  last_audit_date: string | null // Added last_audit_date field for audit tracking
   created_at: string
 }
 

@@ -12,6 +12,7 @@ import { EditReservationModal } from "@/components/edit-reservation-modal"
 import { GuestHistoryModal } from "@/components/guest-history-modal"
 import { ReservationConfirmationModal } from "@/components/reservation-confirmation-modal"
 import { DailySummaryModal } from "@/components/daily-summary-modal" // Import DailySummaryModal
+import { useToast } from "@/hooks/use-toast" // Add useToast import and remove alert-based error handling
 
 interface Location {
   id: string
@@ -59,6 +60,7 @@ const FACILITY_COLORS = [
 
 export default function BookingManagement() {
   const supabase = createClient()
+  const { toast } = useToast() // Add toast hook
 
   const [viewMode, setViewMode] = useState<"single" | "multi">("multi")
   const [locations, setLocations] = useState<Location[]>([])
@@ -278,10 +280,18 @@ export default function BookingManagement() {
         .eq("id", data.id)
 
       if (error) throw error
+      toast({
+        title: "Success",
+        description: "Reservation updated successfully",
+      })
       fetchData()
     } catch (error) {
       console.error("Error updating reservation:", error)
-      alert("Error updating reservation")
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to update reservation",
+      })
     }
   }
 
@@ -290,10 +300,18 @@ export default function BookingManagement() {
       const { error } = await supabase.from("reservations").delete().eq("id", reservationId)
 
       if (error) throw error
+      toast({
+        title: "Success",
+        description: "Reservation deleted successfully",
+      })
       fetchData()
     } catch (error) {
       console.error("Error deleting reservation:", error)
-      alert("Error deleting reservation")
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to delete reservation",
+      })
     }
   }
 

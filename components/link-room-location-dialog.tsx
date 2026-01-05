@@ -54,7 +54,7 @@ export function LinkRoomLocationDialog({ room, open, onOpenChange, onSuccess }: 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!selectedLocationId) {
-      alert("Please select a location")
+      alert("Please select a facility")
       return
     }
 
@@ -63,8 +63,8 @@ export function LinkRoomLocationDialog({ room, open, onOpenChange, onSuccess }: 
     const { error } = await supabase.from("rooms").update({ location_id: selectedLocationId }).eq("id", room.id)
 
     if (error) {
-      console.error("Error linking room to location:", error)
-      alert("Error linking room to location")
+      console.error("Error linking room to facility:", error)
+      alert("Error linking room to facility")
       setLoading(false)
     } else {
       onSuccess()
@@ -77,28 +77,28 @@ export function LinkRoomLocationDialog({ room, open, onOpenChange, onSuccess }: 
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Link Room to Location</DialogTitle>
-          <DialogDescription>Connect "{room.room_number}" to a real property location</DialogDescription>
+          <DialogTitle>Link Room to Facility</DialogTitle>
+          <DialogDescription>Connect "{room.room_number}" to a real facility location</DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit}>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="location">Location Property</Label>
+              <Label htmlFor="facility">Facility</Label>
               <select
-                id="location"
+                id="facility"
                 value={selectedLocationId}
                 onChange={(e) => setSelectedLocationId(e.target.value)}
                 className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                 required
               >
-                <option value="">Select a location...</option>
+                <option value="">Select a facility...</option>
                 {locations.map((loc) => (
                   <option key={loc.id} value={loc.id}>
                     {loc.name}
                   </option>
                 ))}
               </select>
-              <p className="text-xs text-muted-foreground">Current: {room.location || "No location set"}</p>
+              <p className="text-xs text-muted-foreground">Current: {room.location || "No facility set"}</p>
             </div>
           </div>
           <DialogFooter>
@@ -106,7 +106,7 @@ export function LinkRoomLocationDialog({ room, open, onOpenChange, onSuccess }: 
               Cancel
             </Button>
             <Button type="submit" disabled={loading}>
-              {loading ? "Linking..." : "Link Location"}
+              {loading ? "Linking..." : "Link Facility"}
             </Button>
           </DialogFooter>
         </form>
