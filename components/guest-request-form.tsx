@@ -1,7 +1,6 @@
 "use client"
 
 import type React from "react"
-
 import { useEffect, useState } from "react"
 import { useSearchParams } from "next/navigation"
 import { createBrowserClient } from "@/lib/supabase/client"
@@ -12,6 +11,17 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Phone, Mail, Send, CheckCircle, Lock, LogOut } from "lucide-react"
+
+interface Location {
+  id: string
+  name: string
+  is_active: boolean
+}
+
+interface Room {
+  id: string
+  room_number: string
+}
 
 const REQUEST_CATEGORIES = [
   { id: "blankets", label: "Extra Blankets", icon: "🛏️" },
@@ -24,7 +34,7 @@ const REQUEST_CATEGORIES = [
   { id: "other", label: "Other Request", icon: "📝" },
 ]
 
-const ADMIN_PASSWORD = "Global2025..." // Updated to new secure password
+const ADMIN_PASSWORD = "Global2025..."
 
 const generateDeviceId = () => {
   let deviceId = localStorage.getItem("tablet_device_id")
@@ -41,15 +51,15 @@ export function GuestRequestForm() {
   const locationId = searchParams.get("location_id")
   const roomNumber = searchParams.get("room_number")
 
-  const [assignedLocation, setAssignedLocation] = useState<any>(null)
-  const [locations, setLocations] = useState<any[]>([])
+  const [assignedLocation, setAssignedLocation] = useState<Location | null>(null)
+  const [locations, setLocations] = useState<Location[]>([])
   const [isAdminMode, setIsAdminMode] = useState(false)
   const [adminPassword, setAdminPassword] = useState("")
   const [showAdminPanel, setShowAdminPanel] = useState(false)
   const [adminError, setAdminError] = useState("")
 
-  const [room, setRoom] = useState<any>(null)
-  const [location, setLocation] = useState<any>(null)
+  const [room, setRoom] = useState<Room | null>(null)
+  const [location, setLocation] = useState<Location | null>(null)
   const [loading, setLoading] = useState(true)
   const [submitted, setSubmitted] = useState(false)
   const [selectedCategory, setSelectedCategory] = useState("")
@@ -73,17 +83,17 @@ export function GuestRequestForm() {
       // Check localStorage for assigned location, default to "Prairie House 2"
       const savedLocationId = localStorage.getItem("tablet_assigned_location_id")
       if (savedLocationId && locationsData) {
-        const saved = locationsData.find((l: any) => l.id === savedLocationId)
+        const saved = locationsData.find((l: Location) => l.id === savedLocationId)
         if (saved) {
           setAssignedLocation(saved)
         } else {
           // Default to Prairie House 2
-          const defaultLocation = locationsData.find((l: any) => l.name === "Prairie House 2")
+          const defaultLocation = locationsData.find((l: Location) => l.name === "Prairie House 2")
           setAssignedLocation(defaultLocation || locationsData[0])
         }
       } else {
         // Default to Prairie House 2
-        const defaultLocation = locationsData?.find((l: any) => l.name === "Prairie House 2")
+        const defaultLocation = locationsData?.find((l: Location) => l.name === "Prairie House 2")
         setAssignedLocation(defaultLocation || locationsData?.[0])
       }
 

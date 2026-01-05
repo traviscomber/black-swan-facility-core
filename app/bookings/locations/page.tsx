@@ -299,11 +299,11 @@ export default function LocationsPage() {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="latitude">Latitude</Label>
-                    <Input id="latitude" name="latitude" type="number" step="any" placeholder="9.12345" />
+                    <Input id="latitude" name="latitude" type="number" step="0.00001" placeholder="9.12345" />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="longitude">Longitude</Label>
-                    <Input id="edit-longitude" name="longitude" type="number" step="any" placeholder="-83.12345" />
+                    <Input id="edit-longitude" name="longitude" type="number" step="0.00001" placeholder="-83.12345" />
                   </div>
                 </div>
               </div>
@@ -345,7 +345,7 @@ export default function LocationsPage() {
                       id="edit-latitude"
                       name="latitude"
                       type="number"
-                      step="any"
+                      step="0.00001"
                       defaultValue={editingLocation?.latitude || ""}
                     />
                   </div>
@@ -355,7 +355,7 @@ export default function LocationsPage() {
                       id="edit-longitude"
                       name="longitude"
                       type="number"
-                      step="any"
+                      step="0.00001"
                       defaultValue={editingLocation?.longitude || ""}
                     />
                   </div>

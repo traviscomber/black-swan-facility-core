@@ -1,9 +1,9 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Plus, Anchor, Ship, Trash2, Edit2, Filter, Calendar, AlertCircle } from "lucide-react"
+import { Plus, Anchor, Ship, Trash2, Edit2, Filter } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card } from "@/components/ui/card"
 import { AppLayout } from "@/components/app-layout"
 import { PageHeader } from "@/components/page-header"
 import {
@@ -21,7 +21,6 @@ import { Textarea } from "@/components/ui/textarea"
 import { createBrowserClient } from "@supabase/ssr"
 import PortBoatPhotoUpload from "@/components/ports-boats-photo-upload"
 import { VesselScheduleCalendar } from "@/components/vessel-schedule-calendar"
-import { ScheduleDialog } from "@/components/schedule-dialog"
 
 interface PortBoat {
   id: string
@@ -272,19 +271,26 @@ function PortsBoatsContent({
 }
 
 export default function PortsBoatsPage() {
-  const [supabase] = useState(() =>
-    createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!),
+  const supabase = createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL || "",
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "",
   )
 
   const [boats, setBoats] = useState<PortBoat[]>([])
-  const [loading, setLoading] = useState(true)
   const [isOpen, setIsOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
-  const [formData, setFormData] = useState<Partial<PortBoat>>({
-    type: "boat",
-    status: "operational",
+  const [filterType, setFilterType] = useState("all")
+  const [loading, setLoading] = useState(false)
+  const [formData, setFormData] = useState({
+    type: "boat" as "port" | "boat",
+    status: "operational" as "operational" | "maintenance" | "inactive",
+    name: "",
+    location: "",
+    capacity: "",
+    description: "",
+    last_maintenance: "",
+    photo_url: "",
   })
-  const [filterType, setFilterType] = useState<"all" | "port" | "boat">("all")
 
   useEffect(() => {
     fetchPortsBoats()
@@ -338,7 +344,16 @@ export default function PortsBoatsPage() {
       }
 
       await fetchPortsBoats()
-      setFormData({ type: "boat", status: "operational" })
+      setFormData({
+        type: "boat",
+        status: "operational",
+        name: "",
+        location: "",
+        capacity: "",
+        description: "",
+        last_maintenance: "",
+        photo_url: "",
+      })
       setEditingId(null)
       setIsOpen(false)
     } catch (err) {
@@ -401,15 +416,43 @@ export default function PortsBoatsPage() {
       <div className="space-y-6">
         <PageHeader
           title="Ports & Boats"
-          description="Manage your port facilities and boat fleet"
-          icon={<Anchor className="h-6 w-6" />}
+          description="Manage all ports and vessels"
+          actionLabel="New"
+          onAction={() => {
+            setEditingId(null)
+            setFormData({
+              type: "boat" as "port" | "boat",
+              status: "operational" as "operational" | "maintenance" | "inactive",
+              name: "",
+              location: "",
+              capacity: "",
+              description: "",
+              last_maintenance: "",
+              photo_url: "",
+            })
+            setIsOpen(true)
+          }}
         />
 
         {/* Add Port/Boat Dialog */}
         <div className="flex justify-end">
           <Dialog open={isOpen} onOpenChange={setIsOpen}>
             <DialogTrigger asChild>
-              <Button onClick={() => setFormData({ type: "boat", status: "operational" })} className="gap-2">
+              <Button
+                onClick={() =>
+                  setFormData({
+                    type: "boat",
+                    status: "operational",
+                    name: "",
+                    location: "",
+                    capacity: "",
+                    description: "",
+                    last_maintenance: "",
+                    photo_url: "",
+                  })
+                }
+                className="gap-2"
+              >
                 <Plus className="h-4 w-4" />
                 Add Port or Boat
               </Button>
@@ -543,33 +586,11 @@ export default function PortsBoatsPage() {
         />
 
         {/* Vessel Schedule Calendar Section */}
-        <div className="mt-8 border-t pt-8">
-          <h2 className="text-2xl font-bold mb-6 flex items-center gap-2">
-            <Calendar className="h-6 w-6" />
-            Daily Vessel Schedules
-          </h2>
-
-          {/* Migration Script Instruction Card */}
-          <Card className="border-amber-500/20 bg-amber-500/5 mb-6">
-            <CardHeader>
-              <CardTitle className="text-sm flex items-center gap-2 text-white">
-                <AlertCircle className="h-4 w-4 text-amber-500" />
-                Setup Vessel Schedules
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="text-sm text-gray-300">
-              <p className="mb-3">
-                To set up vessel schedules, run the migration script{" "}
-                <code className="bg-slate-800 px-2 py-1 rounded text-xs">019_create_vessel_schedules_table.sql</code>{" "}
-                from the scripts folder.
-              </p>
-              <p>Once set up, you can add vessel schedules through the calendar interface.</p>
-            </CardContent>
-          </Card>
-
-          <VesselScheduleCalendar vessels={boats} />
-          <ScheduleDialog />
-        </div>
+        {boats.length > 0 && (
+          <div className="mt-12 pt-8 border-t border-slate-700">
+            <VesselScheduleCalendar vessels={boats} ports={boats.filter((b) => b.type === "port")} />
+          </div>
+        )}
       </div>
     </AppLayout>
   )

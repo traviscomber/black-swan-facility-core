@@ -80,6 +80,13 @@ interface BuildingConsumption {
   last_updated: string
 }
 
+interface Specifications {
+  voltage?: string
+  current?: string
+  capacity?: string
+  power?: string
+}
+
 export default function EnergyManagementPage() {
   const [solarPanels, setSolarPanels] = useState<SolarPanel[]>([
     // Prairie House 1 - 24 panels (6 per roof section)
@@ -335,7 +342,7 @@ export default function EnergyManagementPage() {
       power,
     } = deviceFormData
 
-    const specifications: any = {}
+    const specifications: Specifications = {}
     if (voltage) specifications.voltage = voltage
     if (current) specifications.current = current
     if (capacity) specifications.capacity = capacity
@@ -392,7 +399,7 @@ export default function EnergyManagementPage() {
       power,
     } = deviceFormData
 
-    const specifications: any = {}
+    const specifications: Specifications = {}
     if (voltage) specifications.voltage = voltage
     if (current) specifications.current = current
     if (capacity) specifications.capacity = capacity

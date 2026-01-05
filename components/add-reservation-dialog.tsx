@@ -12,6 +12,49 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea"
 import { format } from "date-fns"
 
+interface Room {
+  room_number: string
+  room_type: string
+  rate_per_night: number
+  location: string
+  location_id: string
+  location_ref?: { id: string; name: string }
+  capacity?: number
+  max_guests?: number
+}
+
+interface Bed {
+  id: string
+  bed_number: string
+  bed_type: string
+  is_available: boolean
+  room_id: string
+  room?: Room
+}
+
+interface Guest {
+  id: string
+  name: string
+  email?: string
+  phone?: string
+}
+
+interface Location {
+  id: string
+  name: string
+  is_active: boolean
+}
+
+interface ReservationConfirmationData {
+  guestName: string
+  bedInfo: string
+  checkIn: string
+  checkOut: string
+  nights: number
+  totalAmount: number
+  locationName: string
+}
+
 interface AddReservationDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -29,13 +72,13 @@ export function AddReservationDialog({
   preselectedDate,
   preselectedLocation,
 }: AddReservationDialogProps) {
-  const [beds, setBeds] = useState<any[]>([])
-  const [guests, setGuests] = useState<any[]>([])
-  const [locations, setLocations] = useState<any[]>([])
+  const [beds, setBeds] = useState<Bed[]>([])
+  const [guests, setGuests] = useState<Guest[]>([])
+  const [locations, setLocations] = useState<Location[]>([])
   const [selectedLocationFilter, setSelectedLocationFilter] = useState<string>("all")
   const [loading, setLoading] = useState(false)
   const [showConfirmation, setShowConfirmation] = useState(false)
-  const [confirmationData, setConfirmationData] = useState<any>(null)
+  const [confirmationData, setConfirmationData] = useState<ReservationConfirmationData | null>(null)
   const [capacityWarning, setCapacityWarning] = useState<string | null>(null)
 
   const [formData, setFormData] = useState({
@@ -95,7 +138,6 @@ export function AddReservationDialog({
 
   useEffect(() => {
     if (preselectedBed && preselectedLocation && beds.length > 0) {
-      // Find the bed and verify it matches the selected location
       const matchingBed = beds.find((bed) => {
         const bedLocationName = bed.room?.location_ref?.name || bed.room?.location
         return bed.id === preselectedBed && bedLocationName === preselectedLocation
@@ -114,7 +156,7 @@ export function AddReservationDialog({
     if (preselectedDate) {
       const checkInDate = new Date(preselectedDate)
       const checkOutDate = new Date(checkInDate)
-      checkOutDate.setDate(checkOutDate.getDate() + 1) // Add 1 day for default single-night stay
+      checkOutDate.setDate(checkOutDate.getDate() + 1)
 
       setFormData((prev) => ({
         ...prev,

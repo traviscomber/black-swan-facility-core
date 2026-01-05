@@ -53,12 +53,24 @@ type InfrastructurePhoto = {
   taken_at: string
 }
 
+type InfrastructureDocumentVersion = {
+  id: string
+  document_url: string
+  document_name: string
+  document_type: string | null
+  version_number: number
+  uploaded_at: string
+  notes: string | null
+}
+
 type InfrastructureDocument = {
   id: string
   document_url: string
   document_name: string
   document_type: string | null
   uploaded_at: string
+  current_version: number
+  version_notes: string | null
 }
 
 type InfrastructureDetailPanelProps = {
@@ -78,6 +90,8 @@ export function InfrastructureDetailPanel({
 }: InfrastructureDetailPanelProps) {
   const [photos, setPhotos] = useState<InfrastructurePhoto[]>([])
   const [documents, setDocuments] = useState<InfrastructureDocument[]>([])
+  const [documentVersions, setDocumentVersions] = useState<Record<string, InfrastructureDocumentVersion[]>>({})
+  const [showVersionHistory, setShowVersionHistory] = useState<string | null>(null)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [showPhotoDialog, setShowPhotoDialog] = useState(false)
@@ -120,6 +134,22 @@ export function InfrastructureDetailPanel({
       .order("uploaded_at", { ascending: false })
 
     if (data) setDocuments(data)
+  }
+
+  const fetchDocumentVersions = async (docId: string) => {
+    const supabase = createClient()
+    const { data } = await supabase
+      .from("infrastructure_document_versions")
+      .select("*")
+      .eq("document_id", docId)
+      .order("version_number", { ascending: false })
+
+    if (data) {
+      setDocumentVersions((prev) => ({
+        ...prev,
+        [docId]: data,
+      }))
+    }
   }
 
   const handleDelete = async () => {
@@ -342,21 +372,48 @@ export function InfrastructureDetailPanel({
       // Get public URL for the uploaded file
       const { data: urlData } = supabase.storage.from("infrastructure-files").getPublicUrl(uploadData.path)
 
-      // Store file path in database
-      const { error: dbError } = await supabase.from("infrastructure_documents").insert({
-        infrastructure_id: infrastructure.id,
-        document_url: urlData.publicUrl,
-        document_name: documentName || documentFile.name,
-        document_type: fileExt || null,
-        uploaded_at: new Date().toISOString(),
-      })
+      // First, get next version number
+      const { data: existingDocs } = await supabase
+        .from("infrastructure_documents")
+        .select("current_version")
+        .eq("infrastructure_id", infrastructure.id)
+        .eq("document_name", documentName || documentFile.name)
+        .single()
+
+      const nextVersion = existingDocs ? existingDocs.current_version + 1 : 1
+
+      // Insert into main documents table
+      const { data: newDoc, error: dbError } = await supabase
+        .from("infrastructure_documents")
+        .insert({
+          infrastructure_id: infrastructure.id,
+          document_url: urlData.publicUrl,
+          document_name: documentName || documentFile.name,
+          document_type: fileExt || null,
+          uploaded_at: new Date().toISOString(),
+          current_version: nextVersion,
+          version_notes: documentName ? `Version ${nextVersion}` : null,
+        })
+        .select()
+        .single()
 
       if (dbError) {
         console.error("[v0] Database insert error:", dbError)
         throw dbError
       }
 
-      console.log("[v0] Document successfully uploaded and saved")
+      // Insert into versions table for history tracking
+      await supabase.from("infrastructure_document_versions").insert({
+        document_id: newDoc.id,
+        infrastructure_id: infrastructure.id,
+        document_url: urlData.publicUrl,
+        document_name: documentName || documentFile.name,
+        document_type: fileExt || null,
+        version_number: nextVersion,
+        notes: `Version ${nextVersion} uploaded`,
+      })
+
+      console.log("[v0] Document successfully uploaded with version tracking")
       await fetchDocuments()
       setShowDocumentDialog(false)
       setDocumentFile(null)
@@ -637,38 +694,86 @@ export function InfrastructureDetailPanel({
                   </div>
                 ) : (
                   documents.map((doc) => (
-                    <div
-                      key={doc.id}
-                      className="flex items-center gap-3 p-3 border border-gray-200 rounded-lg hover:bg-gray-50 group"
-                    >
-                      <FileText className="h-5 w-5 text-blue-600 flex-shrink-0" />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium truncate">{doc.document_name}</p>
-                        <p className="text-xs text-gray-500">{new Date(doc.uploaded_at).toLocaleDateString()}</p>
+                    <div key={doc.id}>
+                      <div className="flex items-center gap-3 p-3 border border-gray-200 rounded-lg hover:bg-gray-50 group">
+                        <FileText className="h-5 w-5 text-blue-600 flex-shrink-0" />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium truncate">{doc.document_name}</p>
+                          <p className="text-xs text-gray-500">
+                            {new Date(doc.uploaded_at).toLocaleDateString()} • v{doc.current_version}
+                          </p>
+                        </div>
+                        {doc.document_type && (
+                          <Badge variant="outline" className="text-xs uppercase">
+                            {doc.document_type}
+                          </Badge>
+                        )}
+                        <div className="flex gap-1">
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-8 w-8 p-0"
+                            onClick={() => {
+                              if (showVersionHistory === doc.id) {
+                                setShowVersionHistory(null)
+                              } else {
+                                setShowVersionHistory(doc.id)
+                                fetchDocumentVersions(doc.id)
+                              }
+                            }}
+                            title="View version history"
+                          >
+                            <Calendar className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-8 w-8 p-0"
+                            onClick={() => window.open(doc.document_url, "_blank")}
+                          >
+                            <Download className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
+                            onClick={() => handleDeleteDocument(doc)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </div>
-                      {doc.document_type && (
-                        <Badge variant="outline" className="text-xs uppercase">
-                          {doc.document_type}
-                        </Badge>
+
+                      {showVersionHistory === doc.id && documentVersions[doc.id] && (
+                        <div className="ml-8 mt-2 mb-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                          <p className="text-xs font-semibold text-blue-900 mb-2">
+                            Version History ({documentVersions[doc.id].length})
+                          </p>
+                          <div className="space-y-2 max-h-40 overflow-y-auto">
+                            {documentVersions[doc.id].map((version) => (
+                              <div key={version.id} className="text-xs p-2 bg-white rounded border border-blue-100">
+                                <div className="flex justify-between items-start">
+                                  <div>
+                                    <p className="font-medium text-blue-900">v{version.version_number}</p>
+                                    <p className="text-gray-600 text-xs">
+                                      {new Date(version.uploaded_at).toLocaleString()}
+                                    </p>
+                                    {version.notes && <p className="text-gray-700 mt-1">{version.notes}</p>}
+                                  </div>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="h-6 text-xs px-2 bg-transparent"
+                                    onClick={() => window.open(version.document_url, "_blank")}
+                                  >
+                                    View
+                                  </Button>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
                       )}
-                      <div className="flex gap-1">
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="h-8 w-8 p-0"
-                          onClick={() => window.open(doc.document_url, "_blank")}
-                        >
-                          <Download className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
-                          onClick={() => handleDeleteDocument(doc)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
                     </div>
                   ))
                 )}
@@ -754,7 +859,8 @@ export function InfrastructureDetailPanel({
           <DialogHeader>
             <DialogTitle>Upload Document</DialogTitle>
             <DialogDescription>
-              Add a document for {infrastructure.name}. Supports PDF, Word, Excel, and other file types.
+              Add a document for {infrastructure.name}. Supports PDF, Word, Excel, text files, and images (especially
+              useful for electrical diagrams).
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
@@ -764,7 +870,7 @@ export function InfrastructureDetailPanel({
                 ref={documentInputRef}
                 id="document"
                 type="file"
-                accept=".pdf,.doc,.docx,.xls,.xlsx,.txt,.csv"
+                accept=".pdf,.doc,.docx,.xls,.xlsx,.txt,.csv,image/*"
                 onChange={handleDocumentSelect}
                 className="hidden"
               />
@@ -777,7 +883,7 @@ export function InfrastructureDetailPanel({
                 <Upload className="h-4 w-4 mr-2" />
                 {documentFile ? documentFile.name : "Select Document"}
               </Button>
-              <p className="text-xs text-gray-500">PDF, Word, Excel, text files supported</p>
+              <p className="text-xs text-gray-500">PDF, Word, Excel, text files, and images supported</p>
             </div>
             <div className="space-y-2">
               <Label htmlFor="docName">Document Name</Label>

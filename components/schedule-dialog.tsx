@@ -8,6 +8,11 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 
+interface Port {
+  id: string
+  name: string
+}
+
 interface ScheduleDialogProps {
   isOpen: boolean
   onOpenChange: (open: boolean) => void
@@ -18,12 +23,22 @@ interface ScheduleDialogProps {
     arrival_time?: string
     status: string
     notes?: string
+    origin_port_id?: string
+    destination_port_id?: string
   } | null
-  vessels: Array<{ id: string; name: string }>
+  vessels?: Array<{ id: string; name: string }> | null
+  ports?: Port[] | null
   onSave: (data: any) => Promise<void>
 }
 
-export function ScheduleDialog({ isOpen, onOpenChange, schedule, vessels, onSave }: ScheduleDialogProps) {
+export function ScheduleDialog({
+  isOpen,
+  onOpenChange,
+  schedule,
+  vessels = [],
+  ports = [],
+  onSave,
+}: ScheduleDialogProps) {
   const [formData, setFormData] = useState(
     schedule || {
       vessel_id: "",
@@ -31,9 +46,20 @@ export function ScheduleDialog({ isOpen, onOpenChange, schedule, vessels, onSave
       arrival_time: "",
       status: "scheduled",
       notes: "",
+      origin_port_id: "",
+      destination_port_id: "", // Default to Corcovado if available
     },
   )
   const [loading, setLoading] = useState(false)
+
+  const handleOriginChange = (value: string) => {
+    setFormData({ ...formData, origin_port_id: value })
+    // Auto-populate destination if Corcovado exists
+    const corcovado = ports?.find((p) => p.name.toLowerCase().includes("corcovado"))
+    if (corcovado) {
+      setFormData((prev) => ({ ...prev, destination_port_id: corcovado.id }))
+    }
+  }
 
   const handleSave = async () => {
     setLoading(true)
@@ -46,6 +72,8 @@ export function ScheduleDialog({ isOpen, onOpenChange, schedule, vessels, onSave
         arrival_time: "",
         status: "scheduled",
         notes: "",
+        origin_port_id: "",
+        destination_port_id: "",
       })
     } finally {
       setLoading(false)
@@ -73,11 +101,64 @@ export function ScheduleDialog({ isOpen, onOpenChange, schedule, vessels, onSave
                 <SelectValue placeholder="Select a vessel" />
               </SelectTrigger>
               <SelectContent>
-                {vessels.map((vessel) => (
-                  <SelectItem key={vessel.id} value={vessel.id}>
-                    {vessel.name}
+                {vessels && vessels.length > 0 ? (
+                  vessels.map((vessel) => (
+                    <SelectItem key={vessel.id} value={vessel.id}>
+                      {vessel.name}
+                    </SelectItem>
+                  ))
+                ) : (
+                  <SelectItem disabled value="none">
+                    No vessels available
                   </SelectItem>
-                ))}
+                )}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div>
+            <Label htmlFor="origin_port_id">Departure Port</Label>
+            <Select value={formData.origin_port_id} onValueChange={handleOriginChange}>
+              <SelectTrigger id="origin_port_id">
+                <SelectValue placeholder="Select departure port" />
+              </SelectTrigger>
+              <SelectContent>
+                {ports && ports.length > 0 ? (
+                  ports.map((port) => (
+                    <SelectItem key={port.id} value={port.id}>
+                      {port.name}
+                    </SelectItem>
+                  ))
+                ) : (
+                  <SelectItem disabled value="none">
+                    No ports available
+                  </SelectItem>
+                )}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div>
+            <Label htmlFor="destination_port_id">Arrival Port</Label>
+            <Select
+              value={formData.destination_port_id}
+              onValueChange={(value) => setFormData({ ...formData, destination_port_id: value })}
+            >
+              <SelectTrigger id="destination_port_id">
+                <SelectValue placeholder="Select arrival port" />
+              </SelectTrigger>
+              <SelectContent>
+                {ports && ports.length > 0 ? (
+                  ports.map((port) => (
+                    <SelectItem key={port.id} value={port.id}>
+                      {port.name}
+                    </SelectItem>
+                  ))
+                ) : (
+                  <SelectItem disabled value="none">
+                    No ports available
+                  </SelectItem>
+                )}
               </SelectContent>
             </Select>
           </div>

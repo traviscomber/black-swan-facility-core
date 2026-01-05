@@ -21,8 +21,26 @@ import { TrendingUp, Download, Award } from "lucide-react"
 import { useEffect, useState } from "react"
 import { createBrowserClient } from "@/lib/supabase/client"
 
+interface BusinessPlanRecord {
+  year: number
+  month: string
+  business_unit: string
+  profit_loss: number
+  inventory_count: number
+}
+
+interface ChartData {
+  year: number
+  crianzaProfit: number
+  engordaProfit: number
+  cumulativeProfit: number
+  totalInventory: number
+  isMilestone: boolean
+  milestoneText: string
+}
+
 export default function CattleBusinessPlanPage() {
-  const [data, setData] = useState<any>(null)
+  const [data, setData] = useState<ChartData[] | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -40,9 +58,9 @@ export default function CattleBusinessPlanPage() {
 
         // Calculate cumulative profits and organize by year
         let cumulativeProfit = 0
-        const yearlyData = {}
+        const yearlyData: Record<number, ChartData> = {}
 
-        plans?.forEach((plan: any) => {
+        plans?.forEach((plan: BusinessPlanRecord) => {
           cumulativeProfit += plan.profit_loss
           const yearKey = plan.year
 
@@ -99,7 +117,7 @@ export default function CattleBusinessPlanPage() {
   }
 
   const lastYearData = data?.[data.length - 1]
-  const year4Data = data?.find((d: any) => d.year === 2027)
+  const year4Data = data?.find((d) => d.year === 2027)
 
   return (
     <AppLayout>

@@ -29,11 +29,17 @@ interface Vessel {
   type: string
 }
 
-interface VesselScheduleCalendarProps {
-  vessels: Vessel[]
+interface Port {
+  id: string
+  name: string
 }
 
-export function VesselScheduleCalendar({ vessels }: VesselScheduleCalendarProps) {
+interface VesselScheduleCalendarProps {
+  vessels: Vessel[]
+  ports?: Port[]
+}
+
+export function VesselScheduleCalendar({ vessels, ports = [] }: VesselScheduleCalendarProps) {
   const [supabase] = useState(() =>
     createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!),
   )
@@ -88,6 +94,8 @@ export function VesselScheduleCalendar({ vessels }: VesselScheduleCalendarProps)
                   (scheduleIdx * 15) % 60 < 10 ? "0" : ""
                 }${(scheduleIdx * 15) % 60}`,
                 arrival_time: undefined,
+                origin_port_id: ports[0]?.id,
+                destination_port_id: ports[ports.length - 1]?.id,
                 status: ["scheduled", "departed"][Math.floor(Math.random() * 2)],
                 ports_boats: { name: vessel.name },
               })),
@@ -105,6 +113,11 @@ export function VesselScheduleCalendar({ vessels }: VesselScheduleCalendarProps)
     } finally {
       setLoading(false)
     }
+  }
+
+  const getPortName = (portId?: string) => {
+    if (!portId) return "Unknown Port"
+    return ports.find((p) => p.id === portId)?.name || "Unknown Port"
   }
 
   const handleSaveSchedule = async (formData: any) => {
@@ -286,12 +299,13 @@ export function VesselScheduleCalendar({ vessels }: VesselScheduleCalendarProps)
                             {schedulesAtHour.map((schedule) => (
                               <div key={schedule.id} className="relative group/item">
                                 <Badge
-                                  className={`${getStatusColor(schedule.status)} border text-xs whitespace-nowrap cursor-pointer hover:opacity-80`}
+                                  className={`${getStatusColor(schedule.status)} border text-xs whitespace-nowrap cursor-pointer hover:opacity-80 flex items-center justify-center gap-1`}
+                                  title={`${getPortName(schedule.origin_port_id)} → ${getPortName(schedule.destination_port_id)}`}
                                 >
-                                  <Clock className="h-3 w-3 mr-1" />
+                                  <Clock className="h-3 w-3" />
                                   {schedule.departure_time}
                                 </Badge>
-                                <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 opacity-0 group-hover/item:opacity-100 transition-opacity bg-slate-800 rounded border border-slate-600 flex gap-1 p-1 z-50 whitespace-nowrap">
+                                <div className="absolute -top-12 left-1/2 transform -translate-x-1/2 opacity-0 group-hover/item:opacity-100 transition-opacity bg-slate-800 rounded border border-slate-600 flex gap-1 p-1 z-50 whitespace-nowrap">
                                   <Button
                                     size="sm"
                                     variant="ghost"
@@ -369,6 +383,7 @@ export function VesselScheduleCalendar({ vessels }: VesselScheduleCalendarProps)
         onOpenChange={setDialogOpen}
         schedule={selectedSchedule}
         vessels={boats}
+        ports={ports}
         onSave={handleSaveSchedule}
       />
     </div>
