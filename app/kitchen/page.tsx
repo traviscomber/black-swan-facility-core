@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Plus, ChefHat, Trash2, Edit2 } from "lucide-react"
+import { Plus, ChefHat, Trash2, Edit2, AlertCircle } from "lucide-react"
 import { AppLayout } from "@/components/app-layout"
 import { PageHeader } from "@/components/page-header"
 import { Button } from "@/components/ui/button"
@@ -19,6 +19,7 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { createBrowserClient } from "@/lib/supabase/client"
+import { useToast } from "@/hooks/use-toast"
 
 interface Kitchen {
   id: string
@@ -39,20 +40,24 @@ function KitchenContent() {
     status: "operational",
   })
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const { toast } = useToast()
 
   useEffect(() => {
     const loadKitchens = async () => {
       try {
         const supabase = createBrowserClient()
-        const { data, error } = await supabase.from("kitchens").select("*").order("name")
+        const { data, error: queryError } = await supabase.from("kitchens").select("*").order("name")
 
-        if (error) {
-          console.error("[v0] Error loading kitchens:", error)
+        if (queryError) {
+          console.error("[v0] Error loading kitchens:", queryError)
+          setError("kitchens_table_missing")
         } else if (data) {
           setKitchens(data as Kitchen[])
         }
       } catch (err) {
         console.error("[v0] Error loading kitchens:", err)
+        setError("kitchens_table_missing")
       } finally {
         setLoading(false)
       }
@@ -61,28 +66,54 @@ function KitchenContent() {
     loadKitchens()
   }, [])
 
-  const handleAddOrEdit = () => {
-    if (!formData.name || !formData.location) return
-
-    if (editingId) {
-      setKitchens(kitchens.map((k) => (k.id === editingId ? { ...k, ...formData } : k)))
-      setEditingId(null)
-    } else {
-      const newKitchen: Kitchen = {
-        id: Date.now().toString(),
-        name: formData.name || "",
-        location: formData.location || "",
-        capacity: formData.capacity || "",
-        equipment: formData.equipment || "",
-        status: formData.status || "operational",
-        description: formData.description || "",
-        lastCleaning: formData.lastCleaning,
-      }
-      setKitchens([...kitchens, newKitchen])
+  const handleAddOrEdit = async () => {
+    if (!formData.name || !formData.location) {
+      toast({
+        title: "Validation Error",
+        description: "Name and location are required",
+        variant: "destructive",
+      })
+      return
     }
 
-    setFormData({ status: "operational" })
-    setIsOpen(false)
+    try {
+      const supabase = createBrowserClient()
+
+      if (editingId) {
+        const { error: updateError } = await supabase.from("kitchens").update(formData).eq("id", editingId)
+
+        if (updateError) throw updateError
+
+        setKitchens(kitchens.map((k) => (k.id === editingId ? { ...k, ...formData } : k)))
+        toast({
+          title: "Success",
+          description: "Kitchen updated successfully",
+        })
+      } else {
+        const { data: newKitchen, error: insertError } = await supabase.from("kitchens").insert([formData]).select()
+
+        if (insertError) throw insertError
+
+        if (newKitchen) {
+          setKitchens([...kitchens, newKitchen[0] as Kitchen])
+          toast({
+            title: "Success",
+            description: "Kitchen added successfully",
+          })
+        }
+      }
+
+      setFormData({ status: "operational" })
+      setEditingId(null)
+      setIsOpen(false)
+    } catch (err) {
+      console.error("[v0] Error saving kitchen:", err)
+      toast({
+        title: "Error",
+        description: "Failed to save kitchen. Please try again.",
+        variant: "destructive",
+      })
+    }
   }
 
   const handleEdit = (kitchen: Kitchen) => {
@@ -91,8 +122,26 @@ function KitchenContent() {
     setIsOpen(true)
   }
 
-  const handleDelete = (id: string) => {
-    setKitchens(kitchens.filter((k) => k.id !== id))
+  const handleDelete = async (id: string) => {
+    try {
+      const supabase = createBrowserClient()
+      const { error: deleteError } = await supabase.from("kitchens").delete().eq("id", id)
+
+      if (deleteError) throw deleteError
+
+      setKitchens(kitchens.filter((k) => k.id !== id))
+      toast({
+        title: "Success",
+        description: "Kitchen deleted successfully",
+      })
+    } catch (err) {
+      console.error("[v0] Error deleting kitchen:", err)
+      toast({
+        title: "Error",
+        description: "Failed to delete kitchen",
+        variant: "destructive",
+      })
+    }
   }
 
   const getStatusColor = (status: string) => {
@@ -116,6 +165,23 @@ function KitchenContent() {
         icon={ChefHat}
       />
 
+      {error === "kitchens_table_missing" && (
+        <Card className="mb-6 p-4 bg-amber-50 border-amber-200">
+          <div className="flex gap-3">
+            <AlertCircle className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
+            <div>
+              <h3 className="font-semibold text-amber-900">Setup Required</h3>
+              <p className="text-sm text-amber-800 mt-1">
+                The kitchens table needs to be created. Run the migration script in your Supabase SQL editor:
+              </p>
+              <code className="text-xs bg-amber-100 p-2 rounded mt-2 block font-mono">
+                scripts/026_create_kitchens_table.sql
+              </code>
+            </div>
+          </div>
+        </Card>
+      )}
+
       <div className="mb-6 flex justify-end">
         <Dialog open={isOpen} onOpenChange={setIsOpen}>
           <DialogTrigger asChild>
@@ -124,6 +190,7 @@ function KitchenContent() {
                 setEditingId(null)
                 setFormData({ status: "operational" })
               }}
+              disabled={error === "kitchens_table_missing"}
             >
               <Plus className="h-4 w-4 mr-2" />
               Add Kitchen
