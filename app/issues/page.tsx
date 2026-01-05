@@ -7,6 +7,8 @@ import Link from "next/link"
 import { Plus } from "lucide-react"
 import { EditIssueDialog } from "@/components/edit-issue-dialog"
 import { DeleteIssueButton } from "@/components/delete-issue-button"
+import { IssueLabelSelector } from "@/components/issue-labels-selector"
+import { IssueTaskLinkDialog } from "@/components/issue-task-link-dialog"
 
 function formatDate(dateString: string) {
   return new Date(dateString).toLocaleDateString("en-US", {
@@ -59,6 +61,8 @@ export default async function FacilityRequestsPage() {
     (issues || []).map(async (issue) => {
       let assetName = null
       let employeeName = null
+      let labels = []
+      let linkedTasks = []
 
       if (issue.asset_id) {
         const { data: asset } = await supabase.from("assets").select("name").eq("id", issue.asset_id).single()
@@ -70,10 +74,30 @@ export default async function FacilityRequestsPage() {
         employeeName = employee?.name
       }
 
+      const { data: labelData } = await supabase
+        .from("issue_label_assignments")
+        .select("issue_labels(*)")
+        .eq("issue_id", issue.id)
+
+      if (labelData) {
+        labels = labelData.map((l: any) => l.issue_labels)
+      }
+
+      const { data: taskData } = await supabase
+        .from("issue_task_assignments")
+        .select("tasks(*)")
+        .eq("issue_id", issue.id)
+
+      if (taskData) {
+        linkedTasks = taskData.map((t: any) => t.tasks)
+      }
+
       return {
         ...issue,
         assets: assetName ? { name: assetName } : null,
         employees: employeeName ? { name: employeeName } : null,
+        labels,
+        linkedTasks,
       }
     }),
   )
@@ -101,7 +125,6 @@ export default async function FacilityRequestsPage() {
                 key={request.id}
                 className="border border-gray-700 rounded-lg bg-gray-900 p-6 hover:border-gray-600 transition-colors"
               >
-                {/* Header with title and status */}
                 <div className="flex items-start justify-between gap-4 mb-4">
                   <div className="flex-1">
                     <h3 className="text-lg font-semibold text-foreground mb-1">{request.title || "Untitled"}</h3>
@@ -110,10 +133,31 @@ export default async function FacilityRequestsPage() {
                   <Badge className={`whitespace-nowrap ${getStatusColor(request.status)}`}>{request.status}</Badge>
                 </div>
 
-                {/* Description */}
                 {request.description && <p className="text-foreground mb-4 leading-relaxed">{request.description}</p>}
 
-                {/* Metadata row */}
+                {request.labels && request.labels.length > 0 && (
+                  <div className="flex flex-wrap gap-2 mb-4">
+                    {request.labels.map((label: any) => (
+                      <Badge key={label.id} style={{ backgroundColor: label.color }} className="text-white">
+                        {label.name}
+                      </Badge>
+                    ))}
+                  </div>
+                )}
+
+                {request.linkedTasks && request.linkedTasks.length > 0 && (
+                  <div className="mb-4 p-3 bg-blue-900 bg-opacity-20 border border-blue-700 rounded">
+                    <p className="text-xs text-blue-300 font-semibold mb-2">Linked Tasks</p>
+                    <div className="flex flex-wrap gap-2">
+                      {request.linkedTasks.map((task: any) => (
+                        <Badge key={task.id} variant="outline" className="text-xs">
+                          {task.title}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4 pb-4 border-t border-gray-700 pt-4">
                   <div>
                     <p className="text-xs text-muted-foreground mb-1">Priority</p>
@@ -137,7 +181,6 @@ export default async function FacilityRequestsPage() {
                   </div>
                 </div>
 
-                {/* Photo and actions */}
                 <div className="flex items-center justify-between">
                   {request.photo_url && (
                     <img
@@ -147,6 +190,8 @@ export default async function FacilityRequestsPage() {
                     />
                   )}
                   <div className="flex items-center gap-2 ml-auto">
+                    <IssueLabelSelector issueId={request.id} />
+                    <IssueTaskLinkDialog issueId={request.id} />
                     <EditIssueDialog issue={request} />
                     <DeleteIssueButton issueId={request.id} />
                   </div>
