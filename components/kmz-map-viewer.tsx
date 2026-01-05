@@ -1,82 +1,67 @@
 "use client"
 
-import { useEffect, useRef } from "react"
-import L from "leaflet"
-import "leaflet/dist/leaflet.css"
+import { useState } from "react"
 
-interface KmzFile {
-  id: string
-  name: string
-  file_url: string
+const KmzMapView = () => {
+  const [mapLoaded, setMapLoaded] = useState(false)
+  const [mapType, setMapType] = useState<"street" | "satellite" | "terrain" | "hybrid">("street")
+  const [terrainOpacity, setTerrainOpacity] = useState(0.5)
+
+  return (
+    <div>
+      {mapLoaded && (
+        <div className="absolute top-4 left-4 z-[1000] space-y-3">
+          <div className="bg-white rounded-lg shadow-lg border border-gray-200 overflow-hidden mb-2">
+            {["street", "satellite", "terrain", "hybrid"].map((type) => (
+              <button
+                key={type}
+                onClick={() => {
+                  try {
+                    setMapType(type as "street" | "satellite" | "terrain" | "hybrid")
+                  } catch (e) {
+                    console.error("[v0] Error switching to", type, e)
+                  }
+                }}
+                className={`px-3 py-2 text-xs md:text-sm font-medium transition-colors block w-full text-left ${
+                  type !== "hybrid" ? "border-b border-gray-200" : ""
+                } ${mapType === type ? "bg-blue-50 text-blue-700" : "bg-white text-gray-700 hover:bg-gray-50"}`}
+              >
+                {type.charAt(0).toUpperCase() + type.slice(1)}
+              </button>
+            ))}
+          </div>
+
+          {mapType === "hybrid" && (
+            <div className="bg-white rounded-lg shadow-lg border border-gray-200 p-3 w-48">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-medium text-gray-700">Terrain Overlay</span>
+                <span className="text-xs text-gray-500">{Math.round(terrainOpacity * 100)}%</span>
+              </div>
+              <input
+                type="range"
+                min="0"
+                max="1"
+                step="0.05"
+                value={terrainOpacity}
+                onChange={(e) => {
+                  try {
+                    setTerrainOpacity(Number.parseFloat(e.target.value))
+                  } catch (e) {
+                    console.error("[v0] Error updating opacity", e)
+                  }
+                }}
+                className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
+              />
+              <div className="flex justify-between text-xs text-gray-500 mt-1">
+                <span>Satellite</span>
+                <span>Terrain</span>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
 }
 
-interface KmzMapViewerProps {
-  visibleLayers: Set<string>
-  kmzFiles: KmzFile[]
-}
-
-export default function KmzMapViewer({ visibleLayers, kmzFiles }: KmzMapViewerProps) {
-  const mapRef = useRef<L.Map | null>(null)
-  const layersRef = useRef<Map<string, L.GeoJSON>>(new Map())
-
-  useEffect(() => {
-    if (!mapRef.current) {
-      // Initialize map centered on facility default location (adjust coordinates as needed)
-      mapRef.current = L.map("map-container", {
-        center: [-40.5, -72.1], // Default to Valdivia region
-        zoom: 10,
-      })
-
-      // Add base layer
-      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-        attribution: "© OpenStreetMap contributors",
-        maxZoom: 19,
-      }).addTo(mapRef.current)
-    }
-
-    // Update visible layers
-    kmzFiles.forEach((file) => {
-      const isVisible = visibleLayers.has(file.id)
-      const existingLayer = layersRef.current.get(file.id)
-
-      if (isVisible && !existingLayer) {
-        // Load and add KMZ/GeoJSON layer
-        fetch(file.file_url)
-          .then((response) => response.json())
-          .then((data) => {
-            const geoJsonLayer = L.geoJSON(data, {
-              style: {
-                color: "#3b82f6",
-                weight: 2,
-                opacity: 0.7,
-              },
-            })
-
-            if (mapRef.current) {
-              geoJsonLayer.addTo(mapRef.current)
-              layersRef.current.set(file.id, geoJsonLayer)
-
-              // Fit bounds to layer
-              const bounds = geoJsonLayer.getBounds()
-              if (bounds.isValid()) {
-                mapRef.current.fitBounds(bounds, { padding: [50, 50] })
-              }
-            }
-          })
-          .catch((error) => console.error(`[v0] Error loading KMZ ${file.name}:`, error))
-      } else if (!isVisible && existingLayer) {
-        // Remove layer
-        if (mapRef.current) {
-          mapRef.current.removeLayer(existingLayer)
-        }
-        layersRef.current.delete(file.id)
-      }
-    })
-
-    return () => {
-      // Cleanup on unmount
-    }
-  }, [visibleLayers, kmzFiles])
-
-  return <div id="map-container" className="w-full h-full" />
-}
+export default KmzMapView

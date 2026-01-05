@@ -1,20 +1,19 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { createClient } from "@/lib/supabase/client"
 import { useToast } from "@/hooks/use-toast"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { KmzUploadDialog } from "@/components/kmz-upload-dialog"
 import dynamic from "next/dynamic"
-import "leaflet/dist/leaflet.css"
-import { Upload, Trash2, Eye, EyeOff, Download, Calendar } from "lucide-react"
+import { Upload, Trash2, Eye, EyeOff, ChevronRight, ChevronLeft, X } from "lucide-react"
 
-// Dynamically import Leaflet to avoid SSR issues
 const DynamicMap = dynamic(() => import("@/components/kmz-map-viewer"), {
   ssr: false,
-  loading: () => <div className="h-full bg-gray-100 flex items-center justify-center">Loading map...</div>,
+  loading: () => (
+    <div className="h-full bg-gray-100 flex items-center justify-center text-gray-500">Loading map...</div>
+  ),
 })
 
 interface KmzFile {
@@ -27,14 +26,20 @@ interface KmzFile {
   is_active: boolean
 }
 
+interface KmzFilesByDate {
+  [key: string]: KmzFile[]
+}
+
 export default function KmzViewerPage() {
   const [kmzFiles, setKmzFiles] = useState<KmzFile[]>([])
   const [loading, setLoading] = useState(true)
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false)
   const [visibleLayers, setVisibleLayers] = useState<Set<string>>(new Set())
   const [searchTerm, setSearchTerm] = useState("")
+  const [sidebarOpen, setSidebarOpen] = useState(true)
   const { toast } = useToast()
   const supabase = createClient()
+  const mapContainerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     fetchKmzFiles()
@@ -50,12 +55,22 @@ export default function KmzViewerPage() {
         .order("created_at", { ascending: false })
 
       if (error) {
-        console.error("[v0] Error fetching KMZ files:", error)
-        toast({
-          title: "Error loading KMZ files",
-          description: "The KMZ files table may not exist. Please run the migration script.",
-          variant: "destructive",
-        })
+        if (error.message?.includes("Could not find the table")) {
+          toast({
+            title: "Setup Required",
+            description:
+              "The KMZ management system needs to be initialized. Run the migration script: scripts/025_create_kmz_management.sql in your Supabase SQL editor.",
+            variant: "destructive",
+          })
+        } else {
+          console.error("[v0] Error fetching KMZ files:", error)
+          toast({
+            title: "Error loading KMZ files",
+            description: error.message || "Failed to load overlays",
+            variant: "destructive",
+          })
+        }
+        setKmzFiles([])
         return
       }
 
@@ -66,9 +81,24 @@ export default function KmzViewerPage() {
       }
     } catch (error) {
       console.error("[v0] Fetch error:", error)
+      setKmzFiles([])
     } finally {
       setLoading(false)
     }
+  }
+
+  const groupKmzByDate = (files: KmzFile[]): KmzFilesByDate => {
+    const grouped: KmzFilesByDate = {}
+
+    files.forEach((file) => {
+      const date = file.created_at ? new Date(file.created_at).toLocaleDateString() : "Unknown Date"
+      if (!grouped[date]) {
+        grouped[date] = []
+      }
+      grouped[date].push(file)
+    })
+
+    return grouped
   }
 
   const handleDeleteKmz = async (kmzId: string) => {
@@ -115,72 +145,84 @@ export default function KmzViewerPage() {
   }
 
   const filteredFiles = kmzFiles.filter((f) => f.name.toLowerCase().includes(searchTerm.toLowerCase()))
+  const groupedFiles = groupKmzByDate(filteredFiles)
+  const dateGroups = Object.keys(groupedFiles).sort().reverse()
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-4 md:p-8">
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">KMZ Viewer</h1>
-          <p className="text-gray-600">Upload and manage KMZ files for facility mapping and GIS overlays</p>
-        </div>
+    <main className="relative w-full h-screen bg-gray-100 overflow-hidden">
+      <div ref={mapContainerRef} className="w-full h-full">
+        <DynamicMap visibleLayers={visibleLayers} kmzFiles={kmzFiles} />
+      </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Map Panel */}
-          <div className="lg:col-span-2">
-            <Card className="h-full">
-              <CardHeader>
-                <CardTitle>Map View</CardTitle>
-                <CardDescription>
-                  {visibleLayers.size === 0
-                    ? "Select overlays to view on map"
-                    : `Displaying ${visibleLayers.size} overlay(s)`}
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="rounded-lg overflow-hidden border border-gray-200 h-96 md:h-[500px] bg-gray-100">
-                  <DynamicMap visibleLayers={visibleLayers} kmzFiles={kmzFiles} />
-                </div>
-              </CardContent>
-            </Card>
+      <button
+        onClick={() => setSidebarOpen(!sidebarOpen)}
+        className="md:hidden absolute top-4 right-4 z-[1000] bg-white rounded-lg shadow-lg p-2 border border-gray-200 hover:bg-gray-50"
+      >
+        {sidebarOpen ? <ChevronRight className="h-5 w-5" /> : <ChevronLeft className="h-5 w-5" />}
+      </button>
+
+      <div
+        className={`
+          ${sidebarOpen ? "fixed md:absolute" : "absolute"} top-0 right-0 bottom-0
+          w-[85vw] max-w-md md:max-w-96 md:w-96
+          bg-white border-l border-gray-200 shadow-xl md:shadow-none
+          transform transition-transform duration-300 ease-in-out z-[999]
+          ${sidebarOpen ? "translate-x-0" : "translate-x-full md:translate-x-0"}
+        `}
+      >
+        <div className="h-full overflow-y-auto p-4 md:p-6 space-y-4 flex flex-col">
+          {/* Sidebar Header */}
+          <div className="flex items-center justify-between gap-2">
+            <h2 className="text-lg font-semibold">KMZ Overlays</h2>
+            <Button
+              onClick={() => setUploadDialogOpen(true)}
+              size="sm"
+              className="bg-primary hover:bg-primary/90 shadow-lg whitespace-nowrap"
+            >
+              <Upload className="mr-1 h-4 w-4" />
+              Upload
+            </Button>
+            <button onClick={() => setSidebarOpen(false)} className="p-2 md:hidden">
+              <X className="h-5 w-5" />
+            </button>
           </div>
 
-          {/* KMZ Management Panel */}
-          <div className="lg:col-span-1">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Upload className="h-5 w-5" />
-                  Manage Overlays
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <Button onClick={() => setUploadDialogOpen(true)} className="w-full bg-primary hover:bg-primary/90">
-                  <Upload className="mr-2 h-4 w-4" />
-                  Upload KMZ
-                </Button>
+          {/* Search */}
+          <Input
+            placeholder="Search KMZ files..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="text-sm"
+          />
 
-                <div>
-                  <Input
-                    placeholder="Search overlays..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="text-sm"
-                  />
+          {/* KMZ Files by Date */}
+          <div className="flex-1 overflow-y-auto space-y-4">
+            {loading ? (
+              <div className="text-center py-8 text-gray-500 text-sm">Loading overlays...</div>
+            ) : kmzFiles.length === 0 ? (
+              <div className="text-center py-8 space-y-3">
+                <p className="text-gray-500 text-sm">No overlays uploaded yet</p>
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-left">
+                  <p className="text-xs font-semibold text-blue-900 mb-2">First time setup?</p>
+                  <p className="text-xs text-blue-800">Run this SQL migration in your Supabase console:</p>
+                  <code className="text-xs bg-white p-2 rounded mt-2 block overflow-x-auto border border-blue-100 font-mono">
+                    scripts/025_create_kmz_management.sql
+                  </code>
                 </div>
+              </div>
+            ) : (
+              dateGroups.map((date) => (
+                <div key={date} className="space-y-2">
+                  <h3 className="text-xs font-semibold text-gray-700 px-2 py-1 bg-gray-50 rounded">{date}</h3>
 
-                <div className="space-y-2 max-h-96 overflow-y-auto">
-                  {loading ? (
-                    <div className="text-center py-8 text-gray-500">Loading overlays...</div>
-                  ) : filteredFiles.length === 0 ? (
-                    <div className="text-center py-8 text-gray-500 text-sm">No overlays uploaded yet</div>
-                  ) : (
-                    filteredFiles.map((file) => (
+                  {/* Files in this date */}
+                  <div className="space-y-2">
+                    {groupedFiles[date].map((file) => (
                       <div
                         key={file.id}
-                        className="p-3 bg-gray-50 rounded-lg border border-gray-200 hover:border-primary/30 transition-colors"
+                        className="p-3 bg-gray-50 rounded-lg border border-gray-200 hover:border-primary/30 transition-colors space-y-2"
                       >
-                        <div className="flex items-start justify-between gap-2 mb-2">
+                        <div className="flex items-start justify-between gap-2">
                           <div className="flex-1 min-w-0">
                             <h4 className="font-medium text-sm text-gray-900 truncate">{file.name}</h4>
                             {file.description && (
@@ -200,27 +242,22 @@ export default function KmzViewerPage() {
                           </button>
                         </div>
 
-                        <div className="flex items-center gap-2 text-xs text-gray-500 mb-2">
-                          {file.created_at && (
-                            <>
-                              <Calendar className="h-3 w-3" />
-                              {new Date(file.created_at).toLocaleDateString()}
-                            </>
-                          )}
-                          {file.file_size && (
-                            <>
-                              <span>•</span>
-                              <span>{(file.file_size / 1024 / 1024).toFixed(2)} MB</span>
-                            </>
-                          )}
-                        </div>
+                        {file.file_size && (
+                          <div className="text-xs text-gray-500">{(file.file_size / 1024 / 1024).toFixed(2)} MB</div>
+                        )}
 
                         <div className="flex gap-2">
-                          <Button variant="ghost" size="sm" className="flex-1 h-7 text-xs" asChild>
-                            <a href={file.file_url} download target="_blank" rel="noopener noreferrer">
-                              <Download className="h-3 w-3 mr-1" />
-                              Download
-                            </a>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="flex-1 h-7 text-xs"
+                            onClick={() => {
+                              if (file.file_url) {
+                                window.open(file.file_url, "_blank")
+                              }
+                            }}
+                          >
+                            Download
                           </Button>
                           <Button
                             variant="ghost"
@@ -232,11 +269,11 @@ export default function KmzViewerPage() {
                           </Button>
                         </div>
                       </div>
-                    ))
-                  )}
+                    ))}
+                  </div>
                 </div>
-              </CardContent>
-            </Card>
+              ))
+            )}
           </div>
         </div>
       </div>

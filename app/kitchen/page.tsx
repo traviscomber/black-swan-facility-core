@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Plus, ChefHat, Trash2, Edit2 } from "lucide-react"
 import { AppLayout } from "@/components/app-layout"
 import { PageHeader } from "@/components/page-header"
@@ -18,6 +18,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
+import { createBrowserClient } from "@/lib/supabase/client"
 
 interface Kitchen {
   id: string
@@ -31,23 +32,34 @@ interface Kitchen {
 }
 
 function KitchenContent() {
-  const [kitchens, setKitchens] = useState<Kitchen[]>([
-    {
-      id: "1",
-      name: "Main Kitchen",
-      location: "Building A",
-      capacity: "50 covers",
-      equipment: "Full cooking station, ovens, grills",
-      status: "operational",
-      description: "Primary food preparation facility",
-      lastCleaning: "2024-12-18",
-    },
-  ])
+  const [kitchens, setKitchens] = useState<Kitchen[]>([])
   const [isOpen, setIsOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [formData, setFormData] = useState<Partial<Kitchen>>({
     status: "operational",
   })
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    const loadKitchens = async () => {
+      try {
+        const supabase = createBrowserClient()
+        const { data, error } = await supabase.from("kitchens").select("*").order("name")
+
+        if (error) {
+          console.error("[v0] Error loading kitchens:", error)
+        } else if (data) {
+          setKitchens(data as Kitchen[])
+        }
+      } catch (err) {
+        console.error("[v0] Error loading kitchens:", err)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadKitchens()
+  }, [])
 
   const handleAddOrEdit = () => {
     if (!formData.name || !formData.location) return
@@ -214,69 +226,74 @@ function KitchenContent() {
 
       {/* Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-        {kitchens.map((kitchen) => (
-          <Card key={kitchen.id} className="overflow-hidden hover:shadow-lg transition-shadow bg-card border-border">
-            <div className="p-4 sm:p-6 space-y-4">
-              <div className="flex items-start justify-between">
-                <div className="flex items-start gap-3">
-                  <span className="text-2xl">👨‍🍳</span>
-                  <div>
-                    <h3 className="font-semibold text-card-foreground text-sm sm:text-base">{kitchen.name}</h3>
-                    <p className="text-xs sm:text-sm text-foreground opacity-80">{kitchen.location}</p>
+        {loading ? (
+          <div className="text-center py-12">
+            <ChefHat className="h-16 w-16 text-muted mx-auto mb-4" />
+            <h3 className="text-lg font-semibold text-foreground">Loading kitchens...</h3>
+          </div>
+        ) : kitchens.length === 0 ? (
+          <div className="text-center py-12">
+            <ChefHat className="h-16 w-16 text-muted mx-auto mb-4" />
+            <h3 className="text-lg font-semibold text-foreground">No kitchens yet</h3>
+            <p className="text-muted-foreground mt-2">Start by adding your first kitchen to the system</p>
+          </div>
+        ) : (
+          kitchens.map((kitchen) => (
+            <Card key={kitchen.id} className="overflow-hidden hover:shadow-lg transition-shadow bg-card border-border">
+              <div className="p-4 sm:p-6 space-y-4">
+                <div className="flex items-start justify-between">
+                  <div className="flex items-start gap-3">
+                    <span className="text-2xl">👨‍🍳</span>
+                    <div>
+                      <h3 className="font-semibold text-card-foreground text-sm sm:text-base">{kitchen.name}</h3>
+                      <p className="text-xs sm:text-sm text-foreground opacity-80">{kitchen.location}</p>
+                    </div>
                   </div>
+                  <span className={`text-xs font-semibold px-2 py-1 rounded-full ${getStatusColor(kitchen.status)}`}>
+                    {kitchen.status}
+                  </span>
                 </div>
-                <span className={`text-xs font-semibold px-2 py-1 rounded-full ${getStatusColor(kitchen.status)}`}>
-                  {kitchen.status}
-                </span>
+
+                {kitchen.capacity && (
+                  <p className="text-xs sm:text-sm text-foreground">
+                    <span className="font-medium text-card-foreground">Capacity:</span> {kitchen.capacity}
+                  </p>
+                )}
+
+                {kitchen.equipment && (
+                  <p className="text-xs sm:text-sm text-foreground">
+                    <span className="font-medium text-card-foreground">Equipment:</span> {kitchen.equipment}
+                  </p>
+                )}
+
+                {kitchen.description && <p className="text-xs sm:text-sm text-foreground">{kitchen.description}</p>}
+
+                {kitchen.lastCleaning && (
+                  <p className="text-xs text-foreground opacity-80">
+                    Last cleaned: {new Date(kitchen.lastCleaning).toLocaleDateString()}
+                  </p>
+                )}
+
+                <div className="flex gap-2 pt-2 border-t border-border">
+                  <Button variant="ghost" size="sm" className="flex-1" onClick={() => handleEdit(kitchen)}>
+                    <Edit2 className="h-4 w-4 mr-1" />
+                    Edit
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="flex-1 text-red-600 hover:text-red-700 hover:bg-red-50"
+                    onClick={() => handleDelete(kitchen.id)}
+                  >
+                    <Trash2 className="h-4 w-4 mr-1" />
+                    Delete
+                  </Button>
+                </div>
               </div>
-
-              {kitchen.capacity && (
-                <p className="text-xs sm:text-sm text-foreground">
-                  <span className="font-medium text-card-foreground">Capacity:</span> {kitchen.capacity}
-                </p>
-              )}
-
-              {kitchen.equipment && (
-                <p className="text-xs sm:text-sm text-foreground">
-                  <span className="font-medium text-card-foreground">Equipment:</span> {kitchen.equipment}
-                </p>
-              )}
-
-              {kitchen.description && <p className="text-xs sm:text-sm text-foreground">{kitchen.description}</p>}
-
-              {kitchen.lastCleaning && (
-                <p className="text-xs text-foreground opacity-80">
-                  Last cleaned: {new Date(kitchen.lastCleaning).toLocaleDateString()}
-                </p>
-              )}
-
-              <div className="flex gap-2 pt-2 border-t border-border">
-                <Button variant="ghost" size="sm" className="flex-1" onClick={() => handleEdit(kitchen)}>
-                  <Edit2 className="h-4 w-4 mr-1" />
-                  Edit
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="flex-1 text-red-600 hover:text-red-700 hover:bg-red-50"
-                  onClick={() => handleDelete(kitchen.id)}
-                >
-                  <Trash2 className="h-4 w-4 mr-1" />
-                  Delete
-                </Button>
-              </div>
-            </div>
-          </Card>
-        ))}
+            </Card>
+          ))
+        )}
       </div>
-
-      {kitchens.length === 0 && (
-        <div className="text-center py-12">
-          <ChefHat className="h-16 w-16 text-muted mx-auto mb-4" />
-          <h3 className="text-lg font-semibold text-foreground">No kitchens yet</h3>
-          <p className="text-muted-foreground mt-2">Start by adding your first kitchen to the system</p>
-        </div>
-      )}
     </div>
   )
 }

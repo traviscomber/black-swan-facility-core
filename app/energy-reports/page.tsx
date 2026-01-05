@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { EnergyPasswordGuard } from "@/components/energy-password-guard"
 import { AppLayout } from "@/components/app-layout"
 import { PageHeader } from "@/components/page-header"
@@ -9,57 +9,48 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Download, Filter, Calendar } from "lucide-react"
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Legend, ResponsiveContainer } from "recharts"
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
-
-// Mock data for reports
-const monthlyReportData = [
-  { month: "January", production: 1200, consumption: 950, savings: 250, co2_avoided: 1500 },
-  { month: "February", production: 1400, consumption: 1020, savings: 380, co2_avoided: 1680 },
-  { month: "March", production: 1800, consumption: 1100, savings: 700, co2_avoided: 2160 },
-  { month: "April", production: 2100, consumption: 1250, savings: 850, co2_avoided: 2520 },
-  { month: "May", production: 2400, consumption: 1300, savings: 1100, co2_avoided: 2880 },
-  { month: "June", production: 2600, consumption: 1350, savings: 1250, co2_avoided: 3120 },
-]
-
-const buildingReportData = [
-  {
-    building: "Prairie House 1",
-    production_kwh: 8200,
-    consumption_kwh: 4100,
-    efficiency: 95,
-    battery_cycles: 156,
-    peak_load_kw: 8.5,
-  },
-  {
-    building: "Prairie House 2",
-    production_kwh: 8400,
-    consumption_kwh: 4250,
-    efficiency: 97,
-    battery_cycles: 158,
-    peak_load_kw: 8.8,
-  },
-  {
-    building: "Prairie House 3",
-    production_kwh: 8100,
-    consumption_kwh: 4050,
-    efficiency: 94,
-    battery_cycles: 150,
-    peak_load_kw: 8.2,
-  },
-]
+import { createBrowserClient } from "@/lib/supabase/client"
 
 export default function EnergyReports() {
   const [reportType, setReportType] = useState<"monthly" | "building" | "system">("monthly")
   const [dateRange, setDateRange] = useState({ start: "2024-01-01", end: "2024-06-30" })
+  const [monthlyReportData, setMonthlyReportData] = useState<any[]>([])
+  const [buildingReportData, setBuildingReportData] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
 
-  const totalProduction = monthlyReportData.reduce((sum, m) => sum + m.production, 0)
-  const totalConsumption = monthlyReportData.reduce((sum, m) => sum + m.consumption, 0)
-  const totalSavings = monthlyReportData.reduce((sum, m) => sum + m.savings, 0)
-  const totalCO2Avoided = monthlyReportData.reduce((sum, m) => sum + m.co2_avoided, 0)
+  useEffect(() => {
+    const loadReportData = async () => {
+      const supabase = createBrowserClient()
 
-  const handleExport = (format: "pdf" | "csv" | "excel") => {
-    console.log(`[v0] Exporting report as ${format}`)
-    // In a real app, this would trigger actual export
-  }
+      try {
+        // Fetch monthly report data
+        const { data: monthData } = await supabase
+          .from("energy_monthly_reports")
+          .select("*")
+          .gte("month", dateRange.start)
+          .lte("month", dateRange.end)
+          .order("month")
+
+        if (monthData) setMonthlyReportData(monthData)
+
+        // Fetch building report data
+        const { data: buildingData } = await supabase.from("energy_building_reports").select("*").order("building")
+
+        if (buildingData) setBuildingReportData(buildingData)
+      } catch (err) {
+        console.error("[v0] Error loading report data:", err)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadReportData()
+  }, [dateRange])
+
+  const totalProduction = monthlyReportData.reduce((sum, m) => sum + (m.production || 0), 0)
+  const totalConsumption = monthlyReportData.reduce((sum, m) => sum + (m.consumption || 0), 0)
+  const totalSavings = monthlyReportData.reduce((sum, m) => sum + (m.savings || 0), 0)
+  const totalCO2Avoided = monthlyReportData.reduce((sum, m) => sum + (m.co2_avoided || 0), 0)
 
   return (
     <EnergyPasswordGuard>
@@ -373,4 +364,9 @@ export default function EnergyReports() {
       </AppLayout>
     </EnergyPasswordGuard>
   )
+}
+
+const handleExport = (format: "pdf" | "csv" | "excel") => {
+  console.log(`[v0] Exporting report as ${format}`)
+  // In a real app, this would trigger actual export
 }

@@ -21,6 +21,13 @@ ${description ? `📝 Details: ${description}` : ""}
 Please reply when the request is handled.
     `.trim()
 
+    const whatsappNumber = process.env.WHATSAPP_CONTACT_NUMBER
+
+    if (!whatsappNumber) {
+      console.error("[WhatsApp Error] WHATSAPP_CONTACT_NUMBER not configured")
+      return NextResponse.json({ error: "WhatsApp number not configured" }, { status: 500 })
+    }
+
     // TODO: Integrate with your WhatsApp service (Twilio, MessageBird, etc.)
     // Example for Twilio (uncomment and configure):
     /*
@@ -31,7 +38,7 @@ Please reply when the request is handled.
     await client.messages.create({
       body: message,
       from: process.env.TWILIO_WHATSAPP_NUMBER,
-      to: `whatsapp:+57XXXXXXXXXXX`, // Antonia's WhatsApp number
+      to: `whatsapp:${whatsappNumber}`,
     })
     */
 

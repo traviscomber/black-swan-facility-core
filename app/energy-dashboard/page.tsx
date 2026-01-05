@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { ArrowLeft } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -24,48 +24,65 @@ import { Activity, TrendingUp, Zap, Battery, Sun } from "lucide-react"
 import { AppLayout } from "@/components/app-layout"
 import { PageHeader } from "@/components/page-header"
 import { EnergyPasswordGuard } from "@/components/energy-password-guard"
-
-// Mock data for charts
-const dailyProductionData = [
-  { hour: "00:00", prairie1: 0, prairie2: 0, prairie3: 0 },
-  { hour: "04:00", prairie1: 0, prairie2: 0, prairie3: 0 },
-  { hour: "08:00", prairie1: 2.4, prairie2: 2.3, prairie3: 2.5 },
-  { hour: "10:00", prairie1: 8.2, prairie2: 8.4, prairie3: 8.1 },
-  { hour: "12:00", prairie1: 12.5, prairie2: 12.8, prairie3: 12.3 },
-  { hour: "14:00", prairie1: 11.2, prairie2: 11.5, prairie3: 11.0 },
-  { hour: "16:00", prairie1: 6.5, prairie2: 6.8, prairie3: 6.3 },
-  { hour: "18:00", prairie1: 1.2, prairie2: 1.4, prairie3: 1.1 },
-  { hour: "20:00", prairie1: 0, prairie2: 0, prairie3: 0 },
-]
-
-const monthlyEnergyData = [
-  { month: "Jan", production: 1200, consumption: 950, battery: 250 },
-  { month: "Feb", production: 1400, consumption: 1020, battery: 380 },
-  { month: "Mar", production: 1800, consumption: 1100, battery: 700 },
-  { month: "Apr", production: 2100, consumption: 1250, battery: 850 },
-  { month: "May", production: 2400, consumption: 1300, battery: 1100 },
-  { month: "Jun", production: 2600, consumption: 1350, battery: 1250 },
-]
-
-const batteryStateData = [
-  { name: "Charged", value: 75, fill: "#10b981" },
-  { name: "Available", value: 20, fill: "#f59e0b" },
-  { name: "Reserve", value: 5, fill: "#ef4444" },
-]
+import { createBrowserClient } from "@/lib/supabase/client"
+import { format } from "date-fns"
 
 export default function EnergyDashboard() {
   const router = useRouter()
   const [timeRange, setTimeRange] = useState<"day" | "week" | "month" | "year">("day")
   const [selectedBuilding, setSelectedBuilding] = useState<"all" | "prairie1" | "prairie2" | "prairie3">("all")
+  const [dailyProductionData, setDailyProductionData] = useState<any[]>([])
+  const [monthlyEnergyData, setMonthlyEnergyData] = useState<any[]>([])
+  const [batteryStateData, setBatteryStateData] = useState<any[]>([])
+  const [stats, setStats] = useState({
+    currentProduction: 0,
+    currentConsumption: 0,
+    batterySOC: 0,
+    totalGenerated: 0,
+    gridOffset: 0,
+  })
+  const [loading, setLoading] = useState(true)
 
-  // Real-time stats (would be fetched from API/Victron)
-  const stats = {
-    currentProduction: 45.2,
-    currentConsumption: 12.8,
-    batterySOC: 87,
-    totalGenerated: 156.4,
-    gridOffset: 78,
-  }
+  useEffect(() => {
+    const loadData = async () => {
+      const supabase = createBrowserClient()
+
+      try {
+        // Fetch production data
+        const { data: prodData } = await supabase
+          .from("energy_production")
+          .select("*")
+          .eq("date", format(new Date(), "yyyy-MM-dd"))
+          .order("hour")
+
+        if (prodData) setDailyProductionData(prodData)
+
+        // Fetch monthly data
+        const { data: monthData } = await supabase.from("energy_monthly").select("*").order("month")
+
+        if (monthData) setMonthlyEnergyData(monthData)
+
+        // Fetch real-time stats
+        const { data: statsData } = await supabase.from("energy_stats").select("*").single()
+
+        if (statsData) {
+          setStats({
+            currentProduction: statsData.current_production || 0,
+            currentConsumption: statsData.current_consumption || 0,
+            batterySOC: statsData.battery_soc || 0,
+            totalGenerated: statsData.total_generated || 0,
+            gridOffset: statsData.grid_offset || 0,
+          })
+        }
+      } catch (err) {
+        console.error("[v0] Error loading energy data:", err)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadData()
+  }, [timeRange])
 
   return (
     <EnergyPasswordGuard>
@@ -138,7 +155,7 @@ export default function EnergyDashboard() {
                   </Card>
 
                   <Card className="bg-card border-border">
-                    <CardHeader className="pb-2">
+                    <CardHeader>
                       <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
                         <Battery className="w-4 h-4" />
                         Battery SOC

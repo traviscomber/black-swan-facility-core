@@ -88,85 +88,7 @@ interface Specifications {
 }
 
 export default function EnergyManagementPage() {
-  const [solarPanels, setSolarPanels] = useState<SolarPanel[]>([
-    // Prairie House 1 - 24 panels (6 per roof section)
-    ...Array.from({ length: 12 }, (_, i) => ({
-      id: `ph1-north-${i + 1}`,
-      name: `Panel ${i + 1}`,
-      location: "Roof - North",
-      building: "Prairie House 1",
-      capacity_kw: 0.4,
-      status: "active" as const,
-      installation_date: "2024-01-15",
-      last_maintenance: new Date().toISOString(),
-      victron_device_id: "PH1-MPPT-001",
-      current_output_kw: 0.32,
-    })),
-    ...Array.from({ length: 12 }, (_, i) => ({
-      id: `ph1-south-${i + 1}`,
-      name: `Panel ${i + 13}`,
-      location: "Roof - South",
-      building: "Prairie House 1",
-      capacity_kw: 0.4,
-      status: "active" as const,
-      installation_date: "2024-01-15",
-      last_maintenance: new Date().toISOString(),
-      victron_device_id: "PH1-MPPT-001",
-      current_output_kw: 0.32,
-    })),
-
-    // Prairie House 2 - 24 panels (6 per roof section, with Victron equipment)
-    ...Array.from({ length: 12 }, (_, i) => ({
-      id: `ph2-north-${i + 1}`,
-      name: `Panel ${i + 1}`,
-      location: "Roof - North",
-      building: "Prairie House 2",
-      capacity_kw: 0.4,
-      status: "active" as const,
-      installation_date: "2024-01-15",
-      last_maintenance: new Date().toISOString(),
-      victron_device_id: "PH2-MPPT-001",
-      current_output_kw: 0.32,
-    })),
-    ...Array.from({ length: 12 }, (_, i) => ({
-      id: `ph2-south-${i + 1}`,
-      name: `Panel ${i + 13}`,
-      location: "Roof - South",
-      building: "Prairie House 2",
-      capacity_kw: 0.4,
-      status: "active" as const,
-      installation_date: "2024-01-15",
-      last_maintenance: new Date().toISOString(),
-      victron_device_id: "PH2-MPPT-001",
-      current_output_kw: 0.32,
-    })),
-
-    // Prairie House 3 - 24 panels (6 per roof section)
-    ...Array.from({ length: 12 }, (_, i) => ({
-      id: `ph3-north-${i + 1}`,
-      name: `Panel ${i + 1}`,
-      location: "Roof - North",
-      building: "Prairie House 3",
-      capacity_kw: 0.4,
-      status: "active" as const,
-      installation_date: "2024-01-15",
-      last_maintenance: new Date().toISOString(),
-      victron_device_id: "PH3-MPPT-001",
-      current_output_kw: 0.32,
-    })),
-    ...Array.from({ length: 12 }, (_, i) => ({
-      id: `ph3-south-${i + 1}`,
-      name: `Panel ${i + 13}`,
-      location: "Roof - South",
-      building: "Prairie House 3",
-      capacity_kw: 0.4,
-      status: "active" as const,
-      installation_date: "2024-01-15",
-      last_maintenance: new Date().toISOString(),
-      victron_device_id: "PH3-MPPT-001",
-      current_output_kw: 0.32,
-    })),
-  ])
+  const [solarPanels, setSolarPanels] = useState<SolarPanel[]>([])
   const [buildings, setBuildings] = useState<BuildingConsumption[]>([])
   const [victronDevices, setVictronDevices] = useState<VictronDevice[]>([])
   const [showAddPanel, setShowAddPanel] = useState(false)
@@ -175,6 +97,7 @@ export default function EnergyManagementPage() {
   const [editingPanel, setEditingPanel] = useState<SolarPanel | null>(null)
   const [editingBuilding, setEditingBuilding] = useState<BuildingConsumption | null>(null)
   const [editingDevice, setEditingDevice] = useState<VictronDevice | null>(null)
+  const [loading, setLoading] = useState(true)
 
   const [selectedBuilding, setSelectedBuilding] = useState<string>("all")
   const filteredPanels =
@@ -214,9 +137,14 @@ export default function EnergyManagementPage() {
   const supabase = createBrowserClient()
 
   useEffect(() => {
-    loadSolarPanels()
-    loadBuildings()
-    loadVictronDevices()
+    const loadData = async () => {
+      setLoading(true)
+      await loadSolarPanels()
+      await loadBuildings()
+      await loadVictronDevices()
+      setLoading(false)
+    }
+    loadData()
   }, [])
 
   const loadSolarPanels = async () => {
@@ -458,6 +386,18 @@ export default function EnergyManagementPage() {
   const totalConsumption = buildings.reduce((sum, b) => sum + b.current_usage_kw, 0)
   const avgSolarOffset =
     buildings.length > 0 ? buildings.reduce((sum, b) => sum + b.solar_offset_percent, 0) / buildings.length : 0
+
+  if (loading) {
+    return (
+      <EnergyPasswordGuard>
+        <AppLayout>
+          <div className="flex items-center justify-center min-h-screen">
+            <p className="text-muted-foreground">Loading energy data...</p>
+          </div>
+        </AppLayout>
+      </EnergyPasswordGuard>
+    )
+  }
 
   return (
     <EnergyPasswordGuard>

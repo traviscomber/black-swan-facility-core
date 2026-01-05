@@ -54,13 +54,26 @@ export default function ConciergeDashboard() {
     const total = allLeads?.length || 1
     const conversionRate = Math.round((converted / total) * 100)
 
+    let avgResponseTime = 0
+    if (messagesRes.data && messagesRes.data.length > 0) {
+      // Calculate average response time from timestamps
+      const times = messagesRes.data.map((m: any) => new Date(m.ts).getTime())
+      if (times.length > 1) {
+        const diffs = []
+        for (let i = 1; i < times.length; i++) {
+          diffs.push((times[i] - times[i - 1]) / 1000 / 60) // Convert to minutes
+        }
+        avgResponseTime = Math.round(diffs.reduce((a, b) => a + b, 0) / diffs.length)
+      }
+    }
+
     setStats({
       newLeads: leadsRes.data?.length || 0,
       activeConversations: messagesRes.data?.length || 0,
       openIncidents: incidentsRes.data?.length || 0,
       tasksToday: tasksRes.data?.length || 0,
       conversionRate,
-      avgResponseTime: 2.3, // Mock for now - calculate from messages
+      avgResponseTime,
     })
 
     setRecentActivity(auditRes.data || [])
