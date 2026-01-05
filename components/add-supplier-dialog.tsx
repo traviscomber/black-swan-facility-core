@@ -32,10 +32,23 @@ export function AddSupplierDialog({ open, onOpenChange, onSupplierAdded }: AddSu
     e.preventDefault()
     setLoading(true)
 
-    const supabase = createBrowserClient()
-    const { error } = await supabase.from("suppliers").insert(formData)
+    try {
+      const supabase = createBrowserClient()
+      const { error } = await supabase.from("suppliers").insert([
+        {
+          ...formData,
+          rating: 3.5,
+          is_active: true,
+        },
+      ])
 
-    if (!error) {
+      if (error) {
+        console.error("[v0] Error adding supplier:", error)
+        alert(`Error adding supplier: ${error.message}`)
+        setLoading(false)
+        return
+      }
+
       onSupplierAdded()
       setFormData({
         name: "",
@@ -48,6 +61,10 @@ export function AddSupplierDialog({ open, onOpenChange, onSupplierAdded }: AddSu
         payment_terms: "",
         notes: "",
       })
+      onOpenChange(false)
+    } catch (err) {
+      console.error("[v0] Unexpected error:", err)
+      alert("An unexpected error occurred")
     }
     setLoading(false)
   }

@@ -95,7 +95,21 @@ const navigationGroups = [
   {
     label: "Supply Chain",
     description: "Procurement, suppliers, and acquisitions",
-    items: [{ name: "Procurement", href: "/procurement", icon: Box, tip: "Purchase orders and acquisitions" }],
+    items: [
+      { name: "Procurement", href: "/procurement", icon: Box, tip: "Purchase orders and acquisitions" },
+      {
+        name: "Suppliers",
+        href: "/procurement/suppliers",
+        icon: Users,
+        tip: "Manage supplier contacts and relationships",
+      },
+      {
+        name: "Analytics",
+        href: "/procurement/analytics",
+        icon: TrendingUp,
+        tip: "Spending analysis and supplier performance",
+      },
+    ],
   },
   {
     label: "People & Operations",

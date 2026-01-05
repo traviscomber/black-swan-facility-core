@@ -22,10 +22,8 @@ interface SearchResult {
     | "port"
     | "boat"
     | "page"
-  title: string
-  subtitle?: string
-  status?: string
-  badge?: string
+    | "supplier"
+    | "analytics"
 }
 
 const navigationPages = [
@@ -101,6 +99,20 @@ const navigationPages = [
     title: "Procurement",
     subtitle: "Purchase orders and acquisitions",
     href: "/procurement",
+    type: "page" as const,
+  },
+  {
+    id: "procurement-suppliers",
+    title: "Suppliers",
+    subtitle: "Manage supplier contacts and relationships",
+    href: "/procurement/suppliers",
+    type: "page" as const,
+  },
+  {
+    id: "procurement-analytics",
+    title: "Procurement Analytics",
+    subtitle: "Spending analysis and supplier performance",
+    href: "/procurement/analytics",
     type: "page" as const,
   },
   { id: "employees", title: "Employees", subtitle: "Team management", href: "/employees", type: "page" as const },
@@ -296,6 +308,10 @@ export function UniversalSearch() {
         return <Anchor className="h-4 w-4" />
       case "page":
         return <Home className="h-4 w-4" />
+      case "supplier":
+        return <Users className="h-4 w-4" />
+      case "analytics":
+        return <Calendar className="h-4 w-4" />
       default:
         return <Search className="h-4 w-4" />
     }
@@ -317,6 +333,8 @@ export function UniversalSearch() {
       port: "/ports-boats",
       boat: "/ports-boats",
       page: "", // Will be handled separately
+      supplier: "/procurement/suppliers",
+      analytics: "/procurement/analytics",
     }
 
     const pageResult = navigationPages.find((p) => p.id === result.id)
@@ -332,7 +350,7 @@ export function UniversalSearch() {
         <div className="flex items-center border-b px-4">
           <Search className="h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Search pages, assets, issues, employees, ports, boats..."
+            placeholder="Search pages, assets, issues, employees, ports, boats, suppliers, analytics..."
             className="border-0 focus-visible:ring-0 focus-visible:ring-offset-0"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
@@ -357,7 +375,8 @@ export function UniversalSearch() {
               <Search className="h-8 w-8 mb-2 opacity-50" />
               <p>Start typing to search...</p>
               <p className="text-xs mt-2">
-                Pages, Assets, Issues, Maintenance, Employees, Rooms, Guests, Locations, Ports, Boats
+                Pages, Assets, Issues, Maintenance, Employees, Rooms, Guests, Locations, Ports, Boats, Suppliers,
+                Analytics
               </p>
             </div>
           )}
