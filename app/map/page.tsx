@@ -517,7 +517,12 @@ export default function MapPage() {
       const { data, error } = await supabase.from("kmz_files").select("*").eq("is_active", true)
 
       if (error) {
-        console.error("[v0] Error loading KMZ files:", error)
+        if (error.message.includes("Could not find the table")) {
+          console.log("[v0] KMZ files table not yet created. Run migration script 026_create_kmz_management.sql")
+          setKmzLayers([]) // Initialize empty array
+        } else {
+          console.error("[v0] Error loading KMZ files:", error)
+        }
         return
       }
 
