@@ -7,7 +7,7 @@ import { AppLayout } from "@/components/app-layout"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { createBrowserClient } from "@/lib/supabase/client"
-import { format, parseISO, isWithinInterval } from "date-fns"
+import { format } from "date-fns"
 
 interface DashboardMetrics {
   totalRooms: number
@@ -60,66 +60,69 @@ export default function Dashboard() {
     try {
       setLoading(true)
       const today = new Date()
+      const todayStr = format(today, "yyyy-MM-dd")
 
-      const [bedsResult, roomsResult, reservationsResult] = await Promise.all([
-        supabase.from("beds").select("id, is_available"),
-        supabase.from("rooms").select("id"),
+      const [bedsResult, roomsResult, todayReservationsResult, activeReservationsResult] = await Promise.all([
+        supabase.from("beds").select("id, is_available", { count: "exact" }),
+        supabase.from("rooms").select("id", { count: "exact" }),
         supabase
           .from("reservations")
-          .select("check_in, check_out, num_guests, status, total_amount")
-          .eq("status", "confirmed"),
+          .select("check_in, check_out, num_guests, total_amount")
+          .eq("status", "confirmed")
+          .lte("check_in", todayStr)
+          .gte("check_out", todayStr)
+          .limit(1000),
+        supabase
+          .from("reservations")
+          .select("id", { count: "exact" })
+          .eq("status", "confirmed")
+          .lte("check_in", todayStr)
+          .gte("check_out", todayStr),
       ])
 
       const beds = bedsResult.data || []
       const rooms = roomsResult.data || []
-      const reservations = reservationsResult.data || []
+      const todayReservations = todayReservationsResult.data || []
 
-      const totalBeds = beds.length
+      const totalBeds = bedsResult.count || beds.length
+      const totalRooms = roomsResult.count || rooms.length
       const availableBeds = beds.filter((b) => b.is_available).length
       const occupiedBeds = totalBeds - availableBeds
 
-      // Calculate today's check-ins/outs and active guests
-      let todayCheckIns = 0
-      let todayCheckOuts = 0
+      const [checkInsResult, checkOutsResult] = await Promise.all([
+        supabase
+          .from("reservations")
+          .select("id", { count: "exact" })
+          .eq("status", "confirmed")
+          .eq("check_in", todayStr),
+        supabase
+          .from("reservations")
+          .select("id", { count: "exact" })
+          .eq("status", "confirmed")
+          .eq("check_out", todayStr),
+      ])
+
       let activeGuests = 0
       let totalRevenue = 0
 
-      reservations.forEach((res) => {
-        const checkInDate = parseISO(res.check_in)
-        const checkOutDate = parseISO(res.check_out)
-
-        // Check if reservation spans today
-        if (isWithinInterval(today, { start: checkInDate, end: checkOutDate })) {
-          activeGuests += res.num_guests || 0
-        }
-
-        // Check for today's check-ins
-        if (format(checkInDate, "yyyy-MM-dd") === format(today, "yyyy-MM-dd")) {
-          todayCheckIns++
-        }
-
-        // Check for today's check-outs
-        if (format(checkOutDate, "yyyy-MM-dd") === format(today, "yyyy-MM-dd")) {
-          todayCheckOuts++
-        }
-
-        // Add to total revenue
+      todayReservations.forEach((res) => {
+        activeGuests += res.num_guests || 0
         totalRevenue += res.total_amount || 0
       })
 
       const occupancyRate = totalBeds > 0 ? Math.round((occupiedBeds / totalBeds) * 100) : 0
 
       setMetrics({
-        totalRooms: rooms.length,
+        totalRooms,
         totalBeds,
         availableBeds,
         occupiedBeds,
         occupancyRate,
         activeGuests,
-        todayCheckIns,
-        todayCheckOuts,
+        todayCheckIns: checkInsResult.count || 0,
+        todayCheckOuts: checkOutsResult.count || 0,
         totalRevenue,
-        activeReservations: reservations.length,
+        activeReservations: activeReservationsResult.count || 0,
       })
     } catch (error) {
       console.error("Error loading metrics:", error)
@@ -130,41 +133,45 @@ export default function Dashboard() {
 
   return (
     <AppLayout>
-      <div className="bg-gradient-to-br from-secondary via-background to-background border-b border-secondary">
-        <div className="mx-auto max-w-7xl px-3 sm:px-4 py-8 sm:py-16 md:py-20 lg:px-6">
+      <div className="bg-gradient-to-b from-accent/5 via-accent/2 to-background border-b border-primary/20">
+        <div className="mx-auto max-w-7xl px-3 sm:px-4 py-8 sm:py-12 md:py-16 lg:px-6">
           <div className="space-y-6">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-6 mb-6">
-              <img
-                src="/blackswan-logo.png"
-                alt="Blackswan Logo"
-                className="h-24 sm:h-32 w-24 sm:w-32 object-contain flex-shrink-0 drop-shadow-lg"
-              />
-              <div className="flex-1">
-                <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-accent leading-tight">
-                  Blackswan Facility Core System
-                </h1>
-                <p className="text-sm sm:text-base text-muted-foreground mt-2">
-                  BFCS v1.0 - Luxury Property Management
-                </p>
+            <div className="flex flex-col md:flex-row items-center gap-6 md:gap-8">
+              <div className="flex-shrink-0">
+                <img
+                  src="/blackswan-logo.png"
+                  alt="Blackswan Logo"
+                  className="h-32 w-32 md:h-40 md:w-40 object-contain drop-shadow-lg"
+                />
               </div>
-            </div>
-            <p className="text-base sm:text-lg text-muted-foreground max-w-2xl">
-              Professional facility management and booking system for your luxury vacation rental. Manage reservations,
-              track availability, and optimize occupancy rates.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-3 pt-4">
-              <Link href="/bookings" className="inline-block relative z-10">
-                <Button size="lg" className="gap-2 w-full sm:w-auto">
-                  <Calendar className="h-5 w-5" />
-                  View Bookings
-                </Button>
-              </Link>
-              <Link href="/property-management" className="inline-block relative z-10">
-                <Button variant="outline" size="lg" className="gap-2 bg-transparent w-full sm:w-auto">
-                  <Home className="h-5 w-5" />
-                  Manage Property
-                </Button>
-              </Link>
+              <div className="flex-1 space-y-4">
+                <div>
+                  <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-accent leading-tight">
+                    Blackswan Facility Core System
+                  </h1>
+                  <p className="text-lg md:text-xl text-primary font-semibold mt-2">
+                    BFCS v1.0 - Luxury Property Management
+                  </p>
+                </div>
+                <p className="text-base md:text-lg text-muted-foreground max-w-2xl">
+                  Professional facility management and booking system for your luxury vacation rental. Manage
+                  reservations, track availability, and optimize occupancy rates.
+                </p>
+                <div className="flex flex-col sm:flex-row gap-3 pt-2">
+                  <Link href="/bookings" className="inline-block">
+                    <Button size="lg" className="gap-2 w-full sm:w-auto">
+                      <Calendar className="h-5 w-5" />
+                      View Bookings
+                    </Button>
+                  </Link>
+                  <Link href="/property-management" className="inline-block">
+                    <Button variant="outline" size="lg" className="gap-2 w-full sm:w-auto bg-transparent">
+                      <Home className="h-5 w-5" />
+                      Manage Property
+                    </Button>
+                  </Link>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -368,6 +375,7 @@ export default function Dashboard() {
                   Monitor occupancy rates, revenue trends, and booking patterns to optimize your rental strategy.
                 </p>
               </CardContent>
+              <Link href="/analytics" className="absolute inset-0 z-0" />
             </Card>
           </div>
         </div>

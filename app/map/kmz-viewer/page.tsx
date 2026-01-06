@@ -202,13 +202,17 @@ export default function KmzViewerPage() {
             ) : kmzFiles.length === 0 ? (
               <div className="text-center py-8 space-y-3">
                 <p className="text-gray-500 text-sm">No overlays uploaded yet</p>
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-left">
-                  <p className="text-xs font-semibold text-blue-900 mb-2">First time setup?</p>
-                  <p className="text-xs text-blue-800">Run this SQL migration in your Supabase console:</p>
-                  <code className="text-xs bg-white p-2 rounded mt-2 block overflow-x-auto border border-blue-100 font-mono">
-                    scripts/025_create_kmz_management.sql
-                  </code>
-                </div>
+                <details className="group">
+                  <summary className="cursor-pointer text-xs font-semibold text-gray-600 hover:text-gray-900 p-2 rounded hover:bg-gray-100">
+                    Need help?
+                  </summary>
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-left mt-2">
+                    <p className="text-xs text-blue-800 mb-2">Run this SQL migration in your Supabase console:</p>
+                    <code className="text-xs bg-white p-2 rounded block overflow-x-auto border border-blue-100 font-mono">
+                      scripts/025_create_kmz_management.sql
+                    </code>
+                  </div>
+                </details>
               </div>
             ) : (
               dateGroups.map((date) => (

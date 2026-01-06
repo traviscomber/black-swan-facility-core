@@ -175,18 +175,7 @@ interface SidebarProps {
 
 export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const pathname = usePathname()
-  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(
-    new Set([
-      "Core Operations",
-      "Sovereignty",
-      "Property Management",
-      "Off Grid Energy",
-      "Supply Chain",
-      "People & Operations",
-      "Advanced",
-      "Cattle Operations",
-    ]),
-  )
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set())
   const [openSearch, setOpenSearch] = useState(false)
 
   const toggleGroup = (label: string) => {
