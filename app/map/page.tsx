@@ -577,10 +577,18 @@ export default function MapPage() {
     const fetchConnections = async () => {
       try {
         const supabase = createClient()
-        const { data, error } = await supabase.from("infrastructure_connections").select("*").eq("status", "active")
-
-        if (error) throw error
-        setConnections(data || [])
+        try {
+          const { data, error } = await supabase.from("infrastructure_connections").select("*").eq("status", "active")
+          if (error) throw error
+          setConnections(data || [])
+        } catch (tableError: any) {
+          // Silently skip if table doesn't exist - this feature isn't fully implemented yet
+          if (tableError?.message?.includes("infrastructure_connections")) {
+            console.debug("infrastructure_connections table not yet created")
+            return
+          }
+          throw tableError
+        }
       } catch (error) {
         console.error("Error fetching connections:", error)
       }
