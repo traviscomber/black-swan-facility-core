@@ -26,6 +26,8 @@ const KmzMapView = ({
   const [terrainOpacity, setTerrainOpacity] = useState(0.5)
   const tileLayersRef = useRef<any>({})
   const polylineLayersRef = useRef<any>({})
+  const drawnItemsRef = useRef<any>(null)
+  const drawControlRef = useRef<any>(null)
 
   useEffect(() => {
     if (typeof window === "undefined" || !mapContainerRef.current) return
@@ -38,6 +40,13 @@ const KmzMapView = ({
         link.rel = "stylesheet"
         link.href = "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"
         document.head.appendChild(link)
+      }
+
+      if (!document.querySelector('link[href*="leaflet.draw.css"]')) {
+        const drawLink = document.createElement("link")
+        drawLink.rel = "stylesheet"
+        drawLink.href = "https://cdnjs.cloudflare.com/ajax/libs/leaflet-draw/1.0.4/leaflet.draw.css"
+        document.head.appendChild(drawLink)
       }
 
       if (mapRef.current) return
@@ -79,7 +88,8 @@ const KmzMapView = ({
         gas: L.layerGroup(),
       }
 
-      // Leaflet zoom control is auto-added
+      drawnItemsRef.current = new L.FeatureGroup()
+      mapRef.current.addLayer(drawnItemsRef.current)
     }
 
     initMap()
@@ -204,14 +214,81 @@ const KmzMapView = ({
   }, [connections, visibleConnections])
 
   useEffect(() => {
-    if (!mapRef.current) return
+    if (!mapRef.current || !drawnItemsRef.current) return
 
-    const L = window.L
-    if (!L) return
+    const setupDrawing = async () => {
+      const L = await import("leaflet")
 
-    // Note: Roads and Buildings drawing would require Leaflet.Draw or similar
-    // For now, we're just logging the toggle state
-    console.log("[v0] Show Roads:", showRoads, "Show Buildings:", showBuildings)
+      // Only enable drawing if showRoads or showBuildings is true
+      if (showRoads || showBuildings) {
+        // First check if leaflet-draw script is already loaded
+        if (!window.L?.Control?.Draw) {
+          await new Promise((resolve) => {
+            const script = document.createElement("script")
+            script.src = "https://cdnjs.cloudflare.com/ajax/libs/leaflet-draw/1.0.4/leaflet.draw.js"
+            script.onload = resolve
+            script.onerror = () => {
+              console.error("[v0] Failed to load Leaflet.Draw from CDN")
+              resolve() // Still resolve to prevent hanging
+            }
+            document.head.appendChild(script)
+          })
+        }
+
+        // Now use L.Control.Draw
+        if (window.L?.Control?.Draw) {
+          const drawControl = new L.Control.Draw({
+            position: "bottomleft",
+            draw: {
+              polyline: showRoads ? { metric: true, feet: false } : false,
+              polygon: showBuildings ? { metric: true, feet: false } : false,
+              rectangle: showBuildings ? { metric: true, feet: false } : false,
+              circle: false,
+              circlemarker: false,
+              marker: false,
+            },
+            edit: {
+              featureGroup: drawnItemsRef.current,
+              edit: true,
+              remove: true,
+            },
+          })
+
+          // Remove existing draw control if it exists
+          if (drawControlRef.current) {
+            mapRef.current.removeControl(drawControlRef.current)
+          }
+
+          mapRef.current.addControl(drawControl)
+          drawControlRef.current = drawControl
+
+          // Handle drawn items
+          mapRef.current.on("draw:created", (e: any) => {
+            const layer = e.layer
+            drawnItemsRef.current.addLayer(layer)
+            console.log("[v0] Drawn item created:", e.layerType)
+          })
+
+          mapRef.current.on("draw:edited", () => {
+            console.log("[v0] Drawn items edited")
+          })
+
+          mapRef.current.on("draw:deleted", () => {
+            console.log("[v0] Drawn items deleted")
+          })
+        } else {
+          console.warn("[v0] Leaflet.Draw not available after loading from CDN")
+        }
+      } else {
+        // Remove draw control when toggled off
+        if (drawControlRef.current) {
+          mapRef.current.removeControl(drawControlRef.current)
+          drawControlRef.current = null
+        }
+      }
+    }
+
+    setupDrawing().catch((err) => console.error("[v0] Error setting up drawing:", err))
   }, [showRoads, showBuildings])
 
   return (
