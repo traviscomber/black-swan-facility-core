@@ -26,13 +26,8 @@ import {
   Upload,
   MapIcon,
 } from "lucide-react"
+import KmzMapView from "@/components/kmz-map-viewer"
 import { InfrastructureDetailPanel } from "@/components/infrastructure-detail-panel"
-import { AddInfrastructureDialog } from "@/components/add-infrastructure-dialog"
-import { EditInfrastructureDialog } from "@/components/edit-infrastructure-dialog"
-import { DeleteDialog } from "@/components/delete-dialog"
-import { InfrastructureSearchDialog } from "@/components/infrastructure-search-dialog"
-import { KmzUploadDialog } from "@/components/kmz-upload-dialog"
-// import type { InfrastructurePlan, InfrastructureConnection } from "@/lib/types"
 
 interface Location {
   id: string
@@ -578,16 +573,20 @@ export default function MapPage() {
     })
   }, [kmzFilterEnabled, kmzLayers, leafletLoaded])
 
-  const fetchConnections = useCallback(async () => {
-    try {
-      const supabase = createClient()
-      const { data, error } = await supabase.from("infrastructure_connections").select("*").eq("status", "active")
+  useEffect(() => {
+    const fetchConnections = async () => {
+      try {
+        const supabase = createClient()
+        const { data, error } = await supabase.from("infrastructure_connections").select("*").eq("status", "active")
 
-      if (error) throw error
-      setConnections(data || [])
-    } catch (error) {
-      console.error("Error fetching connections:", error)
+        if (error) throw error
+        setConnections(data || [])
+      } catch (error) {
+        console.error("Error fetching connections:", error)
+      }
     }
+
+    fetchConnections()
   }, [])
 
   const toggleConnectionVisibility = (category: string) => {
@@ -951,8 +950,7 @@ export default function MapPage() {
           }
         />
 
-        {/* Map controls remain the same */}
-        <div className="absolute top-4 left-4 z-[1000] space-y-2">
+        <div className="absolute bottom-4 left-4 z-[1000] space-y-2">
           <div className="bg-white rounded-lg shadow-lg border border-gray-200 overflow-hidden">
             <button
               onClick={() => setMapType("street")}
@@ -1013,7 +1011,7 @@ export default function MapPage() {
 
         <button
           onClick={toggleFullscreen}
-          className="absolute top-4 left-[13.5rem] z-[1000] bg-white rounded-lg shadow-lg p-2 border border-gray-200 hover:bg-gray-50 transition-colors"
+          className="absolute top-4 z-[1002] bg-white rounded-lg shadow-lg p-2 border border-gray-200 hover:bg-gray-50 transition-colors right-4 md:right-[400px]"
           title="Toggle fullscreen"
         >
           <Maximize className="h-4 w-4 md:h-5 md:w-5 text-gray-700" />
@@ -1303,103 +1301,15 @@ export default function MapPage() {
           </div>
         </div>
 
-        {detailPanelOpen && selectedInfra && (
-          <InfrastructureDetailPanel
-            infrastructure={selectedInfra}
-            open={detailPanelOpen}
-            onClose={() => {
-              setDetailPanelOpen(false)
-              setSelectedInfra(null)
-            }}
-            onUpdate={() => {
-              const fetchInfrastructure = async () => {
-                const supabase = createClient()
-                const { data } = await supabase.from("infrastructure_plans").select("*").order("name")
-                if (data) setInfrastructure(data)
-              }
-              fetchInfrastructure()
-            }}
-            onEdit={() => handleEdit(selectedInfra)}
-            onDelete={() => {
-              setShowDeleteDialog(true)
-            }}
-          />
-        )}
-
-        <AddInfrastructureDialog
-          open={addDialogOpen}
-          onClose={() => {
-            setAddDialogOpen(false)
-            setClickedCoordinates(null)
-            setNewInfraLocation(null)
-          }}
-          onAdd={() => {
-            const fetchInfrastructure = async () => {
-              const supabase = createClient()
-              const { data } = await supabase.from("infrastructure_plans").select("*").order("name")
-              if (data) setInfrastructure(data)
-            }
-            fetchInfrastructure()
-            setAddDialogOpen(false)
-            setClickedCoordinates(null)
-            setNewInfraLocation(null)
-          }}
-          initialCoordinates={newInfraLocation}
-        />
-
-        <EditInfrastructureDialog
-          open={editDialogOpen}
-          onClose={() => {
-            setEditDialogOpen(false)
-            setEditingInfra(null)
-          }}
-          onUpdate={() => {
-            const fetchInfrastructure = async () => {
-              const supabase = createClient()
-              const { data } = await supabase.from("infrastructure_plans").select("*").order("name")
-              if (data) setInfrastructure(data)
-            }
-            fetchInfrastructure()
-          }}
-          infrastructure={editingInfra}
-        />
-
-        <DeleteDialog open={showDeleteDialog} onClose={() => setShowDeleteDialog(false)} onDelete={handleDelete} />
-
-        <InfrastructureSearchDialog
-          open={searchDialogOpen}
-          onOpenChange={setSearchDialogOpen}
-          onSelectInfrastructure={handleSelectFromSearch}
-        />
-
-        <KmzUploadDialog
-          open={showKmzUploadDialog}
-          onOpenChange={setShowKmzUploadDialog}
-          onUploadSuccess={() => {
-            // Reload KMZ files
-            const loadKmzFiles = async () => {
-              const supabase = createClient()
-              const { data } = await supabase.from("kmz_files").select("*").eq("is_active", true)
-              if (data) setKmzLayers(data)
-            }
-            loadKmzFiles()
-          }}
-        />
-
-        {/* Updated JSX to pass connection data and visibility states to map viewer */}
-        {/* <DynamicMap
-          infrastructure={infrastructure}
-          onInfrastructureClick={handleInfraClick}
-          selectedInfra={selectedInfra}
-          setSelectedInfra={setSelectedInfra}
-          setDetailPanelOpen={setDetailPanelOpen}
-          setBlinkingMarkerId={setBlinkingMarkerId}
-          connections={connections}
+        {/* Render KmzMapViewer component and pass necessary props */}
+        <KmzMapView
+          coordinatesVisible={false} // Set to false as per update
+          infrastructureData={infrastructure}
           visibleConnections={visibleConnections}
-          showRoads={showRoads}
-          showBuildings={showBuildings}
-        /> */}
+          infrastructureConnections={connections} // Use the fetched connections
+        />
 
+        {/* Keeping only the top-right fullscreen button with responsive positioning for Infrastructure panel */}
         <button
           onClick={() => setSearchDialogOpen(true)}
           className="fixed bottom-6 right-6 z-[1000] h-14 w-14 rounded-full bg-gradient-to-r from-purple-500 to-indigo-600 shadow-lg hover:shadow-xl hover:scale-110 transition-all duration-200 flex items-center justify-center group"
@@ -1411,6 +1321,38 @@ export default function MapPage() {
             <span className="relative inline-flex rounded-full h-3 w-3 bg-purple-500"></span>
           </span>
         </button>
+
+        {/* Infrastructure Detail Panel */}
+        {selectedInfra && detailPanelOpen && (
+          <InfrastructureDetailPanel
+            infrastructure={selectedInfra}
+            onClose={() => setDetailPanelOpen(false)}
+            onUpdate={() => {
+              // Reload infrastructure data
+              const loadInfra = async () => {
+                const supabase = createClient()
+                const { data } = await supabase.from("infrastructure_plans").select("*")
+                if (data) setInfrastructure(data)
+              }
+              loadInfra()
+            }}
+            onEdit={() => {
+              setEditingInfra(selectedInfra)
+              setEditDialogOpen(true)
+            }}
+            onDelete={() => {
+              setDetailPanelOpen(false)
+              setSelectedInfra(null)
+              // Reload infrastructure data
+              const loadInfra = async () => {
+                const supabase = createClient()
+                const { data } = await supabase.from("infrastructure_plans").select("*")
+                if (data) setInfrastructure(data)
+              }
+              loadInfra()
+            }}
+          />
+        )}
       </div>
     </AppLayout>
   )
