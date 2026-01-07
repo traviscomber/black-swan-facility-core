@@ -1,13 +1,31 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
+import type { InfrastructureConnection } from "@/lib/types"
 
-const KmzMapView = ({ visibleLayers, kmzFiles }: { visibleLayers: Set<string>; kmzFiles: any[] }) => {
+interface KmzMapViewProps {
+  visibleLayers?: Set<string>
+  kmzFiles?: any[]
+  connections?: InfrastructureConnection[]
+  visibleConnections?: Set<string>
+  showRoads?: boolean
+  showBuildings?: boolean
+}
+
+const KmzMapView = ({
+  visibleLayers = new Set(),
+  kmzFiles = [],
+  connections = [],
+  visibleConnections = new Set(),
+  showRoads = false,
+  showBuildings = false,
+}: KmzMapViewProps) => {
   const mapContainerRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<any>(null)
   const [mapType, setMapType] = useState<"street" | "satellite" | "terrain" | "hybrid">("street")
   const [terrainOpacity, setTerrainOpacity] = useState(0.5)
   const tileLayersRef = useRef<any>({})
+  const polylineLayersRef = useRef<any>({})
 
   useEffect(() => {
     if (typeof window === "undefined" || !mapContainerRef.current) return
@@ -52,6 +70,15 @@ const KmzMapView = ({ visibleLayers, kmzFiles }: { visibleLayers: Set<string>; k
 
       streetLayer.addTo(mapRef.current)
 
+      polylineLayersRef.current = {
+        road: L.layerGroup(),
+        buildings: L.layerGroup(),
+        electricity: L.layerGroup(),
+        internet: L.layerGroup(),
+        water: L.layerGroup(),
+        gas: L.layerGroup(),
+      }
+
       // Leaflet zoom control is auto-added
     }
 
@@ -93,6 +120,99 @@ const KmzMapView = ({ visibleLayers, kmzFiles }: { visibleLayers: Set<string>; k
       terrainLayer.setOpacity(terrainOpacity)
     }
   }, [terrainOpacity])
+
+  useEffect(() => {
+    if (!mapRef.current || !connections || connections.length === 0) return
+
+    const L = window.L
+    if (!L) return
+
+    // Clear existing polylines for each connection type
+    Object.values(polylineLayersRef.current).forEach((layerGroup: any) => {
+      if (mapRef.current.hasLayer(layerGroup)) {
+        mapRef.current.removeLayer(layerGroup)
+      }
+    })
+
+    polylineLayersRef.current = {
+      road: L.layerGroup(),
+      buildings: L.layerGroup(),
+      electricity: L.layerGroup(),
+      internet: L.layerGroup(),
+      water: L.layerGroup(),
+      gas: L.layerGroup(),
+    }
+
+    // Add polylines for visible connection types
+    connections.forEach((connection) => {
+      const connectionType = connection.connection_type
+      const coordinates = connection.coordinates
+
+      // Skip if coordinates are not valid
+      if (!coordinates || !Array.isArray(coordinates) || coordinates.length < 2) return
+
+      // Map connection type to visible connection category
+      let layerKey = connectionType
+      if (!polylineLayersRef.current[layerKey]) {
+        layerKey = "road" // default to road if type not found
+      }
+
+      // Determine color based on connection type
+      const getConnectionColor = (type: string) => {
+        switch (type) {
+          case "road":
+            return "#8B4513"
+          case "building":
+            return "#DC143C"
+          case "electricity":
+            return "#FFD700"
+          case "internet":
+            return "#3b82f6"
+          case "water":
+            return "#06b6d4"
+          case "gas":
+            return "#FF8C00"
+          case "sewage":
+            return "#8B5A8B"
+          default:
+            return "#666666"
+        }
+      }
+
+      // Convert [lon, lat] to [lat, lon] for Leaflet
+      const leafletCoords = coordinates.map((coord: [number, number]) => [coord[1], coord[0]])
+
+      const polyline = L.polyline(leafletCoords, {
+        color: getConnectionColor(connectionType),
+        weight: 3,
+        opacity: 0.7,
+        lineCap: "round",
+        lineJoin: "round",
+      })
+
+      polyline.addTo(polylineLayersRef.current[layerKey])
+    })
+
+    // Add visible polyline layers to map
+    visibleConnections.forEach((type: string) => {
+      if (polylineLayersRef.current[type]) {
+        polylineLayersRef.current[type].addTo(mapRef.current)
+      }
+    })
+
+    console.log("[v0] Connection polylines rendered for types:", Array.from(visibleConnections))
+  }, [connections, visibleConnections])
+
+  useEffect(() => {
+    if (!mapRef.current) return
+
+    const L = window.L
+    if (!L) return
+
+    // Note: Roads and Buildings drawing would require Leaflet.Draw or similar
+    // For now, we're just logging the toggle state
+    console.log("[v0] Show Roads:", showRoads, "Show Buildings:", showBuildings)
+  }, [showRoads, showBuildings])
 
   return (
     <div className="relative w-full h-full">

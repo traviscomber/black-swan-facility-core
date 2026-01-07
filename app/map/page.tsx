@@ -5,7 +5,7 @@ import { PageHeader } from "@/components/page-header"
 import { Button } from "@/components/ui/button"
 import { createClient } from "@/lib/supabase/client"
 import { useState, useEffect, useRef, useCallback } from "react"
-import type { InfrastructurePlan } from "@/lib/types"
+import type { InfrastructurePlan, InfrastructureConnection } from "@/lib/types"
 import {
   Layers,
   X,
@@ -32,6 +32,7 @@ import { EditInfrastructureDialog } from "@/components/edit-infrastructure-dialo
 import { DeleteDialog } from "@/components/delete-dialog"
 import { InfrastructureSearchDialog } from "@/components/infrastructure-search-dialog"
 import { KmzUploadDialog } from "@/components/kmz-upload-dialog"
+// import type { InfrastructurePlan, InfrastructureConnection } from "@/lib/types"
 
 interface Location {
   id: string
@@ -232,6 +233,11 @@ export default function MapPage() {
   const [groupBy, setGroupBy] = useState<"category" | "location" | "phase">("phase")
 
   const [leafletLoaded, setLeafletLoaded] = useState(false)
+
+  const [showRoads, setShowRoads] = useState(false)
+  const [showBuildings, setShowBuildings] = useState(false)
+  const [visibleConnections, setVisibleConnections] = useState<Set<string>>(new Set())
+  const [connections, setConnections] = useState<InfrastructureConnection[]>([])
 
   const mapRef = useRef<any>(null)
   const mapContainerRef = useRef<HTMLDivElement>(null)
@@ -572,6 +578,30 @@ export default function MapPage() {
     })
   }, [kmzFilterEnabled, kmzLayers, leafletLoaded])
 
+  const fetchConnections = useCallback(async () => {
+    try {
+      const supabase = createClient()
+      const { data, error } = await supabase.from("infrastructure_connections").select("*").eq("status", "active")
+
+      if (error) throw error
+      setConnections(data || [])
+    } catch (error) {
+      console.error("Error fetching connections:", error)
+    }
+  }, [])
+
+  const toggleConnectionVisibility = (category: string) => {
+    setVisibleConnections((prev) => {
+      const newSet = new Set(prev)
+      if (newSet.has(category)) {
+        newSet.delete(category)
+      } else {
+        newSet.add(category)
+      }
+      return newSet
+    })
+  }
+
   const getInfraColor = (infra: InfrastructurePlan) => {
     if (infra.priority === "critical") return "#dc2626"
     switch (infra.category) {
@@ -832,6 +862,76 @@ export default function MapPage() {
     if (PHASE_2_UTILITIES.includes(category)) return "#3b82f6" // Blue for Phase 2
     return "#6b7280"
   }
+
+  const INFRASTRUCTURE_CATEGORIES = [
+    {
+      name: "PHASE 1",
+      items: infrastructure
+        .filter((item) => item.phase === "phase1")
+        .map((item) => ({
+          name: item.name,
+          category: item.category,
+          id: item.id,
+        })),
+    },
+    {
+      name: "PHASE 2 UTILITIES",
+      items: infrastructure
+        .filter((item) => item.phase === "phase2")
+        .map((item) => ({
+          name: item.name,
+          category: item.category,
+          id: item.id,
+        })),
+    },
+    {
+      name: "GIS OVERLAYS",
+      items: [
+        {
+          name: "Roads (Draw with Leaflet toolbar)",
+          category: "roads",
+          id: "roads",
+          type: "toggle",
+          checked: showRoads,
+        },
+        {
+          name: "Buildings (Draw with Leaflet toolbar)",
+          category: "buildings",
+          id: "buildings",
+          type: "toggle",
+          checked: showBuildings,
+        },
+        {
+          name: "Roads Connections (Show connection lines)",
+          category: "roads_connections",
+          id: "roads_connections",
+          type: "toggle",
+          checked: visibleConnections.has("road"),
+        },
+        {
+          name: "Internet Connections (Show network lines)",
+          category: "internet_connections",
+          id: "internet_connections",
+          type: "toggle",
+          checked: visibleConnections.has("internet"),
+        },
+        {
+          name: "Water Connections (Show pipeline lines)",
+          category: "water_connections",
+          id: "water_connections",
+          type: "toggle",
+          checked: visibleConnections.has("water"),
+        },
+        {
+          name: "Gas Connections (Show gas lines)",
+          category: "gas_connections",
+          id: "gas_connections",
+          type: "toggle",
+          checked: visibleConnections.has("gas"),
+        },
+      ],
+    },
+  ]
 
   return (
     <AppLayout>
@@ -1133,6 +1233,64 @@ export default function MapPage() {
                 <Upload className="mr-2 h-3 w-3" />
                 Upload KMZ
               </Button>
+
+              {/* Add toggles for Roads, Buildings, and Connections */}
+              <div className="mt-4 space-y-2">
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={showRoads}
+                    onChange={(e) => setShowRoads(e.target.checked)}
+                    className="h-4 w-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                  />
+                  <span className="text-sm text-gray-700">Roads (Draw with Leaflet toolbar)</span>
+                </label>
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={showBuildings}
+                    onChange={(e) => setShowBuildings(e.target.checked)}
+                    className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                  />
+                  <span className="text-sm text-gray-700">Buildings (Draw with Leaflet toolbar)</span>
+                </label>
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={visibleConnections.has("road")}
+                    onChange={() => toggleConnectionVisibility("road")}
+                    className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  />
+                  <span className="text-sm text-gray-700">Roads Connections (Show connection lines)</span>
+                </label>
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={visibleConnections.has("internet")}
+                    onChange={() => toggleConnectionVisibility("internet")}
+                    className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  />
+                  <span className="text-sm text-gray-700">Internet Connections (Show network lines)</span>
+                </label>
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={visibleConnections.has("water")}
+                    onChange={() => toggleConnectionVisibility("water")}
+                    className="h-4 w-4 rounded border-gray-300 text-cyan-600 focus:ring-cyan-500"
+                  />
+                  <span className="text-sm text-gray-700">Water Connections (Show pipeline lines)</span>
+                </label>
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={visibleConnections.has("gas")}
+                    onChange={() => toggleConnectionVisibility("gas")}
+                    className="h-4 w-4 rounded border-gray-300 text-orange-600 focus:ring-orange-500"
+                  />
+                  <span className="text-sm text-gray-700">Gas Connections (Show gas lines)</span>
+                </label>
+              </div>
             </div>
 
             {filteredInfrastructure.length === 0 && (
@@ -1227,6 +1385,20 @@ export default function MapPage() {
             loadKmzFiles()
           }}
         />
+
+        {/* Updated JSX to pass connection data and visibility states to map viewer */}
+        {/* <DynamicMap
+          infrastructure={infrastructure}
+          onInfrastructureClick={handleInfraClick}
+          selectedInfra={selectedInfra}
+          setSelectedInfra={setSelectedInfra}
+          setDetailPanelOpen={setDetailPanelOpen}
+          setBlinkingMarkerId={setBlinkingMarkerId}
+          connections={connections}
+          visibleConnections={visibleConnections}
+          showRoads={showRoads}
+          showBuildings={showBuildings}
+        /> */}
 
         <button
           onClick={() => setSearchDialogOpen(true)}

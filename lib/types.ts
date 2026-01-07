@@ -307,3 +307,26 @@ export interface AIContextCompaction {
   compaction_strategy: string | null
   created_at: string
 }
+
+export interface InfrastructurePlan {
+  id: string
+  name: string
+  category: string
+  latitude: number | null
+  longitude: number | null
+  description: string | null
+  status: string | null
+  phase: "phase1" | "phase2" | "general" | null
+  created_at: string
+}
+
+export interface InfrastructureConnection {
+  id: string
+  from_infrastructure_id: string
+  to_infrastructure_id: string
+  connection_type: "road" | "building" | "electricity" | "water" | "internet" | "gas" | "sewage" | string
+  description: string | null
+  coordinates: Array<[number, number]> | null // GeoJSON line coordinates
+  status: "planned" | "active" | "inactive"
+  created_at: string
+}
