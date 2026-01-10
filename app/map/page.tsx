@@ -25,6 +25,7 @@ import {
   CastleIcon as CattleIcon,
   Upload,
   MapIcon,
+  PlusCircle,
 } from "lucide-react"
 import KmzMapView from "@/components/kmz-map-viewer"
 import { InfrastructureDetailPanel } from "@/components/infrastructure-detail-panel"
@@ -45,7 +46,7 @@ interface Utility {
 }
 
 // Phase 1 utilities (Deadline: 13 December 2025)
-const PHASE_1_UTILITIES = ["electricity", "water", "internet"]
+const PHASE_1_UTILITIES = ["electricity", "water", "internet", "ports"]
 
 // Phase 2 utilities
 const PHASE_2_UTILITIES = [
@@ -81,6 +82,12 @@ const UTILITY_SPECS = {
     color: "#3b82f6",
     label: "Internet & Network",
     requirements: ["Router Maps", "Bandwidth", "Coverage Issues", "Monitoring", "Improvement Plan"],
+  },
+  ports: {
+    icon: "⚓",
+    color: "#0891b2",
+    label: "Ports & Boats",
+    requirements: ["Port Location", "Boat Capacity", "Maintenance Schedule", "Safety Protocol"],
   },
   drinking_water: {
     icon: "🔵",
@@ -171,7 +178,12 @@ export default function MapPage() {
   const [addDialogOpen, setAddDialogOpen] = useState(false)
   const [editDialogOpen, setEditDialogOpen] = useState(false)
   const [editingInfra, setEditingInfra] = useState<InfrastructurePlan | null>(null)
+  // const [clickedCoordinates, setClickedCoordinates] = useState<{ lat: number; lng: number } | null>(null) // Changed to include input states
   const [clickedCoordinates, setClickedCoordinates] = useState<{ lat: number; lng: number } | null>(null)
+  const [newInfraName, setNewInfraName] = useState("")
+  const [newInfraCategory, setNewInfraCategory] = useState("ports")
+  const [newInfraDescription, setNewInfraDescription] = useState("")
+  const [newInfraStatus, setNewInfraStatus] = useState("operational")
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [searchDialogOpen, setSearchDialogOpen] = useState(false)
   const [blinkingMarkerId, setBlinkingMarkerId] = useState<string | null>(null)
@@ -189,6 +201,7 @@ export default function MapPage() {
     internet: true,
     water: true,
     electricity: true,
+    ports: true, // Added ports filter
     cattle: true,
     drinking_water: true,
     heating: true,
@@ -208,6 +221,7 @@ export default function MapPage() {
     | "internet"
     | "water"
     | "electricity"
+    | "ports" // Added ports to expanded category type
     | "cattle"
     | "drinking_water"
     | "heating"
@@ -233,6 +247,8 @@ export default function MapPage() {
   const [showBuildings, setShowBuildings] = useState(false)
   const [visibleConnections, setVisibleConnections] = useState<Set<string>>(new Set())
   const [connections, setConnections] = useState<InfrastructureConnection[]>([])
+  const [isDrawingConnection, setIsDrawingConnection] = useState(false)
+  const [connectionStart, setConnectionStart] = useState<InfrastructurePlan | null>(null)
 
   const mapRef = useRef<any>(null)
   const mapContainerRef = useRef<HTMLDivElement>(null)
@@ -240,6 +256,84 @@ export default function MapPage() {
   const baseLayerRef = useRef<any>(null)
   const overlayLayerRef = useRef<any>(null)
   const kmzLayersRef = useRef<any>([])
+
+  const handleMapClick = useCallback((lat: number, lng: number) => {
+    console.log("[v0] Map clicked at:", lat, lng)
+    setClickedCoordinates({ lat, lng })
+    setAddDialogOpen(true)
+  }, [])
+
+  const fetchConnections = useCallback(async () => {
+    try {
+      const supabase = createClient()
+      try {
+        const { data, error } = await supabase.from("infrastructure_connections").select("*")
+        if (error) throw error
+        console.log("[v0] Fetched connections:", data?.length || 0)
+        setConnections(data || [])
+      } catch (tableError: any) {
+        // Silently skip if table doesn't exist - this feature isn't fully implemented yet
+        if (tableError?.message?.includes("infrastructure_connections")) {
+          console.debug("infrastructure_connections table not yet created")
+          return
+        }
+        throw tableError
+      }
+    } catch (error) {
+      console.error("Error fetching connections:", error)
+    }
+  }, [])
+
+  const handleCreateConnection = useCallback(
+    async (startPoint: InfrastructurePlan, endPoint: InfrastructurePlan) => {
+      try {
+        const supabase = createClient()
+
+        const { data, error } = await supabase
+          .from("infrastructure_connections")
+          .insert({
+            from_infrastructure_id: startPoint.id,
+            to_infrastructure_id: endPoint.id,
+            connection_type: "diagram",
+            line_style: "dashed",
+            color: "#ffffff",
+            description: `Connection from ${startPoint.name} to ${endPoint.name}`,
+          })
+          .select()
+          .single()
+
+        if (error) throw error
+
+        console.log("[v0] Connection created:", data)
+
+        // Refresh connections
+        await fetchConnections()
+
+        // Reset drawing mode
+        setIsDrawingConnection(false)
+        setConnectionStart(null)
+      } catch (error) {
+        console.error("[v0] Error creating connection:", error)
+      }
+    },
+    [fetchConnections],
+  )
+
+  const handleMarkerClickForConnection = useCallback(
+    (infra: InfrastructurePlan) => {
+      if (!isDrawingConnection) return
+
+      if (!connectionStart) {
+        // First point selected
+        setConnectionStart(infra)
+        console.log("[v0] Connection start point selected:", infra.name)
+      } else {
+        // Second point selected - create connection
+        handleCreateConnection(connectionStart, infra)
+      }
+    },
+    [isDrawingConnection, connectionStart, handleCreateConnection],
+  )
 
   useEffect(() => {
     if (typeof window === "undefined") return
@@ -272,7 +366,7 @@ export default function MapPage() {
   }, [])
 
   useEffect(() => {
-    if (!leafletLoaded || typeof window === "undefined" || mapRef.current) return
+    if (!leafletLoaded || typeof window === "undefined") return
 
     const L = (window as any).L
 
@@ -299,9 +393,14 @@ export default function MapPage() {
       initialTileLayer.addTo(map)
       baseLayerRef.current = initialTileLayer
 
-      map.on("contextmenu", (e: any) => {
-        setNewInfraLocation(e.latlng)
-        setAddDialogOpen(true)
+      // map.on("contextmenu", (e: any) => { // Changed to handler
+      //   setNewInfraLocation(e.latlng)
+      //   setAddDialogOpen(true)
+      // })
+
+      map.on("click", (e: any) => {
+        // Changed to handler
+        handleMapClick(e.latlng.lat, e.latlng.lng)
       })
 
       mapRef.current = map
@@ -329,7 +428,7 @@ export default function MapPage() {
 
       console.log("[v0] Map initialized successfully with Carto tiles")
     }
-  }, [leafletLoaded])
+  }, [leafletLoaded, handleMapClick]) // Added handleMapClick dependency
 
   useEffect(() => {
     if (!mapRef.current || !leafletLoaded || typeof window === "undefined") return
@@ -408,7 +507,9 @@ export default function MapPage() {
     markersRef.current = []
 
     const filtered = infrastructure.filter((infra) => {
-      return filters[infra.category]
+      // Check if the category is in the filters object and is enabled
+      // Use the category key directly, as it's guaranteed to exist if it's a valid infra category
+      return filters[infra.category as keyof typeof filters]
     })
 
     filtered.forEach((infra) => {
@@ -438,164 +539,76 @@ export default function MapPage() {
       const marker = L.marker([infra.latitude, infra.longitude], { icon })
         .addTo(map)
         .on("click", () => {
-          setSelectedInfra(infra)
-          setDetailPanelOpen(true)
+          handleMarkerClickForConnection(infra)
+          // Only select infra and open detail panel if not drawing connections
+          if (!isDrawingConnection) {
+            setSelectedInfra(infra)
+            setDetailPanelOpen(true)
+          }
         })
 
       markersRef.current.push(marker)
     })
 
     if (filtered.length > 0) {
-      const bounds = L.latLngBounds(filtered.map((i) => [i.latitude, i.longitude] as [number, number]))
-      map.fitBounds(bounds, { padding: [50, 50] })
-    }
-  }, [infrastructure, filters, leafletLoaded])
+      const validItems = filtered.filter(
+        (i) =>
+          typeof i.latitude === "number" &&
+          typeof i.longitude === "number" &&
+          !isNaN(i.latitude) &&
+          !isNaN(i.longitude) &&
+          i.latitude !== null &&
+          i.longitude !== null,
+      )
 
-  useEffect(() => {
-    const fetchUtilities = async () => {
-      const supabase = createClient()
-      const { data, error } = await supabase.from("utilities").select("*")
+      console.log("[v0] Valid items for bounds:", validItems.length)
 
-      if (error) {
-        console.error("Error fetching utilities:", error)
-        return
+      // Need at least 2 points for valid bounds
+      if (validItems.length >= 2) {
+        try {
+          const coords = validItems.map((i) => [i.latitude, i.longitude] as [number, number])
+          const bounds = L.latLngBounds(coords)
+
+          // Check if bounds are valid before fitting
+          if (bounds.isValid()) {
+            map.fitBounds(bounds, { padding: [50, 50] })
+            console.log("[v0] Map bounds fitted successfully")
+          } else {
+            // Silently skip - this can happen with single-point or zero-area bounds
+            console.log("[v0] Bounds not valid, skipping fitBounds (this is normal if all points are at same location)")
+          }
+        } catch (error) {
+          // Silently handle - not a critical error, map will just stay at default zoom
+          console.log("[v0] Could not fit bounds, keeping default view")
+        }
+      } else if (validItems.length === 1) {
+        // If only one point, center on it instead of fitting bounds
+        const item = validItems[0]
+        map.setView([item.latitude, item.longitude], 13)
+        console.log("[v0] Centered map on single infrastructure point")
       }
-
-      const enrichedUtilities = (data || []).map((util: any) => ({
-        ...util,
-        phase: PHASE_1_UTILITIES.includes(util.category)
-          ? "phase1"
-          : PHASE_2_UTILITIES.includes(util.category)
-            ? "phase2"
-            : "general",
-      }))
-
-      setUtilities(enrichedUtilities)
     }
-
-    fetchUtilities()
-  }, [])
+  }, [infrastructure, filters, leafletLoaded, isDrawingConnection, connectionStart, handleMarkerClickForConnection]) // Added dependencies
 
   useEffect(() => {
-    const loadInfrastructure = async () => {
+    const loadInitialInfrastructure = async () => {
       const supabase = createClient()
       const { data, error } = await supabase.from("infrastructure_plans").select("*").order("name")
-
       if (error) {
-        console.error("[v0] Error loading infrastructure:", error)
+        console.error("[v0] Error fetching infrastructure:", error)
         return
       }
-
       if (data) {
+        console.log("[v0] Loaded infrastructure:", data.length, "items")
         setInfrastructure(data)
       }
     }
-
-    loadInfrastructure()
-  }, [])
-
-  useEffect(() => {
-    const loadLocations = async () => {
-      const supabase = createClient()
-      const { data, error } = await supabase.from("locations").select("*").order("name")
-
-      if (error) {
-        console.error("[v0] Error loading locations:", error)
-        return
-      }
-
-      if (data) {
-        setLocations(data)
-      }
-    }
-
-    loadLocations()
-  }, [])
+    loadInitialInfrastructure()
+  }, []) // Empty dependency array - run once on mount
 
   useEffect(() => {
-    const loadKmzFiles = async () => {
-      const supabase = createClient()
-      const { data, error } = await supabase.from("kmz_files").select("*").eq("is_active", true)
-
-      if (error) {
-        if (error.message.includes("Could not find the table")) {
-          console.log("[v0] KMZ files table not yet created. Run migration script 026_create_kmz_management.sql")
-          setKmzLayers([]) // Initialize empty array
-        } else {
-          console.error("[v0] Error loading KMZ files:", error)
-        }
-        return
-      }
-
-      if (data) {
-        setKmzLayers(data)
-      }
-    }
-
-    loadKmzFiles()
-  }, [])
-
-  useEffect(() => {
-    if (!mapRef.current || !leafletLoaded || typeof window === "undefined") return
-
-    const L = (window as any).L
-    const map = mapRef.current
-
-    // Remove existing KMZ layers
-    kmzLayersRef.current.forEach((layer: any) => {
-      if (map.hasLayer(layer)) {
-        map.removeLayer(layer)
-      }
-    })
-    kmzLayersRef.current = []
-    setKmzLoadedIds(new Set())
-
-    if (!kmzFilterEnabled) return
-
-    // Add KMZ layers
-    kmzLayers.forEach((kmzFile) => {
-      try {
-        // Parse KMZ (which is a ZIP file containing KML)
-        fetch(kmzFile.file_url)
-          .then((response) => response.blob())
-          .then((blob) => {
-            // For now, we'll note that full KMZ parsing requires a library
-            // This is a placeholder that shows the KMZ is being loaded
-            console.log(`[v0] KMZ file loaded: ${kmzFile.name}`)
-            setKmzLoadedIds((prev) => new Set(prev).add(kmzFile.id))
-          })
-          .catch((error) => {
-            console.error(`[v0] Error loading KMZ ${kmzFile.name}:`, error)
-          })
-      } catch (error) {
-        console.error(`[v0] Error processing KMZ ${kmzFile.name}:`, error)
-      }
-    })
-  }, [kmzFilterEnabled, kmzLayers, leafletLoaded])
-
-  useEffect(() => {
-    const fetchConnections = async () => {
-      try {
-        const supabase = createClient()
-        try {
-          const { data, error } = await supabase.from("infrastructure_connections").select("*").eq("status", "active")
-          if (error) throw error
-          setConnections(data || [])
-        } catch (tableError: any) {
-          // Silently skip if table doesn't exist - this feature isn't fully implemented yet
-          if (tableError?.message?.includes("infrastructure_connections")) {
-            console.debug("infrastructure_connections table not yet created")
-            return
-          }
-          throw tableError
-        }
-      } catch (error) {
-        console.error("Error fetching connections:", error)
-      }
-    }
-
     fetchConnections()
-  }, [])
+  }, [fetchConnections]) // Add fetchConnections to dependency array
 
   const toggleConnectionVisibility = (category: string) => {
     setVisibleConnections((prev) => {
@@ -620,6 +633,8 @@ export default function MapPage() {
         return "#eab308"
       case "cattle":
         return "#8b7355"
+      case "ports": // Added ports color
+        return "#0891b2"
       default:
         return "#6b7280"
     }
@@ -635,6 +650,8 @@ export default function MapPage() {
         return Zap
       case "cattle":
         return CattleIcon
+      case "ports": // Added ports icon
+        return MapPin // Placeholder, could be a specific port icon if available
       case "drinking_water":
         return Circle
       case "heating":
@@ -674,6 +691,8 @@ export default function MapPage() {
         return "⚡"
       case "cattle":
         return "🐄"
+      case "ports": // Added ports symbol
+        return "⚓"
       case "drinking_water":
         return "🔵"
       case "heating":
@@ -715,6 +734,7 @@ export default function MapPage() {
 
   const filteredInfrastructure = infrastructure.filter((infra) => {
     // Check if the category is in the filters object and is enabled
+    // Use the category key directly, as it's guaranteed to exist if it's a valid infra category
     return filters[infra.category as keyof typeof filters]
   })
 
@@ -723,6 +743,7 @@ export default function MapPage() {
     internet: filteredInfrastructure.filter((item) => item.category === "internet"),
     water: filteredInfrastructure.filter((item) => item.category === "water"),
     electricity: filteredInfrastructure.filter((item) => item.category === "electricity"),
+    ports: filteredInfrastructure.filter((item) => item.category === "ports"), // Added ports category filter
     cattle: filteredInfrastructure.filter((item) => item.category === "cattle"),
     // Phase 2 utilities
     drinking_water: filteredInfrastructure.filter((item) => item.category === "drinking_water"),
@@ -812,7 +833,7 @@ export default function MapPage() {
             font-weight: bold;
             font-size: ${isHighlighted ? "10px" : "8px"};
             transition: all 0.2s ease;
-          ">${symbol}</div>`,
+          }">${symbol}</div>`,
             iconSize: [isHighlighted ? 24 : 16, isHighlighted ? 24 : 16],
             iconAnchor: [isHighlighted ? 12 : 8, isHighlighted ? 12 : 8],
           })
@@ -936,9 +957,62 @@ export default function MapPage() {
           type: "toggle",
           checked: visibleConnections.has("gas"),
         },
+        // Add toggle for Ports Connections if applicable
+        {
+          name: "Port Connections (Show maritime lines)",
+          category: "port_connections",
+          id: "port_connections",
+          type: "toggle",
+          checked: visibleConnections.has("ports"),
+        },
       ],
     },
   ]
+
+  const handleSaveNewInfrastructure = async () => {
+    if (!newInfraName.trim() || !clickedCoordinates) {
+      alert("Please enter a name and click on the map")
+      return
+    }
+
+    try {
+      const supabase = createClient()
+      const { data, error } = await supabase
+        .from("infrastructure_plans")
+        .insert({
+          name: newInfraName.trim(),
+          category: newInfraCategory,
+          description: newInfraDescription.trim() || null,
+          status: newInfraStatus,
+          latitude: clickedCoordinates.lat,
+          longitude: clickedCoordinates.lng,
+        })
+        .select()
+        .single()
+
+      if (error) throw error
+
+      console.log("[v0] Infrastructure added:", data)
+
+      // Refresh infrastructure list
+      const { data: allInfra } = await supabase.from("infrastructure_plans").select("*").order("name")
+
+      if (allInfra) {
+        setInfrastructure(allInfra)
+      }
+
+      // Reset form and close dialog
+      setNewInfraName("")
+      setNewInfraDescription("")
+      setNewInfraCategory("ports")
+      setNewInfraStatus("operational")
+      setClickedCoordinates(null)
+      setAddDialogOpen(false)
+    } catch (error) {
+      console.error("[v0] Error adding infrastructure:", error)
+      alert("Failed to add infrastructure")
+    }
+  }
 
   return (
     <AppLayout>
@@ -947,13 +1021,40 @@ export default function MapPage() {
 
         <PageHeader
           title="GIS Infrastructure Map"
-          description="Internet, Water, Electricity, Cattle, Drinking Water, Heating, Gasoline, Gas, Wood Supply, Trash, Sewage, Storage, Equipment Inventory, Food Storage, Security, Fire Safety"
+          description="Internet, Water, Electricity, Ports, Cattle, Drinking Water, Heating, Gasoline, Gas, Wood Supply, Trash, Sewage, Storage, Equipment Inventory, Food Storage, Security, Fire Safety"
           actions={
             <div className="flex gap-2">
               <Button onClick={() => setAddDialogOpen(true)}>
                 <Plus className="mr-2 h-4 w-4" />
                 Add Infrastructure
               </Button>
+              {/* Button to start drawing connections */}
+              <Button
+                onClick={() => {
+                  setIsDrawingConnection(true)
+                  setConnectionStart(null) // Reset start point when initiating drawing
+                  setDetailPanelOpen(false) // Close detail panel to avoid interference
+                }}
+                variant={isDrawingConnection ? "default" : "outline"}
+                className="flex items-center gap-1"
+              >
+                <Package className="h-4 w-4" />
+                {isDrawingConnection ? "Connecting..." : "Connect Points"}
+              </Button>
+              {/* Button to cancel connection drawing */}
+              {isDrawingConnection && (
+                <Button
+                  onClick={() => {
+                    setIsDrawingConnection(false)
+                    setConnectionStart(null)
+                  }}
+                  variant="destructive"
+                  className="flex items-center gap-1"
+                >
+                  <X className="h-4 w-4" />
+                  Cancel
+                </Button>
+              )}
             </div>
           }
         />
@@ -1137,6 +1238,47 @@ export default function MapPage() {
                       <span className="text-sm text-gray-700">Electricity ({infraByCategory.electricity.length})</span>
                     </div>
                   </label>
+
+                  {/* Ports */}
+                  <label className="flex items-center gap-3 cursor-pointer mb-2">
+                    <input
+                      type="checkbox"
+                      checked={filters.ports}
+                      onChange={(e) => setFilters({ ...filters, ports: e.target.checked })}
+                      className="h-4 w-4 rounded border-gray-300 text-violet-600 focus:ring-violet-500"
+                    />
+                    <div className="flex items-center gap-2 flex-1">
+                      <span className="text-lg">{getUtilityIcon("ports")}</span>
+                      <button
+                        onClick={() => setExpandedCategory(expandedCategory === "ports" ? null : "ports")}
+                        className="text-sm text-gray-700 hover:text-gray-900 flex-1 text-left flex items-center justify-between"
+                      >
+                        <span>Ports ({infraByCategory.ports.length})</span>
+                        <ChevronRight
+                          className={`h-4 w-4 transition-transform ${expandedCategory === "ports" ? "rotate-90" : ""}`}
+                        />
+                      </button>
+                    </div>
+                  </label>
+
+                  {expandedCategory === "ports" && filters.ports && (
+                    <div className="ml-8 space-y-2 max-h-64 overflow-y-auto border-l border-violet-200 pl-3 mb-2">
+                      {infraByCategory.ports.length === 0 ? (
+                        <p className="text-xs text-gray-500 italic">No Port locations</p>
+                      ) : (
+                        infraByCategory.ports.map((item) => (
+                          <button
+                            key={item.id}
+                            onClick={() => handleInfraClick(item)}
+                            className="block w-full text-left p-2 rounded hover:bg-violet-50 transition-colors text-xs text-gray-600 hover:text-gray-900"
+                          >
+                            <div className="font-medium text-gray-800">{item.name}</div>
+                            <div className="text-xs text-gray-500">{item.type || "Port"}</div>
+                          </button>
+                        ))
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 {/* Phase 2 Utilities */}
@@ -1240,6 +1382,41 @@ export default function MapPage() {
                 Upload KMZ
               </Button>
 
+              {/* Draw Connection Line button to toggle drawing mode */}
+              <Button
+                onClick={() => {
+                  setIsDrawingConnection(!isDrawingConnection)
+                  if (isDrawingConnection) {
+                    // Cancel drawing mode
+                    setConnectionStart(null)
+                  }
+                }}
+                className="w-full text-xs mt-2"
+                variant={isDrawingConnection ? "default" : "outline"}
+              >
+                {isDrawingConnection ? (
+                  <>
+                    <X className="mr-2 h-3 w-3" />
+                    Cancel Drawing
+                  </>
+                ) : (
+                  <>
+                    <PlusCircle className="mr-2 h-3 w-3" />
+                    Draw Connection Line
+                  </>
+                )}
+              </Button>
+
+              {isDrawingConnection && (
+                <div className="bg-blue-50 border border-blue-200 rounded p-3 text-xs text-blue-800 mt-2">
+                  {!connectionStart ? (
+                    <p>📍 Click on the first infrastructure point to start the connection</p>
+                  ) : (
+                    <p>📍 Click on the second infrastructure point to complete the connection</p>
+                  )}
+                </div>
+              )}
+
               {/* Add toggles for Roads, Buildings, and Connections */}
               <div className="mt-4 space-y-2">
                 <label className="flex items-center gap-3 cursor-pointer">
@@ -1296,6 +1473,15 @@ export default function MapPage() {
                   />
                   <span className="text-sm text-gray-700">Gas Connections (Show gas lines)</span>
                 </label>
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={visibleConnections.has("ports")}
+                    onChange={() => toggleConnectionVisibility("ports")}
+                    className="h-4 w-4 rounded border-gray-300 text-cyan-600 focus:ring-cyan-500"
+                  />
+                  <span className="text-sm text-gray-700">Port Connections (Show maritime lines)</span>
+                </label>
               </div>
             </div>
 
@@ -1311,10 +1497,24 @@ export default function MapPage() {
 
         {/* Render KmzMapViewer component and pass necessary props */}
         <KmzMapView
-          coordinatesVisible={false} // Set to false as per update
+          // visibleLayers={visibleLayers} // This prop is not defined in the existing code
+          kmzFiles={kmzLayers} // Assuming kmzLayers should be passed as kmzFiles
           infrastructureData={infrastructure}
           visibleConnections={visibleConnections}
-          infrastructureConnections={connections} // Use the fetched connections
+          connections={connections}
+          showRoads={showRoads}
+          showBuildings={showBuildings}
+          onMapClick={handleMapClick} // Pass map click handler
+          onMarkerClick={(infra) => {
+            if (isDrawingConnection) {
+              handleMarkerClickForConnection(infra)
+            } else {
+              setSelectedInfra(infra)
+              setDetailPanelOpen(true)
+            }
+          }}
+          isDrawingConnection={isDrawingConnection}
+          connectionStart={connectionStart}
         />
 
         {/* Keeping only the top-right fullscreen button with responsive positioning for Infrastructure panel */}
@@ -1360,6 +1560,137 @@ export default function MapPage() {
               loadInfra()
             }}
           />
+        )}
+
+        {addDialogOpen && (
+          <div className="fixed inset-0 bg-black/50 z-[2000] flex items-center justify-center p-4">
+            <div className="bg-white rounded-lg shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto">
+              <div className="p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-xl font-semibold">Add Infrastructure</h2>
+                  <button
+                    onClick={() => {
+                      setAddDialogOpen(false)
+                      setClickedCoordinates(null)
+                      setNewInfraName("")
+                      setNewInfraDescription("")
+                    }}
+                    className="text-gray-400 hover:text-gray-600"
+                  >
+                    <X className="h-5 w-5" />
+                  </button>
+                </div>
+
+                <div className="space-y-4">
+                  {clickedCoordinates ? (
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm">
+                      <p className="font-medium text-blue-900">Location selected:</p>
+                      <p className="text-blue-700">
+                        {clickedCoordinates.lat.toFixed(6)}, {clickedCoordinates.lng.toFixed(6)}
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 text-sm text-yellow-800">
+                      Click on the map to select a location
+                    </div>
+                  )}
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
+                    <select
+                      value={newInfraCategory}
+                      onChange={(e) => setNewInfraCategory(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    >
+                      <optgroup label="Phase 1">
+                        <option value="ports">⚓ Ports & Boats</option>
+                        <option value="electricity">⚡ Electricity</option>
+                        <option value="water">💧 Water Supply</option>
+                        <option value="internet">📡 Internet & Network</option>
+                      </optgroup>
+                      <optgroup label="Phase 2">
+                        <option value="drinking_water">🔵 Drinking Water</option>
+                        <option value="heating">🔥 Heating System</option>
+                        <option value="gasoline">⛽ Gasoline Storage</option>
+                        <option value="gas">🔴 Gas System</option>
+                        <option value="wood_supply">🪵 Wood Supply</option>
+                        <option value="trash">🗑️ Trash Management</option>
+                        <option value="sewage">🚽 Sewage System</option>
+                        <option value="storage">📦 Storage Systems</option>
+                        <option value="equipment_inventory">🔧 Equipment</option>
+                        <option value="food_storage">🍎 Food Storage</option>
+                        <option value="security">🔒 Security Systems</option>
+                        <option value="fire_safety">🚨 Fire Safety</option>
+                      </optgroup>
+                      <optgroup label="General">
+                        <option value="cattle">🐄 Cattle</option>
+                      </optgroup>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Name *</label>
+                    <input
+                      type="text"
+                      value={newInfraName}
+                      onChange={(e) => setNewInfraName(e.target.value)}
+                      placeholder="e.g., Main Port, Dock #1"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                    <select
+                      value={newInfraStatus}
+                      onChange={(e) => setNewInfraStatus(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900"
+                    >
+                      <option value="operational">✅ Operational</option>
+                      <option value="planned">📋 Planned</option>
+                      <option value="under_construction">🏗️ Under Construction</option>
+                      <option value="maintenance">🔧 Maintenance</option>
+                      <option value="inactive">⏸️ Inactive</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                    <textarea
+                      value={newInfraDescription}
+                      onChange={(e) => setNewInfraDescription(e.target.value)}
+                      placeholder="Additional details about this infrastructure..."
+                      rows={3}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900"
+                    />
+                  </div>
+                </div>
+
+                <div className="mt-6 flex gap-3">
+                  <Button
+                    onClick={() => {
+                      setAddDialogOpen(false)
+                      setClickedCoordinates(null)
+                      setNewInfraName("")
+                      setNewInfraDescription("")
+                    }}
+                    variant="outline"
+                    className="flex-1"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={handleSaveNewInfrastructure}
+                    disabled={!newInfraName.trim() || !clickedCoordinates}
+                    className="flex-1"
+                  >
+                    <Plus className="mr-2 h-4 w-4" />
+                    Add Infrastructure
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
         )}
       </div>
     </AppLayout>

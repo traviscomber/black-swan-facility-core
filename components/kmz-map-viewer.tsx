@@ -10,6 +10,11 @@ interface KmzMapViewProps {
   visibleConnections?: Set<string>
   showRoads?: boolean
   showBuildings?: boolean
+  infrastructureData?: any[]
+  onMapClick?: (lat: number, lng: number) => void
+  onMarkerClick?: (infra: any) => void
+  isDrawingConnection?: boolean
+  connectionStart?: any | null
 }
 
 const KmzMapView = ({
@@ -19,15 +24,23 @@ const KmzMapView = ({
   visibleConnections = new Set(),
   showRoads = false,
   showBuildings = false,
+  infrastructureData = [],
+  onMapClick,
+  onMarkerClick,
+  isDrawingConnection = false,
+  connectionStart = null,
 }: KmzMapViewProps) => {
   const mapContainerRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<any>(null)
   const [mapType, setMapType] = useState<"street" | "satellite" | "terrain" | "hybrid">("street")
   const [terrainOpacity, setTerrainOpacity] = useState(0.5)
+  const [mapReady, setMapReady] = useState(false) // Added mapReady state to track when map is initialized
   const tileLayersRef = useRef<any>({})
-  const polylineLayersRef = useRef<any>({})
+  const polylineLayersRef = useRef<any>(null)
   const drawnItemsRef = useRef<any>(null)
   const drawControlRef = useRef<any>(null)
+  const infrastructureMarkersRef = useRef<any>(null)
+  const connectionLinesRef = useRef<any>([])
 
   useEffect(() => {
     if (typeof window === "undefined" || !mapContainerRef.current) return
@@ -52,6 +65,9 @@ const KmzMapView = ({
       if (mapRef.current) return
 
       mapRef.current = L.map(mapContainerRef.current).setView([-40.3522, -71.5437], 13)
+
+      mapRef.current.createPane("connectionPane")
+      mapRef.current.getPane("connectionPane").style.zIndex = 650 // Above markers (600) but below popups (700)
 
       const streetLayer = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
         attribution: "© OpenStreetMap contributors",
@@ -86,14 +102,25 @@ const KmzMapView = ({
         internet: L.layerGroup(),
         water: L.layerGroup(),
         gas: L.layerGroup(),
+        diagram: L.layerGroup(), // Added diagram layer
       }
 
       drawnItemsRef.current = new L.FeatureGroup()
       mapRef.current.addLayer(drawnItemsRef.current)
+
+      if (onMapClick) {
+        mapRef.current.on("click", (e: any) => {
+          console.log("[v0] Map clicked at:", e.latlng.lat, e.latlng.lng)
+          onMapClick(e.latlng.lat, e.latlng.lng)
+        })
+      }
+
+      setMapReady(true) // Set mapReady to true after map is initialized
+      console.log("[v0] Map initialized and ready")
     }
 
     initMap()
-  }, [])
+  }, [onMapClick])
 
   useEffect(() => {
     if (!mapRef.current) return
@@ -123,95 +150,65 @@ const KmzMapView = ({
   }, [mapType, terrainOpacity])
 
   useEffect(() => {
-    if (!mapRef.current || mapType !== "hybrid") return
-
-    const terrainLayer = tileLayersRef.current.terrain
-    if (terrainLayer && mapRef.current.hasLayer(terrainLayer)) {
-      terrainLayer.setOpacity(terrainOpacity)
+    if (!mapRef.current || !mapReady || !infrastructureData || infrastructureData.length === 0) {
+      return
     }
-  }, [terrainOpacity])
-
-  useEffect(() => {
-    if (!mapRef.current || !connections || connections.length === 0) return
 
     const L = window.L
     if (!L) return
 
-    // Clear existing polylines for each connection type
-    Object.values(polylineLayersRef.current).forEach((layerGroup: any) => {
-      if (mapRef.current.hasLayer(layerGroup)) {
-        mapRef.current.removeLayer(layerGroup)
-      }
+    const connectionPane = mapRef.current.getPane("connectionPane")
+    console.log("[v0] Connection pane exists:", !!connectionPane)
+    console.log("[v0] Connection pane z-index:", connectionPane?.style.zIndex)
+
+    // Find Prairie Houses Starlink 4 and Signal Repeater 2
+    const starlink = infrastructureData.find((i: any) => i.name === "Prairie Houses, Starlink 4")
+    const repeater = infrastructureData.find((i: any) => i.name === "Prairie Houses, Signal Repeater 2")
+
+    console.log("[v0] Found Prairie Houses points:", {
+      starlink: starlink?.name,
+      repeater: repeater?.name,
+      starlinkCoords: starlink ? [starlink.latitude, starlink.longitude] : null,
+      repeaterCoords: repeater ? [repeater.latitude, repeater.longitude] : null,
     })
 
-    polylineLayersRef.current = {
-      road: L.layerGroup(),
-      buildings: L.layerGroup(),
-      electricity: L.layerGroup(),
-      internet: L.layerGroup(),
-      water: L.layerGroup(),
-      gas: L.layerGroup(),
+    if (starlink && repeater && starlink.latitude && repeater.latitude) {
+      if (connectionLinesRef.current.length > 0) {
+        console.log("[v0] Removing previous test line")
+        connectionLinesRef.current.forEach((line: any) => line.remove())
+        connectionLinesRef.current = []
+      }
+
+      // Create ONE simple red line
+      const testLine = L.polyline(
+        [
+          [starlink.latitude, starlink.longitude],
+          [repeater.latitude, repeater.longitude],
+        ],
+        {
+          color: "#FF0000", // Bright red
+          weight: 30, // Made even thicker
+          opacity: 1,
+          pane: "connectionPane",
+        },
+      )
+
+      testLine.addTo(mapRef.current)
+      connectionLinesRef.current.push(testLine)
+
+      console.log("[v0] ✓ HARDCODED TEST LINE ADDED between Prairie Houses points")
+      console.log("[v0] Line coordinates:", [
+        [starlink.latitude, starlink.longitude],
+        [repeater.latitude, repeater.longitude],
+      ])
+      console.log("[v0] Line is on map:", mapRef.current.hasLayer(testLine))
+      console.log("[v0] Line pane:", testLine.options.pane)
+      console.log("[v0] Line element:", testLine.getElement())
+      console.log("[v0] All map panes:", Object.keys(mapRef.current.getPanes()))
+    } else {
+      console.log("[v0] ✗ Could not find Prairie Houses points for test line")
     }
-
-    // Add polylines for visible connection types
-    connections.forEach((connection) => {
-      const connectionType = connection.connection_type
-      const coordinates = connection.coordinates
-
-      // Skip if coordinates are not valid
-      if (!coordinates || !Array.isArray(coordinates) || coordinates.length < 2) return
-
-      // Map connection type to visible connection category
-      let layerKey = connectionType
-      if (!polylineLayersRef.current[layerKey]) {
-        layerKey = "road" // default to road if type not found
-      }
-
-      // Determine color based on connection type
-      const getConnectionColor = (type: string) => {
-        switch (type) {
-          case "road":
-            return "#8B4513"
-          case "building":
-            return "#DC143C"
-          case "electricity":
-            return "#FFD700"
-          case "internet":
-            return "#3b82f6"
-          case "water":
-            return "#06b6d4"
-          case "gas":
-            return "#FF8C00"
-          case "sewage":
-            return "#8B5A8B"
-          default:
-            return "#666666"
-        }
-      }
-
-      // Convert [lon, lat] to [lat, lon] for Leaflet
-      const leafletCoords = coordinates.map((coord: [number, number]) => [coord[1], coord[0]])
-
-      const polyline = L.polyline(leafletCoords, {
-        color: getConnectionColor(connectionType),
-        weight: 3,
-        opacity: 0.7,
-        lineCap: "round",
-        lineJoin: "round",
-      })
-
-      polyline.addTo(polylineLayersRef.current[layerKey])
-    })
-
-    // Add visible polyline layers to map
-    visibleConnections.forEach((type: string) => {
-      if (polylineLayersRef.current[type]) {
-        polylineLayersRef.current[type].addTo(mapRef.current)
-      }
-    })
-
-    console.log("[v0] Connection polylines rendered for types:", Array.from(visibleConnections))
-  }, [connections, visibleConnections])
+  }, [infrastructureData, mapReady])
 
   useEffect(() => {
     if (!mapRef.current || !drawnItemsRef.current) return
@@ -219,23 +216,23 @@ const KmzMapView = ({
     const setupDrawing = async () => {
       const L = await import("leaflet")
 
-      // Only enable drawing if showRoads or showBuildings is true
       if (showRoads || showBuildings) {
-        // First check if leaflet-draw script is already loaded
         if (!window.L?.Control?.Draw) {
           await new Promise((resolve) => {
             const script = document.createElement("script")
             script.src = "https://cdnjs.cloudflare.com/ajax/libs/leaflet-draw/1.0.4/leaflet.draw.js"
-            script.onload = resolve
+            script.onload = () => {
+              console.log("[v0] Leaflet.Draw loaded successfully")
+              resolve(true)
+            }
             script.onerror = () => {
-              console.error("[v0] Failed to load Leaflet.Draw from CDN")
-              resolve() // Still resolve to prevent hanging
+              console.warn("[v0] Leaflet.Draw unavailable - drawing tools disabled")
+              resolve(false)
             }
             document.head.appendChild(script)
           })
         }
 
-        // Now use L.Control.Draw
         if (window.L?.Control?.Draw) {
           const drawControl = new L.Control.Draw({
             position: "bottomleft",
@@ -254,7 +251,6 @@ const KmzMapView = ({
             },
           })
 
-          // Remove existing draw control if it exists
           if (drawControlRef.current) {
             mapRef.current.removeControl(drawControlRef.current)
           }
@@ -262,7 +258,6 @@ const KmzMapView = ({
           mapRef.current.addControl(drawControl)
           drawControlRef.current = drawControl
 
-          // Handle drawn items
           mapRef.current.on("draw:created", (e: any) => {
             const layer = e.layer
             drawnItemsRef.current.addLayer(layer)
@@ -276,11 +271,8 @@ const KmzMapView = ({
           mapRef.current.on("draw:deleted", () => {
             console.log("[v0] Drawn items deleted")
           })
-        } else {
-          console.warn("[v0] Leaflet.Draw not available after loading from CDN")
         }
       } else {
-        // Remove draw control when toggled off
         if (drawControlRef.current) {
           mapRef.current.removeControl(drawControlRef.current)
           drawControlRef.current = null
@@ -290,6 +282,66 @@ const KmzMapView = ({
 
     setupDrawing().catch((err) => console.error("[v0] Error setting up drawing:", err))
   }, [showRoads, showBuildings])
+
+  useEffect(() => {
+    if (!mapRef.current || !infrastructureData || infrastructureData.length === 0) {
+      console.log("[v0] Infrastructure data not ready:", {
+        hasMap: !!mapRef.current,
+        hasData: !!infrastructureData,
+        length: infrastructureData?.length || 0,
+      })
+      return
+    }
+
+    const L = window.L
+    if (!L) return
+
+    if (infrastructureMarkersRef.current) {
+      infrastructureMarkersRef.current.clearLayers()
+    } else {
+      infrastructureMarkersRef.current = L.layerGroup()
+      infrastructureMarkersRef.current.addTo(mapRef.current)
+    }
+
+    console.log("[v0] Rendering infrastructure markers:", infrastructureData.length)
+
+    infrastructureData.forEach((item: any) => {
+      if (!item.latitude || !item.longitude) {
+        return
+      }
+
+      const marker = L.marker([item.latitude, item.longitude])
+
+      const isStartPoint = connectionStart && connectionStart.id === item.id
+      const popupText =
+        isDrawingConnection && isStartPoint
+          ? `<strong>${item.name}</strong><br><em>Connection start point</em>`
+          : `<strong>${item.name}</strong>`
+
+      marker.bindPopup(popupText)
+
+      if (onMarkerClick) {
+        marker.on("click", () => {
+          onMarkerClick(item)
+        })
+      }
+
+      if (isStartPoint && L.divIcon) {
+        marker.setIcon(
+          L.divIcon({
+            html: `<div style="background: #f59e0b; width: 16px; height: 16px; border-radius: 50%; border: 3px solid #ffffff; box-shadow: 0 0 10px rgba(0,0,0,0.5);"></div>`,
+            className: "infrastructure-marker-selected",
+            iconSize: [22, 22],
+            iconAnchor: [11, 11],
+          }),
+        )
+      }
+
+      marker.addTo(infrastructureMarkersRef.current)
+    })
+
+    console.log("[v0] Infrastructure markers rendered:", infrastructureData.length, "valid markers")
+  }, [infrastructureData, onMarkerClick, isDrawingConnection, connectionStart])
 
   return (
     <div className="relative w-full h-full">
