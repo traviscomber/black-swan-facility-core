@@ -23,7 +23,7 @@ interface KmzFile {
   description?: string
   created_at?: string
   file_size?: number
-  is_active: boolean
+  is_visible: boolean
 }
 
 interface KmzFilesByDate {
@@ -47,23 +47,20 @@ export default function KmzViewerPage() {
 
   const fetchKmzFiles = async () => {
     try {
+      console.log("[v0] Fetching KMZ overlays from gis_overlays table...")
       setLoading(true)
-      const { data, error } = await supabase
-        .from("kmz_files")
-        .select("*")
-        .eq("is_active", true)
-        .order("created_at", { ascending: false })
+      const { data, error } = await supabase.from("gis_overlays").select("*").order("created_at", { ascending: false })
 
       if (error) {
+        console.error("[v0] Error fetching KMZ files:", error)
         if (error.message?.includes("Could not find the table")) {
           toast({
             title: "Setup Required",
             description:
-              "The KMZ management system needs to be initialized. Run the migration script: scripts/025_create_kmz_management.sql in your Supabase SQL editor.",
+              "The KMZ overlay table needs to be created. Run the migration script: scripts/011_create_gis_overlays_table.sql",
             variant: "destructive",
           })
         } else {
-          console.error("[v0] Error fetching KMZ files:", error)
           toast({
             title: "Error loading KMZ files",
             description: error.message || "Failed to load overlays",
@@ -74,10 +71,12 @@ export default function KmzViewerPage() {
         return
       }
 
+      console.log("[v0] Fetched KMZ files:", data?.length || 0)
       setKmzFiles(data || [])
-      // Auto-show first KMZ file
       if (data && data.length > 0) {
-        setVisibleLayers(new Set([data[0].id]))
+        const visibleIds = data.filter((f) => f.is_visible).map((f) => f.id)
+        setVisibleLayers(new Set(visibleIds))
+        console.log("[v0] Auto-showing visible overlays:", visibleIds.length)
       }
     } catch (error) {
       console.error("[v0] Fetch error:", error)
@@ -107,7 +106,7 @@ export default function KmzViewerPage() {
     }
 
     try {
-      const { error } = await supabase.from("kmz_files").update({ is_active: false }).eq("id", kmzId)
+      const { error } = await supabase.from("gis_overlays").delete().eq("id", kmzId)
 
       if (error) throw error
 
@@ -132,7 +131,21 @@ export default function KmzViewerPage() {
     }
   }
 
-  const toggleLayerVisibility = (kmzId: string) => {
+  const toggleLayerVisibility = async (kmzId: string) => {
+    const isCurrentlyVisible = visibleLayers.has(kmzId)
+
+    try {
+      const { error } = await supabase.from("gis_overlays").update({ is_visible: !isCurrentlyVisible }).eq("id", kmzId)
+
+      if (error) {
+        console.error("[v0] Error updating visibility:", error)
+      } else {
+        console.log("[v0] Updated visibility for", kmzId, "to", !isCurrentlyVisible)
+      }
+    } catch (error) {
+      console.error("[v0] Visibility update error:", error)
+    }
+
     setVisibleLayers((prev) => {
       const next = new Set(prev)
       if (next.has(kmzId)) {
@@ -209,7 +222,7 @@ export default function KmzViewerPage() {
                   <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-left mt-2">
                     <p className="text-xs text-blue-800 mb-2">Run this SQL migration in your Supabase console:</p>
                     <code className="text-xs bg-white p-2 rounded block overflow-x-auto border border-blue-100 font-mono">
-                      scripts/025_create_kmz_management.sql
+                      scripts/011_create_gis_overlays_table.sql
                     </code>
                   </div>
                 </details>

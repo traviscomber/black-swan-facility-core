@@ -29,6 +29,7 @@ import {
 } from "lucide-react"
 import KmzMapView from "@/components/kmz-map-viewer"
 import { InfrastructureDetailPanel } from "@/components/infrastructure-detail-panel"
+import { KmzUploadDialog } from "@/components/kmz-upload-dialog" // Import the new component
 
 interface Location {
   id: string
@@ -256,6 +257,39 @@ export default function MapPage() {
   const baseLayerRef = useRef<any>(null)
   const overlayLayerRef = useRef<any>(null)
   const kmzLayersRef = useRef<any>([])
+
+  const handleKmzUpload = async (file: File) => {
+    try {
+      console.log("[v0] Uploading KMZ file:", file.name)
+
+      // Create form data
+      const formData = new FormData()
+      formData.append("file", file)
+
+      // Upload to server
+      const response = await fetch("/api/kmz/upload", {
+        method: "POST",
+        body: formData,
+      })
+
+      if (!response.ok) {
+        throw new Error("Failed to upload KMZ file")
+      }
+
+      const data = await response.json()
+      console.log("[v0] KMZ uploaded successfully:", data)
+
+      // Add to kmzLayers state
+      setKmzLayers((prev) => [...prev, data])
+      setShowKmzUploadDialog(false)
+
+      // Show success message
+      alert("KMZ file uploaded successfully!")
+    } catch (error) {
+      console.error("[v0] Error uploading KMZ:", error)
+      alert("Failed to upload KMZ file. Please try again.")
+    }
+  }
 
   const handleMapClick = useCallback((lat: number, lng: number) => {
     console.log("[v0] Map clicked at:", lat, lng)
@@ -606,9 +640,49 @@ export default function MapPage() {
     loadInitialInfrastructure()
   }, []) // Empty dependency array - run once on mount
 
+  // Add fetchConnections to dependency array
   useEffect(() => {
     fetchConnections()
-  }, [fetchConnections]) // Add fetchConnections to dependency array
+  }, [fetchConnections])
+
+  const fetchOverlays = useCallback(async () => {
+    console.log("[v0] Fetching overlays from database...") // Existing code was here
+    try {
+      const supabase = createClient()
+      const { data, error } = await supabase.from("gis_overlays").select("*").order("layer_order", { ascending: true }) // Existing code was here
+
+      if (error) {
+        console.error("[v0] Error fetching overlays:", error)
+        return
+      }
+
+      console.log("[v0] Fetched overlays:", data) // Existing code was here
+      setKmzLayers(data || [])
+    } catch (error) {
+      console.error("[v0] Error fetching overlays:", error)
+    }
+  }, [])
+
+  useEffect(() => {
+    fetchOverlays()
+  }, [fetchOverlays])
+
+  const toggleOverlayVisibility = async (overlayId: string, currentVisibility: boolean) => {
+    try {
+      const supabase = createClient()
+      const { error } = await supabase
+        .from("gis_overlays")
+        .update({ is_visible: !currentVisibility })
+        .eq("id", overlayId)
+
+      if (error) throw error
+
+      // Refresh overlays
+      await fetchOverlays()
+    } catch (error) {
+      console.error("[v0] Error toggling overlay visibility:", error)
+    }
+  }
 
   const toggleConnectionVisibility = (category: string) => {
     setVisibleConnections((prev) => {
@@ -1139,7 +1213,7 @@ export default function MapPage() {
             onClick={() => setSidebarOpen(!sidebarOpen)}
             className="flex items-center gap-2 text-gray-700 hover:text-gray-900"
           >
-            <MapIcon className="h-5 w-5" />
+            <Layers className="h-5 w-5" />
             <span className="font-semibold">Layers</span>
           </button>
         </div>
@@ -1445,6 +1519,34 @@ export default function MapPage() {
                 </div>
               )}
 
+              {kmzLayers.length > 0 && (
+                <div className="mt-4 border-t border-gray-200 pt-4">
+                  <div className="text-xs font-medium text-gray-700 mb-2">Uploaded Overlays</div>
+                  <div className="space-y-2 max-h-40 overflow-y-auto">
+                    {kmzLayers.map((overlay: any) => (
+                      <label
+                        key={overlay.id}
+                        className="flex items-center gap-3 cursor-pointer hover:bg-gray-50 p-2 rounded"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={overlay.is_visible}
+                          onChange={() => toggleOverlayVisibility(overlay.id, overlay.is_visible)}
+                          className="h-4 w-4 rounded border-gray-300 text-green-600 focus:ring-green-500"
+                        />
+                        <span className="text-sm text-gray-700 flex-1">{overlay.name}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {kmzLayers.length === 0 && (
+                <div className="mt-4 text-center py-4 text-gray-500 border-t border-gray-200">
+                  <p className="text-xs">No overlays uploaded yet</p>
+                </div>
+              )}
+
               {/* Add toggles for Roads, Buildings, and Connections */}
               <div className="mt-4 space-y-2">
                 <label className="flex items-center gap-3 cursor-pointer">
@@ -1470,7 +1572,7 @@ export default function MapPage() {
                     type="checkbox"
                     checked={visibleConnections.has("road")}
                     onChange={() => toggleConnectionVisibility("road")}
-                    className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-600"
                   />
                   <span className="text-sm text-gray-700">Roads Connections (Show connection lines)</span>
                 </label>
@@ -1479,7 +1581,7 @@ export default function MapPage() {
                     type="checkbox"
                     checked={visibleConnections.has("internet")}
                     onChange={() => toggleConnectionVisibility("internet")}
-                    className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-600"
                   />
                   <span className="text-sm text-gray-700">Internet Connections (Show network lines)</span>
                 </label>
@@ -1882,6 +1984,11 @@ export default function MapPage() {
           </div>
         )}
       </div>
+      <KmzUploadDialog
+        open={showKmzUploadDialog}
+        onOpenChange={setShowKmzUploadDialog}
+        onUploadSuccess={fetchOverlays}
+      />
     </AppLayout>
   )
 }

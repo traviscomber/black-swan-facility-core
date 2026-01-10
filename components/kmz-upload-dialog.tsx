@@ -62,57 +62,59 @@ export function KmzUploadDialog({ open, onOpenChange, onUploadSuccess }: KmzUplo
     try {
       const supabase = createClient()
 
-      // Generate unique filename
-      const fileName = `${Date.now()}_${kmzFile.name}`
-      const filePath = `kmz/${fileName}`
+      const timestamp = Date.now()
+      const fileName = `${timestamp}-${kmzFile.name}`
+      const filePath = `gis-overlays/${fileName}`
+
+      console.log("[v0] Uploading KMZ file to storage:", filePath)
 
       // Upload to Supabase Storage
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from("gis-overlays")
         .upload(filePath, kmzFile, {
+          contentType: "application/zip", // Force content type to application/zip since KMZ files are ZIP archives
           cacheControl: "3600",
           upsert: false,
         })
 
       if (uploadError) {
-        throw uploadError
+        console.error("[v0] Storage upload error:", uploadError)
+        throw new Error(`Storage upload failed: ${uploadError.message}`)
       }
 
       // Get public URL
-      const { data: urlData } = supabase.storage.from("gis-overlays").getPublicUrl(uploadData.path)
+      const { data: urlData } = supabase.storage.from("gis-overlays").getPublicUrl(filePath)
 
-      // Insert into database
-      const { data: newKmz, error: dbError } = await supabase
-        .from("kmz_files")
+      console.log("[v0] File uploaded successfully, URL:", urlData.publicUrl)
+
+      const { data: newOverlay, error: dbError } = await supabase
+        .from("gis_overlays")
         .insert({
-          name: kmzName || kmzFile.name,
-          file_url: urlData.publicUrl,
-          file_path: uploadData.path,
-          file_size: kmzFile.size,
+          name: kmzName || kmzFile.name.replace(".kmz", ""),
           description: description || null,
-          is_active: true,
-          current_version: 1,
+          file_url: urlData.publicUrl,
+          file_path: filePath,
+          file_size: kmzFile.size,
+          file_type: kmzFile.name.endsWith(".kml") ? "kml" : "kmz",
+          is_visible: true,
+          layer_order: 0,
+          opacity: 1.0,
         })
         .select()
         .single()
 
       if (dbError) {
-        throw dbError
+        console.error("[v0] Database error:", dbError)
+        // Clean up uploaded file if database insert fails
+        await supabase.storage.from("gis-overlays").remove([filePath])
+        throw new Error(`Database error: ${dbError.message}`)
       }
 
-      // Insert into versions table
-      await supabase.from("kmz_file_versions").insert({
-        kmz_id: newKmz.id,
-        version_number: 1,
-        file_url: urlData.publicUrl,
-        file_path: uploadData.path,
-        file_size: kmzFile.size,
-        notes: `Initial upload - ${kmzName}`,
-      })
+      console.log("[v0] KMZ overlay created successfully:", newOverlay)
 
       toast({
         title: "KMZ file uploaded successfully",
-        description: `${kmzName} has been added to the map`,
+        description: `${kmzName || kmzFile.name} has been added to the map`,
       })
 
       onUploadSuccess()
@@ -121,7 +123,7 @@ export function KmzUploadDialog({ open, onOpenChange, onUploadSuccess }: KmzUplo
       console.error("[v0] KMZ upload error:", error)
       toast({
         title: "Upload failed",
-        description: "Failed to upload KMZ file. Please try again.",
+        description: error instanceof Error ? error.message : "Failed to upload KMZ file. Please try again.",
         variant: "destructive",
       })
     } finally {

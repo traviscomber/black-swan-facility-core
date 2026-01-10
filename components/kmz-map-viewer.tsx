@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react"
 import type { InfrastructureConnection } from "@/lib/types"
+import JSZip from "jszip"
 
 interface KmzMapViewProps {
   visibleLayers?: Set<string>
@@ -36,11 +37,12 @@ const KmzMapView = ({
   const [terrainOpacity, setTerrainOpacity] = useState(0.5)
   const [mapReady, setMapReady] = useState(false) // Added mapReady state to track when map is initialized
   const tileLayersRef = useRef<any>({})
-  const polylineLayersRef = useRef<any>(null)
+  const polylineLayersRef = useRef<any>({})
   const drawnItemsRef = useRef<any>(null)
   const drawControlRef = useRef<any>(null)
   const infrastructureMarkersRef = useRef<any>(null)
-  const connectionLinesRef = useRef<any>([])
+  const connectionLinesRef = useRef<any[]>([])
+  const kmzLayersRef = useRef<any[]>([])
 
   useEffect(() => {
     if (typeof window === "undefined" || !mapContainerRef.current) return
@@ -326,6 +328,137 @@ const KmzMapView = ({
 
     console.log("[v0] Infrastructure markers rendered:", infrastructureData.length, "valid markers")
   }, [infrastructureData, onMarkerClick, isDrawingConnection, connectionStart])
+
+  useEffect(() => {
+    if (!mapRef.current || !mapReady || !kmzFiles || kmzFiles.length === 0) {
+      console.log("[v0] KMZ files not ready:", {
+        hasMap: !!mapRef.current,
+        mapReady,
+        kmzFilesCount: kmzFiles?.length || 0,
+      })
+      return
+    }
+
+    const L = window.L
+    if (!L) return
+
+    // Clean up previous KMZ layers
+    kmzLayersRef.current.forEach((layer) => {
+      if (mapRef.current.hasLayer(layer)) {
+        mapRef.current.removeLayer(layer)
+      }
+    })
+    kmzLayersRef.current = []
+
+    console.log("[v0] Loading KMZ files:", kmzFiles.length)
+
+    // Load and render each KMZ file
+    kmzFiles.forEach(async (file: any) => {
+      try {
+        console.log("[v0] Loading KMZ file:", file.name, "from", file.file_url)
+
+        // Fetch the KMZ file from Supabase Storage
+        const response = await fetch(file.file_url)
+        if (!response.ok) {
+          console.error("[v0] Failed to fetch KMZ file:", file.name, response.statusText)
+          return
+        }
+
+        const arrayBuffer = await response.arrayBuffer()
+        console.log("[v0] KMZ file loaded:", file.name, arrayBuffer.byteLength, "bytes")
+
+        // Load JSZip to extract KMZ (which is a ZIP file)
+        const zip = new JSZip()
+        const zipData = await zip.loadAsync(arrayBuffer)
+
+        // Find the KML file inside the KMZ
+        const kmlFile = Object.keys(zipData.files).find((name) => name.endsWith(".kml") || name.endsWith(".KML"))
+        if (!kmlFile) {
+          console.error("[v0] No KML file found in KMZ:", file.name)
+          return
+        }
+
+        const kmlText = await zipData.files[kmlFile].async("string")
+        console.log("[v0] KML extracted from KMZ:", file.name, kmlText.length, "characters")
+
+        // Parse KML to GeoJSON using browser's native DOMParser
+        const parser = new DOMParser()
+        const kmlDoc = parser.parseFromString(kmlText, "text/xml")
+
+        // Check for parsing errors
+        const parserError = kmlDoc.querySelector("parsererror")
+        if (parserError) {
+          console.error("[v0] KML parsing error:", parserError.textContent)
+          return
+        }
+
+        console.log("[v0] KML parsed successfully, converting to GeoJSON...")
+        const toGeoJSON = await import("@mapbox/togeojson")
+        const kmlConverter = toGeoJSON.kml || toGeoJSON.default?.kml || toGeoJSON.default
+
+        if (typeof kmlConverter !== "function") {
+          console.error("[v0] kml converter is not a function:", typeof kmlConverter, toGeoJSON)
+          return
+        }
+
+        const geoJSON = kmlConverter(kmlDoc)
+
+        console.log("[v0] GeoJSON created:", geoJSON.features?.length || 0, "features")
+
+        // Add GeoJSON to map
+        const layer = L.geoJSON(geoJSON, {
+          style: {
+            color: "#FF6B35",
+            weight: 3,
+            opacity: 0.8,
+            fillOpacity: 0.3,
+          },
+          pointToLayer: (feature: any, latlng: any) => {
+            return L.circleMarker(latlng, {
+              radius: 8,
+              fillColor: "#FF6B35",
+              color: "#fff",
+              weight: 2,
+              opacity: 1,
+              fillOpacity: 0.8,
+            })
+          },
+          onEachFeature: (feature: any, layer: any) => {
+            const props = feature.properties || {}
+            let popupContent = `<strong>${file.name}</strong><br/>`
+
+            if (props.name) {
+              popupContent += `<strong>${props.name}</strong><br/>`
+            }
+            if (props.description) {
+              popupContent += `${props.description}<br/>`
+            }
+
+            layer.bindPopup(popupContent)
+          },
+        })
+
+        layer.addTo(mapRef.current)
+        kmzLayersRef.current.push(layer)
+
+        console.log("[v0] ✓ KMZ rendered on map:", file.name)
+
+        // Zoom to fit the first KMZ layer
+        if (kmzLayersRef.current.length === 1) {
+          try {
+            const bounds = layer.getBounds()
+            if (bounds.isValid()) {
+              mapRef.current.fitBounds(bounds, { padding: [50, 50] })
+            }
+          } catch (e) {
+            console.log("[v0] Could not fit bounds for KMZ:", e)
+          }
+        }
+      } catch (error) {
+        console.error("[v0] Error loading KMZ file:", file.name, error)
+      }
+    })
+  }, [kmzFiles, mapReady])
 
   return (
     <div className="relative w-full h-full">
