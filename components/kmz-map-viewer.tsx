@@ -425,16 +425,51 @@ const KmzMapView = ({
           },
           onEachFeature: (feature: any, layer: any) => {
             const props = feature.properties || {}
-            let popupContent = `<strong>${file.name}</strong><br/>`
+            let popupContent = `<div style="max-width: 300px; max-height: 400px; overflow-y: auto;">`
+            popupContent += `<strong style="color: #FF6B35; font-size: 16px;">${file.name}</strong><br/>`
 
-            if (props.name) {
-              popupContent += `<strong>${props.name}</strong><br/>`
-            }
-            if (props.description) {
-              popupContent += `${props.description}<br/>`
+            // Show all properties from the KMZ
+            if (Object.keys(props).length > 0) {
+              popupContent += `<div style="margin-top: 8px; border-top: 1px solid #e5e7eb; padding-top: 8px;">`
+
+              Object.entries(props).forEach(([key, value]) => {
+                // Skip empty values
+                if (value === null || value === undefined || value === "") return
+
+                // Format the key (convert camelCase to Title Case)
+                const formattedKey = key
+                  .replace(/([A-Z])/g, " $1")
+                  .replace(/^./, (str) => str.toUpperCase())
+                  .trim()
+
+                // Handle different value types
+                let formattedValue = value
+                if (typeof value === "object") {
+                  formattedValue = JSON.stringify(value, null, 2)
+                } else {
+                  formattedValue = String(value)
+                }
+
+                // Add to popup with styling
+                popupContent += `
+                  <div style="margin-bottom: 6px;">
+                    <strong style="color: #4b5563; font-size: 12px;">${formattedKey}:</strong>
+                    <span style="color: #1f2937; font-size: 12px; margin-left: 4px;">${formattedValue}</span>
+                  </div>
+                `
+              })
+
+              popupContent += `</div>`
+            } else {
+              popupContent += `<em style="color: #9ca3af; font-size: 12px;">No additional properties</em>`
             }
 
-            layer.bindPopup(popupContent)
+            popupContent += `</div>`
+
+            layer.bindPopup(popupContent, {
+              maxWidth: 350,
+              maxHeight: 450,
+            })
           },
         })
 
