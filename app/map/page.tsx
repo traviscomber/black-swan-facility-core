@@ -1368,124 +1368,122 @@ export default function MapPage() {
               </div>
             </div>
 
-            {/* KMZ Overlays section - HIDDEN */}
-            {false && (
-              <div className="border-t border-gray-200 pt-4">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-2">
-                    <MapIcon className="h-4 w-4 md:h-5 md:w-5 text-gray-700" />
-                    <h3 className="font-semibold text-sm md:text-base text-black">GIS Overlays</h3>
-                  </div>
-                </div>
-
-                <Button onClick={() => setShowKmzUploadDialog(true)} className="w-full text-xs" variant="outline">
-                  <Upload className="mr-2 h-3 w-3" />
-                  Upload KMZ
-                </Button>
-
-                {/* Draw Connection Line button to toggle drawing mode */}
-                <Button
-                  onClick={() => {
-                    setIsDrawingConnection(!isDrawingConnection)
-                    if (isDrawingConnection) {
-                      // Cancel drawing mode
-                      setConnectionStart(null)
-                    }
-                  }}
-                  className="w-full text-xs mt-2"
-                  variant={isDrawingConnection ? "default" : "outline"}
-                >
-                  {isDrawingConnection ? (
-                    <>
-                      <X className="mr-2 h-3 w-3" />
-                      Cancel Drawing
-                    </>
-                  ) : (
-                    <>
-                      <PlusCircle className="mr-2 h-3 w-3" />
-                      Draw Connection Line
-                    </>
-                  )}
-                </Button>
-
-                {isDrawingConnection && (
-                  <div className="bg-blue-50 border border-blue-200 rounded p-3 text-xs text-blue-800 mt-2">
-                    {!connectionStart ? (
-                      <p>📍 Click on the first infrastructure point to start the connection</p>
-                    ) : (
-                      <p>📍 Click on the second infrastructure point to complete the connection</p>
-                    )}
-                  </div>
-                )}
-
-                {/* Add toggles for Roads, Buildings, and Connections */}
-                <div className="mt-4 space-y-2">
-                  <label className="flex items-center gap-3 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={showRoads}
-                      onChange={(e) => setShowRoads(e.target.checked)}
-                      className="h-4 w-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
-                    />
-                    <span className="text-sm text-gray-700">Roads (Draw with Leaflet toolbar)</span>
-                  </label>
-                  <label className="flex items-center gap-3 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={showBuildings}
-                      onChange={(e) => setShowBuildings(e.target.checked)}
-                      className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-                    />
-                    <span className="text-sm text-gray-700">Buildings (Draw with Leaflet toolbar)</span>
-                  </label>
-                  <label className="flex items-center gap-3 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={visibleConnections.has("road")}
-                      onChange={() => toggleConnectionVisibility("road")}
-                      className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                    />
-                    <span className="text-sm text-gray-700">Roads Connections (Show connection lines)</span>
-                  </label>
-                  <label className="flex items-center gap-3 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={visibleConnections.has("internet")}
-                      onChange={() => toggleConnectionVisibility("internet")}
-                      className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                    />
-                    <span className="text-sm text-gray-700">Internet Connections (Show network lines)</span>
-                  </label>
-                  <label className="flex items-center gap-3 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={visibleConnections.has("water")}
-                      onChange={() => toggleConnectionVisibility("water")}
-                      className="h-4 w-4 rounded border-gray-300 text-cyan-600 focus:ring-cyan-500"
-                    />
-                    <span className="text-sm text-gray-700">Water Connections (Show pipeline lines)</span>
-                  </label>
-                  <label className="flex items-center gap-3 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={visibleConnections.has("gas")}
-                      onChange={() => toggleConnectionVisibility("gas")}
-                      className="h-4 w-4 rounded border-gray-300 text-orange-600 focus:ring-orange-500"
-                    />
-                    <span className="text-sm text-gray-700">Gas Connections (Show gas lines)</span>
-                  </label>
-                  <label className="flex items-center gap-3 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={visibleConnections.has("ports")}
-                      onChange={() => toggleConnectionVisibility("ports")}
-                      className="h-4 w-4 rounded border-gray-300 text-cyan-600 focus:ring-cyan-500"
-                    />
-                    <span className="text-sm text-gray-700">Port Connections (Show maritime lines)</span>
-                  </label>
+            {/* KMZ Overlays section */}
+            <div className="border-t border-gray-200 pt-4">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <MapIcon className="h-4 w-4 md:h-5 md:w-5 text-gray-700" />
+                  <h3 className="font-semibold text-sm md:text-base text-black">GIS Overlays</h3>
                 </div>
               </div>
-            )}
+
+              <Button onClick={() => setShowKmzUploadDialog(true)} className="w-full text-xs" variant="outline">
+                <Upload className="mr-2 h-3 w-3" />
+                Upload KMZ
+              </Button>
+
+              {/* Draw Connection Line button to toggle drawing mode */}
+              <Button
+                onClick={() => {
+                  setIsDrawingConnection(!isDrawingConnection)
+                  if (isDrawingConnection) {
+                    // Cancel drawing mode
+                    setConnectionStart(null)
+                  }
+                }}
+                className="w-full text-xs mt-2"
+                variant={isDrawingConnection ? "default" : "outline"}
+              >
+                {isDrawingConnection ? (
+                  <>
+                    <X className="mr-2 h-3 w-3" />
+                    Cancel Drawing
+                  </>
+                ) : (
+                  <>
+                    <PlusCircle className="mr-2 h-3 w-3" />
+                    Draw Connection Line
+                  </>
+                )}
+              </Button>
+
+              {isDrawingConnection && (
+                <div className="bg-blue-50 border border-blue-200 rounded p-3 text-xs text-blue-800 mt-2">
+                  {!connectionStart ? (
+                    <p>📍 Click on the first infrastructure point to start the connection</p>
+                  ) : (
+                    <p>📍 Click on the second infrastructure point to complete the connection</p>
+                  )}
+                </div>
+              )}
+
+              {/* Add toggles for Roads, Buildings, and Connections */}
+              <div className="mt-4 space-y-2">
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={showRoads}
+                    onChange={(e) => setShowRoads(e.target.checked)}
+                    className="h-4 w-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                  />
+                  <span className="text-sm text-gray-700">Roads (Draw with Leaflet toolbar)</span>
+                </label>
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={showBuildings}
+                    onChange={(e) => setShowBuildings(e.target.checked)}
+                    className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                  />
+                  <span className="text-sm text-gray-700">Buildings (Draw with Leaflet toolbar)</span>
+                </label>
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={visibleConnections.has("road")}
+                    onChange={() => toggleConnectionVisibility("road")}
+                    className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  />
+                  <span className="text-sm text-gray-700">Roads Connections (Show connection lines)</span>
+                </label>
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={visibleConnections.has("internet")}
+                    onChange={() => toggleConnectionVisibility("internet")}
+                    className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  />
+                  <span className="text-sm text-gray-700">Internet Connections (Show network lines)</span>
+                </label>
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={visibleConnections.has("water")}
+                    onChange={() => toggleConnectionVisibility("water")}
+                    className="h-4 w-4 rounded border-gray-300 text-cyan-600 focus:ring-cyan-500"
+                  />
+                  <span className="text-sm text-gray-700">Water Connections (Show pipeline lines)</span>
+                </label>
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={visibleConnections.has("gas")}
+                    onChange={() => toggleConnectionVisibility("gas")}
+                    className="h-4 w-4 rounded border-gray-300 text-orange-600 focus:ring-orange-500"
+                  />
+                  <span className="text-sm text-gray-700">Gas Connections (Show gas lines)</span>
+                </label>
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={visibleConnections.has("ports")}
+                    onChange={() => toggleConnectionVisibility("ports")}
+                    className="h-4 w-4 rounded border-gray-300 text-cyan-600 focus:ring-cyan-500"
+                  />
+                  <span className="text-sm text-gray-700">Port Connections (Show maritime lines)</span>
+                </label>
+              </div>
+            </div>
 
             {filteredInfrastructure.length === 0 && (
               <div className="text-center py-8 text-gray-500">
