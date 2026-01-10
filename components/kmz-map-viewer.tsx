@@ -130,6 +130,8 @@ const KmzMapView = ({
     const currentLayer = tileLayersRef.current[mapType]
     if (!currentLayer) return
 
+    console.log("[v0] Switching to layer:", mapType)
+
     Object.values(tileLayersRef.current).forEach((layer: any) => {
       if (mapRef.current.hasLayer(layer)) {
         mapRef.current.removeLayer(layer)
@@ -146,6 +148,7 @@ const KmzMapView = ({
 
       console.log("[v0] Hybrid mode - Satellite opacity: 1, Terrain opacity:", terrainOpacity)
     } else {
+      console.log("[v0] Single layer mode:", mapType)
       currentLayer.setOpacity(1)
       currentLayer.addTo(mapRef.current)
     }
