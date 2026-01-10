@@ -1150,9 +1150,27 @@ export default function MapPage() {
             w-[85vw] max-w-md md:max-w-96 md:w-96
             bg-white border-l border-gray-200 shadow-xl md:shadow-none
             transform transition-transform duration-300 ease-in-out z-[1001]
-            ${sidebarOpen ? "translate-x-0" : "translate-x-full md:translate-x-0"}
+            ${sidebarOpen ? "translate-x-0" : "translate-x-full"}
           `}
         >
+          <button
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+            className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-full
+                       bg-white border border-gray-200 border-r-0
+                       hover:bg-gray-50 active:bg-gray-100
+                       transition-colors duration-200
+                       rounded-l-md shadow-md
+                       w-6 h-20 flex items-center justify-center
+                       z-10"
+            title={sidebarOpen ? "Collapse sidebar" : "Expand sidebar"}
+          >
+            {sidebarOpen ? (
+              <ChevronRight className="h-4 w-4 text-gray-600" />
+            ) : (
+              <ChevronLeft className="h-4 w-4 text-gray-600" />
+            )}
+          </button>
+
           <div className="h-full overflow-y-auto p-4 md:p-6 space-y-6">
             <div className="flex items-center justify-between md:hidden mb-4">
               <h2 className="text-lg font-semibold">Infrastructure</h2>
@@ -1162,9 +1180,19 @@ export default function MapPage() {
             </div>
 
             <div>
-              <div className="flex items-center gap-2 mb-4">
-                <Layers className="h-4 w-4 md:h-5 md:w-5 text-gray-700" />
-                <h3 className="font-semibold text-sm md:text-base text-black">Infrastructure Layers</h3>
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <Layers className="h-4 w-4 md:h-5 md:w-5 text-gray-700" />
+                  <h3 className="font-semibold text-sm md:text-base text-black">Infrastructure Layers</h3>
+                </div>
+                <button
+                  onClick={() => setSidebarOpen(false)}
+                  className="text-xs text-gray-600 hover:text-gray-900 px-2 py-1 rounded hover:bg-gray-100 transition-colors flex items-center gap-1"
+                  title="Collapse sidebar to view full map"
+                >
+                  <ChevronRight className="h-3 w-3" />
+                  <span>Collapse</span>
+                </button>
               </div>
               <div className="space-y-3">
                 {/* Phase 1 Utilities */}
@@ -1517,6 +1545,16 @@ export default function MapPage() {
           connectionStart={connectionStart}
         />
 
+        {!sidebarOpen && (
+          <button
+            onClick={() => setSidebarOpen(true)}
+            className="fixed top-4 left-4 z-[1000] h-12 w-12 rounded-lg bg-white shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-200 flex items-center justify-center border border-gray-200"
+            aria-label="Show Infrastructure Layers"
+          >
+            <ChevronRight className="h-6 w-6 text-gray-700" />
+          </button>
+        )}
+
         {/* Keeping only the top-right fullscreen button with responsive positioning for Infrastructure panel */}
         <button
           onClick={() => setSearchDialogOpen(true)}
@@ -1687,6 +1725,157 @@ export default function MapPage() {
                     <Plus className="mr-2 h-4 w-4" />
                     Add Infrastructure
                   </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {editDialogOpen && editingInfra && (
+          <div className="fixed inset-0 bg-black/50 z-[2000] flex items-center justify-center p-4">
+            <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+              <div className="p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-xl font-semibold">Edit Infrastructure</h2>
+                  <button
+                    onClick={() => {
+                      setEditDialogOpen(false)
+                      setEditingInfra(null)
+                    }}
+                    className="text-gray-400 hover:text-gray-600"
+                  >
+                    <X className="h-5 w-5" />
+                  </button>
+                </div>
+
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
+                    <input
+                      type="text"
+                      value={editingInfra.name}
+                      onChange={(e) => setEditingInfra({ ...editingInfra, name: e.target.value })}
+                      className="w-full px-3 py-2 border rounded-lg"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
+                    <select
+                      value={editingInfra.category}
+                      onChange={(e) => setEditingInfra({ ...editingInfra, category: e.target.value })}
+                      className="w-full px-3 py-2 border rounded-lg"
+                    >
+                      <option value="Internet">Internet</option>
+                      <option value="Water">Water</option>
+                      <option value="Electricity">Electricity</option>
+                      <option value="Ports">Ports</option>
+                      <option value="Cattle">Cattle</option>
+                      <option value="Drinking Water">Drinking Water</option>
+                      <option value="Heating System">Heating System</option>
+                      <option value="Gasoline Storage">Gasoline Storage</option>
+                      <option value="Gas System">Gas System</option>
+                      <option value="Wood Supply">Wood Supply</option>
+                      <option value="Trash Management">Trash Management</option>
+                      <option value="Sewage System">Sewage System</option>
+                      <option value="Storage Systems">Storage Systems</option>
+                      <option value="Equipment">Equipment</option>
+                      <option value="Food Storage">Food Storage</option>
+                      <option value="Security Systems">Security Systems</option>
+                      <option value="Fire Safety">Fire Safety</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                    <select
+                      value={editingInfra.status}
+                      onChange={(e) => setEditingInfra({ ...editingInfra, status: e.target.value })}
+                      className="w-full px-3 py-2 border rounded-lg"
+                    >
+                      <option value="active">Active</option>
+                      <option value="inactive">Inactive</option>
+                      <option value="maintenance">Maintenance</option>
+                      <option value="planned">Planned</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                    <textarea
+                      value={editingInfra.description || ""}
+                      onChange={(e) => setEditingInfra({ ...editingInfra, description: e.target.value })}
+                      className="w-full px-3 py-2 border rounded-lg min-h-[100px]"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Latitude</label>
+                      <input
+                        type="number"
+                        step="0.000001"
+                        value={editingInfra.latitude}
+                        onChange={(e) =>
+                          setEditingInfra({ ...editingInfra, latitude: Number.parseFloat(e.target.value) })
+                        }
+                        className="w-full px-3 py-2 border rounded-lg"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Longitude</label>
+                      <input
+                        type="number"
+                        step="0.000001"
+                        value={editingInfra.longitude}
+                        onChange={(e) =>
+                          setEditingInfra({ ...editingInfra, longitude: Number.parseFloat(e.target.value) })
+                        }
+                        className="w-full px-3 py-2 border rounded-lg"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex justify-end gap-2 mt-6">
+                  <button
+                    onClick={() => {
+                      setEditDialogOpen(false)
+                      setEditingInfra(null)
+                    }}
+                    className="px-4 py-2 text-gray-600 hover:text-gray-800"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={async () => {
+                      const supabase = createClient()
+                      const { error } = await supabase
+                        .from("infrastructure_plans")
+                        .update({
+                          name: editingInfra.name,
+                          category: editingInfra.category,
+                          status: editingInfra.status,
+                          description: editingInfra.description,
+                          latitude: editingInfra.latitude,
+                          longitude: editingInfra.longitude,
+                        })
+                        .eq("id", editingInfra.id)
+
+                      if (!error) {
+                        setEditDialogOpen(false)
+                        setEditingInfra(null)
+                        // Reload infrastructure data
+                        const { data } = await supabase.from("infrastructure_plans").select("*")
+                        if (data) setInfrastructure(data)
+                        // Close detail panel and reopen with updated data
+                        setDetailPanelOpen(false)
+                      }
+                    }}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                  >
+                    Save Changes
+                  </button>
                 </div>
               </div>
             </div>

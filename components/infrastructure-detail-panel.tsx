@@ -532,6 +532,11 @@ export function InfrastructureDetailPanel({
 
         <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
           <div>
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">{infrastructure.name}</h1>
+            <p className="text-sm text-gray-500">Infrastructure Asset</p>
+          </div>
+
+          <div>
             <div className="flex items-center gap-2 mb-3">
               <Badge className="capitalize">{infrastructure.category}</Badge>
               <Badge variant={infrastructure.status === "active" ? "default" : "secondary"}>
