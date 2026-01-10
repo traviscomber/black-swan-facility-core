@@ -42,7 +42,7 @@ const KmzMapView = ({
   const drawControlRef = useRef<any>(null)
   const infrastructureMarkersRef = useRef<any>(null)
   const connectionLinesRef = useRef<any[]>([])
-  const kmzLayersRef = useRef<any[]>([])
+  const kmzLayersRef = useRef<Map<string, any>>(new Map())
 
   useEffect(() => {
     if (typeof window === "undefined" || !mapContainerRef.current) return
@@ -345,13 +345,12 @@ const KmzMapView = ({
     const L = window.L
     if (!L) return
 
-    // Clean up previous KMZ layers
     kmzLayersRef.current.forEach((layer) => {
       if (mapRef.current.hasLayer(layer)) {
         mapRef.current.removeLayer(layer)
       }
     })
-    kmzLayersRef.current = []
+    kmzLayersRef.current.clear()
 
     console.log("[v0] Loading KMZ files:", kmzFiles.length)
 
@@ -411,7 +410,7 @@ const KmzMapView = ({
         // Add GeoJSON to map
         const layer = L.geoJSON(geoJSON, {
           style: {
-            color: "#FF6B35",
+            color: "#2196F3",
             weight: 3,
             opacity: 0.8,
             fillOpacity: 0.3,
@@ -419,7 +418,7 @@ const KmzMapView = ({
           pointToLayer: (feature: any, latlng: any) => {
             return L.circleMarker(latlng, {
               radius: 8,
-              fillColor: "#FF6B35",
+              fillColor: "#2196F3",
               color: "#fff",
               weight: 2,
               opacity: 1,
@@ -429,7 +428,7 @@ const KmzMapView = ({
           onEachFeature: (feature: any, layer: any) => {
             const props = feature.properties || {}
             let popupContent = `<div style="max-width: 300px; max-height: 400px; overflow-y: auto;">`
-            popupContent += `<strong style="color: #FF6B35; font-size: 16px;">${file.name}</strong><br/>`
+            popupContent += `<strong style="color: #2196F3; font-size: 16px;">${file.name}</strong><br/>`
 
             // Show all properties from the KMZ
             if (Object.keys(props).length > 0) {
@@ -476,13 +475,17 @@ const KmzMapView = ({
           },
         })
 
-        layer.addTo(mapRef.current)
-        kmzLayersRef.current.push(layer)
+        kmzLayersRef.current.set(file.id, layer)
 
-        console.log("[v0] ✓ KMZ rendered on map:", file.name)
+        if (visibleLayers.has(file.id)) {
+          layer.addTo(mapRef.current)
+          console.log("[v0] ✓ KMZ rendered on map (visible):", file.name)
+        } else {
+          console.log("[v0] ✓ KMZ loaded but hidden:", file.name)
+        }
 
-        // Zoom to fit the first KMZ layer
-        if (kmzLayersRef.current.length === 1) {
+        // Zoom to fit the first visible KMZ layer
+        if (kmzLayersRef.current.size === 1 && visibleLayers.has(file.id)) {
           try {
             const bounds = layer.getBounds()
             if (bounds.isValid()) {
@@ -497,6 +500,25 @@ const KmzMapView = ({
       }
     })
   }, [kmzFiles, mapReady])
+
+  useEffect(() => {
+    if (!mapRef.current || kmzLayersRef.current.size === 0) return
+
+    console.log("[v0] Visibility changed, updating layers. Visible count:", visibleLayers.size)
+
+    kmzLayersRef.current.forEach((layer, fileId) => {
+      const shouldBeVisible = visibleLayers.has(fileId)
+      const isCurrentlyVisible = mapRef.current.hasLayer(layer)
+
+      if (shouldBeVisible && !isCurrentlyVisible) {
+        layer.addTo(mapRef.current)
+        console.log("[v0] Showing KMZ layer:", fileId)
+      } else if (!shouldBeVisible && isCurrentlyVisible) {
+        mapRef.current.removeLayer(layer)
+        console.log("[v0] Hiding KMZ layer:", fileId)
+      }
+    })
+  }, [visibleLayers])
 
   return (
     <div className="relative w-full h-full">
