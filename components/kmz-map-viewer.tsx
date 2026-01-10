@@ -127,11 +127,9 @@ const KmzMapView = ({
   useEffect(() => {
     if (!mapRef.current) return
 
-    const currentLayer = tileLayersRef.current[mapType]
-    if (!currentLayer) return
-
     console.log("[v0] Switching to layer:", mapType)
 
+    // Remove all current layers
     Object.values(tileLayersRef.current).forEach((layer: any) => {
       if (mapRef.current.hasLayer(layer)) {
         mapRef.current.removeLayer(layer)
@@ -139,6 +137,7 @@ const KmzMapView = ({
     })
 
     if (mapType === "hybrid") {
+      // Hybrid mode: combine satellite and terrain
       const satelliteLayer = tileLayersRef.current.satellite
       const terrainLayer = tileLayersRef.current.terrain
 
@@ -148,9 +147,13 @@ const KmzMapView = ({
 
       console.log("[v0] Hybrid mode - Satellite opacity: 1, Terrain opacity:", terrainOpacity)
     } else {
-      console.log("[v0] Single layer mode:", mapType)
-      currentLayer.setOpacity(1)
-      currentLayer.addTo(mapRef.current)
+      // Single layer mode
+      const currentLayer = tileLayersRef.current[mapType]
+      if (currentLayer) {
+        console.log("[v0] Single layer mode:", mapType)
+        currentLayer.setOpacity(1)
+        currentLayer.addTo(mapRef.current)
+      }
     }
   }, [mapType, terrainOpacity])
 
