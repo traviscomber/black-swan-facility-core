@@ -1638,7 +1638,7 @@ export default function MapPage() {
                     <select
                       value={newInfraCategory}
                       onChange={(e) => setNewInfraCategory(e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900"
                     >
                       <optgroup label="Phase 1">
                         <option value="ports">⚓ Ports & Boats</option>
@@ -1755,7 +1755,7 @@ export default function MapPage() {
                       type="text"
                       value={editingInfra.name}
                       onChange={(e) => setEditingInfra({ ...editingInfra, name: e.target.value })}
-                      className="w-full px-3 py-2 border rounded-lg"
+                      className="w-full px-3 py-2 border rounded-lg text-gray-900"
                     />
                   </div>
 
@@ -1764,7 +1764,7 @@ export default function MapPage() {
                     <select
                       value={editingInfra.category}
                       onChange={(e) => setEditingInfra({ ...editingInfra, category: e.target.value })}
-                      className="w-full px-3 py-2 border rounded-lg"
+                      className="w-full px-3 py-2 border rounded-lg text-gray-900"
                     >
                       <option value="Internet">Internet</option>
                       <option value="Water">Water</option>
@@ -1791,7 +1791,7 @@ export default function MapPage() {
                     <select
                       value={editingInfra.status}
                       onChange={(e) => setEditingInfra({ ...editingInfra, status: e.target.value })}
-                      className="w-full px-3 py-2 border rounded-lg"
+                      className="w-full px-3 py-2 border rounded-lg text-gray-900"
                     >
                       <option value="active">Active</option>
                       <option value="inactive">Inactive</option>
@@ -1805,7 +1805,7 @@ export default function MapPage() {
                     <textarea
                       value={editingInfra.description || ""}
                       onChange={(e) => setEditingInfra({ ...editingInfra, description: e.target.value })}
-                      className="w-full px-3 py-2 border rounded-lg min-h-[100px]"
+                      className="w-full px-3 py-2 border rounded-lg min-h-[100px] text-gray-900"
                     />
                   </div>
 
@@ -1819,7 +1819,7 @@ export default function MapPage() {
                         onChange={(e) =>
                           setEditingInfra({ ...editingInfra, latitude: Number.parseFloat(e.target.value) })
                         }
-                        className="w-full px-3 py-2 border rounded-lg"
+                        className="w-full px-3 py-2 border rounded-lg text-gray-900"
                       />
                     </div>
                     <div>
@@ -1831,7 +1831,7 @@ export default function MapPage() {
                         onChange={(e) =>
                           setEditingInfra({ ...editingInfra, longitude: Number.parseFloat(e.target.value) })
                         }
-                        className="w-full px-3 py-2 border rounded-lg"
+                        className="w-full px-3 py-2 border rounded-lg text-gray-900"
                       />
                     </div>
                   </div>
