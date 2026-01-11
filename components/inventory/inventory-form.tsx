@@ -1,7 +1,6 @@
 "use client"
 
 import type React from "react"
-
 import { useState, useRef, useEffect } from "react"
 import { Upload, X, QrCodeIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -10,6 +9,7 @@ import { Card } from "@/components/ui/card"
 import { createBrowserClient } from "@/lib/supabase/client"
 import { useToast } from "@/hooks/use-toast"
 import QRCode from "qrcode"
+import { CategorySelector } from "./category-selector"
 
 interface InventoryFormProps {
   asset?: any
@@ -276,21 +276,14 @@ export function InventoryForm({ asset, categories, costCenters, onClose, onSucce
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium mb-1">Category</label>
-              <select
+              <CategorySelector
+                categories={categories}
                 value={formData.category_id}
-                onChange={(e) => {
-                  const newCategoryId = e.target.value
+                onChange={(newCategoryId) => {
                   setFormData((prev) => ({ ...prev, category_id: newCategoryId }))
                   generateAssetCode()
                 }}
-                className="w-full px-3 py-2 bg-input border border-border rounded-md"
-              >
-                {categories.map((cat) => (
-                  <option key={cat.id} value={cat.id}>
-                    {cat.name}
-                  </option>
-                ))}
-              </select>
+              />
             </div>
             <div>
               <label className="block text-sm font-medium mb-1">Cost Center</label>
