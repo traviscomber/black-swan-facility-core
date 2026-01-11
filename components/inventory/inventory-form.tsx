@@ -59,10 +59,10 @@ export function InventoryForm({ asset, categories, costCenters, onClose, onSucce
       const costCenter = costCenters.find((cc) => cc.id === costCenterId)
       const category = categories.find((cat) => cat.id === categoryId)
 
-      if (!costCenter || !category) return
+      if (!category) return
 
       const categoryCode = category.code || category.name.substring(0, 3).toUpperCase()
-      const costCenterCode = costCenter.code || costCenter.name.substring(0, 2).toUpperCase()
+      const costCenterCode = costCenter?.code || costCenter?.name.substring(0, 2).toUpperCase() || "BS"
 
       const { data, error } = await supabase
         .from("multimedia_assets")
