@@ -32,6 +32,7 @@ import {
   Crown,
   Brain,
   Receipt,
+  Package,
 } from "lucide-react"
 import { useState } from "react"
 // import { UniversalSearchDialog } from "@/components/universal-search-dialog" // Assuming UniversalSearchDialog is in a separate file
@@ -91,7 +92,7 @@ const navigationGroups = [
       {
         name: "Inventory",
         href: "/inventory",
-        icon: Box,
+        icon: Package,
         tip: "Multimedia inventory tracking and QR codes",
         subItems: [
           { name: "All Assets", href: "/inventory", icon: "📦" },

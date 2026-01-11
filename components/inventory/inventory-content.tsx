@@ -138,8 +138,8 @@ export function InventoryContent() {
         <div className="bg-gradient-to-r from-accent/10 to-primary/10 border border-primary/20 rounded-lg p-6">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
             <div>
-              <h1 className="text-3xl font-bold text-accent">Multimedia Inventory</h1>
-              <p className="text-muted-foreground mt-1">Manage and track all multimedia assets</p>
+              <h1 className="text-3xl font-bold text-accent">Blackswan Inventory System</h1>
+              <p className="text-muted-foreground mt-1">Manage and track all assets across cost centers</p>
             </div>
             <Button onClick={() => setShowForm(true)} className="gap-2 w-full md:w-auto">
               <Plus className="h-4 w-4" />

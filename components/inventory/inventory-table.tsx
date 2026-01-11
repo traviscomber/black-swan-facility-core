@@ -1,9 +1,13 @@
 "use client"
 
+import type React from "react"
+
 import { Edit2, Trash2, Eye } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import Link from "next/link"
+import { useState } from "react"
+import Image from "next/image"
 
 interface Asset {
   id: string
@@ -30,6 +34,19 @@ export function InventoryTable({
   onDelete: (id: string) => void
   onEditClick: () => void
 }) {
+  const [hoveredAssetId, setHoveredAssetId] = useState<string | null>(null)
+  const [previewPosition, setPreviewPosition] = useState({ x: 0, y: 0 })
+
+  const handleMouseEnter = (e: React.MouseEvent, assetId: string) => {
+    const rect = e.currentTarget.getBoundingClientRect()
+    setHoveredAssetId(assetId)
+    setPreviewPosition({ x: rect.right + 10, y: rect.top })
+  }
+
+  const handleMouseLeave = () => {
+    setHoveredAssetId(null)
+  }
+
   if (loading) {
     return <Card className="p-8 text-center text-muted-foreground">Loading assets...</Card>
   }
@@ -43,7 +60,7 @@ export function InventoryTable({
   }
 
   return (
-    <div className="overflow-x-auto">
+    <div className="overflow-x-auto relative">
       <table className="w-full">
         <thead>
           <tr className="border-b border-border">
@@ -58,7 +75,12 @@ export function InventoryTable({
         </thead>
         <tbody>
           {assets.map((asset) => (
-            <tr key={asset.id} className="border-b border-border hover:bg-muted/50 transition-colors">
+            <tr
+              key={asset.id}
+              className="border-b border-border hover:bg-muted/50 transition-colors"
+              onMouseEnter={(e) => handleMouseEnter(e, asset.id)}
+              onMouseLeave={handleMouseLeave}
+            >
               <td className="px-4 py-3 text-sm font-mono text-primary">{asset.asset_code}</td>
               <td className="px-4 py-3 text-sm">{asset.name}</td>
               <td className="px-4 py-3 text-sm">
@@ -120,6 +142,36 @@ export function InventoryTable({
           ))}
         </tbody>
       </table>
+
+      {hoveredAssetId && (
+        <div className="fixed z-50 pointer-events-none">
+          {assets
+            .filter((asset) => asset.id === hoveredAssetId && asset.photo_url)
+            .map((asset) => (
+              <div
+                key={`preview-${asset.id}`}
+                style={{
+                  left: `${previewPosition.x}px`,
+                  top: `${previewPosition.y}px`,
+                }}
+              >
+                <div className="bg-background border border-border rounded-lg shadow-lg overflow-hidden">
+                  <Image
+                    src={asset.photo_url || "/placeholder.svg"}
+                    alt={asset.name}
+                    width={200}
+                    height={200}
+                    className="w-48 h-48 object-cover"
+                  />
+                  <div className="p-2 bg-muted/50">
+                    <p className="text-xs font-medium text-foreground">{asset.name}</p>
+                    <p className="text-xs text-muted-foreground">{asset.asset_code}</p>
+                  </div>
+                </div>
+              </div>
+            ))}
+        </div>
+      )}
     </div>
   )
 }
