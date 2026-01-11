@@ -24,7 +24,7 @@ export default function AssetDetailPage() {
   async function loadAsset() {
     try {
       const { data, error } = await supabase
-        .from("multimedia_assets")
+        .from("assets")
         .select(
           `
           *,

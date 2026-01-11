@@ -100,6 +100,7 @@ const navigationGroups = [
           { name: "By Cost Center", href: "/inventory/by-cost-center", icon: "💼" },
           { name: "Categories", href: "/inventory/categories", icon: "⚙️" },
           { name: "Cost Centers", href: "/inventory/cost-centers", icon: "🏢" },
+          { name: "Audit Logs", href: "/inventory/audit-logs", icon: "📋" },
         ],
       },
       { name: "Maintenance", href: "/maintenance", icon: Wrench, tip: "Schedule and track repairs" },

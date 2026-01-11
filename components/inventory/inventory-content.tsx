@@ -49,11 +49,11 @@ export function InventoryContent() {
       setLoading(true)
       const { data, error } = await supabase
         .from("multimedia_assets")
-        .select(`
+        .select(
+          `
           id,
           asset_code,
           name,
-          description,
           status,
           location,
           assigned_to,
@@ -64,21 +64,20 @@ export function InventoryContent() {
           cost_center_id,
           asset_categories(name, color),
           cost_centers(name, code)
-        `)
+        `,
+        )
         .order("created_at", { ascending: false })
 
       if (error) throw error
-
-      const transformed = (data || []).map((item: any) => ({
-        ...item,
-        category: item.asset_categories,
-        cost_center: item.cost_centers,
+      const transformedData = (data || []).map((asset: any) => ({
+        ...asset,
+        category: asset.asset_categories,
+        cost_center: asset.cost_centers,
       }))
-
-      setAssets(transformed)
+      setAssets(transformedData)
     } catch (error) {
       console.error("Error loading assets:", error)
-      toast({ title: "Error", description: "Failed to load inventory", variant: "destructive" })
+      toast({ title: "Error", description: "Failed to load assets", variant: "destructive" })
     } finally {
       setLoading(false)
     }

@@ -50,37 +50,39 @@ export function InventoryForm({ asset, categories, costCenters, onClose, onSucce
     }
   }, [formData.cost_center_id, formData.category_id])
 
-  const generateAssetCode = async (
-    costCenterId: string = formData.cost_center_id,
-    categoryId: string = formData.category_id,
-    assetName: string = formData.name,
-  ) => {
+  const generateAssetCode = async () => {
     try {
-      const costCenter = costCenters.find((cc) => cc.id === costCenterId)
-      const category = categories.find((cat) => cat.id === categoryId)
-
-      if (!category) return
-
-      const categoryCode = category.code || category.name.substring(0, 3).toUpperCase()
-      const costCenterCode = costCenter?.code || costCenter?.name.substring(0, 2).toUpperCase() || "BS"
-
       const { data, error } = await supabase
-        .from("multimedia_assets")
-        .select("asset_code", { count: "exact" })
-        .eq("cost_center_id", costCenterId)
-        .eq("category_id", categoryId)
-        .ilike("asset_code", `${costCenterCode}-${categoryCode}%`)
+        .from("assets")
+        .select("asset_code")
+        .order("created_at", { ascending: false })
+        .limit(1)
 
-      if (error) throw error
+      if (!error && data?.length > 0) {
+        const lastCode = data[0].asset_code
+        const parts = lastCode.split("-")
+        if (parts.length >= 3) {
+          const sequence = Number.parseInt(parts[parts.length - 1]) + 1
+          const newCode = `${parts.slice(0, -1).join("-")}-${String(sequence).padStart(3, "0")}`
+          setFormData((prev) => ({ ...prev, asset_code: newCode }))
+          generateQRCode(newCode)
+          return
+        }
+      }
 
-      const nextSequence = (data?.length || 0) + 1
-      const sequenceStr = String(nextSequence).padStart(3, "0")
-      const newAssetCode = `${costCenterCode}-${categoryCode}-${sequenceStr}`
+      const categoryCode =
+        categories.find((c) => c.id === formData.category_id)?.code ||
+        categories
+          .find((c) => c.id === formData.category_id)
+          ?.name?.substring(0, 3)
+          .toUpperCase() ||
+        "UNK"
 
-      setFormData((prev) => ({ ...prev, asset_code: newAssetCode }))
-      const qrData = `ASSET|${newAssetCode}|${assetName}|${new Date().toISOString()}`
-      const qrDataUrl = await QRCode.toDataURL(qrData, { width: 300, margin: 2 })
-      setQrCodeData(qrDataUrl)
+      const costCenterCode = costCenters.find((c) => c.id === formData.cost_center_id)?.code || "BS"
+
+      const newCode = `${costCenterCode}-${categoryCode}-001`
+      setFormData((prev) => ({ ...prev, asset_code: newCode }))
+      generateQRCode(newCode)
     } catch (error) {
       console.error("Error generating asset code:", error)
     }
@@ -96,9 +98,9 @@ export function InventoryForm({ asset, categories, costCenters, onClose, onSucce
     }
   }
 
-  const generateQRCode = async () => {
+  const generateQRCode = async (code: string) => {
     try {
-      await generateQRCodeWithData(formData.asset_code, formData.name)
+      await generateQRCodeWithData(code, formData.name)
       toast({ title: "Success", description: "QR code generated" })
     } catch (error) {
       console.error("Error generating QR:", error)
@@ -114,15 +116,15 @@ export function InventoryForm({ asset, categories, costCenters, onClose, onSucce
       setLoading(true)
       const fileExt = file.name.split(".").pop()
       const fileName = `${Date.now()}.${fileExt}`
-      const filePath = `multimedia/${fileName}`
+      const filePath = `assets/${fileName}`
 
       const { error: uploadError } = await supabase.storage
-        .from("gis-overlays")
+        .from("asset-photos")
         .upload(filePath, file, { upsert: true })
 
       if (uploadError) throw uploadError
 
-      const { data: publicUrl } = supabase.storage.from("gis-overlays").getPublicUrl(filePath)
+      const { data: publicUrl } = supabase.storage.from("asset-photos").getPublicUrl(filePath)
 
       setPhotoPreview(publicUrl.publicUrl)
     } catch (error) {
@@ -135,29 +137,39 @@ export function InventoryForm({ asset, categories, costCenters, onClose, onSucce
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!formData.asset_code || !formData.name) {
-      toast({ title: "Error", description: "Asset code and name are required", variant: "destructive" })
-      return
-    }
+    setLoading(true)
 
     try {
-      setLoading(true)
+      let photoUrl = asset?.photo_url || ""
+      if (fileInputRef.current?.files?.[0]) {
+        const file = fileInputRef.current.files[0]
+        const fileName = `${Date.now()}-${file.name}`
+        const filePath = `assets/${fileName}`
+
+        const { error: uploadError } = await supabase.storage.from("asset-photos").upload(filePath, file)
+        if (uploadError) throw uploadError
+
+        const {
+          data: { publicUrl },
+        } = supabase.storage.from("asset-photos").getPublicUrl(filePath)
+        photoUrl = publicUrl
+      }
+
       const payload = {
         ...formData,
-        photo_url: photoPreview,
+        photo_url: photoUrl,
         qr_code_url: qrCodeData,
       }
 
       if (asset) {
-        const { error } = await supabase.from("multimedia_assets").update(payload).eq("id", asset.id)
+        const { error } = await supabase.from("assets").update(payload).eq("id", asset.id)
         if (error) throw error
-        toast({ title: "Success", description: "Asset updated successfully" })
       } else {
-        const { error } = await supabase.from("multimedia_assets").insert([payload])
+        const { error } = await supabase.from("assets").insert([payload])
         if (error) throw error
-        toast({ title: "Success", description: "Asset created successfully" })
       }
 
+      toast({ title: "Success", description: asset ? "Asset updated" : "Asset created" })
       onSuccess()
     } catch (error) {
       console.error("Error saving asset:", error)
@@ -222,7 +234,12 @@ export function InventoryForm({ asset, categories, costCenters, onClose, onSucce
                   className="w-24 h-24 border border-border rounded-lg p-2"
                 />
               )}
-              <Button type="button" variant="outline" onClick={generateQRCode} className="gap-2 bg-transparent">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => generateQRCode(formData.asset_code)}
+                className="gap-2 bg-transparent"
+              >
                 <QrCodeIcon className="h-4 w-4" />
                 {qrCodeData ? "Regenerate QR Code" : "Generate QR Code"}
               </Button>
@@ -264,7 +281,7 @@ export function InventoryForm({ asset, categories, costCenters, onClose, onSucce
                 onChange={(e) => {
                   const newCategoryId = e.target.value
                   setFormData((prev) => ({ ...prev, category_id: newCategoryId }))
-                  generateAssetCode(formData.cost_center_id, newCategoryId, formData.name)
+                  generateAssetCode()
                 }}
                 className="w-full px-3 py-2 bg-input border border-border rounded-md"
               >
@@ -282,7 +299,7 @@ export function InventoryForm({ asset, categories, costCenters, onClose, onSucce
                 onChange={(e) => {
                   const newCostCenterId = e.target.value
                   setFormData((prev) => ({ ...prev, cost_center_id: newCostCenterId }))
-                  generateAssetCode(newCostCenterId, formData.category_id, formData.name)
+                  generateAssetCode()
                 }}
                 className="w-full px-3 py-2 bg-input border border-border rounded-md"
               >
