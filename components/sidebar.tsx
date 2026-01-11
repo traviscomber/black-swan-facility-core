@@ -88,6 +88,19 @@ const navigationGroups = [
     description: "Configure and maintain your facility",
     items: [
       { name: "Assets", href: "/assets", icon: Box, tip: "Inventory and equipment" },
+      {
+        name: "Inventory",
+        href: "/inventory",
+        icon: Box,
+        tip: "Multimedia inventory tracking and QR codes",
+        subItems: [
+          { name: "All Assets", href: "/inventory", icon: "📦" },
+          { name: "By Category", href: "/inventory/by-category", icon: "🏷️" },
+          { name: "By Cost Center", href: "/inventory/by-cost-center", icon: "💼" },
+          { name: "Categories", href: "/inventory/categories", icon: "⚙️" },
+          { name: "Cost Centers", href: "/inventory/cost-centers", icon: "🏢" },
+        ],
+      },
       { name: "Maintenance", href: "/maintenance", icon: Wrench, tip: "Schedule and track repairs" },
       { name: "GIS Map", href: "/map", icon: Map, tip: "Property location and layout" },
       { name: "KMZ Viewer", href: "/map/kmz-viewer", icon: Map, tip: "Upload and view KMZ overlays" },
@@ -176,7 +189,7 @@ interface SidebarProps {
 export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const pathname = usePathname()
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set())
-  const [openSearch, setOpenSearch] = useState(false)
+  const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set())
 
   const toggleGroup = (label: string) => {
     const newExpanded = new Set(expandedGroups)
@@ -186,6 +199,16 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
       newExpanded.add(label)
     }
     setExpandedGroups(newExpanded)
+  }
+
+  const toggleSubItems = (itemName: string) => {
+    const newExpanded = new Set(expandedItems)
+    if (newExpanded.has(itemName)) {
+      newExpanded.delete(itemName)
+    } else {
+      newExpanded.add(itemName)
+    }
+    setExpandedItems(newExpanded)
   }
 
   const handleOpenSearch = () => {
@@ -248,26 +271,67 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
               </div>
               {expandedGroups.has(group.label) && (
                 <div className="space-y-1">
-                  {group.items.map((item) => {
+                  {group.items.map((item: any) => {
                     const isActive = pathname === item.href || (item.href !== "/" && pathname?.startsWith(item.href))
+                    const hasSubItems = item.subItems && item.subItems.length > 0
+                    const isExpanded = expandedItems.has(item.name)
 
                     return (
-                      <Link
-                        key={item.name}
-                        href={item.href}
-                        onClick={onClose}
-                        className={cn(
-                          "group flex items-center gap-2 sm:gap-3 rounded px-2 sm:px-3 py-2 text-xs sm:text-sm font-medium transition-all duration-200",
-                          isActive
-                            ? "bg-primary text-white shadow-md"
-                            : "text-gray-700 hover:bg-gray-100 hover:text-gray-900",
+                      <div key={item.name}>
+                        <div className="flex items-center gap-0">
+                          <Link
+                            href={item.href}
+                            onClick={onClose}
+                            className={cn(
+                              "group flex-1 flex items-center gap-2 sm:gap-3 rounded px-2 sm:px-3 py-2 text-xs sm:text-sm font-medium transition-all duration-200",
+                              isActive
+                                ? "bg-primary text-white shadow-md"
+                                : "text-gray-700 hover:bg-gray-100 hover:text-gray-900",
+                            )}
+                            title={item.tip}
+                          >
+                            <item.icon className="h-5 w-5 flex-shrink-0" />
+                            <span className="flex-1">{item.name}</span>
+                            {isActive && <div className="h-2 w-2 rounded-full bg-white flex-shrink-0"></div>}
+                          </Link>
+                          {hasSubItems && (
+                            <button
+                              onClick={() => toggleSubItems(item.name)}
+                              className="px-2 py-2 hover:bg-gray-100 rounded transition-colors"
+                            >
+                              <ChevronDown
+                                className={cn(
+                                  "h-4 w-4 text-gray-600 transition-transform duration-200",
+                                  isExpanded ? "rotate-0" : "-rotate-90",
+                                )}
+                              />
+                            </button>
+                          )}
+                        </div>
+                        {hasSubItems && isExpanded && (
+                          <div className="ml-4 space-y-1 mt-1 border-l-2 border-gray-200 pl-2">
+                            {item.subItems.map((subItem: any) => {
+                              const isSubActive = pathname === subItem.href
+                              return (
+                                <Link
+                                  key={subItem.href}
+                                  href={subItem.href}
+                                  onClick={onClose}
+                                  className={cn(
+                                    "flex items-center gap-2 rounded px-2 py-1 text-xs font-medium transition-all duration-200",
+                                    isSubActive
+                                      ? "bg-primary/20 text-primary"
+                                      : "text-gray-600 hover:bg-gray-100 hover:text-gray-900",
+                                  )}
+                                >
+                                  <span>{subItem.icon}</span>
+                                  <span>{subItem.name}</span>
+                                </Link>
+                              )
+                            })}
+                          </div>
                         )}
-                        title={item.tip}
-                      >
-                        <item.icon className="h-5 w-5 flex-shrink-0" />
-                        <span className="flex-1">{item.name}</span>
-                        {isActive && <div className="h-2 w-2 rounded-full bg-white flex-shrink-0"></div>}
-                      </Link>
+                      </div>
                     )
                   })}
                 </div>
