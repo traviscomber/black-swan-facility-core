@@ -1,40 +1,12 @@
 "use client"
 
+import { useState } from "react"
+
+import { Calendar } from "@/components/ui/calendar"
+import { LayoutDashboard, Receipt, ClipboardList, Crown, Brain, TrendingUp, Beef, Box, Package, Wrench, Anchor, Zap, FileText, Lightbulb, Code, Users, Heart, MessageSquare, Tablet, ChefHat, CheckSquare, AlertCircle, Bot, Settings, X, ChevronDown, HelpCircle, Map } from "lucide-react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
-import {
-  LayoutDashboard,
-  Map,
-  Box,
-  AlertCircle,
-  Wrench,
-  Users,
-  CheckSquare,
-  Settings,
-  X,
-  Bot,
-  Calendar,
-  ClipboardList,
-  MessageSquare,
-  HelpCircle,
-  Beef,
-  Anchor,
-  ChefHat,
-  Zap,
-  Code,
-  TrendingUp,
-  FileText,
-  Lightbulb,
-  ChevronDown,
-  Tablet,
-  Heart,
-  Crown,
-  Brain,
-  Receipt,
-  Package,
-} from "lucide-react"
-import { useState } from "react"
 // import { UniversalSearchDialog } from "@/components/universal-search-dialog" // Assuming UniversalSearchDialog is in a separate file
 
 const Building = ({ className }: { className?: string }) => (
@@ -103,10 +75,10 @@ const navigationGroups = [
           { name: "Audit Logs", href: "/inventory/audit-logs", icon: "📋" },
         ],
       },
+      { name: "Operations", href: "/operations", icon: Map, tip: "Monthly operations and vehicle trips with KMZ tracking" },
       { name: "Maintenance", href: "/maintenance", icon: Wrench, tip: "Schedule and track repairs" },
       { name: "GIS Map", href: "/map", icon: Map, tip: "Property location and layout" },
       { name: "KMZ Viewer", href: "/map/kmz-viewer", icon: Map, tip: "Upload and view KMZ overlays" },
-      { name: "Ports & Boats", href: "/ports-boats", icon: Anchor, tip: "Manage port facilities and boat fleet" },
     ],
   },
   {
@@ -229,7 +201,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
 
       <div
         className={cn(
-          "fixed inset-y-0 left-0 z-50 flex h-screen w-64 flex-col border-r border-secondary bg-white transition-transform duration-300 lg:relative lg:translate-x-0 overflow-hidden",
+          "fixed inset-y-0 left-0 z-50 flex h-screen w-64 flex-col border-r border-secondary bg-white transition-transform duration-300 lg:relative lg:translate-x-0 overflow-y-auto",
           isOpen ? "translate-x-0" : "-translate-x-full",
         )}
       >
@@ -250,17 +222,17 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
           </button>
         </div>
 
-        <nav className="flex-1 space-y-3 sm:space-y-4 px-2 sm:px-3 py-3 sm:py-4 overflow-y-auto">
+        <nav className="flex-1 space-y-2 sm:space-y-3 px-2 sm:px-3 py-3 sm:py-4 overflow-y-auto min-h-0">
           {navigationGroups.map((group) => (
-            <div key={group.label} className="space-y-2">
-              <div className="flex items-center justify-between px-2">
-                <div className="flex-1">
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-gray-700">{group.label}</h3>
-                  <p className="text-xs text-gray-500 mt-1 leading-tight hidden sm:block">{group.description}</p>
+            <div key={group.label} className="space-y-1 min-w-0">
+              <div className="flex items-start justify-between px-2 gap-1 min-w-0">
+                <div className="flex-1 min-w-0">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-gray-700 truncate">{group.label}</h3>
+                  <p className="text-xs text-gray-500 mt-1 leading-tight hidden sm:block break-words">{group.description}</p>
                 </div>
                 <button
                   onClick={() => toggleGroup(group.label)}
-                  className="ml-2 p-1 hover:bg-gray-100 rounded transition-colors flex-shrink-0"
+                  className="ml-1 p-1 hover:bg-gray-100 rounded transition-colors flex-shrink-0"
                   aria-label={`Toggle ${group.label}`}
                 >
                   <ChevronDown
@@ -272,20 +244,20 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                 </button>
               </div>
               {expandedGroups.has(group.label) && (
-                <div className="space-y-1">
+                <div className="space-y-0.5 min-w-0">
                   {group.items.map((item: any) => {
                     const isActive = pathname === item.href || (item.href !== "/" && pathname?.startsWith(item.href))
                     const hasSubItems = item.subItems && item.subItems.length > 0
                     const isExpanded = expandedItems.has(item.name)
 
                     return (
-                      <div key={item.name}>
-                        <div className="flex items-center gap-0">
+                      <div key={item.name} className="min-w-0">
+                        <div className="flex items-center gap-0 min-w-0">
                           <Link
                             href={item.href}
                             onClick={onClose}
                             className={cn(
-                              "group flex-1 flex items-center gap-2 sm:gap-3 rounded px-2 sm:px-3 py-2 text-xs sm:text-sm font-medium transition-all duration-200",
+                              "group flex-1 flex items-center gap-2 sm:gap-3 rounded px-2 sm:px-3 py-2 text-xs sm:text-sm font-medium transition-all duration-200 min-w-0 truncate",
                               isActive
                                 ? "bg-primary text-white shadow-md"
                                 : "text-gray-700 hover:bg-gray-100 hover:text-gray-900",
@@ -311,7 +283,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                           )}
                         </div>
                         {hasSubItems && isExpanded && (
-                          <div className="ml-4 space-y-1 mt-1 border-l-2 border-gray-200 pl-2">
+                          <div className="ml-4 space-y-0.5 mt-1 border-l-2 border-gray-200 pl-2 min-w-0">
                             {item.subItems.map((subItem: any) => {
                               const isSubActive = pathname === subItem.href
                               return (

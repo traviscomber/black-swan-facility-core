@@ -62,34 +62,10 @@ export default function Dashboard() {
       const today = new Date()
       const todayStr = format(today, "yyyy-MM-dd")
 
-      const [bedsResult, roomsResult, todayReservationsResult, activeReservationsResult] = await Promise.all([
-        supabase.from("beds").select("id, is_available", { count: "exact" }),
-        supabase.from("rooms").select("id", { count: "exact" }),
-        supabase
-          .from("reservations")
-          .select("check_in, check_out, num_guests, total_amount")
-          .eq("status", "confirmed")
-          .lte("check_in", todayStr)
-          .gte("check_out", todayStr)
-          .limit(1000),
-        supabase
-          .from("reservations")
-          .select("id", { count: "exact" })
-          .eq("status", "confirmed")
-          .lte("check_in", todayStr)
-          .gte("check_out", todayStr),
-      ])
-
-      const beds = bedsResult.data || []
-      const rooms = roomsResult.data || []
-      const todayReservations = todayReservationsResult.data || []
-
-      const totalBeds = bedsResult.count || beds.length
-      const totalRooms = roomsResult.count || rooms.length
-      const availableBeds = beds.filter((b) => b.is_available).length
-      const occupiedBeds = totalBeds - availableBeds
-
-      const [checkInsResult, checkOutsResult] = await Promise.all([
+      // Fetch all data in parallel
+      const [bedsResult, roomsResult, checkInsResult, checkOutsResult, occupiedResult] = await Promise.all([
+        supabase.from("beds").select("id, is_available", { count: "exact" }).limit(1),
+        supabase.from("rooms").select("id", { count: "exact" }).limit(1),
         supabase
           .from("reservations")
           .select("id", { count: "exact" })
@@ -100,17 +76,41 @@ export default function Dashboard() {
           .select("id", { count: "exact" })
           .eq("status", "confirmed")
           .eq("check_out", todayStr),
+        supabase
+          .from("reservations")
+          .select("num_guests, total_amount")
+          .eq("status", "confirmed")
+          .lte("check_in", todayStr)
+          .gte("check_out", todayStr),
       ])
 
+      const beds = bedsResult.data || []
+      const totalBeds = bedsResult.count || beds.length
+      const totalRooms = roomsResult.count || 0
+      const availableBeds = beds.filter((b) => b.is_available).length
+      const occupiedBeds = totalBeds - availableBeds
+
+      // Calculate occupancy rate
+      const occupancyRate = totalBeds > 0 ? Math.round((occupiedBeds / totalBeds) * 100) : 0
+
+      // Calculate today's metrics from occupied result
       let activeGuests = 0
       let totalRevenue = 0
+      const occupiedData = occupiedResult.data || []
 
-      todayReservations.forEach((res) => {
+      occupiedData.forEach((res) => {
         activeGuests += res.num_guests || 0
         totalRevenue += res.total_amount || 0
       })
 
-      const occupancyRate = totalBeds > 0 ? Math.round((occupiedBeds / totalBeds) * 100) : 0
+      // Fetch reservation counts - these are just counts now
+      const activeReservationsResult = await supabase
+        .from("reservations")
+        .select("id", { count: "exact" })
+        .eq("status", "confirmed")
+        .lte("check_in", todayStr)
+        .gte("check_out", todayStr)
+        .limit(1)
 
       setMetrics({
         totalRooms,
