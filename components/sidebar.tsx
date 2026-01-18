@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 
-import { LayoutDashboard, Calendar, Receipt, ClipboardList, Crown, Brain, TrendingUp, Beef, Box, Package, Wrench, Anchor, Zap, FileText, Lightbulb, Code, Users, Heart, MessageSquare, Tablet, ChefHat, CheckSquare, AlertCircle, Bot, Settings, X, ChevronDown, HelpCircle, Map, Fuel } from "lucide-react"
+import { LayoutDashboard, Calendar, Receipt, ClipboardList, Crown, Brain, TrendingUp, Beef, Box, Package, Wrench, Anchor, Zap, FileText, Lightbulb, Code, Users, Heart, MessageSquare, Tablet, ChefHat, CheckSquare, AlertCircle, Bot, Settings, X, ChevronDown, HelpCircle, Map, Fuel, Building } from "lucide-react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
@@ -111,6 +111,7 @@ const navigationGroups = [
     items: [
       { name: "Employees", href: "/employees", icon: Users, tip: "Team management" },
       { name: "Volunteers", href: "/volunteers", icon: Heart, tip: "Volunteer coordination and tracking" },
+      { name: "Activities Calendar", href: "/activities-calendar", icon: Calendar, tip: "Plan and manage facility activities, events, and entertainment" },
       { name: "Concierge", href: "/concierge", icon: MessageSquare, tip: "Guest communication" },
       {
         name: "Guest Requests",
