@@ -2,29 +2,11 @@
 
 import { useState } from "react"
 
-import { Calendar } from "@/components/ui/calendar"
-import { LayoutDashboard, Receipt, ClipboardList, Crown, Brain, TrendingUp, Beef, Box, Package, Wrench, Anchor, Zap, FileText, Lightbulb, Code, Users, Heart, MessageSquare, Tablet, ChefHat, CheckSquare, AlertCircle, Bot, Settings, X, ChevronDown, HelpCircle, Map } from "lucide-react"
+import { LayoutDashboard, Calendar, Receipt, ClipboardList, Crown, Brain, TrendingUp, Beef, Box, Package, Wrench, Anchor, Zap, FileText, Lightbulb, Code, Users, Heart, MessageSquare, Tablet, ChefHat, CheckSquare, AlertCircle, Bot, Settings, X, ChevronDown, HelpCircle, Map, Fuel } from "lucide-react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
 // import { UniversalSearchDialog } from "@/components/universal-search-dialog" // Assuming UniversalSearchDialog is in a separate file
-
-const Building = ({ className }: { className?: string }) => (
-  <svg
-    className={className}
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-  >
-    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-    <line x1="3" y1="9" x2="21" y2="9"></line>
-    <line x1="9" y1="21" x2="9" y2="9"></line>
-    <line x1="15" y1="21" x2="15" y2="9"></line>
-  </svg>
-)
 
 const navigationGroups = [
   {
@@ -76,6 +58,7 @@ const navigationGroups = [
         ],
       },
       { name: "Operations", href: "/operations", icon: Map, tip: "Monthly operations and vehicle trips with KMZ tracking" },
+      { name: "Fuel Consumption", href: "/fuel-consumption", icon: Fuel, tip: "Track field fuel consumption and costs" },
       { name: "Maintenance", href: "/maintenance", icon: Wrench, tip: "Schedule and track repairs" },
       { name: "GIS Map", href: "/map", icon: Map, tip: "Property location and layout" },
       { name: "KMZ Viewer", href: "/map/kmz-viewer", icon: Map, tip: "Upload and view KMZ overlays" },
@@ -117,7 +100,7 @@ const navigationGroups = [
       {
         name: "Facilities",
         href: "/procurement/facilities",
-        icon: Building,
+        icon: "Building",
         tip: "Manage facilities and their procurement needs",
       },
     ],
@@ -201,7 +184,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
 
       <div
         className={cn(
-          "fixed inset-y-0 left-0 z-50 flex h-screen w-64 flex-col border-r border-secondary bg-white transition-transform duration-300 lg:relative lg:translate-x-0 overflow-y-auto",
+          "fixed inset-y-0 left-0 z-50 flex h-screen w-64 flex-col border-r border-secondary bg-white transition-transform duration-300 lg:relative lg:translate-x-0 overflow-y-auto min-h-0",
           isOpen ? "translate-x-0" : "-translate-x-full",
         )}
       >

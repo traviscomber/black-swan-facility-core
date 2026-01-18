@@ -223,43 +223,72 @@ export default function OperationsPage() {
           </CardHeader>
 
           <CardContent className="p-3 md:p-6 pt-0 md:pt-0">
-            {/* Calendar Grid - Responsive */}
-            <div className="grid grid-cols-7 gap-1 md:gap-2 overflow-x-auto">
-              {['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sab'].map((day) => (
-                <div key={day} className="text-center text-xs md:text-sm font-semibold text-muted-foreground p-1 md:p-2">
-                  {day}
-                </div>
-              ))}
-
-              {daysInMonth.map((day) => {
-                const dayOps = getOperationsForDay(day)
-                const isCurrentMonth = isSameMonth(day, currentMonth)
-
-                return (
-                  <div
-                    key={day.toString()}
-                    className={`min-h-16 md:min-h-24 border rounded-lg p-1 md:p-2 text-xs md:text-sm ${
-                      isCurrentMonth ? 'bg-card border-border' : 'bg-muted/30 border-muted text-muted-foreground'
-                    }`}
-                  >
-                    <div className="text-xs md:text-sm font-semibold mb-1">{format(day, 'd')}</div>
-                    <div className="space-y-0.5 md:space-y-1">
-                      {dayOps.slice(0, 2).map((op) => (
-                        <div
-                          key={op.id}
-                          className={`text-xs p-0.5 md:p-1 rounded truncate cursor-pointer hover:opacity-80 transition-opacity ${getStatusColor(op.status)}`}
-                          title={op.title || ''}
-                        >
-                          {getVehicleIcon(vehicles.find((v) => v.id === op.vehicle_id)?.vehicle_type || '')} {op.title}
-                        </div>
-                      ))}
-                      {dayOps.length > 2 && (
-                        <div className="text-xs text-muted-foreground p-0.5 md:p-1">+{dayOps.length - 2}</div>
-                      )}
-                    </div>
+            {/* Calendar Grid - Responsive with better styling */}
+            <div className="space-y-4">
+              {/* Day headers */}
+              <div className="grid grid-cols-7 gap-2 md:gap-3">
+                {['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sab'].map((day) => (
+                  <div key={day} className="text-center font-bold text-sm md:text-base text-accent py-2 border-b-2 border-accent/30">
+                    {day}
                   </div>
-                )
-              })}
+                ))}
+              </div>
+
+              {/* Calendar cells */}
+              <div className="grid grid-cols-7 gap-2 md:gap-3 auto-rows-max">
+                {daysInMonth.map((day) => {
+                  const dayOps = getOperationsForDay(day)
+                  const isCurrentMonth = isSameMonth(day, currentMonth)
+                  const isToday = isSameDay(day, new Date())
+
+                  return (
+                    <div
+                      key={day.toString()}
+                      className={`rounded-lg border-2 transition-all hover:shadow-lg cursor-pointer ${
+                        isToday
+                          ? 'border-accent bg-accent/20'
+                          : isCurrentMonth
+                            ? 'border-border bg-card hover:bg-card/80'
+                            : 'border-muted/20 bg-muted/10 text-muted-foreground'
+                      } ${dayOps.length > 0 ? 'ring-2 ring-accent/30' : ''}`}
+                      style={{ minHeight: '120px', padding: '12px' }}
+                    >
+                      {/* Day number */}
+                      <div className={`text-sm md:text-base font-bold mb-2 ${isToday ? 'text-accent' : 'text-foreground'}`}>
+                        {format(day, 'd')}
+                      </div>
+
+                      {/* Operations list */}
+                      <div className="space-y-1">
+                        {dayOps.slice(0, 2).map((op) => (
+                          <div
+                            key={op.id}
+                            className={`text-xs rounded px-2 py-1 truncate flex items-center gap-1 ${getStatusColor(op.status)} hover:opacity-90 transition-opacity`}
+                            title={op.title || ''}
+                          >
+                            <span className="flex-shrink-0">{getVehicleIcon(vehicles.find((v) => v.id === op.vehicle_id)?.vehicle_type || '')}</span>
+                            <span className="flex-1 truncate">{op.title}</span>
+                          </div>
+                        ))}
+
+                        {/* More operations indicator */}
+                        {dayOps.length > 2 && (
+                          <div className="text-xs px-2 py-1 text-accent font-semibold">
+                            +{dayOps.length - 2} más
+                          </div>
+                        )}
+
+                        {/* Operations count badge */}
+                        {dayOps.length > 0 && (
+                          <div className="text-xs text-muted-foreground pt-1 border-t border-border/30">
+                            {dayOps.length} op{dayOps.length !== 1 ? 's' : ''}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
             </div>
           </CardContent>
         </Card>
