@@ -1,10 +1,13 @@
 'use client'
 
+import React from "react"
+
 import { useState, useEffect } from 'react'
 import { AppLayout } from '@/components/app-layout'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { createBrowserClient } from '@/lib/supabase/client'
 import { AlertTriangle, Plus, TrendingDown, Heart, Droplet, Zap } from 'lucide-react'
 
@@ -32,6 +35,19 @@ export default function CattleHealthPage() {
   const [records, setRecords] = useState<BiometricRecord[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedAnimal, setSelectedAnimal] = useState<string>('all')
+  const [showDialog, setShowDialog] = useState(false)
+  const [formLoading, setFormLoading] = useState(false)
+  const [formError, setFormError] = useState('')
+  const [formData, setFormData] = useState({
+    animal_id: '',
+    test_date: new Date().toISOString().split('T')[0],
+    bhb: '',
+    total_protein: '',
+    magnesium: '',
+    calcium: '',
+    glucose: '',
+    notes: '',
+  })
   const supabase = createBrowserClient()
 
   useEffect(() => {
@@ -62,6 +78,49 @@ export default function CattleHealthPage() {
       console.error('Error loading data:', error)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setFormError('')
+    setFormLoading(true)
+
+    try {
+      if (!formData.animal_id) {
+        throw new Error('Selecciona un animal')
+      }
+
+      const { error } = await supabase.from('cattle_biometric_records').insert({
+        animal_id: formData.animal_id,
+        test_date: formData.test_date,
+        bhb: formData.bhb ? parseFloat(formData.bhb) : null,
+        total_protein: formData.total_protein ? parseFloat(formData.total_protein) : null,
+        magnesium: formData.magnesium ? parseFloat(formData.magnesium) : null,
+        calcium: formData.calcium ? parseFloat(formData.calcium) : null,
+        glucose: formData.glucose ? parseFloat(formData.glucose) : null,
+        notes: formData.notes || null,
+      })
+
+      if (error) throw error
+
+      // Reset form and reload data
+      setFormData({
+        animal_id: '',
+        test_date: new Date().toISOString().split('T')[0],
+        bhb: '',
+        total_protein: '',
+        magnesium: '',
+        calcium: '',
+        glucose: '',
+        notes: '',
+      })
+      setShowDialog(false)
+      await loadData()
+    } catch (err) {
+      setFormError(err instanceof Error ? err.message : 'Error al guardar')
+    } finally {
+      setFormLoading(false)
     }
   }
 
@@ -141,7 +200,7 @@ export default function CattleHealthPage() {
             <h1 className="text-3xl font-bold tracking-tight text-foreground">Monitoreo de Salud - Ganado</h1>
             <p className="text-muted-foreground mt-1">Análisis veterinario y alertas automáticas de bienestar animal</p>
           </div>
-          <Button size="lg" className="gap-2">
+          <Button size="lg" className="gap-2" onClick={() => setShowDialog(true)}>
             <Plus className="h-4 w-4" />
             Registrar Análisis
           </Button>
@@ -379,6 +438,132 @@ export default function CattleHealthPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Dialog para registrar análisis */}
+      <Dialog open={showDialog} onOpenChange={setShowDialog}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Registrar Análisis Bioquímico</DialogTitle>
+            <DialogDescription>Ingresa los parámetros del análisis veterinario</DialogDescription>
+          </DialogHeader>
+
+          <form onSubmit={handleSubmit} className="space-y-4">
+            {formError && (
+              <div className="p-3 bg-destructive/20 text-destructive rounded-md text-sm">{formError}</div>
+            )}
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Animal *</label>
+                <select
+                  value={formData.animal_id}
+                  onChange={(e) => setFormData({ ...formData, animal_id: e.target.value })}
+                  className="w-full px-3 py-2 bg-input border border-border rounded-md text-sm"
+                  required
+                >
+                  <option value="">Selecciona un animal</option>
+                  {animals.map((a) => (
+                    <option key={a.id} value={a.id}>
+                      {a.animal_id} - {a.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Fecha del Análisis *</label>
+                <input
+                  type="date"
+                  value={formData.test_date}
+                  onChange={(e) => setFormData({ ...formData, test_date: e.target.value })}
+                  className="w-full px-3 py-2 bg-input border border-border rounded-md text-sm"
+                  required
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium">BHB (mmol/L)</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  placeholder="ej: 0.6"
+                  value={formData.bhb}
+                  onChange={(e) => setFormData({ ...formData, bhb: e.target.value })}
+                  className="w-full px-3 py-2 bg-input border border-border rounded-md text-sm"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Proteína Total (g/L)</label>
+                <input
+                  type="number"
+                  step="0.1"
+                  placeholder="ej: 65"
+                  value={formData.total_protein}
+                  onChange={(e) => setFormData({ ...formData, total_protein: e.target.value })}
+                  className="w-full px-3 py-2 bg-input border border-border rounded-md text-sm"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Magnesio (mmol/L)</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  placeholder="ej: 0.8"
+                  value={formData.magnesium}
+                  onChange={(e) => setFormData({ ...formData, magnesium: e.target.value })}
+                  className="w-full px-3 py-2 bg-input border border-border rounded-md text-sm"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Calcio (mmol/L)</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  placeholder="ej: 2.2"
+                  value={formData.calcium}
+                  onChange={(e) => setFormData({ ...formData, calcium: e.target.value })}
+                  className="w-full px-3 py-2 bg-input border border-border rounded-md text-sm"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Glucosa (mg/dL)</label>
+                <input
+                  type="number"
+                  step="0.1"
+                  placeholder="ej: 80"
+                  value={formData.glucose}
+                  onChange={(e) => setFormData({ ...formData, glucose: e.target.value })}
+                  className="w-full px-3 py-2 bg-input border border-border rounded-md text-sm"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Notas</label>
+              <textarea
+                placeholder="Observaciones adicionales..."
+                value={formData.notes}
+                onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                className="w-full px-3 py-2 bg-input border border-border rounded-md text-sm resize-none"
+                rows={3}
+              />
+            </div>
+
+            <div className="flex gap-2 justify-end pt-4">
+              <Button type="button" variant="outline" onClick={() => setShowDialog(false)}>
+                Cancelar
+              </Button>
+              <Button type="submit" disabled={formLoading}>
+                {formLoading ? 'Guardando...' : 'Guardar Análisis'}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
     </AppLayout>
   )
 }
