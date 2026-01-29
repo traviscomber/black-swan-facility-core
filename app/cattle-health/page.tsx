@@ -64,17 +64,20 @@ export default function CattleHealthPage() {
         .select('id, animal_id, name, breed, status')
         .order('animal_id', { ascending: true })
 
-      console.log('[v0] Animals data:', animalsData)
+      console.log('[v0] Animals data:', animalsData, 'Count:', animalsData?.length)
       console.log('[v0] Animals error:', animalsError)
 
       setAnimals(animalsData || [])
 
       // Load recent records
-      const { data: recordsData } = await supabase
+      const { data: recordsData, error: recordsError } = await supabase
         .from('cattle_biometric_records')
         .select('*')
         .order('test_date', { ascending: false })
         .limit(100)
+
+      console.log('[v0] Records data:', recordsData, 'Count:', recordsData?.length)
+      console.log('[v0] Records error:', recordsError)
 
       setRecords(recordsData || [])
     } catch (error) {
@@ -289,105 +292,109 @@ export default function CattleHealthPage() {
             <CardDescription>Parámetros de salud e indicadores de riesgo</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              {filteredRecords.slice(0, 20).map((record) => {
-                const animal = animals.find((a) => a.id === record.animal_id)
-                const alerts = detectAlerts(record)
+            {filteredRecords.length === 0 ? (
+              <div className="text-center py-12">
+                <p className="text-muted-foreground mb-4">Sin registros de análisis bioquímicos</p>
+                <p className="text-sm text-muted-foreground mb-4">Comienza registrando un nuevo análisis para ver datos aquí</p>
+                <Button size="sm" onClick={() => setShowDialog(true)}>
+                  Registrar Primer Análisis
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {filteredRecords.slice(0, 20).map((record) => {
+                  const animal = animals.find((a) => a.id === record.animal_id)
+                  const alerts = detectAlerts(record)
 
-                return (
-                  <div
-                    key={record.id}
-                    className="border rounded-lg p-4 space-y-3 hover:bg-accent/5 transition-colors"
-                  >
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <p className="font-semibold text-foreground">
-                          {animal?.name || animal?.animal_id}
-                        </p>
-                        <p className="text-sm text-muted-foreground">
-                          Fecha: {new Date(record.test_date).toLocaleDateString('es-CL')}
-                        </p>
+                  return (
+                    <div
+                      key={record.id}
+                      className="border rounded-lg p-4 space-y-3 hover:bg-accent/5 transition-colors"
+                    >
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <p className="font-semibold text-foreground">
+                            {animal?.name || animal?.animal_id || record.animal_id}
+                          </p>
+                          <p className="text-sm text-muted-foreground">
+                            Fecha: {new Date(record.test_date).toLocaleDateString('es-CL')}
+                          </p>
+                        </div>
+                        {alerts.length > 0 && (
+                          <div className="flex gap-1">
+                            {alerts.map((a, i) => (
+                              <span
+                                key={i}
+                                className={`text-xs font-semibold px-2 py-1 rounded ${
+                                  a.severity === 'critical'
+                                    ? 'bg-red-100 text-red-800'
+                                    : a.severity === 'high'
+                                      ? 'bg-orange-100 text-orange-800'
+                                      : 'bg-yellow-100 text-yellow-800'
+                                }`}
+                              >
+                                {a.severity.toUpperCase()}
+                              </span>
+                            ))}
+                          </div>
+                        )}
                       </div>
-                      {alerts.length > 0 && (
-                        <div className="flex gap-1">
-                          {alerts.map((a, i) => (
-                            <span
-                              key={i}
-                              className={`text-xs font-semibold px-2 py-1 rounded ${
-                                a.severity === 'critical'
-                                  ? 'bg-red-100 text-red-800'
-                                  : a.severity === 'high'
-                                    ? 'bg-orange-100 text-orange-800'
-                                    : 'bg-yellow-100 text-yellow-800'
+
+                      {/* Parámetros */}
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-sm">
+                        {record.bhb !== null && (
+                          <div>
+                            <p className="text-muted-foreground text-xs">BHB</p>
+                            <p className={`font-semibold ${record.bhb > 0.6 ? 'text-red-600' : 'text-green-600'}`}>
+                              {record.bhb.toFixed(2)} mmol/L
+                            </p>
+                          </div>
+                        )}
+                        {record.total_protein !== null && (
+                          <div>
+                            <p className="text-muted-foreground text-xs">Proteína</p>
+                            <p className={`font-semibold ${record.total_protein < 65 ? 'text-red-600' : 'text-green-600'}`}>
+                              {record.total_protein.toFixed(1)} g/L
+                            </p>
+                          </div>
+                        )}
+                        {record.magnesium !== null && (
+                          <div>
+                            <p className="text-muted-foreground text-xs">Magnesio</p>
+                            <p className={`font-semibold ${record.magnesium < 0.8 ? 'text-red-600' : 'text-green-600'}`}>
+                              {record.magnesium.toFixed(2)} mmol/L
+                            </p>
+                          </div>
+                        )}
+                        {record.glucose !== null && (
+                          <div>
+                            <p className="text-muted-foreground text-xs">Glucosa</p>
+                            <p
+                              className={`font-semibold ${
+                                record.glucose < 40 || record.glucose > 100 ? 'text-red-600' : 'text-green-600'
                               }`}
                             >
-                              {a.severity.toUpperCase()}
-                            </span>
+                              {record.glucose.toFixed(1)} mg/dL
+                            </p>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Alertas detalladas */}
+                      {alerts.length > 0 && (
+                        <div className="bg-red-50 border border-red-200 rounded p-2 space-y-1">
+                          {alerts.map((alert, i) => (
+                            <p key={i} className="text-sm text-red-800">
+                              ⚠️ {alert.type}: {alert.value}
+                            </p>
                           ))}
                         </div>
                       )}
                     </div>
-
-                    {/* Parámetros */}
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-sm">
-                      {record.bhb !== null && (
-                        <div>
-                          <p className="text-muted-foreground text-xs">BHB</p>
-                          <p className={`font-semibold ${record.bhb > 0.6 ? 'text-red-600' : 'text-green-600'}`}>
-                            {record.bhb.toFixed(2)} mmol/L
-                          </p>
-                        </div>
-                      )}
-                      {record.total_protein !== null && (
-                        <div>
-                          <p className="text-muted-foreground text-xs">Proteína</p>
-                          <p className={`font-semibold ${record.total_protein < 65 ? 'text-red-600' : 'text-green-600'}`}>
-                            {record.total_protein.toFixed(1)} g/L
-                          </p>
-                        </div>
-                      )}
-                      {record.magnesium !== null && (
-                        <div>
-                          <p className="text-muted-foreground text-xs">Magnesio</p>
-                          <p className={`font-semibold ${record.magnesium < 0.8 ? 'text-red-600' : 'text-green-600'}`}>
-                            {record.magnesium.toFixed(2)} mmol/L
-                          </p>
-                        </div>
-                      )}
-                      {record.glucose !== null && (
-                        <div>
-                          <p className="text-muted-foreground text-xs">Glucosa</p>
-                          <p
-                            className={`font-semibold ${
-                              record.glucose < 40 || record.glucose > 100 ? 'text-red-600' : 'text-green-600'
-                            }`}
-                          >
-                            {record.glucose.toFixed(1)} mg/dL
-                          </p>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Alertas detalladas */}
-                    {alerts.length > 0 && (
-                      <div className="bg-red-50 border border-red-200 rounded p-2 space-y-1">
-                        {alerts.map((alert, i) => (
-                          <p key={i} className="text-sm text-red-800">
-                            ⚠️ {alert.type}: {alert.value}
-                          </p>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                )
-              })}
-
-              {filteredRecords.length === 0 && (
-                <p className="text-center text-muted-foreground py-8">
-                  Sin registros. Comienza agregando análisis bioquímicos.
-                </p>
-              )}
-            </div>
+                  )
+                })}
+              </div>
+            )}
           </CardContent>
         </Card>
 
