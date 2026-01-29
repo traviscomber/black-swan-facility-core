@@ -58,11 +58,14 @@ export default function CattleHealthPage() {
     try {
       setLoading(true)
 
-      // Load animals
-      const { data: animalsData } = await supabase
+      // Load animals - remove status filter to debug
+      const { data: animalsData, error: animalsError } = await supabase
         .from('cattle_animals')
-        .select('*')
-        .eq('status', 'active')
+        .select('id, animal_id, name, breed, status')
+        .order('animal_id', { ascending: true })
+
+      console.log('[v0] Animals data:', animalsData)
+      console.log('[v0] Animals error:', animalsError)
 
       setAnimals(animalsData || [])
 
@@ -75,7 +78,7 @@ export default function CattleHealthPage() {
 
       setRecords(recordsData || [])
     } catch (error) {
-      console.error('Error loading data:', error)
+      console.error('[v0] Error loading data:', error)
     } finally {
       setLoading(false)
     }
@@ -455,19 +458,25 @@ export default function CattleHealthPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <label className="text-sm font-medium">Animal *</label>
-                <select
-                  value={formData.animal_id}
-                  onChange={(e) => setFormData({ ...formData, animal_id: e.target.value })}
-                  className="w-full px-3 py-2 bg-input border border-border rounded-md text-sm"
-                  required
-                >
-                  <option value="">Selecciona un animal</option>
-                  {animals.map((a) => (
-                    <option key={a.id} value={a.id}>
-                      {a.animal_id} - {a.name}
-                    </option>
-                  ))}
-                </select>
+                {animals.length === 0 ? (
+                  <div className="p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-md text-sm text-yellow-700">
+                    <p>No hay animales registrados. Por favor crea animales en el módulo de ganado primero.</p>
+                  </div>
+                ) : (
+                  <select
+                    value={formData.animal_id}
+                    onChange={(e) => setFormData({ ...formData, animal_id: e.target.value })}
+                    className="w-full px-3 py-2 bg-input border border-border rounded-md text-sm"
+                    required
+                  >
+                    <option value="">Selecciona un animal</option>
+                    {animals.map((a) => (
+                      <option key={a.id} value={a.id}>
+                        {a.animal_id} - {a.name || 'Sin nombre'}
+                      </option>
+                    ))}
+                  </select>
+                )}
               </div>
 
               <div className="space-y-2">
