@@ -408,75 +408,127 @@ const KmzMapView = ({
 
         const geoJSON = kmlConverter(kmlDoc)
 
-        console.log("[v0] GeoJSON created:", geoJSON.features?.length || 0, "features")
+        // Validate GeoJSON features have valid coordinates
+        if (!geoJSON.features || geoJSON.features.length === 0) {
+          console.error("[v0] No valid features found in GeoJSON from KMZ:", file.name)
+          return
+        }
 
-        // Add GeoJSON to map
-        const layer = L.geoJSON(geoJSON, {
-          style: {
-            color: "#2196F3",
-            weight: 3,
-            opacity: 0.8,
-            fillOpacity: 0.3,
-          },
-          pointToLayer: (feature: any, latlng: any) => {
-            return L.circleMarker(latlng, {
-              radius: 8,
-              fillColor: "#2196F3",
-              color: "#fff",
-              weight: 2,
-              opacity: 1,
-              fillOpacity: 0.8,
-            })
-          },
-          onEachFeature: (feature: any, layer: any) => {
-            const props = feature.properties || {}
-            let popupContent = `<div style="max-width: 300px; max-height: 400px; overflow-y: auto;">`
-            popupContent += `<strong style="color: #2196F3; font-size: 16px;">${file.name}</strong><br/>`
+        // Filter out features with invalid geometries
+        const validFeatures = geoJSON.features.filter((feature: any) => {
+          if (!feature.geometry) return false
+          if (!feature.geometry.coordinates) return false
+          
+          // Check for valid coordinates based on geometry type
+          const coords = feature.geometry.coordinates
+          if (Array.isArray(coords) && coords.length > 0) {
+            // For point geometries
+            if (feature.geometry.type === "Point" && coords.length === 2) {
+              return !isNaN(coords[0]) && !isNaN(coords[1])
+            }
+            // For other types, just check if array is not empty
+            return true
+          }
+          return false
+        })
 
-            // Show all properties from the KMZ
-            if (Object.keys(props).length > 0) {
-              popupContent += `<div style="margin-top: 8px; border-top: 1px solid #e5e7eb; padding-top: 8px;">`
+        console.log("[v0] GeoJSON created:", validFeatures.length, "valid features out of", geoJSON.features.length)
 
-              Object.entries(props).forEach(([key, value]) => {
-                // Skip empty values
-                if (value === null || value === undefined || value === "") return
+        if (validFeatures.length === 0) {
+          console.warn("[v0] No valid features after filtering for KMZ:", file.name)
+          return
+        }
 
-                // Format the key (convert camelCase to Title Case)
-                const formattedKey = key
-                  .replace(/([A-Z])/g, " $1")
-                  .replace(/^./, (str) => str.toUpperCase())
-                  .trim()
+        // Create a new GeoJSON with only valid features
+        const validGeoJSON = {
+          type: "FeatureCollection",
+          features: validFeatures,
+        }
 
-                // Handle different value types
-                let formattedValue = value
-                if (typeof value === "object") {
-                  formattedValue = JSON.stringify(value, null, 2)
-                } else {
-                  formattedValue = String(value)
-                }
-
-                // Add to popup with styling
-                popupContent += `
-                  <div style="margin-bottom: 6px;">
-                    <strong style="color: #4b5563; font-size: 12px;">${formattedKey}:</strong>
-                    <span style="color: #1f2937; font-size: 12px; margin-left: 4px;">${formattedValue}</span>
-                  </div>
-                `
+        // Add GeoJSON to map with proper error handling
+        let layer
+        try {
+          layer = L.geoJSON(validGeoJSON, {
+            style: {
+              color: "#2196F3",
+              weight: 3,
+              opacity: 0.8,
+              fillOpacity: 0.3,
+            },
+            pointToLayer: (feature: any, latlng: any) => {
+              if (!latlng || latlng === undefined) {
+                console.warn("[v0] Invalid latlng for point feature:", feature)
+                return null
+              }
+              return L.circleMarker(latlng, {
+                radius: 8,
+                fillColor: "#2196F3",
+                color: "#fff",
+                weight: 2,
+                opacity: 1,
+                fillOpacity: 0.8,
               })
+            },
+            onEachFeature: (feature: any, layer: any) => {
+              if (!layer || !layer.bindPopup) return
+              
+              const props = feature.properties || {}
+              let popupContent = `<div style="max-width: 300px; max-height: 400px; overflow-y: auto;">`
+              popupContent += `<strong style="color: #2196F3; font-size: 16px;">${file.name}</strong><br/>`
+
+              // Show all properties from the KMZ
+              if (Object.keys(props).length > 0) {
+                popupContent += `<div style="margin-top: 8px; border-top: 1px solid #e5e7eb; padding-top: 8px;">`
+
+                Object.entries(props).forEach(([key, value]) => {
+                  // Skip empty values
+                  if (value === null || value === undefined || value === "") return
+
+                  // Format the key (convert camelCase to Title Case)
+                  const formattedKey = key
+                    .replace(/([A-Z])/g, " $1")
+                    .replace(/^./, (str) => str.toUpperCase())
+                    .trim()
+
+                  // Handle different value types
+                  let formattedValue = value
+                  if (typeof value === "object") {
+                    formattedValue = JSON.stringify(value, null, 2)
+                  } else {
+                    formattedValue = String(value)
+                  }
+
+                  // Add to popup with styling
+                  popupContent += `
+                    <div style="margin-bottom: 6px;">
+                      <strong style="color: #4b5563; font-size: 12px;">${formattedKey}:</strong>
+                      <span style="color: #1f2937; font-size: 12px; margin-left: 4px;">${formattedValue}</span>
+                    </div>
+                  `
+                })
+
+                popupContent += `</div>`
+              } else {
+                popupContent += `<em style="color: #9ca3af; font-size: 12px;">No additional properties</em>`
+              }
 
               popupContent += `</div>`
-            } else {
-              popupContent += `<em style="color: #9ca3af; font-size: 12px;">No additional properties</em>`
-            }
 
-            popupContent += `</div>`
+              layer.bindPopup(popupContent, {
+                maxWidth: 350,
+                maxHeight: 450,
+              })
+            },
+          })
+        } catch (e) {
+          console.error("[v0] Error creating GeoJSON layer:", e)
+          return
+        }
 
-            layer.bindPopup(popupContent, {
-              maxWidth: 350,
-              maxHeight: 450,
-            })
-          },
-        })
+        if (!layer) {
+          console.error("[v0] Failed to create layer from GeoJSON")
+          return
+        }
 
         kmzLayersRef.current.set(file.id, layer)
 
@@ -491,7 +543,7 @@ const KmzMapView = ({
         if (kmzLayersRef.current.size === 1 && visibleLayers.has(file.id)) {
           try {
             const bounds = layer.getBounds()
-            if (bounds.isValid()) {
+            if (bounds && bounds.isValid && bounds.isValid()) {
               mapRef.current.fitBounds(bounds, { padding: [50, 50] })
             }
           } catch (e) {
