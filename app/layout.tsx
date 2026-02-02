@@ -48,9 +48,10 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark" suppressHydrationWarning>
       <body className={`${_geist.className} font-sans antialiased`}>
-        <ClientProviders />
-        {children}
-        <Analytics />
+        <ClientProviders>
+          {children}
+          <Analytics />
+        </ClientProviders>
       </body>
     </html>
   )
