@@ -284,10 +284,9 @@ export default function SovereigntyLayersPage() {
       <div className="space-y-8">
         {/* Header */}
         <div className="space-y-2">
-          <h1 className="text-4xl font-bold text-accent">Sovereignty Layers Architecture</h1>
+          <h1 className="text-4xl font-bold text-accent">{t("sovereignty.layers_title")}</h1>
           <p className="text-muted-foreground max-w-2xl">
-            A 5-layer pyramid of facility independence. Build from foundation up - each layer strengthens the ones
-            above.
+            {t("sovereignty.layers_description")}
           </p>
         </div>
 
@@ -295,7 +294,7 @@ export default function SovereigntyLayersPage() {
         <Card className="border-accent/20 bg-accent/5">
           <CardContent className="pt-6">
             <div className="flex justify-between items-center mb-2">
-              <span className="font-semibold">Overall Sovereignty Progress</span>
+              <span className="font-semibold">{t("sovereignty.overall_progress")}</span>
               <span className="text-xl font-bold text-accent">
                 {layers.length > 0
                   ? Math.round(layers.reduce((sum, l) => sum + l.completion_percentage, 0) / layers.length)
@@ -386,7 +385,7 @@ export default function SovereigntyLayersPage() {
                     {/* Layer Details Card */}
                     <Card className="border-2" style={{ borderColor: layer.color_code + "40" }}>
                       <CardHeader>
-                        <CardTitle>Related Modules</CardTitle>
+                        <CardTitle>{t("sovereignty.related_modules")}</CardTitle>
                       </CardHeader>
                       <CardContent>
                         <div className="grid gap-2 md:grid-cols-2">
@@ -406,7 +405,7 @@ export default function SovereigntyLayersPage() {
                     {/* Objectives Card */}
                     <Card className="border-2" style={{ borderColor: layer.color_code + "40" }}>
                       <CardHeader>
-                        <CardTitle>Key Objectives</CardTitle>
+                        <CardTitle>{t("sovereignty.key_objectives")}</CardTitle>
                       </CardHeader>
                       <CardContent>
                         {layerObjectives.length > 0 ? (
@@ -425,7 +424,7 @@ export default function SovereigntyLayersPage() {
                                   <p className="text-xs text-muted-foreground mt-1">{obj.description}</p>
                                   {obj.target_completion_date && (
                                     <p className="text-xs text-muted-foreground mt-1">
-                                      Target: {obj.target_completion_date}
+                                      {t("sovereignty.target")}: {obj.target_completion_date}
                                     </p>
                                   )}
                                 </div>
@@ -436,7 +435,7 @@ export default function SovereigntyLayersPage() {
                             ))}
                           </div>
                         ) : (
-                          <p className="text-sm text-muted-foreground">No objectives defined yet</p>
+                          <p className="text-sm text-muted-foreground">{t("sovereignty.no_objectives")}</p>
                         )}
                       </CardContent>
                     </Card>

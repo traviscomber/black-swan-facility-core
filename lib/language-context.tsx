@@ -790,6 +790,11 @@ const translations = {
     'sovereignty.critical_dependencies': 'Dependencias Críticas Que Requieren Acción',
     'sovereignty.high_risk_external': 'Dependencias externas de alto riesgo que afectan la soberanía',
     'sovereignty.timeline_description': 'Mejoras históricas e impacto en la independencia',
+    'sovereignty.related_modules': 'Módulos Relacionados',
+    'sovereignty.key_objectives': 'Objetivos Clave',
+    'sovereignty.target': 'Objetivo',
+    'sovereignty.no_objectives': 'No hay objetivos definidos aún',
+    'sovereignty.overall_progress': 'Progreso General de Soberanía',
   },
 }
 

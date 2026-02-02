@@ -1,10 +1,9 @@
 "use client"
 
 import type React from "react"
-import { t } from "@/lib/language-context" // Import t function
-
 import { useEffect, useState } from "react"
 import { AppLayout } from "@/components/app-layout"
+import { useLanguage } from "@/lib/language-context"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
@@ -257,6 +256,7 @@ export default function SovereigntyPage() {
   const [loading, setLoading] = useState(true)
   const [overallSovereignty, setOverallSovereignty] = useState(0)
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
+  const { t } = useLanguage() // Use the useLanguage hook to get the t function
 
   useEffect(() => {
     fetchData()
