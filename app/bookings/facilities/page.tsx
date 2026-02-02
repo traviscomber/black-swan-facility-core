@@ -20,6 +20,7 @@ import {
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { AppLayout } from "@/components/app-layout"
+import { useLanguage } from "@/lib/language-context"
 
 const FACILITY_COLORS = [
   { bg: "bg-red-200", border: "border-l-4 border-red-400", text: "text-red-900" },
@@ -49,6 +50,7 @@ export default function LocationsPage() {
   const [editingLocation, setEditingLocation] = useState<Location | null>(null)
   const [searchQuery, setSearchQuery] = useState("")
   const { toast } = useToast()
+  const { t } = useLanguage()
 
   const supabase = createBrowserClient()
 
@@ -182,18 +184,18 @@ export default function LocationsPage() {
         <div className="space-y-6">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold">Property Locations</h1>
-              <p className="text-muted-foreground">Manage all rental property locations</p>
+              <h1 className="text-3xl font-bold">{t("facilities.title")}</h1>
+              <p className="text-muted-foreground">{t("facilities.description")}</p>
             </div>
             <Button onClick={() => setIsAddDialogOpen(true)}>
               <Plus className="mr-2 h-4 w-4" />
-              Add Location
+              {t("facilities.add_location")}
             </Button>
           </div>
 
           <div className="flex gap-4">
             <Input
-              placeholder="Search locations..."
+              placeholder={t("facilities.search_placeholder")}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="max-w-md"
@@ -246,7 +248,7 @@ export default function LocationsPage() {
                       )}
                       <div className="flex items-center justify-between">
                         <span className={location.is_active ? `${facilityColor.text}` : `${facilityColor.text}/60`}>
-                          {location.is_active ? "Active" : "Inactive"}
+                          {location.is_active ? t("facilities.active") : t("facilities.active") + " (Off)"}
                         </span>
                         <div className="flex gap-2">
                           <Link href={`/bookings/locations/${location.id}`}>
@@ -256,7 +258,7 @@ export default function LocationsPage() {
                               className={`${facilityColor.bg} ${facilityColor.text} hover:opacity-90`}
                             >
                               <Eye className="mr-2 h-4 w-4" />
-                              Manage Rooms & Beds
+                              {t("facilities.manage_rooms_beds")}
                             </Button>
                           </Link>
                           <Button
@@ -265,7 +267,7 @@ export default function LocationsPage() {
                             onClick={() => toggleActive(location)}
                             className={`${facilityColor.text} border-current hover:bg-black/10`}
                           >
-                            {location.is_active ? "Deactivate" : "Activate"}
+                            {location.is_active ? t("facilities.deactivate") : t("facilities.activate")}
                           </Button>
                         </div>
                       </div>
@@ -281,39 +283,56 @@ export default function LocationsPage() {
             <DialogContent>
               <form onSubmit={handleAddLocation}>
                 <DialogHeader>
-                  <DialogTitle>Add New Location</DialogTitle>
-                  <DialogDescription>Add a new rental property location to your facility</DialogDescription>
+                  <DialogTitle>{t("facilities.add_new_location")}</DialogTitle>
+                  <DialogDescription>{t("facilities.add_new_location_desc")}</DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4 py-4">
                   <div className="space-y-2">
-                    <Label htmlFor="name">Location Name *</Label>
-                    <Input id="name" name="name" placeholder="e.g., Bamboo House, Cesar Palace" required />
+                    <Label htmlFor="name">{t("facilities.location_name")} *</Label>
+                    <Input
+                      id="name"
+                      name="name"
+                      placeholder={t("facilities.location_name_placeholder")}
+                      required
+                    />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="description">Description</Label>
+                    <Label htmlFor="description">{t("facilities.description_label")}</Label>
                     <Textarea
                       id="description"
                       name="description"
-                      placeholder="Brief description of the property"
+                      placeholder={t("facilities.description_placeholder")}
                       rows={3}
                     />
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="latitude">Latitude</Label>
-                      <Input id="latitude" name="latitude" type="number" step="0.00001" placeholder="9.12345" />
+                      <Label htmlFor="latitude">{t("facilities.latitude_label")}</Label>
+                      <Input
+                        id="latitude"
+                        name="latitude"
+                        type="number"
+                        step="0.00001"
+                        placeholder={t("facilities.latitude_placeholder")}
+                      />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="longitude">Longitude</Label>
-                      <Input id="edit-longitude" name="longitude" type="number" step="0.00001" placeholder="-83.12345" />
+                      <Label htmlFor="longitude">{t("facilities.longitude_label")}</Label>
+                      <Input
+                        id="edit-longitude"
+                        name="longitude"
+                        type="number"
+                        step="0.00001"
+                        placeholder={t("facilities.longitude_placeholder")}
+                      />
                     </div>
                   </div>
                 </div>
                 <DialogFooter>
                   <Button type="button" variant="outline" onClick={() => setIsAddDialogOpen(false)}>
-                    Cancel
+                    {t("common.cancel")}
                   </Button>
-                  <Button type="submit">Add Location</Button>
+                  <Button type="submit">{t("facilities.add_location_btn")}</Button>
                 </DialogFooter>
               </form>
             </DialogContent>
@@ -323,16 +342,16 @@ export default function LocationsPage() {
             <DialogContent>
               <form onSubmit={handleEditLocation}>
                 <DialogHeader>
-                  <DialogTitle>Edit Location</DialogTitle>
-                  <DialogDescription>Update the location details</DialogDescription>
+                  <DialogTitle>{t("facilities.edit_location")}</DialogTitle>
+                  <DialogDescription>{t("facilities.edit_location_desc")}</DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4 py-4">
                   <div className="space-y-2">
-                    <Label htmlFor="edit-name">Location Name *</Label>
+                    <Label htmlFor="edit-name">{t("facilities.location_name")} *</Label>
                     <Input id="edit-name" name="name" defaultValue={editingLocation?.name} required />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="edit-description">Description</Label>
+                    <Label htmlFor="edit-description">{t("facilities.description_label")}</Label>
                     <Textarea
                       id="edit-description"
                       name="description"
@@ -342,7 +361,7 @@ export default function LocationsPage() {
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="edit-latitude">Latitude</Label>
+                      <Label htmlFor="edit-latitude">{t("facilities.latitude_label")}</Label>
                       <Input
                         id="edit-latitude"
                         name="latitude"
@@ -352,7 +371,7 @@ export default function LocationsPage() {
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="edit-longitude">Longitude</Label>
+                      <Label htmlFor="edit-longitude">{t("facilities.longitude_label")}</Label>
                       <Input
                         id="edit-longitude"
                         name="longitude"
@@ -365,9 +384,9 @@ export default function LocationsPage() {
                 </div>
                 <DialogFooter>
                   <Button type="button" variant="outline" onClick={() => setIsEditDialogOpen(false)}>
-                    Cancel
+                    {t("common.cancel")}
                   </Button>
-                  <Button type="submit">Save Changes</Button>
+                  <Button type="submit">{t("facilities.save_changes")}</Button>
                 </DialogFooter>
               </form>
             </DialogContent>
