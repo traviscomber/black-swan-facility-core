@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
+import { AppLayout } from "@/components/app-layout"
 
 const FACILITY_COLORS = [
   { bg: "bg-red-200", border: "border-l-4 border-red-400", text: "text-red-900" },
@@ -176,201 +177,203 @@ export default function LocationsPage() {
   )
 
   return (
-    <div className="flex-1 overflow-auto p-6">
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold">Property Locations</h1>
-            <p className="text-muted-foreground">Manage all rental property locations</p>
+    <AppLayout>
+      <div className="flex-1 overflow-auto p-6">
+        <div className="space-y-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold">Property Locations</h1>
+              <p className="text-muted-foreground">Manage all rental property locations</p>
+            </div>
+            <Button onClick={() => setIsAddDialogOpen(true)}>
+              <Plus className="mr-2 h-4 w-4" />
+              Add Location
+            </Button>
           </div>
-          <Button onClick={() => setIsAddDialogOpen(true)}>
-            <Plus className="mr-2 h-4 w-4" />
-            Add Location
-          </Button>
-        </div>
 
-        <div className="flex gap-4">
-          <Input
-            placeholder="Search locations..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="max-w-md"
-          />
-        </div>
+          <div className="flex gap-4">
+            <Input
+              placeholder="Search locations..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="max-w-md"
+            />
+          </div>
 
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {filteredLocations.map((location, index) => {
-            const facilityColor = getFacilityColor(index)
-            return (
-              <Card key={location.id} className={`${facilityColor.bg} ${facilityColor.border}`}>
-                <CardHeader>
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-center gap-2">
-                      <MapPin className={`h-5 w-5 ${facilityColor.text}`} />
-                      <CardTitle className={facilityColor.text}>{location.name}</CardTitle>
-                    </div>
-                    <div className="flex gap-1">
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        onClick={() => {
-                          setEditingLocation(location)
-                          setIsEditDialogOpen(true)
-                        }}
-                        className={`${facilityColor.text} hover:bg-black/10`}
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        onClick={() => handleDeleteLocation(location.id)}
-                        className={`${facilityColor.text} hover:bg-black/10`}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                  <CardDescription className={`${facilityColor.text}/70`}>
-                    {location.description || "No description"}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-2 text-sm">
-                    {location.latitude && location.longitude && (
-                      <div className={`${facilityColor.text}/70`}>
-                        Coordinates: {location.latitude.toFixed(6)}, {location.longitude.toFixed(6)}
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {filteredLocations.map((location, index) => {
+              const facilityColor = getFacilityColor(index)
+              return (
+                <Card key={location.id} className={`${facilityColor.bg} ${facilityColor.border}`}>
+                  <CardHeader>
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-center gap-2">
+                        <MapPin className={`h-5 w-5 ${facilityColor.text}`} />
+                        <CardTitle className={facilityColor.text}>{location.name}</CardTitle>
                       </div>
-                    )}
-                    <div className="flex items-center justify-between">
-                      <span className={location.is_active ? `${facilityColor.text}` : `${facilityColor.text}/60`}>
-                        {location.is_active ? "Active" : "Inactive"}
-                      </span>
-                      <div className="flex gap-2">
-                        <Link href={`/bookings/locations/${location.id}`}>
-                          <Button
-                            size="sm"
-                            variant="secondary"
-                            className={`${facilityColor.bg} ${facilityColor.text} hover:opacity-90`}
-                          >
-                            <Eye className="mr-2 h-4 w-4" />
-                            Manage Rooms & Beds
-                          </Button>
-                        </Link>
+                      <div className="flex gap-1">
                         <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => toggleActive(location)}
-                          className={`${facilityColor.text} border-current hover:bg-black/10`}
+                          size="icon"
+                          variant="ghost"
+                          onClick={() => {
+                            setEditingLocation(location)
+                            setIsEditDialogOpen(true)
+                          }}
+                          className={`${facilityColor.text} hover:bg-black/10`}
                         >
-                          {location.is_active ? "Deactivate" : "Activate"}
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          onClick={() => handleDeleteLocation(location.id)}
+                          className={`${facilityColor.text} hover:bg-black/10`}
+                        >
+                          <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>
                     </div>
+                    <CardDescription className={`${facilityColor.text}/70`}>
+                      {location.description || "No description"}
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-2 text-sm">
+                      {location.latitude && location.longitude && (
+                        <div className={`${facilityColor.text}/70`}>
+                          Coordinates: {location.latitude.toFixed(6)}, {location.longitude.toFixed(6)}
+                        </div>
+                      )}
+                      <div className="flex items-center justify-between">
+                        <span className={location.is_active ? `${facilityColor.text}` : `${facilityColor.text}/60`}>
+                          {location.is_active ? "Active" : "Inactive"}
+                        </span>
+                        <div className="flex gap-2">
+                          <Link href={`/bookings/locations/${location.id}`}>
+                            <Button
+                              size="sm"
+                              variant="secondary"
+                              className={`${facilityColor.bg} ${facilityColor.text} hover:opacity-90`}
+                            >
+                              <Eye className="mr-2 h-4 w-4" />
+                              Manage Rooms & Beds
+                            </Button>
+                          </Link>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => toggleActive(location)}
+                            className={`${facilityColor.text} border-current hover:bg-black/10`}
+                          >
+                            {location.is_active ? "Deactivate" : "Activate"}
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )
+            })}
+          </div>
+
+          {/* ... existing dialogs ... */}
+          <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+            <DialogContent>
+              <form onSubmit={handleAddLocation}>
+                <DialogHeader>
+                  <DialogTitle>Add New Location</DialogTitle>
+                  <DialogDescription>Add a new rental property location to your facility</DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4 py-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="name">Location Name *</Label>
+                    <Input id="name" name="name" placeholder="e.g., Bamboo House, Cesar Palace" required />
                   </div>
-                </CardContent>
-              </Card>
-            )
-          })}
+                  <div className="space-y-2">
+                    <Label htmlFor="description">Description</Label>
+                    <Textarea
+                      id="description"
+                      name="description"
+                      placeholder="Brief description of the property"
+                      rows={3}
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="latitude">Latitude</Label>
+                      <Input id="latitude" name="latitude" type="number" step="0.00001" placeholder="9.12345" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="longitude">Longitude</Label>
+                      <Input id="edit-longitude" name="longitude" type="number" step="0.00001" placeholder="-83.12345" />
+                    </div>
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button type="button" variant="outline" onClick={() => setIsAddDialogOpen(false)}>
+                    Cancel
+                  </Button>
+                  <Button type="submit">Add Location</Button>
+                </DialogFooter>
+              </form>
+            </DialogContent>
+          </Dialog>
+
+          <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+            <DialogContent>
+              <form onSubmit={handleEditLocation}>
+                <DialogHeader>
+                  <DialogTitle>Edit Location</DialogTitle>
+                  <DialogDescription>Update the location details</DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4 py-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-name">Location Name *</Label>
+                    <Input id="edit-name" name="name" defaultValue={editingLocation?.name} required />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-description">Description</Label>
+                    <Textarea
+                      id="edit-description"
+                      name="description"
+                      defaultValue={editingLocation?.description || ""}
+                      rows={3}
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="edit-latitude">Latitude</Label>
+                      <Input
+                        id="edit-latitude"
+                        name="latitude"
+                        type="number"
+                        step="0.00001"
+                        defaultValue={editingLocation?.latitude || ""}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="edit-longitude">Longitude</Label>
+                      <Input
+                        id="edit-longitude"
+                        name="longitude"
+                        type="number"
+                        step="0.00001"
+                        defaultValue={editingLocation?.longitude || ""}
+                      />
+                    </div>
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button type="button" variant="outline" onClick={() => setIsEditDialogOpen(false)}>
+                    Cancel
+                  </Button>
+                  <Button type="submit">Save Changes</Button>
+                </DialogFooter>
+              </form>
+            </DialogContent>
+          </Dialog>
         </div>
-
-        {/* ... existing dialogs ... */}
-        <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-          <DialogContent>
-            <form onSubmit={handleAddLocation}>
-              <DialogHeader>
-                <DialogTitle>Add New Location</DialogTitle>
-                <DialogDescription>Add a new rental property location to your facility</DialogDescription>
-              </DialogHeader>
-              <div className="space-y-4 py-4">
-                <div className="space-y-2">
-                  <Label htmlFor="name">Location Name *</Label>
-                  <Input id="name" name="name" placeholder="e.g., Bamboo House, Cesar Palace" required />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="description">Description</Label>
-                  <Textarea
-                    id="description"
-                    name="description"
-                    placeholder="Brief description of the property"
-                    rows={3}
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="latitude">Latitude</Label>
-                    <Input id="latitude" name="latitude" type="number" step="0.00001" placeholder="9.12345" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="longitude">Longitude</Label>
-                    <Input id="edit-longitude" name="longitude" type="number" step="0.00001" placeholder="-83.12345" />
-                  </div>
-                </div>
-              </div>
-              <DialogFooter>
-                <Button type="button" variant="outline" onClick={() => setIsAddDialogOpen(false)}>
-                  Cancel
-                </Button>
-                <Button type="submit">Add Location</Button>
-              </DialogFooter>
-            </form>
-          </DialogContent>
-        </Dialog>
-
-        <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-          <DialogContent>
-            <form onSubmit={handleEditLocation}>
-              <DialogHeader>
-                <DialogTitle>Edit Location</DialogTitle>
-                <DialogDescription>Update the location details</DialogDescription>
-              </DialogHeader>
-              <div className="space-y-4 py-4">
-                <div className="space-y-2">
-                  <Label htmlFor="edit-name">Location Name *</Label>
-                  <Input id="edit-name" name="name" defaultValue={editingLocation?.name} required />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="edit-description">Description</Label>
-                  <Textarea
-                    id="edit-description"
-                    name="description"
-                    defaultValue={editingLocation?.description || ""}
-                    rows={3}
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="edit-latitude">Latitude</Label>
-                    <Input
-                      id="edit-latitude"
-                      name="latitude"
-                      type="number"
-                      step="0.00001"
-                      defaultValue={editingLocation?.latitude || ""}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="edit-longitude">Longitude</Label>
-                    <Input
-                      id="edit-longitude"
-                      name="longitude"
-                      type="number"
-                      step="0.00001"
-                      defaultValue={editingLocation?.longitude || ""}
-                    />
-                  </div>
-                </div>
-              </div>
-              <DialogFooter>
-                <Button type="button" variant="outline" onClick={() => setIsEditDialogOpen(false)}>
-                  Cancel
-                </Button>
-                <Button type="submit">Save Changes</Button>
-              </DialogFooter>
-            </form>
-          </DialogContent>
-        </Dialog>
       </div>
-    </div>
+    </AppLayout>
   )
 }

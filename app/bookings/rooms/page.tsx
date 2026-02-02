@@ -19,6 +19,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
+import { AppLayout } from "@/components/app-layout"
 
 const FACILITY_COLORS = [
   { bg: "bg-red-200", border: "border-l-4 border-red-400", text: "text-red-900" },
@@ -150,192 +151,194 @@ export default function RoomsPage() {
   }
 
   return (
-    <div className="flex h-full flex-col bg-background">
-      <div className="flex items-center justify-between border-b bg-card px-6 py-4">
-        <div>
-          <h1 className="text-2xl font-bold">Room & Bed Management</h1>
-          <p className="text-sm text-muted-foreground">Manage rental units and bed inventory</p>
-        </div>
-        <Button className="gap-2" onClick={() => setIsAddRoomOpen(true)}>
-          <Plus className="h-4 w-4" />
-          Add Room
-        </Button>
-      </div>
-
-      <div className="flex-1 overflow-auto p-6">
-        {loading ? (
-          <div className="flex items-center justify-center p-8">
-            <div className="text-muted-foreground">Loading rooms...</div>
+    <AppLayout>
+      <div className="flex h-full flex-col bg-background">
+        <div className="flex items-center justify-between border-b bg-card px-6 py-4">
+          <div>
+            <h1 className="text-2xl font-bold">Room & Bed Management</h1>
+            <p className="text-sm text-muted-foreground">Manage rental units and bed inventory</p>
           </div>
-        ) : (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {rooms.map((room) => {
-              const roomBeds = beds.filter((bed) => bed.room_id === room.id)
-              const facilityColor = getFacilityColor(room.location_id)
-              return (
-                <Card key={room.id} className={`${facilityColor.bg} ${facilityColor.border}`}>
-                  <CardHeader className="pb-3">
-                    <div className="flex items-start justify-between">
-                      <div className="flex flex-col">
-                        <CardTitle className={`${facilityColor.text} text-lg`}>{room.room_number}</CardTitle>
-                        {room.locationName && (
-                          <p className={`${facilityColor.text}/80 text-sm font-medium mt-1`}>{room.locationName}</p>
-                        )}
-                      </div>
-                      <div className="flex gap-1">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className={`h-7 w-7 ${facilityColor.text} hover:bg-black/10`}
-                          onClick={() => {
-                            setRoomToEdit(room)
-                            setIsEditRoomOpen(true)
-                          }}
-                        >
-                          <Pencil className="h-3.5 w-3.5" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className={`h-7 w-7 ${facilityColor.text} hover:bg-black/10`}
-                          onClick={() => confirmDelete("room", room.id)}
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2 text-sm mt-2">
-                      <p className={`${facilityColor.text}/80`}>{room.room_type}</p>
-                      <Badge className={getStatusColor(room.status)} variant="secondary">
-                        {room.status}
-                      </Badge>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    <div className={`flex items-center gap-2 text-sm ${facilityColor.text}/90`}>
-                      <Users className={`h-4 w-4 ${facilityColor.text}/60`} />
-                      <span>Up to {room.capacity || room.max_guests || 2} guests</span>
-                    </div>
+          <Button className="gap-2" onClick={() => setIsAddRoomOpen(true)}>
+            <Plus className="h-4 w-4" />
+            Add Room
+          </Button>
+        </div>
 
-                    <div className={`flex items-center gap-2 text-sm ${facilityColor.text}/90`}>
-                      <DollarSign className={`h-4 w-4 ${facilityColor.text}/60`} />
-                      <span className="font-semibold">${room.rate_per_night}</span>
-                      <span className={`${facilityColor.text}/70`}>/ night</span>
-                    </div>
-
-                    {room.amenities && room.amenities.length > 0 && (
-                      <div className={`border-t border-${facilityColor.text.split("-")[1]}-300 pt-3`}>
-                        <div className="flex flex-wrap gap-1">
-                          {room.amenities.slice(0, 3).map((amenity, idx) => (
-                            <Badge
-                              key={idx}
-                              variant="secondary"
-                              className={`text-xs bg-black/10 ${facilityColor.text}`}
-                            >
-                              {amenity}
-                            </Badge>
-                          ))}
-                          {room.amenities.length > 3 && (
-                            <Badge variant="secondary" className={`text-xs bg-black/10 ${facilityColor.text}`}>
-                              +{room.amenities.length - 3}
-                            </Badge>
+        <div className="flex-1 overflow-auto p-6">
+          {loading ? (
+            <div className="flex items-center justify-center p-8">
+              <div className="text-muted-foreground">Loading rooms...</div>
+            </div>
+          ) : (
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              {rooms.map((room) => {
+                const roomBeds = beds.filter((bed) => bed.room_id === room.id)
+                const facilityColor = getFacilityColor(room.location_id)
+                return (
+                  <Card key={room.id} className={`${facilityColor.bg} ${facilityColor.border}`}>
+                    <CardHeader className="pb-3">
+                      <div className="flex items-start justify-between">
+                        <div className="flex flex-col">
+                          <CardTitle className={`${facilityColor.text} text-lg`}>{room.room_number}</CardTitle>
+                          {room.locationName && (
+                            <p className={`${facilityColor.text}/80 text-sm font-medium mt-1`}>{room.locationName}</p>
                           )}
                         </div>
-                      </div>
-                    )}
-
-                    <div className={`border-t border-${facilityColor.text.split("-")[1]}-300 pt-3`}>
-                      <div className="mb-2 flex items-center justify-between text-sm">
-                        <span className={`font-medium ${facilityColor.text}`}>Beds ({roomBeds.length})</span>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className={`h-7 gap-1.5 px-2 ${facilityColor.text} hover:bg-black/10`}
-                          onClick={() => {
-                            setSelectedRoomForBed(room)
-                            setIsAddBedOpen(true)
-                          }}
-                        >
-                          <Plus className="h-3 w-3" />
-                          Add Bed
-                        </Button>
-                      </div>
-                      {roomBeds.length > 0 ? (
-                        <div className="space-y-1.5">
-                          {roomBeds.map((bed) => (
-                            <div
-                              key={bed.id}
-                              className={`flex items-center justify-between rounded-md bg-black/10 px-2 py-1.5 text-xs ${facilityColor.text}/90`}
-                            >
-                              <div className="flex items-center gap-2">
-                                <BedDouble className={`h-3 w-3 ${facilityColor.text}/60`} />
-                                <span className="font-medium">{bed.bed_number}</span>
-                                <span className={`${facilityColor.text}/70`}>({bed.bed_type})</span>
-                              </div>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className={`h-5 w-5 ${facilityColor.text} hover:bg-black/10`}
-                                onClick={() => confirmDelete("bed", bed.id)}
-                              >
-                                <Trash2 className="h-3 w-3" />
-                              </Button>
-                            </div>
-                          ))}
+                        <div className="flex gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className={`h-7 w-7 ${facilityColor.text} hover:bg-black/10`}
+                            onClick={() => {
+                              setRoomToEdit(room)
+                              setIsEditRoomOpen(true)
+                            }}
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className={`h-7 w-7 ${facilityColor.text} hover:bg-black/10`}
+                            onClick={() => confirmDelete("room", room.id)}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
                         </div>
-                      ) : (
-                        <p className={`text-xs ${facilityColor.text}/60`}>No beds added yet</p>
+                      </div>
+                      <div className="flex items-center gap-2 text-sm mt-2">
+                        <p className={`${facilityColor.text}/80`}>{room.room_type}</p>
+                        <Badge className={getStatusColor(room.status)} variant="secondary">
+                          {room.status}
+                        </Badge>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      <div className={`flex items-center gap-2 text-sm ${facilityColor.text}/90`}>
+                        <Users className={`h-4 w-4 ${facilityColor.text}/60`} />
+                        <span>Up to {room.capacity || room.max_guests || 2} guests</span>
+                      </div>
+
+                      <div className={`flex items-center gap-2 text-sm ${facilityColor.text}/90`}>
+                        <DollarSign className={`h-4 w-4 ${facilityColor.text}/60`} />
+                        <span className="font-semibold">${room.rate_per_night}</span>
+                        <span className={`${facilityColor.text}/70`}>/ night</span>
+                      </div>
+
+                      {room.amenities && room.amenities.length > 0 && (
+                        <div className={`border-t border-${facilityColor.text.split("-")[1]}-300 pt-3`}>
+                          <div className="flex flex-wrap gap-1">
+                            {room.amenities.slice(0, 3).map((amenity, idx) => (
+                              <Badge
+                                key={idx}
+                                variant="secondary"
+                                className={`text-xs bg-black/10 ${facilityColor.text}`}
+                              >
+                                {amenity}
+                              </Badge>
+                            ))}
+                            {room.amenities.length > 3 && (
+                              <Badge variant="secondary" className={`text-xs bg-black/10 ${facilityColor.text}`}>
+                                +{room.amenities.length - 3}
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
                       )}
-                    </div>
-                  </CardContent>
-                </Card>
-              )
-            })}
-          </div>
+
+                      <div className={`border-t border-${facilityColor.text.split("-")[1]}-300 pt-3`}>
+                        <div className="mb-2 flex items-center justify-between text-sm">
+                          <span className={`font-medium ${facilityColor.text}`}>Beds ({roomBeds.length})</span>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className={`h-7 gap-1.5 px-2 ${facilityColor.text} hover:bg-black/10`}
+                            onClick={() => {
+                              setSelectedRoomForBed(room)
+                              setIsAddBedOpen(true)
+                            }}
+                          >
+                            <Plus className="h-3 w-3" />
+                            Add Bed
+                          </Button>
+                        </div>
+                        {roomBeds.length > 0 ? (
+                          <div className="space-y-1.5">
+                            {roomBeds.map((bed) => (
+                              <div
+                                key={bed.id}
+                                className={`flex items-center justify-between rounded-md bg-black/10 px-2 py-1.5 text-xs ${facilityColor.text}/90`}
+                              >
+                                <div className="flex items-center gap-2">
+                                  <BedDouble className={`h-3 w-3 ${facilityColor.text}/60`} />
+                                  <span className="font-medium">{bed.bed_number}</span>
+                                  <span className={`${facilityColor.text}/70`}>({bed.bed_type})</span>
+                                </div>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className={`h-5 w-5 ${facilityColor.text} hover:bg-black/10`}
+                                  onClick={() => confirmDelete("bed", bed.id)}
+                                >
+                                  <Trash2 className="h-3 w-3" />
+                                </Button>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className={`text-xs ${facilityColor.text}/60`}>No beds added yet</p>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                )
+              })}
+            </div>
+          )}
+        </div>
+
+        <AddRoomDialog open={isAddRoomOpen} onOpenChange={setIsAddRoomOpen} onSuccess={loadData} />
+
+        {roomToEdit && (
+          <EditRoomDialog open={isEditRoomOpen} onOpenChange={setIsEditRoomOpen} room={roomToEdit} onSuccess={loadData} />
         )}
-      </div>
 
-      <AddRoomDialog open={isAddRoomOpen} onOpenChange={setIsAddRoomOpen} onSuccess={loadData} />
+        {selectedRoomForBed && (
+          <AddBedDialog
+            open={isAddBedOpen}
+            onOpenChange={setIsAddBedOpen}
+            room={selectedRoomForBed}
+            onSuccess={loadData}
+          />
+        )}
 
-      {roomToEdit && (
-        <EditRoomDialog open={isEditRoomOpen} onOpenChange={setIsEditRoomOpen} room={roomToEdit} onSuccess={loadData} />
-      )}
-
-      {selectedRoomForBed && (
-        <AddBedDialog
-          open={isAddBedOpen}
-          onOpenChange={setIsAddBedOpen}
-          room={selectedRoomForBed}
-          onSuccess={loadData}
-        />
-      )}
-
-      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the {itemToDelete?.type}.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => {
-                if (itemToDelete) {
-                  if (itemToDelete.type === "room") {
-                    handleDeleteRoom(itemToDelete.id)
-                  } else {
-                    handleDeleteBed(itemToDelete.id)
+        <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This action cannot be undone. This will permanently delete the {itemToDelete?.type}.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => {
+                  if (itemToDelete) {
+                    if (itemToDelete.type === "room") {
+                      handleDeleteRoom(itemToDelete.id)
+                    } else {
+                      handleDeleteBed(itemToDelete.id)
+                    }
                   }
-                }
-              }}
-            >
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </div>
+                }}
+              >
+                Delete
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </div>
+    </AppLayout>
   )
 }
