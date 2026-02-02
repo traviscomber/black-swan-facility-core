@@ -22,6 +22,7 @@ import {
   Target,
   ChevronDown,
 } from "lucide-react"
+import { useLanguage } from "@/lib/language-context"
 
 interface Layer {
   id: string
@@ -240,9 +241,11 @@ function LayerActionItems({ layer }: { layer: Layer }) {
 }
 
 export default function SovereigntyLayersPage() {
+  const [expandedLayer, setExpandedLayer] = useState<number | null>(null)
   const [layers, setLayers] = useState<Layer[]>([])
   const [objectives, setObjectives] = useState<Objective[]>([])
   const [loading, setLoading] = useState(true)
+  const { t } = useLanguage()
   const [selectedLayer, setSelectedLayer] = useState<number | null>(null)
   const [expandedLayers, setExpandedLayers] = useState<Set<number>>(new Set([1]))
 
