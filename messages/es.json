@@ -1,0 +1,67 @@
+{
+  "navigation": {
+    "cattle": "Salud del Ganado",
+    "bookings": "Ver Reservas",
+    "property": "Administrar Propiedad"
+  },
+  "dashboard": {
+    "title": "Sistema Core de Instalaciones Blackswan",
+    "subtitle": "BFCS v1.0 - Gestión de Propiedades de Lujo",
+    "description": "Sistema profesional de gestión de instalaciones y reservas para tu alquiler vacacional de lujo. Administra reservas, controla disponibilidad y optimiza tasas de ocupación.",
+    "overview": "Resumen de la Propiedad",
+    "tasks": "Tareas Esenciales",
+    "getting_started": "Comenzar",
+    "help": "Ayuda y Búsqueda"
+  },
+  "metrics": {
+    "rooms": "Habitaciones Totales",
+    "beds": "Camas Totales",
+    "available": "Disponibles",
+    "occupied": "Ocupadas",
+    "occupancy": "Ocupación",
+    "active": "Propiedades activas",
+    "inventory": "Inventario disponible",
+    "ready": "Listo para reservar",
+    "booked": "Actualmente reservado",
+    "utilization": "Tasa de utilización",
+    "checkins": "Check-in de Hoy",
+    "checkouts": "Check-out de Hoy",
+    "guests": "Huéspedes Activos"
+  },
+  "tasks": {
+    "calendar": {
+      "title": "Calendario de Reservas",
+      "desc": "Ver y administrar todas las reservas",
+      "detail": "Verifica disponibilidad, crea nuevas reservas y controla los check-ins de huéspedes en todas las habitaciones y camas."
+    },
+    "property": {
+      "title": "Gestión de Propiedades",
+      "desc": "Configura habitaciones y servicios",
+      "detail": "Edita detalles de habitaciones, administra configuraciones de camas, establece tarifas y actualiza configuraciones de disponibilidad."
+    },
+    "maintenance": {
+      "title": "Mantenimiento",
+      "desc": "Programa y controla el mantenimiento",
+      "detail": "Mantén un registro de los horarios de mantenimiento de la propiedad, reparaciones y mejoras de instalaciones."
+    },
+    "analytics": {
+      "title": "Análisis",
+      "desc": "Ve tendencias de reservas e información",
+      "detail": "Monitorea tasas de ocupación, tendencias de ingresos y patrones de reservas para optimizar tu estrategia de alquiler."
+    }
+  },
+  "onboarding": {
+    "step1": {
+      "title": "Configura Tu Propiedad",
+      "desc": "Configura habitaciones, camas y precios para tu instalación"
+    },
+    "step2": {
+      "title": "Crea Tu Primera Reserva",
+      "desc": "Añade una reserva de prueba para familiarizarte con el sistema"
+    },
+    "step3": {
+      "title": "Comienza a Aceptar Huéspedes",
+      "desc": "Abre tu calendario y comienza a administrar reservas reales"
+    }
+  }
+}
