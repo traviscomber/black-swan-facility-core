@@ -149,8 +149,36 @@ interface SidebarProps {
 export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const pathname = usePathname()
   const { t } = useLanguage()
-  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set())
-  const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set())
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(() => {
+    // Auto-expand groups based on current pathname
+    const initialExpanded = new Set<string>()
+    navigationGroups.forEach((group) => {
+      const isInGroup = group.items.some((item) => {
+        const isActive = pathname === item.href || (item.href !== "/" && pathname?.startsWith(item.href))
+        const subItemActive = item.subItems?.some((sub) => pathname === sub.href) ?? false
+        return isActive || subItemActive
+      })
+      if (isInGroup) {
+        initialExpanded.add(group.labelKey)
+      }
+    })
+    return initialExpanded
+  })
+  const [expandedItems, setExpandedItems] = useState<Set<string>>(() => {
+    // Auto-expand sub-items based on current pathname
+    const initialExpanded = new Set<string>()
+    navigationGroups.forEach((group) => {
+      group.items.forEach((item) => {
+        if (item.subItems) {
+          const isSubActive = item.subItems.some((sub) => pathname === sub.href)
+          if (isSubActive) {
+            initialExpanded.add(item.nameKey)
+          }
+        }
+      })
+    })
+    return initialExpanded
+  })
 
   const toggleGroup = (label: string) => {
     const newExpanded = new Set(expandedGroups)
