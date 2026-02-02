@@ -33,6 +33,7 @@ const navigationGroups = [
     description: "Livestock management and breeding operations",
     items: [
       { name: "Dashboard", href: "/cattle", icon: Beef, tip: "Cattle areas and pasture management" },
+      { name: "Health Monitoring", href: "/cattle-health", icon: Heart, tip: "Biometric analysis, alerts, and veterinary tracking" },
       { name: "Expert Coach", href: "/cattle/expert-agent", icon: Brain, tip: "AI advisor for cattle business" },
       { name: "Business Plan", href: "/cattle/business-plan", icon: TrendingUp, tip: "Financial projections" },
       { name: "Pricing & Costs", href: "/cattle/pricing-costs", icon: Box, tip: "Cost analysis and pricing" },
