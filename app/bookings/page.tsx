@@ -11,8 +11,9 @@ import { AddReservationDialog } from "@/components/add-reservation-dialog"
 import { EditReservationModal } from "@/components/edit-reservation-modal"
 import { GuestHistoryModal } from "@/components/guest-history-modal"
 import { ReservationConfirmationModal } from "@/components/reservation-confirmation-modal"
-import { DailySummaryModal } from "@/components/daily-summary-modal" // Import DailySummaryModal
-import { useToast } from "@/hooks/use-toast" // Add useToast import and remove alert-based error handling
+import { DailySummaryModal } from "@/components/daily-summary-modal"
+import { useToast } from "@/hooks/use-toast"
+import { useLanguage } from "@/lib/language-context"
 
 interface Location {
   id: string
@@ -60,7 +61,8 @@ const FACILITY_COLORS = [
 
 export default function BookingManagement() {
   const supabase = createClient()
-  const { toast } = useToast() // Add toast hook
+  const { toast } = useToast()
+  const { t } = useLanguage()
 
   const [viewMode, setViewMode] = useState<"single" | "multi">("multi")
   const [locations, setLocations] = useState<Location[]>([])
@@ -369,8 +371,8 @@ export default function BookingManagement() {
       <div className="max-w-[calc(100vw-2rem)] mx-auto px-4 py-6">
         <div className="flex justify-between items-center mb-6">
           <div>
-            <h1 className="text-3xl font-bold text-accent">Booking Management</h1>
-            <p className="text-muted-foreground mt-2">Manage reservations across all properties</p>
+            <h1 className="text-3xl font-bold text-accent">{t("bookings.management")}</h1>
+            <p className="text-muted-foreground mt-2">{t("bookings.manage_reservations")}</p>
           </div>
           <div className="flex gap-2">
             <Button
@@ -379,7 +381,7 @@ export default function BookingManagement() {
               onClick={() => setViewMode("single")}
             >
               <Home className="h-4 w-4 mr-2" />
-              Single Property
+              {t("bookings.single_property")}
             </Button>
             <Button
               variant={viewMode === "multi" ? "default" : "outline"}
@@ -387,7 +389,7 @@ export default function BookingManagement() {
               onClick={() => setViewMode("multi")}
             >
               <MapPin className="h-4 w-4 mr-2" />
-              All Properties
+              {t("bookings.all_properties")}
             </Button>
           </div>
         </div>
@@ -401,11 +403,11 @@ export default function BookingManagement() {
                 <div className="p-4 space-y-2">
                   <h2 className="text-sm font-semibold text-foreground px-3 py-2 flex items-center gap-2">
                     <Home className="h-4 w-4" />
-                    Properties ({locations.length})
+                    {t("bookings.properties")} ({locations.length})
                   </h2>
                   {locations.length === 0 && !loading && (
                     <div className="text-sm text-muted-foreground px-3 py-4 text-center">
-                      No properties found. Add locations first.
+                      {t("bookings.no_properties")}
                     </div>
                   )}
                   {locations.map((location) => (
@@ -439,7 +441,7 @@ export default function BookingManagement() {
                   <div className="grid gap-4 md:grid-cols-4">
                     <Card className="border-0 bg-white/60 backdrop-blur">
                       <CardHeader className="pb-2">
-                        <CardTitle className="text-sm font-medium text-muted-foreground">Total Beds</CardTitle>
+                        <CardTitle className="text-sm font-medium text-muted-foreground">{t("bookings.total_beds")}</CardTitle>
                       </CardHeader>
                       <CardContent>
                         <div className="text-2xl font-bold text-accent">{selectedLocationBeds.length}</div>
@@ -448,7 +450,7 @@ export default function BookingManagement() {
 
                     <Card className="border-0 bg-white/60 backdrop-blur">
                       <CardHeader className="pb-2">
-                        <CardTitle className="text-sm font-medium text-muted-foreground">Active Bookings</CardTitle>
+                        <CardTitle className="text-sm font-medium text-muted-foreground">{t("bookings.active_bookings")}</CardTitle>
                       </CardHeader>
                       <CardContent>
                         <div className="text-2xl font-bold text-accent">
@@ -463,7 +465,7 @@ export default function BookingManagement() {
 
                     <Card className="border-0 bg-white/60 backdrop-blur">
                       <CardHeader className="pb-2">
-                        <CardTitle className="text-sm font-medium text-muted-foreground">Occupancy</CardTitle>
+                        <CardTitle className="text-sm font-medium text-muted-foreground">{t("bookings.occupancy")}</CardTitle>
                       </CardHeader>
                       <CardContent>
                         <div className="text-2xl font-bold text-accent">
@@ -484,7 +486,7 @@ export default function BookingManagement() {
 
                     <Card className="border-0 bg-white/60 backdrop-blur">
                       <CardHeader className="pb-2">
-                        <CardTitle className="text-sm font-medium text-muted-foreground">Revenue (Est.)</CardTitle>
+                        <CardTitle className="text-sm font-medium text-muted-foreground">{t("bookings.revenue")}</CardTitle>
                       </CardHeader>
                       <CardContent>
                         <div className="text-2xl font-bold text-accent">

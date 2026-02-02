@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge"
 import { Plus, Edit, Trash2, Eye } from "lucide-react"
 import { format } from "date-fns"
 import { InvoiceEditorModal } from "@/components/invoice-editor-modal"
+import { useLanguage } from "@/lib/language-context"
 
 interface Invoice {
   id: string
@@ -23,6 +24,7 @@ interface Invoice {
 }
 
 export default function InvoicesPage() {
+  const { t } = useLanguage()
   const [invoices, setInvoices] = useState<Invoice[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
@@ -50,7 +52,7 @@ export default function InvoicesPage() {
   }
 
   async function handleDeleteInvoice(invoiceId: string) {
-    if (!confirm("Are you sure you want to delete this invoice?")) return
+    if (!confirm(t("invoices.delete_confirmation"))) return
 
     try {
       await fetch(`/api/bookings/invoices/${invoiceId}`, {
@@ -87,22 +89,22 @@ export default function InvoicesPage() {
     <div className="space-y-6 p-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold">Invoices Management</h1>
-          <p className="text-muted-foreground">Create, edit, and manage all invoices</p>
+          <h1 className="text-3xl font-bold">{t("invoices.management")}</h1>
+          <p className="text-muted-foreground">{t("invoices.create_edit_manage")}</p>
         </div>
         <Button onClick={() => setEditorOpen(true)} size="lg">
           <Plus className="h-4 w-4 mr-2" />
-          New Invoice
+          {t("invoices.new_invoice")}
         </Button>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>Search Invoices</CardTitle>
+          <CardTitle>{t("invoices.search_invoices")}</CardTitle>
         </CardHeader>
         <CardContent>
           <Input
-            placeholder="Search by invoice number or customer name..."
+            placeholder={t("invoices.search_placeholder")}
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
@@ -111,13 +113,15 @@ export default function InvoicesPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>All Invoices ({filteredInvoices.length})</CardTitle>
+          <CardTitle>
+            {t("invoices.all_invoices")} ({filteredInvoices.length})
+          </CardTitle>
         </CardHeader>
         <CardContent>
           {loading ? (
-            <div className="text-center py-8">Loading invoices...</div>
+            <div className="text-center py-8">{t("invoices.loading")}</div>
           ) : filteredInvoices.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">No invoices found</div>
+            <div className="text-center py-8 text-muted-foreground">{t("invoices.no_invoices")}</div>
           ) : (
             <div className="space-y-4">
               {filteredInvoices.map((invoice) => (
@@ -136,7 +140,9 @@ export default function InvoicesPage() {
                   <div className="flex items-center gap-4">
                     <div className="text-right">
                       <div className="font-semibold">${invoice.total_amount.toFixed(2)}</div>
-                      <Badge className={getStatusColor(invoice.payment_status)}>{invoice.payment_status}</Badge>
+                      <Badge className={getStatusColor(invoice.payment_status)}>
+                        {t(`invoices.${invoice.payment_status.toLowerCase()}`)}
+                      </Badge>
                     </div>
 
                     <div className="flex gap-2">
