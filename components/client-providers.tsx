@@ -1,7 +1,12 @@
-"use client"
+'use client'
 
 import { UniversalSearch } from "@/components/universal-search"
+import { LanguageProvider } from "@/lib/language-context"
 
 export function ClientProviders() {
-  return <UniversalSearch />
+  return (
+    <LanguageProvider>
+      <UniversalSearch />
+    </LanguageProvider>
+  )
 }
