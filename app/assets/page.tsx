@@ -14,6 +14,7 @@ import { EditAssetDialog } from "@/components/edit-asset-dialog"
 import { DeleteAssetButton } from "@/components/delete-asset-button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { useLanguage } from "@/lib/language-context"
 
 export default function AssetsPage() {
   const [assets, setAssets] = useState<Asset[]>([])
@@ -25,6 +26,7 @@ export default function AssetsPage() {
   const [filterCritical, setFilterCritical] = useState("all")
   const [sortBy, setSortBy] = useState("name")
   const [searchTerm, setSearchTerm] = useState("")
+  const { t } = useLanguage()
 
   const loadAssets = async () => {
     const supabase = createBrowserClient()
@@ -93,13 +95,13 @@ export default function AssetsPage() {
   }
 
   const handleExport = () => {
-    const headers = ["Name", "Type", "Location", "Critical", "Last Audit", "Description"]
+    const headers = [t("assets.name"), t("assets.type"), t("assets.location"), t("assets.critical"), t("assets.last_audit_date"), t("assets.description")]
     const rows = filteredAssets.map((asset) => [
       asset.name,
       asset.type,
       asset.location || "-",
-      asset.is_critical ? "Yes" : "No",
-      asset.last_audit_date ? new Date(asset.last_audit_date).toLocaleDateString() : "Never",
+      asset.is_critical ? t("assets.critical_yes") : t("assets.critical_no"),
+      asset.last_audit_date ? new Date(asset.last_audit_date).toLocaleDateString() : t("assets.never_audited"),
       asset.description || "-",
     ])
 
@@ -115,17 +117,17 @@ export default function AssetsPage() {
   return (
     <AppLayout>
       <PageHeader
-        title="Assets"
-        description="Manage facility infrastructure and equipment"
+        title={t("assets.title")}
+        description={t("assets.description")}
         actions={
           <div className="flex gap-2">
             <Button onClick={handleExport} variant="outline">
               <Download className="mr-2 h-4 w-4" />
-              Export
+              {t("assets.export")}
             </Button>
             <Button onClick={() => setShowAddDialog(true)}>
               <Plus className="mr-2 h-4 w-4" />
-              Add Asset
+              {t("assets.add_asset")}
             </Button>
           </div>
         }
@@ -135,17 +137,17 @@ export default function AssetsPage() {
         <div className="rounded-lg border border-secondary bg-card p-4 space-y-4">
           <div className="grid gap-4 md:grid-cols-4">
             <Input
-              placeholder="Search assets..."
+              placeholder={t("assets.search_placeholder")}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="bg-background"
             />
             <Select value={filterType} onValueChange={setFilterType}>
               <SelectTrigger className="bg-background">
-                <SelectValue placeholder="Filter by type" />
+                <SelectValue placeholder={t("assets.filter_by_type")} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Types</SelectItem>
+                <SelectItem value="all">{t("assets.all_types")}</SelectItem>
                 {Array.from(new Set(assets.map((a) => a.type))).map((type) => (
                   <SelectItem key={type} value={type}>
                     {type}
@@ -155,22 +157,22 @@ export default function AssetsPage() {
             </Select>
             <Select value={filterCritical} onValueChange={setFilterCritical}>
               <SelectTrigger className="bg-background">
-                <SelectValue placeholder="Filter by criticality" />
+                <SelectValue placeholder={t("assets.filter_critical")} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Assets</SelectItem>
-                <SelectItem value="critical">Critical Only</SelectItem>
-                <SelectItem value="non-critical">Non-Critical</SelectItem>
+                <SelectItem value="all">{t("assets.all_critical")}</SelectItem>
+                <SelectItem value="critical">{t("assets.critical_only")}</SelectItem>
+                <SelectItem value="non-critical">{t("assets.non_critical")}</SelectItem>
               </SelectContent>
             </Select>
             <Select value={sortBy} onValueChange={setSortBy}>
               <SelectTrigger className="bg-background">
-                <SelectValue placeholder="Sort by" />
+                <SelectValue placeholder={t("assets.sort_by")} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="name">Name A-Z</SelectItem>
-                <SelectItem value="type">Type</SelectItem>
-                <SelectItem value="last_audit">Last Audit (Newest)</SelectItem>
+                <SelectItem value="name">{t("assets.name")} A-Z</SelectItem>
+                <SelectItem value="type">{t("assets.type")}</SelectItem>
+                <SelectItem value="last_audit">{t("assets.last_audit")} (Newest)</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -180,10 +182,10 @@ export default function AssetsPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="text-muted-foreground">Name</TableHead>
-                <TableHead className="text-muted-foreground">Type</TableHead>
-                <TableHead className="text-muted-foreground">Location</TableHead>
-                <TableHead className="text-muted-foreground">Last Audit</TableHead>
+                <TableHead className="text-muted-foreground">{t("assets.name")}</TableHead>
+                <TableHead className="text-muted-foreground">{t("assets.type")}</TableHead>
+                <TableHead className="text-muted-foreground">{t("assets.location")}</TableHead>
+                <TableHead className="text-muted-foreground">{t("assets.last_audit_date")}</TableHead>
                 <TableHead className="text-muted-foreground">QR</TableHead>
                 <TableHead className="text-muted-foreground text-right">Actions</TableHead>
               </TableRow>

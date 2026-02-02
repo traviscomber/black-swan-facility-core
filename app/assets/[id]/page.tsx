@@ -1,3 +1,5 @@
+"use client"
+
 import { AppLayout } from "@/components/app-layout"
 import { PageHeader } from "@/components/page-header"
 import { Button } from "@/components/ui/button"
@@ -9,6 +11,8 @@ import { notFound } from "next/navigation"
 import { AlertTriangle, FileText, MapPin, Calendar } from "lucide-react"
 import Link from "next/link"
 import QRCode from "react-qr-code"
+import { useLanguage } from "@/lib/language-context"
+import { useEffect, useState } from "react"
 
 function formatDate(dateString: string) {
   return new Date(dateString).toLocaleDateString("en-US", {
@@ -19,6 +23,8 @@ function formatDate(dateString: string) {
     minute: "2-digit",
   })
 }
+
+const t = (key: string) => key; // Placeholder for translation function
 
 export default async function AssetDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -56,7 +62,7 @@ export default async function AssetDetailPage({ params }: { params: Promise<{ id
                       {asset.name}
                       {asset.is_critical && (
                         <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">
-                          Critical
+                          {t("assets.critical")}
                         </Badge>
                       )}
                     </CardTitle>
@@ -67,16 +73,16 @@ export default async function AssetDetailPage({ params }: { params: Promise<{ id
               <CardContent>
                 <div className="grid gap-4 md:grid-cols-2">
                   <div>
-                    <p className="text-sm font-medium text-gray-700">Type</p>
+                    <p className="text-sm font-medium text-gray-700">{t("assets.type_label")}</p>
                     <p className="mt-1 text-sm text-gray-900">{asset.type}</p>
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-gray-700">Location</p>
-                    <p className="mt-1 text-sm text-gray-900">{asset.location || "Not specified"}</p>
+                    <p className="text-sm font-medium text-gray-700">{t("assets.location")}</p>
+                    <p className="mt-1 text-sm text-gray-900">{asset.location || t("assets.not_specified")}</p>
                   </div>
                   {asset.latitude && asset.longitude && (
                     <div className="md:col-span-2">
-                      <p className="text-sm font-medium text-gray-700">Coordinates</p>
+                      <p className="text-sm font-medium text-gray-700">{t("assets.coordinates")}</p>
                       <p className="mt-1 text-sm text-gray-900">
                         {asset.latitude}, {asset.longitude}
                       </p>
@@ -89,8 +95,8 @@ export default async function AssetDetailPage({ params }: { params: Promise<{ id
             {/* Activity Timeline */}
             <Card>
               <CardHeader>
-                <CardTitle>Activity Timeline</CardTitle>
-                <CardDescription>Maintenance logs and events</CardDescription>
+                <CardTitle>{t("assets.activity_timeline")}</CardTitle>
+                <CardDescription>{t("assets.maintenance_logs")}</CardDescription>
               </CardHeader>
               <CardContent>
                 {logs && logs.length > 0 ? (
@@ -112,7 +118,7 @@ export default async function AssetDetailPage({ params }: { params: Promise<{ id
                     ))}
                   </div>
                 ) : (
-                  <p className="text-sm text-gray-500">No activity logs yet</p>
+                  <p className="text-sm text-gray-500">{t("assets.no_activity")}</p>
                 )}
               </CardContent>
             </Card>
@@ -123,24 +129,24 @@ export default async function AssetDetailPage({ params }: { params: Promise<{ id
             {/* Quick Actions */}
             <Card>
               <CardHeader>
-                <CardTitle>Quick Actions</CardTitle>
+                <CardTitle>{t("assets.quick_actions")}</CardTitle>
               </CardHeader>
               <CardContent className="space-y-2">
                 <Link href={`/issues/report?asset=${id}`}>
                   <Button variant="outline" className="w-full justify-start bg-transparent">
                     <AlertTriangle className="mr-2 h-4 w-4" />
-                    Report Issue
+                    {t("assets.report_issue")}
                   </Button>
                 </Link>
                 <Button variant="outline" className="w-full justify-start bg-transparent">
                   <Calendar className="mr-2 h-4 w-4" />
-                  Add Log
+                  {t("assets.add_log")}
                 </Button>
                 {asset.manual_url && (
                   <a href={asset.manual_url} target="_blank" rel="noopener noreferrer">
                     <Button variant="outline" className="w-full justify-start bg-transparent">
                       <FileText className="mr-2 h-4 w-4" />
-                      View Manual
+                      {t("assets.view_manual")}
                     </Button>
                   </a>
                 )}
