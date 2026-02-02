@@ -4,6 +4,7 @@ import React from "react"
 
 import { useState, useEffect } from 'react'
 import { AppLayout } from '@/components/app-layout'
+import { HealthInsightsPanel } from '@/components/cattle/health-insights-panel'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Alert, AlertDescription } from '@/components/ui/alert'
@@ -268,6 +269,9 @@ export default function CattleHealthPage() {
             </AlertDescription>
           </Alert>
         )}
+
+        {/* Veterinary Insights Panel */}
+        <HealthInsightsPanel />
 
         {/* Filtro */}
         <div className="flex gap-2">
