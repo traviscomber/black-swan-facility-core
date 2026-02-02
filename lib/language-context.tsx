@@ -145,6 +145,7 @@ const translations = {
     'bookings.rooms': 'Rooms',
     'bookings.invoices': 'Invoices',
     'bookings.reports': 'Reports',
+    'bookings.calendar': 'Calendar',
     // Core Operations - Tasks
     'tasks.title': 'Tasks',
     'tasks.add_task': 'Add Task',
@@ -372,6 +373,7 @@ const translations = {
     'bookings.rooms': 'Habitaciones',
     'bookings.invoices': 'Facturas',
     'bookings.reports': 'Reportes',
+    'bookings.calendar': 'Calendario',
     // Core Operations - Tasks
     'tasks.title': 'Tareas',
     'tasks.add_task': 'Agregar Tarea',

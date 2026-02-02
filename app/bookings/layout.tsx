@@ -4,10 +4,12 @@ import type React from "react"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useRouter, usePathname } from "next/navigation"
 import { Calendar, Users, TrendingUp, Home, MapPin } from "lucide-react"
+import { useLanguage } from "@/lib/language-context"
 
 export default function BookingsLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter()
   const pathname = usePathname()
+  const { t } = useLanguage()
 
   const activeTab =
     pathname === "/bookings"
@@ -50,23 +52,23 @@ export default function BookingsLayout({ children }: { children: React.ReactNode
           <TabsList>
             <TabsTrigger value="calendar" className="gap-2">
               <Calendar className="h-4 w-4" />
-              Calendar
+              {t("bookings.calendar")}
             </TabsTrigger>
             <TabsTrigger value="facilities" className="gap-2">
               <MapPin className="h-4 w-4" />
-              Facilities
+              {t("bookings.facilities")}
             </TabsTrigger>
             <TabsTrigger value="rooms" className="gap-2">
               <Home className="h-4 w-4" />
-              Rooms
+              {t("bookings.rooms")}
             </TabsTrigger>
             <TabsTrigger value="guests" className="gap-2">
               <Users className="h-4 w-4" />
-              Guests
+              {t("bookings.guests")}
             </TabsTrigger>
             <TabsTrigger value="reports" className="gap-2">
               <TrendingUp className="h-4 w-4" />
-              Reports
+              {t("bookings.reports")}
             </TabsTrigger>
           </TabsList>
         </Tabs>
