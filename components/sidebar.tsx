@@ -7,135 +7,136 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
 import { LanguageSwitcher } from "@/components/language-switcher"
+import { useLanguage } from "@/lib/language-context"
 
 const navigationGroups = [
   {
-    label: "Core Operations",
-    description: "Manage your property bookings and reservations",
+    labelKey: "nav.core_operations",
+    descKey: "nav.core_operations_desc",
     items: [
-      { name: "Dashboard", href: "/", icon: LayoutDashboard, tip: "Overview of your property" },
-      { name: "Bookings", href: "/bookings", icon: Calendar, tip: "Manage reservations and availability" },
-      { name: "Invoices", href: "/bookings/invoices", icon: Receipt, tip: "Manage invoices and payments" },
-      { name: "Tasks", href: "/tasks", icon: ClipboardList, tip: "Daily management tasks" },
+      { nameKey: "nav.dashboard", href: "/", icon: LayoutDashboard, tipKey: "nav.dashboard_tip" },
+      { nameKey: "nav.bookings", href: "/bookings", icon: Calendar, tipKey: "nav.bookings_tip" },
+      { nameKey: "nav.invoices", href: "/bookings/invoices", icon: Receipt, tipKey: "nav.invoices_tip" },
+      { nameKey: "nav.tasks", href: "/tasks", icon: ClipboardList, tipKey: "nav.tasks_tip" },
     ],
   },
   {
-    label: "Sovereignty",
-    description: "Track facility independence and self-sufficiency",
+    labelKey: "nav.sovereignty",
+    descKey: "nav.sovereignty_desc",
     items: [
-      { name: "Dashboard", href: "/sovereignty", icon: Crown, tip: "Track facility autonomy and independence" },
-      { name: "Coach", href: "/sovereignty/coach", icon: Brain, tip: "AI advisor for achieving independence" },
-      { name: "Layers", href: "/sovereignty/layers", icon: TrendingUp, tip: "View 5-layer sovereignty pyramid" },
+      { nameKey: "nav.sovereignty_dashboard", href: "/sovereignty", icon: Crown, tipKey: "nav.sovereignty_dashboard_tip" },
+      { nameKey: "nav.coach", href: "/sovereignty/coach", icon: Brain, tipKey: "nav.coach_tip" },
+      { nameKey: "nav.layers", href: "/sovereignty/layers", icon: TrendingUp, tipKey: "nav.layers_tip" },
     ],
   },
   {
-    label: "Cattle Operations",
-    description: "Livestock management and breeding operations",
+    labelKey: "nav.cattle_operations",
+    descKey: "nav.cattle_operations_desc",
     items: [
-      { name: "Dashboard", href: "/cattle", icon: Beef, tip: "Cattle areas and pasture management" },
-      { name: "Health Monitoring", href: "/cattle-health", icon: Heart, tip: "Biometric analysis, alerts, and veterinary tracking" },
-      { name: "Expert Coach", href: "/cattle/expert-agent", icon: Brain, tip: "AI advisor for cattle business" },
-      { name: "Business Plan", href: "/cattle/business-plan", icon: TrendingUp, tip: "Financial projections" },
-      { name: "Pricing & Costs", href: "/cattle/pricing-costs", icon: Box, tip: "Cost analysis and pricing" },
+      { nameKey: "nav.dashboard", href: "/cattle", icon: Beef, tipKey: "nav.dashboard_tip" },
+      { nameKey: "nav.cattle_health", href: "/cattle-health", icon: Heart, tipKey: "nav.cattle_health_tip" },
+      { nameKey: "nav.expert_coach", href: "/cattle/expert-agent", icon: Brain, tipKey: "nav.expert_coach_tip" },
+      { nameKey: "nav.business_plan", href: "/cattle/business-plan", icon: TrendingUp, tipKey: "nav.business_plan_tip" },
+      { nameKey: "nav.pricing_costs", href: "/cattle/pricing-costs", icon: Box, tipKey: "nav.pricing_costs_tip" },
     ],
   },
   {
-    label: "Property Management",
-    description: "Configure and maintain your facility",
+    labelKey: "nav.property_management",
+    descKey: "nav.property_management_desc",
     items: [
-      { name: "Assets", href: "/assets", icon: Box, tip: "Inventory and equipment" },
+      { nameKey: "nav.assets", href: "/assets", icon: Box, tipKey: "nav.assets_tip" },
       {
-        name: "Inventory",
+        nameKey: "nav.inventory",
         href: "/inventory",
         icon: Package,
-        tip: "Multimedia inventory tracking and QR codes",
+        tipKey: "nav.inventory_tip",
         subItems: [
-          { name: "All Assets", href: "/inventory", icon: "📦" },
-          { name: "By Category", href: "/inventory/by-category", icon: "🏷️" },
-          { name: "By Cost Center", href: "/inventory/by-cost-center", icon: "💼" },
-          { name: "Categories", href: "/inventory/categories", icon: "⚙️" },
-          { name: "Cost Centers", href: "/inventory/cost-centers", icon: "🏢" },
-          { name: "Audit Logs", href: "/inventory/audit-logs", icon: "📋" },
+          { nameKey: "nav.all_assets", href: "/inventory", icon: "📦" },
+          { nameKey: "nav.by_category", href: "/inventory/by-category", icon: "🏷️" },
+          { nameKey: "nav.by_cost_center", href: "/inventory/by-cost-center", icon: "💼" },
+          { nameKey: "nav.categories", href: "/inventory/categories", icon: "⚙️" },
+          { nameKey: "nav.cost_centers", href: "/inventory/cost-centers", icon: "🏢" },
+          { nameKey: "nav.audit_logs", href: "/inventory/audit-logs", icon: "📋" },
         ],
       },
-      { name: "Operations", href: "/operations", icon: Map, tip: "Monthly operations and vehicle trips with KMZ tracking" },
-      { name: "Fuel Consumption", href: "/fuel-consumption", icon: Fuel, tip: "Track field fuel consumption and costs" },
-      { name: "Maintenance", href: "/maintenance", icon: Wrench, tip: "Schedule and track repairs" },
-      { name: "GIS Map", href: "/map", icon: Map, tip: "Property location and layout" },
-      { name: "KMZ Viewer", href: "/map/kmz-viewer", icon: Map, tip: "Upload and view KMZ overlays" },
+      { nameKey: "nav.operations", href: "/operations", icon: Map, tipKey: "nav.operations_tip" },
+      { nameKey: "nav.fuel_consumption", href: "/fuel-consumption", icon: Fuel, tipKey: "nav.fuel_consumption_tip" },
+      { nameKey: "nav.maintenance", href: "/maintenance", icon: Wrench, tipKey: "nav.maintenance_tip" },
+      { nameKey: "nav.gis_map", href: "/map", icon: Map, tipKey: "nav.gis_map_tip" },
+      { nameKey: "nav.kmz_viewer", href: "/map/kmz-viewer", icon: Map, tipKey: "nav.kmz_viewer_tip" },
     ],
   },
   {
-    label: "Off Grid Energy",
-    description: "Solar panels, batteries, and Victron monitoring",
+    labelKey: "nav.off_grid_energy",
+    descKey: "nav.off_grid_energy_desc",
     items: [
-      { name: "Management", href: "/energy", icon: Zap, tip: "Solar panels and electricity consumption" },
-      { name: "Dashboard", href: "/energy-dashboard", icon: TrendingUp, tip: "Real-time energy monitoring" },
-      { name: "Reports", href: "/energy-reports", icon: FileText, tip: "Historical reports and analytics" },
-      { name: "Victron Setup", href: "/victron-setup", icon: Lightbulb, tip: "Victron integration guide" },
+      { nameKey: "nav.management", href: "/energy", icon: Zap, tipKey: "nav.management_tip" },
+      { nameKey: "nav.energy_dashboard", href: "/energy-dashboard", icon: TrendingUp, tipKey: "nav.energy_dashboard_tip" },
+      { nameKey: "nav.reports", href: "/energy-reports", icon: FileText, tipKey: "nav.reports_tip" },
+      { nameKey: "nav.victron_setup", href: "/victron-setup", icon: Lightbulb, tipKey: "nav.victron_setup_tip" },
       {
-        name: "Integration Docs",
+        nameKey: "nav.integration_docs",
         href: "/integration-docs",
         icon: Code,
-        tip: "MQTT, Node-RED, and VRM API documentation",
+        tipKey: "nav.integration_docs_tip",
       },
     ],
   },
   {
-    label: "Supply Chain",
-    description: "Procurement, suppliers, and acquisitions",
+    labelKey: "nav.supply_chain",
+    descKey: "nav.supply_chain_desc",
     items: [
-      { name: "Procurement", href: "/procurement", icon: Box, tip: "Purchase orders and acquisitions" },
+      { nameKey: "nav.procurement", href: "/procurement", icon: Box, tipKey: "nav.procurement_tip" },
       {
-        name: "Suppliers",
+        nameKey: "nav.suppliers",
         href: "/procurement/suppliers",
         icon: Users,
-        tip: "Manage supplier contacts and relationships",
+        tipKey: "nav.suppliers_tip",
       },
       {
-        name: "Analytics",
+        nameKey: "nav.analytics",
         href: "/procurement/analytics",
         icon: TrendingUp,
-        tip: "Spending analysis and supplier performance",
+        tipKey: "nav.analytics_tip",
       },
       {
-        name: "Facilities",
+        nameKey: "nav.property_management",
         href: "/procurement/facilities",
-        icon: "Building",
-        tip: "Manage facilities and their procurement needs",
+        icon: Building,
+        tipKey: "nav.property_management_desc",
       },
     ],
   },
   {
-    label: "People & Operations",
-    description: "Staff management and guest services",
+    labelKey: "nav.people_operations",
+    descKey: "nav.people_operations_desc",
     items: [
-      { name: "Employees", href: "/employees", icon: Users, tip: "Team management" },
-      { name: "Volunteers", href: "/volunteers", icon: Heart, tip: "Volunteer coordination and tracking" },
-      { name: "Activities Calendar", href: "/activities-calendar", icon: Calendar, tip: "Plan and manage facility activities, events, and entertainment" },
-      { name: "Concierge", href: "/concierge", icon: MessageSquare, tip: "Guest communication" },
+      { nameKey: "nav.employees", href: "/employees", icon: Users, tipKey: "nav.employees_tip" },
+      { nameKey: "nav.volunteers", href: "/volunteers", icon: Heart, tipKey: "nav.volunteers_tip" },
+      { nameKey: "nav.activities", href: "/activities-calendar", icon: Calendar, tipKey: "nav.activities_tip" },
+      { nameKey: "nav.concierge", href: "/concierge", icon: MessageSquare, tipKey: "nav.concierge_tip" },
       {
-        name: "Guest Requests",
+        nameKey: "nav.guest_requests",
         href: "/guest-requests",
         icon: Tablet,
-        tip: "Tablet interface for hospitality requests",
+        tipKey: "nav.guest_requests_tip",
       },
-      { name: "Kitchen", href: "/kitchen", icon: ChefHat, tip: "Kitchen and food preparation facilities" },
-      { name: "Checklists", href: "/checklists", icon: CheckSquare, tip: "Operational checklists" },
+      { nameKey: "nav.kitchen", href: "/kitchen", icon: ChefHat, tipKey: "nav.kitchen_tip" },
+      { nameKey: "nav.checklists", href: "/checklists", icon: CheckSquare, tipKey: "nav.checklists_tip" },
     ],
   },
   {
-    label: "Advanced",
-    description: "Analytics and system settings",
+    labelKey: "nav.advanced",
+    descKey: "nav.advanced_desc",
     items: [
       {
-        name: "Facility Requests",
+        nameKey: "nav.facility_requests",
         href: "/issues",
         icon: AlertCircle,
-        tip: "Track facility requests and service tickets",
+        tipKey: "nav.facility_requests_tip",
       },
-      { name: "AI Operations", href: "/ai-ops", icon: Bot, tip: "AI-powered insights" },
-      { name: "Admin", href: "/admin", icon: Settings, tip: "System configuration" },
+      { nameKey: "nav.ai_ops", href: "/ai-ops", icon: Bot, tipKey: "nav.ai_ops_tip" },
+      { nameKey: "nav.admin", href: "/admin", icon: Settings, tipKey: "nav.admin_tip" },
     ],
   },
 ]
@@ -147,6 +148,7 @@ interface SidebarProps {
 
 export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const pathname = usePathname()
+  const { t } = useLanguage()
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set())
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set())
 
@@ -209,34 +211,34 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
 
         <nav className="flex-1 space-y-2 sm:space-y-3 px-2 sm:px-3 py-3 sm:py-4 overflow-y-auto min-h-0">
           {navigationGroups.map((group) => (
-            <div key={group.label} className="space-y-1 min-w-0">
+            <div key={group.labelKey} className="space-y-1 min-w-0">
               <div className="flex items-start justify-between px-2 gap-1 min-w-0">
                 <div className="flex-1 min-w-0">
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-gray-700 truncate">{group.label}</h3>
-                  <p className="text-xs text-gray-500 mt-1 leading-tight hidden sm:block break-words">{group.description}</p>
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-gray-700 truncate">{t(group.labelKey)}</h3>
+                  <p className="text-xs text-gray-500 mt-1 leading-tight hidden sm:block break-words">{t(group.descKey)}</p>
                 </div>
                 <button
-                  onClick={() => toggleGroup(group.label)}
+                  onClick={() => toggleGroup(group.labelKey)}
                   className="ml-1 p-1 hover:bg-gray-100 rounded transition-colors flex-shrink-0"
-                  aria-label={`Toggle ${group.label}`}
+                  aria-label={`Toggle ${t(group.labelKey)}`}
                 >
                   <ChevronDown
                     className={cn(
                       "h-4 w-4 text-gray-600 transition-transform duration-200",
-                      expandedGroups.has(group.label) ? "rotate-0" : "-rotate-90",
+                      expandedGroups.has(group.labelKey) ? "rotate-0" : "-rotate-90",
                     )}
                   />
                 </button>
               </div>
-              {expandedGroups.has(group.label) && (
+              {expandedGroups.has(group.labelKey) && (
                 <div className="space-y-0.5 min-w-0">
                   {group.items.map((item: any) => {
                     const isActive = pathname === item.href || (item.href !== "/" && pathname?.startsWith(item.href))
                     const hasSubItems = item.subItems && item.subItems.length > 0
-                    const isExpanded = expandedItems.has(item.name)
+                    const isExpanded = expandedItems.has(item.nameKey)
 
                     return (
-                      <div key={item.name} className="min-w-0">
+                      <div key={item.nameKey} className="min-w-0">
                         <div className="flex items-center gap-0 min-w-0">
                           <Link
                             href={item.href}
@@ -247,15 +249,15 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                                 ? "bg-primary text-white shadow-md"
                                 : "text-gray-700 hover:bg-gray-100 hover:text-gray-900",
                             )}
-                            title={item.tip}
+                            title={t(item.tipKey)}
                           >
                             <item.icon className="h-5 w-5 flex-shrink-0" />
-                            <span className="flex-1">{item.name}</span>
+                            <span className="flex-1">{t(item.nameKey)}</span>
                             {isActive && <div className="h-2 w-2 rounded-full bg-white flex-shrink-0"></div>}
                           </Link>
                           {hasSubItems && (
                             <button
-                              onClick={() => toggleSubItems(item.name)}
+                              onClick={() => toggleSubItems(item.nameKey)}
                               className="px-2 py-2 hover:bg-gray-100 rounded transition-colors"
                             >
                               <ChevronDown
@@ -284,7 +286,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                                   )}
                                 >
                                   <span>{subItem.icon}</span>
-                                  <span>{subItem.name}</span>
+                                  <span>{t(subItem.nameKey)}</span>
                                 </Link>
                               )
                             })}
