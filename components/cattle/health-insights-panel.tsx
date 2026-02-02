@@ -62,7 +62,7 @@ export function HealthInsightsPanel() {
         </CardContent>
       </Card>
 
-      {/* Recomendaciones Inmediatas */}
+      {/* Acciones Inmediatas */}
       <Card className="border-yellow-200 bg-yellow-50">
         <CardHeader className="pb-3">
           <div className="flex items-center gap-2">
