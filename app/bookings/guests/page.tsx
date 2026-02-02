@@ -11,6 +11,7 @@ import { AddGuestDialog } from "@/components/add-guest-dialog"
 import { EditGuestDialog } from "@/components/edit-guest-dialog"
 import { format } from "date-fns"
 import { AppLayout } from "@/components/app-layout"
+import { useLanguage } from "@/lib/language-context"
 
 interface Guest {
   id: string
@@ -35,6 +36,7 @@ export default function GuestsPage() {
   const [guestBookings, setGuestBookings] = useState<Record<string, number>>({})
 
   const supabase = createBrowserClient()
+  const { t } = useLanguage()
 
   useEffect(() => {
     loadGuests()
@@ -136,12 +138,12 @@ export default function GuestsPage() {
         {/* Header */}
         <div className="flex items-center justify-between border-b bg-card px-6 py-4">
           <div>
-            <h1 className="text-2xl font-bold">Guest Management</h1>
-            <p className="text-sm text-muted-foreground">Manage guest profiles and information</p>
+            <h1 className="text-2xl font-bold">{t("guests.title")}</h1>
+            <p className="text-sm text-muted-foreground">{t("guests.description")}</p>
           </div>
           <Button className="gap-2" onClick={() => setShowAddDialog(true)}>
             <Plus className="h-4 w-4" />
-            Add Guest
+            {t("guests.add_guest")}
           </Button>
         </div>
 
@@ -150,7 +152,7 @@ export default function GuestsPage() {
           <div className="relative">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
-              placeholder="Search guests by name, email, or phone..."
+              placeholder={t("guests.search_placeholder")}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-10"
@@ -162,12 +164,12 @@ export default function GuestsPage() {
         <div className="flex-1 overflow-auto p-6">
           {loading ? (
             <div className="flex items-center justify-center p-8">
-              <div className="text-muted-foreground">Loading guests...</div>
+              <div className="text-muted-foreground">{t("guests.loading")}</div>
             </div>
           ) : filteredGuests.length === 0 ? (
             <div className="flex flex-col items-center justify-center p-8 text-center">
               <div className="text-muted-foreground">
-                {searchQuery ? "No guests found matching your search" : "No guests yet. Add your first guest!"}
+                {searchQuery ? t("guests.no_guests") : t("guests.no_guests")}
               </div>
             </div>
           ) : (

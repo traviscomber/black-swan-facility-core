@@ -20,6 +20,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { AppLayout } from "@/components/app-layout"
+import { useLanguage } from "@/lib/language-context"
 
 const FACILITY_COLORS = [
   { bg: "bg-red-200", border: "border-l-4 border-red-400", text: "text-red-900" },
@@ -77,6 +78,7 @@ export default function RoomsPage() {
   const [itemToDelete, setItemToDelete] = useState<{ type: "room" | "bed"; id: string } | null>(null)
 
   const supabase = createBrowserClient()
+  const { t } = useLanguage()
 
   useEffect(() => {
     loadData()
@@ -155,12 +157,12 @@ export default function RoomsPage() {
       <div className="flex h-full flex-col bg-background">
         <div className="flex items-center justify-between border-b bg-card px-6 py-4">
           <div>
-            <h1 className="text-2xl font-bold">Room & Bed Management</h1>
-            <p className="text-sm text-muted-foreground">Manage rental units and bed inventory</p>
+            <h1 className="text-2xl font-bold">{t("rooms.title")}</h1>
+            <p className="text-sm text-muted-foreground">{t("rooms.description")}</p>
           </div>
           <Button className="gap-2" onClick={() => setIsAddRoomOpen(true)}>
             <Plus className="h-4 w-4" />
-            Add Room
+            {t("rooms.add_room")}
           </Button>
         </div>
 
@@ -248,7 +250,9 @@ export default function RoomsPage() {
 
                       <div className={`border-t border-${facilityColor.text.split("-")[1]}-300 pt-3`}>
                         <div className="mb-2 flex items-center justify-between text-sm">
-                          <span className={`font-medium ${facilityColor.text}`}>Beds ({roomBeds.length})</span>
+                          <span className={`font-medium ${facilityColor.text}`}>
+                            {t("rooms.beds")} ({roomBeds.length})
+                          </span>
                           <Button
                             variant="ghost"
                             size="sm"
@@ -259,7 +263,7 @@ export default function RoomsPage() {
                             }}
                           >
                             <Plus className="h-3 w-3" />
-                            Add Bed
+                            {t("rooms.add_bed")}
                           </Button>
                         </div>
                         {roomBeds.length > 0 ? (
