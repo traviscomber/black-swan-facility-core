@@ -354,7 +354,7 @@ export default function SovereigntyLayersPage() {
                           </div>
                           <div className="text-left min-w-0">
                             <div className="text-xl font-bold text-accent">
-                              {sectionInfo?.emoji} Layer {layer.layer_number}: {sectionInfo?.title}
+                              {sectionInfo?.emoji} {t("sovereignty.layer")} {layer.layer_number}: {sectionInfo?.title}
                             </div>
                             <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{layer.description}</p>
                           </div>
@@ -459,7 +459,7 @@ export default function SovereigntyLayersPage() {
         {currentLayer && currentLayer.dependencies.length > 0 && (
           <Card className="border-warning/30 bg-warning/5">
             <CardHeader>
-              <CardTitle className="text-warning">Dependencies to Eliminate</CardTitle>
+              <CardTitle className="text-warning">{t("sovereignty.dependencies_to_eliminate")}</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="grid gap-2 md:grid-cols-2">
