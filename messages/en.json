@@ -1,37 +1,67 @@
 {
   "navigation": {
-    "dashboard": "Dashboard",
-    "cattle": "Cattle",
-    "bookings": "Bookings",
-    "inventory": "Inventory",
-    "issues": "Issues",
-    "operations": "Operations",
-    "energy": "Energy",
-    "procurement": "Procurement",
-    "concierge": "Concierge",
-    "admin": "Admin"
+    "cattle": "Cattle Health",
+    "bookings": "View Bookings",
+    "property": "Manage Property"
   },
-  "common": {
-    "language": "Language",
-    "english": "English",
-    "spanish": "Español",
-    "search": "Search",
-    "settings": "Settings",
-    "logout": "Logout",
-    "loading": "Loading..."
+  "dashboard": {
+    "title": "Blackswan Facility Core System",
+    "subtitle": "BFCS v1.0 - Luxury Property Management",
+    "description": "Professional facility management and booking system for your luxury vacation rental. Manage reservations, track availability, and optimize occupancy rates.",
+    "overview": "Property Overview",
+    "tasks": "Essential Tasks",
+    "getting_started": "Getting Started",
+    "help": "Help & Search"
   },
-  "cattle": {
-    "title": "Cattle Health",
-    "health": "Health",
-    "insights": "Insights",
-    "analysis": "Analysis",
-    "expertAgent": "Expert Agent"
+  "metrics": {
+    "rooms": "Total Rooms",
+    "beds": "Total Beds",
+    "available": "Available",
+    "occupied": "Occupied",
+    "occupancy": "Occupancy",
+    "active": "Active properties",
+    "inventory": "Available inventory",
+    "ready": "Ready for booking",
+    "booked": "Currently booked",
+    "utilization": "Utilization rate",
+    "checkins": "Today's Check-ins",
+    "checkouts": "Today's Check-outs",
+    "guests": "Active Guests"
   },
-  "bookings": {
-    "title": "Bookings",
-    "reservations": "Reservations",
-    "facilities": "Facilities",
-    "guests": "Guests",
-    "invoices": "Invoices"
+  "tasks": {
+    "calendar": {
+      "title": "Booking Calendar",
+      "desc": "View and manage all reservations",
+      "detail": "Check availability, create new bookings, and track guest check-ins across all rooms and beds."
+    },
+    "property": {
+      "title": "Property Management",
+      "desc": "Configure rooms and amenities",
+      "detail": "Edit room details, manage bed configurations, set rates, and update property availability settings."
+    },
+    "maintenance": {
+      "title": "Maintenance",
+      "desc": "Schedule and track maintenance",
+      "detail": "Keep track of property maintenance schedules, repairs, and facility improvements."
+    },
+    "analytics": {
+      "title": "Analytics",
+      "desc": "View booking trends and insights",
+      "detail": "Monitor occupancy rates, revenue trends, and booking patterns to optimize your rental strategy."
+    }
+  },
+  "onboarding": {
+    "step1": {
+      "title": "Set Up Your Property",
+      "desc": "Configure rooms, beds, and pricing for your facility"
+    },
+    "step2": {
+      "title": "Create First Booking",
+      "desc": "Add a test reservation to familiarize yourself with the system"
+    },
+    "step3": {
+      "title": "Start Accepting Guests",
+      "desc": "Open your calendar and begin managing real reservations"
+    }
   }
 }
