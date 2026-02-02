@@ -34,7 +34,7 @@ const REQUEST_CATEGORIES = [
   { id: "other", label: "Other Request", icon: "📝" },
 ]
 
-const ADMIN_PASSWORD = "Global2025..."
+const ADMIN_PASSWORD = "Globaln2025"
 
 const generateDeviceId = () => {
   let deviceId = localStorage.getItem("tablet_device_id")

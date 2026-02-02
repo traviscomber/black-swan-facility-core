@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Lock, AlertTriangle } from "lucide-react"
 
-const ENERGY_PASSWORD = "Global2025..."
+const ENERGY_PASSWORD = "Globaln2025"
 
 interface EnergyPasswordGuardProps {
   children: React.ReactNode
