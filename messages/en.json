@@ -1,0 +1,37 @@
+{
+  "navigation": {
+    "dashboard": "Dashboard",
+    "cattle": "Cattle",
+    "bookings": "Bookings",
+    "inventory": "Inventory",
+    "issues": "Issues",
+    "operations": "Operations",
+    "energy": "Energy",
+    "procurement": "Procurement",
+    "concierge": "Concierge",
+    "admin": "Admin"
+  },
+  "common": {
+    "language": "Language",
+    "english": "English",
+    "spanish": "Español",
+    "search": "Search",
+    "settings": "Settings",
+    "logout": "Logout",
+    "loading": "Loading..."
+  },
+  "cattle": {
+    "title": "Cattle Health",
+    "health": "Health",
+    "insights": "Insights",
+    "analysis": "Analysis",
+    "expertAgent": "Expert Agent"
+  },
+  "bookings": {
+    "title": "Bookings",
+    "reservations": "Reservations",
+    "facilities": "Facilities",
+    "guests": "Guests",
+    "invoices": "Invoices"
+  }
+}

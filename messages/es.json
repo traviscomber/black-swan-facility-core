@@ -1,0 +1,37 @@
+{
+  "navigation": {
+    "dashboard": "Panel de Control",
+    "cattle": "Ganado",
+    "bookings": "Reservas",
+    "inventory": "Inventario",
+    "issues": "Problemas",
+    "operations": "Operaciones",
+    "energy": "Energía",
+    "procurement": "Adquisiciones",
+    "concierge": "Concierge",
+    "admin": "Administración"
+  },
+  "common": {
+    "language": "Idioma",
+    "english": "English",
+    "spanish": "Español",
+    "search": "Buscar",
+    "settings": "Configuración",
+    "logout": "Cerrar Sesión",
+    "loading": "Cargando..."
+  },
+  "cattle": {
+    "title": "Salud del Ganado",
+    "health": "Salud",
+    "insights": "Análisis",
+    "analysis": "Análisis",
+    "expertAgent": "Agente Experto"
+  },
+  "bookings": {
+    "title": "Reservas",
+    "reservations": "Reservaciones",
+    "facilities": "Instalaciones",
+    "guests": "Huéspedes",
+    "invoices": "Facturas"
+  }
+}

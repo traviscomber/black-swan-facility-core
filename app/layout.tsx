@@ -2,6 +2,8 @@ import type React from "react"
 import type { Metadata, Viewport } from "next"
 import { Geist, Geist_Mono } from "next/font/google"
 import { Analytics } from "@vercel/analytics/next"
+import { getMessages } from "next-intl/server"
+import { NextIntlClientProvider } from "next-intl"
 import "./globals.css"
 import { ClientProviders } from "@/components/client-providers"
 
@@ -40,17 +42,24 @@ export const viewport: Viewport = {
   themeColor: "#726658",
 }
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
+  params,
 }: Readonly<{
   children: React.ReactNode
+  params: Promise<{ locale: string }>
 }>) {
+  const { locale } = await params
+  const messages = await getMessages()
+
   return (
-    <html lang="en" className="dark">
+    <html lang={locale} className="dark">
       <body className={`font-sans antialiased`}>
-        <ClientProviders />
-        {children}
-        <Analytics />
+        <NextIntlClientProvider messages={messages} locale={locale}>
+          <ClientProviders />
+          {children}
+          <Analytics />
+        </NextIntlClientProvider>
       </body>
     </html>
   )

@@ -6,7 +6,7 @@ import { LayoutDashboard, Calendar, Receipt, ClipboardList, Crown, Brain, Trendi
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
-// import { UniversalSearchDialog } from "@/components/universal-search-dialog" // Assuming UniversalSearchDialog is in a separate file
+import { LanguageSwitcher } from "@/components/language-switcher"
 
 const navigationGroups = [
   {
@@ -300,6 +300,10 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
         </nav>
 
         <div className="border-t border-secondary bg-secondary/20 p-3 sm:p-4 space-y-3">
+          <div className="w-full">
+            <p className="text-xs sm:text-sm font-semibold text-gray-800 mb-2">Language</p>
+            <LanguageSwitcher />
+          </div>
           <button
             onClick={handleOpenSearch}
             className="w-full flex items-start gap-2 hover:opacity-80 transition-opacity text-left"
