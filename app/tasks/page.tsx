@@ -10,6 +10,7 @@ import { createBrowserClient } from "@/lib/supabase/client"
 import { AddTaskDialog } from "@/components/add-task-dialog"
 import { TaskDetailPanel } from "@/components/task-detail-panel"
 import { EditTaskDialog } from "@/components/edit-task-dialog"
+import { useLanguage } from "@/lib/language-context"
 import { format, isToday, isThisWeek } from "date-fns"
 import { es } from "date-fns/locale"
 import { AppLayout } from "@/components/app-layout"
@@ -42,21 +43,8 @@ const priorityColors = {
   urgente: "bg-red-100 text-red-800",
 }
 
-const priorityLabels = {
-  baja: "Low",
-  media: "Medium",
-  alta: "High",
-  urgente: "Urgent",
-}
-
-const statusLabels = {
-  nueva: "New",
-  en_progreso: "In Progress",
-  completada: "Completed",
-  cancelada: "Cancelled",
-}
-
 export default function TasksPage() {
+  const { t } = useLanguage()
   const [tasks, setTasks] = useState<Task[]>([])
   const [selectedTask, setSelectedTask] = useState<Task | null>(null)
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
@@ -65,6 +53,20 @@ export default function TasksPage() {
   const [activeTab, setActiveTab] = useState("nuevas")
   const [isLoading, setIsLoading] = useState(true)
   const supabase = createBrowserClient()
+
+  const priorityLabels = {
+    baja: t("tasks.low"),
+    media: t("tasks.medium"),
+    alta: t("tasks.high"),
+    urgente: t("tasks.urgent"),
+  }
+
+  const statusLabels = {
+    nueva: t("tasks.new"),
+    en_progreso: t("tasks.in_progress"),
+    completada: t("tasks.completed"),
+    cancelada: t("tasks.cancelled"),
+  }
 
   useEffect(() => {
     fetchTasks()
@@ -116,7 +118,7 @@ export default function TasksPage() {
           <div className="p-6 border-b">
             <div className="flex items-center justify-between mb-6">
               <div>
-                <h1 className="text-2xl font-bold">Task Management & Tracking</h1>
+                <h1 className="text-2xl font-bold">{t("tasks.title")}</h1>
                 <p className="text-sm text-muted-foreground">Task coordination system</p>
               </div>
             </div>
@@ -128,7 +130,7 @@ export default function TasksPage() {
                   <div className="flex items-center gap-2">
                     <Clock className="h-4 w-4 text-blue-600" />
                     <div>
-                      <p className="text-xs text-muted-foreground">New Tasks Today</p>
+                      <p className="text-xs text-muted-foreground">{t("tasks.new")} Today</p>
                       <p className="text-2xl font-bold">{stats.nuevasHoy}</p>
                     </div>
                   </div>
@@ -150,7 +152,7 @@ export default function TasksPage() {
                   <div className="flex items-center gap-2">
                     <CheckCircle2 className="h-4 w-4 text-green-600" />
                     <div>
-                      <p className="text-xs text-muted-foreground">Completed (Week)</p>
+                      <p className="text-xs text-muted-foreground">{t("tasks.completed")} (Week)</p>
                       <p className="text-2xl font-bold">{stats.completadasSemana}</p>
                     </div>
                   </div>
@@ -171,16 +173,16 @@ export default function TasksPage() {
 
             <Button onClick={() => setIsAddDialogOpen(true)} className="w-full">
               <Plus className="h-4 w-4 mr-2" />
-              New Task
+              {t("tasks.add_task")}
             </Button>
           </div>
 
           {/* Tabs */}
           <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
             <TabsList className="mx-6 mt-4">
-              <TabsTrigger value="nuevas">New</TabsTrigger>
-              <TabsTrigger value="en_progreso">In Progress</TabsTrigger>
-              <TabsTrigger value="completadas">Completed</TabsTrigger>
+              <TabsTrigger value="nuevas">{t("tasks.new")}</TabsTrigger>
+              <TabsTrigger value="en_progreso">{t("tasks.in_progress")}</TabsTrigger>
+              <TabsTrigger value="completadas">{t("tasks.completed")}</TabsTrigger>
               <TabsTrigger value="todas">All</TabsTrigger>
             </TabsList>
 

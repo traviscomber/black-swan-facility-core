@@ -7,6 +7,7 @@ import { AppLayout } from "@/components/app-layout"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { createBrowserClient } from "@/lib/supabase/client"
+import { useLanguage } from "@/lib/language-context"
 import { format } from "date-fns"
 
 interface DashboardMetrics {
@@ -23,6 +24,7 @@ interface DashboardMetrics {
 }
 
 export default function Dashboard() {
+  const { t } = useLanguage()
   const [searchDialogOpen, setSearchDialogOpen] = useState(false)
   const [metrics, setMetrics] = useState<DashboardMetrics>({
     totalRooms: 0,
@@ -102,26 +104,26 @@ export default function Dashboard() {
 
   const quickActions = [
     {
-      title: "Booking Calendar",
-      description: "View and manage all reservations",
+      titleKey: "dashboard.booking_calendar",
+      descKey: "dashboard.booking_calendar_desc",
       icon: Calendar,
       href: "/bookings",
     },
     {
-      title: "Property Management",
-      description: "Configure rooms and amenities",
+      titleKey: "dashboard.property_management",
+      descKey: "dashboard.property_management_desc",
       icon: Home,
       href: "/property-management",
     },
     {
-      title: "Maintenance",
-      description: "Schedule and track maintenance",
+      titleKey: "dashboard.maintenance",
+      descKey: "dashboard.maintenance_desc",
       icon: Wrench,
       href: "/maintenance",
     },
     {
-      title: "Analytics",
-      description: "View booking trends and insights",
+      titleKey: "dashboard.analytics",
+      descKey: "dashboard.analytics_desc",
       icon: TrendingUp,
       href: "/assets/analytics",
     },
@@ -134,10 +136,10 @@ export default function Dashboard() {
           {/* Header */}
           <div className="space-y-2">
             <h1 className="text-3xl md:text-4xl font-bold tracking-tight">
-              Blackswan Facility Core System
+              {t("dashboard.title")}
             </h1>
             <p className="text-sm md:text-base text-gray-400">
-              Professional facility management and booking system for your luxury vacation rental. Manage reservations, track availability, and optimize occupancy rates.
+              {t("dashboard.description")}
             </p>
           </div>
 
@@ -146,41 +148,41 @@ export default function Dashboard() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mt-4">
               <Card className="bg-secondary/20 border-secondary">
                 <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium text-gray-400">Total Rooms</CardTitle>
+                  <CardTitle className="text-sm font-medium text-gray-400">{t("dashboard.total_rooms")}</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">{metrics.totalRooms}</div>
-                  <p className="text-xs text-gray-500 mt-1">Registered properties</p>
+                  <p className="text-xs text-gray-500 mt-1">{t("dashboard.total_rooms_desc")}</p>
                 </CardContent>
               </Card>
 
               <Card className="bg-secondary/20 border-secondary">
                 <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium text-gray-400">Total Beds</CardTitle>
+                  <CardTitle className="text-sm font-medium text-gray-400">{t("dashboard.total_beds")}</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">{metrics.totalBeds}</div>
-                  <p className="text-xs text-gray-500 mt-1">Available inventory</p>
+                  <p className="text-xs text-gray-500 mt-1">{t("dashboard.total_beds_desc")}</p>
                 </CardContent>
               </Card>
 
               <Card className="bg-secondary/20 border-secondary">
                 <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium text-gray-400">Occupancy Rate</CardTitle>
+                  <CardTitle className="text-sm font-medium text-gray-400">{t("dashboard.occupancy_rate")}</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">{metrics.occupancyRate}%</div>
-                  <p className="text-xs text-gray-500 mt-1">Current utilization</p>
+                  <p className="text-xs text-gray-500 mt-1">{t("dashboard.occupancy_rate_desc")}</p>
                 </CardContent>
               </Card>
 
               <Card className="bg-secondary/20 border-secondary">
                 <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium text-gray-400">Active Reservations</CardTitle>
+                  <CardTitle className="text-sm font-medium text-gray-400">{t("dashboard.active_reservations")}</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">{metrics.activeReservations}</div>
-                  <p className="text-xs text-gray-500 mt-1">Current bookings</p>
+                  <p className="text-xs text-gray-500 mt-1">{t("dashboard.active_reservations_desc")}</p>
                 </CardContent>
               </Card>
             </div>
@@ -190,28 +192,28 @@ export default function Dashboard() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
             <Card className="bg-secondary/20 border-secondary">
               <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-medium">Today's Check-ins</CardTitle>
+                <CardTitle className="text-sm font-medium">{t("dashboard.todays_checkins")}</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="text-3xl font-bold text-green-500">{metrics.todayCheckIns}</div>
-                <p className="text-xs text-gray-500 mt-1">Guests arriving today</p>
+                <p className="text-xs text-gray-500 mt-1">{t("dashboard.todays_checkins_desc")}</p>
               </CardContent>
             </Card>
 
             <Card className="bg-secondary/20 border-secondary">
               <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-medium">Today's Check-outs</CardTitle>
+                <CardTitle className="text-sm font-medium">{t("dashboard.todays_checkouts")}</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="text-3xl font-bold text-amber-500">{metrics.todayCheckOuts}</div>
-                <p className="text-xs text-gray-500 mt-1">Guests departing today</p>
+                <p className="text-xs text-gray-500 mt-1">{t("dashboard.todays_checkouts_desc")}</p>
               </CardContent>
             </Card>
           </div>
 
           {/* Quick Actions */}
           <div className="mt-8">
-            <h2 className="text-lg font-semibold mb-4">Quick Actions</h2>
+            <h2 className="text-lg font-semibold mb-4">{t("dashboard.quick_actions")}</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {quickActions.map((action) => {
                 const Icon = action.icon
@@ -224,10 +226,10 @@ export default function Dashboard() {
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
                         <h3 className="font-semibold text-base text-foreground mb-2">
-                          {action.title}
+                          {t(action.titleKey)}
                         </h3>
                         <p className="text-sm text-gray-400">
-                          {action.description}
+                          {t(action.descKey)}
                         </p>
                       </div>
                       <Icon className="h-6 w-6 text-primary/60 group-hover:text-primary transition-colors flex-shrink-0 ml-4" />
