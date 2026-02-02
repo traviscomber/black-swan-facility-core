@@ -1,14 +1,6 @@
 import type React from "react"
 import type { Metadata, Viewport } from "next"
-import { Geist, Geist_Mono } from "next/font/google"
-import { Analytics } from "@vercel/analytics/next"
-import { getMessages } from "next-intl/server"
-import { NextIntlClientProvider } from "next-intl"
 import "./globals.css"
-import { ClientProviders } from "@/components/client-providers"
-
-const _geist = Geist({ subsets: ["latin"] })
-const _geistMono = Geist_Mono({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
   title: "BFCS - Blackswan Facility Core System",
@@ -42,25 +34,10 @@ export const viewport: Viewport = {
   themeColor: "#726658",
 }
 
-export default async function RootLayout({
+export default function RootLayout({
   children,
-  params,
 }: Readonly<{
   children: React.ReactNode
-  params: Promise<{ locale: string }>
 }>) {
-  const { locale } = await params
-  const messages = await getMessages()
-
-  return (
-    <html lang={locale} className="dark">
-      <body className={`font-sans antialiased`}>
-        <NextIntlClientProvider messages={messages} locale={locale}>
-          <ClientProviders />
-          {children}
-          <Analytics />
-        </NextIntlClientProvider>
-      </body>
-    </html>
-  )
+  return children
 }
