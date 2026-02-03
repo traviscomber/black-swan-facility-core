@@ -26,9 +26,11 @@ import { PageHeader } from "@/components/page-header"
 import { EnergyPasswordGuard } from "@/components/energy-password-guard"
 import { createBrowserClient } from "@/lib/supabase/client"
 import { format } from "date-fns"
+import { useLanguage } from "@/lib/language-context"
 
 export default function EnergyDashboard() {
   const router = useRouter()
+  const { t } = useLanguage()
   const [timeRange, setTimeRange] = useState<"day" | "week" | "month" | "year">("day")
   const [selectedBuilding, setSelectedBuilding] = useState<"all" | "prairie1" | "prairie2" | "prairie3">("all")
   const [dailyProductionData, setDailyProductionData] = useState<any[]>([])
@@ -88,7 +90,7 @@ export default function EnergyDashboard() {
     <EnergyPasswordGuard>
       <AppLayout>
         <div className="space-y-6 p-4 sm:p-6">
-          <PageHeader title="Off Grid Energy Monitoring" description="Real-time analytics and performance tracking" />
+          <PageHeader title={t("energy.dashboard_title")} description={t("energy.dashboard_description")} />
           <div className="min-h-screen bg-background">
             <div className="sticky top-0 z-50 bg-background border-b border-border p-4 md:p-6">
               <div className="flex items-center gap-4">
@@ -101,8 +103,8 @@ export default function EnergyDashboard() {
                   <ArrowLeft className="w-5 h-5" />
                 </Button>
                 <div>
-                  <h1 className="text-xl md:text-2xl font-bold text-foreground">Off Grid Energy Monitoring</h1>
-                  <p className="text-sm text-muted-foreground">Real-time analytics and performance tracking</p>
+                  <h1 className="text-xl md:text-2xl font-bold text-foreground">{t("energy.dashboard_title")}</h1>
+                  <p className="text-sm text-muted-foreground">{t("energy.dashboard_description")}</p>
                 </div>
               </div>
             </div>
@@ -132,12 +134,12 @@ export default function EnergyDashboard() {
                     <CardHeader className="pb-2">
                       <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
                         <Sun className="w-4 h-4" />
-                        Production
+                        {t("energy.production")}
                       </CardTitle>
                     </CardHeader>
                     <CardContent>
                       <div className="text-2xl font-bold text-foreground">{stats.currentProduction} kW</div>
-                      <p className="text-xs text-muted-foreground mt-1">Current output</p>
+                      <p className="text-xs text-muted-foreground mt-1">{t("energy.current_output")}</p>
                     </CardContent>
                   </Card>
 
@@ -145,7 +147,7 @@ export default function EnergyDashboard() {
                     <CardHeader className="pb-2">
                       <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
                         <Zap className="w-4 h-4" />
-                        Consumption
+                        {t("energy.consumption")}
                       </CardTitle>
                     </CardHeader>
                     <CardContent>

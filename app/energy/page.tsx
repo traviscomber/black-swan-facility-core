@@ -36,6 +36,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
 import { AppLayout } from "@/components/app-layout"
 import { PageHeader } from "@/components/page-header"
+import { useLanguage } from "@/lib/language-context"
 
 interface SolarPanel {
   id: string
@@ -100,6 +101,7 @@ export default function EnergyManagementPage() {
   const [loading, setLoading] = useState(true)
 
   const [selectedBuilding, setSelectedBuilding] = useState<string>("all")
+  const { t } = useLanguage()
   const filteredPanels =
     selectedBuilding === "all" ? solarPanels : solarPanels.filter((p) => p.building === selectedBuilding)
   const buildingsList = ["Prairie House 1", "Prairie House 2", "Prairie House 3"]
@@ -392,7 +394,7 @@ export default function EnergyManagementPage() {
       <EnergyPasswordGuard>
         <AppLayout>
           <div className="flex items-center justify-center min-h-screen">
-            <p className="text-muted-foreground">Loading energy data...</p>
+            <p className="text-muted-foreground">{t("energy.loading")}</p>
           </div>
         </AppLayout>
       </EnergyPasswordGuard>
@@ -404,8 +406,8 @@ export default function EnergyManagementPage() {
       <AppLayout>
         <div className="space-y-6">
           <PageHeader
-            title="Off Grid Energy"
-            description="Track solar panels, batteries, and Victron equipment for off-grid power systems"
+            title={t("energy.title")}
+            description={t("energy.description")}
             icon={Zap}
           />
 
