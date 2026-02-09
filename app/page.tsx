@@ -214,7 +214,7 @@ export default function Dashboard() {
           {/* Quick Actions */}
           <div className="mt-8">
             <h2 className="text-lg font-semibold mb-4">{t("dashboard.quick_actions")}</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-4">
               {quickActions.map((action) => {
                 const Icon = action.icon
                 return (
@@ -223,16 +223,16 @@ export default function Dashboard() {
                     href={action.href}
                     className="group relative overflow-hidden rounded-lg border border-secondary bg-secondary/20 p-6 hover:bg-secondary/30 hover:border-primary/50 transition-all duration-300"
                   >
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <h3 className="font-semibold text-base text-foreground mb-2">
+                    <div className="flex flex-col h-full">
+                      <div className="flex items-start justify-between gap-4 mb-3">
+                        <h3 className="font-semibold text-base text-foreground leading-tight">
                           {t(action.titleKey)}
                         </h3>
-                        <p className="text-sm text-gray-400">
-                          {t(action.descKey)}
-                        </p>
+                        <Icon className="h-5 w-5 text-primary/60 group-hover:text-primary transition-colors flex-shrink-0" />
                       </div>
-                      <Icon className="h-6 w-6 text-primary/60 group-hover:text-primary transition-colors flex-shrink-0 ml-4" />
+                      <p className="text-sm text-gray-400 line-clamp-2">
+                        {t(action.descKey)}
+                      </p>
                     </div>
                   </Link>
                 )
