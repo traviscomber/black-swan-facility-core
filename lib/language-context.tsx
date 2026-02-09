@@ -1133,8 +1133,15 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
 
   const t = (key: string): string => {
     const currentLang = translations[language]
-    if (!currentLang) return key
-    return (currentLang as Record<string, string>)[key] || key
+    if (!currentLang) {
+      console.log("[v0] Language not found:", language)
+      return key
+    }
+    const value = (currentLang as Record<string, string>)[key]
+    if (!value) {
+      console.log("[v0] Translation key not found:", key, "in language:", language)
+    }
+    return value || key
   }
 
   return (
