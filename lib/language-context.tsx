@@ -1079,8 +1079,6 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
     return translations[language][key as keyof typeof translations['en']] || key
   }
 
-  if (!mounted) return null
-
   return (
     <LanguageContext.Provider value={{ language, setLanguage: handleSetLanguage, t }}>
       {children}
