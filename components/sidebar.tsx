@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 
-import { LayoutDashboard, Calendar, Receipt, ClipboardList, Crown, Brain, TrendingUp, Beef, Box, Package, Wrench, Anchor, Zap, FileText, Lightbulb, Code, Users, Heart, MessageSquare, Tablet, ChefHat, CheckSquare, AlertCircle, Bot, Settings, X, ChevronDown, HelpCircle, Map, Fuel, Building } from "lucide-react"
+import { LayoutDashboard, Calendar, Receipt, ClipboardList, Crown, Brain, TrendingUp, Beef, Box, Package, Wrench, Anchor, Zap, FileText, Lightbulb, Code, Users, Heart, MessageSquare, Tablet, ChefHat, CheckSquare, AlertCircle, Bot, Settings, X, ChevronDown, HelpCircle, Map, Fuel, Building, Leaf } from "lucide-react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
@@ -80,6 +80,20 @@ const navigationGroups = [
         icon: Code,
         tipKey: "nav.integration_docs_tip",
       },
+    ],
+  },
+  {
+    labelKey: "nav.orchard_farm",
+    descKey: "nav.orchard_farm_desc",
+    items: [
+      { nameKey: "nav.orchard_dashboard", href: "/orchard", icon: Leaf, tipKey: "nav.orchard_dashboard_tip" },
+      { nameKey: "nav.orchard_crops", href: "/orchard/crops", icon: Box, tipKey: "nav.orchard_crops_tip" },
+      { nameKey: "nav.orchard_care", href: "/orchard/care", icon: Heart, tipKey: "nav.orchard_care_tip" },
+      { nameKey: "nav.orchard_harvest", href: "/orchard/harvest", icon: TrendingUp, tipKey: "nav.orchard_harvest_tip" },
+      { nameKey: "nav.orchard_pests", href: "/orchard/pests", icon: AlertCircle, tipKey: "nav.orchard_pests_tip" },
+      { nameKey: "nav.orchard_soil", href: "/orchard/soil", icon: Box, tipKey: "nav.orchard_soil_tip" },
+      { nameKey: "nav.orchard_equipment", href: "/orchard/equipment", icon: Wrench, tipKey: "nav.orchard_equipment_tip" },
+      { nameKey: "nav.orchard_analytics", href: "/orchard/analytics", icon: TrendingUp, tipKey: "nav.orchard_analytics_tip" },
     ],
   },
   {
