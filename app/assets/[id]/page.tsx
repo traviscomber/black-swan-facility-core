@@ -1,5 +1,3 @@
-"use client"
-
 import { AppLayout } from "@/components/app-layout"
 import { PageHeader } from "@/components/page-header"
 import { Button } from "@/components/ui/button"
@@ -11,8 +9,7 @@ import { notFound } from "next/navigation"
 import { AlertTriangle, FileText, MapPin, Calendar } from "lucide-react"
 import Link from "next/link"
 import QRCode from "react-qr-code"
-import { useLanguage } from "@/lib/language-context"
-import { useEffect, useState } from "react"
+import { useTranslation } from "next-i18next"
 
 function formatDate(dateString: string) {
   return new Date(dateString).toLocaleDateString("en-US", {
@@ -24,11 +21,10 @@ function formatDate(dateString: string) {
   })
 }
 
-const t = (key: string) => key; // Placeholder for translation function
-
 export default async function AssetDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
   const supabase = await createClient()
+  const { t } = useTranslation("common")
 
   const { data: asset } = await supabase.from("assets").select("*").eq("id", id).single()
 
