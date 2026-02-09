@@ -161,6 +161,14 @@ const translations = {
     'dashboard.active_reservations': 'Active Reservations',
     'dashboard.active_reservations_desc': 'Current bookings',
     'dashboard.quick_actions': 'Quick Actions',
+    'dashboard.todays_checkouts': 'Today\'s Checkouts',
+    'dashboard.todays_checkouts_desc': 'Guests checking out today',
+    'dashboard.booking_calendar': 'Booking Calendar',
+    'dashboard.booking_calendar_desc': 'View and manage your calendar',
+    'dashboard.property_management': 'Property Management',
+    'dashboard.property_management_desc': 'Manage property details and settings',
+    'dashboard.analytics': 'Analytics',
+    'dashboard.analytics_desc': 'View performance metrics and insights',
     
     // Facilities
     'facilities.title': 'Property Locations',
@@ -683,6 +691,14 @@ const translations = {
     'dashboard.active_reservations': 'Reservas Activas',
     'dashboard.active_reservations_desc': 'Reservaciones actuales',
     'dashboard.quick_actions': 'Acciones Rápidas',
+    'dashboard.todays_checkouts': 'Check-outs de Hoy',
+    'dashboard.todays_checkouts_desc': 'Huéspedes que se van hoy',
+    'dashboard.booking_calendar': 'Calendario de Reservas',
+    'dashboard.booking_calendar_desc': 'Ver y gestionar tu calendario',
+    'dashboard.property_management': 'Gestión de Propiedades',
+    'dashboard.property_management_desc': 'Gestiona detalles y configuración de propiedades',
+    'dashboard.analytics': 'Análisis',
+    'dashboard.analytics_desc': 'Ver métricas de rendimiento e insights',
     
     // Facilities
     'facilities.title': 'Ubicaciones de Propiedades',
@@ -1076,7 +1092,9 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
   }
 
   const t = (key: string): string => {
-    return translations[language][key as keyof typeof translations['en']] || key
+    const currentLang = translations[language]
+    if (!currentLang) return key
+    return (currentLang as Record<string, string>)[key] || key
   }
 
   return (
