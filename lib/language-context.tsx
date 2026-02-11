@@ -1,14 +1,10 @@
-import React, { createContext, useContext } from 'react'
+export type Language = 'en' | 'es'
 
-type Language = 'en' | 'es'
-
-interface LanguageContextType {
+export interface LanguageContextType {
   language: Language
   setLanguage: (lang: Language) => void
   t: (key: string) => string
 }
-
-export const LanguageContext = createContext<LanguageContextType | undefined>(undefined)
 
 export const translations = {
   en: {
@@ -1112,13 +1108,9 @@ export const translations = {
   }
 }
 
-export function useLanguage() {
-  const context = useContext(LanguageContext)
-  if (!context) {
-    throw new Error('useLanguage must be used within LanguageProvider')
-  }
-  return context
-}
-
 // Re-export LanguageProvider from language-provider for compatibility
 export { LanguageProvider } from './language-provider'
+// Re-export useLanguage and LanguageContext from client file
+export { useLanguage } from './language-context-client'
+export type { LanguageContextType } from './language-context-client'
+export { LanguageContext } from './language-context-client'

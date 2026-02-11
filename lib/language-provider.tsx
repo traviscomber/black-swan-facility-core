@@ -1,7 +1,8 @@
 'use client'
 
 import { useState, useEffect, type ReactNode } from 'react'
-import { LanguageContext, type Language, translations } from './language-context'
+import { LanguageContext, type Language } from './language-context-client'
+import { translations } from './language-context'
 
 export function LanguageProvider({ children }: { children: ReactNode }) {
   const [language, setLanguage] = useState<Language>('en')
