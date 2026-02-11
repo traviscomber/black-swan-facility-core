@@ -7,7 +7,7 @@ import { createBrowserClient } from "@/lib/supabase/client"
 import type { Asset } from "@/lib/types"
 import { useEffect, useState } from "react"
 import { AlertCircle, CheckCircle, Clock, Zap } from "lucide-react"
-import { useLanguage } from "@/lib/language-context"
+import { useLanguage } from "@/lib/language-context-client"
 
 export default function AssetsAnalyticsPage() {
   const [assets, setAssets] = useState<Asset[]>([])

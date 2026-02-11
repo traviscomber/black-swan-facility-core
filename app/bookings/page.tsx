@@ -13,7 +13,7 @@ import { GuestHistoryModal } from "@/components/guest-history-modal"
 import { ReservationConfirmationModal } from "@/components/reservation-confirmation-modal"
 import { DailySummaryModal } from "@/components/daily-summary-modal"
 import { useToast } from "@/hooks/use-toast"
-import { useLanguage } from "@/lib/language-context"
+import { useLanguage } from "@/lib/language-context-client"
 
 interface Location {
   id: string

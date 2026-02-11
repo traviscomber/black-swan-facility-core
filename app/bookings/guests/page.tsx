@@ -11,7 +11,7 @@ import { AddGuestDialog } from "@/components/add-guest-dialog"
 import { EditGuestDialog } from "@/components/edit-guest-dialog"
 import { format } from "date-fns"
 import { AppLayout } from "@/components/app-layout"
-import { useLanguage } from "@/lib/language-context"
+import { useLanguage } from "@/lib/language-context-client"
 
 interface Guest {
   id: string

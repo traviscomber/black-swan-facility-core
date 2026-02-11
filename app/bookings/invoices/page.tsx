@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge"
 import { Plus, Edit, Trash2, Eye } from "lucide-react"
 import { format } from "date-fns"
 import { InvoiceEditorModal } from "@/components/invoice-editor-modal"
-import { useLanguage } from "@/lib/language-context"
+import { useLanguage } from "@/lib/language-context-client"
 import { AppLayout } from "@/components/app-layout"
 
 interface Invoice {

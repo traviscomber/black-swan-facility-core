@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Plus, Heart, Droplet, Cloud, Thermometer } from "lucide-react"
 import { createBrowserClient } from "@/lib/supabase/client"
-import { useLanguage } from "@/lib/language-context"
+import { useLanguage } from "@/lib/language-context-client"
 
 interface CareLog {
   id: string

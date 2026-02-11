@@ -14,7 +14,7 @@ import { EditAssetDialog } from "@/components/edit-asset-dialog"
 import { DeleteAssetButton } from "@/components/delete-asset-button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { useLanguage } from "@/lib/language-context"
+import { useLanguage } from "@/lib/language-context-client"
 
 export default function AssetsPage() {
   const [assets, setAssets] = useState<Asset[]>([])
