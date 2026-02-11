@@ -1,4 +1,4 @@
-'use client'
+'use client';
 
 import React, { createContext, useContext, useState, useEffect } from 'react'
 
@@ -1113,6 +1113,8 @@ const translations = {
     'orchard.harvested': 'Cosechado',
   }
 }
+
+'use client'
 
 export function LanguageProvider({ children }: { children: React.ReactNode }) {
   const [language, setLanguage] = useState<Language>('en')
