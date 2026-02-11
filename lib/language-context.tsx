@@ -1107,8 +1107,3 @@ export const translations = {
     'orchard.harvested': 'Cosechado',
   }
 }
-
-// Re-export LanguageProvider from language-provider for compatibility
-export { LanguageProvider } from './language-provider'
-// Only re-export types, not values from client file
-export type { LanguageContextType } from './language-context-client'
