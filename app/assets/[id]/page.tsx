@@ -9,7 +9,7 @@ import { notFound } from "next/navigation"
 import { AlertTriangle, FileText, MapPin, Calendar } from "lucide-react"
 import Link from "next/link"
 import QRCode from "react-qr-code"
-import { useTranslation } from "next-i18next"
+import { useTranslation } from "react-i18next"
 
 function formatDate(dateString: string) {
   return new Date(dateString).toLocaleDateString("en-US", {
@@ -21,10 +21,10 @@ function formatDate(dateString: string) {
   })
 }
 
-export default async function AssetDetailPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params
+export default async function AssetDetailPage({ params }: { params: { id: string } }) {
+  const { id } = params
   const supabase = await createClient()
-  const { t } = useTranslation("common")
+  const { t } = useTranslation()
 
   const { data: asset } = await supabase.from("assets").select("*").eq("id", id).single()
 
@@ -58,7 +58,7 @@ export default async function AssetDetailPage({ params }: { params: Promise<{ id
                       {asset.name}
                       {asset.is_critical && (
                         <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">
-                          {t("assets.critical")}
+                          Critical
                         </Badge>
                       )}
                     </CardTitle>
@@ -69,16 +69,16 @@ export default async function AssetDetailPage({ params }: { params: Promise<{ id
               <CardContent>
                 <div className="grid gap-4 md:grid-cols-2">
                   <div>
-                    <p className="text-sm font-medium text-gray-700">{t("assets.type_label")}</p>
+                    <p className="text-sm font-medium text-gray-700">Type</p>
                     <p className="mt-1 text-sm text-gray-900">{asset.type}</p>
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-gray-700">{t("assets.location")}</p>
-                    <p className="mt-1 text-sm text-gray-900">{asset.location || t("assets.not_specified")}</p>
+                    <p className="text-sm font-medium text-gray-700">Location</p>
+                    <p className="mt-1 text-sm text-gray-900">{asset.location || "Not specified"}</p>
                   </div>
                   {asset.latitude && asset.longitude && (
                     <div className="md:col-span-2">
-                      <p className="text-sm font-medium text-gray-700">{t("assets.coordinates")}</p>
+                      <p className="text-sm font-medium text-gray-700">Coordinates</p>
                       <p className="mt-1 text-sm text-gray-900">
                         {asset.latitude}, {asset.longitude}
                       </p>
@@ -91,8 +91,8 @@ export default async function AssetDetailPage({ params }: { params: Promise<{ id
             {/* Activity Timeline */}
             <Card>
               <CardHeader>
-                <CardTitle>{t("assets.activity_timeline")}</CardTitle>
-                <CardDescription>{t("assets.maintenance_logs")}</CardDescription>
+                <CardTitle>Activity Timeline</CardTitle>
+                <CardDescription>Maintenance logs and history</CardDescription>
               </CardHeader>
               <CardContent>
                 {logs && logs.length > 0 ? (
@@ -114,7 +114,10 @@ export default async function AssetDetailPage({ params }: { params: Promise<{ id
                     ))}
                   </div>
                 ) : (
-                  <p className="text-sm text-gray-500">{t("assets.no_activity")}</p>
+                  <div className="text-center py-8">
+                    <Calendar className="w-12 h-12 mx-auto text-gray-300 mb-3" />
+                    <p className="text-sm text-gray-500">No activity recorded</p>
+                  </div>
                 )}
               </CardContent>
             </Card>
@@ -122,18 +125,29 @@ export default async function AssetDetailPage({ params }: { params: Promise<{ id
 
           {/* Sidebar */}
           <div className="space-y-6">
-            {/* Quick Actions */}
             <Card>
               <CardHeader>
-                <CardTitle>{t("assets.quick_actions")}</CardTitle>
+                <CardTitle>Quick Actions</CardTitle>
               </CardHeader>
               <CardContent className="space-y-2">
-                <Link href={`/issues/report?asset=${id}`}>
-                  <Button variant="outline" className="w-full justify-start bg-transparent">
-                    <AlertTriangle className="mr-2 h-4 w-4" />
-                    {t("assets.report_issue")}
-                  </Button>
-                </Link>
+                <Button variant="outline" className="w-full justify-start gap-2 bg-transparent" asChild>
+                  <Link href={`/assets/${id}/report`}>
+                    <AlertTriangle className="w-4 h-4" />
+                    Report Issue
+                  </Link>
+                </Button>
+                <Button variant="outline" className="w-full justify-start gap-2 bg-transparent" asChild>
+                  <Link href={`/assets/${id}/log`}>
+                    <FileText className="w-4 h-4" />
+                    Add Log
+                  </Link>
+                </Button>
+                <Button variant="outline" className="w-full justify-start gap-2 bg-transparent" asChild>
+                  <a href={`${asset.documentation_url || "#"}`} target="_blank" rel="noopener noreferrer">
+                    <FileText className="w-4 h-4" />
+                    View Manual
+                  </a>
+                </Button>
                 <Button variant="outline" className="w-full justify-start bg-transparent">
                   <Calendar className="mr-2 h-4 w-4" />
                   {t("assets.add_log")}
