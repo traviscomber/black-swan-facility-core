@@ -63,8 +63,6 @@ export default function BookingManagement() {
   const supabase = createClient()
   const { toast } = useToast()
   const { t } = useLanguage()
-
-  const [viewMode, setViewMode] = useState<"single" | "multi">("multi")
   const [locations, setLocations] = useState<Location[]>([])
   const [beds, setBeds] = useState<Bed[]>([])
   const [reservations, setReservations] = useState<Reservation[]>([])
@@ -88,8 +86,9 @@ export default function BookingManagement() {
     vip_status: boolean
   }>({ name: "", email: "", phone: "", vip_status: false })
 
-  const [dailySummaryOpen, setDailySummaryOpen] = useState(false)
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear()) // Declare setSelectedYear variable
+  const [viewMode, setViewMode] = useState("multi") // Declare viewMode variable
+  const [dailySummaryOpen, setDailySummaryOpen] = useState(false) // Declare dailySummaryOpen variable
 
   const [singlePropertyDateRange] = useState(365) // Added full-year date range for single property view
   const dateRange = viewMode === "single" ? singlePropertyDateRange : 14 // Use 365 days for single property, 14 for multi
@@ -97,7 +96,6 @@ export default function BookingManagement() {
   const today = new Date() // Get today's date for highlighting
 
   useEffect(() => {
-    console.log("[v0] Dashboard component rendering")
     fetchData()
 
     const bedsSubscription = supabase
@@ -110,7 +108,6 @@ export default function BookingManagement() {
       .on("postgres_changes", { event: "*", schema: "public", table: "reservations" }, fetchData)
       .subscribe()
 
-    console.log("[v0] Dashboard mounted successfully")
     return () => {
       bedsSubscription.unsubscribe()
       reservationsSubscription.unsubscribe()
@@ -121,7 +118,6 @@ export default function BookingManagement() {
     try {
       setLoading(true)
 
-      console.log("[v0] Fetching locations...")
       // Fetch all locations
       const { data: locationsData, error: locationsError } = await supabase
         .from("locations")
@@ -129,7 +125,6 @@ export default function BookingManagement() {
         .eq("is_active", true)
 
       if (locationsError) throw locationsError
-      console.log("[v0] Locations fetched:", locationsData)
       setLocations(locationsData || [])
 
       // Set first location as selected if not already set
