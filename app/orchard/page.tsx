@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Plus, Leaf, Droplet, Sun, TrendingUp, Trash2, Pencil } from "lucide-react"
 import { createBrowserClient } from "@/lib/supabase/client"
-import { useLanguage } from "@/lib/language-context"
+import { useLanguage } from "@/lib/language-context-client"
 
 interface Plot {
   id: string
