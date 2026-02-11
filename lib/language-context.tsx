@@ -1110,7 +1110,6 @@ export const translations = {
 
 // Re-export LanguageProvider from language-provider for compatibility
 export { LanguageProvider } from './language-provider'
-// Re-export useLanguage and LanguageContext from client file
-export { useLanguage } from './language-context-client'
+// Only re-export types and client-side exports
 export type { LanguageContextType } from './language-context-client'
-export { LanguageContext } from './language-context-client'
+export { useLanguage } from './language-context-client'
