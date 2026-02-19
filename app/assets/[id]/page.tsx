@@ -6,10 +6,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { createClient } from "@/lib/supabase/server"
 import type { AssetLog } from "@/lib/types"
 import { notFound } from "next/navigation"
-import { AlertTriangle, FileText, MapPin, Calendar } from "lucide-react"
+import { AlertTriangle, FileText, MapIn, Calendar } from "lucide-react"
 import Link from "next/link"
 import QRCode from "react-qr-code"
-import { useTranslation } from "react-i18next"
 
 function formatDate(dateString: string) {
   return new Date(dateString).toLocaleDateString("en-US", {
@@ -24,7 +23,6 @@ function formatDate(dateString: string) {
 export default async function AssetDetailPage({ params }: { params: { id: string } }) {
   const { id } = params
   const supabase = await createClient()
-  const { t } = useTranslation()
 
   const { data: asset } = await supabase.from("assets").select("*").eq("id", id).single()
 

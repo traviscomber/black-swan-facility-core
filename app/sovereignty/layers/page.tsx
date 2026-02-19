@@ -22,7 +22,7 @@ import {
   Target,
   ChevronDown,
 } from "lucide-react"
-import { useLanguage } from "@/lib/use-language"
+import { useLanguage } from "@/lib/hooks/use-language"
 
 interface Layer {
   id: string

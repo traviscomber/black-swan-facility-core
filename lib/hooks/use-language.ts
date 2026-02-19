@@ -1,6 +1,7 @@
 'use client'
 
-import { createContext, useContext, type Language, type ReactNode } from 'react'
+import { createContext, useContext } from 'react'
+import type { Language } from '../language-context'
 
 export type LanguageContextType = {
   language: Language

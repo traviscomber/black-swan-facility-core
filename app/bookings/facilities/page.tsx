@@ -20,7 +20,7 @@ import {
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { AppLayout } from "@/components/app-layout"
-import { useLanguage } from "@/lib/use-language"
+import { useLanguage } from "@/lib/hooks/use-language"
 
 const FACILITY_COLORS = [
   { bg: "bg-red-200", border: "border-l-4 border-red-400", text: "text-red-900" },

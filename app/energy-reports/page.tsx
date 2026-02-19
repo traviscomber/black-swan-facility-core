@@ -10,7 +10,7 @@ import { Download, Filter, Calendar } from "lucide-react"
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Legend, ResponsiveContainer } from "recharts"
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
 import { createBrowserClient } from "@/lib/supabase/client"
-import { useLanguage } from "@/lib/use-language"
+import { useLanguage } from "@/lib/hooks/use-language"
 
 export default function EnergyReports() {
   const [reportType, setReportType] = useState<"monthly" | "building" | "system">("monthly")

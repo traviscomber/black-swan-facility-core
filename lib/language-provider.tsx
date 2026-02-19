@@ -2,7 +2,7 @@
 
 import { useState, useEffect, type ReactNode } from 'react'
 import { translations, type Language } from './language-context'
-import { LanguageContext } from './use-language'
+import { LanguageContext, type LanguageContextType } from './hooks/use-language'
 
 export function LanguageProvider({ children }: { children: ReactNode }) {
   const [language, setLanguage] = useState<Language>('en')

@@ -7,7 +7,7 @@ import { AppLayout } from "@/components/app-layout"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { createBrowserClient } from "@/lib/supabase/client"
-import { useLanguage } from "@/lib/use-language"
+import { useLanguage } from "@/lib/hooks/use-language"
 import { format } from "date-fns"
 
 interface DashboardMetrics {
