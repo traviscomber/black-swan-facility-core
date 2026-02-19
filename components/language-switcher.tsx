@@ -1,6 +1,6 @@
 'use client'
 
-import { useLanguage } from '@/lib/language-provider'
+import { useLanguage } from '@/lib/use-language'
 import { Button } from '@/components/ui/button'
 import { useEffect, useState } from 'react'
 
