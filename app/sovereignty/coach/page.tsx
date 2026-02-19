@@ -10,7 +10,7 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { Loader2, Send, Lightbulb, Crown } from "lucide-react"
 import { useRef, useEffect, useState } from "react"
 import { AppLayout } from "@/components/app-layout"
-import { useLanguage } from "@/lib/language-context-client"
+import { useLanguage } from "@/lib/language-provider"
 import Link from "next/link"
 
 export default function SovereigntyCoach() {

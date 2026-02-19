@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Plus, Zap, AlertTriangle } from "lucide-react"
 import { createBrowserClient } from "@/lib/supabase/client"
-import { useLanguage } from "@/lib/language-context-client"
+import { useLanguage } from "@/lib/language-provider"
 
 interface PestLog {
   id: string

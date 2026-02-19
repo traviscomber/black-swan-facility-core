@@ -20,7 +20,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { AppLayout } from "@/components/app-layout"
-import { useLanguage } from "@/lib/language-context-client"
+import { useLanguage } from "@/lib/language-provider"
 
 const FACILITY_COLORS = [
   { bg: "bg-red-200", border: "border-l-4 border-red-400", text: "text-red-900" },

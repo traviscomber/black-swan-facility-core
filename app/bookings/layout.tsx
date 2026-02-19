@@ -4,7 +4,7 @@ import type React from "react"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useRouter, usePathname } from "next/navigation"
 import { Calendar, Users, TrendingUp, Home, MapPin } from "lucide-react"
-import { useLanguage } from "@/lib/language-context-client"
+import { useLanguage } from "@/lib/language-provider"
 
 export default function BookingsLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter()
