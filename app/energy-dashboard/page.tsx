@@ -26,7 +26,7 @@ import { PageHeader } from "@/components/page-header"
 import { EnergyPasswordGuard } from "@/components/energy-password-guard"
 import { createBrowserClient } from "@/lib/supabase/client"
 import { format } from "date-fns"
-import { useLanguage } from "@/lib/language-provider"
+import { useLanguage } from "@/lib/use-language"
 
 export default function EnergyDashboard() {
   const router = useRouter()

@@ -6,7 +6,7 @@ import { PageHeader } from "@/components/page-header"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { TrendingUp, BarChart3, PieChart, Activity } from "lucide-react"
 import { createBrowserClient } from "@/lib/supabase/client"
-import { useLanguage } from "@/lib/language-provider"
+import { useLanguage } from "@/lib/use-language"
 
 interface AnalyticsData {
   totalCrops: number

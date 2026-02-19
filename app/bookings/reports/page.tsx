@@ -19,7 +19,7 @@ import {
 } from "lucide-react"
 import { format, startOfMonth, endOfMonth, subMonths } from "date-fns"
 import { AppLayout } from "@/components/app-layout"
-import { useLanguage } from "@/lib/language-provider"
+import { useLanguage } from "@/lib/use-language"
 
 interface Statistics {
   totalRevenue: number
