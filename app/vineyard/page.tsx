@@ -12,6 +12,7 @@ import { ExcelImport } from "@/components/vineyard/excel-import"
 import { ExcelParseResult } from "@/lib/vineyard/excel-parser"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import Link from "next/link"
+import { AddPlotDialog } from "@/components/vineyard/add-plot-dialog"
 
 interface VineyardPlot {
   id: string
@@ -88,10 +89,7 @@ export default function VineyardPage() {
                 <Droplet className="mr-2 h-4 w-4" />
                 {t("vineyard.care_logs") || "Care Logs"}
               </Button>
-              <Button>
-                <Plus className="mr-2 h-4 w-4" />
-                {t("vineyard.add_plot") || "Add Plot"}
-              </Button>
+              <AddPlotDialog onPlotAdded={fetchPlots} />
             </div>
           }
         />
