@@ -59,7 +59,7 @@ export default function OrchardHarvestPage() {
   }
 
   const getCropName = (cropId: string) => {
-    return crops.find((c) => c.id === cropId)?.crop_name || "Unknown"
+    return crops.find((c) => c.id === cropId)?.crop_name || t("orchard.unknown")
   }
 
   const getQualityColor = (rating: number) => {
@@ -101,7 +101,7 @@ export default function OrchardHarvestPage() {
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
                 <TrendingUp className="h-4 w-4" />
-                Total Harvests
+                {t("orchard.harvest_records")}
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -111,11 +111,11 @@ export default function OrchardHarvestPage() {
 
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Total Yield</CardTitle>
+              <CardTitle className="text-sm font-medium text-muted-foreground">{t("orchard.total_yield")}</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-3xl font-bold">{totalYield.toFixed(1)}</div>
-              <p className="text-xs text-muted-foreground">kg</p>
+              <p className="text-xs text-muted-foreground">{t("orchard.unit_kg")}</p>
             </CardContent>
           </Card>
 
@@ -146,7 +146,7 @@ export default function OrchardHarvestPage() {
           <CardContent>
             {harvests.length === 0 ? (
               <div className="text-center py-8">
-                <p className="text-muted-foreground">No harvest records found</p>
+                <p className="text-muted-foreground">{t("orchard.no_data")}</p>
               </div>
             ) : (
               <div className="space-y-3">

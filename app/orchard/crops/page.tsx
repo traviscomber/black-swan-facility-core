@@ -124,7 +124,7 @@ export default function OrchardCropsPage() {
   }
 
   const getPlotName = (plotId: string) => {
-    return plots.find((p) => p.id === plotId)?.name || "Unknown Plot"
+    return plots.find((p) => p.id === plotId)?.name || t("orchard.unknown")
   }
 
   const daysUntilHarvest = (expectedDate: string) => {
@@ -231,24 +231,24 @@ export default function OrchardCropsPage() {
                 icon={<Search className="h-4 w-4" />}
               />
             </div>
-            <Select value={filterStatus} onValueChange={setFilterStatus}>
-              <SelectTrigger className="bg-background">
-                <SelectValue placeholder="Filter by status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Status</SelectItem>
+              <Select value={filterStatus} onValueChange={setFilterStatus}>
+                <SelectTrigger className="w-[200px]">
+                  <SelectValue placeholder={t("orchard.filter_by_status")} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">{t("orchard.all_status")}</SelectItem>
                 <SelectItem value="seedling">Seedling</SelectItem>
                 <SelectItem value="growing">Growing</SelectItem>
                 <SelectItem value="mature">Mature</SelectItem>
                 <SelectItem value="harvested">Harvested</SelectItem>
               </SelectContent>
             </Select>
-            <Select value={filterPlot} onValueChange={setFilterPlot}>
-              <SelectTrigger className="bg-background">
-                <SelectValue placeholder="Filter by plot" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Plots</SelectItem>
+              <Select value={filterPlot} onValueChange={setFilterPlot}>
+                <SelectTrigger className="w-[200px]">
+                  <SelectValue placeholder={t("orchard.filter_by_plot")} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">{t("orchard.all_plots")}</SelectItem>
                 {plots.map((plot) => (
                   <SelectItem key={plot.id} value={plot.id}>
                     {plot.name}

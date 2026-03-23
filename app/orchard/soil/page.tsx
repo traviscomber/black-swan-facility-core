@@ -60,7 +60,7 @@ export default function OrchardSoilPage() {
   }
 
   const getPlotName = (plotId: string) => {
-    return plots.find((p) => p.id === plotId)?.name || "Unknown"
+    return plots.find((p) => p.id === plotId)?.name || t("orchard.unknown")
   }
 
   const totalKg = amendments.reduce((sum, a) => sum + a.quantity_kg, 0)

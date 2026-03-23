@@ -61,7 +61,7 @@ export default function OrchardCarePage() {
   }
 
   const getCropName = (cropId: string) => {
-    return crops.find((c) => c.id === cropId)?.crop_name || "Unknown"
+    return crops.find((c) => c.id === cropId)?.crop_name || t("orchard.unknown")
   }
 
   const getActivityIcon = (type: string) => {
