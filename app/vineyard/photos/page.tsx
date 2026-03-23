@@ -8,7 +8,7 @@ import { Plus, Upload, Trash2, Download, Camera } from "lucide-react"
 import { createBrowserClient } from "@/lib/supabase/client"
 import { useLanguage } from "@/lib/hooks/use-language"
 import { PhotoPageUpload } from "@/components/vineyard/photo-page-upload"
-import { VinesGallery } from "@/components/vineyard/vines-gallery"
+import { StoragePhotosGallery } from "@/components/vineyard/storage-photos-gallery"
 import Link from "next/link"
 
 interface Vine {
@@ -153,24 +153,11 @@ export default function VinePhotosPage() {
         <CardHeader>
           <CardTitle>Galería de Fotos</CardTitle>
           <CardDescription>
-            Visualiza todas las fotos de las viñas
+            Todas las fotos subidas
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {vines.length === 0 ? (
-            <div className="text-center py-12">
-              <Camera className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-              <p className="text-muted-foreground mb-4">No hay viñas registradas</p>
-              <Link href="/vineyard/crops">
-                <Button>
-                  <Plus className="mr-2 h-4 w-4" />
-                  Registrar Viñas
-                </Button>
-              </Link>
-            </div>
-          ) : (
-            <VinesGallery vines={vines} onRefresh={fetchVines} />
-          )}
+          <StoragePhotosGallery />
         </CardContent>
       </Card>
     </div>
