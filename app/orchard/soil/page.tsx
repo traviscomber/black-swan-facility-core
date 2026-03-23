@@ -80,7 +80,7 @@ export default function OrchardSoilPage() {
       <div className="space-y-6">
         <PageHeader
           title={t("orchard.soil_amendments")}
-          description="Manage soil health and amendments"
+          description={t("orchard.soil_description")}
           actions={
             <Button>
               <Plus className="mr-2 h-4 w-4" />
@@ -93,7 +93,7 @@ export default function OrchardSoilPage() {
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">
-                Total Amendments
+                {t("orchard.total_amendments")}
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -104,19 +104,19 @@ export default function OrchardSoilPage() {
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">
-                Total Applied
+                {t("orchard.total_applied")}
               </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-3xl font-bold">{totalKg.toFixed(1)}</div>
-              <p className="text-xs text-muted-foreground">kg</p>
+              <p className="text-xs text-muted-foreground">{t("orchard.unit_kg")}</p>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">
-                Amendment Types
+                {t("orchard.amendment_types")}
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -130,12 +130,12 @@ export default function OrchardSoilPage() {
         <Card>
           <CardHeader>
             <CardTitle>{t("orchard.soil_amendments")}</CardTitle>
-            <CardDescription>Soil enhancement and fertilizer applications</CardDescription>
+            <CardDescription>{t("orchard.soil_enhancement")}</CardDescription>
           </CardHeader>
           <CardContent>
             {amendments.length === 0 ? (
               <div className="text-center py-8">
-                <p className="text-muted-foreground">No soil amendments recorded</p>
+                <p className="text-muted-foreground">{t("orchard.no_amendments")}</p>
               </div>
             ) : (
               <div className="space-y-3">

@@ -94,7 +94,7 @@ export default function OrchardPestsPage() {
       <div className="space-y-6">
         <PageHeader
           title={t("orchard.pest_logs")}
-          description="Monitor and track pests and diseases affecting your crops"
+          description={t("orchard.pest_description")}
           actions={
             <Button>
               <Plus className="mr-2 h-4 w-4" />
@@ -108,7 +108,7 @@ export default function OrchardPestsPage() {
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
                 <AlertTriangle className="h-4 w-4" />
-                Total Incidents
+                {t("orchard.total_incidents")}
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -118,7 +118,7 @@ export default function OrchardPestsPage() {
 
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">High Severity</CardTitle>
+              <CardTitle className="text-sm font-medium text-muted-foreground">{t("orchard.high_severity")}</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-3xl font-bold">
@@ -129,7 +129,7 @@ export default function OrchardPestsPage() {
 
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Treated</CardTitle>
+              <CardTitle className="text-sm font-medium text-muted-foreground">{t("orchard.treated")}</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-3xl font-bold">
@@ -140,7 +140,7 @@ export default function OrchardPestsPage() {
 
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Avg Effectiveness</CardTitle>
+              <CardTitle className="text-sm font-medium text-muted-foreground">{t("orchard.avg_effectiveness")}</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-3xl font-bold">

@@ -107,7 +107,7 @@ export default function OrchardAnalyticsPage() {
     return (
       <AppLayout>
         <div className="flex items-center justify-center min-h-screen">
-          <p className="text-muted-foreground">No analytics data available</p>
+          <p className="text-muted-foreground">{t("orchard.no_analytics_data")}</p>
         </div>
       </AppLayout>
     )
@@ -118,7 +118,7 @@ export default function OrchardAnalyticsPage() {
       <div className="space-y-6">
         <PageHeader
           title={t("orchard.yield_analytics")}
-          description="Comprehensive performance analysis and metrics"
+          description={t("orchard.comprehensive_analysis")}
         />
 
         {/* Main KPIs */}
@@ -127,13 +127,13 @@ export default function OrchardAnalyticsPage() {
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
                 <Activity className="h-4 w-4" />
-                Total Crops
+                {t("orchard.total_crops")}
               </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-3xl font-bold">{analytics.totalCrops}</div>
               <p className="text-xs text-muted-foreground mt-1">
-                {analytics.activeCrops} active
+                {analytics.activeCrops} {t("orchard.active")}
               </p>
             </CardContent>
           </Card>
@@ -142,12 +142,12 @@ export default function OrchardAnalyticsPage() {
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
                 <TrendingUp className="h-4 w-4" />
-                Total Yield
+                {t("orchard.total_yield")}
               </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-3xl font-bold">{analytics.totalYield.toFixed(1)}</div>
-              <p className="text-xs text-muted-foreground mt-1">kg</p>
+              <p className="text-xs text-muted-foreground mt-1">{t("orchard.unit_kg")}</p>
             </CardContent>
           </Card>
 

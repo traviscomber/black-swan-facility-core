@@ -78,7 +78,7 @@ export default function OrchardEquipmentPage() {
       <div className="space-y-6">
         <PageHeader
           title={t("orchard.equipment")}
-          description="Manage tools and equipment inventory"
+          description={t("orchard.equipment_description")}
           actions={
             <Button>
               <Plus className="mr-2 h-4 w-4" />
@@ -92,7 +92,7 @@ export default function OrchardEquipmentPage() {
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
                 <Wrench className="h-4 w-4" />
-                Total Equipment
+                {t("orchard.total_equipment")}
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -104,7 +104,7 @@ export default function OrchardEquipmentPage() {
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
                 <CheckCircle className="h-4 w-4" />
-                Active
+                {t("orchard.equipment_active")}
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -116,7 +116,7 @@ export default function OrchardEquipmentPage() {
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
                 <AlertCircle className="h-4 w-4" />
-                Needs Maintenance
+                {t("orchard.needs_maintenance_count")}
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -126,7 +126,7 @@ export default function OrchardEquipmentPage() {
 
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Equipment Types</CardTitle>
+              <CardTitle className="text-sm font-medium text-muted-foreground">{t("orchard.equipment_types")}</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-3xl font-bold">
@@ -139,12 +139,12 @@ export default function OrchardEquipmentPage() {
         <Card>
           <CardHeader>
             <CardTitle>{t("orchard.equipment")}</CardTitle>
-            <CardDescription>Garden tools and equipment inventory</CardDescription>
+            <CardDescription>{t("orchard.garden_tools")}</CardDescription>
           </CardHeader>
           <CardContent>
             {equipment.length === 0 ? (
               <div className="text-center py-8">
-                <p className="text-muted-foreground">No equipment records found</p>
+                <p className="text-muted-foreground">{t("orchard.no_equipment")}</p>
               </div>
             ) : (
               <div className="space-y-3">
