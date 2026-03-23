@@ -10,14 +10,17 @@ import { useLanguage } from '@/lib/hooks/use-language'
 
 interface Equipment {
   id: string
-  name: string
+  equipment_name: string
   equipment_type: string
   purchase_date: string
-  last_maintenance: string
-  next_maintenance: string
-  status: string
-  location: string
+  last_maintenance_date: string
+  next_maintenance_date: string
+  condition: string
+  storage_location: string
   notes: string
+  location_id: string
+  created_at: string
+  updated_at: string
 }
 
 export default function VineyardEquipmentPage() {
@@ -54,8 +57,8 @@ export default function VineyardEquipmentPage() {
     return 'bg-gray-100 text-gray-800'
   }
 
-  const operational = equipment.filter(e => e.status === 'operational').length
-  const needsMaintenance = equipment.filter(e => e.status === 'maintenance_needed').length
+  const operational = equipment.filter(e => e.condition === 'operational').length
+  const needsMaintenance = equipment.filter(e => e.condition === 'maintenance_needed').length
 
   return (
     <div className='space-y-6'>
@@ -130,27 +133,27 @@ export default function VineyardEquipmentPage() {
               <table className='w-full'>
                 <thead>
                   <tr className='border-b'>
-                    <th className='text-left py-3 px-4 font-semibold'>Name</th>
+                    <th className='text-left py-3 px-4 font-semibold'>Equipment Name</th>
                     <th className='text-left py-3 px-4 font-semibold'>Type</th>
-                    <th className='text-left py-3 px-4 font-semibold'>Status</th>
-                    <th className='text-left py-3 px-4 font-semibold'>Location</th>
-                    <th className='text-left py-3 px-4 font-semibold'>Last Service</th>
-                    <th className='text-left py-3 px-4 font-semibold'>Next Service</th>
+                    <th className='text-left py-3 px-4 font-semibold'>Condition</th>
+                    <th className='text-left py-3 px-4 font-semibold'>Storage Location</th>
+                    <th className='text-left py-3 px-4 font-semibold'>Last Maintenance</th>
+                    <th className='text-left py-3 px-4 font-semibold'>Next Maintenance</th>
                   </tr>
                 </thead>
                 <tbody>
                   {equipment.map(item => (
                     <tr key={item.id} className='border-b hover:bg-muted/50'>
-                      <td className='py-3 px-4'>{item.name}</td>
+                      <td className='py-3 px-4'>{item.equipment_name}</td>
                       <td className='py-3 px-4'>{item.equipment_type}</td>
                       <td className='py-3 px-4'>
-                        <span className={`px-2 py-1 rounded text-xs font-medium ${getStatusColor(item.status)}`}>
-                          {item.status}
+                        <span className={`px-2 py-1 rounded text-xs font-medium ${getStatusColor(item.condition)}`}>
+                          {item.condition}
                         </span>
                       </td>
-                      <td className='py-3 px-4'>{item.location}</td>
-                      <td className='py-3 px-4'>{item.last_maintenance || '-'}</td>
-                      <td className='py-3 px-4'>{item.next_maintenance || '-'}</td>
+                      <td className='py-3 px-4'>{item.storage_location}</td>
+                      <td className='py-3 px-4'>{item.last_maintenance_date || '-'}</td>
+                      <td className='py-3 px-4'>{item.next_maintenance_date || '-'}</td>
                     </tr>
                   ))}
                 </tbody>
