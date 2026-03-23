@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Plus, Upload, Trash2, Download, Camera } from "lucide-react"
 import { createBrowserClient } from "@/lib/supabase/client"
 import { useLanguage } from "@/lib/hooks/use-language"
-import { VinePhotoUpload } from "@/components/vineyard/vine-photo-upload"
+import { PhotoPageUpload } from "@/components/vineyard/photo-page-upload"
 import { VinesGallery } from "@/components/vineyard/vines-gallery"
 import Link from "next/link"
 
@@ -95,7 +95,7 @@ export default function VinePhotosPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <VinePhotoUpload 
+            <PhotoPageUpload
               onUploadComplete={() => {
                 setShowUpload(false)
                 fetchVines()
