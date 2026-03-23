@@ -244,6 +244,13 @@ export const translations = {
     'orchard.soil_amendments': 'Soil Amendments',
     'orchard.amendment_type': 'Amendment Type',
     'orchard.yield_analytics': 'Yield Analytics',
+    'orchard.status_active': 'Active',
+    'orchard.status_inactive': 'Inactive',
+    'orchard.status_paused': 'Paused',
+    'orchard.irrigation_drip': 'Drip Irrigation',
+    'orchard.irrigation_sprinkler': 'Sprinkler',
+    'orchard.irrigation_flood': 'Flood Irrigation',
+    'orchard.unit_kg': 'kg',
     
     // Assets Pages
     'assets.title': 'Asset Management',
@@ -750,6 +757,13 @@ export const translations = {
     'orchard.soil_amendments': 'Enmiendas del Suelo',
     'orchard.amendment_type': 'Tipo de Enmienda',
     'orchard.yield_analytics': 'Analítica de Rendimiento',
+    'orchard.status_active': 'Activa',
+    'orchard.status_inactive': 'Inactiva',
+    'orchard.status_paused': 'Pausada',
+    'orchard.irrigation_drip': 'Riego por Goteo',
+    'orchard.irrigation_sprinkler': 'Aspersor',
+    'orchard.irrigation_flood': 'Riego por Inundación',
+    'orchard.unit_kg': 'kg',
     
     // Assets Pages
     'assets.title': 'Gestión de Activos',

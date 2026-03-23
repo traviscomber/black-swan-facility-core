@@ -50,11 +50,18 @@ export default function OrchardFarmPage() {
     }
   }
 
-  const getPlotTypeLabel = (type: string) => {
-    if (type === "vegetable_garden") return t("orchard.vegetable_garden")
-    if (type === "herb_garden") return t("orchard.herb_garden")
-    if (type === "fruit_garden") return t("orchard.fruit_garden")
-    return type
+  const getStatusLabel = (status: string) => {
+    if (status === "active") return t("orchard.status_active")
+    if (status === "inactive") return t("orchard.status_inactive")
+    if (status === "paused") return t("orchard.status_paused")
+    return status
+  }
+
+  const getIrrigationLabel = (irrigation: string) => {
+    if (irrigation === "drip-irrigation" || irrigation === "drip") return t("orchard.irrigation_drip")
+    if (irrigation === "sprinkler") return t("orchard.irrigation_sprinkler")
+    if (irrigation === "flood-irrigation" || irrigation === "flood") return t("orchard.irrigation_flood")
+    return irrigation
   }
 
   const getStatusColor = (status: string) => {
@@ -147,7 +154,7 @@ export default function OrchardFarmPage() {
             </CardHeader>
             <CardContent>
               <div className="text-3xl font-bold">0</div>
-              <p className="text-xs text-muted-foreground mt-1">kg</p>
+              <p className="text-xs text-muted-foreground mt-1">{t("orchard.unit_kg")}</p>
             </CardContent>
           </Card>
         </div>
@@ -175,7 +182,7 @@ export default function OrchardFarmPage() {
                         <div className="flex items-center gap-2 mb-2">
                           <h3 className="font-semibold text-lg">{plot.name}</h3>
                           <Badge className={getStatusColor(plot.status)}>
-                            {plot.status}
+                            {getStatusLabel(plot.status)}
                           </Badge>
                         </div>
                         <p className="text-sm text-muted-foreground mb-3">
@@ -195,7 +202,7 @@ export default function OrchardFarmPage() {
                           </div>
                           <div>
                             <p className="text-muted-foreground">{t("orchard.irrigation")}</p>
-                            <p className="font-semibold text-xs">{plot.irrigation_type}</p>
+                            <p className="font-semibold text-xs">{getIrrigationLabel(plot.irrigation_type)}</p>
                           </div>
                           <div>
                             <p className="text-muted-foreground">{t("orchard.plot_size")}</p>
