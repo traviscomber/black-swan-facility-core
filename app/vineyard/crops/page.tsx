@@ -15,19 +15,18 @@ import { useLanguage } from "@/lib/hooks/use-language"
 interface Vine {
   id: string
   plot_id: string
-  vine_name: string
+  vine_number: string
   variety: string
   rootstock: string
-  planting_date: string
   age_years: number
-  status: string
   health_status: string
   disease_history: string
-  last_pruning_date: string
-  next_pruning_date: string
-  phylloxera_resistant: boolean
-  estimated_yield_kg: number | null
-  actual_yield_kg: number | null
+  last_pruned_date: string
+  grafted_year: number
+  photo_url: string
+  position_row: number
+  position_col: number
+  notes: string
 }
 
 interface Plot {
@@ -68,7 +67,7 @@ export default function VineyardVinesPage() {
       const { data: vinesData, error: vinesError } = await supabase
         .from("vineyard_vines")
         .select("*")
-        .order("planting_date", { ascending: false })
+        .order("created_at", { ascending: false })
 
       if (vinesError) throw vinesError
       setVines(vinesData || [])
@@ -85,14 +84,10 @@ export default function VineyardVinesPage() {
     if (searchTerm) {
       filtered = filtered.filter(
         (vine) =>
-          vine.vine_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          vine.vine_number.toLowerCase().includes(searchTerm.toLowerCase()) ||
           vine.variety.toLowerCase().includes(searchTerm.toLowerCase()) ||
           vine.rootstock.toLowerCase().includes(searchTerm.toLowerCase())
       )
-    }
-
-    if (filterStatus !== "all") {
-      filtered = filtered.filter((vine) => vine.status === filterStatus)
     }
 
     if (filterPlot !== "all") {
@@ -102,15 +97,14 @@ export default function VineyardVinesPage() {
     setFilteredVines(filtered)
   }
 
-  const getStatusColor = (status: string) => {
-    const statusColors: Record<string, string> = {
-      young: "bg-blue-100 text-blue-800",
-      productive: "bg-green-100 text-green-800",
-      mature: "bg-emerald-100 text-emerald-800",
-      declining: "bg-orange-100 text-orange-800",
-      replanting: "bg-gray-100 text-gray-800",
+  const getStatusColor = (health: string) => {
+    const healthColors: Record<string, string> = {
+      healthy: "bg-green-100 text-green-800",
+      stressed: "bg-yellow-100 text-yellow-800",
+      diseased: "bg-red-100 text-red-800",
+      recovering: "bg-blue-100 text-blue-800",
     }
-    return statusColors[status] || "bg-gray-100 text-gray-800"
+    return healthColors[health] || "bg-gray-100 text-gray-800"
   }
 
   const getHealthColor = (health: string) => {
@@ -127,11 +121,12 @@ export default function VineyardVinesPage() {
     return plots.find((p) => p.id === plotId)?.name || "Unknown Plot"
   }
 
-  const daysSincePruning = (lastPruningDate: string) => {
+  const daysSincePruning = (lastPrunedDate: string) => {
+    if (!lastPrunedDate) return "Never"
     const today = new Date()
-    const lastPruning = new Date(lastPruningDate)
+    const lastPruning = new Date(lastPrunedDate)
     const diff = Math.floor((today.getTime() - lastPruning.getTime()) / (1000 * 60 * 60 * 24))
-    return diff
+    return diff > 0 ? `${diff} days ago` : "Today"
   }
 
   if (loading) {
@@ -182,9 +177,9 @@ export default function VineyardVinesPage() {
             </CardHeader>
             <CardContent>
               <div className="text-3xl font-bold">
-                {vines.filter((v) => v.status === "productive").length}
+                {vines.filter((v) => v.age_years > 3).length}
               </div>
-              <p className="text-xs text-muted-foreground mt-1">Active vines</p>
+              <p className="text-xs text-muted-foreground mt-1">Over 3 years old</p>
             </CardContent>
           </Card>
 
@@ -224,25 +219,13 @@ export default function VineyardVinesPage() {
           <div className="grid gap-4 md:grid-cols-3">
             <div>
               <Input
-                placeholder={t("vineyard.vine_name") || "Search vines..."}
+                placeholder={t("vineyard.search") || "Search vines..."}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="bg-background"
                 icon={<Search className="h-4 w-4" />}
               />
             </div>
-            <Select value={filterStatus} onValueChange={setFilterStatus}>
-              <SelectTrigger className="bg-background">
-                <SelectValue placeholder="Filter by status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Status</SelectItem>
-                <SelectItem value="young">Young</SelectItem>
-                <SelectItem value="productive">Productive</SelectItem>
-                <SelectItem value="mature">Mature</SelectItem>
-                <SelectItem value="declining">Declining</SelectItem>
-              </SelectContent>
-            </Select>
             <Select value={filterPlot} onValueChange={setFilterPlot}>
               <SelectTrigger className="bg-background">
                 <SelectValue placeholder="Filter by plot" />
@@ -283,20 +266,17 @@ export default function VineyardVinesPage() {
                       <div className="flex-1">
                         <div className="flex items-center gap-3 mb-2">
                           <div>
-                            <h3 className="font-semibold text-lg">{vine.vine_name}</h3>
+                            <h3 className="font-semibold text-lg">{vine.vine_number}</h3>
                             <p className="text-sm text-muted-foreground">
                               {vine.variety} • {vine.rootstock}
                             </p>
                           </div>
-                          <Badge className={getStatusColor(vine.status)}>
-                            {vine.status}
-                          </Badge>
                           <Badge className={getHealthColor(vine.health_status)}>
                             {vine.health_status}
                           </Badge>
                         </div>
 
-                        <div className="grid grid-cols-2 md:grid-cols-5 gap-3 text-sm mt-3">
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm mt-3">
                           <div>
                             <p className="text-muted-foreground">Plot</p>
                             <p className="font-semibold text-xs">{getPlotName(vine.plot_id)}</p>
@@ -306,26 +286,20 @@ export default function VineyardVinesPage() {
                             <p className="font-semibold">{vine.age_years} years</p>
                           </div>
                           <div>
-                            <p className="text-muted-foreground">Planted</p>
-                            <p className="font-semibold">
-                              {new Date(vine.planting_date).toLocaleDateString()}
-                            </p>
+                            <p className="text-muted-foreground">Grafted</p>
+                            <p className="font-semibold">{vine.grafted_year}</p>
                           </div>
                           <div>
                             <p className="text-muted-foreground">Last Pruned</p>
-                            <p className="font-semibold">
-                              {daysSincePruning(vine.last_pruning_date)} days ago
-                            </p>
-                          </div>
-                          <div>
-                            <p className="text-muted-foreground">Phylloxera Resistant</p>
-                            <p className="font-semibold">
-                              {vine.phylloxera_resistant ? "Yes" : "No"}
-                            </p>
+                            <p className="font-semibold">{daysSincePruning(vine.last_pruned_date)}</p>
                           </div>
                         </div>
 
-                        <div className="grid grid-cols-2 md:grid-cols-5 gap-3 text-sm mt-2">
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm mt-2">
+                          <div>
+                            <p className="text-muted-foreground">Variety</p>
+                            <p className="font-semibold text-xs">{vine.variety}</p>
+                          </div>
                           <div>
                             <p className="text-muted-foreground">Rootstock</p>
                             <p className="font-semibold text-xs">{vine.rootstock}</p>
@@ -335,21 +309,9 @@ export default function VineyardVinesPage() {
                             <p className="font-semibold text-xs">{vine.disease_history || "None"}</p>
                           </div>
                           <div>
-                            <p className="text-muted-foreground">Next Pruning</p>
-                            <p className="font-semibold">
-                              {new Date(vine.next_pruning_date).toLocaleDateString()}
-                            </p>
-                          </div>
-                          <div>
-                            <p className="text-muted-foreground">Est. Yield</p>
-                            <p className="font-semibold">
-                              {vine.estimated_yield_kg || "-"} kg
-                            </p>
-                          </div>
-                          <div>
-                            <p className="text-muted-foreground">Actual Yield</p>
-                            <p className="font-semibold">
-                              {vine.actual_yield_kg || "-"} kg
+                            <p className="text-muted-foreground">Position</p>
+                            <p className="font-semibold text-xs">
+                              Row {vine.position_row}, Col {vine.position_col}
                             </p>
                           </div>
                         </div>
