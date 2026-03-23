@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 
-import { LayoutDashboard, Calendar, Receipt, ClipboardList, Crown, Brain, TrendingUp, Beef, Box, Package, Wrench, Anchor, Zap, FileText, Lightbulb, Code, Users, Heart, MessageSquare, Tablet, ChefHat, CheckSquare, AlertCircle, Bot, Settings, X, ChevronDown, HelpCircle, Map, Fuel, Building, Leaf, Grape } from "lucide-react"
+import { LayoutDashboard, Calendar, Receipt, ClipboardList, Crown, Brain, TrendingUp, Beef, Box, Package, Wrench, Anchor, Zap, FileText, Lightbulb, Code, Users, Heart, MessageSquare, Tablet, ChefHat, CheckSquare, AlertCircle, Bot, Settings, X, ChevronDown, HelpCircle, Map, Fuel, Building, Leaf, Grape, Images } from "lucide-react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
@@ -101,6 +101,7 @@ const navigationGroups = [
     descKey: "nav.vineyard_desc",
     items: [
       { nameKey: "nav.vineyard_dashboard", href: "/vineyard", icon: Grape, tipKey: "nav.vineyard_dashboard_tip" },
+      { nameKey: "nav.vineyard_photos", href: "/vineyard/photos", icon: Images, tipKey: "nav.vineyard_photos_tip" },
       { nameKey: "nav.vineyard_vines", href: "/vineyard/crops", icon: Box, tipKey: "nav.vineyard_vines_tip" },
       { nameKey: "nav.vineyard_care", href: "/vineyard/care", icon: Heart, tipKey: "nav.vineyard_care_tip" },
       { nameKey: "nav.vineyard_harvest", href: "/vineyard/harvest", icon: TrendingUp, tipKey: "nav.vineyard_harvest_tip" },
