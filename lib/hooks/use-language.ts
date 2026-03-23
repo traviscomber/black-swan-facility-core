@@ -14,7 +14,12 @@ export const LanguageContext = createContext<LanguageContextType | undefined>(un
 export function useLanguage() {
   const context = useContext(LanguageContext)
   if (!context) {
-    throw new Error('useLanguage must be used within LanguageProvider')
+    // Return a default implementation if context is not available
+    return {
+      language: 'en' as const,
+      setLanguage: () => {},
+      t: (key: string) => key,
+    }
   }
   return context
 }
