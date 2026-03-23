@@ -598,4 +598,3 @@ export default function CattlePage() {
     </AppLayout>
   )
 }
-}
