@@ -21,7 +21,7 @@ export function AppLayout({ children }: AppLayoutProps) {
     <div className="flex h-screen bg-background">
       {/* Desktop sidebar - sticky */}
       <div className="hidden lg:flex lg:sticky lg:top-0 lg:h-screen lg:flex-col lg:z-50">
-        <Sidebar isOpen={sidebarOpen} onClose={onClose} />
+        <Sidebar isOpen={true} onClose={() => {}} />
       </div>
 
       {/* Mobile sidebar overlay */}
