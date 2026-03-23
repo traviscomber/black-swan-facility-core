@@ -31,7 +31,7 @@ export async function POST(request: NextRequest) {
 
     let result
     if (fileType === "image") {
-      result = await uploadImage(file, `vineyard/${folder}`)
+      result = await uploadImage(file, folder)
       
       // Si es una foto de viña y tenemos vineId, actualizar la BD
       if (vineId && folder.includes("vines")) {
@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
         }
       }
     } else if (fileType === "excel") {
-      result = await uploadExcelFile(file, `vineyard/${folder}`)
+      result = await uploadExcelFile(file, folder)
     } else {
       return NextResponse.json(
         { error: "Invalid file type. Use 'image' or 'excel'" },
