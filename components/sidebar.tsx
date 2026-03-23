@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 
 import { LayoutDashboard, Calendar, Receipt, ClipboardList, Crown, Brain, TrendingUp, Beef, Box, Package, Wrench, Anchor, Zap, FileText, Lightbulb, Code, Users, Heart, MessageSquare, Tablet, ChefHat, CheckSquare, AlertCircle, Bot, Settings, X, ChevronDown, HelpCircle, Map, Fuel, Building, Leaf, Grape } from "lucide-react"
 import Link from "next/link"
@@ -177,8 +177,12 @@ interface SidebarProps {
 export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const pathname = usePathname()
   const { t } = useLanguage()
-  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(() => {
-    // Auto-expand groups based on current pathname
+  
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set())
+  const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set())
+
+  // Initialize expanded groups based on pathname (only run on pathname changes)
+  useEffect(() => {
     const initialExpanded = new Set<string>()
     navigationGroups.forEach((group) => {
       const isInGroup = group.items.some((item) => {
@@ -190,10 +194,11 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
         initialExpanded.add(group.labelKey)
       }
     })
-    return initialExpanded
-  })
-  const [expandedItems, setExpandedItems] = useState<Set<string>>(() => {
-    // Auto-expand sub-items based on current pathname
+    setExpandedGroups(initialExpanded)
+  }, [pathname])
+
+  // Initialize expanded sub-items based on pathname (only run on pathname changes)
+  useEffect(() => {
     const initialExpanded = new Set<string>()
     navigationGroups.forEach((group) => {
       group.items.forEach((item) => {
@@ -205,8 +210,8 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
         }
       })
     })
-    return initialExpanded
-  })
+    setExpandedItems(initialExpanded)
+  }, [pathname])
 
   const toggleGroup = (label: string) => {
     const newExpanded = new Set(expandedGroups)
