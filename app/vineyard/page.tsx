@@ -75,11 +75,17 @@ export default function VineyardPage() {
         <PageHeader
           title={t("vineyard.title") || "Vineyard Management"}
           description={t("vineyard.description") || "Manage your vineyard plots, vines, and harvest records"}
-          action={
-            <Button className="gap-2">
-              <Plus className="w-4 h-4" />
-              {t("vineyard.add_plot") || "Add Plot"}
-            </Button>
+          actions={
+            <div className="flex gap-2">
+              <Button variant="outline">
+                <Droplet className="mr-2 h-4 w-4" />
+                {t("vineyard.care_logs") || "Care Logs"}
+              </Button>
+              <Button>
+                <Plus className="mr-2 h-4 w-4" />
+                {t("vineyard.add_plot") || "Add Plot"}
+              </Button>
+            </div>
           }
         />
 
