@@ -1,12 +1,19 @@
 import { uploadImage, uploadExcelFile } from "@/lib/vineyard/file-operations"
+import { createClient } from "@supabase/supabase-js"
 import { NextRequest, NextResponse } from "next/server"
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+)
 
 export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData()
     const file = formData.get("file") as File
     const folder = formData.get("folder") as string
-    const fileType = formData.get("fileType") as string // "image" or "excel"
+    const fileType = formData.get("fileType") as string
+    const vineId = formData.get("vineId") as string
 
     if (!file) {
       return NextResponse.json(
@@ -25,6 +32,22 @@ export async function POST(request: NextRequest) {
     let result
     if (fileType === "image") {
       result = await uploadImage(file, `vineyard/${folder}`)
+      
+      // Si es una foto de viña y tenemos vineId, actualizar la BD
+      if (vineId && folder.includes("vines")) {
+        console.log("[v0] Updating vine photo in DB for vine:", vineId)
+        const { error: dbError } = await supabase
+          .from("vineyard_vines")
+          .update({ photo_url: result.url })
+          .eq("id", vineId)
+
+        if (dbError) {
+          console.error("[v0] Error updating vine photo:", dbError)
+          // No lanzar error, solo logear - la foto se subió correctamente
+        } else {
+          console.log("[v0] Vine photo updated in DB successfully")
+        }
+      }
     } else if (fileType === "excel") {
       result = await uploadExcelFile(file, `vineyard/${folder}`)
     } else {
@@ -37,6 +60,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(result, { status: 200 })
   } catch (error) {
     const message = error instanceof Error ? error.message : "Upload failed"
+    console.error("[v0] Upload error:", message)
     return NextResponse.json(
       { error: message },
       { status: 500 }
