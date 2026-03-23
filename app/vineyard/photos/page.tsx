@@ -42,6 +42,7 @@ export default function VinePhotosPage() {
         .order("created_at", { ascending: false })
 
       if (error) throw error
+      console.log("[v0] Fetched vines:", data?.length || 0)
       setVines(data || [])
     } catch (error) {
       console.error("[v0] Error fetching vines:", error)
@@ -72,7 +73,7 @@ export default function VinePhotosPage() {
                 Volver
               </Button>
             </Link>
-            {!showUpload && (
+          {!showUpload && (
               <Button onClick={() => setShowUpload(true)}>
                 <Camera className="mr-2 h-4 w-4" />
                 Subir Fotos

@@ -25,21 +25,26 @@ interface Vine {
 }
 
 interface VinesGalleryProps {
-  plotId: string
+  plotId?: string
+  vines?: Vine[]
+  onRefresh?: () => void
 }
 
-export function VinesGallery({ plotId }: VinesGalleryProps) {
-  const [vines, setVines] = useState<Vine[]>([])
-  const [loading, setLoading] = useState(true)
+export function VinesGallery({ plotId, vines: initialVines, onRefresh }: VinesGalleryProps) {
+  const [vines, setVines] = useState<Vine[]>(initialVines || [])
+  const [loading, setLoading] = useState(!initialVines)
   const [selectedVine, setSelectedVine] = useState<Vine | null>(null)
   const supabase = createBrowserClient()
   const { t } = useLanguage()
 
   useEffect(() => {
-    fetchVines()
-  }, [plotId])
+    if (!initialVines && plotId) {
+      fetchVines()
+    }
+  }, [plotId, initialVines])
 
   const fetchVines = async () => {
+    if (!plotId) return
     try {
       setLoading(true)
       const { data, error } = await supabase

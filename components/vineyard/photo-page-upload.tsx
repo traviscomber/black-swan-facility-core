@@ -35,13 +35,18 @@ export function PhotoPageUpload({ onUploadComplete }: PhotoPageUploadProps) {
         throw new Error(data.error || "Upload failed")
       }
 
+      console.log("[v0] Upload successful")
       setSuccess(true)
+      
+      // Llamar inmediatamente al callback sin delay
+      if (onUploadComplete) {
+        onUploadComplete()
+      }
+      
+      // Mostrar mensaje de éxito por 2 segundos
       setTimeout(() => {
         setSuccess(false)
-        if (onUploadComplete) {
-          onUploadComplete()
-        }
-      }, 1500)
+      }, 2000)
     } catch (err) {
       const message = err instanceof Error ? err.message : "Upload failed"
       console.error("[v0] Upload error:", message)
