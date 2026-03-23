@@ -249,7 +249,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
 
       <div
         className={cn(
-          "fixed inset-y-0 left-0 z-50 flex h-screen w-64 flex-col border-r border-secondary bg-white transition-transform duration-300 lg:relative lg:translate-x-0 overflow-y-auto min-h-0",
+          "fixed inset-y-0 left-0 z-50 flex h-screen w-64 flex-col border-r border-secondary bg-white transition-transform duration-300 lg:relative lg:inset-auto lg:z-auto lg:translate-x-0 lg:h-full overflow-y-auto min-h-0",
           isOpen ? "translate-x-0" : "-translate-x-full",
         )}
       >
