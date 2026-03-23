@@ -29,23 +29,20 @@ export function StoragePhotosGallery() {
       setLoading(true)
       setError("")
 
-      // List all files in the vineyard/vines/photos folder
-      const { data, error: listError } = await supabase.storage
-        .from("vineyard")
-        .list("vines/photos", {
-          limit: 100,
-          offset: 0,
-          sortBy: { column: "updated_at", order: "desc" },
-        })
+      // Call the API to list photos from storage
+      const response = await fetch("/api/vineyard/photos/list")
+      
+      if (!response.ok) {
+        throw new Error("Failed to fetch photos")
+      }
 
-      if (listError) throw listError
-
+      const data = await response.json()
       console.log("[v0] Found photos in storage:", data?.length || 0)
 
       // Get public URLs for each file
       const photosWithUrls: PhotoFile[] = (data || [])
-        .filter((file) => !file.name.startsWith("."))
-        .map((file) => {
+        .filter((file: any) => !file.name.startsWith("."))
+        .map((file: any) => {
           const { data: publicData } = supabase.storage
             .from("vineyard")
             .getPublicUrl(`vines/photos/${file.name}`)
