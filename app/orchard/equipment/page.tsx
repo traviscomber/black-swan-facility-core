@@ -68,10 +68,10 @@ export default function OrchardEquipmentPage() {
       <AppLayout>
         <div className="flex items-center justify-center min-h-screen">
           <p className="text-muted-foreground">{t("orchard.loading")}</p>
-        </div>
-      </AppLayout>
-    )
-  }
+      </div>
+    </AppLayout>
+  )
+}
 
   return (
     <AppLayout>
