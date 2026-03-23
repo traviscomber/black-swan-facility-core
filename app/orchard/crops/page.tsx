@@ -231,33 +231,33 @@ export default function OrchardCropsPage() {
                 icon={<Search className="h-4 w-4" />}
               />
             </div>
+            <div className="flex gap-4">
               <Select value={filterStatus} onValueChange={setFilterStatus}>
                 <SelectTrigger className="w-[200px]">
                   <SelectValue placeholder={t("orchard.filter_by_status")} />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">{t("orchard.all_status")}</SelectItem>
-                <SelectItem value="seedling">Seedling</SelectItem>
-                <SelectItem value="growing">Growing</SelectItem>
-                <SelectItem value="mature">Mature</SelectItem>
-                <SelectItem value="harvested">Harvested</SelectItem>
-              </SelectContent>
-            </Select>
+                  <SelectItem value="seedling">Seedling</SelectItem>
+                  <SelectItem value="growing">Growing</SelectItem>
+                  <SelectItem value="mature">Mature</SelectItem>
+                  <SelectItem value="harvested">Harvested</SelectItem>
+                </SelectContent>
+              </Select>
               <Select value={filterPlot} onValueChange={setFilterPlot}>
                 <SelectTrigger className="w-[200px]">
                   <SelectValue placeholder={t("orchard.filter_by_plot")} />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">{t("orchard.all_plots")}</SelectItem>
-                {plots.map((plot) => (
-                  <SelectItem key={plot.id} value={plot.id}>
-                    {plot.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
+                  {plots.map((plot) => (
+                    <SelectItem key={plot.id} value={plot.id}>
+                      {plot.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
 
         {/* Crops Table */}
         <Card>
