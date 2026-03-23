@@ -57,6 +57,13 @@ export default function OrchardFarmPage() {
     return status
   }
 
+  const getPlotTypeLabel = (type: string) => {
+    if (type === "vegetable_garden") return t("orchard.vegetable_garden")
+    if (type === "herb_garden") return t("orchard.herb_garden")
+    if (type === "fruit_garden") return t("orchard.fruit_garden")
+    return type
+  }
+
   const getIrrigationLabel = (irrigation: string) => {
     if (irrigation === "drip-irrigation" || irrigation === "drip") return t("orchard.irrigation_drip")
     if (irrigation === "sprinkler") return t("orchard.irrigation_sprinkler")
