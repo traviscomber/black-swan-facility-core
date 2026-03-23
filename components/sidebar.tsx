@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 
-import { LayoutDashboard, Calendar, Receipt, ClipboardList, Crown, Brain, TrendingUp, Beef, Box, Package, Wrench, Anchor, Zap, FileText, Lightbulb, Code, Users, Heart, MessageSquare, Tablet, ChefHat, CheckSquare, AlertCircle, Bot, Settings, X, ChevronDown, HelpCircle, Map, Fuel, Building, Leaf } from "lucide-react"
+import { LayoutDashboard, Calendar, Receipt, ClipboardList, Crown, Brain, TrendingUp, Beef, Box, Package, Wrench, Anchor, Zap, FileText, Lightbulb, Code, Users, Heart, MessageSquare, Tablet, ChefHat, CheckSquare, AlertCircle, Bot, Settings, X, ChevronDown, HelpCircle, Map, Fuel, Building, Leaf, Grape } from "lucide-react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
@@ -94,6 +94,20 @@ const navigationGroups = [
       { nameKey: "nav.orchard_soil", href: "/orchard/soil", icon: Box, tipKey: "nav.orchard_soil_tip" },
       { nameKey: "nav.orchard_equipment", href: "/orchard/equipment", icon: Wrench, tipKey: "nav.orchard_equipment_tip" },
       { nameKey: "nav.orchard_analytics", href: "/orchard/analytics", icon: TrendingUp, tipKey: "nav.orchard_analytics_tip" },
+    ],
+  },
+  {
+    labelKey: "nav.vineyard",
+    descKey: "nav.vineyard_desc",
+    items: [
+      { nameKey: "nav.vineyard_dashboard", href: "/vineyard", icon: Grape, tipKey: "nav.vineyard_dashboard_tip" },
+      { nameKey: "nav.vineyard_vines", href: "/vineyard/crops", icon: Box, tipKey: "nav.vineyard_vines_tip" },
+      { nameKey: "nav.vineyard_care", href: "/vineyard/care", icon: Heart, tipKey: "nav.vineyard_care_tip" },
+      { nameKey: "nav.vineyard_harvest", href: "/vineyard/harvest", icon: TrendingUp, tipKey: "nav.vineyard_harvest_tip" },
+      { nameKey: "nav.vineyard_pests", href: "/vineyard/pests", icon: AlertCircle, tipKey: "nav.vineyard_pests_tip" },
+      { nameKey: "nav.vineyard_soil", href: "/vineyard/soil", icon: Box, tipKey: "nav.vineyard_soil_tip" },
+      { nameKey: "nav.vineyard_equipment", href: "/vineyard/equipment", icon: Wrench, tipKey: "nav.vineyard_equipment_tip" },
+      { nameKey: "nav.vineyard_analytics", href: "/vineyard/analytics", icon: TrendingUp, tipKey: "nav.vineyard_analytics_tip" },
     ],
   },
   {
