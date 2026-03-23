@@ -5,12 +5,13 @@ import { PageHeader } from "@/components/page-header"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Plus, Grape, Leaf, Droplet, Sun, TrendingUp, Trash2, Pencil, Upload } from "lucide-react"
+import { Plus, Grape, Leaf, Droplet, Sun, TrendingUp, Trash2, Pencil, Upload, Images } from "lucide-react"
 import { createBrowserClient } from "@/lib/supabase/client"
 import { useLanguage } from "@/lib/hooks/use-language"
 import { ExcelImport } from "@/components/vineyard/excel-import"
 import { ExcelParseResult } from "@/lib/vineyard/excel-parser"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import Link from "next/link"
 
 interface VineyardPlot {
   id: string
@@ -77,6 +78,12 @@ export default function VineyardPage() {
           description={t("vineyard.description") || "Manage your vineyard plots, vines, and harvest records"}
           actions={
             <div className="flex gap-2">
+              <Link href="/vineyard/photos">
+                <Button variant="outline">
+                  <Images className="mr-2 h-4 w-4" />
+                  Fotos
+                </Button>
+              </Link>
               <Button variant="outline">
                 <Droplet className="mr-2 h-4 w-4" />
                 {t("vineyard.care_logs") || "Care Logs"}
