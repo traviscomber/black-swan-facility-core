@@ -5,9 +5,12 @@ import { PageHeader } from "@/components/page-header"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Plus, Grape, Leaf, Droplet, Sun, TrendingUp, Trash2, Pencil } from "lucide-react"
+import { Plus, Grape, Leaf, Droplet, Sun, TrendingUp, Trash2, Pencil, Upload } from "lucide-react"
 import { createBrowserClient } from "@/lib/supabase/client"
 import { useLanguage } from "@/lib/hooks/use-language"
+import { ExcelImport } from "@/components/vineyard/excel-import"
+import { ExcelParseResult } from "@/lib/vineyard/excel-parser"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 interface VineyardPlot {
   id: string
@@ -28,6 +31,7 @@ interface VineyardPlot {
 export default function VineyardPage() {
   const [plots, setPlots] = useState<VineyardPlot[]>([])
   const [loading, setLoading] = useState(true)
+  const [showImport, setShowImport] = useState(false)
   const supabase = createBrowserClient()
   const { t } = useLanguage()
 
@@ -142,6 +146,40 @@ export default function VineyardPage() {
             </CardContent>
           </Card>
         </div>
+
+        {/* Import Section */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Upload className="h-4 w-4" />
+              Import Data
+            </CardTitle>
+            <CardDescription>
+              Upload vineyard data from Excel or CSV files
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {!showImport ? (
+              <Button onClick={() => setShowImport(true)}>
+                <Upload className="mr-2 h-4 w-4" />
+                Choose File to Import
+              </Button>
+            ) : (
+              <div className="space-y-4">
+                <ExcelImport
+                  dataType="plots"
+                  onDataParsed={() => {}}
+                />
+                <Button
+                  variant="outline"
+                  onClick={() => setShowImport(false)}
+                >
+                  Cancel
+                </Button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
         <Card>
           <CardHeader>
