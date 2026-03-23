@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { AppLayout } from "@/components/app-layout"
 import { PageHeader } from "@/components/page-header"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -61,17 +60,14 @@ export default function VineyardPage() {
 
   if (loading) {
     return (
-      <AppLayout>
-        <div className="flex items-center justify-center min-h-screen">
-          <p className="text-muted-foreground">{t("vineyard.loading")}</p>
-        </div>
-      </AppLayout>
+      <div className="flex items-center justify-center min-h-screen">
+        <p className="text-muted-foreground">{t("vineyard.loading")}</p>
+      </div>
     )
   }
 
   return (
-    <AppLayout>
-      <div className="space-y-6">
+    <div className="space-y-6">
         <PageHeader
           title={t("vineyard.title") || "Vineyard Management"}
           description={t("vineyard.description") || "Manage your vineyard plots, vines, and harvest records"}
@@ -207,6 +203,6 @@ export default function VineyardPage() {
           </CardContent>
         </Card>
       </div>
-    </AppLayout>
-  )
+    )
+  }
 }
