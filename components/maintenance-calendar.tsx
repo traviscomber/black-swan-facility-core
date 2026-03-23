@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { ChevronLeft, ChevronRight, AlertCircle, Calendar } from "lucide-react"
 import { format, addDays, startOfYear, isSameDay } from "date-fns"
+import { useLanguage } from "@/lib/hooks/use-language"
 
 interface MaintenanceTask {
   id: string
@@ -24,6 +25,7 @@ interface MaintenanceCalendarProps {
 }
 
 export function MaintenanceCalendar({ tasks }: MaintenanceCalendarProps) {
+  const { t } = useLanguage()
   const [startDate, setStartDate] = useState(startOfYear(new Date()))
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear())
   const [displayedTasks, setDisplayedTasks] = useState<MaintenanceTask[]>(tasks)
@@ -92,7 +94,7 @@ export function MaintenanceCalendar({ tasks }: MaintenanceCalendarProps) {
       <div className="grid gap-4 md:grid-cols-3">
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-white">Total Tasks</CardTitle>
+            <CardTitle className="text-sm font-medium text-white">{t("maintenance.total_tasks")}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold text-white">{stats.total}</div>
@@ -101,7 +103,7 @@ export function MaintenanceCalendar({ tasks }: MaintenanceCalendarProps) {
 
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-white">Completed</CardTitle>
+            <CardTitle className="text-sm font-medium text-white">{t("maintenance.completed")}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold text-green-400">{stats.completed}</div>
@@ -110,7 +112,7 @@ export function MaintenanceCalendar({ tasks }: MaintenanceCalendarProps) {
 
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-white">Overdue</CardTitle>
+            <CardTitle className="text-sm font-medium text-white">{t("maintenance.overdue")}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold text-red-400">{stats.overdue}</div>
@@ -122,13 +124,13 @@ export function MaintenanceCalendar({ tasks }: MaintenanceCalendarProps) {
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <div>
-            <CardTitle className="text-white">Full Year Schedule {selectedYear}</CardTitle>
-            <p className="text-sm text-muted-foreground mt-1">View maintenance tasks across all days</p>
+            <CardTitle className="text-white">{t("maintenance.full_year_schedule")} {selectedYear}</CardTitle>
+            <p className="text-sm text-muted-foreground mt-1">{t("maintenance.view_maintenance_tasks")}</p>
           </div>
           <div className="flex gap-2">
             <Button variant="outline" size="sm" onClick={goToPreviousYear} className="gap-2 bg-transparent">
               <ChevronLeft className="h-4 w-4" />
-              Previous Year
+              {t("maintenance.previous_year")}
             </Button>
             <select
               value={selectedYear}
@@ -143,10 +145,10 @@ export function MaintenanceCalendar({ tasks }: MaintenanceCalendarProps) {
             </select>
             <Button variant="outline" size="sm" onClick={goToToday} className="gap-2 bg-transparent">
               <Calendar className="h-4 w-4" />
-              Current Year
+              {t("maintenance.current_year")}
             </Button>
             <Button variant="outline" size="sm" onClick={goToNextYear} className="gap-2 bg-transparent">
-              Next Year
+              {t("maintenance.next_year")}
               <ChevronRight className="h-4 w-4" />
             </Button>
           </div>
@@ -217,22 +219,21 @@ export function MaintenanceCalendar({ tasks }: MaintenanceCalendarProps) {
         <CardHeader>
           <CardTitle className="text-sm flex items-center gap-2 text-white">
             <AlertCircle className="h-4 w-4" />
-            Calendar Legend
+            {t("maintenance.calendar_legend")}
           </CardTitle>
         </CardHeader>
         <CardContent className="text-sm text-gray-300 space-y-2">
           <p>
             •{" "}
-            <Badge className="bg-yellow-100 text-yellow-800 border-yellow-300 border inline-block ml-2">Pending</Badge>{" "}
-            - Task scheduled
+            <Badge className="bg-yellow-100 text-yellow-800 border-yellow-300 border inline-block ml-2">{t("maintenance.pending")}</Badge>{" "}
+            - {t("maintenance.task_scheduled")}
           </p>
           <p>
-            • <Badge className="bg-green-100 text-green-800 border-green-300 border inline-block ml-2">Completed</Badge>{" "}
-            - Task finished
+            • <Badge className="bg-green-100 text-green-800 border-green-300 border inline-block ml-2">{t("maintenance.completed")}</Badge>{" "}
+            - {t("maintenance.task_finished")}
           </p>
           <p>
-            • <Badge className="bg-red-100 text-red-800 border-red-300 border inline-block ml-2">Overdue</Badge> - Task
-            past due date
+            • <Badge className="bg-red-100 text-red-800 border-red-300 border inline-block ml-2">{t("maintenance.overdue")}</Badge> - {t("maintenance.task_past_due")}
           </p>
         </CardContent>
       </Card>

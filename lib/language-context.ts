@@ -479,6 +479,24 @@ export const translations = {
     'cattle.cost_breakdown': 'Cost Breakdown by Category',
     'cattle.total_costs': 'Total Costs',
     
+    // Maintenance Pages
+    'maintenance.title': 'Maintenance Tasks',
+    'maintenance.description': 'Schedule and track maintenance activities',
+    'maintenance.add_task': 'Add Task',
+    'maintenance.total_tasks': 'Total Tasks',
+    'maintenance.completed': 'Completed',
+    'maintenance.overdue': 'Overdue',
+    'maintenance.full_year_schedule': 'Full Year Schedule',
+    'maintenance.view_maintenance_tasks': 'View maintenance tasks across all days',
+    'maintenance.previous_year': 'Previous Year',
+    'maintenance.current_year': 'Current Year',
+    'maintenance.next_year': 'Next Year',
+    'maintenance.calendar_legend': 'Calendar Legend',
+    'maintenance.pending': 'Pending',
+    'maintenance.task_scheduled': 'Task scheduled',
+    'maintenance.task_finished': 'Task finished',
+    'maintenance.task_past_due': 'Task past due date',
+    
     // Advanced
     'nav.advanced': 'Advanced',
     'nav.advanced_desc': 'System tools',
@@ -966,6 +984,24 @@ export const translations = {
     'cattle.cost_analysis': 'Análisis de Costos',
     'cattle.cost_breakdown': 'Desglose de Costos por Categoría',
     'cattle.total_costs': 'Costos Totales',
+    
+    // Maintenance Pages
+    'maintenance.title': 'Tareas de Mantenimiento',
+    'maintenance.description': 'Programar y rastrear actividades de mantenimiento',
+    'maintenance.add_task': 'Añadir Tarea',
+    'maintenance.total_tasks': 'Tareas Totales',
+    'maintenance.completed': 'Completadas',
+    'maintenance.overdue': 'Vencidas',
+    'maintenance.full_year_schedule': 'Cronograma Completo del Año',
+    'maintenance.view_maintenance_tasks': 'Ver tareas de mantenimiento en todos los días',
+    'maintenance.previous_year': 'Año Anterior',
+    'maintenance.current_year': 'Año Actual',
+    'maintenance.next_year': 'Próximo Año',
+    'maintenance.calendar_legend': 'Leyenda del Calendario',
+    'maintenance.pending': 'Pendiente',
+    'maintenance.task_scheduled': 'Tarea programada',
+    'maintenance.task_finished': 'Tarea completada',
+    'maintenance.task_past_due': 'Tarea vencida',
     
     // Advanced
     'nav.advanced': 'Avanzado',
