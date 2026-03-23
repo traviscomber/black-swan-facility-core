@@ -5,10 +5,26 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
-const VINEYARD_BUCKET = "vineyard-files"
+const VINEYARD_BUCKET = "vineyard"
 const IMAGE_EXTENSIONS = [".jpg", ".jpeg", ".png", ".gif", ".webp"]
 const EXCEL_EXTENSIONS = [".xlsx", ".xls", ".csv"]
 const MAX_FILE_SIZE = 50 * 1024 * 1024 // 50MB
+
+// Ensure bucket exists and is properly configured
+async function ensureBucketExists() {
+  try {
+    const { data: buckets } = await supabase.storage.listBuckets()
+    const bucketExists = buckets?.some(b => b.name === VINEYARD_BUCKET)
+    
+    if (!bucketExists) {
+      await supabase.storage.createBucket(VINEYARD_BUCKET, {
+        public: true,
+      })
+    }
+  } catch (error) {
+    console.error("[v0] Error checking bucket:", error)
+  }
+}
 
 export async function uploadImage(
   file: File,
@@ -24,6 +40,8 @@ export async function uploadImage(
   if (file.size > MAX_FILE_SIZE) {
     throw new Error("File size exceeds 50MB limit")
   }
+
+  await ensureBucketExists()
 
   const fileName = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}.${fileExt}`
   const filePath = `${folder}/${fileName}`
@@ -61,6 +79,8 @@ export async function uploadExcelFile(
   if (file.size > MAX_FILE_SIZE) {
     throw new Error("File size exceeds 50MB limit")
   }
+
+  await ensureBucketExists()
 
   const fileName = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}.${fileExt}`
   const filePath = `${folder}/${fileName}`
