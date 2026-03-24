@@ -1,9 +1,9 @@
 import * as XLSX from 'xlsx'
 
 export interface BusinessPlanData {
-  regime: string // "RÉGIMEN CRIANZA, speed up" o "RÉGIMEN ACTUAL / CRIANZA Y ENGORDA"
+  regime: string
   year: number
-  month: string // "MAR", "DIC", etc
+  month: string
   inventory_count: number
   purchase_amount: number
   sales_amount: number
@@ -27,30 +27,36 @@ export async function parseBusinessPlanExcel(file: File): Promise<BusinessPlanDa
         console.log('[v0] Parsing business plan Excel:', jsonData.length, 'rows')
 
         const businessPlanData: BusinessPlanData[] = []
-
-        // Parse el archivo según su estructura
-        // Buscar los regímenes y extraer datos
         let currentRegime = ''
-        let startRow = 0
 
         for (let i = 0; i < jsonData.length; i++) {
           const row = jsonData[i] as any[]
+          if (!row || row.length === 0) continue
+
+          const firstCell = String(row[0] || '').trim().toUpperCase()
 
           // Detectar regímenes
-          if (row[0]?.includes('RÉGIMEN')) {
-            currentRegime = row[0]
+          if (firstCell.includes('RÉGIMEN') || firstCell.includes('REGIMEN')) {
+            currentRegime = String(row[0] || '')
             console.log('[v0] Found regime:', currentRegime)
             continue
           }
 
-          // Detectar filas de "MONTO DE COMPRA", "Venta crianza", etc
-          if (currentRegime && row[0]?.includes('MONTO DE COMPRA')) {
+          // Detectar filas de datos según keywords
+          if (!currentRegime) continue
+
+          const isCompraRow = firstCell.includes('COMPRA') || firstCell.includes('MONTO')
+          const isVentaRow = firstCell.includes('VENTA')
+          const isCostoRow = firstCell.includes('COSTO')
+          const isGananciaRow = firstCell.includes('GANANCIA') || firstCell.includes('PÉRDIDA')
+
+          if (isCompraRow) {
             extractDataFromRow(row, currentRegime, 'purchase', businessPlanData)
-          } else if (currentRegime && row[0]?.includes('Venta crianza')) {
+          } else if (isVentaRow) {
             extractDataFromRow(row, currentRegime, 'sales', businessPlanData)
-          } else if (currentRegime && row[0]?.includes('COSTO OPERACIONAL')) {
+          } else if (isCostoRow) {
             extractDataFromRow(row, currentRegime, 'operational_cost', businessPlanData)
-          } else if (currentRegime && row[0]?.includes('GANANCIA')) {
+          } else if (isGananciaRow) {
             extractDataFromRow(row, currentRegime, 'profit_loss', businessPlanData)
           }
         }
@@ -77,40 +83,28 @@ function extractDataFromRow(
   dataType: string,
   resultArray: BusinessPlanData[]
 ) {
-  // Extraer meses y valores desde la fila
-  // Estructura esperada: [label, 2024, AÑO1-MAR, AÑO1-DIC, AÑO2-MAR, ...]
+  // Buscar columnas que contengan año y mes
+  // Estructura: [label, 2024, AÑO 1 - MAR, AÑO 1 - DIC, ...]
 
-  const monthHeaders = [
-    '2024',
-    'AÑO 1 - MAR',
-    'AÑO 1 - DIC',
-    'AÑO 2 - MAR',
-    'AÑO 2 - DIC',
-    'AÑO 3 - MAR',
-    'AÑO 3 - DIC',
-    'AÑO 4 - MAR',
-    'AÑO 4 - DIC',
-    'AÑO 5 - MAR',
-    'AÑO 5 - DIC',
-    'AÑO 6 - MAR',
-    'AÑO 6 - DIC',
-    'AÑO 7 - MAR',
-  ]
+  for (let colIndex = 1; colIndex < row.length; colIndex++) {
+    const headerValue = String(row[colIndex] || '').trim()
+    const dataValue = row[colIndex]
 
-  let colIndex = 1
-  for (let i = 0; i < monthHeaders.length && colIndex < row.length; i++) {
-    const value = row[colIndex]
-    const header = monthHeaders[i]
+    // Saltar si el header no es un número o no contiene "AÑO"
+    if (isNaN(Number(headerValue)) && !headerValue.includes('AÑO')) continue
 
-    if (value && !isNaN(value)) {
-      const [year, month] = parseYearMonth(header, i)
+    // Obtener el año y mes
+    const [year, month] = parseYearMonth(headerValue, colIndex)
+
+    // El valor de datos está en la siguiente fila a menudo, buscar en misma posición
+    if (dataValue && !isNaN(Number(dataValue))) {
+      const cleanValue = parseFloat(String(dataValue).replace(/[$,\s]/g, ''))
 
       let existing = resultArray.find(
         (d) =>
           d.regime === regime &&
           d.year === year &&
-          d.month === month &&
-          d.business_unit === dataType
+          d.month === month
       )
 
       if (!existing) {
@@ -123,35 +117,37 @@ function extractDataFromRow(
           sales_amount: 0,
           operational_cost: 0,
           profit_loss: 0,
-          business_unit: dataType,
+          business_unit: regime,
         }
         resultArray.push(existing)
       }
 
-      // Asignar el valor según el tipo
-      const cleanValue = parseFloat(String(value).replace(/[$,]/g, ''))
+      // Asignar valor según tipo
       if (dataType === 'purchase') existing.purchase_amount = cleanValue
       else if (dataType === 'sales') existing.sales_amount = cleanValue
       else if (dataType === 'operational_cost') existing.operational_cost = cleanValue
       else if (dataType === 'profit_loss') existing.profit_loss = cleanValue
     }
-
-    colIndex++
   }
 }
 
-function parseYearMonth(header: string, index: number): [number, string] {
-  if (header.includes('2024')) {
+function parseYearMonth(header: string, colIndex: number): [number, string] {
+  const headerUpper = String(header).trim().toUpperCase()
+
+  // Si es 2024
+  if (headerUpper === '2024') {
     return [2024, 'MAR']
   }
 
-  const match = header.match(/AÑO\s+(\d+).*?([A-Z]+)/)
+  // Buscar patrón como "AÑO 1 - MAR" o "AÑO1-MAR"
+  const match = headerUpper.match(/AÑO\s*(\d+)\s*[-:\s]*([A-Z]+)/i)
   if (match) {
-    const year = 2024 + parseInt(match[1])
-    const month = match[2]
-    return [year, month]
+    const yearOffset = parseInt(match[1])
+    const month = match[2].trim()
+    return [2024 + yearOffset - 1, month]
   }
 
+  // Fallback
   return [2024, 'MAR']
 }
 
