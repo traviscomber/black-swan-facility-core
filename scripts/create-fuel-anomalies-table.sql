@@ -7,7 +7,7 @@ CREATE TABLE IF NOT EXISTS fuel_consumption_anomalies (
   description TEXT,
   detected_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   confirmed BOOLEAN DEFAULT FALSE,
-  confirmed_by UUID REFERENCES users(id),
+  confirmed_by UUID REFERENCES employees(id),
   confirmed_at TIMESTAMP WITH TIME ZONE,
   notes TEXT,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),

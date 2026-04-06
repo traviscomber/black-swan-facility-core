@@ -73,6 +73,7 @@ const navigationGroups = [
     labelKey: "nav.off_grid_energy",
     descKey: "nav.off_grid_energy_desc",
     items: [
+      { nameKey: "nav.combustibles", href: "/combustibles", icon: Zap, tipKey: "nav.combustibles_tip" },
       { nameKey: "nav.management", href: "/energy", icon: Zap, tipKey: "nav.management_tip" },
       { nameKey: "nav.energy_dashboard", href: "/energy-dashboard", icon: TrendingUp, tipKey: "nav.energy_dashboard_tip" },
       { nameKey: "nav.reports", href: "/energy-reports", icon: FileText, tipKey: "nav.reports_tip" },

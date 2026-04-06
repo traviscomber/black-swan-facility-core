@@ -63,6 +63,8 @@ export const translations = {
     // Off-Grid Energy
     'nav.off_grid_energy': 'Off-Grid Energy',
     'nav.off_grid_energy_desc': 'Energy management',
+    'nav.combustibles': 'Fuel Consumption',
+    'nav.combustibles_tip': 'Track fuel consumption and detect anomalies',
     'nav.management': 'Management',
     'nav.management_tip': 'Energy management',
     'nav.energy_dashboard': 'Dashboard',
@@ -649,6 +651,8 @@ export const translations = {
     // Off-Grid Energy
     'nav.off_grid_energy': 'Energía Fuera de Red',
     'nav.off_grid_energy_desc': 'Gestión de energía',
+    'nav.combustibles': 'Consumo de Combustible',
+    'nav.combustibles_tip': 'Rastrear consumo de combustible y detectar anomalías',
     'nav.management': 'Gestión',
     'nav.management_tip': 'Gestión de energía',
     'nav.energy_dashboard': 'Panel',
