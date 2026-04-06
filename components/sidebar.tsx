@@ -10,6 +10,7 @@ import { LanguageSwitcher } from "@/components/language-switcher"
 import { useLanguage } from "@/lib/hooks/use-language"
 
 const navigationGroups = [
+  // GRUPO 1: GENERAL (Core Business)
   {
     labelKey: "nav.core_operations",
     descKey: "nav.core_operations_desc",
@@ -20,26 +21,32 @@ const navigationGroups = [
       { nameKey: "nav.tasks", href: "/tasks", icon: ClipboardList, tipKey: "nav.tasks_tip" },
     ],
   },
+  // GRUPO 2: VOLUNTARIOS
   {
-    labelKey: "nav.sovereignty",
-    descKey: "nav.sovereignty_desc",
+    labelKey: "nav.people_operations",
+    descKey: "nav.people_operations_desc",
     items: [
-      { nameKey: "nav.sovereignty_dashboard", href: "/sovereignty", icon: Crown, tipKey: "nav.sovereignty_dashboard_tip" },
-      { nameKey: "nav.coach", href: "/sovereignty/coach", icon: Brain, tipKey: "nav.coach_tip" },
-      { nameKey: "nav.layers", href: "/sovereignty/layers", icon: TrendingUp, tipKey: "nav.layers_tip" },
+      { nameKey: "nav.volunteers", href: "/volunteers", icon: Heart, tipKey: "nav.volunteers_tip" },
+      { nameKey: "nav.activities", href: "/activities-calendar", icon: Calendar, tipKey: "nav.activities_tip" },
+      { nameKey: "nav.employees", href: "/employees", icon: Users, tipKey: "nav.employees_tip" },
     ],
   },
+  // GRUPO 3: HUERTO
   {
-    labelKey: "nav.cattle_operations",
-    descKey: "nav.cattle_operations_desc",
+    labelKey: "nav.orchard_farm",
+    descKey: "nav.orchard_farm_desc",
     items: [
-      { nameKey: "nav.dashboard", href: "/cattle", icon: Beef, tipKey: "nav.dashboard_tip" },
-      { nameKey: "nav.cattle_health", href: "/cattle-health", icon: Heart, tipKey: "nav.cattle_health_tip" },
-      { nameKey: "nav.expert_coach", href: "/cattle/expert-agent", icon: Brain, tipKey: "nav.expert_coach_tip" },
-      { nameKey: "nav.business_plan", href: "/cattle/business-plan", icon: TrendingUp, tipKey: "nav.business_plan_tip" },
-      { nameKey: "nav.pricing_costs", href: "/cattle/pricing-costs", icon: Box, tipKey: "nav.pricing_costs_tip" },
+      { nameKey: "nav.orchard_dashboard", href: "/orchard", icon: Leaf, tipKey: "nav.orchard_dashboard_tip" },
+      { nameKey: "nav.orchard_crops", href: "/orchard/crops", icon: Box, tipKey: "nav.orchard_crops_tip" },
+      { nameKey: "nav.orchard_care", href: "/orchard/care", icon: Heart, tipKey: "nav.orchard_care_tip" },
+      { nameKey: "nav.orchard_harvest", href: "/orchard/harvest", icon: TrendingUp, tipKey: "nav.orchard_harvest_tip" },
+      { nameKey: "nav.orchard_pests", href: "/orchard/pests", icon: AlertCircle, tipKey: "nav.orchard_pests_tip" },
+      { nameKey: "nav.orchard_soil", href: "/orchard/soil", icon: Box, tipKey: "nav.orchard_soil_tip" },
+      { nameKey: "nav.orchard_equipment", href: "/orchard/equipment", icon: Wrench, tipKey: "nav.orchard_equipment_tip" },
+      { nameKey: "nav.orchard_analytics", href: "/orchard/analytics", icon: TrendingUp, tipKey: "nav.orchard_analytics_tip" },
     ],
   },
+  // GRUPO 4: INFRAESTRUCTURA
   {
     labelKey: "nav.property_management",
     descKey: "nav.property_management_desc",
@@ -59,13 +66,9 @@ const navigationGroups = [
           { nameKey: "nav.audit_logs", href: "/inventory/audit-logs", icon: "📋" },
         ],
       },
-      { nameKey: "nav.operations", href: "/operations", icon: Map, tipKey: "nav.operations_tip" },
-      { nameKey: "nav.fuel_consumption", href: "/fuel-consumption", icon: Fuel, tipKey: "nav.fuel_consumption_tip" },
-      { nameKey: "nav.maintenance", href: "/maintenance", icon: Wrench, tipKey: "nav.maintenance_tip" },
-      { nameKey: "nav.gis_map", href: "/map", icon: Map, tipKey: "nav.gis_map_tip" },
-      { nameKey: "nav.kmz_viewer", href: "/map/kmz-viewer", icon: Map, tipKey: "nav.kmz_viewer_tip" },
     ],
   },
+  // GRUPO 5: COMBUSTIBLES
   {
     labelKey: "nav.off_grid_energy",
     descKey: "nav.off_grid_energy_desc",
@@ -82,20 +85,42 @@ const navigationGroups = [
       },
     ],
   },
+  // GRUPO 6: TRAKEOS KMZ
   {
-    labelKey: "nav.orchard_farm",
-    descKey: "nav.orchard_farm_desc",
+    labelKey: "nav.tracking",
+    descKey: "nav.tracking_desc",
     items: [
-      { nameKey: "nav.orchard_dashboard", href: "/orchard", icon: Leaf, tipKey: "nav.orchard_dashboard_tip" },
-      { nameKey: "nav.orchard_crops", href: "/orchard/crops", icon: Box, tipKey: "nav.orchard_crops_tip" },
-      { nameKey: "nav.orchard_care", href: "/orchard/care", icon: Heart, tipKey: "nav.orchard_care_tip" },
-      { nameKey: "nav.orchard_harvest", href: "/orchard/harvest", icon: TrendingUp, tipKey: "nav.orchard_harvest_tip" },
-      { nameKey: "nav.orchard_pests", href: "/orchard/pests", icon: AlertCircle, tipKey: "nav.orchard_pests_tip" },
-      { nameKey: "nav.orchard_soil", href: "/orchard/soil", icon: Box, tipKey: "nav.orchard_soil_tip" },
-      { nameKey: "nav.orchard_equipment", href: "/orchard/equipment", icon: Wrench, tipKey: "nav.orchard_equipment_tip" },
-      { nameKey: "nav.orchard_analytics", href: "/orchard/analytics", icon: TrendingUp, tipKey: "nav.orchard_analytics_tip" },
+      { nameKey: "nav.gis_map", href: "/map", icon: Map, tipKey: "nav.gis_map_tip" },
+      { nameKey: "nav.kmz_viewer", href: "/map/kmz-viewer", icon: Map, tipKey: "nav.kmz_viewer_tip" },
+      { nameKey: "nav.operations", href: "/operations", icon: Map, tipKey: "nav.operations_tip" },
     ],
   },
+  // GRUPO 7: MANTENCION
+  {
+    labelKey: "nav.maintenance_requests",
+    descKey: "nav.maintenance_requests_desc",
+    items: [
+      { nameKey: "nav.maintenance", href: "/maintenance", icon: Wrench, tipKey: "nav.maintenance_tip" },
+      {
+        nameKey: "nav.facility_requests",
+        href: "/issues",
+        icon: AlertCircle,
+        tipKey: "nav.facility_requests_tip",
+      },
+      { nameKey: "nav.checklists", href: "/checklists", icon: CheckSquare, tipKey: "nav.checklists_tip" },
+    ],
+  },
+  // GRUPO 8: LANDSCAPE
+  {
+    labelKey: "nav.sovereignty",
+    descKey: "nav.sovereignty_desc",
+    items: [
+      { nameKey: "nav.sovereignty_dashboard", href: "/sovereignty", icon: Crown, tipKey: "nav.sovereignty_dashboard_tip" },
+      { nameKey: "nav.coach", href: "/sovereignty/coach", icon: Brain, tipKey: "nav.coach_tip" },
+      { nameKey: "nav.layers", href: "/sovereignty/layers", icon: TrendingUp, tipKey: "nav.layers_tip" },
+    ],
+  },
+  // GRUPO 9: VIÑA
   {
     labelKey: "nav.vineyard",
     descKey: "nav.vineyard_desc",
@@ -111,6 +136,34 @@ const navigationGroups = [
       { nameKey: "nav.vineyard_analytics", href: "/vineyard/analytics", icon: TrendingUp, tipKey: "nav.vineyard_analytics_tip" },
     ],
   },
+  // GRUPO 10: GANADO
+  {
+    labelKey: "nav.cattle_operations",
+    descKey: "nav.cattle_operations_desc",
+    items: [
+      { nameKey: "nav.dashboard", href: "/cattle", icon: Beef, tipKey: "nav.dashboard_tip" },
+      { nameKey: "nav.cattle_health", href: "/cattle-health", icon: Heart, tipKey: "nav.cattle_health_tip" },
+      { nameKey: "nav.expert_coach", href: "/cattle/expert-agent", icon: Brain, tipKey: "nav.expert_coach_tip" },
+      { nameKey: "nav.business_plan", href: "/cattle/business-plan", icon: TrendingUp, tipKey: "nav.business_plan_tip" },
+      { nameKey: "nav.pricing_costs", href: "/cattle/pricing-costs", icon: Box, tipKey: "nav.pricing_costs_tip" },
+    ],
+  },
+  // GRUPO 11: HOSPITALITY
+  {
+    labelKey: "nav.hospitality",
+    descKey: "nav.hospitality_desc",
+    items: [
+      { nameKey: "nav.concierge", href: "/concierge", icon: MessageSquare, tipKey: "nav.concierge_tip" },
+      {
+        nameKey: "nav.guest_requests",
+        href: "/guest-requests",
+        icon: Tablet,
+        tipKey: "nav.guest_requests_tip",
+      },
+      { nameKey: "nav.kitchen", href: "/kitchen", icon: ChefHat, tipKey: "nav.kitchen_tip" },
+    ],
+  },
+  // GRUPO 12: SUPPLY CHAIN / PROCUREMENT
   {
     labelKey: "nav.supply_chain",
     descKey: "nav.supply_chain_desc",
@@ -128,42 +181,13 @@ const navigationGroups = [
         icon: TrendingUp,
         tipKey: "nav.analytics_tip",
       },
-      {
-        nameKey: "nav.property_management",
-        href: "/procurement/facilities",
-        icon: Building,
-        tipKey: "nav.property_management_desc",
-      },
     ],
   },
-  {
-    labelKey: "nav.people_operations",
-    descKey: "nav.people_operations_desc",
-    items: [
-      { nameKey: "nav.employees", href: "/employees", icon: Users, tipKey: "nav.employees_tip" },
-      { nameKey: "nav.volunteers", href: "/volunteers", icon: Heart, tipKey: "nav.volunteers_tip" },
-      { nameKey: "nav.activities", href: "/activities-calendar", icon: Calendar, tipKey: "nav.activities_tip" },
-      { nameKey: "nav.concierge", href: "/concierge", icon: MessageSquare, tipKey: "nav.concierge_tip" },
-      {
-        nameKey: "nav.guest_requests",
-        href: "/guest-requests",
-        icon: Tablet,
-        tipKey: "nav.guest_requests_tip",
-      },
-      { nameKey: "nav.kitchen", href: "/kitchen", icon: ChefHat, tipKey: "nav.kitchen_tip" },
-      { nameKey: "nav.checklists", href: "/checklists", icon: CheckSquare, tipKey: "nav.checklists_tip" },
-    ],
-  },
+  // GRUPO 13: ADMINISTRACION/OPERACIONES
   {
     labelKey: "nav.advanced",
     descKey: "nav.advanced_desc",
     items: [
-      {
-        nameKey: "nav.facility_requests",
-        href: "/issues",
-        icon: AlertCircle,
-        tipKey: "nav.facility_requests_tip",
-      },
       { nameKey: "nav.ai_ops", href: "/ai-ops", icon: Bot, tipKey: "nav.ai_ops_tip" },
       { nameKey: "nav.admin", href: "/admin", icon: Settings, tipKey: "nav.admin_tip" },
     ],
