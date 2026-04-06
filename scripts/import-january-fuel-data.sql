@@ -20,59 +20,59 @@ WITH numbered_data AS (
     ('2026-01-04'::date, 'Luis Miranda', 'Lancha aluminio', 'Bencina', 15.0, 22500.0),
     -- 2026-01-05
     ('2026-01-05'::date, 'Manfred Corcovado', 'Buggy 2', 'Bencina', 30.0, 45000.0),
-    ('2026-01-05'::date, 'Hector', 'Motobomba viñas', 'Bencina', 5.0, 7500.0),
-    ('2026-01-05'::date, 'Hector', 'Desbrozadora', 'Bencina', 5.0, 7500.0),
+    ('2026-01-05'::date, 'Hector Alejandro Hidalgo', 'Motobomba viñas', 'Bencina', 5.0, 7500.0),
+    ('2026-01-05'::date, 'Hector Alejandro Hidalgo', 'Desbrozadora', 'Bencina', 5.0, 7500.0),
     ('2026-01-05'::date, 'Luis Miranda', 'Corcovado', 'Bencina', 30.0, 45000.0),
     ('2026-01-05'::date, 'Luis Miranda', 'Lanchón', 'Bencina', 30.0, 45000.0),
     ('2026-01-05'::date, 'Luis Miranda', 'Lancha aluminio', 'Bencina', 10.0, 15000.0),
     -- 2026-01-06
     ('2026-01-06'::date, 'Manfred Corcovado', 'Lanchón', 'Bencina', 25.0, 37500.0),
     ('2026-01-06'::date, 'Manfred Corcovado', 'Bote aluminio', 'Bencina', 15.0, 22500.0),
-    ('2026-01-06'::date, 'Andres', 'Tractor Massey Ferguson', 'Petróleo', 114.0, 45600.0),
-    ('2026-01-06'::date, 'Andres', 'Tractor New Holland', 'Petróleo', 62.0, 24800.0),
+    ('2026-01-06'::date, 'Andres Sandoval?', 'Tractor Massey Ferguson', 'Petróleo', 114.0, 45600.0),
+    ('2026-01-06'::date, 'Andres Sandoval?', 'Tractor New Holland', 'Petróleo', 62.0, 24800.0),
     -- 2026-01-07
     ('2026-01-07'::date, 'Titan', 'Retro', 'Petróleo', 50.0, 20000.0),
     ('2026-01-07'::date, 'Luis Miranda', 'Corcovado', 'Bencina', 60.0, 90000.0),
     ('2026-01-07'::date, 'Luis Miranda', 'Lancha aluminio', 'Bencina', 15.0, 22500.0),
     -- 2026-01-08
-    ('2026-01-08'::date, 'Hector', 'Cuatrimoto roja', 'Bencina', 5.0, 7500.0),
-    ('2026-01-08'::date, 'Hector', 'Motobomba viñas', 'Bencina', 5.0, 7500.0),
+    ('2026-01-08'::date, 'Hector Alejandro Hidalgo', 'Cuatrimoto roja', 'Bencina', 5.0, 7500.0),
+    ('2026-01-08'::date, 'Hector Alejandro Hidalgo', 'Motobomba viñas', 'Bencina', 5.0, 7500.0),
     ('2026-01-08'::date, 'Titan', 'Lanchón', 'Bencina', 25.0, 37500.0),
     ('2026-01-08'::date, 'Titan', 'Bote aluminio', 'Bencina', 12.0, 18000.0),
-    ('2026-01-08'::date, 'Ruben', 'Chipiadora', 'Bencina', 5.0, 7500.0),
-    ('2026-01-08'::date, 'Andres', 'Tractor New Holland', 'Petróleo', 100.0, 40000.0),
-    ('2026-01-08'::date, 'Andres', 'Tractor Massey Ferguson', 'Petróleo', 50.0, 20000.0),
-    ('2026-01-08'::date, 'Andres', 'Maxus', 'Petróleo', 50.0, 20000.0),
+    ('2026-01-08'::date, 'Ruben Flandes', 'Chipiadora', 'Bencina', 5.0, 7500.0),
+    ('2026-01-08'::date, 'Andres Sandoval?', 'Tractor New Holland', 'Petróleo', 100.0, 40000.0),
+    ('2026-01-08'::date, 'Andres Sandoval?', 'Tractor Massey Ferguson', 'Petróleo', 50.0, 20000.0),
+    ('2026-01-08'::date, 'Andres Sandoval?', 'Maxus', 'Petróleo', 50.0, 20000.0),
     -- 2026-01-09
     ('2026-01-09'::date, 'Titan', 'Bote aluminio', 'Bencina', 12.0, 18000.0),
-    ('2026-01-09'::date, 'Andres', 'Retro constructora', 'Petróleo', 132.42, 52968.0),
+    ('2026-01-09'::date, 'Andres Sandoval?', 'Retro constructora', 'Petróleo', 132.42, 52968.0),
     -- 2026-01-10
-    ('2026-01-10'::date, 'Andres', 'Buggy', 'Bencina', 20.0, 30000.0),
-    ('2026-01-10'::date, 'Andres', 'Generador hotelito', 'Bencina', 5.0, 7500.0),
+    ('2026-01-10'::date, 'Andres Sandoval?', 'Buggy', 'Bencina', 20.0, 30000.0),
+    ('2026-01-10'::date, 'Andres Sandoval?', 'Generador hotelito', 'Bencina', 5.0, 7500.0),
     ('2026-01-10'::date, 'Titan', 'Lanchón', 'Bencina', 25.0, 37500.0),
     ('2026-01-10'::date, 'Luis Miranda', 'Fomo 1', 'Bencina', 15.0, 22500.0),
     -- 2026-01-12
-    ('2026-01-12'::date, 'Hector', 'Motobomba viñas', 'Bencina', 5.0, 7500.0),
+    ('2026-01-12'::date, 'Hector Alejandro Hidalgo', 'Motobomba viñas', 'Bencina', 5.0, 7500.0),
     ('2026-01-12'::date, 'Manfred Corcovado', 'Nissan Navara', 'Petróleo', 60.0, 24000.0),
     ('2026-01-12'::date, 'Titan', 'Lanchón', 'Bencina', 25.0, 37500.0),
     ('2026-01-12'::date, 'Titan', 'Bote aluminio', 'Bencina', 12.0, 18000.0),
     -- 2026-01-13
-    ('2026-01-13'::date, 'Andres', 'Camioneta Wingle', 'Bencina', 50.0, 75000.0),
-    ('2026-01-13'::date, 'Raimundo', 'Moto 1', 'Bencina', 7.0, 10500.0),
-    ('2026-01-13'::date, 'Raimundo', 'Moto 2', 'Bencina', 7.0, 10500.0),
-    ('2026-01-13'::date, 'Hector', 'Motobomba viñas', 'Bencina', 5.0, 7500.0),
-    ('2026-01-13'::date, 'Hector', 'Cuatrimoto roja', 'Bencina', 5.0, 7500.0),
+    ('2026-01-13'::date, 'Andres Sandoval?', 'Camioneta Wingle', 'Bencina', 50.0, 75000.0),
+    ('2026-01-13'::date, 'Raimundo Colvin', 'Moto 1', 'Bencina', 7.0, 10500.0),
+    ('2026-01-13'::date, 'Raimundo Colvin', 'Moto 2', 'Bencina', 7.0, 10500.0),
+    ('2026-01-13'::date, 'Hector Alejandro Hidalgo', 'Motobomba viñas', 'Bencina', 5.0, 7500.0),
+    ('2026-01-13'::date, 'Hector Alejandro Hidalgo', 'Cuatrimoto roja', 'Bencina', 5.0, 7500.0),
     -- 2026-01-14
-    ('2026-01-14'::date, 'Raimundo', 'Buggy', 'Bencina', 25.0, 37500.0),
+    ('2026-01-14'::date, 'Raimundo Colvin', 'Buggy', 'Bencina', 25.0, 37500.0),
     ('2026-01-14'::date, 'Luis Miranda', 'Corcovado', 'Bencina', 40.0, 60000.0),
     -- 2026-01-15
     ('2026-01-15'::date, 'Luis Miranda', 'Corcovado', 'Bencina', 20.0, 30000.0),
     ('2026-01-15'::date, 'Titan', 'Lanchón', 'Bencina', 25.0, 37500.0),
     -- 2026-01-16
-    ('2026-01-16'::date, 'Hector', 'Motobomba viñas', 'Bencina', 5.0, 7500.0),
+    ('2026-01-16'::date, 'Hector Alejandro Hidalgo', 'Motobomba viñas', 'Bencina', 5.0, 7500.0),
     ('2026-01-16'::date, 'Luis Miranda', 'Corcovado', 'Bencina', 50.0, 75000.0),
     ('2026-01-16'::date, 'Luis Miranda', 'Lanchón', 'Bencina', 15.0, 22500.0),
-    ('2026-01-16'::date, 'Ruben', 'Corcovado', 'Bencina', 40.0, 60000.0),
+    ('2026-01-16'::date, 'Ruben Flandes', 'Corcovado', 'Bencina', 40.0, 60000.0),
     -- 2026-01-17
     ('2026-01-17'::date, 'Titan', 'Maxus', 'Petróleo', 65.0, 26000.0),
     ('2026-01-17'::date, 'Manfred Corcovado', 'Nissan Navara', 'Petróleo', 50.0, 20000.0),
@@ -80,49 +80,49 @@ WITH numbered_data AS (
     ('2026-01-17'::date, 'Luis Miranda', 'Lanchón', 'Bencina', 10.0, 15000.0),
     -- 2026-01-19
     ('2026-01-19'::date, 'Titan', 'Barcaza Libe', 'Petróleo', 160.0, 64000.0),
-    ('2026-01-19'::date, 'Hector', 'Cuatrimoto', 'Bencina', 5.0, 7500.0),
-    ('2026-01-19'::date, 'Hector', 'Motobomba viñas', 'Bencina', 5.0, 7500.0),
+    ('2026-01-19'::date, 'Hector Alejandro Hidalgo', 'Cuatrimoto', 'Bencina', 5.0, 7500.0),
+    ('2026-01-19'::date, 'Hector Alejandro Hidalgo', 'Motobomba viñas', 'Bencina', 5.0, 7500.0),
     ('2026-01-19'::date, 'Luis Miranda', 'Corcovado', 'Bencina', 50.0, 75000.0),
     ('2026-01-19'::date, 'Luis Miranda', 'Lanchón', 'Bencina', 25.0, 37500.0),
     ('2026-01-19'::date, 'Manfred Corcovado', 'Lanchón', 'Bencina', 25.0, 37500.0),
     -- 2026-01-21
     ('2026-01-21'::date, 'Manfred Corcovado', 'Buggy', 'Bencina', 20.0, 30000.0),
-    ('2026-01-21'::date, 'Hector', 'Motobomba viñas', 'Bencina', 5.0, 7500.0),
-    ('2026-01-21'::date, 'Hector', 'Cuatrimoto roja', 'Bencina', 5.0, 7500.0),
-    ('2026-01-21'::date, 'Raimundo', 'Tractor azul', 'Petróleo', 169.0, 67600.0),
-    ('2026-01-21'::date, 'Ruben', 'Chipiadora', 'Bencina', 10.0, 15000.0),
+    ('2026-01-21'::date, 'Hector Alejandro Hidalgo', 'Motobomba viñas', 'Bencina', 5.0, 7500.0),
+    ('2026-01-21'::date, 'Hector Alejandro Hidalgo', 'Cuatrimoto roja', 'Bencina', 5.0, 7500.0),
+    ('2026-01-21'::date, 'Raimundo Colvin', 'Tractor azul', 'Petróleo', 169.0, 67600.0),
+    ('2026-01-21'::date, 'Ruben Flandes', 'Chipiadora', 'Bencina', 10.0, 15000.0),
     -- 2026-01-22
-    ('2026-01-22'::date, 'Raimundo', 'Tractor azul', 'Petróleo', 124.0, 49600.0),
-    ('2026-01-22'::date, 'Ruben', 'Desbrozadora jardín', 'Bencina', 5.0, 7500.0),
+    ('2026-01-22'::date, 'Raimundo Colvin', 'Tractor azul', 'Petróleo', 124.0, 49600.0),
+    ('2026-01-22'::date, 'Ruben Flandes', 'Desbrozadora jardín', 'Bencina', 5.0, 7500.0),
     -- 2026-01-23
-    ('2026-01-23'::date, 'Andres', 'Generador', 'Petróleo', 150.0, 60000.0),
-    ('2026-01-23'::date, 'Andres', 'Maxus', 'Petróleo', 40.0, 16000.0),
+    ('2026-01-23'::date, 'Andres Sandoval?', 'Generador', 'Petróleo', 150.0, 60000.0),
+    ('2026-01-23'::date, 'Andres Sandoval?', 'Maxus', 'Petróleo', 40.0, 16000.0),
     -- 2026-01-24
-    ('2026-01-24'::date, 'Andres', 'Buggy', 'Bencina', 20.0, 30000.0),
-    ('2026-01-24'::date, 'Hector', 'Motobomba viñas', 'Bencina', 5.0, 7500.0),
-    ('2026-01-24'::date, 'Hector', 'Cuatrimoto roja', 'Bencina', 5.0, 7500.0),
+    ('2026-01-24'::date, 'Andres Sandoval?', 'Buggy', 'Bencina', 20.0, 30000.0),
+    ('2026-01-24'::date, 'Hector Alejandro Hidalgo', 'Motobomba viñas', 'Bencina', 5.0, 7500.0),
+    ('2026-01-24'::date, 'Hector Alejandro Hidalgo', 'Cuatrimoto roja', 'Bencina', 5.0, 7500.0),
     ('2026-01-24'::date, 'Luis Miranda', 'Corcovado', 'Bencina', 50.0, 75000.0),
     ('2026-01-24'::date, 'Luis Miranda', 'Lanchón', 'Bencina', 10.0, 15000.0),
     -- 2026-01-25
-    ('2026-01-25'::date, 'Andres', 'Generador Honda', 'Bencina', 20.0, 30000.0),
+    ('2026-01-25'::date, 'Andres Sandoval?', 'Generador Honda', 'Bencina', 20.0, 30000.0),
     -- 2026-01-26
     ('2026-01-26'::date, 'Titan', 'Tractor azul', 'Petróleo', 44.0, 17600.0),
-    ('2026-01-26'::date, 'Andres', 'Retro constructora', 'Petróleo', 120.0, 48000.0),
-    ('2026-01-26'::date, 'Raimundo', 'Tractor azul', 'Petróleo', 66.0, 26400.0),
+    ('2026-01-26'::date, 'Andres Sandoval?', 'Retro constructora', 'Petróleo', 120.0, 48000.0),
+    ('2026-01-26'::date, 'Raimundo Colvin', 'Tractor azul', 'Petróleo', 66.0, 26400.0),
     -- 2026-01-27
-    ('2026-01-27'::date, 'Hector', 'Cuatrimoto roja', 'Bencina', 5.0, 7500.0),
-    ('2026-01-27'::date, 'Hector', 'Motobomba viñas', 'Bencina', 5.0, 7500.0),
-    ('2026-01-27'::date, 'Andres', 'Buggy azul', 'Bencina', 25.0, 37500.0),
+    ('2026-01-27'::date, 'Hector Alejandro Hidalgo', 'Cuatrimoto roja', 'Bencina', 5.0, 7500.0),
+    ('2026-01-27'::date, 'Hector Alejandro Hidalgo', 'Motobomba viñas', 'Bencina', 5.0, 7500.0),
+    ('2026-01-27'::date, 'Andres Sandoval?', 'Buggy azul', 'Bencina', 25.0, 37500.0),
     -- 2026-01-28
     ('2026-01-28'::date, 'Luis Miranda', 'Corcovado', 'Bencina', 50.0, 75000.0),
     ('2026-01-28'::date, 'Luis Miranda', 'Lanchón', 'Bencina', 30.0, 45000.0),
     -- 2026-01-30
-    ('2026-01-30'::date, 'Andres', 'Generador', 'Petróleo', 60.0, 24000.0),
-    ('2026-01-30'::date, 'Raimundo', 'Generador', 'Petróleo', 60.0, 24000.0),
+    ('2026-01-30'::date, 'Andres Sandoval?', 'Generador', 'Petróleo', 60.0, 24000.0),
+    ('2026-01-30'::date, 'Raimundo Colvin', 'Generador', 'Petróleo', 60.0, 24000.0),
     ('2026-01-30'::date, 'Manfred Corcovado', 'Nissan Navara', 'Petróleo', 60.0, 24000.0),
     ('2026-01-30'::date, 'Luis Miranda', 'Lanchón', 'Bencina', 15.0, 22500.0),
     -- 2026-01-31
-    ('2026-01-31'::date, 'Andres', 'Generador', 'Petróleo', 50.0, 20000.0)
+    ('2026-01-31'::date, 'Andres Sandoval?', 'Generador', 'Petróleo', 50.0, 20000.0)
   ) AS data(date_recorded, employee_name, vehicle_name, fuel_type, liters, cost_pesos)
   LEFT JOIN employees e ON e.name ILIKE data.employee_name
   LEFT JOIN vehicles v ON v.name ILIKE data.vehicle_name
