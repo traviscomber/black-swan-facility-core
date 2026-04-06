@@ -1,13 +1,12 @@
--- Delete all January 2026 fuel consumption records
-DELETE FROM fuel_consumption 
-WHERE date_recorded BETWEEN '2026-01-01' AND '2026-01-31';
-
--- Import ALL 97 January 2026 Fuel Consumption Data with placeholders for unknown employees
+-- Import ALL 97 January 2026 Fuel Consumption Data with WhatsApp_.hector for unmapped employees
 WITH numbered_data AS (
   SELECT 
     ROW_NUMBER() OVER () as rn,
     v.id as vehicle_id,
-    COALESCE(e.id, (SELECT id FROM employees WHERE name = 'WhatsApp_placeholder' LIMIT 1)) as submitted_by,
+    CASE 
+      WHEN e.id IS NOT NULL THEN e.id
+      ELSE (SELECT id FROM employees WHERE name = 'WhatsApp_.hector' LIMIT 1)
+    END as submitted_by,
     data.date_recorded,
     data.fuel_type,
     data.liters,
