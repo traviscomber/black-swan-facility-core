@@ -147,12 +147,16 @@ SELECT
   vehicle_id,
   submitted_by,
   date_recorded,
-  fuel_type,
+  CASE 
+    WHEN fuel_type = 'Bencina' THEN 'gasoline'
+    WHEN fuel_type = 'Petróleo' THEN 'diesel'
+    ELSE 'other'
+  END as fuel_type,
   liters,
   cost_pesos,
   'Field Station' as location,
   'January 2026 fuel report' as notes,
-  'Manual Entry' as source,
+  'manual' as source,
   NOW() as created_at,
   NOW() as updated_at
 FROM numbered_data;
