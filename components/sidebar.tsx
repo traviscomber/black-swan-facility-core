@@ -300,7 +300,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
             <div key={group.labelKey} className="space-y-1 min-w-0">
               <div className="flex items-start justify-between px-2 gap-1 min-w-0">
                 <div className="flex-1 min-w-0">
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-gray-700 truncate">{t(group.labelKey)}</h3>
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-gray-700 truncate" title={t(group.labelKey)}>{t(group.labelKey)}</h3>
                   <p className="text-xs text-gray-500 mt-1 leading-tight hidden sm:block break-words">{t(group.descKey)}</p>
                 </div>
                 <button
