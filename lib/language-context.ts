@@ -135,14 +135,36 @@ export const translations = {
     'nav.volunteers_tip': 'Volunteer management',
     'nav.activities': 'Activities',
     'nav.activities_tip': 'Activities calendar',
+    
+    // Maintenance
+    'nav.maintenance_requests': 'Maintenance',
+    'nav.maintenance_requests_desc': 'Track maintenance and issues',
+    'nav.maintenance': 'Maintenance',
+    'nav.maintenance_tip': 'Track maintenance',
+    'nav.facility_requests': 'Facility Requests',
+    'nav.facility_requests_tip': 'Handle facility requests',
+    'nav.checklists': 'Checklists',
+    'nav.checklists_tip': 'Task checklists',
+    
+    // Tracking (Maps & KMZ)
+    'nav.tracking': 'Maps & Tracking',
+    'nav.tracking_desc': 'Geographic and operational tracking',
+    'nav.gis_map': 'GIS Map',
+    'nav.gis_map_tip': 'Geographic information',
+    'nav.kmz_viewer': 'KMZ Viewer',
+    'nav.kmz_viewer_tip': 'View KMZ files',
+    'nav.operations': 'Operations',
+    'nav.operations_tip': 'Operational management',
+    
+    // Hospitality
+    'nav.hospitality': 'Hospitality',
+    'nav.hospitality_desc': 'Guest and concierge services',
     'nav.concierge': 'Concierge',
     'nav.concierge_tip': 'Concierge services',
     'nav.guest_requests': 'Guest Requests',
     'nav.guest_requests_tip': 'Handle guest requests',
     'nav.kitchen': 'Kitchen',
     'nav.kitchen_tip': 'Kitchen management',
-    'nav.checklists': 'Checklists',
-    'nav.checklists_tip': 'Task checklists',
     
     // Vineyard Pages
     'vineyard.loading': 'Loading...',
@@ -699,14 +721,36 @@ export const translations = {
     'nav.volunteers_tip': 'Gestión de voluntarios',
     'nav.activities': 'Actividades',
     'nav.activities_tip': 'Calendario de actividades',
+    
+    // Maintenance
+    'nav.maintenance_requests': 'Mantenimiento',
+    'nav.maintenance_requests_desc': 'Rastrear mantenimiento y problemas',
+    'nav.maintenance': 'Mantenimiento',
+    'nav.maintenance_tip': 'Rastrear mantenimiento',
+    'nav.facility_requests': 'Solicitudes de Instalación',
+    'nav.facility_requests_tip': 'Atender solicitudes de instalación',
+    'nav.checklists': 'Listas de Verificación',
+    'nav.checklists_tip': 'Listas de verificación de tareas',
+    
+    // Tracking (Maps & KMZ)
+    'nav.tracking': 'Mapas y Rastreo',
+    'nav.tracking_desc': 'Rastreo geográfico y operacional',
+    'nav.gis_map': 'Mapa SIG',
+    'nav.gis_map_tip': 'Información geográfica',
+    'nav.kmz_viewer': 'Visor KMZ',
+    'nav.kmz_viewer_tip': 'Ver archivos KMZ',
+    'nav.operations': 'Operaciones',
+    'nav.operations_tip': 'Gestión operacional',
+    
+    // Hospitality
+    'nav.hospitality': 'Hospitalidad',
+    'nav.hospitality_desc': 'Servicios de huéspedes y concierge',
     'nav.concierge': 'Concierge',
     'nav.concierge_tip': 'Servicios de concierge',
     'nav.guest_requests': 'Solicitudes de Huéspedes',
     'nav.guest_requests_tip': 'Atender solicitudes de huéspedes',
     'nav.kitchen': 'Cocina',
     'nav.kitchen_tip': 'Gestión de cocina',
-    'nav.checklists': 'Listas de Verificación',
-    'nav.checklists_tip': 'Listas de verificación de tareas',
     
     // Vineyard Pages
     'vineyard.loading': 'Cargando...',
