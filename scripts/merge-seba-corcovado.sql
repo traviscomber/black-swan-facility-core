@@ -1,15 +1,11 @@
 -- Create Seba Corcovado as employee if not exists
 INSERT INTO employees (name, created_at, updated_at)
-VALUES ('Seba Corcovado', NOW(), NOW())
-ON CONFLICT (name) DO NOTHING;
+SELECT 'Seba Corcovado', NOW(), NOW()
+WHERE NOT EXISTS (SELECT 1 FROM employees WHERE name = 'Seba Corcovado');
 
--- Get the ID of Seba Corcovado
-WITH seba_id AS (
-  SELECT id FROM employees WHERE name = 'Seba Corcovado' LIMIT 1
-)
--- Reassign the 8 orphan records to Seba Corcovado
+-- Get the ID of Seba Corcovado and reassign the 8 orphan records
 UPDATE fuel_consumption
-SET submitted_by = (SELECT id FROM seba_id)
+SET submitted_by = (SELECT id FROM employees WHERE name = 'Seba Corcovado' LIMIT 1)
 WHERE submitted_by = '7a2e35c2-bd97-4e3a-afc4-23949bc8f463';
 
 -- Show final consumption summary by employee
