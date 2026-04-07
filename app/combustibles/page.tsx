@@ -12,10 +12,10 @@ export const dynamic = 'force-dynamic'
 export default async function CombustiblesPage() {
   const supabase = await createClient()
 
-  // Fetch current data
+  // Fetch current data with employee names
   const { data: fuelRecords } = await supabase
     .from('fuel_consumption')
-    .select('*')
+    .select('*, employees(name)')
     .order('date_recorded', { ascending: false })
     .limit(1000)
 

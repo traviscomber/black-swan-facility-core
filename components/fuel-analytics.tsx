@@ -66,7 +66,7 @@ export function FuelAnalyticsTab({ records, vehicles }: FuelAnalyticsTabProps) {
 
   records.forEach((record: any) => {
     const employeeId = record.submitted_by || 'unknown'
-    const employeeName = record.employee_name || 'Unknown'
+    const employeeName = record.employees?.name || record.employee_name || 'Unknown'
     const fuelType = record.fuel_type || 'unknown'
     const liters = record.liters || 0
     const cost = record.cost_pesos || 0
