@@ -39,8 +39,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: insertError.message }, { status: 500 })
     }
 
+    // Get valid vehicles and employees
+    const { data: vehicles } = await supabase.from('vehicles').select('id, name')
+    const { data: employees } = await supabase.from('employees').select('id, name')
+
     // Detect anomalies
-    const anomalies = await detectFuelAnomalies(records)
+    const anomalies = await detectFuelAnomalies(records, vehicles, employees)
 
     // Insert anomalies
     if (anomalies.length > 0) {

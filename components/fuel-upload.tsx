@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Upload, AlertTriangle, CheckCircle2 } from 'lucide-react'
 import { parseFuelFile, type FuelRecord } from '@/lib/fuel-parser'
-import { detectFuelAnomalies } from '@/lib/fuel-anomaly-detector'
+import { detectAnomaliesAction } from '@/app/combustibles/actions'
 
 interface FuelUploadProps {
   onRecordsLoaded?: (records: FuelRecord[]) => void
@@ -38,9 +38,9 @@ export function FuelUploadComponent({ onRecordsLoaded, onAnomaliesDetected }: Fu
 
       setParsedRecords(records)
 
-      // Detect anomalies
+      // Detect anomalies using server action
       console.log('[v0] Detecting anomalies...')
-      const anomalies = await detectFuelAnomalies(records)
+      const anomalies = await detectAnomaliesAction(records)
       console.log('[v0] Found anomalies:', anomalies.length)
 
       onRecordsLoaded?.(records)

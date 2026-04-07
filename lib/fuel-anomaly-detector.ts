@@ -1,4 +1,3 @@
-import { createClient } from '@/lib/supabase/server'
 import type { FuelRecord } from './fuel-parser'
 
 export interface FuelAnomaly {
@@ -9,14 +8,9 @@ export interface FuelAnomaly {
   notes?: string
 }
 
-export async function detectFuelAnomalies(records: FuelRecord[]): Promise<FuelAnomaly[]> {
+// Server-only function for detecting anomalies (used by Route Handlers and Server Actions)
+export async function detectFuelAnomalies(records: FuelRecord[], vehicles?: any[], employees?: any[]): Promise<FuelAnomaly[]> {
   const anomalies: FuelAnomaly[] = []
-  const supabase = await createClient()
-
-  // Get valid vehicles and employees
-  const { data: vehicles } = await supabase.from('vehicles').select('id, name')
-  const { data: employees } = await supabase.from('employees').select('id, name')
-  const { data: existingRecords } = await supabase.from('fuel_consumption').select('*').limit(1000)
 
   const vehicleNames = new Set(vehicles?.map(v => v.name) || [])
   const employeeNames = new Set(employees?.map(e => e.name) || [])
@@ -32,7 +26,7 @@ export async function detectFuelAnomalies(records: FuelRecord[]): Promise<FuelAn
 
   records.forEach((record, index) => {
     // Check 1: Invalid vehicle
-    if (!vehicleNames.has(record.vehicle)) {
+    if (vehicles && !vehicleNames.has(record.vehicle)) {
       anomalies.push({
         anomalyType: 'invalid_vehicle',
         severity: 'high',
@@ -42,7 +36,7 @@ export async function detectFuelAnomalies(records: FuelRecord[]): Promise<FuelAn
     }
 
     // Check 2: Invalid person
-    if (!employeeNames.has(record.person)) {
+    if (employees && !employeeNames.has(record.person)) {
       anomalies.push({
         anomalyType: 'invalid_person',
         severity: 'high',
