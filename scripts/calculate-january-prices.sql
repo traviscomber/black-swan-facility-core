@@ -1,7 +1,7 @@
 -- Calculate average fuel prices from January 2026 consolidated data
 -- Based on the daily totals provided
 
-WITH january_data AS (
+WITH january_data(date_recorded, fuel_type, liters, cost_pesos) AS (
   VALUES 
     ('2026-01-04'::date, 'Bencina', 95.0, 142500.0),
     ('2026-01-05'::date, 'Bencina', 75.0, 112500.0),
@@ -37,12 +37,12 @@ WITH january_data AS (
     ('2026-01-30'::date, 'Bencina', 15.0, 22500.0),
     ('2026-01-30'::date, 'Petróleo', 180.0, 72000.0),
     ('2026-01-31'::date, 'Petróleo', 50.0, 20000.0)
-) AS data(date_recorded, fuel_type, liters, cost_pesos)
+)
 SELECT 
   fuel_type,
   SUM(liters) as total_liters,
   SUM(cost_pesos) as total_cost,
   ROUND(SUM(cost_pesos)::numeric / SUM(liters), 2) as price_per_liter
-FROM data
+FROM january_data
 GROUP BY fuel_type
 ORDER BY fuel_type;
