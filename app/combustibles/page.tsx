@@ -12,12 +12,29 @@ export const dynamic = 'force-dynamic'
 export default async function CombustiblesPage() {
   const supabase = await createClient()
 
-  // Fetch current data with employee names
-  const { data: fuelRecords } = await supabase
-    .from('fuel_consumption')
-    .select('*, employees(name)')
-    .order('date_recorded', { ascending: false })
-    .limit(1000)
+  // Fetch fuel records and employees separately (no foreign key relationship defined)
+  const [fuelResponse, employeesResponse] = await Promise.all([
+    supabase
+      .from('fuel_consumption')
+      .select('*')
+      .order('date_recorded', { ascending: false })
+      .limit(1000),
+    supabase
+      .from('employees')
+      .select('id, name')
+  ])
+
+  const fuelRecords = fuelResponse.data || []
+  const employees = employeesResponse.data || []
+
+  // Create a map of employee IDs to names
+  const employeeMap = new Map(employees.map((emp: any) => [emp.id, emp.name]))
+
+  // Enrich fuel records with employee names
+  const enrichedFuelRecords = fuelRecords.map((record: any) => ({
+    ...record,
+    employee_name: employeeMap.get(record.submitted_by) || 'Unknown'
+  }))
 
   const { data: monthlySummary } = await supabase
     .from('monthly_fuel_summary')
@@ -67,7 +84,7 @@ export default async function CombustiblesPage() {
 
             <TabsContent value="summary">
               <MonthlySummaryTab 
-                records={fuelRecords || []} 
+                records={enrichedFuelRecords || []} 
                 summary={monthlySummary || []}
                 anomalies={anomalies || []}
               />
@@ -75,7 +92,7 @@ export default async function CombustiblesPage() {
 
             <TabsContent value="analytics">
               <FuelAnalyticsTab 
-                records={fuelRecords || []} 
+                records={enrichedFuelRecords || []} 
                 vehicles={vehicles || []}
               />
             </TabsContent>
