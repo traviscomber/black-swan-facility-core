@@ -2,6 +2,42 @@ export type Language = 'en' | 'es'
 
 export const translations = {
   en: {
+    // NEW: Operations Center
+    'nav.operations_center': 'Operations Center',
+    'nav.operations_center_desc': 'Core dashboards and management',
+    
+    // NEW: Infrastructure
+    'nav.infrastructure': 'Infrastructure',
+    'nav.infrastructure_desc': 'Properties, assets, and inventory',
+    
+    // NEW: Production
+    'nav.production': 'Production',
+    'nav.production_desc': 'Agriculture, livestock, and energy',
+    
+    // NEW: System
+    'nav.system': 'System',
+    'nav.system_desc': 'Administration and AI operations',
+    
+    // NEW: Additional Navigation Items
+    'nav.issues': 'Issues & Requests',
+    'nav.facility_requests_tip': 'Handle facility requests and issues',
+    'nav.energy': 'Energy Management',
+    'nav.concierge': 'Concierge',
+    'nav.concierge_tip': 'Concierge services and guest support',
+    'nav.ai_ops': 'AI Operations',
+    'nav.ai_ops_tip': 'AI-powered operational insights',
+    'nav.admin': 'Admin',
+    'nav.admin_tip': 'System administration',
+    'nav.cattle_dashboard': 'Cattle',
+    'nav.cattle_dashboard_tip': 'Livestock management dashboard',
+    'nav.vineyard_dashboard': 'Vineyard',
+    'nav.vineyard_dashboard_tip': 'Vineyard management and operations',
+    'nav.vineyard_overview': 'Overview',
+    'nav.vineyard_photos': 'Photos',
+    'nav.vineyard_crops': 'Vines',
+    'nav.vineyard_harvest': 'Harvest',
+    'nav.vineyard_health': 'Health & Pests',
+    
     // Core Operations
     'nav.core_operations': 'Core Operations',
     'nav.core_operations_desc': 'Manage bookings and business',
@@ -590,6 +626,42 @@ export const translations = {
     'nav.admin_tip': 'System administration',
   },
   es: {
+    // NEW: Operations Center
+    'nav.operations_center': 'Centro de Operaciones',
+    'nav.operations_center_desc': 'Paneles centrales y gestión',
+    
+    // NEW: Infrastructure
+    'nav.infrastructure': 'Infraestructura',
+    'nav.infrastructure_desc': 'Propiedades, activos e inventario',
+    
+    // NEW: Production
+    'nav.production': 'Producción',
+    'nav.production_desc': 'Agricultura, ganadería y energía',
+    
+    // NEW: System
+    'nav.system': 'Sistema',
+    'nav.system_desc': 'Administración y operaciones de IA',
+    
+    // NEW: Additional Navigation Items
+    'nav.issues': 'Problemas y Solicitudes',
+    'nav.facility_requests_tip': 'Gestionar solicitudes e problemas de instalaciones',
+    'nav.energy': 'Gestión de Energía',
+    'nav.concierge': 'Conserje',
+    'nav.concierge_tip': 'Servicios de conserjería y soporte',
+    'nav.ai_ops': 'Operaciones de IA',
+    'nav.ai_ops_tip': 'Información operacional impulsada por IA',
+    'nav.admin': 'Administración',
+    'nav.admin_tip': 'Administración del sistema',
+    'nav.cattle_dashboard': 'Ganado',
+    'nav.cattle_dashboard_tip': 'Panel de gestión de ganado',
+    'nav.vineyard_dashboard': 'Viña',
+    'nav.vineyard_dashboard_tip': 'Gestión y operaciones de viña',
+    'nav.vineyard_overview': 'Vista General',
+    'nav.vineyard_photos': 'Fotos',
+    'nav.vineyard_crops': 'Cepas',
+    'nav.vineyard_harvest': 'Cosecha',
+    'nav.vineyard_health': 'Salud y Plagas',
+    
     // Core Operations
     'nav.core_operations': 'Operaciones Principales',
     'nav.core_operations_desc': 'Gestionar reservas y negocios',

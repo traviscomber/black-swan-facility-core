@@ -44,7 +44,16 @@ const navigationGroups = [
         ],
       },
       { nameKey: "nav.procurement", href: "/procurement", icon: TrendingUp, tipKey: "nav.procurement_tip" },
-      { nameKey: "nav.map", href: "/map", icon: Map, tipKey: "nav.gis_map_tip" },
+      {
+        nameKey: "nav.map",
+        href: "/map",
+        icon: Map,
+        tipKey: "nav.gis_map_tip",
+        subItems: [
+          { nameKey: "nav.gis_map", href: "/map", icon: "🗺️" },
+          { nameKey: "nav.kmz_viewer", href: "/map/kmz-viewer", icon: "🌍" },
+        ],
+      },
     ],
   },
   // GRUPO 3: PRODUCTION (Agriculture, Livestock, Vineyards)
