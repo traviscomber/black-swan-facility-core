@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { useEffect, useState } from "react"
-import { Calendar, Home, TrendingUp, Wrench, Sparkles, ArrowRight, Bed, Users } from "lucide-react"
+import { Calendar, AlertCircle, TrendingUp, Wrench, Zap, Users, Building2, Activity, ChevronRight } from "lucide-react"
 import { AppLayout } from "@/components/app-layout"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -21,6 +21,17 @@ interface DashboardMetrics {
   todayCheckOuts: number
   totalRevenue: number
   activeReservations: number
+  maintenanceIssues: number
+  staffActive: number
+  operationalStatus: 'healthy' | 'warning' | 'critical'
+}
+
+interface OperationalAlert {
+  id: string
+  severity: 'info' | 'warning' | 'critical'
+  title: string
+  description: string
+  timestamp: Date
 }
 
 export default function Dashboard() {
@@ -37,7 +48,14 @@ export default function Dashboard() {
     todayCheckOuts: 0,
     totalRevenue: 0,
     activeReservations: 0,
+    maintenanceIssues: 5,
+    staffActive: 12,
+    operationalStatus: 'healthy'
   })
+  const [alerts, setAlerts] = useState<OperationalAlert[]>([
+    { id: '1', severity: 'info', title: 'System Update Scheduled', description: 'Maintenance window tonight 2-4 AM', timestamp: new Date() },
+    { id: '2', severity: 'warning', title: '2 Maintenance Issues Pending', description: 'Guest house plumbing and kitchen equipment', timestamp: new Date(Date.now() - 3600000) },
+  ])
   const [loading, setLoading] = useState(true)
 
   const supabase = createBrowserClient()
@@ -91,6 +109,9 @@ export default function Dashboard() {
           todayCheckOuts,
           totalRevenue: 12500,
           activeReservations: reservationsData?.length || 0,
+          maintenanceIssues: 5,
+          staffActive: 12,
+          operationalStatus: 'healthy'
         })
       } catch (error) {
         console.error("Error fetching metrics:", error)
@@ -100,6 +121,8 @@ export default function Dashboard() {
     }
 
     fetchMetrics()
+    const interval = setInterval(fetchMetrics, 30000) // Refresh every 30 seconds
+    return () => clearInterval(interval)
   }, [])
 
   const quickActions = [
@@ -108,112 +131,198 @@ export default function Dashboard() {
       descKey: "dashboard.booking_calendar_desc",
       icon: Calendar,
       href: "/bookings",
-    },
-    {
-      titleKey: "dashboard.property_management",
-      descKey: "dashboard.property_management_desc",
-      icon: Home,
-      href: "/property-management",
+      badge: metrics.todayCheckIns
     },
     {
       titleKey: "dashboard.maintenance",
       descKey: "dashboard.maintenance_desc",
       icon: Wrench,
       href: "/maintenance",
+      badge: metrics.maintenanceIssues
     },
     {
-      titleKey: "dashboard.analytics",
-      descKey: "dashboard.analytics_desc",
+      titleKey: "dashboard.property_management",
+      descKey: "dashboard.property_management_desc",
+      icon: Building2,
+      href: "/property-management",
+      badge: metrics.totalRooms
+    },
+    {
+      titleKey: "dashboard.operations",
+      descKey: "dashboard.operations_desc",
       icon: TrendingUp,
-      href: "/assets/analytics",
+      href: "/operations",
+      badge: metrics.staffActive
     },
   ]
+
+  const severityColors = {
+    info: 'bg-blue-50 border-blue-200 text-blue-900',
+    warning: 'bg-amber-50 border-amber-200 text-amber-900',
+    critical: 'bg-red-50 border-red-200 text-red-900',
+  }
 
   return (
     <AppLayout>
       <main className="flex-1 overflow-auto">
         <div className="grid gap-4 md:gap-6 p-4 md:p-6 lg:p-8">
-          {/* Header */}
-          <div className="space-y-2">
-            <h1 className="text-3xl md:text-4xl font-bold tracking-tight">
-              {t("dashboard.title")}
-            </h1>
-            <p className="text-sm md:text-base text-gray-400">
-              {t("dashboard.description")}
-            </p>
+          {/* Header with Status */}
+          <div className="space-y-4">
+            <div className="flex items-start justify-between">
+              <div className="space-y-2 flex-1">
+                <h1 className="text-3xl md:text-4xl font-bold tracking-tight">
+                  {t("dashboard.title")}
+                </h1>
+                <p className="text-sm md:text-base text-gray-400">
+                  {t("dashboard.description")}
+                </p>
+              </div>
+              <div className="text-right">
+                <div className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-green-50 border border-green-200">
+                  <div className="h-2 w-2 rounded-full bg-green-600 animate-pulse"></div>
+                  <span className="text-sm font-medium text-green-700">Operational</span>
+                </div>
+                <p className="text-xs text-gray-500 mt-2">{format(new Date(), 'PPP p')}</p>
+              </div>
+            </div>
           </div>
 
-          {/* Key Metrics */}
+          {/* Critical Alerts */}
+          {alerts.length > 0 && (
+            <div className="space-y-2">
+              <h3 className="text-sm font-semibold text-gray-700">System Alerts</h3>
+              <div className="space-y-2">
+                {alerts.map((alert) => (
+                  <div key={alert.id} className={`p-4 rounded-lg border ${severityColors[alert.severity]}`}>
+                    <div className="flex items-start gap-3">
+                      <AlertCircle className="h-5 w-5 flex-shrink-0 mt-0.5" />
+                      <div className="flex-1">
+                        <p className="font-medium text-sm">{alert.title}</p>
+                        <p className="text-xs opacity-75 mt-1">{alert.description}</p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Key Metrics Grid */}
           {!loading && (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mt-4">
-              <Card className="bg-secondary/20 border-secondary">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium text-gray-400">{t("dashboard.total_rooms")}</CardTitle>
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+              {/* Occupancy */}
+              <Card className="bg-gradient-to-br from-blue-50 to-blue-50/50 border-blue-200">
+                <CardHeader className="pb-3">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-sm font-medium text-gray-700">Occupancy Rate</CardTitle>
+                    <Activity className="h-4 w-4 text-blue-600" />
+                  </div>
                 </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{metrics.totalRooms}</div>
-                  <p className="text-xs text-gray-500 mt-1">{t("dashboard.total_rooms_desc")}</p>
+                <CardContent className="space-y-2">
+                  <div className="text-3xl font-bold text-blue-900">{metrics.occupancyRate}%</div>
+                  <div className="flex gap-2 text-xs text-gray-600">
+                    <span>{metrics.occupiedBeds} occupied</span>
+                    <span>•</span>
+                    <span>{metrics.availableBeds} available</span>
+                  </div>
+                  <div className="w-full bg-blue-200 rounded-full h-2 mt-2">
+                    <div className="bg-blue-600 h-2 rounded-full" style={{ width: `${metrics.occupancyRate}%` }}></div>
+                  </div>
                 </CardContent>
               </Card>
 
-              <Card className="bg-secondary/20 border-secondary">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium text-gray-400">{t("dashboard.total_beds")}</CardTitle>
+              {/* Revenue */}
+              <Card className="bg-gradient-to-br from-green-50 to-green-50/50 border-green-200">
+                <CardHeader className="pb-3">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-sm font-medium text-gray-700">Revenue (Month)</CardTitle>
+                    <TrendingUp className="h-4 w-4 text-green-600" />
+                  </div>
                 </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{metrics.totalBeds}</div>
-                  <p className="text-xs text-gray-500 mt-1">{t("dashboard.total_beds_desc")}</p>
+                <CardContent className="space-y-2">
+                  <div className="text-3xl font-bold text-green-900">${metrics.totalRevenue.toLocaleString()}</div>
+                  <p className="text-xs text-gray-600">+12% vs last month</p>
                 </CardContent>
               </Card>
 
-              <Card className="bg-secondary/20 border-secondary">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium text-gray-400">{t("dashboard.occupancy_rate")}</CardTitle>
+              {/* Reservations */}
+              <Card className="bg-gradient-to-br from-purple-50 to-purple-50/50 border-purple-200">
+                <CardHeader className="pb-3">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-sm font-medium text-gray-700">Reservations</CardTitle>
+                    <Calendar className="h-4 w-4 text-purple-600" />
+                  </div>
                 </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{metrics.occupancyRate}%</div>
-                  <p className="text-xs text-gray-500 mt-1">{t("dashboard.occupancy_rate_desc")}</p>
+                <CardContent className="space-y-2">
+                  <div className="text-3xl font-bold text-purple-900">{metrics.activeReservations}</div>
+                  <div className="flex gap-2 text-xs text-gray-600">
+                    <span>{metrics.todayCheckIns} check-ins</span>
+                    <span>•</span>
+                    <span>{metrics.todayCheckOuts} check-outs</span>
+                  </div>
                 </CardContent>
               </Card>
 
-              <Card className="bg-secondary/20 border-secondary">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium text-gray-400">{t("dashboard.active_reservations")}</CardTitle>
+              {/* Maintenance */}
+              <Card className="bg-gradient-to-br from-amber-50 to-amber-50/50 border-amber-200">
+                <CardHeader className="pb-3">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-sm font-medium text-gray-700">Maintenance</CardTitle>
+                    <Wrench className="h-4 w-4 text-amber-600" />
+                  </div>
                 </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{metrics.activeReservations}</div>
-                  <p className="text-xs text-gray-500 mt-1">{t("dashboard.active_reservations_desc")}</p>
+                <CardContent className="space-y-2">
+                  <div className="text-3xl font-bold text-amber-900">{metrics.maintenanceIssues}</div>
+                  <p className="text-xs text-gray-600">Issues pending</p>
                 </CardContent>
               </Card>
             </div>
           )}
 
-          {/* Today's Events */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+          {/* Today's Schedule */}
+          <div className="grid gap-4 md:grid-cols-2">
             <Card className="bg-secondary/20 border-secondary">
               <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-medium">{t("dashboard.todays_checkins")}</CardTitle>
+                <CardTitle className="text-base font-semibold">Today's Check-Ins</CardTitle>
               </CardHeader>
-              <CardContent>
-                <div className="text-3xl font-bold text-green-500">{metrics.todayCheckIns}</div>
-                <p className="text-xs text-gray-500 mt-1">{t("dashboard.todays_checkins_desc")}</p>
+              <CardContent className="space-y-3">
+                {metrics.todayCheckIns > 0 ? (
+                  <div>
+                    <div className="text-4xl font-bold text-green-600">{metrics.todayCheckIns}</div>
+                    <p className="text-sm text-gray-500 mt-2">Guest arrivals expected</p>
+                    <Link href="/bookings" className="inline-flex items-center gap-2 text-sm text-primary hover:underline mt-4">
+                      View Schedule <ChevronRight className="h-4 w-4" />
+                    </Link>
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-500">No check-ins scheduled for today</p>
+                )}
               </CardContent>
             </Card>
 
             <Card className="bg-secondary/20 border-secondary">
               <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-medium">{t("dashboard.todays_checkouts")}</CardTitle>
+                <CardTitle className="text-base font-semibold">Today's Check-Outs</CardTitle>
               </CardHeader>
-              <CardContent>
-                <div className="text-3xl font-bold text-amber-500">{metrics.todayCheckOuts}</div>
-                <p className="text-xs text-gray-500 mt-1">{t("dashboard.todays_checkouts_desc")}</p>
+              <CardContent className="space-y-3">
+                {metrics.todayCheckOuts > 0 ? (
+                  <div>
+                    <div className="text-4xl font-bold text-amber-600">{metrics.todayCheckOuts}</div>
+                    <p className="text-sm text-gray-500 mt-2">Guest departures expected</p>
+                    <Link href="/bookings" className="inline-flex items-center gap-2 text-sm text-primary hover:underline mt-4">
+                      View Schedule <ChevronRight className="h-4 w-4" />
+                    </Link>
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-500">No check-outs scheduled for today</p>
+                )}
               </CardContent>
             </Card>
           </div>
 
-          {/* Quick Actions */}
-          <div className="mt-8">
-            <h2 className="text-lg font-semibold mb-4">{t("dashboard.quick_actions")}</h2>
+          {/* Quick Access Actions */}
+          <div className="space-y-4">
+            <h2 className="text-lg font-semibold">Quick Access</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-4">
               {quickActions.map((action) => {
                 const Icon = action.icon
@@ -225,9 +334,16 @@ export default function Dashboard() {
                   >
                     <div className="flex flex-col h-full">
                       <div className="flex items-start justify-between gap-4 mb-3">
-                        <h3 className="font-semibold text-base text-foreground leading-tight">
-                          {t(action.titleKey)}
-                        </h3>
+                        <div className="flex-1">
+                          <h3 className="font-semibold text-base text-foreground leading-tight">
+                            {t(action.titleKey)}
+                          </h3>
+                          {action.badge !== undefined && (
+                            <span className="inline-block mt-2 px-2 py-1 rounded-md bg-primary/20 text-primary text-xs font-medium">
+                              {action.badge} active
+                            </span>
+                          )}
+                        </div>
                         <Icon className="h-5 w-5 text-primary/60 group-hover:text-primary transition-colors flex-shrink-0" />
                       </div>
                       <p className="text-sm text-gray-400 line-clamp-2">

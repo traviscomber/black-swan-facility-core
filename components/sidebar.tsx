@@ -10,47 +10,26 @@ import { LanguageSwitcher } from "@/components/language-switcher"
 import { useLanguage } from "@/lib/hooks/use-language"
 
 const navigationGroups = [
-  // GRUPO 1: GENERAL (Core Business)
+  // GRUPO 1: OPERATIONS CENTER (Core Dashboards & Management)
   {
-    labelKey: "nav.core_operations",
-    descKey: "nav.core_operations_desc",
+    labelKey: "nav.operations_center",
+    descKey: "nav.operations_center_desc",
     items: [
       { nameKey: "nav.dashboard", href: "/", icon: LayoutDashboard, tipKey: "nav.dashboard_tip" },
       { nameKey: "nav.bookings", href: "/bookings", icon: Calendar, tipKey: "nav.bookings_tip" },
       { nameKey: "nav.invoices", href: "/bookings/invoices", icon: Receipt, tipKey: "nav.invoices_tip" },
+      { nameKey: "nav.maintenance", href: "/maintenance", icon: Wrench, tipKey: "nav.maintenance_tip" },
       { nameKey: "nav.tasks", href: "/tasks", icon: ClipboardList, tipKey: "nav.tasks_tip" },
+      { nameKey: "nav.issues", href: "/issues", icon: AlertCircle, tipKey: "nav.facility_requests_tip" },
+      { nameKey: "nav.checklists", href: "/checklists", icon: CheckSquare, tipKey: "nav.checklists_tip" },
     ],
   },
-  // GRUPO 2: VOLUNTARIOS
+  // GRUPO 2: INFRASTRUCTURE & FACILITIES (Property, Assets, Inventory)
   {
-    labelKey: "nav.people_operations",
-    descKey: "nav.people_operations_desc",
+    labelKey: "nav.infrastructure",
+    descKey: "nav.infrastructure_desc",
     items: [
-      { nameKey: "nav.volunteers", href: "/volunteers", icon: Heart, tipKey: "nav.volunteers_tip" },
-      { nameKey: "nav.activities", href: "/activities-calendar", icon: Calendar, tipKey: "nav.activities_tip" },
-      { nameKey: "nav.employees", href: "/employees", icon: Users, tipKey: "nav.employees_tip" },
-    ],
-  },
-  // GRUPO 3: HUERTO
-  {
-    labelKey: "nav.orchard_farm",
-    descKey: "nav.orchard_farm_desc",
-    items: [
-      { nameKey: "nav.orchard_dashboard", href: "/orchard", icon: Leaf, tipKey: "nav.orchard_dashboard_tip" },
-      { nameKey: "nav.orchard_crops", href: "/orchard/crops", icon: Box, tipKey: "nav.orchard_crops_tip" },
-      { nameKey: "nav.orchard_care", href: "/orchard/care", icon: Heart, tipKey: "nav.orchard_care_tip" },
-      { nameKey: "nav.orchard_harvest", href: "/orchard/harvest", icon: TrendingUp, tipKey: "nav.orchard_harvest_tip" },
-      { nameKey: "nav.orchard_pests", href: "/orchard/pests", icon: AlertCircle, tipKey: "nav.orchard_pests_tip" },
-      { nameKey: "nav.orchard_soil", href: "/orchard/soil", icon: Box, tipKey: "nav.orchard_soil_tip" },
-      { nameKey: "nav.orchard_equipment", href: "/orchard/equipment", icon: Wrench, tipKey: "nav.orchard_equipment_tip" },
-      { nameKey: "nav.orchard_analytics", href: "/orchard/analytics", icon: TrendingUp, tipKey: "nav.orchard_analytics_tip" },
-    ],
-  },
-  // GRUPO 4: INFRAESTRUCTURA
-  {
-    labelKey: "nav.property_management",
-    descKey: "nav.property_management_desc",
-    items: [
+      { nameKey: "nav.property_management", href: "/property-management", icon: Building, tipKey: "nav.property_management_desc" },
       { nameKey: "nav.assets", href: "/assets", icon: Box, tipKey: "nav.assets_tip" },
       {
         nameKey: "nav.inventory",
@@ -59,136 +38,48 @@ const navigationGroups = [
         tipKey: "nav.inventory_tip",
         subItems: [
           { nameKey: "nav.all_assets", href: "/inventory", icon: "📦" },
-          { nameKey: "nav.by_category", href: "/inventory/by-category", icon: "🏷️" },
-          { nameKey: "nav.by_cost_center", href: "/inventory/by-cost-center", icon: "💼" },
-          { nameKey: "nav.categories", href: "/inventory/categories", icon: "⚙️" },
-          { nameKey: "nav.cost_centers", href: "/inventory/cost-centers", icon: "🏢" },
+          { nameKey: "nav.by_category", href: "/inventory/categories", icon: "🏷️" },
+          { nameKey: "nav.cost_centers", href: "/inventory/cost-centers", icon: "💼" },
           { nameKey: "nav.audit_logs", href: "/inventory/audit-logs", icon: "📋" },
         ],
       },
+      { nameKey: "nav.procurement", href: "/procurement", icon: TrendingUp, tipKey: "nav.procurement_tip" },
+      { nameKey: "nav.map", href: "/map", icon: Map, tipKey: "nav.gis_map_tip" },
     ],
   },
-  // GRUPO 5: COMBUSTIBLES
+  // GRUPO 3: PRODUCTION (Agriculture, Livestock, Vineyards)
   {
-    labelKey: "nav.off_grid_energy",
-    descKey: "nav.off_grid_energy_desc",
+    labelKey: "nav.production",
+    descKey: "nav.production_desc",
     items: [
-      { nameKey: "nav.combustibles", href: "/combustibles", icon: Zap, tipKey: "nav.combustibles_tip" },
-      { nameKey: "nav.management", href: "/energy", icon: Zap, tipKey: "nav.management_tip" },
-      { nameKey: "nav.energy_dashboard", href: "/energy-dashboard", icon: TrendingUp, tipKey: "nav.energy_dashboard_tip" },
-      { nameKey: "nav.reports", href: "/energy-reports", icon: FileText, tipKey: "nav.reports_tip" },
-      { nameKey: "nav.victron_setup", href: "/victron-setup", icon: Lightbulb, tipKey: "nav.victron_setup_tip" },
+      { nameKey: "nav.orchard_dashboard", href: "/orchard", icon: Leaf, tipKey: "nav.orchard_dashboard_tip" },
       {
-        nameKey: "nav.integration_docs",
-        href: "/integration-docs",
-        icon: Code,
-        tipKey: "nav.integration_docs_tip",
+        nameKey: "nav.vineyard_dashboard", 
+        href: "/vineyard", 
+        icon: Grape, 
+        tipKey: "nav.vineyard_dashboard_tip",
+        subItems: [
+          { nameKey: "nav.vineyard_overview", href: "/vineyard", icon: "🍇" },
+          { nameKey: "nav.vineyard_photos", href: "/vineyard/photos", icon: "📸" },
+          { nameKey: "nav.vineyard_crops", href: "/vineyard/crops", icon: "🌱" },
+          { nameKey: "nav.vineyard_harvest", href: "/vineyard/harvest", icon: "✂️" },
+          { nameKey: "nav.vineyard_health", href: "/vineyard/pests", icon: "🐛" },
+        ],
       },
-    ],
-  },
-  // GRUPO 6: TRAKEOS KMZ
-  {
-    labelKey: "nav.tracking",
-    descKey: "nav.tracking_desc",
-    items: [
-      { nameKey: "nav.gis_map", href: "/map", icon: Map, tipKey: "nav.gis_map_tip" },
-      { nameKey: "nav.kmz_viewer", href: "/map/kmz-viewer", icon: Map, tipKey: "nav.kmz_viewer_tip" },
-      { nameKey: "nav.operations", href: "/operations", icon: Map, tipKey: "nav.operations_tip" },
-    ],
-  },
-  // GRUPO 7: MANTENCION
-  {
-    labelKey: "nav.maintenance_requests",
-    descKey: "nav.maintenance_requests_desc",
-    items: [
-      { nameKey: "nav.maintenance", href: "/maintenance", icon: Wrench, tipKey: "nav.maintenance_tip" },
-      {
-        nameKey: "nav.facility_requests",
-        href: "/issues",
-        icon: AlertCircle,
-        tipKey: "nav.facility_requests_tip",
-      },
-      { nameKey: "nav.checklists", href: "/checklists", icon: CheckSquare, tipKey: "nav.checklists_tip" },
-    ],
-  },
-  // GRUPO 8: LANDSCAPE
-  {
-    labelKey: "nav.sovereignty",
-    descKey: "nav.sovereignty_desc",
-    items: [
-      { nameKey: "nav.sovereignty_dashboard", href: "/sovereignty", icon: Crown, tipKey: "nav.sovereignty_dashboard_tip" },
-      { nameKey: "nav.coach", href: "/sovereignty/coach", icon: Brain, tipKey: "nav.coach_tip" },
-      { nameKey: "nav.layers", href: "/sovereignty/layers", icon: TrendingUp, tipKey: "nav.layers_tip" },
-    ],
-  },
-  // GRUPO 9: VIÑA
-  {
-    labelKey: "nav.vineyard",
-    descKey: "nav.vineyard_desc",
-    items: [
-      { nameKey: "nav.vineyard_dashboard", href: "/vineyard", icon: Grape, tipKey: "nav.vineyard_dashboard_tip" },
-      { nameKey: "nav.vineyard_photos", href: "/vineyard/photos", icon: Images, tipKey: "nav.vineyard_photos_tip" },
-      { nameKey: "nav.vineyard_vines", href: "/vineyard/crops", icon: Box, tipKey: "nav.vineyard_vines_tip" },
-      { nameKey: "nav.vineyard_care", href: "/vineyard/care", icon: Heart, tipKey: "nav.vineyard_care_tip" },
-      { nameKey: "nav.vineyard_harvest", href: "/vineyard/harvest", icon: TrendingUp, tipKey: "nav.vineyard_harvest_tip" },
-      { nameKey: "nav.vineyard_pests", href: "/vineyard/pests", icon: AlertCircle, tipKey: "nav.vineyard_pests_tip" },
-      { nameKey: "nav.vineyard_soil", href: "/vineyard/soil", icon: Box, tipKey: "nav.vineyard_soil_tip" },
-      { nameKey: "nav.vineyard_equipment", href: "/vineyard/equipment", icon: Wrench, tipKey: "nav.vineyard_equipment_tip" },
-      { nameKey: "nav.vineyard_analytics", href: "/vineyard/analytics", icon: TrendingUp, tipKey: "nav.vineyard_analytics_tip" },
-    ],
-  },
-  // GRUPO 10: GANADO
-  {
-    labelKey: "nav.cattle_operations",
-    descKey: "nav.cattle_operations_desc",
-    items: [
-      { nameKey: "nav.dashboard", href: "/cattle", icon: Beef, tipKey: "nav.dashboard_tip" },
+      { nameKey: "nav.cattle_dashboard", href: "/cattle", icon: Beef, tipKey: "nav.dashboard_tip" },
       { nameKey: "nav.cattle_health", href: "/cattle-health", icon: Heart, tipKey: "nav.cattle_health_tip" },
-      { nameKey: "nav.expert_coach", href: "/cattle/expert-agent", icon: Brain, tipKey: "nav.expert_coach_tip" },
-      { nameKey: "nav.business_plan", href: "/cattle/business-plan", icon: TrendingUp, tipKey: "nav.business_plan_tip" },
-      { nameKey: "nav.pricing_costs", href: "/cattle/pricing-costs", icon: Box, tipKey: "nav.pricing_costs_tip" },
+      { nameKey: "nav.combustibles", href: "/combustibles", icon: Fuel, tipKey: "nav.combustibles_tip" },
     ],
   },
-  // GRUPO 11: HOSPITALITY
+  // GRUPO 4: SYSTEM & ADVANCED (Admin, AI, Integration)
   {
-    labelKey: "nav.hospitality",
-    descKey: "nav.hospitality_desc",
+    labelKey: "nav.system",
+    descKey: "nav.system_desc",
     items: [
+      { nameKey: "nav.people_operations", href: "/employees", icon: Users, tipKey: "nav.employees_tip" },
       { nameKey: "nav.concierge", href: "/concierge", icon: MessageSquare, tipKey: "nav.concierge_tip" },
-      {
-        nameKey: "nav.guest_requests",
-        href: "/guest-requests",
-        icon: Tablet,
-        tipKey: "nav.guest_requests_tip",
-      },
-      { nameKey: "nav.kitchen", href: "/kitchen", icon: ChefHat, tipKey: "nav.kitchen_tip" },
-    ],
-  },
-  // GRUPO 12: SUPPLY CHAIN / PROCUREMENT
-  {
-    labelKey: "nav.supply_chain",
-    descKey: "nav.supply_chain_desc",
-    items: [
-      { nameKey: "nav.procurement", href: "/procurement", icon: Box, tipKey: "nav.procurement_tip" },
-      {
-        nameKey: "nav.suppliers",
-        href: "/procurement/suppliers",
-        icon: Users,
-        tipKey: "nav.suppliers_tip",
-      },
-      {
-        nameKey: "nav.analytics",
-        href: "/procurement/analytics",
-        icon: TrendingUp,
-        tipKey: "nav.analytics_tip",
-      },
-    ],
-  },
-  // GRUPO 13: ADMINISTRACION/OPERACIONES
-  {
-    labelKey: "nav.advanced",
-    descKey: "nav.advanced_desc",
-    items: [
+      { nameKey: "nav.energy_management", href: "/energy", icon: Zap, tipKey: "nav.management_tip" },
+      { nameKey: "nav.sovereignty_dashboard", href: "/sovereignty", icon: Crown, tipKey: "nav.sovereignty_dashboard_tip" },
       { nameKey: "nav.ai_ops", href: "/ai-ops", icon: Bot, tipKey: "nav.ai_ops_tip" },
       { nameKey: "nav.admin", href: "/admin", icon: Settings, tipKey: "nav.admin_tip" },
     ],
