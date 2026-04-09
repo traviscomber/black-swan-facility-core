@@ -61,7 +61,21 @@ const navigationGroups = [
     labelKey: "nav.production",
     descKey: "nav.production_desc",
     items: [
-      { nameKey: "nav.orchard_dashboard", href: "/orchard", icon: Leaf, tipKey: "nav.orchard_dashboard_tip" },
+      {
+        nameKey: "nav.orchard_dashboard",
+        href: "/orchard",
+        icon: Leaf,
+        tipKey: "nav.orchard_dashboard_tip",
+        subItems: [
+          { nameKey: "nav.orchard_overview", href: "/orchard", icon: "🌳" },
+          { nameKey: "nav.orchard_crops", href: "/orchard/crops", icon: "🌱" },
+          { nameKey: "nav.orchard_care", href: "/orchard/care", icon: "❤️" },
+          { nameKey: "nav.orchard_harvest", href: "/orchard/harvest", icon: "✂️" },
+          { nameKey: "nav.orchard_health", href: "/orchard/pests", icon: "🐛" },
+          { nameKey: "nav.orchard_soil", href: "/orchard/soil", icon: "🌍" },
+          { nameKey: "nav.orchard_equipment", href: "/orchard/equipment", icon: "🔧" },
+        ],
+      },
       {
         nameKey: "nav.vineyard_dashboard", 
         href: "/vineyard", 
