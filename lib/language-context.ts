@@ -643,8 +643,6 @@ export const translations = {
     'nav.system_desc': 'Administración y operaciones de IA',
     
     // NEW: Additional Navigation Items
-    'nav.issues': 'Problemas y Solicitudes',
-    'nav.facility_requests_tip': 'Gestionar solicitudes e problemas de instalaciones',
     'nav.energy': 'Gestión de Energía',
     'nav.concierge': 'Conserje',
     'nav.concierge_tip': 'Servicios de conserjería y soporte',
@@ -673,6 +671,10 @@ export const translations = {
     'nav.invoices_tip': 'Gestionar facturas',
     'nav.tasks': 'Tareas',
     'nav.tasks_tip': 'Rastrear tareas y actividades',
+    'nav.issues': 'Problemas y Solicitudes',
+    'nav.facility_requests_tip': 'Gestionar solicitudes y problemas de instalaciones',
+    'nav.checklists': 'Listas de Verificación',
+    'nav.checklists_tip': 'Listas de verificación de tareas',
     
     // Sovereignty
     'nav.sovereignty': 'Soberanía',
