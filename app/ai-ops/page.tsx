@@ -203,8 +203,8 @@ export default function AIOperationsPage() {
   }
 
   return (
-    <AppLayout>
-      <PageHeader title="AI Operations" description="Autonomous AI agents managing facility operations" />
+      <AppLayout>
+        <PageHeader title={t('pages.ai_operations')} description={t('pages.ai_operations_desc')} />
 
       <div className="p-4 md:p-6">
         <div className="space-y-4 md:space-y-6">
