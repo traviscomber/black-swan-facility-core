@@ -58,13 +58,8 @@ export default async function CombustiblesPage() {
       />
 
       <div className="p-8">
-        <Tabs defaultValue="upload" className="w-full">
+        <Tabs defaultValue="summary" className="w-full">
           <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="upload" className="flex items-center gap-2">
-              <Upload className="h-4 w-4" />
-              <span className="hidden sm:inline">Cargar Reporte</span>
-              <span className="sm:hidden">Cargar</span>
-            </TabsTrigger>
             <TabsTrigger value="summary" className="flex items-center gap-2">
               <BarChart3 className="h-4 w-4" />
               <span className="hidden sm:inline">Resumen Mensual</span>
@@ -75,13 +70,14 @@ export default async function CombustiblesPage() {
               <span className="hidden sm:inline">Analytics</span>
               <span className="sm:hidden">Datos</span>
             </TabsTrigger>
+            <TabsTrigger value="upload" className="flex items-center gap-2">
+              <Upload className="h-4 w-4" />
+              <span className="hidden sm:inline">Cargar Reporte</span>
+              <span className="sm:hidden">Cargar</span>
+            </TabsTrigger>
           </TabsList>
 
           <div className="mt-8">
-            <TabsContent value="upload">
-              <FuelUploadComponent />
-            </TabsContent>
-
             <TabsContent value="summary">
               <MonthlySummaryTab 
                 records={enrichedFuelRecords || []} 
@@ -95,6 +91,10 @@ export default async function CombustiblesPage() {
                 records={enrichedFuelRecords || []} 
                 vehicles={vehicles || []}
               />
+            </TabsContent>
+
+            <TabsContent value="upload">
+              <FuelUploadComponent />
             </TabsContent>
           </div>
         </Tabs>
