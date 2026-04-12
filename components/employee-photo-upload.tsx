@@ -97,7 +97,7 @@ export function EmployeePhotoUpload({
       <label className="text-sm font-medium">Employee Photo</label>
 
       {preview ? (
-        <div className="relative w-24 h-24 rounded-lg overflow-hidden bg-slate-200">
+        <div className="relative w-32 h-32 rounded-lg overflow-hidden bg-slate-200">
           <img src={preview || "/placeholder.svg"} alt={employeeName} className="w-full h-full object-cover" />
           <button
             onClick={() => {
