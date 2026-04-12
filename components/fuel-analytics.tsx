@@ -216,7 +216,7 @@ export function FuelAnalyticsTab({ records, vehicles }: FuelAnalyticsTabProps) {
       <div className="grid gap-4 md:grid-cols-3">
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">Promedio por Registro</CardTitle>
+            <CardTitle className="text-sm font-medium text-gray-300">Promedio por Registro</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-bold">{avgLitersPerRecord.toFixed(1)}L</p>
@@ -225,7 +225,7 @@ export function FuelAnalyticsTab({ records, vehicles }: FuelAnalyticsTabProps) {
 
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">Costo Promedio/Litro</CardTitle>
+            <CardTitle className="text-sm font-medium text-gray-300">Costo Promedio/Litro</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-bold">${avgCostPerLiter.toFixed(0)}</p>
@@ -234,7 +234,7 @@ export function FuelAnalyticsTab({ records, vehicles }: FuelAnalyticsTabProps) {
 
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">Gasto Total</CardTitle>
+            <CardTitle className="text-sm font-medium text-gray-300">Gasto Total</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-bold">
