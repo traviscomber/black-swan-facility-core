@@ -31,7 +31,9 @@ interface OperationalAlert {
   severity: 'info' | 'warning' | 'critical'
   title: string
   description: string
-  timestamp: Date
+  timestamp: string
+  actionUrl?: string
+  actionLabel?: string
 }
 
 export default function Dashboard() {
@@ -52,10 +54,7 @@ export default function Dashboard() {
     staffActive: 12,
     operationalStatus: 'healthy'
   })
-  const [alerts, setAlerts] = useState<OperationalAlert[]>([
-    { id: '1', severity: 'info', title: 'System Update Scheduled', description: 'Maintenance window tonight 2-4 AM', timestamp: new Date() },
-    { id: '2', severity: 'warning', title: '2 Maintenance Issues Pending', description: 'Guest house plumbing and kitchen equipment', timestamp: new Date(Date.now() - 3600000) },
-  ])
+  const [alerts, setAlerts] = useState<OperationalAlert[]>([])
   const [loading, setLoading] = useState(true)
 
   const supabase = createBrowserClient()
@@ -71,6 +70,19 @@ export default function Dashboard() {
     document.addEventListener("keydown", handleKeyDown)
     return () => document.removeEventListener("keydown", handleKeyDown)
   }, [])
+
+  // Fetch alerts from server
+  const fetchAlerts = async () => {
+    try {
+      const response = await fetch('/api/alerts')
+      if (response.ok) {
+        const data = await response.json()
+        setAlerts(data)
+      }
+    } catch (error) {
+      console.error('[Dashboard] Error fetching alerts:', error)
+    }
+  }
 
   useEffect(() => {
     const fetchMetrics = async () => {
@@ -121,7 +133,11 @@ export default function Dashboard() {
     }
 
     fetchMetrics()
-    const interval = setInterval(fetchMetrics, 30000) // Refresh every 30 seconds
+    fetchAlerts()
+    const interval = setInterval(() => {
+      fetchMetrics()
+      fetchAlerts()
+    }, 30000) // Refresh every 30 seconds
     return () => clearInterval(interval)
   }, [])
 
@@ -194,12 +210,21 @@ export default function Dashboard() {
               <div className="space-y-2">
                 {alerts.map((alert) => (
                   <div key={alert.id} className={`p-4 rounded-lg border ${severityColors[alert.severity]}`}>
-                    <div className="flex items-start gap-3">
-                      <AlertCircle className="h-5 w-5 flex-shrink-0 mt-0.5" />
-                      <div className="flex-1">
-                        <p className="font-medium text-sm">{alert.title}</p>
-                        <p className="text-xs opacity-75 mt-1">{alert.description}</p>
+                    <div className="flex items-start gap-3 justify-between">
+                      <div className="flex items-start gap-3 flex-1">
+                        <AlertCircle className="h-5 w-5 flex-shrink-0 mt-0.5" />
+                        <div className="flex-1">
+                          <p className="font-medium text-sm">{alert.title}</p>
+                          <p className="text-xs opacity-75 mt-1">{alert.description}</p>
+                        </div>
                       </div>
+                      {alert.actionUrl && (
+                        <Link href={alert.actionUrl}>
+                          <Button variant="ghost" size="sm" className="text-xs">
+                            {alert.actionLabel || 'View'} <ChevronRight className="h-3 w-3 ml-1" />
+                          </Button>
+                        </Link>
+                      )}
                     </div>
                   </div>
                 ))}
