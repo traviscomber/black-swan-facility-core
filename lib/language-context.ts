@@ -63,6 +63,7 @@ export const translations = {
     // Cattle Operations
     'nav.cattle_operations': 'Cattle Operations',
     'nav.cattle_operations_desc': 'Livestock management',
+    'nav.cattle_overview': 'Overview',
     'nav.cattle_health': 'Health',
     'nav.cattle_health_tip': 'Monitor cattle health',
     'nav.expert_coach': 'Expert Coach',
@@ -689,6 +690,7 @@ export const translations = {
     // Cattle Operations
     'nav.cattle_operations': 'Operaciones Ganaderas',
     'nav.cattle_operations_desc': 'Gestión de ganado',
+    'nav.cattle_overview': 'Vista General',
     'nav.cattle_health': 'Salud',
     'nav.cattle_health_tip': 'Monitorear salud del ganado',
     'nav.expert_coach': 'Entrenador Experto',

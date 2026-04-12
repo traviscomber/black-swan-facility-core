@@ -89,8 +89,16 @@ const navigationGroups = [
           { nameKey: "nav.vineyard_health", href: "/vineyard/pests", icon: "🐛" },
         ],
       },
-      { nameKey: "nav.cattle_dashboard", href: "/cattle", icon: Beef, tipKey: "nav.dashboard_tip" },
-      { nameKey: "nav.cattle_health", href: "/cattle-health", icon: Heart, tipKey: "nav.cattle_health_tip" },
+      {
+        nameKey: "nav.cattle_dashboard", 
+        href: "/cattle", 
+        icon: Beef, 
+        tipKey: "nav.dashboard_tip",
+        subItems: [
+          { nameKey: "nav.cattle_overview", href: "/cattle", icon: "🐄" },
+          { nameKey: "nav.cattle_health", href: "/cattle-health", icon: "❤️" },
+        ],
+      },
       { nameKey: "nav.combustibles", href: "/combustibles", icon: Fuel, tipKey: "nav.combustibles_tip" },
     ],
   },
