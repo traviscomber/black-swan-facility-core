@@ -45,6 +45,14 @@ export const translations = {
     'common.no_data': 'No data available',
     'common.no_results': 'No results found',
     
+    // Navigation Groups (aligned with budget divisions)
+    'nav.admin_general': 'Admin General',
+    'nav.admin_general_desc': 'Administration, budgets, personnel and system management',
+    'nav.hospitality': 'Hospitality',
+    'nav.hospitality_desc': 'Guest services, concierge, bookings and sovereignty',
+    'nav.landscaping_farming': 'Landscaping & Farming',
+    'nav.landscaping_farming_desc': 'Production operations - orchards, vineyards, livestock and fuel',
+    
     // NEW: Operations Center
     'nav.operations_center': 'Operations Center',
     'nav.operations_center_desc': 'Core dashboards and management',
@@ -1651,5 +1659,13 @@ export const translations = {
     'budget.expenses': 'Gastos',
     'common.preview': 'Vista previa',
     'common.results': 'Resultados',
+    
+    // Grupos de Navegación (alineados con divisiones de presupuesto)
+    'nav.admin_general': 'Admin General',
+    'nav.admin_general_desc': 'Administración, presupuestos, personal y gestión del sistema',
+    'nav.hospitality': 'Hospitalidad',
+    'nav.hospitality_desc': 'Servicios a huéspedes, conserjería, reservas y soberanía',
+    'nav.landscaping_farming': 'Paisajismo y Agricultura',
+    'nav.landscaping_farming_desc': 'Operaciones de producción - huertos, viñedos, ganadería y combustible',
   },
 }

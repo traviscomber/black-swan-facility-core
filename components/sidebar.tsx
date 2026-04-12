@@ -8,59 +8,37 @@ import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
 import { LanguageSwitcher } from "@/components/language-switcher"
 import { useLanguage } from "@/lib/hooks/use-language"
-import { BudgetDivisionSelector } from "@/components/budget-division-navbar-selector"
 
 const navigationGroups = [
-  // GRUPO 1: OPERATIONS CENTER (Core Dashboards & Management)
+  // GRUPO 1: ADMIN GENERAL (Operations Center, Administration, Energy, AI, Budgets)
   {
-    labelKey: "nav.operations_center",
-    descKey: "nav.operations_center_desc",
+    labelKey: "nav.admin_general",
+    descKey: "nav.admin_general_desc",
     items: [
       { nameKey: "nav.dashboard", href: "/", icon: LayoutDashboard, tipKey: "nav.dashboard_tip" },
+      { nameKey: "nav.budgets", href: "/budgets", icon: DollarSign, tipKey: "nav.budgets_tip" },
+      { nameKey: "nav.people_operations", href: "/employees", icon: Users, tipKey: "nav.employees_tip" },
+      { nameKey: "nav.energy_management", href: "/energy", icon: Zap, tipKey: "nav.management_tip" },
+      { nameKey: "nav.ai_ops", href: "/ai-ops", icon: Bot, tipKey: "nav.ai_ops_tip" },
+      { nameKey: "nav.admin", href: "/admin", icon: Settings, tipKey: "nav.admin_tip" },
+    ],
+  },
+  // GRUPO 2: HOSPITALITY (Guest Services, Concierge, Bookings, Sovereignty)
+  {
+    labelKey: "nav.hospitality",
+    descKey: "nav.hospitality_desc",
+    items: [
       { nameKey: "nav.bookings", href: "/bookings", icon: Calendar, tipKey: "nav.bookings_tip" },
       { nameKey: "nav.invoices", href: "/bookings/invoices", icon: Receipt, tipKey: "nav.invoices_tip" },
-      { nameKey: "nav.maintenance", href: "/maintenance", icon: Wrench, tipKey: "nav.maintenance_tip" },
-      { nameKey: "nav.tasks", href: "/tasks", icon: ClipboardList, tipKey: "nav.tasks_tip" },
-      { nameKey: "nav.issues", href: "/issues", icon: AlertCircle, tipKey: "nav.facility_requests_tip" },
-      { nameKey: "nav.checklists", href: "/checklists", icon: CheckSquare, tipKey: "nav.checklists_tip" },
+      { nameKey: "nav.concierge", href: "/concierge", icon: MessageSquare, tipKey: "nav.concierge_tip" },
+      { nameKey: "nav.guest_requests", href: "/guest-requests", icon: Tablet, tipKey: "nav.guest_requests_tip" },
+      { nameKey: "nav.sovereignty_dashboard", href: "/sovereignty", icon: Crown, tipKey: "nav.sovereignty_dashboard_tip" },
     ],
   },
-  // GRUPO 2: INFRASTRUCTURE & FACILITIES (Property, Assets, Inventory)
+  // GRUPO 3: LANDSCAPING & FARMING (Production - Orchards, Vineyards, Cattle, Combustibles)
   {
-    labelKey: "nav.infrastructure",
-    descKey: "nav.infrastructure_desc",
-    items: [
-      { nameKey: "nav.property_management", href: "/property-management", icon: Building, tipKey: "nav.property_management_desc" },
-      { nameKey: "nav.assets", href: "/assets", icon: Box, tipKey: "nav.assets_tip" },
-      {
-        nameKey: "nav.inventory",
-        href: "/inventory",
-        icon: Package,
-        tipKey: "nav.inventory_tip",
-        subItems: [
-          { nameKey: "nav.all_assets", href: "/inventory", icon: "📦" },
-          { nameKey: "nav.by_category", href: "/inventory/categories", icon: "🏷️" },
-          { nameKey: "nav.cost_centers", href: "/inventory/cost-centers", icon: "💼" },
-          { nameKey: "nav.audit_logs", href: "/inventory/audit-logs", icon: "📋" },
-        ],
-      },
-      { nameKey: "nav.procurement", href: "/procurement", icon: TrendingUp, tipKey: "nav.procurement_tip" },
-      {
-        nameKey: "nav.map",
-        href: "/map",
-        icon: Map,
-        tipKey: "nav.gis_map_tip",
-        subItems: [
-          { nameKey: "nav.gis_map", href: "/map", icon: "🗺️" },
-          { nameKey: "nav.kmz_viewer", href: "/map/kmz-viewer", icon: "🌍" },
-        ],
-      },
-    ],
-  },
-  // GRUPO 3: PRODUCTION (Agriculture, Livestock, Vineyards)
-  {
-    labelKey: "nav.production",
-    descKey: "nav.production_desc",
+    labelKey: "nav.landscaping_farming",
+    descKey: "nav.landscaping_farming_desc",
     items: [
       {
         nameKey: "nav.orchard_dashboard",
@@ -103,19 +81,40 @@ const navigationGroups = [
       { nameKey: "nav.combustibles", href: "/combustibles", icon: Fuel, tipKey: "nav.combustibles_tip" },
     ],
   },
-  // GRUPO 4: SYSTEM & ADVANCED (Admin, AI, Integration)
+  // GRUPO 4: INFRASTRUCTURE & FACILITIES (Property, Assets, Inventory, Procurement, Maintenance, Tasks, Issues)
   {
-    labelKey: "nav.system",
-    descKey: "nav.system_desc",
+    labelKey: "nav.infrastructure",
+    descKey: "nav.infrastructure_desc",
     items: [
-      { nameKey: "nav.budgets", href: "/budgets", icon: DollarSign, tipKey: "nav.budgets_tip" },
-      { nameKey: "nav.people_operations", href: "/employees", icon: Users, tipKey: "nav.employees_tip" },
-      { nameKey: "nav.concierge", href: "/concierge", icon: MessageSquare, tipKey: "nav.concierge_tip" },
-      { nameKey: "nav.guest_requests", href: "/guest-requests", icon: Tablet, tipKey: "nav.guest_requests_tip" },
-      { nameKey: "nav.energy_management", href: "/energy", icon: Zap, tipKey: "nav.management_tip" },
-      { nameKey: "nav.sovereignty_dashboard", href: "/sovereignty", icon: Crown, tipKey: "nav.sovereignty_dashboard_tip" },
-      { nameKey: "nav.ai_ops", href: "/ai-ops", icon: Bot, tipKey: "nav.ai_ops_tip" },
-      { nameKey: "nav.admin", href: "/admin", icon: Settings, tipKey: "nav.admin_tip" },
+      { nameKey: "nav.property_management", href: "/property-management", icon: Building, tipKey: "nav.property_management_desc" },
+      { nameKey: "nav.assets", href: "/assets", icon: Box, tipKey: "nav.assets_tip" },
+      {
+        nameKey: "nav.inventory",
+        href: "/inventory",
+        icon: Package,
+        tipKey: "nav.inventory_tip",
+        subItems: [
+          { nameKey: "nav.all_assets", href: "/inventory", icon: "📦" },
+          { nameKey: "nav.by_category", href: "/inventory/categories", icon: "🏷️" },
+          { nameKey: "nav.cost_centers", href: "/inventory/cost-centers", icon: "💼" },
+          { nameKey: "nav.audit_logs", href: "/inventory/audit-logs", icon: "📋" },
+        ],
+      },
+      { nameKey: "nav.procurement", href: "/procurement", icon: TrendingUp, tipKey: "nav.procurement_tip" },
+      { nameKey: "nav.maintenance", href: "/maintenance", icon: Wrench, tipKey: "nav.maintenance_tip" },
+      { nameKey: "nav.tasks", href: "/tasks", icon: ClipboardList, tipKey: "nav.tasks_tip" },
+      { nameKey: "nav.issues", href: "/issues", icon: AlertCircle, tipKey: "nav.facility_requests_tip" },
+      { nameKey: "nav.checklists", href: "/checklists", icon: CheckSquare, tipKey: "nav.checklists_tip" },
+      {
+        nameKey: "nav.map",
+        href: "/map",
+        icon: Map,
+        tipKey: "nav.gis_map_tip",
+        subItems: [
+          { nameKey: "nav.gis_map", href: "/map", icon: "🗺️" },
+          { nameKey: "nav.kmz_viewer", href: "/map/kmz-viewer", icon: "🌍" },
+        ],
+      },
     ],
   },
 ]
@@ -220,8 +219,6 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
             <X className="h-5 w-5 text-muted-foreground" />
           </button>
         </div>
-
-        <BudgetDivisionSelector />
 
         <nav className="flex-1 space-y-2 sm:space-y-3 px-2 sm:px-3 py-3 sm:py-4 overflow-y-auto min-h-0">
           {navigationGroups.map((group) => (
