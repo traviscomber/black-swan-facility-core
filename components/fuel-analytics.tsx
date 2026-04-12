@@ -213,6 +213,7 @@ export function FuelAnalyticsTab({ records, vehicles }: FuelAnalyticsTabProps) {
       </Card>
 
       {/* Metrics Cards */}
+      <div className="grid gap-4 md:grid-cols-3">
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-gray-600">Promedio por Registro</CardTitle>
