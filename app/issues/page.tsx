@@ -9,6 +9,37 @@ import { EditIssueDialog } from "@/components/edit-issue-dialog"
 import { DeleteIssueButton } from "@/components/delete-issue-button"
 import { IssueLabelSelector } from "@/components/issue-labels-selector"
 import { IssueTaskLinkDialog } from "@/components/issue-task-link-dialog"
+import { cookies } from "next/headers"
+
+// Translations dictionary
+const translations = {
+  en: {
+    title: "Facility Requests",
+    description: "Track and manage facility requests and service tickets",
+    newRequest: "New Request",
+    untitled: "Untitled",
+    status: "Status",
+    open: "Open",
+    resolved: "Resolved",
+    inProgress: "In Progress",
+  },
+  es: {
+    title: "Problemas y Solicitudes",
+    description: "Rastrear y gestionar solicitudes de instalaciones y tickets de servicio",
+    newRequest: "Nueva Solicitud",
+    untitled: "Sin título",
+    status: "Estado",
+    open: "Abierto",
+    resolved: "Resuelto",
+    inProgress: "En progreso",
+  },
+}
+
+async function getLanguage() {
+  const cookieStore = await cookies()
+  const language = cookieStore.get("language")?.value || "es"
+  return language
+}
 
 function formatDate(dateString: string) {
   return new Date(dateString).toLocaleDateString("en-US", {
@@ -50,6 +81,8 @@ function getSeverityColor(severity: string) {
 
 export default async function FacilityRequestsPage() {
   const supabase = await createClient()
+  const language = await getLanguage()
+  const t = translations[language as keyof typeof translations] || translations.es
 
   const { data: issues, error } = await supabase.from("issues").select(`*`).order("created_at", { ascending: false })
 
@@ -105,13 +138,13 @@ export default async function FacilityRequestsPage() {
   return (
     <AppLayout>
       <PageHeader
-        title="Facility Requests"
-        description="Track and manage facility requests and service tickets"
+        title={t.title}
+        description={t.description}
         actions={
           <Link href="/issues/report">
             <Button>
               <Plus className="mr-2 h-4 w-4" />
-              New Request
+              {t.newRequest}
             </Button>
           </Link>
         }
@@ -127,7 +160,7 @@ export default async function FacilityRequestsPage() {
               >
                 <div className="flex items-start justify-between gap-4 mb-4">
                   <div className="flex-1">
-                    <h3 className="text-lg font-semibold text-foreground mb-1">{request.title || "Untitled"}</h3>
+                    <h3 className="text-lg font-semibold text-foreground mb-1">{request.title || t.untitled}</h3>
                     {request.category && <p className="text-sm text-muted-foreground">{request.category}</p>}
                   </div>
                   <Badge className={`whitespace-nowrap ${getStatusColor(request.status)}`}>{request.status}</Badge>
