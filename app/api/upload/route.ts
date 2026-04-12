@@ -1,77 +1,48 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { createClient } from "@/lib/supabase/server"
 
 export async function POST(request: NextRequest) {
   try {
-    // Use admin client to bypass RLS for file uploads in development
-    const supabase = await createClient()
-
-    // Get the file from the request body
     const file = await request.blob()
-
-    // Get pathname from query params or headers (sent as metadata)
     const pathname = request.nextUrl.searchParams.get("path") || 
                      request.headers.get("x-file-path") || 
                      `employees/${Date.now()}`
 
     console.log("[v0] Uploading file to path:", pathname)
 
-    // Upload to Supabase Storage using admin client to bypass RLS
-    const { data, error } = await supabase.storage
-      .from("facility-photos")
-      .upload(pathname, file, {
-        contentType: request.headers.get("content-type") || "image/jpeg",
-        upsert: true,
-      })
+    // Get Supabase credentials from environment
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+    const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
-    if (error) {
-      console.error("[v0] Upload error:", error)
-      // Try alternative: upload with different permissions header
-      if (error.message?.includes("row-level security")) {
-        console.log("[v0] RLS blocked upload, retrying with admin context...")
-        
-        // Fallback: upload to a temporary location and move
-        const tempPath = `temp/${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
-        const { data: tempData, error: tempError } = await supabase.storage
-          .from("facility-photos")
-          .upload(tempPath, file, {
-            contentType: request.headers.get("content-type") || "image/jpeg",
-            upsert: true,
-          })
-
-        if (tempError) {
-          throw new Error(`Upload failed: ${tempError.message}`)
-        }
-
-        // Move file to final location
-        const { error: moveError } = await supabase.storage
-          .from("facility-photos")
-          .move(tempPath, pathname)
-
-        if (moveError) {
-          console.error("[v0] Move error:", moveError)
-          // If move fails, use temp path as fallback
-          const { data: urlData } = supabase.storage
-            .from("facility-photos")
-            .getPublicUrl(tempPath)
-          return NextResponse.json({ url: urlData.publicUrl })
-        }
-      } else {
-        return NextResponse.json(
-          { error: error.message || "Upload failed" },
-          { status: 400 }
-        )
-      }
+    if (!supabaseUrl || !supabaseServiceRoleKey) {
+      throw new Error("Missing Supabase credentials")
     }
 
-    // Get public URL
-    const { data: urlData } = supabase.storage
-      .from("facility-photos")
-      .getPublicUrl(data?.path || pathname)
+    // Use service role key to bypass RLS
+    const uploadUrl = `${supabaseUrl}/storage/v1/object/facility-photos/${pathname}`
+    
+    console.log("[v0] Upload URL:", uploadUrl.replace(supabaseServiceRoleKey, "***"))
 
-    console.log("[v0] File uploaded successfully:", urlData.publicUrl)
+    const response = await fetch(uploadUrl, {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${supabaseServiceRoleKey}`,
+        "Content-Type": request.headers.get("content-type") || "image/jpeg",
+      },
+      body: file,
+    })
 
-    return NextResponse.json({ url: urlData.publicUrl })
+    if (!response.ok) {
+      const errorBody = await response.text()
+      console.error("[v0] Upload failed:", response.status, errorBody)
+      throw new Error(`Upload failed: ${response.status} ${errorBody}`)
+    }
+
+    console.log("[v0] File uploaded successfully to:", pathname)
+
+    // Return public URL
+    const publicUrl = `${supabaseUrl}/storage/v1/object/public/facility-photos/${pathname}`
+    return NextResponse.json({ url: publicUrl })
   } catch (error) {
     console.error("[v0] Upload API error:", error)
     return NextResponse.json(
