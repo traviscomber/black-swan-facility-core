@@ -12,19 +12,7 @@ interface FuelAnalyticsTabProps {
 }
 
 export function FuelAnalyticsTab({ records, vehicles }: FuelAnalyticsTabProps) {
-  // Date selection state
-  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear())
-  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1)
-
-  // Filter records by selected month/year
-  const filteredRecords = useMemo(() => {
-    return records.filter((record: any) => {
-      const date = new Date(record.date_recorded)
-      return date.getFullYear() === selectedYear && (date.getMonth() + 1) === selectedMonth
-    })
-  }, [records, selectedYear, selectedMonth])
-
-  // Get available months/years from data
+  // Get available months/years from data (moved up to determine initial state)
   const availableMonths = useMemo(() => {
     const months = new Set<string>()
     records.forEach((record: any) => {
@@ -34,7 +22,34 @@ export function FuelAnalyticsTab({ records, vehicles }: FuelAnalyticsTabProps) {
     return Array.from(months).sort().reverse()
   }, [records])
 
-  const handlePreviousMonth = () => {
+  // Determine initial month/year: use the latest available period with data
+  const getInitialMonth = () => {
+    if (availableMonths.length > 0) {
+      const [year, month] = availableMonths[0].split('-')
+      return parseInt(month)
+    }
+    return new Date().getMonth() + 1
+  }
+
+  const getInitialYear = () => {
+    if (availableMonths.length > 0) {
+      const [year] = availableMonths[0].split('-')
+      return parseInt(year)
+    }
+    return new Date().getFullYear()
+  }
+
+  // Date selection state - initialized with the latest available period
+  const [selectedYear, setSelectedYear] = useState(getInitialYear())
+  const [selectedMonth, setSelectedMonth] = useState(getInitialMonth())
+
+  // Filter records by selected month/year
+  const filteredRecords = useMemo(() => {
+    return records.filter((record: any) => {
+      const date = new Date(record.date_recorded)
+      return date.getFullYear() === selectedYear && (date.getMonth() + 1) === selectedMonth
+    })
+  }, [records, selectedYear, selectedMonth])
     if (selectedMonth === 1) {
       setSelectedMonth(12)
       setSelectedYear(selectedYear - 1)
