@@ -67,14 +67,14 @@ export function FuelEmployeesTable({ data, loading }: FuelEmployeesTableProps) {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Empleado</TableHead>
-                <TableHead className="text-right">Transacciones</TableHead>
-                <TableHead className="text-right">Gasolina (L)</TableHead>
-                <TableHead className="text-right">Diesel (L)</TableHead>
-                <TableHead className="text-right">Total Litros</TableHead>
-                <TableHead className="text-right">Gasolina $</TableHead>
-                <TableHead className="text-right">Diesel $</TableHead>
-                <TableHead className="text-right">Costo Total</TableHead>
+                <TableHead className="text-white font-semibold">Empleado</TableHead>
+                <TableHead className="text-right text-white font-semibold">Transacciones</TableHead>
+                <TableHead className="text-right text-white font-semibold">Gasolina (L)</TableHead>
+                <TableHead className="text-right text-white font-semibold">Diesel (L)</TableHead>
+                <TableHead className="text-right text-white font-semibold">Total Litros</TableHead>
+                <TableHead className="text-right text-white font-semibold">Gasolina $</TableHead>
+                <TableHead className="text-right text-white font-semibold">Diesel $</TableHead>
+                <TableHead className="text-right text-white font-semibold">Costo Total</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
