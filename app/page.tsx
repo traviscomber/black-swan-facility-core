@@ -157,9 +157,9 @@ export default function Dashboard() {
   ]
 
   const severityColors = {
-    info: 'bg-blue-50 border-blue-200 text-blue-900',
-    warning: 'bg-amber-50 border-amber-200 text-amber-900',
-    critical: 'bg-red-50 border-red-200 text-red-900',
+    info: 'bg-blue-900 border-blue-700 text-blue-100',
+    warning: 'bg-amber-900 border-amber-700 text-amber-100',
+    critical: 'bg-red-900 border-red-700 text-red-100',
   }
 
   return (
