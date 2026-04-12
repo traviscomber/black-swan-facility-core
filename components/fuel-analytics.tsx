@@ -177,10 +177,10 @@ export function FuelAnalyticsTab({ records, vehicles }: FuelAnalyticsTabProps) {
               <select
                 value={selectedMonth}
                 onChange={(e) => setSelectedMonth(Number(e.target.value))}
-                className="px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="px-3 py-2 border border-gray-300 rounded-lg bg-white text-black focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 {Array.from({ length: 12 }, (_, i) => i + 1).map((month) => (
-                  <option key={month} value={month}>
+                  <option key={month} value={month} className="text-black bg-white">
                     {monthNamesES[month]}
                   </option>
                 ))}
@@ -189,10 +189,10 @@ export function FuelAnalyticsTab({ records, vehicles }: FuelAnalyticsTabProps) {
               <select
                 value={selectedYear}
                 onChange={(e) => setSelectedYear(Number(e.target.value))}
-                className="px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="px-3 py-2 border border-gray-300 rounded-lg bg-white text-black focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - 2 + i).map((year) => (
-                  <option key={year} value={year}>
+                  <option key={year} value={year} className="text-black bg-white">
                     {year}
                   </option>
                 ))}
