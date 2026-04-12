@@ -3,6 +3,8 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 import { FuelEmployeesTable } from './fuel-employees-table'
+import { useState, useMemo } from 'react'
+import { ChevronLeft, ChevronRight } from 'lucide-react'
 
 interface FuelAnalyticsTabProps {
   records: any[]
@@ -10,9 +12,51 @@ interface FuelAnalyticsTabProps {
 }
 
 export function FuelAnalyticsTab({ records, vehicles }: FuelAnalyticsTabProps) {
+  // Date selection state
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear())
+  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1)
+
+  // Filter records by selected month/year
+  const filteredRecords = useMemo(() => {
+    return records.filter((record: any) => {
+      const date = new Date(record.date_recorded)
+      return date.getFullYear() === selectedYear && (date.getMonth() + 1) === selectedMonth
+    })
+  }, [records, selectedYear, selectedMonth])
+
+  // Get available months/years from data
+  const availableMonths = useMemo(() => {
+    const months = new Set<string>()
+    records.forEach((record: any) => {
+      const date = new Date(record.date_recorded)
+      months.add(`${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`)
+    })
+    return Array.from(months).sort().reverse()
+  }, [records])
+
+  const handlePreviousMonth = () => {
+    if (selectedMonth === 1) {
+      setSelectedMonth(12)
+      setSelectedYear(selectedYear - 1)
+    } else {
+      setSelectedMonth(selectedMonth - 1)
+    }
+  }
+
+  const handleNextMonth = () => {
+    if (selectedMonth === 12) {
+      setSelectedMonth(1)
+      setSelectedYear(selectedYear + 1)
+    } else {
+      setSelectedMonth(selectedMonth + 1)
+    }
+  }
+
+  const monthNames = ['', 'January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+  const monthNamesES = ['', 'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre']
   // Prepare data by date
   const dailyData = new Map<string, { date: string; liters: number; cost: number }>()
-  records.forEach((record: any) => {
+  filteredRecords.forEach((record: any) => {
     const date = record.date_recorded || new Date().toISOString().split('T')[0]
     const key = date
     if (!dailyData.has(key)) {
@@ -25,11 +69,10 @@ export function FuelAnalyticsTab({ records, vehicles }: FuelAnalyticsTabProps) {
 
   const dailyTrendData = Array.from(dailyData.values())
     .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
-    .slice(-30) // Last 30 days
 
   // Consumption by fuel type
   const fuelTypeData = new Map<string, number>()
-  records.forEach((record: any) => {
+  filteredRecords.forEach((record: any) => {
     const type = record.fuel_type || 'Unknown'
     fuelTypeData.set(type, (fuelTypeData.get(type) || 0) + (record.liters || 0))
   })
@@ -41,7 +84,7 @@ export function FuelAnalyticsTab({ records, vehicles }: FuelAnalyticsTabProps) {
 
   // Top vehicles by consumption
   const vehicleConsumption = new Map<string, number>()
-  records.forEach((record: any) => {
+  filteredRecords.forEach((record: any) => {
     const vehicleName =
       vehicles.find((v: any) => v.id === record.vehicle_id)?.name || record.vehicle_id || 'Unknown'
     vehicleConsumption.set(vehicleName, (vehicleConsumption.get(vehicleName) || 0) + (record.liters || 0))
@@ -52,7 +95,7 @@ export function FuelAnalyticsTab({ records, vehicles }: FuelAnalyticsTabProps) {
     .slice(0, 10)
     .map(([name, liters]) => ({ name, liters }))
 
-  // Employees fuel consumption data
+  // Employees fuel consumption data - ONLY from filtered records
   const employeeConsumption = new Map<string, {
     name: string;
     totalLiters: number;
@@ -64,7 +107,7 @@ export function FuelAnalyticsTab({ records, vehicles }: FuelAnalyticsTabProps) {
     dieselCost: number;
   }>()
 
-  records.forEach((record: any) => {
+  filteredRecords.forEach((record: any) => {
     const employeeId = record.submitted_by || 'unknown'
     const employeeName = record.employees?.name || record.employee_name || 'Unknown'
     const fuelType = record.fuel_type || 'unknown'
@@ -116,7 +159,60 @@ export function FuelAnalyticsTab({ records, vehicles }: FuelAnalyticsTabProps) {
 
   return (
     <div className="space-y-6">
-      <div className="grid gap-4 md:grid-cols-3">
+      {/* Month/Year Selector */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Seleccionar Período</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-between gap-4">
+            <button
+              onClick={handlePreviousMonth}
+              className="p-2 hover:bg-gray-100 rounded-lg transition"
+            >
+              <ChevronLeft className="w-5 h-5" />
+            </button>
+            
+            <div className="flex gap-4 items-center">
+              <select
+                value={selectedMonth}
+                onChange={(e) => setSelectedMonth(Number(e.target.value))}
+                className="px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                {Array.from({ length: 12 }, (_, i) => i + 1).map((month) => (
+                  <option key={month} value={month}>
+                    {monthNamesES[month]}
+                  </option>
+                ))}
+              </select>
+
+              <select
+                value={selectedYear}
+                onChange={(e) => setSelectedYear(Number(e.target.value))}
+                className="px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - 2 + i).map((year) => (
+                  <option key={year} value={year}>
+                    {year}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <button
+              onClick={handleNextMonth}
+              className="p-2 hover:bg-gray-100 rounded-lg transition"
+            >
+              <ChevronRight className="w-5 h-5" />
+            </button>
+          </div>
+          <p className="text-sm text-gray-500 mt-2">
+            Mostrando datos para {monthNamesES[selectedMonth]} {selectedYear}
+          </p>
+        </CardContent>
+      </Card>
+
+      {/* Metrics Cards */}
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-gray-600">Promedio por Registro</CardTitle>
