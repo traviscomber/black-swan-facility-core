@@ -190,7 +190,7 @@ export default function Dashboard() {
           {/* Critical Alerts */}
           {alerts.length > 0 && (
             <div className="space-y-2">
-              <h3 className="text-sm font-semibold text-gray-700">System Alerts</h3>
+              <h3 className="text-sm font-semibold text-white">System Alerts</h3>
               <div className="space-y-2">
                 {alerts.map((alert) => (
                   <div key={alert.id} className={`p-4 rounded-lg border ${severityColors[alert.severity]}`}>
@@ -214,13 +214,13 @@ export default function Dashboard() {
               <Card className="bg-gradient-to-br from-blue-50 to-blue-50/50 border-blue-200">
                 <CardHeader className="pb-3">
                   <div className="flex items-center justify-between">
-                    <CardTitle className="text-sm font-medium text-gray-700">Occupancy Rate</CardTitle>
+                    <CardTitle className="text-sm font-medium text-blue-900">Occupancy Rate</CardTitle>
                     <Activity className="h-4 w-4 text-blue-600" />
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-2">
                   <div className="text-3xl font-bold text-blue-900">{metrics.occupancyRate}%</div>
-                  <div className="flex gap-2 text-xs text-gray-600">
+                  <div className="flex gap-2 text-xs text-blue-800">
                     <span>{metrics.occupiedBeds} occupied</span>
                     <span>•</span>
                     <span>{metrics.availableBeds} available</span>
@@ -235,13 +235,13 @@ export default function Dashboard() {
               <Card className="bg-gradient-to-br from-green-50 to-green-50/50 border-green-200">
                 <CardHeader className="pb-3">
                   <div className="flex items-center justify-between">
-                    <CardTitle className="text-sm font-medium text-gray-700">Revenue (Month)</CardTitle>
+                    <CardTitle className="text-sm font-medium text-green-900">Revenue (Month)</CardTitle>
                     <TrendingUp className="h-4 w-4 text-green-600" />
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-2">
                   <div className="text-3xl font-bold text-green-900">${metrics.totalRevenue.toLocaleString()}</div>
-                  <p className="text-xs text-gray-600">+12% vs last month</p>
+                  <p className="text-xs text-green-800">+12% vs last month</p>
                 </CardContent>
               </Card>
 
@@ -249,13 +249,13 @@ export default function Dashboard() {
               <Card className="bg-gradient-to-br from-purple-50 to-purple-50/50 border-purple-200">
                 <CardHeader className="pb-3">
                   <div className="flex items-center justify-between">
-                    <CardTitle className="text-sm font-medium text-gray-700">Reservations</CardTitle>
+                    <CardTitle className="text-sm font-medium text-purple-900">Reservations</CardTitle>
                     <Calendar className="h-4 w-4 text-purple-600" />
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-2">
                   <div className="text-3xl font-bold text-purple-900">{metrics.activeReservations}</div>
-                  <div className="flex gap-2 text-xs text-gray-600">
+                  <div className="flex gap-2 text-xs text-purple-800">
                     <span>{metrics.todayCheckIns} check-ins</span>
                     <span>•</span>
                     <span>{metrics.todayCheckOuts} check-outs</span>
@@ -267,13 +267,13 @@ export default function Dashboard() {
               <Card className="bg-gradient-to-br from-amber-50 to-amber-50/50 border-amber-200">
                 <CardHeader className="pb-3">
                   <div className="flex items-center justify-between">
-                    <CardTitle className="text-sm font-medium text-gray-700">Maintenance</CardTitle>
+                    <CardTitle className="text-sm font-medium text-amber-900">Maintenance</CardTitle>
                     <Wrench className="h-4 w-4 text-amber-600" />
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-2">
                   <div className="text-3xl font-bold text-amber-900">{metrics.maintenanceIssues}</div>
-                  <p className="text-xs text-gray-600">Issues pending</p>
+                  <p className="text-xs text-amber-800">Issues pending</p>
                 </CardContent>
               </Card>
             </div>
@@ -289,13 +289,13 @@ export default function Dashboard() {
                 {metrics.todayCheckIns > 0 ? (
                   <div>
                     <div className="text-4xl font-bold text-green-600">{metrics.todayCheckIns}</div>
-                    <p className="text-sm text-gray-500 mt-2">Guest arrivals expected</p>
+                    <p className="text-sm text-gray-300 mt-2">Guest arrivals expected</p>
                     <Link href="/bookings" className="inline-flex items-center gap-2 text-sm text-primary hover:underline mt-4">
                       View Schedule <ChevronRight className="h-4 w-4" />
                     </Link>
                   </div>
                 ) : (
-                  <p className="text-sm text-gray-500">No check-ins scheduled for today</p>
+                  <p className="text-sm text-gray-300">No check-ins scheduled for today</p>
                 )}
               </CardContent>
             </Card>
@@ -308,13 +308,13 @@ export default function Dashboard() {
                 {metrics.todayCheckOuts > 0 ? (
                   <div>
                     <div className="text-4xl font-bold text-amber-600">{metrics.todayCheckOuts}</div>
-                    <p className="text-sm text-gray-500 mt-2">Guest departures expected</p>
+                    <p className="text-sm text-gray-300 mt-2">Guest departures expected</p>
                     <Link href="/bookings" className="inline-flex items-center gap-2 text-sm text-primary hover:underline mt-4">
                       View Schedule <ChevronRight className="h-4 w-4" />
                     </Link>
                   </div>
                 ) : (
-                  <p className="text-sm text-gray-500">No check-outs scheduled for today</p>
+                  <p className="text-sm text-gray-300">No check-outs scheduled for today</p>
                 )}
               </CardContent>
             </Card>
@@ -322,7 +322,7 @@ export default function Dashboard() {
 
           {/* Quick Access Actions */}
           <div className="space-y-4">
-            <h2 className="text-lg font-semibold">Quick Access</h2>
+            <h2 className="text-lg font-semibold text-white">Quick Access</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-4">
               {quickActions.map((action) => {
                 const Icon = action.icon
