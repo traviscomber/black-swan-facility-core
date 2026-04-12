@@ -9,14 +9,21 @@ export function ClientProviders({ children }: { children?: React.ReactNode } = {
   useEffect(() => {
     // Handle unhandled promise rejections that may come from browser extensions
     const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
-      // Log but suppress MetaMask and other extension-related errors
+      const reason = event.reason
+      const reasonStr = reason?.toString?.() ?? String(reason)
+      const messageStr = reason?.message?.toString?.() ?? ''
+      
+      // Suppress MetaMask and other extension-related errors
       if (
-        event.reason?.message?.includes('MetaMask') ||
-        event.reason?.message?.includes('Failed to connect') ||
-        event.reason?.toString().includes('ethereum')
+        reasonStr.includes('MetaMask') ||
+        reasonStr.includes('Failed to connect') ||
+        reasonStr.includes('ethereum') ||
+        messageStr.includes('MetaMask') ||
+        messageStr.includes('Failed to connect') ||
+        messageStr.includes('ethereum')
       ) {
         event.preventDefault()
-        console.debug('[Extension Error]', event.reason)
+        // Silently suppress extension errors, don't log them
       }
     }
 
