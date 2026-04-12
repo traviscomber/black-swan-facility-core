@@ -8,6 +8,7 @@ import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
 import { LanguageSwitcher } from "@/components/language-switcher"
 import { useLanguage } from "@/lib/hooks/use-language"
+import { BudgetDivisionSelector } from "@/components/budget-division-navbar-selector"
 
 const navigationGroups = [
   // GRUPO 1: OPERATIONS CENTER (Core Dashboards & Management)
@@ -219,6 +220,8 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
             <X className="h-5 w-5 text-muted-foreground" />
           </button>
         </div>
+
+        <BudgetDivisionSelector />
 
         <nav className="flex-1 space-y-2 sm:space-y-3 px-2 sm:px-3 py-3 sm:py-4 overflow-y-auto min-h-0">
           {navigationGroups.map((group) => (
