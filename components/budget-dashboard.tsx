@@ -6,7 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { ProgressBar } from '@/components/ui/progress'
+import { Progress } from '@/components/ui/progress'
 import { DollarSign, TrendingUp, TrendingDown, BarChart3 } from 'lucide-react'
 
 interface BudgetDivision {
@@ -274,9 +274,8 @@ export function BudgetDashboard() {
                           </td>
                           <td className="py-3 px-4">
                             <div className="flex items-center gap-2">
-                              <ProgressBar
+                              <Progress
                                 value={Math.min(parseFloat(percentage), 100)}
-                                max={100}
                               />
                               <span className="text-xs font-medium whitespace-nowrap">
                                 {percentage}%
