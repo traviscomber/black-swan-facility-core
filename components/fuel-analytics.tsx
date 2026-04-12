@@ -12,36 +12,27 @@ interface FuelAnalyticsTabProps {
 }
 
 export function FuelAnalyticsTab({ records, vehicles }: FuelAnalyticsTabProps) {
-  // Get available months/years from data (moved up to determine initial state)
-  const availableMonths = useMemo(() => {
+  // Determine initial month/year: use the latest available period with data
+  const getInitialMonthAndYear = () => {
     const months = new Set<string>()
     records.forEach((record: any) => {
       const date = new Date(record.date_recorded)
       months.add(`${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`)
     })
-    return Array.from(months).sort().reverse()
-  }, [records])
-
-  // Determine initial month/year: use the latest available period with data
-  const getInitialMonth = () => {
-    if (availableMonths.length > 0) {
-      const [year, month] = availableMonths[0].split('-')
-      return parseInt(month)
+    const sortedMonths = Array.from(months).sort().reverse()
+    
+    if (sortedMonths.length > 0) {
+      const [year, month] = sortedMonths[0].split('-')
+      return { month: parseInt(month), year: parseInt(year) }
     }
-    return new Date().getMonth() + 1
+    return { month: new Date().getMonth() + 1, year: new Date().getFullYear() }
   }
 
-  const getInitialYear = () => {
-    if (availableMonths.length > 0) {
-      const [year] = availableMonths[0].split('-')
-      return parseInt(year)
-    }
-    return new Date().getFullYear()
-  }
-
+  const initialPeriod = getInitialMonthAndYear()
+  
   // Date selection state - initialized with the latest available period
-  const [selectedYear, setSelectedYear] = useState(getInitialYear())
-  const [selectedMonth, setSelectedMonth] = useState(getInitialMonth())
+  const [selectedYear, setSelectedYear] = useState(initialPeriod.year)
+  const [selectedMonth, setSelectedMonth] = useState(initialPeriod.month)
 
   // Filter records by selected month/year
   const filteredRecords = useMemo(() => {
@@ -50,6 +41,8 @@ export function FuelAnalyticsTab({ records, vehicles }: FuelAnalyticsTabProps) {
       return date.getFullYear() === selectedYear && (date.getMonth() + 1) === selectedMonth
     })
   }, [records, selectedYear, selectedMonth])
+
+  const handlePreviousMonth = () => {
     if (selectedMonth === 1) {
       setSelectedMonth(12)
       setSelectedYear(selectedYear - 1)
@@ -69,6 +62,16 @@ export function FuelAnalyticsTab({ records, vehicles }: FuelAnalyticsTabProps) {
 
   const monthNames = ['', 'January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
   const monthNamesES = ['', 'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre']
+  
+  // Get available months/years from data
+  const availableMonths = useMemo(() => {
+    const months = new Set<string>()
+    records.forEach((record: any) => {
+      const date = new Date(record.date_recorded)
+      months.add(`${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`)
+    })
+    return Array.from(months).sort().reverse()
+  }, [records])
   // Prepare data by date
   const dailyData = new Map<string, { date: string; liters: number; cost: number }>()
   filteredRecords.forEach((record: any) => {
