@@ -178,6 +178,17 @@
     line-height: var(--line-height-snug);
   }
 
+  /* Improved text selection contrast */
+  ::selection {
+    background-color: #726658;
+    color: #ffffff;
+  }
+
+  ::-moz-selection {
+    background-color: #726658;
+    color: #ffffff;
+  }
+
   h5 {
     @apply font-semibold text-white;
     font-size: var(--font-size-lg);
