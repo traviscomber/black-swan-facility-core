@@ -22,6 +22,8 @@ export const translations = {
     'nav.issues': 'Issues & Requests',
     'nav.facility_requests_tip': 'Handle facility requests and issues',
     'nav.energy': 'Energy Management',
+    'nav.energy_management': 'Energy Management',
+    'nav.management_tip': 'Manage energy resources',
     'nav.concierge': 'Concierge',
     'nav.concierge_tip': 'Concierge services and guest support',
     'nav.ai_ops': 'AI Operations',
@@ -645,6 +647,8 @@ export const translations = {
     
     // NEW: Additional Navigation Items
     'nav.energy': 'Gestión de Energía',
+    'nav.energy_management': 'Gestión de Energía',
+    'nav.management_tip': 'Gestionar recursos de energía',
     'nav.concierge': 'Conserje',
     'nav.concierge_tip': 'Servicios de conserjería y soporte',
     'nav.ai_ops': 'Operaciones de IA',
