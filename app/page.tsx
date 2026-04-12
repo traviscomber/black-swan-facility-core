@@ -99,16 +99,16 @@ export default function Dashboard() {
 
         const { data: reservationsData } = await supabase
           .from("reservations")
-          .select("id, check_in_date, check_out_date")
-          .gte("check_out_date", new Date().toISOString())
-          .lte("check_in_date", new Date().toISOString())
+          .select("id, check_in, check_out")
+          .gte("check_out", new Date().toISOString())
+          .lte("check_in", new Date().toISOString())
 
         const totalRooms = roomsData?.length || 0
         const totalBeds = bedsData?.length || 0
 
         const today = new Date().toDateString()
-        const todayCheckIns = reservationsData?.filter((r) => new Date(r.check_in_date).toDateString() === today).length || 0
-        const todayCheckOuts = reservationsData?.filter((r) => new Date(r.check_out_date).toDateString() === today).length || 0
+        const todayCheckIns = reservationsData?.filter((r) => new Date(r.check_in).toDateString() === today).length || 0
+        const todayCheckOuts = reservationsData?.filter((r) => new Date(r.check_out).toDateString() === today).length || 0
 
         setMetrics({
           totalRooms,
