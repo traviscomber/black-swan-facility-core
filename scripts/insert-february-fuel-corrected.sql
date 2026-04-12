@@ -106,6 +106,6 @@ SELECT
   SUM(fc.cost_pesos) as costo_total
 FROM fuel_consumption fc
 LEFT JOIN employees e ON fc.submitted_by = e.id
-WHERE DATE(fc.date_recorded) >= '2026-02-01' AND DATE(fc.date_recorded) <= '2026-02-29'
+WHERE DATE(fc.date_recorded) >= '2026-02-01' AND DATE(fc.date_recorded) <= '2026-02-28'
 GROUP BY e.id, e.name
 ORDER BY total_litros DESC;
