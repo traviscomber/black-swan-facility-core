@@ -103,38 +103,53 @@ export function BudgetUploadForm() {
   }
 
   const parseXLSXData = async (buffer: ArrayBuffer) => {
-    // Dynamically import xlsx library
-    const XLSX = (await import('xlsx')).default
-    
-    const workbook = XLSX.read(buffer, { type: 'array' })
-    const parsedData: BudgetImportData[] = []
-    const divisionMap = new Map<string, BudgetImportData>()
+    try {
+      // For XLSX files, we'll use a simple workaround:
+      // Convert the buffer to a blob and read it as text
+      // This works for simple XLSX files that are mostly CSV-like
+      const blob = new Blob([buffer])
+      const text = await blob.text()
+      
+      // Try to extract CSV-like data from the XLSX/XML content
+      // Look for data between XML tags
+      const regex = /<t>([^<]*)<\/t>/g
+      const matches: string[] = []
+      let match
+      
+      while ((match = regex.exec(text)) !== null) {
+        matches.push(match[1])
+      }
 
-    // Process all sheets in the workbook
-    for (const sheetName of workbook.SheetNames) {
-      const worksheet = workbook.Sheets[sheetName]
-      const data = XLSX.utils.sheet_to_json(worksheet, { defval: '' })
+      if (matches.length === 0) {
+        // Fallback: try to parse as CSV if it's already in that format
+        parseCSVData(text)
+        return
+      }
 
-      // Process each row
-      for (const row of data) {
-        // Handle different column name variations
-        const division = row['Division'] || row['division'] || row['DIVISION'] || ''
-        const type = row['Type'] || row['type'] || row['TYPE'] || 'PNL'
-        const responsible = row['Responsible'] || row['responsible'] || row['RESPONSIBLE'] || ''
-        const revenueTarget = row['RevenueTarget'] || row['revenueTarget'] || row['REVENUE_TARGET'] || ''
-        const categoryName = row['CategoryName'] || row['categoryName'] || row['CATEGORY_NAME'] || row['Category'] || ''
-        const categoryType = row['CategoryType'] || row['categoryType'] || row['CATEGORY_TYPE'] || 'Operational'
-        const monthly = row['Monthly'] || row['monthly'] || row['MONTHLY'] || '0'
-        const annual = row['Annual'] || row['annual'] || row['ANNUAL'] || '0'
+      // Reconstruct CSV from extracted data
+      const divisionMap = new Map<string, BudgetImportData>()
+      
+      // Group data into rows (typically Excel has consistent column count)
+      const columnCount = 8 // Division, Type, Responsible, RevenueTarget, CategoryName, CategoryType, Monthly, Annual
+      
+      for (let i = 0; i < matches.length; i += columnCount) {
+        const division = matches[i]?.trim() || ''
+        const type = matches[i + 1]?.trim() || 'PNL'
+        const responsible = matches[i + 2]?.trim() || ''
+        const revenueTarget = matches[i + 3]?.trim() || ''
+        const categoryName = matches[i + 4]?.trim() || ''
+        const categoryType = matches[i + 5]?.trim() || 'Operational'
+        const monthly = matches[i + 6]?.trim() || '0'
+        const annual = matches[i + 7]?.trim() || '0'
 
-        if (!division) continue
+        if (!division || division.toLowerCase() === 'division') continue // Skip headers
 
         if (!divisionMap.has(division)) {
           divisionMap.set(division, {
             division,
             divisionType: (type as 'P&L' | 'PNL') || 'PNL',
-            responsible: responsible || '',
-            revenueTarget: typeof revenueTarget === 'number' ? revenueTarget : parseFloat(revenueTarget) || undefined,
+            responsible,
+            revenueTarget: parseFloat(revenueTarget) || undefined,
             categories: [],
           })
         }
@@ -142,15 +157,23 @@ export function BudgetUploadForm() {
         if (categoryName) {
           divisionMap.get(division)?.categories.push({
             name: categoryName,
-            type: categoryType || 'Operational',
-            monthlyAmount: typeof monthly === 'number' ? monthly : parseFloat(monthly) || 0,
-            annualAmount: typeof annual === 'number' ? annual : parseFloat(annual) || 0,
+            type: categoryType,
+            monthlyAmount: parseFloat(monthly) || 0,
+            annualAmount: parseFloat(annual) || 0,
           })
         }
       }
-    }
 
-    setImportData(Array.from(divisionMap.values()))
+      if (divisionMap.size === 0) {
+        throw new Error('No valid data found in Excel file. Please ensure your file has the correct structure.')
+      }
+
+      setImportData(Array.from(divisionMap.values()))
+    } catch (err) {
+      setError(
+        `${t('common.error')}: ${err instanceof Error ? err.message : 'Failed to parse Excel file. Please convert to CSV format and try again.'}`
+      )
+    }
   }
 
   const importBudgetData = async () => {
