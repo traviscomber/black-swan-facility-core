@@ -46,22 +46,86 @@ export function BudgetUploadForm() {
     setResults([])
 
     try {
-      // Parse CSV or Excel file
-      const text = await selectedFile.text()
-      const lines = text.split('\n')
-      
-      // Simple CSV parsing (assumes: Division, Type, Responsible, RevenueTarget, CategoryName, CategoryType, Monthly, Annual)
-      const parsedData: BudgetImportData[] = []
-      const divisionMap = new Map<string, BudgetImportData>()
+      // Handle both CSV and XLSX files
+      if (selectedFile.name.endsWith('.csv')) {
+        // CSV parsing
+        const text = await selectedFile.text()
+        parseCSVData(text)
+      } else if (selectedFile.name.endsWith('.xlsx') || selectedFile.name.endsWith('.xls')) {
+        // XLSX parsing using dynamic import
+        const buffer = await selectedFile.arrayBuffer()
+        await parseXLSXData(buffer)
+      } else {
+        throw new Error('Unsupported file format. Please use CSV or XLSX.')
+      }
+    } catch (err) {
+      setError(`${t('common.error')}: ${err instanceof Error ? err.message : 'Failed to parse file'}`)
+    }
+  }
 
-      // Skip header
-      for (let i = 1; i < lines.length; i++) {
-        const line = lines[i].trim()
-        if (!line) continue
+  const parseCSVData = (text: string) => {
+    const lines = text.split('\n')
+    const parsedData: BudgetImportData[] = []
+    const divisionMap = new Map<string, BudgetImportData>()
 
-        const [division, type, responsible, revenueTarget, categoryName, categoryType, monthly, annual] = line
-          .split(',')
-          .map(v => v.trim())
+    // Skip header
+    for (let i = 1; i < lines.length; i++) {
+      const line = lines[i].trim()
+      if (!line) continue
+
+      const [division, type, responsible, revenueTarget, categoryName, categoryType, monthly, annual] = line
+        .split(',')
+        .map(v => v.trim())
+
+      if (!division) continue
+
+      if (!divisionMap.has(division)) {
+        divisionMap.set(division, {
+          division,
+          divisionType: (type as 'P&L' | 'PNL') || 'PNL',
+          responsible: responsible || '',
+          revenueTarget: parseFloat(revenueTarget) || undefined,
+          categories: [],
+        })
+      }
+
+      if (categoryName) {
+        divisionMap.get(division)?.categories.push({
+          name: categoryName,
+          type: categoryType || 'Operational',
+          monthlyAmount: parseFloat(monthly) || 0,
+          annualAmount: parseFloat(annual) || 0,
+        })
+      }
+    }
+
+    setImportData(Array.from(divisionMap.values()))
+  }
+
+  const parseXLSXData = async (buffer: ArrayBuffer) => {
+    // Dynamically import xlsx library
+    const XLSX = (await import('xlsx')).default
+    
+    const workbook = XLSX.read(buffer, { type: 'array' })
+    const parsedData: BudgetImportData[] = []
+    const divisionMap = new Map<string, BudgetImportData>()
+
+    // Process all sheets in the workbook
+    for (const sheetName of workbook.SheetNames) {
+      const worksheet = workbook.Sheets[sheetName]
+      const data = XLSX.utils.sheet_to_json(worksheet, { defval: '' })
+
+      // Process each row
+      for (const row of data) {
+        // Handle different column name variations
+        const division = row['Division'] || row['division'] || row['DIVISION'] || ''
+        const type = row['Type'] || row['type'] || row['TYPE'] || 'PNL'
+        const responsible = row['Responsible'] || row['responsible'] || row['RESPONSIBLE'] || ''
+        const revenueTarget = row['RevenueTarget'] || row['revenueTarget'] || row['REVENUE_TARGET'] || ''
+        const categoryName = row['CategoryName'] || row['categoryName'] || row['CATEGORY_NAME'] || row['Category'] || ''
+        const categoryType = row['CategoryType'] || row['categoryType'] || row['CATEGORY_TYPE'] || 'Operational'
+        const monthly = row['Monthly'] || row['monthly'] || row['MONTHLY'] || '0'
+        const annual = row['Annual'] || row['annual'] || row['ANNUAL'] || '0'
 
         if (!division) continue
 
@@ -70,7 +134,7 @@ export function BudgetUploadForm() {
             division,
             divisionType: (type as 'P&L' | 'PNL') || 'PNL',
             responsible: responsible || '',
-            revenueTarget: parseFloat(revenueTarget) || undefined,
+            revenueTarget: typeof revenueTarget === 'number' ? revenueTarget : parseFloat(revenueTarget) || undefined,
             categories: [],
           })
         }
@@ -79,16 +143,14 @@ export function BudgetUploadForm() {
           divisionMap.get(division)?.categories.push({
             name: categoryName,
             type: categoryType || 'Operational',
-            monthlyAmount: parseFloat(monthly) || 0,
-            annualAmount: parseFloat(annual) || 0,
+            monthlyAmount: typeof monthly === 'number' ? monthly : parseFloat(monthly) || 0,
+            annualAmount: typeof annual === 'number' ? annual : parseFloat(annual) || 0,
           })
         }
       }
-
-      setImportData(Array.from(divisionMap.values()))
-    } catch (err) {
-      setError(`${t('common.error')}: ${err instanceof Error ? err.message : 'Failed to parse file'}`)
     }
+
+    setImportData(Array.from(divisionMap.values()))
   }
 
   const importBudgetData = async () => {
