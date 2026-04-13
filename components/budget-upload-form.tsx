@@ -6,7 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Upload, CheckCircle, AlertCircle, Loader } from 'lucide-react'
+import { Upload, CheckCircle, AlertCircle, Download, Info } from 'lucide-react'
 
 interface BudgetImportData {
   division: string
@@ -28,36 +28,56 @@ interface ImportResult {
   categoriesCreated?: number
 }
 
+const TEMPLATE_CSV = `Division,Type,Responsible,RevenueTarget,CategoryName,CategoryType,Monthly,Annual
+Admin General,P&L,John Manager,50000,Salaries,Personnel,5000,60000
+Admin General,P&L,John Manager,50000,Office Supplies,Operational,500,6000
+Admin General,P&L,John Manager,50000,IT Services,Technology,1000,12000
+Hospitality,P&L,Sarah Host,75000,Guest Services,Personnel,3000,36000
+Hospitality,P&L,Sarah Host,75000,Linens & Laundry,Operational,800,9600
+Landscaping,PNL,Miguel Garden,30000,Equipment Maintenance,Operational,1500,18000
+Landscaping,PNL,Miguel Garden,30000,Plants & Seeds,Materials,2000,24000
+Farming,PNL,Diego Farm,45000,Feed & Supplies,Materials,3000,36000
+Farming,PNL,Diego Farm,45000,Equipment Repair,Operational,1500,18000`
+
 export function BudgetUploadForm() {
   const { t } = useLanguage()
+  const supabase = createClient()
   const [file, setFile] = useState<File | null>(null)
   const [uploading, setUploading] = useState(false)
   const [importData, setImportData] = useState<BudgetImportData[]>([])
   const [results, setResults] = useState<ImportResult[]>([])
   const [error, setError] = useState<string | null>(null)
+  const [previewMode, setPreviewMode] = useState(true)
+
+  // Download template CSV
+  const downloadTemplate = () => {
+    const element = document.createElement('a')
+    element.setAttribute('href', 'data:text/csv;charset=utf-8,' + encodeURIComponent(TEMPLATE_CSV))
+    element.setAttribute('download', 'Budget_Template.csv')
+    element.style.display = 'none'
+    document.body.appendChild(element)
+    element.click()
+    document.body.removeChild(element)
+  }
 
   const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = event.target.files?.[0]
     if (!selectedFile) return
 
+    if (!selectedFile.name.endsWith('.csv')) {
+      setError('Only CSV files are supported. Please export your Excel file as CSV and try again.')
+      return
+    }
+
     setFile(selectedFile)
     setError(null)
     setImportData([])
     setResults([])
+    setPreviewMode(true)
 
     try {
-      // Handle both CSV and XLSX files
-      if (selectedFile.name.endsWith('.csv')) {
-        // CSV parsing
-        const text = await selectedFile.text()
-        parseCSVData(text)
-      } else if (selectedFile.name.endsWith('.xlsx') || selectedFile.name.endsWith('.xls')) {
-        // XLSX parsing using dynamic import
-        const buffer = await selectedFile.arrayBuffer()
-        await parseXLSXData(buffer)
-      } else {
-        throw new Error('Unsupported file format. Please use CSV or XLSX.')
-      }
+      const text = await selectedFile.text()
+      parseCSVData(text)
     } catch (err) {
       setError(`${t('common.error')}: ${err instanceof Error ? err.message : 'Failed to parse file'}`)
     }
@@ -99,158 +119,78 @@ export function BudgetUploadForm() {
       }
     }
 
+    if (divisionMap.size === 0) {
+      throw new Error('No valid data found in CSV file.')
+    }
+
     setImportData(Array.from(divisionMap.values()))
   }
 
-  const parseXLSXData = async (buffer: ArrayBuffer) => {
+  const handleImport = async () => {
     try {
-      // For XLSX files, we'll use a simple workaround:
-      // Convert the buffer to a blob and read it as text
-      // This works for simple XLSX files that are mostly CSV-like
-      const blob = new Blob([buffer])
-      const text = await blob.text()
-      
-      // Try to extract CSV-like data from the XLSX/XML content
-      // Look for data between XML tags
-      const regex = /<t>([^<]*)<\/t>/g
-      const matches: string[] = []
-      let match
-      
-      while ((match = regex.exec(text)) !== null) {
-        matches.push(match[1])
-      }
-
-      if (matches.length === 0) {
-        // Fallback: try to parse as CSV if it's already in that format
-        parseCSVData(text)
-        return
-      }
-
-      // Reconstruct CSV from extracted data
-      const divisionMap = new Map<string, BudgetImportData>()
-      
-      // Group data into rows (typically Excel has consistent column count)
-      const columnCount = 8 // Division, Type, Responsible, RevenueTarget, CategoryName, CategoryType, Monthly, Annual
-      
-      for (let i = 0; i < matches.length; i += columnCount) {
-        const division = matches[i]?.trim() || ''
-        const type = matches[i + 1]?.trim() || 'PNL'
-        const responsible = matches[i + 2]?.trim() || ''
-        const revenueTarget = matches[i + 3]?.trim() || ''
-        const categoryName = matches[i + 4]?.trim() || ''
-        const categoryType = matches[i + 5]?.trim() || 'Operational'
-        const monthly = matches[i + 6]?.trim() || '0'
-        const annual = matches[i + 7]?.trim() || '0'
-
-        if (!division || division.toLowerCase() === 'division') continue // Skip headers
-
-        if (!divisionMap.has(division)) {
-          divisionMap.set(division, {
-            division,
-            divisionType: (type as 'P&L' | 'PNL') || 'PNL',
-            responsible,
-            revenueTarget: parseFloat(revenueTarget) || undefined,
-            categories: [],
-          })
-        }
-
-        if (categoryName) {
-          divisionMap.get(division)?.categories.push({
-            name: categoryName,
-            type: categoryType,
-            monthlyAmount: parseFloat(monthly) || 0,
-            annualAmount: parseFloat(annual) || 0,
-          })
-        }
-      }
-
-      if (divisionMap.size === 0) {
-        throw new Error('No valid data found in Excel file. Please ensure your file has the correct structure.')
-      }
-
-      setImportData(Array.from(divisionMap.values()))
-    } catch (err) {
-      setError(
-        `${t('common.error')}: ${err instanceof Error ? err.message : 'Failed to parse Excel file. Please convert to CSV format and try again.'}`
-      )
-    }
-  }
-
-  const importBudgetData = async () => {
-    if (importData.length === 0) {
-      setError('No data to import')
-      return
-    }
-
-    setUploading(true)
-    setResults([])
-
-    try {
-      const supabase = createClient()
+      setUploading(true)
+      setResults([])
       const importResults: ImportResult[] = []
 
-      for (const data of importData) {
+      for (const divisionData of importData) {
         try {
-          // Check if division already exists
-          const { data: existingDivision } = await supabase
+          // Insert or update division
+          const { data: division, error: divError } = await supabase
             .from('budget_divisions')
-            .select('id')
-            .eq('name', data.division)
-            .single()
+            .upsert(
+              {
+                name: divisionData.division,
+                type: divisionData.divisionType,
+                responsible_person: divisionData.responsible,
+                revenue_target: divisionData.revenueTarget,
+              },
+              { onConflict: 'name' }
+            )
+            .select()
 
-          let divisionId: string
-          if (existingDivision) {
-            divisionId = existingDivision.id
-          } else {
-            // Create new division
-            const { data: newDivision, error: divisionError } = await supabase
-              .from('budget_divisions')
-              .insert({
-                name: data.division,
-                type: data.divisionType,
-                total_budget: data.categories.reduce((sum, c) => sum + c.annualAmount, 0),
-                annual_budget: data.categories.reduce((sum, c) => sum + c.annualAmount, 0),
-                revenue_target: data.revenueTarget,
-                responsible: data.responsible,
-              })
-              .select()
-              .single()
+          if (divError) throw divError
 
-            if (divisionError) throw divisionError
-            divisionId = newDivision.id
-          }
+          const divisionId = division?.[0]?.id
 
-          // Add or update categories
+          // Insert categories
           let categoriesCreated = 0
-          for (const category of data.categories) {
-            const { error: categoryError } = await supabase
-              .from('budget_categories')
-              .upsert({
-                division_id: divisionId,
-                name: category.name,
-                category_type: category.type,
-                monthly_amount: category.monthlyAmount,
-                annual_amount: category.annualAmount,
-              })
+          for (const category of divisionData.categories) {
+            const { error: catError } = await supabase.from('budget_categories').insert({
+              division_id: divisionId,
+              name: category.name,
+              type: category.type,
+              monthly_amount: category.monthlyAmount,
+              annual_amount: category.annualAmount,
+            })
 
-            if (!categoryError) categoriesCreated++
+            if (!catError) categoriesCreated++
           }
 
           importResults.push({
             success: true,
-            message: `${t('common.success')}: ${data.division}`,
+            message: `Division "${divisionData.division}" imported successfully`,
             divisionId,
             categoriesCreated,
           })
         } catch (err) {
           importResults.push({
             success: false,
-            message: `${t('common.error')}: ${data.division} - ${err instanceof Error ? err.message : 'Unknown error'}`,
+            message: `Failed to import "${divisionData.division}": ${err instanceof Error ? err.message : 'Unknown error'}`,
           })
         }
       }
 
       setResults(importResults)
+      setPreviewMode(false)
+
+      // Reset form on success
+      if (importResults.every(r => r.success)) {
+        setTimeout(() => {
+          setFile(null)
+          setImportData([])
+          setResults([])
+        }, 2000)
+      }
     } catch (err) {
       setError(`${t('common.error')}: ${err instanceof Error ? err.message : 'Import failed'}`)
     } finally {
@@ -260,106 +200,118 @@ export function BudgetUploadForm() {
 
   return (
     <div className="space-y-6">
-      <Card>
+      {/* Instructions Card */}
+      <Card className="border-blue-200 bg-blue-50">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Upload className="w-5 h-5" />
-            {t('budget.import_data')}
+          <CardTitle className="flex items-center gap-2 text-blue-900">
+            <Info className="h-5 w-5" />
+            How to Import Budget Data
           </CardTitle>
         </CardHeader>
+        <CardContent className="space-y-3 text-sm text-blue-800">
+          <ol className="space-y-2 list-decimal list-inside">
+            <li>Download the CSV template below</li>
+            <li>Open it in Excel and fill in your budget data</li>
+            <li>Save the file as CSV (File → Save As → CSV format)</li>
+            <li>Upload the CSV file here</li>
+          </ol>
+          <Button
+            onClick={downloadTemplate}
+            variant="outline"
+            size="sm"
+            className="w-full gap-2 border-blue-400 text-blue-700 hover:bg-blue-100"
+          >
+            <Download className="h-4 w-4" />
+            Download CSV Template
+          </Button>
+        </CardContent>
+      </Card>
+
+      {/* Upload Card */}
+      <Card>
+        <CardHeader>
+          <CardTitle>{t('budget.upload_excel')}</CardTitle>
+        </CardHeader>
         <CardContent className="space-y-4">
-          {/* File Upload */}
-          <div className="border-2 border-dashed border-gray-300 rounded-lg p-6">
-            <input
-              type="file"
-              accept=".csv,.xlsx,.xls"
-              onChange={handleFileSelect}
-              className="hidden"
-              id="budget-file"
-            />
-            <label htmlFor="budget-file" className="cursor-pointer block text-center">
-              <div className="text-lg font-semibold">{t('budget.upload_excel')}</div>
-              <p className="text-sm text-gray-600 mt-2">
-                CSV or Excel format: Division, Type, Responsible, RevenueTarget, CategoryName, CategoryType, Monthly, Annual
-              </p>
-              {file && <p className="text-sm font-medium text-green-600 mt-2">{file.name}</p>}
-            </label>
+          {/* File Input */}
+          <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
+            <div className="flex flex-col items-center gap-3">
+              <Upload className="h-8 w-8 text-gray-400" />
+              <div>
+                <p className="font-medium text-gray-700">Upload CSV File</p>
+                <p className="text-sm text-gray-500">Drag and drop or click to select</p>
+              </div>
+              <input
+                type="file"
+                accept=".csv"
+                onChange={handleFileSelect}
+                className="absolute w-px h-px opacity-0 cursor-pointer"
+                id="csv-input"
+              />
+              <label htmlFor="csv-input" className="cursor-pointer">
+                <Button variant="outline" asChild>
+                  <span>Select CSV File</span>
+                </Button>
+              </label>
+            </div>
+            {file && <p className="text-sm text-green-600 mt-3">✓ {file.name}</p>}
           </div>
 
-          {/* Preview Data */}
-          {importData.length > 0 && (
-            <div className="space-y-4">
-              <h3 className="font-semibold">{t('common.preview')}:</h3>
-              {importData.map((data, idx) => (
-                <div key={idx} className="border rounded-lg p-4">
-                  <div className="flex items-start justify-between mb-3">
-                    <div>
-                      <h4 className="font-semibold">{data.division}</h4>
-                      <p className="text-sm text-gray-600">{data.responsible}</p>
-                    </div>
-                    <Badge>{data.divisionType}</Badge>
-                  </div>
-                  <div className="grid grid-cols-2 gap-2 text-sm mb-3">
-                    <div>
-                      <span className="text-gray-600">{t('budget.annual_budget')}:</span>
-                      <p className="font-semibold">
-                        ${data.categories.reduce((sum, c) => sum + c.annualAmount, 0).toLocaleString()}
-                      </p>
-                    </div>
-                    {data.revenueTarget && (
-                      <div>
-                        <span className="text-gray-600">{t('budget.revenue_target')}:</span>
-                        <p className="font-semibold">${data.revenueTarget.toLocaleString()}</p>
-                      </div>
-                    )}
-                  </div>
-                  <div className="bg-gray-50 rounded p-2">
-                    <p className="text-sm font-medium mb-2">{t('budget.categories')}:</p>
-                    <ul className="text-sm space-y-1">
-                      {data.categories.map((cat, cidx) => (
-                        <li key={cidx}>
-                          {cat.name} ({cat.type}) - ${cat.annualAmount.toLocaleString()}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* Error Message */}
+          {/* Error Display */}
           {error && (
-            <div className="flex items-start gap-2 p-4 bg-red-50 border border-red-200 rounded-lg">
-              <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
-              <p className="text-sm text-red-600">{error}</p>
+            <div className="flex gap-3 p-3 bg-red-50 border border-red-200 rounded text-red-700 text-sm">
+              <AlertCircle className="h-4 w-4 flex-shrink-0 mt-0.5" />
+              <div>{error}</div>
             </div>
           )}
 
-          {/* Import Results */}
-          {results.length > 0 && (
+          {/* Preview */}
+          {previewMode && importData.length > 0 && (
+            <div className="space-y-3">
+              <h3 className="font-medium">Preview ({importData.length} divisions)</h3>
+              <div className="space-y-2 max-h-96 overflow-y-auto">
+                {importData.map((division) => (
+                  <div key={division.division} className="p-3 bg-gray-50 rounded border">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="font-medium">{division.division}</span>
+                      <Badge variant={division.divisionType === 'P&L' ? 'default' : 'secondary'}>
+                        {division.divisionType}
+                      </Badge>
+                    </div>
+                    <p className="text-xs text-gray-600 mb-2">
+                      {division.responsible && <>Responsible: {division.responsible}</>}
+                    </p>
+                    <div className="text-xs text-gray-600">
+                      {division.categories.length} categories
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Results */}
+          {!previewMode && results.length > 0 && (
             <div className="space-y-2">
-              <h3 className="font-semibold">{t('common.results')}:</h3>
+              <h3 className="font-medium">Import Results</h3>
               {results.map((result, idx) => (
                 <div
                   key={idx}
-                  className={`flex items-start gap-2 p-3 rounded-lg ${
-                    result.success ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'
+                  className={`flex gap-3 p-3 rounded border ${
+                    result.success
+                      ? 'bg-green-50 border-green-200 text-green-700'
+                      : 'bg-red-50 border-red-200 text-red-700'
                   }`}
                 >
                   {result.success ? (
-                    <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
+                    <CheckCircle className="h-4 w-4 flex-shrink-0 mt-0.5" />
                   ) : (
-                    <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+                    <AlertCircle className="h-4 w-4 flex-shrink-0 mt-0.5" />
                   )}
-                  <div className="flex-1">
-                    <p className={`text-sm ${result.success ? 'text-green-600' : 'text-red-600'}`}>
-                      {result.message}
-                    </p>
+                  <div className="text-sm">
+                    <div className="font-medium">{result.message}</div>
                     {result.categoriesCreated && (
-                      <p className="text-xs text-gray-600 mt-1">
-                        {result.categoriesCreated} {t('budget.categories')} created
-                      </p>
+                      <div className="text-xs mt-1">({result.categoriesCreated} categories created)</div>
                     )}
                   </div>
                 </div>
@@ -367,24 +319,39 @@ export function BudgetUploadForm() {
             </div>
           )}
 
-          {/* Import Button */}
-          <Button
-            onClick={importBudgetData}
-            disabled={importData.length === 0 || uploading}
-            className="w-full"
-          >
-            {uploading ? (
-              <>
-                <Loader className="w-4 h-4 mr-2 animate-spin" />
-                {t('common.loading')}...
-              </>
-            ) : (
-              <>
-                <Upload className="w-4 h-4 mr-2" />
-                {t('budget.import_data')}
-              </>
-            )}
-          </Button>
+          {/* Action Buttons */}
+          {previewMode && importData.length > 0 && (
+            <div className="flex gap-2">
+              <Button onClick={handleImport} disabled={uploading} className="flex-1">
+                {uploading ? 'Importing...' : 'Import Data'}
+              </Button>
+              <Button
+                onClick={() => {
+                  setImportData([])
+                  setFile(null)
+                  setError(null)
+                }}
+                variant="outline"
+              >
+                Cancel
+              </Button>
+            </div>
+          )}
+
+          {!previewMode && results.length > 0 && (
+            <Button
+              onClick={() => {
+                setFile(null)
+                setImportData([])
+                setResults([])
+                setPreviewMode(true)
+              }}
+              variant="outline"
+              className="w-full"
+            >
+              Import Another File
+            </Button>
+          )}
         </CardContent>
       </Card>
     </div>
