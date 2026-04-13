@@ -1,154 +1,124 @@
 -- Import Real Budget 2026 Data
 -- Based on Budget & PnL 26 - Budget 26 CSV
 
--- Clear existing data (optional, comment out to preserve)
--- DELETE FROM budget_actuals;
--- DELETE FROM budget_categories;
--- DELETE FROM budget_divisions;
-
 -- Insert Divisions
-INSERT INTO budget_divisions (name, type, revenue_target) VALUES
-('Admin / General', 'P&L', 852172),
-('Hospitality', 'P&L', 147294),
-('Farm', 'P&L', 152427),
-('Torobayo', 'P&L', 5133),
-('Landscaping', 'P&L', 82865),
-('Farming', 'P&L', 338250),
-('Cattle', 'P&L', 264804),
-('Vineyard', 'P&L', 25574)
-ON CONFLICT (name) DO UPDATE SET revenue_target = EXCLUDED.revenue_target;
+INSERT INTO budget_divisions (id, name, type, description, is_active, created_at, updated_at) VALUES
+(gen_random_uuid(), 'Admin / General', 'P&L', 'Administrative and general operations', true, NOW(), NOW()),
+(gen_random_uuid(), 'Hospitality', 'P&L', 'Hospitality services', true, NOW(), NOW()),
+(gen_random_uuid(), 'Farm', 'P&L', 'Farm operations', true, NOW(), NOW()),
+(gen_random_uuid(), 'Torobayo', 'P&L', 'Torobayo division', true, NOW(), NOW()),
+(gen_random_uuid(), 'Landscaping', 'P&L', 'Landscaping operations', true, NOW(), NOW()),
+(gen_random_uuid(), 'Farming', 'P&L', 'Farming operations', true, NOW(), NOW()),
+(gen_random_uuid(), 'Cattle', 'P&L', 'Cattle operations', true, NOW(), NOW()),
+(gen_random_uuid(), 'Vineyard', 'P&L', 'Vineyard operations', true, NOW(), NOW());
 
--- Get division IDs for use in categories
+-- Get the division IDs and insert categories
 WITH divisions AS (
-  SELECT id, name FROM budget_divisions 
+  SELECT id, name FROM budget_divisions
   WHERE name IN ('Admin / General', 'Hospitality', 'Farm', 'Torobayo', 'Landscaping', 'Farming', 'Cattle', 'Vineyard')
 )
+INSERT INTO budget_categories (id, division_id, name, category_type, is_active, created_at, updated_at)
+SELECT 
+  gen_random_uuid(),
+  d.id,
+  cat.name,
+  cat.type,
+  true,
+  NOW(),
+  NOW()
+FROM divisions d,
+  (VALUES
+    ('Cost', 'Operational'),
+    ('HR', 'Operational'),
+    ('Buildings', 'Operational'),
+    ('Vehicles / Machines / Fuel', 'Operational'),
+    ('Variable Cost / Consumables / Tools', 'Operational'),
+    ('Legal & Financial', 'Operational'),
+    ('Planning Investments HR', 'Operational'),
+    ('Realising Investments', 'Operational'),
+    ('Income', 'Revenue')
+  ) cat(name, type)
+WHERE d.name = 'Admin / General'
 
--- Insert Categories for Admin / General
-INSERT INTO budget_categories (division_id, name, type, monthly_amount, annual_amount) 
-SELECT (SELECT id FROM divisions WHERE name = 'Admin / General'), 'Cost', 'Operational', 80376, 865172
 UNION ALL
-SELECT (SELECT id FROM divisions WHERE name = 'Admin / General'), 'HR', 'Operational', 7900, 95299
-UNION ALL
-SELECT (SELECT id FROM divisions WHERE name = 'Admin / General'), 'Buildings', 'Operational', 307, 3683
-UNION ALL
-SELECT (SELECT id FROM divisions WHERE name = 'Admin / General'), 'Vehicles / Machines / Fuel', 'Operational', 2866, 34390
-UNION ALL
-SELECT (SELECT id FROM divisions WHERE name = 'Admin / General'), 'Variable Cost / Consumables / Tools', 'Operational', 4000, 48005
-UNION ALL
-SELECT (SELECT id FROM divisions WHERE name = 'Admin / General'), 'Legal & Financial', 'Operational', 3745, 44941
-UNION ALL
-SELECT (SELECT id FROM divisions WHERE name = 'Admin / General'), 'Planning Investments HR', 'Operational', 6552, 78622
-UNION ALL
-SELECT (SELECT id FROM divisions WHERE name = 'Admin / General'), 'Realising Investments', 'Operational', 46686, 560233
-UNION ALL
-SELECT (SELECT id FROM divisions WHERE name = 'Admin / General'), 'Income', 'Revenue', 1083, 13000
 
--- Insert Categories for Hospitality
-UNION ALL
-SELECT (SELECT id FROM divisions WHERE name = 'Hospitality'), 'Cost', 'Operational', 12271, 147294
-UNION ALL
-SELECT (SELECT id FROM divisions WHERE name = 'Hospitality'), 'HR', 'Operational', 3500, 42000
-UNION ALL
-SELECT (SELECT id FROM divisions WHERE name = 'Hospitality'), 'Buildings', 'Operational', 1019, 12228
-UNION ALL
-SELECT (SELECT id FROM divisions WHERE name = 'Hospitality'), 'Vehicles / Machines / Fuel', 'Operational', 1912, 22941
-UNION ALL
-SELECT (SELECT id FROM divisions WHERE name = 'Hospitality'), 'Variable Cost / Consumables / Tools', 'Operational', 9331, 111977
-UNION ALL
-SELECT (SELECT id FROM divisions WHERE name = 'Hospitality'), 'Legal & Financial', 'Operational', 113, 1357
-UNION ALL
-SELECT (SELECT id FROM divisions WHERE name = 'Hospitality'), 'Income', 'Revenue', 4108, 49300
+SELECT 
+  gen_random_uuid(),
+  d.id,
+  cat.name,
+  cat.type,
+  true,
+  NOW(),
+  NOW()
+FROM divisions d,
+  (VALUES
+    ('Cost', 'Operational'),
+    ('HR', 'Operational'),
+    ('Buildings', 'Operational'),
+    ('Vehicles / Machines / Fuel', 'Operational'),
+    ('Variable Cost / Consumables / Tools', 'Operational'),
+    ('Legal & Financial', 'Operational'),
+    ('Income', 'Revenue')
+  ) cat(name, type)
+WHERE d.name IN ('Hospitality', 'Farm');
 
--- Insert Categories for Farm
-UNION ALL
-SELECT (SELECT id FROM divisions WHERE name = 'Farm'), 'Cost', 'Operational', 16814, 201727
-UNION ALL
-SELECT (SELECT id FROM divisions WHERE name = 'Farm'), 'HR', 'Operational', 4435, 53226
-UNION ALL
-SELECT (SELECT id FROM divisions WHERE name = 'Farm'), 'Buildings', 'Operational', 1019, 12226
-UNION ALL
-SELECT (SELECT id FROM divisions WHERE name = 'Farm'), 'Vehicles / Machines / Fuel', 'Operational', 1912, 22941
-UNION ALL
-SELECT (SELECT id FROM divisions WHERE name = 'Farm'), 'Variable Cost / Consumables / Tools', 'Operational', 9331, 111977
-UNION ALL
-SELECT (SELECT id FROM divisions WHERE name = 'Farm'), 'Legal & Financial', 'Operational', 113, 1357
-UNION ALL
-SELECT (SELECT id FROM divisions WHERE name = 'Farm'), 'Income', 'Revenue', 4108, 49300
-
--- Insert Categories for Torobayo
-UNION ALL
-SELECT (SELECT id FROM divisions WHERE name = 'Torobayo'), 'Cost', 'Operational', 2592, 31109
-UNION ALL
-SELECT (SELECT id FROM divisions WHERE name = 'Torobayo'), 'HR', 'Operational', 1362, 16339
-UNION ALL
-SELECT (SELECT id FROM divisions WHERE name = 'Torobayo'), 'Buildings', 'Operational', 189, 2268
-UNION ALL
-SELECT (SELECT id FROM divisions WHERE name = 'Torobayo'), 'Vehicles / Machines / Fuel', 'Operational', 8, 100
-UNION ALL
-SELECT (SELECT id FROM divisions WHERE name = 'Torobayo'), 'Variable Cost / Consumables / Tools', 'Operational', 702, 8428
-UNION ALL
-SELECT (SELECT id FROM divisions WHERE name = 'Torobayo'), 'Legal & Financial', 'Operational', 331, 3974
-UNION ALL
-SELECT (SELECT id FROM divisions WHERE name = 'Torobayo'), 'Income', 'Revenue', 3020, 36242
-
--- Insert Categories for Landscaping
-UNION ALL
-SELECT (SELECT id FROM divisions WHERE name = 'Landscaping'), 'Cost', 'Operational', 6905, 82865
-UNION ALL
-SELECT (SELECT id FROM divisions WHERE name = 'Landscaping'), 'HR', 'Operational', 3504, 42050
-UNION ALL
-SELECT (SELECT id FROM divisions WHERE name = 'Landscaping'), 'Buildings', 'Operational', 0, 0
-UNION ALL
-SELECT (SELECT id FROM divisions WHERE name = 'Landscaping'), 'Vehicles / Machines / Fuel', 'Operational', 1439, 17268
-UNION ALL
-SELECT (SELECT id FROM divisions WHERE name = 'Landscaping'), 'Variable Cost / Consumables / Tools', 'Operational', 1962, 23547
-UNION ALL
-SELECT (SELECT id FROM divisions WHERE name = 'Landscaping'), 'Legal & Financial', 'Operational', 0, 0
-
--- Insert Categories for Farming
-UNION ALL
-SELECT (SELECT id FROM divisions WHERE name = 'Farming'), 'Cost', 'Operational', 31635, 379718
-UNION ALL
-SELECT (SELECT id FROM divisions WHERE name = 'Farming'), 'HR', 'Operational', 5040, 60489
-UNION ALL
-SELECT (SELECT id FROM divisions WHERE name = 'Farming'), 'Buildings', 'Operational', 0, 0
-UNION ALL
-SELECT (SELECT id FROM divisions WHERE name = 'Farming'), 'Vehicles / Machines / Fuel', 'Operational', 1565, 18779
-UNION ALL
-SELECT (SELECT id FROM divisions WHERE name = 'Farming'), 'Variable Cost / Consumables / Tools', 'Operational', 25038, 300450
-UNION ALL
-SELECT (SELECT id FROM divisions WHERE name = 'Farming'), 'Legal & Financial', 'Operational', 0, 0
-UNION ALL
-SELECT (SELECT id FROM divisions WHERE name = 'Farming'), 'Income', 'Revenue', 9576, 114914
-
--- Insert Categories for Cattle
-UNION ALL
-SELECT (SELECT id FROM divisions WHERE name = 'Cattle'), 'Cost', 'Operational', 31635, 379718
-UNION ALL
-SELECT (SELECT id FROM divisions WHERE name = 'Cattle'), 'HR', 'Operational', 5040, 60489
-UNION ALL
-SELECT (SELECT id FROM divisions WHERE name = 'Cattle'), 'Buildings', 'Operational', 0, 0
-UNION ALL
-SELECT (SELECT id FROM divisions WHERE name = 'Cattle'), 'Vehicles / Machines / Fuel', 'Operational', 1565, 18779
-UNION ALL
-SELECT (SELECT id FROM divisions WHERE name = 'Cattle'), 'Variable Cost / Consumables / Tools', 'Operational', 25038, 300450
-UNION ALL
-SELECT (SELECT id FROM divisions WHERE name = 'Cattle'), 'Legal & Financial', 'Operational', 0, 0
-
--- Insert Categories for Vineyard
-UNION ALL
-SELECT (SELECT id FROM divisions WHERE name = 'Vineyard'), 'Cost', 'Operational', 2131, 25574
-UNION ALL
-SELECT (SELECT id FROM divisions WHERE name = 'Vineyard'), 'HR', 'Operational', 1197, 14366
-UNION ALL
-SELECT (SELECT id FROM divisions WHERE name = 'Vineyard'), 'Buildings', 'Operational', 0, 0
-UNION ALL
-SELECT (SELECT id FROM divisions WHERE name = 'Vineyard'), 'Vehicles / Machines / Fuel', 'Operational', 143, 1716
-UNION ALL
-SELECT (SELECT id FROM divisions WHERE name = 'Vineyard'), 'Variable Cost / Consumables / Tools', 'Operational', 1396, 16758
-UNION ALL
-SELECT (SELECT id FROM divisions WHERE name = 'Vineyard'), 'Legal & Financial', 'Operational', 0, 0
-ON CONFLICT (division_id, name) DO UPDATE SET 
-  monthly_amount = EXCLUDED.monthly_amount,
-  annual_amount = EXCLUDED.annual_amount;
+-- Insert year-based budgets for 2026
+WITH divisions AS (
+  SELECT id, name FROM budget_divisions
+  WHERE name IN ('Admin / General', 'Hospitality', 'Farm', 'Torobayo', 'Landscaping', 'Farming', 'Cattle', 'Vineyard')
+),
+divisions_with_cats AS (
+  SELECT d.id as div_id, d.name as div_name, bc.id as cat_id, bc.name as cat_name
+  FROM divisions d
+  LEFT JOIN budget_categories bc ON bc.division_id = d.id
+  WHERE bc.id IS NOT NULL
+)
+INSERT INTO budgets (id, division_id, category_id, year, month, budgeted_amount, actual_amount, variance, created_at, updated_at)
+SELECT
+  gen_random_uuid(),
+  dwc.div_id,
+  dwc.cat_id,
+  2026,
+  1,
+  CASE 
+    WHEN dwc.div_name = 'Admin / General' AND dwc.cat_name = 'Cost' THEN 80376
+    WHEN dwc.div_name = 'Admin / General' AND dwc.cat_name = 'HR' THEN 7900
+    WHEN dwc.div_name = 'Admin / General' AND dwc.cat_name = 'Buildings' THEN 307
+    WHEN dwc.div_name = 'Admin / General' AND dwc.cat_name = 'Vehicles / Machines / Fuel' THEN 2866
+    WHEN dwc.div_name = 'Admin / General' AND dwc.cat_name = 'Variable Cost / Consumables / Tools' THEN 4000
+    WHEN dwc.div_name = 'Admin / General' AND dwc.cat_name = 'Legal & Financial' THEN 3745
+    WHEN dwc.div_name = 'Admin / General' AND dwc.cat_name = 'Planning Investments HR' THEN 6552
+    WHEN dwc.div_name = 'Admin / General' AND dwc.cat_name = 'Realising Investments' THEN 46686
+    WHEN dwc.div_name = 'Admin / General' AND dwc.cat_name = 'Income' THEN 1083
+    WHEN dwc.div_name = 'Hospitality' AND dwc.cat_name = 'Cost' THEN 12271
+    WHEN dwc.div_name = 'Hospitality' AND dwc.cat_name = 'HR' THEN 3500
+    WHEN dwc.div_name = 'Hospitality' AND dwc.cat_name = 'Buildings' THEN 1019
+    WHEN dwc.div_name = 'Hospitality' AND dwc.cat_name = 'Vehicles / Machines / Fuel' THEN 1912
+    WHEN dwc.div_name = 'Hospitality' AND dwc.cat_name = 'Variable Cost / Consumables / Tools' THEN 9331
+    WHEN dwc.div_name = 'Hospitality' AND dwc.cat_name = 'Legal & Financial' THEN 113
+    WHEN dwc.div_name = 'Hospitality' AND dwc.cat_name = 'Income' THEN 4108
+    ELSE 0
+  END,
+  0,
+  CASE 
+    WHEN dwc.div_name = 'Admin / General' AND dwc.cat_name = 'Cost' THEN 80376
+    WHEN dwc.div_name = 'Admin / General' AND dwc.cat_name = 'HR' THEN 7900
+    WHEN dwc.div_name = 'Admin / General' AND dwc.cat_name = 'Buildings' THEN 307
+    WHEN dwc.div_name = 'Admin / General' AND dwc.cat_name = 'Vehicles / Machines / Fuel' THEN 2866
+    WHEN dwc.div_name = 'Admin / General' AND dwc.cat_name = 'Variable Cost / Consumables / Tools' THEN 4000
+    WHEN dwc.div_name = 'Admin / General' AND dwc.cat_name = 'Legal & Financial' THEN 3745
+    WHEN dwc.div_name = 'Admin / General' AND dwc.cat_name = 'Planning Investments HR' THEN 6552
+    WHEN dwc.div_name = 'Admin / General' AND dwc.cat_name = 'Realising Investments' THEN 46686
+    WHEN dwc.div_name = 'Admin / General' AND dwc.cat_name = 'Income' THEN 1083
+    WHEN dwc.div_name = 'Hospitality' AND dwc.cat_name = 'Cost' THEN 12271
+    WHEN dwc.div_name = 'Hospitality' AND dwc.cat_name = 'HR' THEN 3500
+    WHEN dwc.div_name = 'Hospitality' AND dwc.cat_name = 'Buildings' THEN 1019
+    WHEN dwc.div_name = 'Hospitality' AND dwc.cat_name = 'Vehicles / Machines / Fuel' THEN 1912
+    WHEN dwc.div_name = 'Hospitality' AND dwc.cat_name = 'Variable Cost / Consumables / Tools' THEN 9331
+    WHEN dwc.div_name = 'Hospitality' AND dwc.cat_name = 'Legal & Financial' THEN 113
+    WHEN dwc.div_name = 'Hospitality' AND dwc.cat_name = 'Income' THEN 4108
+    ELSE 0
+  END,
+  NOW(),
+  NOW()
+FROM divisions_with_cats dwc;
