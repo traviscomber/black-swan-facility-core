@@ -85,70 +85,123 @@ export function BudgetUploadForm() {
 
   const parseCSVData = (text: string) => {
     const lines = text.split('\n').map(line => line.trim()).filter(line => line.length > 0)
-    const parsedData: BudgetImportData[] = []
     const divisionMap = new Map<string, BudgetImportData>()
 
-    // Find header line (usually first line, but skip empty lines)
-    let headerIndex = 0
-    const headerLine = lines[0]
-    const isHeader = headerLine.toLowerCase().includes('division') || 
-                     headerLine.toLowerCase().includes('type') ||
-                     headerLine.toLowerCase().includes('category')
+    // P&L Structure Patterns
+    const divisionPattern = /\(P&L\)|\(PNL\)/i
+    
+    // Map of recognized division names from your structure
+    const divisionNames: { [key: string]: string } = {
+      'admin': 'Admin / General',
+      'general': 'Admin / General',
+      'hospitality': 'Hospitality',
+      'farm': 'Farm',
+      'torobayo': 'Torobayo',
+      'landscaping': 'Landscaping',
+      'farming': 'Farming',
+      'vineyard': 'Vineyard',
+      'cattle': 'Cattle',
+    }
 
-    // Skip header if found
-    const startIndex = isHeader ? 1 : 0
+    let currentDivision: string | null = null
+    let currentDivisionData: BudgetImportData | null = null
 
-    // Parse data lines
-    for (let i = startIndex; i < lines.length; i++) {
+    // Helper to parse currency amounts
+    const parseAmount = (str: string): number => {
+      if (!str) return 0
+      return parseFloat(str.replace(/[€$,\s]/g, '')) || 0
+    }
+
+    // Parse each line
+    for (let i = 0; i < lines.length; i++) {
       const line = lines[i]
-      if (!line || line.startsWith('#')) continue // Skip empty lines and comments
-
-      // Split carefully - handle quoted values
       const parts = line.split(',').map(v => v.trim().replace(/^"|"$/g, ''))
       
-      if (parts.length < 5) continue // Need at least division, type, responsible, categoryName, categoryType
+      // Skip empty lines or obvious headers
+      if (parts.length < 2) continue
+      if (line.toLowerCase().includes('budget') && line.toLowerCase().includes('annual')) continue
+      if (line.toLowerCase().includes('plan') && line.toLowerCase().includes('actual')) continue
+      
+      const label = parts[1] || ''
+      const planAmount = parts[2] || ''
+      const actualAmount = parts[3] || ''
 
-      const division = parts[0] || ''
-      const type = parts[1]?.toUpperCase().includes('P&L') ? 'P&L' : 'PNL'
-      const responsible = parts[2] || ''
-      const revenueTarget = parts[3] ? parseFloat(parts[3]) : undefined
-      const categoryName = parts[4] || ''
-      const categoryType = parts[5] || 'Operational'
-      const monthly = parts[6] ? parseFloat(parts[6]) : 0
-      const annual = parts[7] ? parseFloat(parts[7]) : 0
+      // Check if this is a division header (contains "P&L")
+      if (divisionPattern.test(label)) {
+        // Extract division name and clean it
+        const divName = label.replace(/\s*\(P&L\)|\s*\(PNL\)/i, '').trim()
+        
+        // Find matching division in our map
+        let matchedDivision = divName
+        for (const [key, value] of Object.entries(divisionNames)) {
+          if (divName.toLowerCase().includes(key) || value.toLowerCase().includes(divName.toLowerCase())) {
+            matchedDivision = value
+            break
+          }
+        }
 
-      // Validate division name (skip percentage signs and invalid entries)
-      if (!division || division === '0%' || division.startsWith('%') || !division.match(/[a-zA-Z]/)) {
-        console.log('[v0] Skipping invalid division:', division)
-        continue
-      }
+        currentDivision = matchedDivision
+        
+        const plan = parseAmount(planAmount)
+        const actual = parseAmount(actualAmount)
 
-      if (!divisionMap.has(division)) {
-        divisionMap.set(division, {
-          division,
-          divisionType: type,
-          responsible,
-          revenueTarget,
+        console.log('[v0] Found P&L division:', matchedDivision)
+
+        // Create division entry
+        currentDivisionData = {
+          division: matchedDivision,
+          divisionType: 'P&L',
+          responsible: '',
+          revenueTarget: plan > 0 ? plan : undefined,
           categories: [],
-        })
-      }
+        }
 
-      if (categoryName && categoryName !== 'CategoryName') {
-        divisionMap.get(division)?.categories.push({
-          name: categoryName,
-          type: categoryType,
-          monthlyAmount: monthly,
-          annualAmount: annual,
-        })
+        divisionMap.set(matchedDivision, currentDivisionData)
+      } 
+      // Check if this is a cost category line under current division
+      else if (currentDivision && currentDivisionData) {
+        // Skip lines that are sub-totals or have specific skip keywords
+        const skipKeywords = ['total', 'cashflow', 'forecast', 'ytd', 'deviation', 'running account', 'deficit', 'funding']
+        if (skipKeywords.some(kw => label.toLowerCase().includes(kw))) {
+          continue
+        }
+
+        // Skip lines with no label or invalid entries
+        if (!label || label === '0%' || label.startsWith('%')) {
+          continue
+        }
+
+        const monthlyAmount = parseAmount(planAmount)
+        const annualAmount = parseAmount(actualAmount)
+
+        // Only add if we have at least one meaningful amount
+        if (monthlyAmount !== 0 || annualAmount !== 0) {
+          const category = {
+            name: label,
+            type: 'Operational',
+            monthlyAmount: monthlyAmount,
+            annualAmount: annualAmount,
+          }
+
+          currentDivisionData.categories.push(category)
+          console.log('[v0] Added category under', currentDivision, ':', label)
+        }
       }
     }
 
     if (divisionMap.size === 0) {
-      throw new Error('No valid divisions found in CSV. Please check the format and try again.')
+      throw new Error(
+        'No P&L divisions found in CSV. The file should contain sections marked with "(P&L)" like "Admin / General (P&L)", "Hospitality (P&L)", etc.'
+      )
     }
 
-    console.log('[v0] Parsed divisions:', Array.from(divisionMap.keys()))
-    setImportData(Array.from(divisionMap.values()))
+    const divisions = Array.from(divisionMap.values())
+    console.log('[v0] Successfully parsed', divisions.length, 'divisions')
+    divisions.forEach(d => {
+      console.log('[v0]   -', d.division, ':', d.categories.length, 'categories')
+    })
+    
+    setImportData(divisions)
   }
 
   const handleImport = async () => {
