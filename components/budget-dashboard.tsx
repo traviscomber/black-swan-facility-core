@@ -125,9 +125,9 @@ export function BudgetDashboard() {
   }
 
   const selectedDivisionData = divisions.find((d) => d.id === selectedDivision)
-  const totalBudget = categories.reduce((sum, c) => sum + c.annual_amount, 0)
-  const totalActuals = actuals.reduce((sum, a) => sum + a.actual_amount, 0)
-  const totalVariance = totalBudget - totalActuals
+  const totalBudget = categories.reduce((sum, c) => sum + (c.annual_amount || 0), 0) || 0
+  const totalActuals = actuals.reduce((sum, a) => sum + (a.actual_amount || 0), 0) || 0
+  const totalVariance = (totalBudget || 0) - (totalActuals || 0)
 
   if (loading) {
     return <div className="p-6 text-center">{t('common.loading')}</div>
@@ -249,33 +249,33 @@ export function BudgetDashboard() {
                   </thead>
                   <tbody>
                     {categories.map((category) => {
-                      const categoryActuals = getTotalActuals(category.id)
-                      const variance = getVariance(category.annual_amount, categoryActuals)
-                      const percentage = getVariancePercentage(category.annual_amount, categoryActuals)
+                      const categoryActuals = getTotalActuals(category.id) || 0
+                      const variance = getVariance(category.annual_amount || 0, categoryActuals)
+                      const percentage = getVariancePercentage(category.annual_amount || 0, categoryActuals)
 
                       return (
                         <tr key={category.id} className="border-b hover:bg-gray-50">
                           <td className="py-3 px-4">{category.name}</td>
                           <td className="text-right py-3 px-4">
-                            ${category.monthly_amount.toLocaleString()}
+                            ${(category.monthly_amount || 0).toLocaleString()}
                           </td>
                           <td className="text-right py-3 px-4 font-semibold">
-                            ${category.annual_amount.toLocaleString()}
+                            ${(category.annual_amount || 0).toLocaleString()}
                           </td>
                           <td className="text-right py-3 px-4 text-red-600">
-                            ${categoryActuals.toLocaleString()}
+                            ${(categoryActuals || 0).toLocaleString()}
                           </td>
                           <td
                             className={`text-right py-3 px-4 font-semibold ${
                               variance >= 0 ? 'text-green-600' : 'text-red-600'
                             }`}
                           >
-                            ${variance.toLocaleString()}
+                            ${(variance || 0).toLocaleString()}
                           </td>
                           <td className="py-3 px-4">
                             <div className="flex items-center gap-2">
                               <Progress
-                                value={Math.min(parseFloat(percentage), 100)}
+                                value={Math.min(Math.max(parseFloat(percentage as string) || 0, 0), 100)}
                               />
                               <span className="text-xs font-medium whitespace-nowrap">
                                 {percentage}%
