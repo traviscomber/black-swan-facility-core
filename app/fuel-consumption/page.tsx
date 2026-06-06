@@ -1,7 +1,6 @@
 'use client'
 
 import React from "react"
-
 import { useState, useEffect } from 'react'
 import { AppLayout } from '@/components/app-layout'
 import { Button } from '@/components/ui/button'
@@ -38,6 +37,7 @@ export default function FuelConsumptionPage() {
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [filterVehicle, setFilterVehicle] = useState('all')
+  const [supabaseClient] = useState(() => createBrowserClient())
   const [formData, setFormData] = useState({
     vehicle_id: '',
     date_recorded: format(new Date(), 'yyyy-MM-dd'),
@@ -50,28 +50,36 @@ export default function FuelConsumptionPage() {
     source: 'manual',
   })
 
-  const supabase = createBrowserClient()
+  const loadData = async () => {
+    let isMounted = true
 
-  useEffect(() => {
-    loadData()
-  }, [])
-
-  async function loadData() {
     try {
       setLoading(true)
       const [vehiclesData, recordsData] = await Promise.all([
-        supabase.from('vehicles').select('*'),
-        supabase.from('fuel_consumption').select('*').order('date_recorded', { ascending: false }),
+        supabaseClient.from('vehicles').select('*'),
+        supabaseClient.from('fuel_consumption').select('*').order('date_recorded', { ascending: false }),
       ])
 
-      setVehicles(vehiclesData.data || [])
-      setRecords(recordsData.data || [])
+      if (isMounted) {
+        setVehicles(vehiclesData.data || [])
+        setRecords(recordsData.data || [])
+      }
     } catch (error) {
       console.error('Error loading data:', error)
     } finally {
-      setLoading(false)
+      if (isMounted) {
+        setLoading(false)
+      }
     }
   }
+
+  useEffect(() => {
+    loadData()
+
+    return () => {
+      // Cleanup if necessary
+    }
+  }, [])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -84,18 +92,18 @@ export default function FuelConsumptionPage() {
         const timestamp = Date.now()
         const fileName = `fuel-${timestamp}-${formData.photo.name}`
 
-        const { error: uploadError } = await supabase.storage.from('fuel-photos').upload(fileName, formData.photo)
+        const { error: uploadError } = await supabaseClient.storage.from('fuel-photos').upload(fileName, formData.photo)
 
         if (uploadError) throw uploadError
 
-        const { data: publicUrl } = supabase.storage.from('fuel-photos').getPublicUrl(fileName)
+        const { data: publicUrl } = supabaseClient.storage.from('fuel-photos').getPublicUrl(fileName)
         photoUrl = publicUrl.publicUrl
       }
 
       // Generate fuel code
       const fuelCode = `FUEL-${Date.now().toString().slice(-6)}`
 
-      const { error: insertError } = await supabase.from('fuel_consumption').insert({
+      const { error: insertError } = await supabaseClient.from('fuel_consumption').insert({
         fuel_code: fuelCode,
         vehicle_id: formData.vehicle_id,
         date_recorded: formData.date_recorded,
@@ -106,7 +114,7 @@ export default function FuelConsumptionPage() {
         notes: formData.notes,
         photo_url: photoUrl,
         source: formData.source,
-        submitted_by: (await supabase.auth.getUser()).data.user?.id,
+        submitted_by: (await supabaseClient.auth.getUser()).data.user?.id,
       })
 
       if (insertError) throw insertError
@@ -125,7 +133,7 @@ export default function FuelConsumptionPage() {
       })
 
       setShowForm(false)
-      loadData()
+      loadData() // Call loadData function
     } catch (error) {
       console.error('Error saving fuel record:', error)
       alert('Error guardando registro de combustible')
@@ -136,9 +144,9 @@ export default function FuelConsumptionPage() {
     if (!confirm('¿Eliminar este registro de combustible?')) return
 
     try {
-      const { error } = await supabase.from('fuel_consumption').delete().eq('id', id)
+      const { error } = await supabaseClient.from('fuel_consumption').delete().eq('id', id)
       if (error) throw error
-      loadData()
+      loadData() // Call loadData function
     } catch (error) {
       console.error('Error deleting record:', error)
     }

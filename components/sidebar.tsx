@@ -1,49 +1,92 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 
-import { LayoutDashboard, Calendar, Receipt, ClipboardList, Crown, Brain, TrendingUp, Beef, Box, Package, Wrench, Anchor, Zap, FileText, Lightbulb, Code, Users, Heart, MessageSquare, Tablet, ChefHat, CheckSquare, AlertCircle, Bot, Settings, X, ChevronDown, HelpCircle, Map, Fuel, Building } from "lucide-react"
+import { LayoutDashboard, Calendar, Receipt, ClipboardList, Crown, Brain, TrendingUp, Beef, Box, Package, Wrench, Anchor, Zap, FileText, Lightbulb, Code, Users, Heart, MessageSquare, Tablet, ChefHat, CheckSquare, AlertCircle, Bot, Settings, X, ChevronDown, HelpCircle, Map, Fuel, Building, Leaf, Grape, Images, DollarSign } from "lucide-react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
 import { LanguageSwitcher } from "@/components/language-switcher"
-import { useLanguage } from "@/lib/language-context"
+import { useLanguage } from "@/lib/hooks/use-language"
 
 const navigationGroups = [
+  // GRUPO 1: ADMIN GENERAL (Operations Center, Administration, Energy, AI, Budgets)
   {
-    labelKey: "nav.core_operations",
-    descKey: "nav.core_operations_desc",
+    labelKey: "nav.admin_general",
+    descKey: "nav.admin_general_desc",
     items: [
       { nameKey: "nav.dashboard", href: "/", icon: LayoutDashboard, tipKey: "nav.dashboard_tip" },
+      { nameKey: "nav.budgets", href: "/budgets", icon: DollarSign, tipKey: "nav.budgets_tip" },
+      { nameKey: "nav.people_operations", href: "/employees", icon: Users, tipKey: "nav.employees_tip" },
+      { nameKey: "nav.energy_management", href: "/energy", icon: Zap, tipKey: "nav.management_tip" },
+      { nameKey: "nav.ai_ops", href: "/ai-ops", icon: Bot, tipKey: "nav.ai_ops_tip" },
+      { nameKey: "nav.admin", href: "/admin", icon: Settings, tipKey: "nav.admin_tip" },
+    ],
+  },
+  // GRUPO 2: HOSPITALITY (Guest Services, Concierge, Bookings, Sovereignty)
+  {
+    labelKey: "nav.hospitality",
+    descKey: "nav.hospitality_desc",
+    items: [
       { nameKey: "nav.bookings", href: "/bookings", icon: Calendar, tipKey: "nav.bookings_tip" },
       { nameKey: "nav.invoices", href: "/bookings/invoices", icon: Receipt, tipKey: "nav.invoices_tip" },
-      { nameKey: "nav.tasks", href: "/tasks", icon: ClipboardList, tipKey: "nav.tasks_tip" },
-    ],
-  },
-  {
-    labelKey: "nav.sovereignty",
-    descKey: "nav.sovereignty_desc",
-    items: [
+      { nameKey: "nav.concierge", href: "/concierge", icon: MessageSquare, tipKey: "nav.concierge_tip" },
+      { nameKey: "nav.guest_requests", href: "/guest-requests", icon: Tablet, tipKey: "nav.guest_requests_tip" },
       { nameKey: "nav.sovereignty_dashboard", href: "/sovereignty", icon: Crown, tipKey: "nav.sovereignty_dashboard_tip" },
-      { nameKey: "nav.coach", href: "/sovereignty/coach", icon: Brain, tipKey: "nav.coach_tip" },
-      { nameKey: "nav.layers", href: "/sovereignty/layers", icon: TrendingUp, tipKey: "nav.layers_tip" },
     ],
   },
+  // GRUPO 3: LANDSCAPING & FARMING (Production - Orchards, Vineyards, Cattle, Combustibles)
   {
-    labelKey: "nav.cattle_operations",
-    descKey: "nav.cattle_operations_desc",
+    labelKey: "nav.landscaping_farming",
+    descKey: "nav.landscaping_farming_desc",
     items: [
-      { nameKey: "nav.dashboard", href: "/cattle", icon: Beef, tipKey: "nav.dashboard_tip" },
-      { nameKey: "nav.cattle_health", href: "/cattle-health", icon: Heart, tipKey: "nav.cattle_health_tip" },
-      { nameKey: "nav.expert_coach", href: "/cattle/expert-agent", icon: Brain, tipKey: "nav.expert_coach_tip" },
-      { nameKey: "nav.business_plan", href: "/cattle/business-plan", icon: TrendingUp, tipKey: "nav.business_plan_tip" },
-      { nameKey: "nav.pricing_costs", href: "/cattle/pricing-costs", icon: Box, tipKey: "nav.pricing_costs_tip" },
+      {
+        nameKey: "nav.orchard_dashboard",
+        href: "/orchard",
+        icon: Leaf,
+        tipKey: "nav.orchard_dashboard_tip",
+        subItems: [
+          { nameKey: "nav.orchard_overview", href: "/orchard", icon: "🌳" },
+          { nameKey: "nav.orchard_crops", href: "/orchard/crops", icon: "🌱" },
+          { nameKey: "nav.orchard_care", href: "/orchard/care", icon: "❤️" },
+          { nameKey: "nav.orchard_harvest", href: "/orchard/harvest", icon: "✂️" },
+          { nameKey: "nav.orchard_health", href: "/orchard/pests", icon: "🐛" },
+          { nameKey: "nav.orchard_soil", href: "/orchard/soil", icon: "🌍" },
+          { nameKey: "nav.orchard_equipment", href: "/orchard/equipment", icon: "🔧" },
+        ],
+      },
+      {
+        nameKey: "nav.vineyard_dashboard", 
+        href: "/vineyard", 
+        icon: Grape, 
+        tipKey: "nav.vineyard_dashboard_tip",
+        subItems: [
+          { nameKey: "nav.vineyard_overview", href: "/vineyard", icon: "🍇" },
+          { nameKey: "nav.vineyard_photos", href: "/vineyard/photos", icon: "📸" },
+          { nameKey: "nav.vineyard_crops", href: "/vineyard/crops", icon: "🌱" },
+          { nameKey: "nav.vineyard_harvest", href: "/vineyard/harvest", icon: "✂️" },
+          { nameKey: "nav.vineyard_health", href: "/vineyard/pests", icon: "🐛" },
+        ],
+      },
+      {
+        nameKey: "nav.cattle_dashboard", 
+        href: "/cattle", 
+        icon: Beef, 
+        tipKey: "nav.dashboard_tip",
+        subItems: [
+          { nameKey: "nav.cattle_overview", href: "/cattle", icon: "🐄" },
+          { nameKey: "nav.cattle_health", href: "/cattle-health", icon: "❤️" },
+        ],
+      },
+      { nameKey: "nav.combustibles", href: "/combustibles", icon: Fuel, tipKey: "nav.combustibles_tip" },
     ],
   },
+  // GRUPO 4: INFRASTRUCTURE & FACILITIES (Property, Assets, Inventory, Procurement, Maintenance, Tasks, Issues)
   {
-    labelKey: "nav.property_management",
-    descKey: "nav.property_management_desc",
+    labelKey: "nav.infrastructure",
+    descKey: "nav.infrastructure_desc",
     items: [
+      { nameKey: "nav.property_management", href: "/property-management", icon: Building, tipKey: "nav.property_management_desc" },
       { nameKey: "nav.assets", href: "/assets", icon: Box, tipKey: "nav.assets_tip" },
       {
         nameKey: "nav.inventory",
@@ -52,91 +95,26 @@ const navigationGroups = [
         tipKey: "nav.inventory_tip",
         subItems: [
           { nameKey: "nav.all_assets", href: "/inventory", icon: "📦" },
-          { nameKey: "nav.by_category", href: "/inventory/by-category", icon: "🏷️" },
-          { nameKey: "nav.by_cost_center", href: "/inventory/by-cost-center", icon: "💼" },
-          { nameKey: "nav.categories", href: "/inventory/categories", icon: "⚙️" },
-          { nameKey: "nav.cost_centers", href: "/inventory/cost-centers", icon: "🏢" },
+          { nameKey: "nav.by_category", href: "/inventory/categories", icon: "🏷️" },
+          { nameKey: "nav.cost_centers", href: "/inventory/cost-centers", icon: "💼" },
           { nameKey: "nav.audit_logs", href: "/inventory/audit-logs", icon: "📋" },
         ],
       },
-      { nameKey: "nav.operations", href: "/operations", icon: Map, tipKey: "nav.operations_tip" },
-      { nameKey: "nav.fuel_consumption", href: "/fuel-consumption", icon: Fuel, tipKey: "nav.fuel_consumption_tip" },
+      { nameKey: "nav.procurement", href: "/procurement", icon: TrendingUp, tipKey: "nav.procurement_tip" },
       { nameKey: "nav.maintenance", href: "/maintenance", icon: Wrench, tipKey: "nav.maintenance_tip" },
-      { nameKey: "nav.gis_map", href: "/map", icon: Map, tipKey: "nav.gis_map_tip" },
-      { nameKey: "nav.kmz_viewer", href: "/map/kmz-viewer", icon: Map, tipKey: "nav.kmz_viewer_tip" },
-    ],
-  },
-  {
-    labelKey: "nav.off_grid_energy",
-    descKey: "nav.off_grid_energy_desc",
-    items: [
-      { nameKey: "nav.management", href: "/energy", icon: Zap, tipKey: "nav.management_tip" },
-      { nameKey: "nav.energy_dashboard", href: "/energy-dashboard", icon: TrendingUp, tipKey: "nav.energy_dashboard_tip" },
-      { nameKey: "nav.reports", href: "/energy-reports", icon: FileText, tipKey: "nav.reports_tip" },
-      { nameKey: "nav.victron_setup", href: "/victron-setup", icon: Lightbulb, tipKey: "nav.victron_setup_tip" },
-      {
-        nameKey: "nav.integration_docs",
-        href: "/integration-docs",
-        icon: Code,
-        tipKey: "nav.integration_docs_tip",
-      },
-    ],
-  },
-  {
-    labelKey: "nav.supply_chain",
-    descKey: "nav.supply_chain_desc",
-    items: [
-      { nameKey: "nav.procurement", href: "/procurement", icon: Box, tipKey: "nav.procurement_tip" },
-      {
-        nameKey: "nav.suppliers",
-        href: "/procurement/suppliers",
-        icon: Users,
-        tipKey: "nav.suppliers_tip",
-      },
-      {
-        nameKey: "nav.analytics",
-        href: "/procurement/analytics",
-        icon: TrendingUp,
-        tipKey: "nav.analytics_tip",
-      },
-      {
-        nameKey: "nav.property_management",
-        href: "/procurement/facilities",
-        icon: Building,
-        tipKey: "nav.property_management_desc",
-      },
-    ],
-  },
-  {
-    labelKey: "nav.people_operations",
-    descKey: "nav.people_operations_desc",
-    items: [
-      { nameKey: "nav.employees", href: "/employees", icon: Users, tipKey: "nav.employees_tip" },
-      { nameKey: "nav.volunteers", href: "/volunteers", icon: Heart, tipKey: "nav.volunteers_tip" },
-      { nameKey: "nav.activities", href: "/activities-calendar", icon: Calendar, tipKey: "nav.activities_tip" },
-      { nameKey: "nav.concierge", href: "/concierge", icon: MessageSquare, tipKey: "nav.concierge_tip" },
-      {
-        nameKey: "nav.guest_requests",
-        href: "/guest-requests",
-        icon: Tablet,
-        tipKey: "nav.guest_requests_tip",
-      },
-      { nameKey: "nav.kitchen", href: "/kitchen", icon: ChefHat, tipKey: "nav.kitchen_tip" },
+      { nameKey: "nav.tasks", href: "/tasks", icon: ClipboardList, tipKey: "nav.tasks_tip" },
+      { nameKey: "nav.issues", href: "/issues", icon: AlertCircle, tipKey: "nav.facility_requests_tip" },
       { nameKey: "nav.checklists", href: "/checklists", icon: CheckSquare, tipKey: "nav.checklists_tip" },
-    ],
-  },
-  {
-    labelKey: "nav.advanced",
-    descKey: "nav.advanced_desc",
-    items: [
       {
-        nameKey: "nav.facility_requests",
-        href: "/issues",
-        icon: AlertCircle,
-        tipKey: "nav.facility_requests_tip",
+        nameKey: "nav.map",
+        href: "/map",
+        icon: Map,
+        tipKey: "nav.gis_map_tip",
+        subItems: [
+          { nameKey: "nav.gis_map", href: "/map", icon: "🗺️" },
+          { nameKey: "nav.kmz_viewer", href: "/map/kmz-viewer", icon: "🌍" },
+        ],
       },
-      { nameKey: "nav.ai_ops", href: "/ai-ops", icon: Bot, tipKey: "nav.ai_ops_tip" },
-      { nameKey: "nav.admin", href: "/admin", icon: Settings, tipKey: "nav.admin_tip" },
     ],
   },
 ]
@@ -149,8 +127,41 @@ interface SidebarProps {
 export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const pathname = usePathname()
   const { t } = useLanguage()
+  
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set())
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set())
+
+  // Initialize expanded groups based on pathname (only run on pathname changes)
+  useEffect(() => {
+    const initialExpanded = new Set<string>()
+    navigationGroups.forEach((group) => {
+      const isInGroup = group.items.some((item) => {
+        const isActive = pathname === item.href || (item.href !== "/" && pathname?.startsWith(item.href))
+        const subItemActive = item.subItems?.some((sub) => pathname === sub.href) ?? false
+        return isActive || subItemActive
+      })
+      if (isInGroup) {
+        initialExpanded.add(group.labelKey)
+      }
+    })
+    setExpandedGroups(initialExpanded)
+  }, [pathname])
+
+  // Initialize expanded sub-items based on pathname (only run on pathname changes)
+  useEffect(() => {
+    const initialExpanded = new Set<string>()
+    navigationGroups.forEach((group) => {
+      group.items.forEach((item) => {
+        if (item.subItems) {
+          const isSubActive = item.subItems.some((sub) => pathname === sub.href)
+          if (isSubActive) {
+            initialExpanded.add(item.nameKey)
+          }
+        }
+      })
+    })
+    setExpandedItems(initialExpanded)
+  }, [pathname])
 
   const toggleGroup = (label: string) => {
     const newExpanded = new Set(expandedGroups)
@@ -188,7 +199,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
 
       <div
         className={cn(
-          "fixed inset-y-0 left-0 z-50 flex h-screen w-64 flex-col border-r border-secondary bg-white transition-transform duration-300 lg:relative lg:translate-x-0 overflow-y-auto min-h-0",
+          "fixed inset-y-0 left-0 z-50 flex h-screen w-64 flex-col border-r border-secondary bg-white transition-transform duration-300 lg:relative lg:inset-auto lg:z-auto lg:translate-x-0 lg:h-full overflow-y-auto min-h-0",
           isOpen ? "translate-x-0" : "-translate-x-full",
         )}
       >
@@ -214,7 +225,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
             <div key={group.labelKey} className="space-y-1 min-w-0">
               <div className="flex items-start justify-between px-2 gap-1 min-w-0">
                 <div className="flex-1 min-w-0">
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-gray-700 truncate">{t(group.labelKey)}</h3>
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-gray-700 truncate" title={t(group.labelKey)}>{t(group.labelKey)}</h3>
                   <p className="text-xs text-gray-500 mt-1 leading-tight hidden sm:block break-words">{t(group.descKey)}</p>
                 </div>
                 <button

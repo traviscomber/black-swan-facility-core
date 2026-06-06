@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { createClient } from "@/lib/supabase/client"
+import { useLanguage } from "@/lib/hooks/use-language"
 import type { AIAgent, AIAgentExecution, AIOperationLog } from "@/lib/types"
 import { Play, Activity, Clock, CheckCircle, XCircle, Zap } from "lucide-react"
 import { executeAgent } from "./actions"
@@ -64,6 +65,7 @@ function formatDate(dateString: string | null) {
 }
 
 export default function AIOperationsPage() {
+  const { t } = useLanguage()
   const [agents, setAgents] = useState<AIAgent[]>([])
   const [executions, setExecutions] = useState<AIAgentExecution[]>([])
   const [logs, setLogs] = useState<AIOperationLog[]>([])
@@ -129,9 +131,9 @@ export default function AIOperationsPage() {
   if (loading) {
     return (
       <AppLayout>
-        <PageHeader title="AI Operations" description="Autonomous AI agents managing facility operations" />
+        <PageHeader title={t('pages.ai_operations')} description={t('pages.ai_operations_desc')} />
         <div className="p-4 md:p-6">
-          <div className="text-center text-sm text-gray-600">Loading...</div>
+          <div className="text-center text-sm text-gray-600">{t('common.loading')}</div>
         </div>
       </AppLayout>
     )
@@ -140,7 +142,7 @@ export default function AIOperationsPage() {
   if (setupRequired) {
     return (
       <AppLayout>
-        <PageHeader title="AI Operations" description="Autonomous AI agents managing facility operations" />
+        <PageHeader title={t('pages.ai_operations')} description={t('pages.ai_operations_desc')} />
 
         <div className="p-4 md:p-6">
           <Card className="border-yellow-200 bg-yellow-50">
@@ -201,8 +203,8 @@ export default function AIOperationsPage() {
   }
 
   return (
-    <AppLayout>
-      <PageHeader title="AI Operations" description="Autonomous AI agents managing facility operations" />
+      <AppLayout>
+        <PageHeader title={t('pages.ai_operations')} description={t('pages.ai_operations_desc')} />
 
       <div className="p-4 md:p-6">
         <div className="space-y-4 md:space-y-6">

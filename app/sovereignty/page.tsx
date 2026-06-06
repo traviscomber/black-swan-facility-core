@@ -1,9 +1,9 @@
 "use client"
 
 import type React from "react"
-
 import { useEffect, useState } from "react"
 import { AppLayout } from "@/components/app-layout"
+import { useLanguage } from "@/lib/hooks/use-language"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
@@ -256,6 +256,7 @@ export default function SovereigntyPage() {
   const [loading, setLoading] = useState(true)
   const [overallSovereignty, setOverallSovereignty] = useState(0)
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
+  const { t } = useLanguage() // Use the useLanguage hook to get the t function
 
   useEffect(() => {
     fetchData()
@@ -320,8 +321,8 @@ export default function SovereigntyPage() {
                 <TrendingUp className="h-7 w-7 text-primary" />
               </div>
               <div>
-                <h1 className="text-4xl font-bold text-accent">Sovereignty Dashboard</h1>
-                <p className="text-muted-foreground mt-1">Multi-system autonomy tracking and independence roadmap</p>
+                <h1 className="text-4xl font-bold text-accent">{t("sovereignty.title")}</h1>
+                <p className="text-muted-foreground mt-1">{t("sovereignty.description")}</p>
               </div>
             </div>
           </div>
@@ -333,9 +334,9 @@ export default function SovereigntyPage() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Target className="h-5 w-5 text-primary" />
-                Overall Sovereignty Score
+                {t("sovereignty.self_sufficiency")}
               </CardTitle>
-              <CardDescription>Facility self-sufficiency across all categories</CardDescription>
+              <CardDescription>{t("sovereignty.description")}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               <div>
@@ -359,22 +360,22 @@ export default function SovereigntyPage() {
           <div className="space-y-4">
             <Card className="border-secondary">
               <CardHeader className="pb-3">
-                <CardTitle className="text-sm">Active Dependencies</CardTitle>
+                <CardTitle className="text-sm">{t("sovereignty.dependencies")}</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="text-3xl font-bold text-destructive">
                   {dependencies.filter((d) => d.status === "active").length}
                 </div>
-                <p className="text-xs text-muted-foreground mt-1">{riskDependencies.length} high-risk</p>
+                <p className="text-xs text-muted-foreground mt-1">{riskDependencies.length} {t("sovereignty.high")}</p>
               </CardContent>
             </Card>
             <Card className="border-secondary">
               <CardHeader className="pb-3">
-                <CardTitle className="text-sm">Categories Tracked</CardTitle>
+                <CardTitle className="text-sm">{t("sovereignty.categories_tracked")}</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="text-3xl font-bold text-primary">{categories.length}</div>
-                <p className="text-xs text-muted-foreground mt-1">Energy, Food, Water, People, Software, Assets</p>
+                <p className="text-xs text-muted-foreground mt-1">{t("sovereignty.energy")}, {t("sovereignty.food")}, {t("sovereignty.water")}, {t("sovereignty.people")}, {t("sovereignty.software")}, {t("sovereignty.assets")}</p>
               </CardContent>
             </Card>
           </div>
@@ -385,9 +386,9 @@ export default function SovereigntyPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <BarChart3 className="h-5 w-5 text-primary" />
-              Self-Sufficiency by Category
+              {t("sovereignty.self_sufficiency")} {t("sovereignty.by_category")}
             </CardTitle>
-            <CardDescription>Compare sovereignty levels across all facility systems</CardDescription>
+            <CardDescription>{t("sovereignty.compare_systems")}</CardDescription>
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={300}>
@@ -412,10 +413,10 @@ export default function SovereigntyPage() {
         {/* Detailed Metrics with Enhanced Cards */}
         <div className="space-y-4">
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <h2 className="text-2xl font-bold text-accent">Sovereignty Metrics</h2>
+            <h2 className="text-2xl font-bold text-accent">{t("sovereignty.metrics")}</h2>
             <Tabs value={selectedCategory || "all"} onValueChange={(v) => setSelectedCategory(v === "all" ? null : v)}>
               <TabsList className="bg-secondary border border-secondary">
-                <TabsTrigger value="all">All Categories</TabsTrigger>
+                <TabsTrigger value="all">{t("sovereignty.all_categories")}</TabsTrigger>
                 {categories.map((cat) => (
                   <TabsTrigger key={cat} value={cat} className="gap-2">
                     {CATEGORY_ICONS[cat]} {cat}
@@ -438,9 +439,9 @@ export default function SovereigntyPage() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-destructive">
                 <AlertTriangle className="h-5 w-5" />
-                Critical Dependencies Requiring Action
+                {t("sovereignty.critical_dependencies")}
               </CardTitle>
-              <CardDescription>High-risk external dependencies affecting sovereignty</CardDescription>
+              <CardDescription>{t("sovereignty.high_risk_external")}</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="grid gap-3 md:grid-cols-2">
@@ -465,9 +466,9 @@ export default function SovereigntyPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <TrendingUp className="h-5 w-5 text-primary" />
-              Sovereignty Progress Timeline
+              {t("sovereignty.timeline")}
             </CardTitle>
-            <CardDescription>Historical improvements and impact on independence</CardDescription>
+            <CardDescription>{t("sovereignty.timeline_description")}</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-3 max-h-96 overflow-y-auto">
@@ -495,7 +496,7 @@ export default function SovereigntyPage() {
                 })
               ) : (
                 <p className="text-sm text-muted-foreground py-6 text-center">
-                  No timeline events yet. Start documenting your sovereignty journey.
+                  {t("sovereignty.no_timeline_events")}
                 </p>
               )}
             </div>
@@ -504,25 +505,25 @@ export default function SovereigntyPage() {
 
         {/* Action Links */}
         <div className="bg-secondary/40 border border-secondary rounded-lg p-6 space-y-4">
-          <h3 className="text-lg font-bold text-accent">Improve Sovereignty</h3>
+          <h3 className="text-lg font-bold text-accent">{t("sovereignty.improve_sovereignty")}</h3>
           <div className="grid gap-3 sm:grid-cols-2">
             <Link href="/energy-dashboard" className="inline-block relative z-10">
               <Button variant="outline" size="sm" className="w-full gap-2 bg-transparent">
-                <Zap className="h-4 w-4" /> Energy Independence
+                <Zap className="h-4 w-4" /> {t("sovereignty.energy_independence")}
               </Button>
             </Link>
             <Link href="/employees" className="inline-block relative z-10">
               <Button variant="outline" size="sm" className="w-full gap-2 bg-transparent">
-                <Users className="h-4 w-4" /> Build Team Skills
+                <Users className="h-4 w-4" /> {t("sovereignty.build_team_skills")}
               </Button>
             </Link>
             <Link href="/asset-management" className="inline-block relative z-10">
               <Button variant="outline" size="sm" className="w-full gap-2 bg-transparent">
-                <Wrench className="h-4 w-4" /> Manage Assets
+                <Wrench className="h-4 w-4" /> {t("sovereignty.manage_assets")}
               </Button>
             </Link>
             <Button variant="outline" size="sm" className="w-full gap-2 bg-transparent">
-              <TrendingUp className="h-4 w-4" /> View Reports
+              <TrendingUp className="h-4 w-4" /> {t("sovereignty.view_reports")}
             </Button>
           </div>
         </div>
@@ -533,46 +534,46 @@ export default function SovereigntyPage() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <ArrowUp className="h-5 w-5 text-primary" />
-                Achievement Roadmap
+                {t("sovereignty.achievement_roadmap")}
               </CardTitle>
-              <CardDescription>Guidance for achieving higher sovereignty levels</CardDescription>
+              <CardDescription>{t("sovereignty.guidance_higher_levels")}</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="grid gap-3 md:grid-cols-2">
                 <div className="border border-primary/20 rounded-lg p-3">
-                  <h4 className="font-semibold text-sm">Step 1: Identify Key Metrics</h4>
+                  <h4 className="font-semibold text-sm">{t("sovereignty.step1_title")}</h4>
                   <p className="text-xs text-muted-foreground mt-1">
-                    Understand the metrics that define sovereignty in each category.
+                    {t("sovereignty.step1_desc")}
                   </p>
                 </div>
                 <div className="border border-primary/20 rounded-lg p-3">
-                  <h4 className="font-semibold text-sm">Step 2: Set Target Values</h4>
+                  <h4 className="font-semibold text-sm">{t("sovereignty.step2_title")}</h4>
                   <p className="text-xs text-muted-foreground mt-1">
-                    Establish realistic target values for each metric to strive towards.
+                    {t("sovereignty.step2_desc")}
                   </p>
                 </div>
                 <div className="border border-primary/20 rounded-lg p-3">
-                  <h4 className="font-semibold text-sm">Step 3: Monitor Progress</h4>
+                  <h4 className="font-semibold text-sm">{t("sovereignty.step3_title")}</h4>
                   <p className="text-xs text-muted-foreground mt-1">
-                    Regularly track and update your progress towards these targets.
+                    {t("sovereignty.step3_desc")}
                   </p>
                 </div>
                 <div className="border border-primary/20 rounded-lg p-3">
-                  <h4 className="font-semibold text-sm">Step 4: Address Dependencies</h4>
+                  <h4 className="font-semibold text-sm">{t("sovereignty.step4_title")}</h4>
                   <p className="text-xs text-muted-foreground mt-1">
-                    Identify and mitigate high-risk dependencies to enhance sovereignty.
+                    {t("sovereignty.step4_desc")}
                   </p>
                 </div>
                 <div className="border border-primary/20 rounded-lg p-3">
-                  <h4 className="font-semibold text-sm">Step 5: Optimize Resources</h4>
+                  <h4 className="font-semibold text-sm">{t("sovereignty.step5_title")}</h4>
                   <p className="text-xs text-muted-foreground mt-1">
-                    Allocate resources efficiently to improve self-sufficiency in weaker areas.
+                    {t("sovereignty.step5_desc")}
                   </p>
                 </div>
                 <div className="border border-primary/20 rounded-lg p-3">
-                  <h4 className="font-semibold text-sm">Step 6: Continuous Improvement</h4>
+                  <h4 className="font-semibold text-sm">{t("sovereignty.step6_title")}</h4>
                   <p className="text-xs text-muted-foreground mt-1">
-                    Continuously refine strategies and adapt to new challenges for sustained sovereignty.
+                    {t("sovereignty.step6_desc")}
                   </p>
                 </div>
               </div>

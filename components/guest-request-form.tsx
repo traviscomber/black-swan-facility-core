@@ -12,6 +12,30 @@ import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Phone, Mail, Send, CheckCircle, Lock, LogOut } from "lucide-react"
 
+// Translations
+const translations = {
+  en: {
+    blankets: "Extra Blankets",
+    towels: "Towels",
+    cleaning: "Room Cleaning",
+    maintenance: "Maintenance Issue",
+    amenities: "Amenities",
+    activities: "Activities Info",
+    food: "Food/Beverage",
+    other: "Other Request",
+  },
+  es: {
+    blankets: "Mantas Adicionales",
+    towels: "Toallas",
+    cleaning: "Limpieza de Habitación",
+    maintenance: "Problema de Mantenimiento",
+    amenities: "Servicios",
+    activities: "Información de Actividades",
+    food: "Comida/Bebida",
+    other: "Otra Solicitud",
+  },
+}
+
 interface Location {
   id: string
   name: string
@@ -24,17 +48,17 @@ interface Room {
 }
 
 const REQUEST_CATEGORIES = [
-  { id: "blankets", label: "Extra Blankets", icon: "🛏️" },
-  { id: "towels", label: "Towels", icon: "🛁" },
-  { id: "cleaning", label: "Room Cleaning", icon: "🧹" },
-  { id: "maintenance", label: "Maintenance Issue", icon: "🔧" },
-  { id: "amenities", label: "Amenities", icon: "✨" },
-  { id: "activities", label: "Activities Info", icon: "🎯" },
-  { id: "food", label: "Food/Beverage", icon: "🍽️" },
-  { id: "other", label: "Other Request", icon: "📝" },
+  { id: "blankets", labelKey: "blankets", icon: "🛏️" },
+  { id: "towels", labelKey: "towels", icon: "🛁" },
+  { id: "cleaning", labelKey: "cleaning", icon: "🧹" },
+  { id: "maintenance", labelKey: "maintenance", icon: "🔧" },
+  { id: "amenities", labelKey: "amenities", icon: "✨" },
+  { id: "activities", labelKey: "activities", icon: "🎯" },
+  { id: "food", labelKey: "food", icon: "🍽️" },
+  { id: "other", labelKey: "other", icon: "📝" },
 ]
 
-const ADMIN_PASSWORD = "Global2025..."
+const ADMIN_PASSWORD = "Globaln2025"
 
 const generateDeviceId = () => {
   let deviceId = localStorage.getItem("tablet_device_id")
@@ -50,6 +74,9 @@ export function GuestRequestForm() {
   const roomId = searchParams.get("room_id")
   const locationId = searchParams.get("location_id")
   const roomNumber = searchParams.get("room_number")
+
+  const [language, setLanguage] = useState<"en" | "es">("es")
+  const t = translations[language]
 
   const [assignedLocation, setAssignedLocation] = useState<Location | null>(null)
   const [locations, setLocations] = useState<Location[]>([])
@@ -71,6 +98,11 @@ export function GuestRequestForm() {
 
   useEffect(() => {
     loadInitialData()
+    // Get language from localStorage or document lang attribute
+    const savedLanguage = localStorage.getItem("language") as "en" | "es" | null
+    if (savedLanguage) {
+      setLanguage(savedLanguage)
+    }
   }, [])
 
   async function loadInitialData() {
@@ -152,7 +184,9 @@ export function GuestRequestForm() {
     try {
       const locationForRequest = location || assignedLocation
 
-      const categoryLabel = REQUEST_CATEGORIES.find((c) => c.id === selectedCategory)?.label || selectedCategory
+      const categoryLabel = REQUEST_CATEGORIES.find((c) => c.id === selectedCategory)?.labelKey 
+        ? t[REQUEST_CATEGORIES.find((c) => c.id === selectedCategory)!.labelKey as keyof typeof t]
+        : selectedCategory
 
       const { error: insertError } = await supabase.from("issues").insert({
         title: categoryLabel, // Save category label as title
@@ -379,7 +413,7 @@ export function GuestRequestForm() {
                       }`}
                     >
                       <span className="text-2xl">{category.icon}</span>
-                      <span className="text-sm font-medium text-center text-white line-clamp-2">{category.label}</span>
+                      <span className="text-sm font-medium text-center text-white line-clamp-2">{t[category.labelKey as keyof typeof t]}</span>
                     </button>
                   ))}
                 </div>

@@ -18,10 +18,10 @@ export function AppLayout({ children }: AppLayoutProps) {
   const onClose = () => setSidebarOpen(false)
 
   return (
-    <div className="flex h-screen bg-background">
+    <div className="flex h-screen bg-background w-full">
       {/* Desktop sidebar - sticky */}
-      <div className="hidden lg:flex lg:sticky lg:top-0 lg:h-screen lg:flex-col lg:z-50">
-        <Sidebar isOpen={sidebarOpen} onClose={onClose} />
+      <div className="hidden lg:flex lg:sticky lg:top-0 lg:h-screen lg:flex-col lg:z-40 lg:w-64 flex-shrink-0">
+        <Sidebar isOpen={true} onClose={() => {}} />
       </div>
 
       {/* Mobile sidebar overlay */}
@@ -32,7 +32,7 @@ export function AppLayout({ children }: AppLayoutProps) {
         </div>
       )}
 
-      <div className="flex flex-1 flex-col overflow-hidden">
+      <div className="flex flex-1 flex-col overflow-hidden w-full">
         <div className="sticky top-0 z-40 flex h-14 sm:h-16 items-center justify-between border-b border-secondary bg-gradient-to-r from-secondary/50 to-transparent px-3 sm:px-4 lg:hidden">
           <div className="flex items-center gap-2">
             <button

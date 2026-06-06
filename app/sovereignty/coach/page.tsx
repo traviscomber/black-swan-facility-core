@@ -10,10 +10,12 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { Loader2, Send, Lightbulb, Crown } from "lucide-react"
 import { useRef, useEffect, useState } from "react"
 import { AppLayout } from "@/components/app-layout"
+import { useLanguage } from "@/lib/hooks/use-language"
 import Link from "next/link"
 
 export default function SovereigntyCoach() {
   const [inputValue, setInputValue] = useState("")
+  const { t } = useLanguage()
 
   const { messages, sendMessage, status } = useChat({
     transport: new DefaultChatTransport({
@@ -51,18 +53,17 @@ export default function SovereigntyCoach() {
         <div className="space-y-2">
           <div className="flex items-center gap-2">
             <Crown className="h-6 w-6 text-primary" />
-            <h1 className="text-3xl font-bold text-accent">Sovereignty Coach</h1>
+            <h1 className="text-3xl font-bold text-accent">{t("sovereignty.coach_title")}</h1>
           </div>
           <p className="text-muted-foreground">
-            AI-powered advisor for facility independence. Get personalized recommendations on energy, food, water,
-            people, software, and asset sovereignty.
+            {t("sovereignty.coach_subtitle")}
           </p>
         </div>
 
         <Card className="border-secondary h-[600px] flex flex-col">
           <CardHeader className="border-b border-secondary pb-3">
-            <CardTitle className="text-lg">AI Sovereignty Coach</CardTitle>
-            <CardDescription>Personalized guidance for achieving facility independence</CardDescription>
+            <CardTitle className="text-lg">{t("sovereignty.coach_header")}</CardTitle>
+            <CardDescription>{t("sovereignty.coach_guidance")}</CardDescription>
           </CardHeader>
 
           <ScrollArea className="flex-1 p-4">
@@ -71,8 +72,7 @@ export default function SovereigntyCoach() {
                 <div className="flex flex-col items-center justify-center h-full text-center py-12">
                   <Lightbulb className="h-12 w-12 text-muted-foreground mb-4 opacity-50" />
                   <p className="text-muted-foreground">
-                    Ask me anything about improving your facility's sovereignty across energy, food, water, people,
-                    software, and assets. I'll analyze your current metrics and provide actionable recommendations.
+                    {t("sovereignty.coach_prompt")}
                   </p>
                 </div>
               ) : (

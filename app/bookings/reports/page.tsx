@@ -18,6 +18,8 @@ import {
   CreditCard,
 } from "lucide-react"
 import { format, startOfMonth, endOfMonth, subMonths } from "date-fns"
+import { AppLayout } from "@/components/app-layout"
+import { useLanguage } from "@/lib/hooks/use-language"
 
 interface Statistics {
   totalRevenue: number
@@ -89,6 +91,7 @@ export default function ReportsPage() {
   const [loading, setLoading] = useState(true)
 
   const supabase = createBrowserClient()
+  const { t } = useLanguage()
 
   useEffect(() => {
     loadLocations()
@@ -354,18 +357,18 @@ export default function ReportsPage() {
 
   function exportReport() {
     const csvContent = [
-      ["Booking Reports", ""],
+      [t("reports.bookings"), ""],
       ["Period", selectedPeriod],
-      ["Location", selectedLocation === "all" ? "All Locations" : selectedLocation],
+      [t("reports.location"), selectedLocation === "all" ? t("reports.all_locations") : selectedLocation],
       ["", ""],
       ["Summary", ""],
-      ["Total Revenue", `$${stats.totalRevenue.toFixed(2)}`],
-      ["Total Bookings", stats.totalBookings.toString()],
-      ["Occupancy Rate", `${stats.occupancyRate.toFixed(1)}%`],
-      ["Average Rate", `$${stats.averageRate.toFixed(2)}`],
+      [t("reports.total_revenue"), `$${stats.totalRevenue.toFixed(2)}`],
+      [t("reports.total_bookings"), stats.totalBookings.toString()],
+      [t("reports.occupancy_rate"), `${stats.occupancyRate.toFixed(1)}%`],
+      [t("reports.average_rate"), `$${stats.averageRate.toFixed(2)}`],
       ["", ""],
-      ["Location Performance", ""],
-      ["Location", "Revenue", "Bookings", "Occupancy %"],
+      [t("reports.location_performance"), ""],
+      [t("reports.location"), t("reports.revenue"), t("reports.bookings_count"), "Occupancy %"],
       ...locationStats.map((loc) => [
         loc.locationName,
         `$${loc.revenue.toFixed(2)}`,
@@ -373,8 +376,8 @@ export default function ReportsPage() {
         `${loc.occupancyRate.toFixed(1)}%`,
       ]),
       ["", ""],
-      ["Top Rooms", ""],
-      ["Room", "Location", "Revenue", "Bookings", "Occupancy %"],
+      [t("reports.top_performing_rooms"), ""],
+      [t("reports.room"), t("reports.location"), t("reports.revenue"), t("reports.bookings_count"), "Occupancy %"],
       ...roomPerformance.map((room) => [
         room.roomName,
         room.location,
@@ -384,10 +387,10 @@ export default function ReportsPage() {
       ]),
       ["", ""],
       ["Guest Statistics", ""],
-      ["Total Guests", guestStats.totalGuests.toString()],
-      ["Repeat Guests", guestStats.repeatGuests.toString()],
-      ["VIP Guests", guestStats.vipGuests.toString()],
-      ["New Guests", guestStats.newGuests.toString()],
+      [t("reports.total_guests"), guestStats.totalGuests.toString()],
+      [t("reports.repeat_guests"), guestStats.repeatGuests.toString()],
+      [t("reports.vip_guests"), guestStats.vipGuests.toString()],
+      [t("reports.new_guests"), guestStats.newGuests.toString()],
     ]
       .map((row) => row.join(","))
       .join("\n")
@@ -401,344 +404,353 @@ export default function ReportsPage() {
   }
 
   return (
-    <div className="flex h-screen flex-col bg-background">
-      {/* Header */}
-      <div className="border-b bg-card px-6 py-4">
-        <div className="mb-4">
-          <h1 className="text-2xl font-bold">Reports and Analytics</h1>
-          <p className="text-sm text-muted-foreground">Comprehensive revenue, occupancy, and performance insights</p>
-        </div>
-        <div className="flex gap-2">
-          <Select value={selectedPeriod} onValueChange={setSelectedPeriod}>
-            <SelectTrigger className="w-[200px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="current_month">Current Month</SelectItem>
-              <SelectItem value="last_month">Last Month</SelectItem>
-              <SelectItem value="last_3_months">Last 3 Months</SelectItem>
-              <SelectItem value="last_6_months">Last 6 Months</SelectItem>
-            </SelectContent>
-          </Select>
-          <Select value={selectedLocation} onValueChange={setSelectedLocation}>
-            <SelectTrigger className="w-[200px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Locations</SelectItem>
-              {locations.map((loc) => (
-                <SelectItem key={loc.id} value={loc.id}>
-                  {loc.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Button variant="outline" onClick={exportReport}>
-            <Download className="mr-2 h-4 w-4" />
-            Export
-          </Button>
-        </div>
-      </div>
-
-      {/* Content */}
-      <div className="flex-1 overflow-auto p-6">
-        {loading ? (
-          <div className="flex items-center justify-center p-8">
-            <div className="text-muted-foreground">Loading reports...</div>
+    <AppLayout>
+      <div className="flex h-screen flex-col bg-background">
+        {/* Header */}
+        <div className="border-b bg-card px-6 py-4">
+          <div className="mb-4">
+            <h1 className="text-2xl font-bold">{t("reports.title")}</h1>
+            <p className="text-sm text-muted-foreground">{t("reports.comprehensive_revenue")}</p>
           </div>
-        ) : (
-          <div className="space-y-6">
-            {/* Stats Cards */}
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
-                  <DollarSign className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">${stats.totalRevenue.toFixed(2)}</div>
-                  <div className="flex items-center text-xs text-muted-foreground">
-                    {stats.revenueChange >= 0 ? (
-                      <ArrowUpRight className="mr-1 h-3 w-3 text-green-500" />
-                    ) : (
-                      <ArrowDownRight className="mr-1 h-3 w-3 text-red-500" />
-                    )}
-                    <span className={stats.revenueChange >= 0 ? "text-green-500" : "text-red-500"}>
-                      {Math.abs(stats.revenueChange).toFixed(1)}%
-                    </span>
-                    <span className="ml-1">from previous period</span>
-                  </div>
-                </CardContent>
-              </Card>
+          <div className="flex gap-2">
+            <Select value={selectedPeriod} onValueChange={setSelectedPeriod}>
+              <SelectTrigger className="w-[200px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="current_month">{t("reports.current_month")}</SelectItem>
+                <SelectItem value="last_month">{t("reports.last_month")}</SelectItem>
+                <SelectItem value="last_3_months">{t("reports.last_3_months")}</SelectItem>
+                <SelectItem value="last_6_months">{t("reports.last_6_months")}</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={selectedLocation} onValueChange={setSelectedLocation}>
+              <SelectTrigger className="w-[200px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">{t("reports.all_locations")}</SelectItem>
+                {locations.map((loc) => (
+                  <SelectItem key={loc.id} value={loc.id}>
+                    {loc.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Button variant="outline" onClick={exportReport}>
+              <Download className="mr-2 h-4 w-4" />
+              {t("reports.export")}
+            </Button>
+          </div>
+        </div>
 
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Total Bookings</CardTitle>
-                  <Calendar className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{stats.totalBookings}</div>
-                  <div className="flex items-center text-xs text-muted-foreground">
-                    {stats.bookingsChange >= 0 ? (
-                      <ArrowUpRight className="mr-1 h-3 w-3 text-green-500" />
-                    ) : (
-                      <ArrowDownRight className="mr-1 h-3 w-3 text-red-500" />
-                    )}
-                    <span className={stats.bookingsChange >= 0 ? "text-green-500" : "text-red-500"}>
-                      {Math.abs(stats.bookingsChange).toFixed(1)}%
-                    </span>
-                    <span className="ml-1">from previous period</span>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Occupancy Rate</CardTitle>
-                  <BedDouble className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{stats.occupancyRate.toFixed(1)}%</div>
-                  <p className="text-xs text-muted-foreground">Room utilization</p>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Average Rate</CardTitle>
-                  <TrendingUp className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">${stats.averageRate.toFixed(2)}</div>
-                  <p className="text-xs text-muted-foreground">Per booking</p>
-                </CardContent>
-              </Card>
+        {/* Content */}
+        <div className="flex-1 overflow-auto p-6">
+          {loading ? (
+            <div className="flex items-center justify-center p-8">
+              <div className="text-muted-foreground">{t("reports.loading")}</div>
             </div>
-
-            {/* Guest Analytics */}
-            <div className="grid gap-4 md:grid-cols-4">
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Total Guests</CardTitle>
-                  <Users className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{guestStats.totalGuests}</div>
-                  <p className="text-xs text-muted-foreground">Registered guests</p>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Repeat Guests</CardTitle>
-                  <Users className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{guestStats.repeatGuests}</div>
-                  <p className="text-xs text-muted-foreground">Returning visitors</p>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">VIP Guests</CardTitle>
-                  <Users className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{guestStats.vipGuests}</div>
-                  <p className="text-xs text-muted-foreground">Premium members</p>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">New Guests</CardTitle>
-                  <Users className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{guestStats.newGuests}</div>
-                  <p className="text-xs text-muted-foreground">First time bookings</p>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Location Performance */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <MapPin className="h-4 w-4" />
-                  Location Performance
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {locationStats.map((loc, index) => (
-                    <div key={index} className="space-y-2">
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="font-medium">{loc.locationName}</span>
-                        <div className="flex gap-4">
-                          <span className="text-muted-foreground">{loc.bookings} bookings</span>
-                          <span className="font-semibold">${loc.revenue.toFixed(2)}</span>
-                          <span className="text-muted-foreground">{loc.occupancyRate.toFixed(1)}% occupied</span>
-                        </div>
-                      </div>
-                      <div className="h-2 w-full rounded-full bg-muted">
-                        <div
-                          className="h-full rounded-full bg-primary transition-all"
-                          style={{ width: `${loc.occupancyRate}%` }}
-                        ></div>
-                      </div>
+          ) : (
+            <div className="space-y-6">
+              {/* Stats Cards */}
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">{t("reports.total_revenue")}</CardTitle>
+                    <DollarSign className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">${stats.totalRevenue.toFixed(2)}</div>
+                    <div className="flex items-center text-xs text-muted-foreground">
+                      {stats.revenueChange >= 0 ? (
+                        <ArrowUpRight className="mr-1 h-3 w-3 text-green-500" />
+                      ) : (
+                        <ArrowDownRight className="mr-1 h-3 w-3 text-red-500" />
+                      )}
+                      <span className={stats.revenueChange >= 0 ? "text-green-500" : "text-red-500"}>
+                        {Math.abs(stats.revenueChange).toFixed(1)}%
+                      </span>
+                      <span className="ml-1">{t("reports.from_previous_period")}</span>
                     </div>
-                  ))}
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">{t("reports.total_bookings")}</CardTitle>
+                    <Calendar className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">{stats.totalBookings}</div>
+                    <div className="flex items-center text-xs text-muted-foreground">
+                      {stats.bookingsChange >= 0 ? (
+                        <ArrowUpRight className="mr-1 h-3 w-3 text-green-500" />
+                      ) : (
+                        <ArrowDownRight className="mr-1 h-3 w-3 text-red-500" />
+                      )}
+                      <span className={stats.bookingsChange >= 0 ? "text-green-500" : "text-red-500"}>
+                        {Math.abs(stats.bookingsChange).toFixed(1)}%
+                      </span>
+                      <span className="ml-1">{t("reports.from_previous_period")}</span>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">{t("reports.occupancy_rate")}</CardTitle>
+                    <BedDouble className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">{stats.occupancyRate.toFixed(1)}%</div>
+                    <p className="text-xs text-muted-foreground">{t("reports.room_utilization")}</p>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">{t("reports.average_rate")}</CardTitle>
+                    <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">${stats.averageRate.toFixed(2)}</div>
+                    <p className="text-xs text-muted-foreground">{t("reports.per_booking")}</p>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Guest Analytics */}
+              <div className="grid gap-4 md:grid-cols-4">
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">{t("reports.total_guests")}</CardTitle>
+                    <Users className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">{guestStats.totalGuests}</div>
+                    <p className="text-xs text-muted-foreground">{t("reports.registered_guests")}</p>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">{t("reports.repeat_guests")}</CardTitle>
+                    <Users className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">{guestStats.repeatGuests}</div>
+                    <p className="text-xs text-muted-foreground">{t("reports.returning_visitors")}</p>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">{t("reports.vip_guests")}</CardTitle>
+                    <Users className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">{guestStats.vipGuests}</div>
+                    <p className="text-xs text-muted-foreground">{t("reports.premium_members")}</p>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">{t("reports.new_guests")}</CardTitle>
+                    <Users className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">{guestStats.newGuests}</div>
+                    <p className="text-xs text-muted-foreground">{t("reports.first_time_bookings")}</p>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Location Performance */}
+              <div>
+                <div className="mb-4 flex items-center gap-2">
+                  <MapPin className="h-5 w-5" />
+                  <h2 className="text-lg font-semibold">{t("reports.location_performance")}</h2>
                 </div>
-              </CardContent>
-            </Card>
-
-            {/* Top Performing Rooms */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <BedDouble className="h-4 w-4" />
-                  Top Performing Rooms
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b">
-                        <th className="py-2 text-left font-medium">Room</th>
-                        <th className="py-2 text-left font-medium">Location</th>
-                        <th className="py-2 text-right font-medium">Revenue</th>
-                        <th className="py-2 text-right font-medium">Bookings</th>
-                        <th className="py-2 text-right font-medium">Occupancy</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {roomPerformance.map((room, index) => (
-                        <tr key={index} className="border-b last:border-0">
-                          <td className="py-3 font-medium">{room.roomName}</td>
-                          <td className="py-3 text-muted-foreground">{room.location}</td>
-                          <td className="py-3 text-right font-semibold">${room.revenue.toFixed(2)}</td>
-                          <td className="py-3 text-right">{room.bookings}</td>
-                          <td className="py-3 text-right">{room.occupancyRate.toFixed(1)}%</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Payment Methods */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <CreditCard className="h-4 w-4" />
-                  Payment Methods
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {paymentStats.map((stat, index) => {
-                    const maxAmount = Math.max(...paymentStats.map((s) => s.amount))
-                    const percentage = maxAmount > 0 ? (stat.amount / maxAmount) * 100 : 0
-
-                    return (
-                      <div key={index} className="space-y-2">
-                        <div className="flex items-center justify-between text-sm">
-                          <span className="font-medium capitalize">{stat.method}</span>
-                          <div className="flex gap-4">
-                            <span className="text-muted-foreground">{stat.count} transactions</span>
-                            <span className="font-semibold">${stat.amount.toFixed(2)}</span>
-                          </div>
+                <div className="grid gap-4">
+                  {locationStats.map((loc) => (
+                    <Card key={loc.locationName}>
+                      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-sm font-medium">{loc.locationName}</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="mb-4 flex items-center gap-2">
+                          <span className="font-medium">Revenue</span>
+                          <span className="font-semibold">${loc.revenue.toFixed(2)}</span>
                         </div>
-                        <div className="h-2 w-full rounded-full bg-muted">
-                          <div
-                            className="h-full rounded-full bg-accent transition-all"
-                            style={{ width: `${percentage}%` }}
-                          ></div>
+                        <div className="mb-4 flex items-center gap-2">
+                          <span className="font-medium">Bookings</span>
+                          <span className="font-semibold">{loc.bookings}</span>
                         </div>
-                      </div>
-                    )
-                  })}
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Monthly Revenue Chart */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Monthly Performance</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {monthlyData.map((data, index) => {
-                    const maxRevenue = Math.max(...monthlyData.map((d) => d.revenue))
-                    const percentage = maxRevenue > 0 ? (data.revenue / maxRevenue) * 100 : 0
-
-                    return (
-                      <div key={index} className="space-y-2">
-                        <div className="flex items-center justify-between text-sm">
-                          <span className="font-medium">{data.month}</span>
-                          <div className="flex gap-4">
-                            <span className="text-muted-foreground">{data.bookings} bookings</span>
-                            <span className="font-semibold">${data.revenue.toFixed(2)}</span>
-                          </div>
+                        <div className="mb-4 flex items-center gap-2">
+                          <span className="font-medium">Occupancy Rate</span>
+                          <span className="font-semibold">{loc.occupancyRate.toFixed(1)}%</span>
                         </div>
                         <div className="h-2 w-full rounded-full bg-muted">
                           <div
                             className="h-full rounded-full bg-primary transition-all"
-                            style={{ width: `${percentage}%` }}
+                            style={{ width: `${loc.occupancyRate}%` }}
                           ></div>
                         </div>
-                      </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </div>
+
+              {/* Top Performing Rooms */}
+              <div>
+                <div className="mb-4 flex items-center gap-2">
+                  <BedDouble className="h-5 w-5" />
+                  <h2 className="text-lg font-semibold">{t("reports.top_performing_rooms")}</h2>
+                </div>
+                <div className="grid gap-4">
+                  {roomPerformance.map((room) => (
+                    <Card key={room.roomName}>
+                      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-sm font-medium">{room.roomName}</CardTitle>
+                        <CardTitle className="text-sm font-medium">{room.location}</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="mb-4 flex items-center gap-2">
+                          <span className="font-medium">Revenue</span>
+                          <span className="font-semibold">${room.revenue.toFixed(2)}</span>
+                        </div>
+                        <div className="mb-4 flex items-center gap-2">
+                          <span className="font-medium">Bookings</span>
+                          <span className="font-semibold">{room.bookings}</span>
+                        </div>
+                        <div className="mb-4 flex items-center gap-2">
+                          <span className="font-medium">Occupancy Rate</span>
+                          <span className="font-semibold">{room.occupancyRate.toFixed(1)}%</span>
+                        </div>
+                        <div className="h-2 w-full rounded-full bg-muted">
+                          <div
+                            className="h-full rounded-full bg-accent transition-all"
+                            style={{ width: `${room.occupancyRate}%` }}
+                          ></div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </div>
+
+              {/* Payment Methods */}
+              <div>
+                <div className="mb-4 flex items-center gap-2">
+                  <CreditCard className="h-5 w-5" />
+                  <h2 className="text-lg font-semibold">{t("reports.payment_methods")}</h2>
+                </div>
+                <div className="grid gap-4">
+                  {paymentStats.map((payment) => {
+                    const percentage = (payment.amount / paymentStats.reduce((sum, p) => sum + p.amount, 0)) * 100 || 0
+                    return (
+                      <Card key={payment.method}>
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                          <CardTitle className="text-sm font-medium">{payment.method}</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="mb-4 flex items-center gap-2">
+                            <span className="font-medium">Amount</span>
+                            <span className="font-semibold">${payment.amount.toFixed(2)}</span>
+                          </div>
+                          <div className="mb-4 flex items-center gap-2">
+                            <span className="font-medium">Count</span>
+                            <span className="font-semibold">{payment.count}</span>
+                          </div>
+                          <div className="h-2 w-full rounded-full bg-muted">
+                            <div
+                              className="h-full rounded-full bg-accent transition-all"
+                              style={{ width: `${percentage}%` }}
+                            ></div>
+                          </div>
+                        </CardContent>
+                      </Card>
                     )
                   })}
                 </div>
-              </CardContent>
-            </Card>
+              </div>
 
-            {/* Recent Bookings */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Recent Bookings</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {recentBookings.map((booking) => (
-                    <div key={booking.id} className="flex items-center justify-between border-b pb-4 last:border-0">
-                      <div>
-                        <div className="font-medium">{booking.guest_name}</div>
-                        <div className="text-sm text-muted-foreground">
-                          {format(new Date(booking.check_in), "MMM d")} -{" "}
-                          {format(new Date(booking.check_out), "MMM d, yyyy")}
+              {/* Monthly Revenue Chart */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Monthly Performance</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {monthlyData.map((data, index) => {
+                      const maxRevenue = Math.max(...monthlyData.map((d) => d.revenue))
+                      const percentage = maxRevenue > 0 ? (data.revenue / maxRevenue) * 100 : 0
+
+                      return (
+                        <div key={index} className="space-y-2">
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="font-medium">{data.month}</span>
+                            <div className="flex gap-4">
+                              <span className="text-muted-foreground">{data.bookings} bookings</span>
+                              <span className="font-semibold">${data.revenue.toFixed(2)}</span>
+                            </div>
+                          </div>
+                          <div className="h-2 w-full rounded-full bg-muted">
+                            <div
+                              className="h-full rounded-full bg-primary transition-all"
+                              style={{ width: `${percentage}%` }}
+                            ></div>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Recent Bookings */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Recent Bookings</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {recentBookings.map((booking) => (
+                      <div key={booking.id} className="flex items-center justify-between border-b pb-4 last:border-0">
+                        <div>
+                          <div className="font-medium">{booking.guest_name}</div>
+                          <div className="text-sm text-muted-foreground">
+                            {format(new Date(booking.check_in), "MMM d")} -{" "}
+                            {format(new Date(booking.check_out), "MMM d, yyyy")}
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <div className="font-semibold">${Number(booking.total_amount || 0).toFixed(2)}</div>
+                          <div
+                            className={`text-sm capitalize ${
+                              booking.status === "confirmed"
+                                ? "text-blue-500"
+                                : booking.status === "checked_in"
+                                  ? "text-green-500"
+                                  : booking.status === "cancelled"
+                                    ? "text-red-500"
+                                    : "text-yellow-500"
+                            }`}
+                          >
+                            {booking.status}
+                          </div>
                         </div>
                       </div>
-                      <div className="text-right">
-                        <div className="font-semibold">${Number(booking.total_amount || 0).toFixed(2)}</div>
-                        <div
-                          className={`text-sm capitalize ${
-                            booking.status === "confirmed"
-                              ? "text-blue-500"
-                              : booking.status === "checked_in"
-                                ? "text-green-500"
-                                : booking.status === "cancelled"
-                                  ? "text-red-500"
-                                  : "text-yellow-500"
-                          }`}
-                        >
-                          {booking.status}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        )}
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+        </div>
       </div>
-    </div>
+    </AppLayout>
   )
 }

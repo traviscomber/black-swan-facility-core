@@ -10,6 +10,7 @@ import { Download, Filter, Calendar } from "lucide-react"
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Legend, ResponsiveContainer } from "recharts"
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
 import { createBrowserClient } from "@/lib/supabase/client"
+import { useLanguage } from "@/lib/hooks/use-language"
 
 export default function EnergyReports() {
   const [reportType, setReportType] = useState<"monthly" | "building" | "system">("monthly")
@@ -17,6 +18,7 @@ export default function EnergyReports() {
   const [monthlyReportData, setMonthlyReportData] = useState<any[]>([])
   const [buildingReportData, setBuildingReportData] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const { t } = useLanguage()
 
   useEffect(() => {
     const loadReportData = async () => {
@@ -56,24 +58,30 @@ export default function EnergyReports() {
     <EnergyPasswordGuard>
       <AppLayout>
         <PageHeader
-          title="Off Grid Energy Reports"
-          description="Historical analysis and performance reports"
+          title={t("energy.reports_title")}
+          description={t("energy.reports_description")}
           backHref="/"
         />
         <div className="p-4 md:p-6">
           <div className="mx-auto max-w-7xl">
             {/* Report Type Selector */}
             <div className="mb-6 flex flex-wrap gap-2">
-              {["monthly", "building", "system"].map((type) => (
-                <Button
-                  key={type}
-                  variant={reportType === type ? "default" : "outline"}
-                  onClick={() => setReportType(type as typeof reportType)}
-                  className="capitalize"
-                >
-                  {type} Report
-                </Button>
-              ))}
+              {["monthly", "building", "system"].map((type) => {
+                const typeLabel = 
+                  type === "monthly" ? t("energy.monthly_report") :
+                  type === "building" ? t("energy.building_report") :
+                  t("energy.system_report")
+                
+                return (
+                  <Button
+                    key={type}
+                    variant={reportType === type ? "default" : "outline"}
+                    onClick={() => setReportType(type as typeof reportType)}
+                  >
+                    {typeLabel}
+                  </Button>
+                )
+              })}
             </div>
 
             {/* Date Range Filter */}
@@ -81,13 +89,13 @@ export default function EnergyReports() {
               <CardHeader>
                 <CardTitle className="text-lg flex items-center gap-2">
                   <Calendar className="w-5 h-5" />
-                  Report Period
+                  {t("energy.report_period")}
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
-                    <label className="text-sm font-medium text-muted-foreground">Start Date</label>
+                    <label className="text-sm font-medium text-muted-foreground">{t("energy.start_date")}</label>
                     <input
                       type="date"
                       value={dateRange.start}
@@ -96,7 +104,7 @@ export default function EnergyReports() {
                     />
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-muted-foreground">End Date</label>
+                    <label className="text-sm font-medium text-muted-foreground">{t("energy.end_date")}</label>
                     <input
                       type="date"
                       value={dateRange.end}
@@ -107,7 +115,7 @@ export default function EnergyReports() {
                   <div className="flex items-end gap-2">
                     <Button variant="default">
                       <Filter className="inline mr-2 w-4 h-4" />
-                      Apply Filter
+                      {t("energy.apply_filter")}
                     </Button>
                   </div>
                 </div>

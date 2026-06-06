@@ -7,12 +7,14 @@ import { createBrowserClient } from "@/lib/supabase/client"
 import type { Asset } from "@/lib/types"
 import { useEffect, useState } from "react"
 import { AlertCircle, CheckCircle, Clock, Zap } from "lucide-react"
+import { useLanguage } from "@/lib/hooks/use-language"
 
 export default function AssetsAnalyticsPage() {
   const [assets, setAssets] = useState<Asset[]>([])
   const [loading, setLoading] = useState(true)
   const [assetsByType, setAssetsByType] = useState<Record<string, number>>({})
   const [maintenanceTasks, setMaintenanceTasks] = useState<any[]>([])
+  const { t } = useLanguage()
 
   const loadData = async () => {
     const supabase = createBrowserClient()
@@ -61,8 +63,8 @@ export default function AssetsAnalyticsPage() {
   return (
     <AppLayout>
       <PageHeader
-        title="Assets Analytics"
-        description="Comprehensive view of asset health, maintenance, and audit status"
+        title={t("assets.analytics_title")}
+        description={t("assets.analytics_description")}
       />
 
       <div className="p-8 space-y-6">
@@ -72,12 +74,12 @@ export default function AssetsAnalyticsPage() {
             <CardHeader className="pb-3">
               <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
                 <Zap className="h-4 w-4" />
-                Total Assets
+                {t("assets.total_assets")}
               </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-3xl font-bold">{totalAssets}</div>
-              <p className="text-xs text-muted-foreground mt-1">Active facilities</p>
+              <p className="text-xs text-muted-foreground mt-1">{t("assets.active_facilities")}</p>
             </CardContent>
           </Card>
 
@@ -85,13 +87,13 @@ export default function AssetsAnalyticsPage() {
             <CardHeader className="pb-3">
               <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
                 <AlertCircle className="h-4 w-4 text-red-500" />
-                Critical Assets
+                {t("assets.critical_assets")}
               </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-3xl font-bold text-red-600">{criticalAssets}</div>
               <p className="text-xs text-muted-foreground mt-1">
-                {totalAssets > 0 ? ((criticalAssets / totalAssets) * 100).toFixed(0) : 0}% of total
+                {totalAssets > 0 ? ((criticalAssets / totalAssets) * 100).toFixed(0) : 0}% {t("assets.of_total")}
               </p>
             </CardContent>
           </Card>
@@ -100,12 +102,12 @@ export default function AssetsAnalyticsPage() {
             <CardHeader className="pb-3">
               <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
                 <Clock className="h-4 w-4 text-yellow-500" />
-                Audits Overdue
+                {t("assets.audits_overdue")}
               </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-3xl font-bold text-yellow-600">{auditOverduePercentage}%</div>
-              <p className="text-xs text-muted-foreground mt-1">{auditOverdueCount} assets</p>
+              <p className="text-xs text-muted-foreground mt-1">{auditOverdueCount} {t("assets.overdue_assets")}</p>
             </CardContent>
           </Card>
 
@@ -113,12 +115,12 @@ export default function AssetsAnalyticsPage() {
             <CardHeader className="pb-3">
               <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
                 <CheckCircle className="h-4 w-4 text-blue-500" />
-                Maintenance Due
+                {t("assets.maintenance_due")}
               </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-3xl font-bold text-blue-600">{upcomingMaintenanceCount}</div>
-              <p className="text-xs text-muted-foreground mt-1">Pending tasks</p>
+              <p className="text-xs text-muted-foreground mt-1">{t("assets.pending_tasks")}</p>
             </CardContent>
           </Card>
         </div>
@@ -126,8 +128,8 @@ export default function AssetsAnalyticsPage() {
         {/* Assets by Type */}
         <Card>
           <CardHeader>
-            <CardTitle>Assets by Type</CardTitle>
-            <CardDescription>Distribution of assets across different categories</CardDescription>
+            <CardTitle>{t("assets.by_type")}</CardTitle>
+            <CardDescription>{t("assets.type_distribution")}</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">

@@ -6,6 +6,7 @@ import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { createBrowserClient } from "@/lib/supabase/client"
 import { AppLayout } from "@/components/app-layout"
+import { useLanguage } from "@/lib/hooks/use-language"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -56,58 +57,58 @@ interface Location {
 const facilityTypeConfig = {
   rental: {
     icon: Home,
-    label: "Rental Property",
+    label: "property.rental_property",
     color: "text-blue-600",
-    description: "Vacation rental with bookings",
+    description: "property.rental_desc",
     managePath: "/bookings/locations",
   },
   storage: {
     icon: Package,
-    label: "Storage Facility",
+    label: "property.storage_facility",
     color: "text-amber-600",
-    description: "Storage area management",
+    description: "property.storage_desc",
     managePath: "/facilities/storage",
   },
   laundry: {
     icon: Droplets,
-    label: "Laundry Facility",
+    label: "property.laundry_facility",
     color: "text-cyan-600",
-    description: "Laundry services management",
+    description: "property.laundry_desc",
     managePath: "/facilities/laundry",
   },
   garden: {
     icon: Leaf,
-    label: "Garden/Grounds",
+    label: "property.garden_grounds",
     color: "text-green-600",
-    description: "Outdoor spaces management",
+    description: "property.garden_desc",
     managePath: "/facilities/garden",
   },
   office: {
     icon: Building2,
-    label: "Office Space",
+    label: "property.office_space",
     color: "text-purple-600",
-    description: "Office facilities management",
+    description: "property.office_desc",
     managePath: "/facilities/office",
   },
   utility: {
     icon: Zap,
-    label: "Utility Area",
+    label: "property.utility_area",
     color: "text-yellow-600",
-    description: "Utilities and mechanical systems",
+    description: "property.utility_desc",
     managePath: "/facilities/utility",
   },
   parking: {
     icon: ParkingCircle,
-    label: "Parking Area",
+    label: "property.parking_area",
     color: "text-gray-600",
-    description: "Parking management",
+    description: "property.parking_desc",
     managePath: "/facilities/parking",
   },
   other: {
     icon: MoreHorizontal,
-    label: "Other Facility",
+    label: "property.other_facility",
     color: "text-gray-600",
-    description: "General facility management",
+    description: "property.other_desc",
     managePath: "/facilities/other",
   },
 }
@@ -122,6 +123,7 @@ export default function PropertyManagementPage() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
   const router = useRouter()
+  const { t } = useLanguage()
 
   const [formData, setFormData] = useState({
     name: "",
@@ -215,7 +217,7 @@ export default function PropertyManagementPage() {
       fetchLocations()
     } catch (error) {
       console.error("Error deleting location:", error)
-      alert("Failed to delete location. It may have associated records.")
+      alert(t("property.failed_delete"))
     } finally {
       setIsSubmitting(false)
     }
@@ -279,7 +281,7 @@ export default function PropertyManagementPage() {
         <div className="flex items-center justify-center min-h-screen">
           <div className="text-center space-y-4">
             <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto"></div>
-            <p className="text-muted-foreground">Loading properties...</p>
+            <p className="text-muted-foreground">{t("property.loading")}</p>
           </div>
         </div>
       </AppLayout>
@@ -292,18 +294,18 @@ export default function PropertyManagementPage() {
         {/* Header Section */}
         <div className="flex items-center justify-between">
           <div className="space-y-2">
-            <h1 className="text-3xl font-bold text-accent">Property Management</h1>
-            <p className="text-muted-foreground">Create, manage, and organize all facility types and properties</p>
+            <h1 className="text-3xl font-bold text-accent">{t("property.title")}</h1>
+            <p className="text-muted-foreground">{t("property.description")}</p>
           </div>
           <Button onClick={() => setAddDialogOpen(true)} size="lg">
             <Plus className="mr-2 h-4 w-4" />
-            Add Property
+            {t("property.add_property")}
           </Button>
         </div>
 
         {/* Search Bar */}
         <Input
-          placeholder="Search properties..."
+          placeholder={t("property.search_placeholder")}
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           className="max-w-md"
@@ -320,16 +322,18 @@ export default function PropertyManagementPage() {
                 <div className="flex items-center gap-3 border-l-4 border-primary pl-4">
                   <Icon className={`h-6 w-6 ${config.color}`} />
                   <div className="flex-1">
-                    <h2 className="text-xl font-bold text-accent">{config.label}</h2>
-                    <p className="text-sm text-muted-foreground">{config.description}</p>
+                    <h2 className="text-xl font-bold text-accent">{t(config.label as string)}</h2>
+                    <p className="text-sm text-muted-foreground">{t(config.description as string)}</p>
                   </div>
-                  <span className="text-sm text-muted-foreground">{propertiesOfType.length} properties</span>
+                  <span className="text-sm text-muted-foreground">{propertiesOfType.length} {t("property.properties_count")}</span>
                 </div>
 
                 {propertiesOfType.length === 0 ? (
                   <Card className="border-dashed">
                     <CardContent className="py-8 text-center">
-                      <p className="text-muted-foreground">No {config.label.toLowerCase()} configured</p>
+                      <p className="text-muted-foreground">
+                        {t("property.no_configured").replace("{type}", t(config.label as string).toLowerCase())}
+                      </p>
                     </CardContent>
                   </Card>
                 ) : (
@@ -340,7 +344,7 @@ export default function PropertyManagementPage() {
                           <div className="flex items-start justify-between">
                             <div className="flex-1">
                               <CardTitle className="text-lg">{location.name}</CardTitle>
-                              <CardDescription>{location.description || "No description"}</CardDescription>
+                              <CardDescription>{location.description || t("property.no_description")}</CardDescription>
                             </div>
                             <div className="flex gap-1">
                               <Button

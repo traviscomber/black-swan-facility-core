@@ -9,6 +9,7 @@ import { createBrowserClient } from "@/lib/supabase/client"
 import { Plus, Brain, Edit2, Trash2, X } from "lucide-react"
 import { useEffect, useState } from "react"
 import Link from "next/link"
+import { useLanguage } from "@/lib/hooks/use-language"
 
 interface CattleArea {
   id: string
@@ -40,6 +41,7 @@ interface CattleAreaFormData {
 }
 
 export default function CattlePage() {
+  const { t } = useLanguage()
   const [areas, setAreas] = useState<CattleArea[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
@@ -106,7 +108,7 @@ export default function CattlePage() {
   }
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this cattle area?")) return
+    if (!confirm(t("cattle.delete_confirmation"))) return
 
     const supabase = createBrowserClient()
     await supabase.from("infrastructure_plans").delete().eq("id", id)
@@ -198,12 +200,12 @@ export default function CattlePage() {
   return (
     <AppLayout>
       <PageHeader
-        title="Cattle Management"
-        description="Manage cattle operations across pasture areas - Fattening (Engorda) and Breeding (Crianza)"
+        title={t("cattle.title")}
+        description={t("cattle.description")}
         actions={
           <Button onClick={handleAddNew} className="bg-amber-600 hover:bg-amber-700">
             <Plus className="mr-2 h-4 w-4" />
-            Add Area
+            {t("cattle.add_area")}
           </Button>
         }
       />
@@ -213,41 +215,41 @@ export default function CattlePage() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium text-gray-600">Total Hectares</CardTitle>
+              <CardTitle className="text-sm font-medium text-gray-600">{t("cattle.hectares")}</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-3xl font-bold">{totalHectares}</div>
-              <p className="text-xs text-gray-500 mt-1">Pasture area</p>
+              <p className="text-xs text-gray-500 mt-1">{t("cattle.areas")}</p>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium text-gray-600">Total Capacity</CardTitle>
+              <CardTitle className="text-sm font-medium text-gray-600">{t("cattle.total_capacity")}</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-3xl font-bold">{totalCapacity}</div>
-              <p className="text-xs text-gray-500 mt-1">Cattle capacity</p>
+              <p className="text-xs text-gray-500 mt-1">{t("cattle.total_cattle")}</p>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium text-gray-600">Fattening (Engorda)</CardTitle>
+              <CardTitle className="text-sm font-medium text-gray-600">{t("cattle.breeding_type") === "Breeding Type" ? "Fattening (Engorda)" : "Fattening"}</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-3xl font-bold">{fatteningAreas.length}</div>
-              <p className="text-xs text-gray-500 mt-1">Operations</p>
+              <p className="text-xs text-gray-500 mt-1">{t("cattle.active_areas")}</p>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium text-gray-600">Breeding (Crianza)</CardTitle>
+              <CardTitle className="text-sm font-medium text-gray-600">{t("cattle.breeding_type") === "Breeding Type" ? "Breeding (Crianza)" : "Breeding"}</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-3xl font-bold">{breedingAreas.length}</div>
-              <p className="text-xs text-gray-500 mt-1">Operations</p>
+              <p className="text-xs text-gray-500 mt-1">{t("cattle.active_areas")}</p>
             </CardContent>
           </Card>
         </div>
@@ -256,7 +258,7 @@ export default function CattlePage() {
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
             <Card className="w-full max-w-2xl max-h-[90vh] overflow-y-auto">
               <CardHeader className="flex flex-row items-center justify-between pb-4">
-                <CardTitle>{editingId ? "Edit Cattle Area" : "Add New Cattle Area"}</CardTitle>
+                <CardTitle>{editingId ? `${t("cattle.description")}` : t("cattle.add_area")}</CardTitle>
                 <button onClick={() => setShowForm(false)} className="text-gray-500 hover:text-gray-700">
                   <X className="h-5 w-5" />
                 </button>
@@ -264,7 +266,7 @@ export default function CattlePage() {
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Area Name *</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">{t("cattle.area_name")} *</label>
                     <input
                       type="text"
                       value={formData.name}
@@ -274,7 +276,7 @@ export default function CattlePage() {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Business Unit</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">{t("cattle.business_unit")}</label>
                     <select
                       value={formData.business_unit}
                       onChange={(e) => setFormData({ ...formData, business_unit: e.target.value })}
@@ -287,7 +289,7 @@ export default function CattlePage() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t("cattle.description")}</label>
                   <input
                     type="text"
                     value={formData.description}
@@ -299,7 +301,7 @@ export default function CattlePage() {
 
                 <div className="grid grid-cols-3 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Hectares</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">{t("cattle.hectares")}</label>
                     <input
                       type="number"
                       value={formData.hectares}
@@ -310,7 +312,7 @@ export default function CattlePage() {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Capacity (head)</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">{t("cattle.total_capacity")} (head)</label>
                     <input
                       type="number"
                       value={formData.capacity}
@@ -321,7 +323,7 @@ export default function CattlePage() {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">{t("cattle.status")}</label>
                     <select
                       value={formData.status}
                       onChange={(e) => setFormData({ ...formData, status: e.target.value })}
@@ -335,7 +337,7 @@ export default function CattlePage() {
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Grass Type</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">{t("cattle.grass_type")}</label>
                     <input
                       type="text"
                       value={formData.grass_type}
@@ -345,7 +347,7 @@ export default function CattlePage() {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Breeding Type</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">{t("cattle.breeding_type")}</label>
                     <input
                       type="text"
                       value={formData.breeding_type}
@@ -370,7 +372,7 @@ export default function CattlePage() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t("cattle.notes")}</label>
                   <textarea
                     value={formData.notes}
                     onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
@@ -385,7 +387,7 @@ export default function CattlePage() {
                     Cancel
                   </Button>
                   <Button onClick={handleSave} className="bg-amber-600 hover:bg-amber-700">
-                    {editingId ? "Update Area" : "Add Area"}
+                    {editingId ? t("cattle.description") : t("cattle.add_area")}
                   </Button>
                 </div>
               </CardContent>
@@ -395,9 +397,9 @@ export default function CattlePage() {
 
         {/* Areas Grid */}
         {loading ? (
-          <div className="text-center text-gray-500">Loading cattle areas...</div>
+          <div className="text-center text-gray-500">{t("cattle.loading")}</div>
         ) : areas.length === 0 ? (
-          <div className="text-center text-gray-500 py-8">No cattle areas found. Click "Add Area" to get started.</div>
+          <div className="text-center text-gray-500 py-8">{t("cattle.no_areas")}</div>
         ) : (
           <div className="space-y-6">
             {/* Fattening Section */}
@@ -406,7 +408,7 @@ export default function CattlePage() {
                 <div className="flex items-center gap-2 mb-4">
                   <h2 className="text-lg font-semibold">Fattening (Engorda)</h2>
                   <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
-                    {fatteningAreas.length} areas
+                    {fatteningAreas.length} {t("cattle.areas")}
                   </Badge>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -427,22 +429,22 @@ export default function CattlePage() {
                         <div className="space-y-3">
                           <div className="grid grid-cols-2 gap-4">
                             <div>
-                              <p className="text-xs text-gray-500 font-medium">Hectares</p>
+                              <p className="text-xs text-gray-500 font-medium">{t("cattle.hectares")}</p>
                               <p className="text-lg font-semibold">{area.specifications?.hectares} ha</p>
                             </div>
                             <div>
-                              <p className="text-xs text-gray-500 font-medium">Capacity</p>
+                              <p className="text-xs text-gray-500 font-medium">{t("cattle.total_capacity")}</p>
                               <p className="text-lg font-semibold">{area.specifications?.capacity} head</p>
                             </div>
                           </div>
                           {area.specifications?.grass_type && (
                             <div>
-                              <p className="text-xs text-gray-500 font-medium">Grass Type</p>
+                              <p className="text-xs text-gray-500 font-medium">{t("cattle.grass_type")}</p>
                               <p className="text-sm">{area.specifications.grass_type}</p>
                             </div>
                           )}
                           <div>
-                            <p className="text-xs text-gray-500 font-medium">Notes</p>
+                            <p className="text-xs text-gray-500 font-medium">{t("cattle.notes")}</p>
                             <p className="text-sm">{area.notes}</p>
                           </div>
                           <div className="flex gap-2 pt-2">
@@ -479,7 +481,7 @@ export default function CattlePage() {
                 <div className="flex items-center gap-2 mb-4">
                   <h2 className="text-lg font-semibold">Breeding (Crianza)</h2>
                   <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200">
-                    {breedingAreas.length} areas
+                    {breedingAreas.length} {t("cattle.areas")}
                   </Badge>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -500,22 +502,22 @@ export default function CattlePage() {
                         <div className="space-y-3">
                           <div className="grid grid-cols-2 gap-4">
                             <div>
-                              <p className="text-xs text-gray-500 font-medium">Hectares</p>
+                              <p className="text-xs text-gray-500 font-medium">{t("cattle.hectares")}</p>
                               <p className="text-lg font-semibold">{area.specifications?.hectares} ha</p>
                             </div>
                             <div>
-                              <p className="text-xs text-gray-500 font-medium">Capacity</p>
+                              <p className="text-xs text-gray-500 font-medium">{t("cattle.total_capacity")}</p>
                               <p className="text-lg font-semibold">{area.specifications?.capacity} head</p>
                             </div>
                           </div>
                           {area.specifications?.breeding_type && (
                             <div>
-                              <p className="text-xs text-gray-500 font-medium">Breeding Type</p>
+                              <p className="text-xs text-gray-500 font-medium">{t("cattle.breeding_type")}</p>
                               <p className="text-sm">{area.specifications.breeding_type}</p>
                             </div>
                           )}
                           <div>
-                            <p className="text-xs text-gray-500 font-medium">Notes</p>
+                            <p className="text-xs text-gray-500 font-medium">{t("cattle.notes")}</p>
                             <p className="text-sm">{area.notes}</p>
                           </div>
                           <div className="flex gap-2 pt-2">

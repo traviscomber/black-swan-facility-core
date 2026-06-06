@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { createClient } from "@/lib/supabase/server"
 import type { AssetLog } from "@/lib/types"
 import { notFound } from "next/navigation"
-import { AlertTriangle, FileText, MapPin, Calendar } from "lucide-react"
+import { AlertTriangle, FileText, MapIn, Calendar } from "lucide-react"
 import Link from "next/link"
 import QRCode from "react-qr-code"
 
@@ -20,8 +20,8 @@ function formatDate(dateString: string) {
   })
 }
 
-export default async function AssetDetailPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params
+export default async function AssetDetailPage({ params }: { params: { id: string } }) {
+  const { id } = params
   const supabase = await createClient()
 
   const { data: asset } = await supabase.from("assets").select("*").eq("id", id).single()
@@ -90,7 +90,7 @@ export default async function AssetDetailPage({ params }: { params: Promise<{ id
             <Card>
               <CardHeader>
                 <CardTitle>Activity Timeline</CardTitle>
-                <CardDescription>Maintenance logs and events</CardDescription>
+                <CardDescription>Maintenance logs and history</CardDescription>
               </CardHeader>
               <CardContent>
                 {logs && logs.length > 0 ? (
@@ -112,7 +112,10 @@ export default async function AssetDetailPage({ params }: { params: Promise<{ id
                     ))}
                   </div>
                 ) : (
-                  <p className="text-sm text-gray-500">No activity logs yet</p>
+                  <div className="text-center py-8">
+                    <Calendar className="w-12 h-12 mx-auto text-gray-300 mb-3" />
+                    <p className="text-sm text-gray-500">No activity recorded</p>
+                  </div>
                 )}
               </CardContent>
             </Card>
@@ -120,27 +123,38 @@ export default async function AssetDetailPage({ params }: { params: Promise<{ id
 
           {/* Sidebar */}
           <div className="space-y-6">
-            {/* Quick Actions */}
             <Card>
               <CardHeader>
                 <CardTitle>Quick Actions</CardTitle>
               </CardHeader>
               <CardContent className="space-y-2">
-                <Link href={`/issues/report?asset=${id}`}>
-                  <Button variant="outline" className="w-full justify-start bg-transparent">
-                    <AlertTriangle className="mr-2 h-4 w-4" />
+                <Button variant="outline" className="w-full justify-start gap-2 bg-transparent" asChild>
+                  <Link href={`/assets/${id}/report`}>
+                    <AlertTriangle className="w-4 h-4" />
                     Report Issue
-                  </Button>
-                </Link>
+                  </Link>
+                </Button>
+                <Button variant="outline" className="w-full justify-start gap-2 bg-transparent" asChild>
+                  <Link href={`/assets/${id}/log`}>
+                    <FileText className="w-4 h-4" />
+                    Add Log
+                  </Link>
+                </Button>
+                <Button variant="outline" className="w-full justify-start gap-2 bg-transparent" asChild>
+                  <a href={`${asset.documentation_url || "#"}`} target="_blank" rel="noopener noreferrer">
+                    <FileText className="w-4 h-4" />
+                    View Manual
+                  </a>
+                </Button>
                 <Button variant="outline" className="w-full justify-start bg-transparent">
                   <Calendar className="mr-2 h-4 w-4" />
-                  Add Log
+                  {t("assets.add_log")}
                 </Button>
                 {asset.manual_url && (
                   <a href={asset.manual_url} target="_blank" rel="noopener noreferrer">
                     <Button variant="outline" className="w-full justify-start bg-transparent">
                       <FileText className="mr-2 h-4 w-4" />
-                      View Manual
+                      {t("assets.view_manual")}
                     </Button>
                   </a>
                 )}

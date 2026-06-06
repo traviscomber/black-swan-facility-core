@@ -31,23 +31,28 @@ export function EmployeePhotoUpload({
 
     setIsUploading(true)
     try {
-      const supabase = createBrowserClient()
       const fileName = `employee-${employeeId}-${Date.now()}`
+      const filePath = `employees/${fileName}`
 
-      // Upload to Blob storage
-      const response = await fetch("/api/upload", {
+      // Upload to storage with proper error handling
+      const response = await fetch(`/api/upload?path=${encodeURIComponent(filePath)}`, {
         method: "POST",
-        headers: { "Content-Type": "application/octet-stream" },
+        headers: { 
+          "Content-Type": file.type,
+          "x-file-path": filePath,
+        },
         body: file,
-        // @ts-ignore
-        blobMetadata: { pathname: `employees/${fileName}` },
       })
 
-      if (!response.ok) throw new Error("Upload failed")
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || "Upload failed")
+      }
 
       const { url } = await response.json()
 
       // Update employee record with photo URL
+      const supabase = createBrowserClient()
       const { error } = await supabase.from("employees").update({ photo_url: url }).eq("id", employeeId)
 
       if (error) throw error
@@ -56,7 +61,7 @@ export function EmployeePhotoUpload({
       onPhotoUploaded?.(url)
     } catch (error) {
       console.error("Error uploading photo:", error)
-      alert("Failed to upload photo")
+      alert(`Failed to upload photo: ${error instanceof Error ? error.message : "Unknown error"}`)
     } finally {
       setIsUploading(false)
     }
@@ -92,7 +97,7 @@ export function EmployeePhotoUpload({
       <label className="text-sm font-medium">Employee Photo</label>
 
       {preview ? (
-        <div className="relative w-24 h-24 rounded-lg overflow-hidden bg-slate-200">
+        <div className="relative w-44 h-44 rounded-lg overflow-hidden bg-slate-200">
           <img src={preview || "/placeholder.svg"} alt={employeeName} className="w-full h-full object-cover" />
           <button
             onClick={() => {
