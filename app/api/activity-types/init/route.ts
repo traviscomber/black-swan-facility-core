@@ -98,33 +98,53 @@ export async function POST(request: Request) {
     const supabase = await createServerClient()
 
     // Get current activity types
-    const { data: existingTypes } = await supabase.from('activity_types').select('id')
+    const { data: existingTypes } = await supabase.from('activity_types').select('*')
 
-    // Insert only new activity types (avoid duplicates)
-    const typesToInsert = SECTION_BASED_ACTIVITY_TYPES.filter(
-      (type) => !existingTypes?.some((existing) => existing.id === type.id)
+    // Check if we already have the section-based types
+    const hasNewTypes = existingTypes?.some((type) =>
+      SECTION_BASED_ACTIVITY_TYPES.some((newType) => newType.id === type.id)
     )
 
-    if (typesToInsert.length > 0) {
-      const { error } = await supabase.from('activity_types').insert(typesToInsert)
-
-      if (error) {
-        console.error('[v0] Error inserting activity types:', error)
-        return NextResponse.json({ error: error.message }, { status: 400 })
-      }
-
+    if (hasNewTypes) {
+      console.log('[v0] Activity types already using section-based system')
       return NextResponse.json({
-        message: `${typesToInsert.length} activity types initialized`,
-        inserted: typesToInsert.length,
-        total: SECTION_BASED_ACTIVITY_TYPES.length,
-      })
-    } else {
-      return NextResponse.json({
-        message: 'Activity types already initialized',
+        message: 'Activity types already initialized with section-based system',
         inserted: 0,
         total: SECTION_BASED_ACTIVITY_TYPES.length,
       })
     }
+
+    // Delete old activity types if they exist
+    if (existingTypes && existingTypes.length > 0) {
+      console.log('[v0] Removing old activity types...')
+      const { error: deleteError } = await supabase
+        .from('activity_types')
+        .delete()
+        .neq('id', '')
+
+      if (deleteError) {
+        console.warn('[v0] Warning deleting old types:', deleteError.message)
+        // Continue anyway
+      }
+    }
+
+    // Insert section-based activity types
+    const { error: insertError, data } = await supabase
+      .from('activity_types')
+      .insert(SECTION_BASED_ACTIVITY_TYPES)
+      .select()
+
+    if (insertError) {
+      console.error('[v0] Error inserting activity types:', insertError)
+      return NextResponse.json({ error: insertError.message }, { status: 400 })
+    }
+
+    console.log('[v0] Activity types initialized:', data?.length)
+    return NextResponse.json({
+      message: `${data?.length || 0} activity types initialized`,
+      inserted: data?.length || 0,
+      total: SECTION_BASED_ACTIVITY_TYPES.length,
+    })
   } catch (error) {
     console.error('[v0] Init activity types error:', error)
     return NextResponse.json(

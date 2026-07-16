@@ -60,25 +60,28 @@ export default function ActivitiesCalendarPage() {
   })
 
   useEffect(() => {
+    // Initialize activity types on very first load only
+    const initAndLoad = async () => {
+      await initializeActivityTypes()
+      await loadData()
+    }
+    initAndLoad()
+  }, [])
+
+  useEffect(() => {
+    // Load data when month changes
     loadData()
-    // Initialize activity types on first load if empty
-    initializeActivityTypes()
   }, [currentMonth])
 
   async function initializeActivityTypes() {
     try {
-      const { data: types } = await supabase.from('activity_types').select('id')
-      
-      // Only initialize if no types exist
-      if (!types || types.length === 0) {
-        console.log('[v0] Initializing activity types from site sections...')
-        const response = await fetch('/api/activity-types/init', { method: 'POST' })
-        if (response.ok) {
-          const result = await response.json()
-          console.log('[v0] Activity types initialized:', result)
-          // Reload data after initialization
-          loadData()
-        }
+      console.log('[v0] Checking and initializing activity types...')
+      const response = await fetch('/api/activity-types/init', { method: 'POST' })
+      if (response.ok) {
+        const result = await response.json()
+        console.log('[v0] Activity types result:', result)
+      } else {
+        console.error('[v0] Failed to initialize activity types')
       }
     } catch (error) {
       console.error('[v0] Error initializing activity types:', error)
