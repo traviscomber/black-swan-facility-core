@@ -71,7 +71,7 @@ export function ActivityFormDialog({
 
   const [formData, setFormData] = useState({
     title: '',
-    activity_type_id: activityTypes[0]?.id || '',
+    activity_type_id: '',
     start_date: selectedDate ? format(selectedDate, 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd'),
     start_time: '10:00',
     end_date: '',
@@ -107,12 +107,15 @@ export function ActivityFormDialog({
         recurring_end_date: editingActivity.recurring_end_date || '',
       })
     } else {
+      // Initialize with first activity type when dialog opens
+      const firstTypeId = activityTypes.length > 0 ? activityTypes[0].id : ''
       setFormData((prev) => ({
         ...prev,
+        activity_type_id: firstTypeId,
         start_date: selectedDate ? format(selectedDate, 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd'),
       }))
     }
-  }, [editingActivity, selectedDate, open])
+  }, [editingActivity, selectedDate, open, activityTypes])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -222,7 +225,9 @@ export function ActivityFormDialog({
                 value={formData.activity_type_id}
                 onChange={(e) => setFormData((prev) => ({ ...prev, activity_type_id: e.target.value }))}
                 className="w-full px-3 py-2 bg-input border border-border rounded-md text-sm"
+                required
               >
+                <option value="">-- Selecciona un tipo --</option>
                 {activityTypes.map((type) => (
                   <option key={type.id} value={type.id}>
                     {type.icon} {type.name}
