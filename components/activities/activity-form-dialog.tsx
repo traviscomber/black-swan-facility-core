@@ -120,22 +120,44 @@ export function ActivityFormDialog({
     setLoading(true)
 
     try {
-      const payload = {
-        title: formData.title,
+      // Validate required fields
+      if (!formData.title.trim()) {
+        throw new Error('El título es requerido')
+      }
+      if (!formData.activity_type_id) {
+        throw new Error('El tipo de actividad es requerido')
+      }
+      if (!formData.start_date) {
+        throw new Error('La fecha de inicio es requerida')
+      }
+
+      // Get current user for created_by field (only on insert)
+      let userId: string | null = null
+      if (!editingActivity) {
+        const { data: { user } } = await supabase.auth.getUser()
+        userId = user?.id || null
+      }
+
+      const payload: any = {
+        title: formData.title.trim(),
         activity_type_id: formData.activity_type_id,
         start_date: formData.start_date,
-        start_time: formData.start_time,
-        end_date: formData.end_date || null,
+        start_time: formData.start_time || null,
+        end_date: formData.end_date?.trim() ? formData.end_date : null,
         end_time: formData.end_time || null,
-        description: formData.description,
-        location: formData.location,
-        capacity: formData.capacity ? parseInt(formData.capacity) : null,
-        current_attendees: formData.current_attendees ? parseInt(formData.current_attendees) : 0,
-        color_override: formData.color_override || null,
+        description: formData.description?.trim() || null,
+        location: formData.location?.trim() || null,
+        capacity: formData.capacity ? parseInt(formData.capacity, 10) : null,
+        current_attendees: formData.current_attendees ? parseInt(formData.current_attendees, 10) : 0,
+        color_override: formData.color_override?.trim() || null,
         status: formData.status,
         recurring: formData.recurring,
         recurring_pattern: formData.recurring ? formData.recurring_pattern : null,
-        recurring_end_date: formData.recurring && formData.recurring_end_date ? formData.recurring_end_date : null,
+        recurring_end_date: formData.recurring && formData.recurring_end_date?.trim() ? formData.recurring_end_date : null,
+      }
+
+      if (!editingActivity && userId) {
+        payload.created_by = userId
       }
 
       if (editingActivity) {
@@ -144,17 +166,30 @@ export function ActivityFormDialog({
           .update(payload)
           .eq('id', editingActivity.id)
 
-        if (updateError) throw updateError
+        if (updateError) {
+          console.error('[v0] Update error:', updateError)
+          throw updateError
+        }
       } else {
-        const { error: insertError } = await supabase.from('activities').insert([payload])
+        const { data, error: insertError } = await supabase
+          .from('activities')
+          .insert([payload])
+          .select()
 
-        if (insertError) throw insertError
+        if (insertError) {
+          console.error('[v0] Insert error:', insertError)
+          throw insertError
+        }
+
+        console.log('[v0] Activity created:', data)
       }
 
       onOpenChange(false)
       onActivitySaved?.()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error guardando actividad')
+      const errorMessage = err instanceof Error ? err.message : 'Error guardando actividad'
+      console.error('[v0] Save error:', errorMessage)
+      setError(errorMessage)
     } finally {
       setLoading(false)
     }
