@@ -88,6 +88,16 @@ INSERT INTO auth.users (
     '{"role":"approver"}',
     NOW(),
     NOW()
+  ),
+  (
+    '00000000-0000-0000-0000-000000000003'::uuid,
+    'approver2@blackswan.com',
+    NOW(),
+    crypt('TemporaryPassword123!', gen_salt('bf')),
+    '{"provider":"email","providers":["email"]}',
+    '{"role":"approver"}',
+    NOW(),
+    NOW()
   )
 ON CONFLICT DO NOTHING;
 
@@ -95,7 +105,8 @@ ON CONFLICT DO NOTHING;
 INSERT INTO public.procurement_approvers (user_id, role, approval_limit_clp, is_active)
 VALUES
   ('00000000-0000-0000-0000-000000000001'::uuid, 'admin', NULL, true),
-  ('00000000-0000-0000-0000-000000000002'::uuid, 'approver', 5000000, true)
+  ('00000000-0000-0000-0000-000000000002'::uuid, 'approver', 5000000, true),
+  ('00000000-0000-0000-0000-000000000003'::uuid, 'approver', 10000000, true)
 ON CONFLICT (user_id) DO NOTHING;
 
 -- Create function to log approver actions
