@@ -276,6 +276,8 @@ export const translations = {
     'nav.volunteers_tip': 'Volunteer management',
     'nav.activities': 'Activities',
     'nav.activities_tip': 'Activities calendar',
+    'nav.activities_calendar': 'Activities Calendar',
+    'nav.activities_calendar_tip': 'Schedule and manage all property activities and events',
     
     // Maintenance
     'nav.maintenance_requests': 'Maintenance',
@@ -1147,6 +1149,8 @@ export const translations = {
     'nav.volunteers_tip': 'Gestión de voluntarios',
     'nav.activities': 'Actividades',
     'nav.activities_tip': 'Calendario de actividades',
+    'nav.activities_calendar': 'Calendario de Actividades',
+    'nav.activities_calendar_tip': 'Programa y gestiona todas las actividades y eventos de la propiedad',
     
     // Maintenance
     'nav.maintenance_requests': 'Mantenimiento',

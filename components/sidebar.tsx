@@ -18,6 +18,7 @@ const navigationGroups = [
       { nameKey: "nav.dashboard", href: "/", icon: LayoutDashboard, tipKey: "nav.dashboard_tip" },
       { nameKey: "nav.budgets", href: "/budgets", icon: DollarSign, tipKey: "nav.budgets_tip" },
       { nameKey: "nav.people_operations", href: "/employees", icon: Users, tipKey: "nav.employees_tip" },
+      { nameKey: "nav.activities_calendar", href: "/activities-calendar", icon: Calendar, tipKey: "nav.activities_calendar_tip" },
       { nameKey: "nav.energy_management", href: "/energy", icon: Zap, tipKey: "nav.management_tip" },
       { nameKey: "nav.ai_ops", href: "/ai-ops", icon: Bot, tipKey: "nav.ai_ops_tip" },
       { nameKey: "nav.admin", href: "/admin", icon: Settings, tipKey: "nav.admin_tip" },

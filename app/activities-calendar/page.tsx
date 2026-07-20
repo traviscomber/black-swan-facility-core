@@ -60,8 +60,33 @@ export default function ActivitiesCalendarPage() {
   })
 
   useEffect(() => {
+    // Initialize activity types on very first load only
+    const initAndLoad = async () => {
+      await initializeActivityTypes()
+      await loadData()
+    }
+    initAndLoad()
+  }, [])
+
+  useEffect(() => {
+    // Load data when month changes
     loadData()
   }, [currentMonth])
+
+  async function initializeActivityTypes() {
+    try {
+      console.log('[v0] Checking and initializing activity types...')
+      const response = await fetch('/api/activity-types/init', { method: 'POST' })
+      if (response.ok) {
+        const result = await response.json()
+        console.log('[v0] Activity types result:', result)
+      } else {
+        console.error('[v0] Failed to initialize activity types')
+      }
+    } catch (error) {
+      console.error('[v0] Error initializing activity types:', error)
+    }
+  }
 
   async function loadData() {
     try {
@@ -123,6 +148,17 @@ export default function ActivitiesCalendarPage() {
   }
 
   const filteredActivityTypes = selectedType === 'all' ? activityTypes : activityTypes.filter((t) => t.id === selectedType)
+  
+  // Get upcoming events (sorted and limited)
+  const upcomingEvents = activities
+    .filter((a) => selectedType === 'all' || a.activity_type_id === selectedType)
+    .filter((a) =>
+      !searchQuery ||
+      a.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      a.description?.toLowerCase().includes(searchQuery.toLowerCase())
+    )
+    .sort((a, b) => new Date(a.start_date).getTime() - new Date(b.start_date).getTime())
+    .slice(0, 5)
 
   return (
     <AppLayout>
@@ -185,119 +221,202 @@ export default function ActivitiesCalendarPage() {
             </div>
           </div>
 
-          {/* Month Navigation */}
-          <Card>
-            <CardHeader className="pb-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}
-                  >
-                    <ChevronLeft className="h-5 w-5" />
-                  </Button>
-                  <h2 className="text-2xl font-bold text-accent min-w-48 text-center">
-                    {format(currentMonth, 'MMMM yyyy', { locale: es })}
-                  </h2>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}
-                  >
-                    <ChevronRight className="h-5 w-5" />
-                  </Button>
+          {/* Calendar Grid with Upcoming Events Sidebar */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Calendar */}
+            <Card className="lg:col-span-2">
+              <CardHeader className="pb-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}
+                    >
+                      <ChevronLeft className="h-5 w-5" />
+                    </Button>
+                    <h2 className="text-2xl font-bold text-accent min-w-48 text-center">
+                      {format(currentMonth, 'MMMM yyyy', { locale: es })}
+                    </h2>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}
+                    >
+                      <ChevronRight className="h-5 w-5" />
+                    </Button>
+                  </div>
+
+                  <div className="text-sm text-muted-foreground">
+                    {activities.length} eventos
+                  </div>
                 </div>
+              </CardHeader>
 
-                <div className="text-sm text-muted-foreground">
-                  Total: {activities.length} actividades
-                </div>
-              </div>
-            </CardHeader>
-
-            <CardContent>
-              {/* Calendar Grid */}
-              <div className="space-y-4">
-                {/* Day headers */}
-                <div className="grid grid-cols-7 gap-2">
-                  {['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sab'].map((day) => (
-                    <div key={day} className="text-center font-bold text-sm text-accent py-2 border-b-2 border-accent/30">
-                      {day}
-                    </div>
-                  ))}
-                </div>
-
-                {/* Calendar cells */}
-                <div className="grid grid-cols-7 gap-2 auto-rows-max">
-                  {daysInMonth.map((day) => {
-                    const dayActivities = getActivitiesForDay(day)
-                    const isCurrentMonth = isSameMonth(day, currentMonth)
-                    const isToday = isSameDay(day, new Date())
-
-                    return (
-                      <div
-                        key={day.toString()}
-                        className={`rounded-lg border-2 transition-all min-h-24 p-2 cursor-pointer hover:shadow-lg ${
-                          isToday
-                            ? 'border-accent bg-accent/10'
-                            : isCurrentMonth
-                              ? 'border-border bg-card'
-                              : 'border-muted/20 bg-muted/5 text-muted-foreground'
-                        }`}
-                        onClick={() => {
-                          setSelectedDate(day)
-                          setEditingActivity(null)
-                          setShowFormDialog(true)
-                        }}
-                      >
-                        {/* Day number */}
-                        <div className={`text-xs font-bold mb-1 ${isToday ? 'text-accent' : 'text-foreground'}`}>
-                          {format(day, 'd')}
-                        </div>
-
-                        {/* Activities */}
-                        <div className="space-y-1">
-                          {dayActivities.slice(0, 2).map((activity) => {
-                            const type = getActivityType(activity.activity_type_id)
-                            return (
-                              <div
-                                key={activity.id}
-                                className="text-xs p-1 rounded bg-opacity-20 truncate cursor-pointer hover:opacity-80 transition-opacity text-white"
-                                style={{
-                                  backgroundColor: activity.color_override || type?.color || '#726658',
-                                  borderLeft: `3px solid ${activity.color_override || type?.color || '#726658'}`,
-                                }}
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  handleEditActivity(activity)
-                                }}
-                                title={activity.title}
-                              >
-                                <span className="mr-1">{type?.icon}</span>
-                                {activity.title}
-                              </div>
-                            )
-                          })}
-                          {dayActivities.length > 2 && (
-                            <div className="text-xs text-accent font-semibold px-1">
-                              +{dayActivities.length - 2} más
-                            </div>
-                          )}
-                        </div>
+              <CardContent>
+                {/* Calendar Grid */}
+                <div className="space-y-4">
+                  {/* Day headers */}
+                  <div className="grid grid-cols-7 gap-2">
+                    {['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sab'].map((day) => (
+                      <div key={day} className="text-center font-bold text-sm text-accent py-2 border-b-2 border-accent/30">
+                        {day}
                       </div>
-                    )
-                  })}
+                    ))}
+                  </div>
+
+                  {/* Calendar cells */}
+                  <div className="grid grid-cols-7 gap-2 auto-rows-max">
+                    {daysInMonth.map((day) => {
+                      const dayActivities = getActivitiesForDay(day)
+                      const isCurrentMonth = isSameMonth(day, currentMonth)
+                      const isToday = isSameDay(day, new Date())
+
+                      return (
+                        <div
+                          key={day.toString()}
+                          className={`rounded-lg border-2 transition-all min-h-24 p-2 cursor-pointer hover:shadow-lg ${
+                            isToday
+                              ? 'border-accent bg-accent/10'
+                              : isCurrentMonth
+                                ? 'border-border bg-card'
+                                : 'border-muted/20 bg-muted/5 text-muted-foreground'
+                          }`}
+                          onClick={() => {
+                            setSelectedDate(day)
+                            setEditingActivity(null)
+                            setShowFormDialog(true)
+                          }}
+                        >
+                          {/* Day number */}
+                          <div className={`text-xs font-bold mb-1 ${isToday ? 'text-accent' : 'text-foreground'}`}>
+                            {format(day, 'd')}
+                          </div>
+
+                          {/* Activities */}
+                          <div className="space-y-1">
+                            {dayActivities.slice(0, 2).map((activity) => {
+                              const type = getActivityType(activity.activity_type_id)
+                              return (
+                                <div
+                                  key={activity.id}
+                                  className="text-xs p-1 rounded bg-opacity-20 truncate cursor-pointer hover:opacity-80 transition-opacity text-white"
+                                  style={{
+                                    backgroundColor: activity.color_override || type?.color || '#726658',
+                                    borderLeft: `3px solid ${activity.color_override || type?.color || '#726658'}`,
+                                  }}
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    handleEditActivity(activity)
+                                  }}
+                                  title={activity.title}
+                                >
+                                  <span className="mr-1">{type?.icon}</span>
+                                  {activity.title}
+                                </div>
+                              )
+                            })}
+                            {dayActivities.length > 2 && (
+                              <div className="text-xs text-accent font-semibold px-1">
+                                +{dayActivities.length - 2} más
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+
+            {/* Upcoming Events Sidebar */}
+            <Card className="lg:col-span-1 h-fit sticky top-4">
+              <CardHeader className="pb-3">
+                <div className="flex items-center gap-2">
+                  <div className="h-5 w-1 bg-accent rounded" />
+                  <CardTitle className="text-lg">Próximos eventos</CardTitle>
+                </div>
+                {upcomingEvents.length > 0 && (
+                  <CardDescription>{upcomingEvents.length} eventos programados</CardDescription>
+                )}
+              </CardHeader>
+
+              <CardContent>
+                <div className="space-y-3">
+                  {upcomingEvents.length > 0 ? (
+                    upcomingEvents.map((activity) => {
+                      const type = getActivityType(activity.activity_type_id)
+                      const daysDiff = Math.floor(
+                        (new Date(activity.start_date).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)
+                      )
+                      
+                      return (
+                        <div
+                          key={activity.id}
+                          className="border rounded-lg p-3 hover:shadow-md transition-all cursor-pointer space-y-2 hover:bg-muted/50"
+                          style={{
+                            borderLeft: `4px solid ${activity.color_override || type?.color || '#726658'}`,
+                          }}
+                          onClick={() => handleEditActivity(activity)}
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-1 mb-1">
+                                <span className="text-sm">{type?.icon}</span>
+                                <h4 className="text-sm font-semibold text-accent truncate">{activity.title}</h4>
+                              </div>
+                              <p className="text-xs text-muted-foreground">
+                                {daysDiff === 0 ? 'Hoy' : daysDiff === 1 ? 'Mañana' : `${daysDiff}d atrás`}
+                              </p>
+                            </div>
+                            <span className="text-xs px-2 py-1 rounded bg-accent/20 text-accent whitespace-nowrap flex-shrink-0">
+                              {type?.name}
+                            </span>
+                          </div>
+                          <p className="text-xs text-muted-foreground line-clamp-2">
+                            {format(parseISO(activity.start_date), 'dd MMM yyyy', { locale: es })}
+                          </p>
+                        </div>
+                      )
+                    })
+                  ) : (
+                    <div className="text-center py-8">
+                      <p className="text-sm text-muted-foreground">No hay eventos próximos</p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Legend */}
+                {activityTypes.length > 0 && (
+                  <div className="mt-6 pt-4 border-t space-y-2">
+                    <p className="text-xs font-semibold text-foreground mb-3">Tipos de eventos</p>
+                    <div className="space-y-2">
+                      {activityTypes.slice(0, 6).map((type) => (
+                        <div key={type.id} className="flex items-center gap-2 text-xs">
+                          <div
+                            className="h-2 w-2 rounded-full"
+                            style={{ backgroundColor: type.color }}
+                          />
+                          <span className="text-muted-foreground">{type.name}</span>
+                        </div>
+                      ))}
+                      {activityTypes.length > 6 && (
+                        <p className="text-xs text-muted-foreground">+{activityTypes.length - 6} tipos más</p>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
 
           {/* Activities List */}
           {activities.length > 0 && (
             <Card>
               <CardHeader>
-                <CardTitle>Próximas Actividades</CardTitle>
-                <CardDescription>Listado de todas las actividades programadas</CardDescription>
+                <CardTitle>Todas las Actividades</CardTitle>
+                <CardDescription>Listado completo de actividades programadas</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
