@@ -1,5 +1,6 @@
 "use client"
 
+import Link from "next/link"
 import { AppLayout } from "@/components/app-layout"
 import { PageHeader } from "@/components/page-header"
 import { Button } from "@/components/ui/button"
@@ -7,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { createBrowserClient } from "@/lib/supabase/client"
-import { Plus, Pencil, Download } from "lucide-react"
+import { Plus, Pencil, Download, ClipboardList, ShieldCheck } from "lucide-react"
 import { useEffect, useState } from "react"
 import { AddProcurementDialog } from "@/components/add-procurement-dialog"
 import { EditProcurementDialog } from "@/components/edit-procurement-dialog"
@@ -120,7 +121,19 @@ export default function ProcurementPage() {
         title="Procurement & Acquisitions"
         description="Manage supplier relationships, purchase orders, and acquisitions"
         actions={
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" asChild>
+              <Link href="/procurement/requests">
+                <ClipboardList className="mr-2 h-4 w-4" />
+                Solicitudes
+              </Link>
+            </Button>
+            <Button variant="outline" asChild>
+              <Link href="/procurement/approvals">
+                <ShieldCheck className="mr-2 h-4 w-4" />
+                Aprobaciones
+              </Link>
+            </Button>
             <Button variant="outline" onClick={exportToCSV} disabled={items.length === 0}>
               <Download className="mr-2 h-4 w-4" />
               Export CSV
@@ -134,7 +147,6 @@ export default function ProcurementPage() {
       />
 
       <div className="p-8 space-y-6">
-        {/* KPI Cards */}
         <div className="grid gap-4 md:grid-cols-4">
           <Card className="border-secondary hover:border-primary/50 transition-colors">
             <CardHeader className="pb-2">
@@ -173,7 +185,6 @@ export default function ProcurementPage() {
           </Card>
         </div>
 
-        {/* Procurement Items Table */}
         <Card>
           <CardHeader>
             <CardTitle>Purchase Orders</CardTitle>
