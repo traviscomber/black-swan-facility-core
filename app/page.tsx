@@ -39,6 +39,7 @@ interface OperationalAlert {
 export default function Dashboard() {
   const { t } = useLanguage()
   const [searchDialogOpen, setSearchDialogOpen] = useState(false)
+  const [currentTime, setCurrentTime] = useState<string>('')
   const [metrics, setMetrics] = useState<DashboardMetrics>({
     totalRooms: 0,
     totalBeds: 0,
@@ -58,6 +59,10 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true)
 
   const supabase = createBrowserClient()
+
+  useEffect(() => {
+    setCurrentTime(format(new Date(), 'PPP p'))
+  }, [])
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -198,7 +203,7 @@ export default function Dashboard() {
                   <div className="h-2 w-2 rounded-full bg-green-600 animate-pulse"></div>
                   <span className="text-sm font-medium text-green-700">Operational</span>
                 </div>
-                <p className="text-xs text-gray-500 mt-2">{format(new Date(), 'PPP p')}</p>
+                <p className="text-xs text-gray-500 mt-2">{currentTime}</p>
               </div>
             </div>
           </div>
