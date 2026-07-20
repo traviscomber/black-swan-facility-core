@@ -1,3 +1,5 @@
+create sequence if not exists public.procurement_request_number_seq start 1;
+
 create table if not exists public.procurement_requests (
   id uuid primary key default gen_random_uuid(),
   request_number text unique,
@@ -45,8 +47,6 @@ begin
   return new;
 end;
 $$;
-
-create sequence if not exists public.procurement_request_number_seq start 1;
 
 create or replace function public.set_procurement_requests_updated_at()
 returns trigger
