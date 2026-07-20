@@ -40,6 +40,7 @@ export default function Dashboard() {
   const { t } = useLanguage()
   const [searchDialogOpen, setSearchDialogOpen] = useState(false)
   const [currentTime, setCurrentTime] = useState<string>('')
+  const [isClient, setIsClient] = useState(false)
   const [metrics, setMetrics] = useState<DashboardMetrics>({
     totalRooms: 0,
     totalBeds: 0,
@@ -61,6 +62,7 @@ export default function Dashboard() {
   const supabase = createBrowserClient()
 
   useEffect(() => {
+    setIsClient(true)
     setCurrentTime(format(new Date(), 'PPP p'))
   }, [])
 
@@ -203,7 +205,7 @@ export default function Dashboard() {
                   <div className="h-2 w-2 rounded-full bg-green-600 animate-pulse"></div>
                   <span className="text-sm font-medium text-green-700">Operational</span>
                 </div>
-                <p className="text-xs text-gray-500 mt-2">{currentTime}</p>
+                {isClient && <p className="text-xs text-gray-500 mt-2">{currentTime}</p>}
               </div>
             </div>
           </div>
