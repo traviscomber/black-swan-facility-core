@@ -16,7 +16,7 @@ create table if not exists public.procurement_requests (
   region text not null default 'Los Ríos',
   commune text not null default 'Valdivia',
   delivery_location text,
-  requested_by uuid default auth.uid(),
+  requested_by uuid not null default auth.uid(),
   reviewed_by uuid,
   reviewed_at timestamptz,
   review_notes text,
@@ -34,10 +34,13 @@ create index if not exists procurement_requests_required_date_idx
 create index if not exists procurement_requests_commune_idx
   on public.procurement_requests(commune);
 
+create index if not exists procurement_requests_requester_idx
+  on public.procurement_requests(requested_by, created_at desc);
+
 create or replace function public.set_procurement_request_number()
 returns trigger
 language plpgsql
-security definer
+security invoker
 set search_path = public
 as $$
 begin
@@ -51,6 +54,8 @@ $$;
 create or replace function public.set_procurement_requests_updated_at()
 returns trigger
 language plpgsql
+security invoker
+set search_path = public
 as $$
 begin
   new.updated_at := now();
@@ -70,27 +75,48 @@ for each row execute function public.set_procurement_requests_updated_at();
 
 alter table public.procurement_requests enable row level security;
 
+grant select, insert, update on public.procurement_requests to authenticated;
+grant usage, select on sequence public.procurement_request_number_seq to authenticated;
+
 drop policy if exists "Authenticated users can view procurement requests" on public.procurement_requests;
-create policy "Authenticated users can view procurement requests"
+drop policy if exists "Requesters can view procurement requests" on public.procurement_requests;
+create policy "Requesters can view procurement requests"
 on public.procurement_requests
 for select
 to authenticated
-using (true);
+using (requested_by = (select auth.uid()));
 
 drop policy if exists "Authenticated users can create procurement requests" on public.procurement_requests;
-create policy "Authenticated users can create procurement requests"
+drop policy if exists "Requesters can create procurement requests" on public.procurement_requests;
+create policy "Requesters can create procurement requests"
 on public.procurement_requests
 for insert
 to authenticated
-with check (requested_by = auth.uid() or requested_by is null);
+with check (
+  requested_by = (select auth.uid())
+  and status in ('draft', 'submitted')
+  and reviewed_by is null
+  and reviewed_at is null
+  and procurement_item_id is null
+);
 
 drop policy if exists "Authenticated users can update procurement requests" on public.procurement_requests;
-create policy "Authenticated users can update procurement requests"
+drop policy if exists "Requesters can update draft procurement requests" on public.procurement_requests;
+create policy "Requesters can update draft procurement requests"
 on public.procurement_requests
 for update
 to authenticated
-using (true)
-with check (true);
+using (
+  requested_by = (select auth.uid())
+  and status = 'draft'
+)
+with check (
+  requested_by = (select auth.uid())
+  and status in ('draft', 'submitted')
+  and reviewed_by is null
+  and reviewed_at is null
+  and procurement_item_id is null
+);
 
 comment on table public.procurement_requests is
   'Pre-purchase procurement requests. Additive to the existing procurement_items purchase-order workflow.';
