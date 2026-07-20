@@ -45,6 +45,13 @@ as $$
   end;
 $$;
 
+drop policy if exists "Approvers can view procurement requests" on public.procurement_requests;
+create policy "Approvers can view procurement requests"
+on public.procurement_requests
+for select
+to authenticated
+using (public.is_procurement_approver());
+
 create or replace function public.decide_procurement_request(
   p_request_id uuid,
   p_decision text,
