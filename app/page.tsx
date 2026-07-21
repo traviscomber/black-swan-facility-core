@@ -74,7 +74,7 @@ const modules = [
     color: "#726658",
   },
   {
-    label: "Procurement",
+    label: "Compras",
     description: "Solicitudes y aprobaciones",
     icon: ShoppingCart,
     href: "/procurement",

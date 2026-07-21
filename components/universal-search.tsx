@@ -96,8 +96,8 @@ const navigationPages = [
   },
   {
     id: "procurement",
-    title: "Procurement",
-    subtitle: "Purchase orders and acquisitions",
+    title: "Compras",
+    subtitle: "Órdenes de compra y adquisiciones",
     href: "/procurement",
     type: "page" as const,
   },
@@ -110,8 +110,8 @@ const navigationPages = [
   },
   {
     id: "procurement-analytics",
-    title: "Procurement Analytics",
-    subtitle: "Spending analysis and supplier performance",
+    title: "Analítica de Compras",
+    subtitle: "Análisis de gasto y rendimiento de proveedores",
     href: "/procurement/analytics",
     type: "page" as const,
   },

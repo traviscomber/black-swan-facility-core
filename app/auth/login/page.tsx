@@ -91,7 +91,7 @@ export default function LoginPage() {
               Iniciar sesión
             </h1>
             <p style={{ color: 'var(--muted-foreground)', fontSize: 'var(--font-size-sm)' }}>
-              Procurement Approvals — ingresa tus credenciales
+              Aprobaciones de Compras — ingresa tus credenciales
             </p>
           </div>
 

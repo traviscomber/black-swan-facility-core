@@ -144,7 +144,7 @@ export default function ProcurementApprovalsPage() {
   return (
     <AppLayout>
       <PageHeader
-        title="Aprobaciones de procurement"
+        title="Aprobaciones de Compras"
         description="Decisiones humanas con límite monetario y trazabilidad"
         actions={
           <div className="flex gap-2">

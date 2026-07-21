@@ -767,10 +767,10 @@ export const translations = {
     'pages.report_issue_desc': 'Submit a new facility or infrastructure issue',
     
     // Page Titles & Descriptions (Procurement & Inventory)
-    'pages.procurement_analytics': 'Procurement Analytics',
-    'pages.procurement_analytics_desc': 'Budget tracking and procurement insights',
-    'pages.procurement_acquisitions': 'Procurement & Acquisitions',
-    'pages.procurement_acquisitions_desc': 'Manage supplier relationships, purchase orders, and acquisitions',
+    'pages.procurement_analytics': 'Analítica de Compras',
+    'pages.procurement_analytics_desc': 'Seguimiento de presupuesto e indicadores de compras',
+    'pages.procurement_acquisitions': 'Compras',
+    'pages.procurement_acquisitions_desc': 'Gestión de proveedores, órdenes de compra y adquisiciones',
     'pages.supplier_management': 'Supplier Management',
     'pages.supplier_management_desc': 'Manage supplier relationships and contact information',
     
