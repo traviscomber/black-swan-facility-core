@@ -188,7 +188,15 @@ begin
       round(sum(r.rate_per_night * n.multiplier), 2) as lodging_subtotal
     from candidate_rooms r
     join nightly n on n.room_id = r.id
-    group by r.id
+    group by
+      r.id,
+      r.room_number,
+      r.room_type,
+      r.location,
+      r.location_id,
+      r.capacity,
+      r.max_guests,
+      r.rate_per_night
   ), valid_rooms as (
     select *
     from room_totals
