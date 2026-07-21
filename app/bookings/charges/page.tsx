@@ -1,7 +1,8 @@
 "use client"
 
+import Link from "next/link"
 import { useCallback, useEffect, useMemo, useState } from "react"
-import { Minus, Plus, ReceiptText, Search, Trash2 } from "lucide-react"
+import { FileText, Minus, Plus, ReceiptText, Search, Trash2 } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -12,6 +13,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 interface Reservation {
   id: string
   guest_name: string
+  guest_email: string | null
+  guest_phone: string | null
   check_in: string
   check_out: string
   status: string
@@ -39,12 +42,22 @@ interface ReservationExtra {
   total_amount: number
 }
 
+interface ExistingInvoice {
+  id: string
+  invoice_number: string
+  status: string
+}
+
 function formatClp(value: number) {
   return new Intl.NumberFormat("es-CL", {
     style: "currency",
     currency: "CLP",
     maximumFractionDigits: 0,
   }).format(value)
+}
+
+function toIsoDate(date: Date) {
+  return date.toISOString().slice(0, 10)
 }
 
 export default function ReservationChargesPage() {
@@ -58,6 +71,8 @@ export default function ReservationChargesPage() {
   const [search, setSearch] = useState("")
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [invoicing, setInvoicing] = useState(false)
+  const [createdInvoice, setCreatedInvoice] = useState<ExistingInvoice | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   const loadData = useCallback(async () => {
@@ -66,7 +81,7 @@ export default function ReservationChargesPage() {
     const [reservationsResult, extrasResult, chargesResult] = await Promise.all([
       supabase
         .from("reservations")
-        .select("id, guest_name, check_in, check_out, status, total_amount")
+        .select("id, guest_name, guest_email, guest_phone, check_in, check_out, status, total_amount")
         .neq("status", "cancelled")
         .order("check_in", { ascending: false })
         .limit(200),
@@ -97,6 +112,10 @@ export default function ReservationChargesPage() {
   useEffect(() => {
     loadData()
   }, [loadData])
+
+  useEffect(() => {
+    setCreatedInvoice(null)
+  }, [selectedReservationId])
 
   useEffect(() => {
     const channel = supabase
@@ -167,15 +186,111 @@ export default function ReservationChargesPage() {
     else await loadData()
   }
 
+  async function createInvoice() {
+    if (!selectedReservation) return
+    setInvoicing(true)
+    setError(null)
+    setCreatedInvoice(null)
+
+    try {
+      const existingResponse = await fetch(`/api/bookings/invoices?reservationId=${selectedReservation.id}`)
+      if (!existingResponse.ok) throw new Error("No se pudo verificar las facturas existentes")
+      const existingInvoices = (await existingResponse.json()) as ExistingInvoice[]
+      const reusableInvoice = existingInvoices.find((invoice) => invoice.status !== "cancelled" && invoice.status !== "void")
+      if (reusableInvoice) {
+        setCreatedInvoice(reusableInvoice)
+        return
+      }
+
+      const lineItems = [
+        {
+          type: "lodging",
+          description: `Alojamiento ${selectedReservation.check_in} → ${selectedReservation.check_out}`,
+          quantity: 1,
+          unit_price: lodgingTotal,
+          tax_rate: 0,
+          subtotal: lodgingTotal,
+          tax_amount: 0,
+          total: lodgingTotal,
+        },
+        ...selectedCharges.map((charge) => {
+          const subtotal = Number(charge.total_amount)
+          const taxAmount = subtotal * (Number(charge.tax_rate) / 100)
+          return {
+            type: "extra",
+            extra_id: charge.extra_id,
+            description: charge.name,
+            unit: charge.unit,
+            quantity: Number(charge.quantity),
+            unit_price: Number(charge.unit_price),
+            tax_rate: Number(charge.tax_rate),
+            subtotal,
+            tax_amount: taxAmount,
+            total: subtotal + taxAmount,
+          }
+        }),
+      ]
+
+      const invoiceDate = new Date()
+      const dueDate = new Date(invoiceDate)
+      dueDate.setDate(dueDate.getDate() + 7)
+
+      const response = await fetch("/api/bookings/invoices", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          reservation_id: selectedReservation.id,
+          invoice_date: toIsoDate(invoiceDate),
+          due_date: toIsoDate(dueDate),
+          status: "draft",
+          customer_name: selectedReservation.guest_name,
+          customer_email: selectedReservation.guest_email,
+          customer_phone: selectedReservation.guest_phone,
+          line_items: lineItems,
+          subtotal: lodgingTotal + extrasSubtotal,
+          discount_amount: 0,
+          discount_percentage: 0,
+          tax_rate: 0,
+          tax_amount: taxTotal,
+          additional_fees: 0,
+          total_amount: grandTotal,
+          payment_status: "pending",
+          amount_paid: 0,
+          notes: "Generada desde los cargos de la reserva.",
+        }),
+      })
+
+      const payload = await response.json()
+      if (!response.ok) throw new Error(payload.error || "No se pudo crear la factura")
+      setCreatedInvoice(payload as ExistingInvoice)
+    } catch (invoiceError) {
+      setError(invoiceError instanceof Error ? invoiceError.message : "No se pudo crear la factura")
+    } finally {
+      setInvoicing(false)
+    }
+  }
+
   return (
     <div className="min-h-screen bg-background p-4 md:p-6">
       <div className="mx-auto max-w-7xl space-y-5">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Cargos por reserva</h1>
-          <p className="text-sm text-muted-foreground">Asigna extras y servicios, ajusta cantidades y consolida el total facturable.</p>
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Cargos por reserva</h1>
+            <p className="text-sm text-muted-foreground">Asigna extras y servicios, ajusta cantidades y consolida el total facturable.</p>
+          </div>
+          <Button onClick={createInvoice} disabled={!selectedReservation || invoicing}>
+            <FileText className="mr-2 h-4 w-4" />
+            {invoicing ? "Generando..." : "Generar factura"}
+          </Button>
         </div>
 
         {error && <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-600">{error}</div>}
+        {createdInvoice && (
+          <div className="flex flex-col gap-3 rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-4 text-sm md:flex-row md:items-center md:justify-between">
+            <span>Factura {createdInvoice.invoice_number} disponible en estado {createdInvoice.status}.</span>
+            <Button asChild size="sm" variant="outline"><Link href="/bookings/invoices">Abrir facturas</Link></Button>
+          </div>
+        )}
 
         <div className="grid gap-5 lg:grid-cols-[360px_1fr]">
           <Card>
