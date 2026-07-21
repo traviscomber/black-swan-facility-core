@@ -1,14 +1,15 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
-const publicRoutes = ['/auth/login', '/api/auth']
+const publicExact = ['/']
+const publicPrefix = ['/auth/login', '/api/auth']
 const protectedRoutes = ['/procurement', '/dashboard', '/admin']
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
   // Allow public routes
-  if (publicRoutes.some(route => pathname.startsWith(route))) {
+  if (publicExact.includes(pathname) || publicPrefix.some(route => pathname.startsWith(route))) {
     return NextResponse.next()
   }
 
