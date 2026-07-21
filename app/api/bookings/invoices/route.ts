@@ -27,7 +27,6 @@ export async function GET(request: Request) {
       return NextResponse.json(data)
     }
 
-    // Get all invoices
     const { data, error } = await supabase.from("invoices").select("*").order("invoice_date", { ascending: false })
 
     if (error) throw error
@@ -40,22 +39,15 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   const supabase = await createClient()
-  const body = await request.json()
 
   try {
-    // Generate invoice number
-    const { data: lastInvoice } = await supabase
-      .from("invoices")
-      .select("invoice_number")
-      .order("created_at", { ascending: false })
-      .limit(1)
+    const body = await request.json()
 
-    let nextNumber = 1001
-    if (lastInvoice && lastInvoice.length > 0) {
-      const lastNum = Number.parseInt(lastInvoice[0].invoice_number.split("-")[1] || "1000")
-      nextNumber = lastNum + 1
+    const { data: invoiceNumber, error: numberError } = await supabase.rpc("next_invoice_number")
+    if (numberError) throw numberError
+    if (typeof invoiceNumber !== "string" || !invoiceNumber) {
+      throw new Error("Invoice number generation returned an invalid value")
     }
-    const invoiceNumber = `INV-${nextNumber}`
 
     const invoiceData = {
       ...body,
@@ -63,13 +55,14 @@ export async function POST(request: Request) {
     }
 
     const { data, error } = await supabase.from("invoices").insert([invoiceData]).select().single()
-
     if (error) throw error
 
     console.log("[v0] Invoice created:", data.id)
-    return NextResponse.json(data)
+    return NextResponse.json(data, { status: 201 })
   } catch (error) {
     console.error("[v0] Error creating invoice:", error)
-    return NextResponse.json({ error: "Failed to create invoice" }, { status: 500 })
+
+    const message = error instanceof Error ? error.message : "Failed to create invoice"
+    return NextResponse.json({ error: message }, { status: 500 })
   }
 }
