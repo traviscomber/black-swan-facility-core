@@ -10,7 +10,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { createBrowserClient } from "@/lib/supabase/client"
-import { ArrowLeft, CheckCircle2, ShieldCheck, XCircle } from "lucide-react"
+import { ArrowLeft, CheckCircle2, ShieldCheck, XCircle, LogOut } from "lucide-react"
+import { useRouter } from "next/navigation"
+import { toast } from "sonner"
 
 interface ProcurementRequest {
   id: string
@@ -48,6 +50,18 @@ export default function ProcurementApprovalsPage() {
   const [notes, setNotes] = useState("")
   const [error, setError] = useState<string | null>(null)
   const [role, setRole] = useState<string | null>(null)
+  const router = useRouter()
+  const supabase = createBrowserClient()
+
+  const handleLogout = async () => {
+    try {
+      await supabase.auth.signOut()
+      toast.success('Logged out successfully')
+      router.push('/auth/login')
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to logout')
+    }
+  }
   const [approvalLimit, setApprovalLimit] = useState<number>(0)
 
   const canApprove = role === "approver" || role === "admin"
@@ -130,15 +144,25 @@ export default function ProcurementApprovalsPage() {
   return (
     <AppLayout>
       <PageHeader
-        title="Aprobaciones de procurement"
+        title="Aprobaciones de Compras"
         description="Decisiones humanas con límite monetario y trazabilidad"
         actions={
-          <Button variant="outline" asChild>
-            <Link href="/procurement/requests">
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Solicitudes
-            </Link>
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" asChild>
+              <Link href="/procurement/requests">
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                Solicitudes
+              </Link>
+            </Button>
+            <Button 
+              variant="ghost" 
+              onClick={handleLogout}
+              className="text-slate-400 hover:text-white"
+            >
+              <LogOut className="mr-2 h-4 w-4" />
+              Logout
+            </Button>
+          </div>
         }
       />
 

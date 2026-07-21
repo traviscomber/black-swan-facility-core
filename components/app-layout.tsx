@@ -1,10 +1,11 @@
 "use client"
 
 import type React from "react"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Sidebar } from "./sidebar"
-import { Menu, ArrowLeft } from "lucide-react"
+import { Menu, ArrowLeft, LogOut } from "lucide-react"
 import { useRouter } from "next/navigation"
+import { createClient } from "@/lib/supabase/client"
 
 interface AppLayoutProps {
   children: React.ReactNode
@@ -12,7 +13,23 @@ interface AppLayoutProps {
 
 export function AppLayout({ children }: AppLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [userInitials, setUserInitials] = useState<string>('')
   const router = useRouter()
+  const supabase = createClient()
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (user?.email) {
+        const parts = user.user_metadata?.full_name?.split(' ') ?? user.email.split('@')[0].split('.')
+        setUserInitials(parts.slice(0, 2).map((p: string) => p[0]?.toUpperCase()).join(''))
+      }
+    })
+  }, [])
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut()
+    router.push('/auth/login')
+  }
 
   const isOpen = sidebarOpen
   const onClose = () => setSidebarOpen(false)
@@ -53,7 +70,18 @@ export function AppLayout({ children }: AppLayoutProps) {
             <img src="/blackswan-logo.png" alt="Blackswan Logo" className="h-6 w-6 object-contain" />
             <span className="text-xs sm:text-sm font-bold text-accent">BFCS</span>
           </div>
-          <div className="w-10" />
+          <button
+            onClick={handleLogout}
+            className="flex items-center gap-1.5 rounded-lg px-2 py-1 hover:bg-secondary transition-colors"
+            title="Cerrar sesión"
+          >
+            {userInitials && (
+              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-white text-xs font-bold">
+                {userInitials}
+              </span>
+            )}
+            <LogOut className="h-4 w-4 text-muted-foreground" />
+          </button>
         </div>
 
         <main className="flex-1 overflow-y-auto bg-background">{children}</main>

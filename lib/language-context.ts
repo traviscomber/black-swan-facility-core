@@ -259,13 +259,13 @@ export const translations = {
     
     // Supply Chain
     'nav.supply_chain': 'Supply Chain',
-    'nav.supply_chain_desc': 'Procurement',
-    'nav.procurement': 'Procurement',
-    'nav.procurement_tip': 'Procurement management',
+    'nav.supply_chain_desc': 'Compras',
+    'nav.procurement': 'Compras',
+    'nav.procurement_tip': 'Gestión de compras',
     'nav.suppliers': 'Suppliers',
     'nav.suppliers_tip': 'Supplier management',
     'nav.analytics': 'Analytics',
-    'nav.analytics_tip': 'Procurement analytics',
+    'nav.analytics_tip': 'Compras analytics',
     
     // People Operations
     'nav.people_operations': 'People Operations',
@@ -767,10 +767,10 @@ export const translations = {
     'pages.report_issue_desc': 'Submit a new facility or infrastructure issue',
     
     // Page Titles & Descriptions (Procurement & Inventory)
-    'pages.procurement_analytics': 'Procurement Analytics',
-    'pages.procurement_analytics_desc': 'Budget tracking and procurement insights',
-    'pages.procurement_acquisitions': 'Procurement & Acquisitions',
-    'pages.procurement_acquisitions_desc': 'Manage supplier relationships, purchase orders, and acquisitions',
+    'pages.procurement_analytics': 'Analítica de Compras',
+    'pages.procurement_analytics_desc': 'Seguimiento de presupuesto e indicadores de compras',
+    'pages.procurement_acquisitions': 'Compras',
+    'pages.procurement_acquisitions_desc': 'Gestión de proveedores, órdenes de compra y adquisiciones',
     'pages.supplier_management': 'Supplier Management',
     'pages.supplier_management_desc': 'Manage supplier relationships and contact information',
     
@@ -1130,13 +1130,13 @@ export const translations = {
     
     // Supply Chain
     'nav.supply_chain': 'Cadena de Suministro',
-    'nav.supply_chain_desc': 'Adquisiciones',
-    'nav.procurement': 'Adquisiciones',
-    'nav.procurement_tip': 'Gestión de adquisiciones',
+    'nav.supply_chain_desc': 'Compras',
+    'nav.procurement': 'Compras',
+    'nav.procurement_tip': 'Gestión de compras',
     'nav.suppliers': 'Proveedores',
     'nav.suppliers_tip': 'Gestión de proveedores',
     'nav.analytics': 'Analítica',
-    'nav.analytics_tip': 'Analítica de adquisiciones',
+    'nav.analytics_tip': 'Analítica de compras',
     
     // People Operations
     'nav.people_operations': 'Operaciones de Personal',

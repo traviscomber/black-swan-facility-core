@@ -68,7 +68,7 @@ export default function ProcurementAnalyticsPage() {
 
   return (
     <AppLayout>
-      <PageHeader title="Procurement Analytics" description="Budget tracking and procurement insights" />
+      <PageHeader title="Analítica de Compras" description="Seguimiento de presupuesto e indicadores de compras" />
 
       <div className="p-8 space-y-6">
         {/* KPI Cards */}

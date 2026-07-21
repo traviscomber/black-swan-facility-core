@@ -118,8 +118,8 @@ export default function ProcurementPage() {
   return (
     <AppLayout>
       <PageHeader
-        title="Procurement & Acquisitions"
-        description="Manage supplier relationships, purchase orders, and acquisitions"
+        title="Compras"
+        description="Gestión de proveedores, órdenes de compra y adquisiciones"
         actions={
           <div className="flex flex-wrap gap-2">
             <Button variant="outline" asChild>

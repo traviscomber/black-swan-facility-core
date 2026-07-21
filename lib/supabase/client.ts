@@ -1,27 +1,10 @@
-import type { SupabaseClient } from "@supabase/supabase-js"
-import { createClient as createSupabaseClient } from "@supabase/supabase-js"
-
-declare global {
-  var supabaseClientInstance: SupabaseClient | undefined
-}
+import { createBrowserClient } from "@supabase/ssr"
 
 export function createClient() {
-  // Return existing instance if available
-  if (globalThis.supabaseClientInstance) {
-    return globalThis.supabaseClientInstance
-  }
-
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-
-  if (!supabaseUrl || !supabaseAnonKey) {
-    throw new Error(
-      "Missing Supabase environment variables. NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY must be set.",
-    )
-  }
-
-  globalThis.supabaseClientInstance = createSupabaseClient(supabaseUrl, supabaseAnonKey)
-  return globalThis.supabaseClientInstance
+  return createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+  )
 }
 
 export { createClient as createBrowserClient }
