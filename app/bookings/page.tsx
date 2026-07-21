@@ -1,5 +1,6 @@
 "use client"
 
+import Link from "next/link"
 import { useCallback, useEffect, useMemo, useState } from "react"
 import {
   addDays,
@@ -14,6 +15,8 @@ import {
   ChevronLeft,
   ChevronRight,
   CircleDollarSign,
+  ClipboardList,
+  Loader2,
   LogIn,
   LogOut,
   Moon,
@@ -65,8 +68,21 @@ interface Reservation {
 const STATUS_STYLES: Record<string, string> = {
   confirmed: "bg-violet-600 text-white border-violet-700",
   "checked-in": "bg-emerald-600 text-white border-emerald-700",
+  checked_in: "bg-emerald-600 text-white border-emerald-700",
+  "checked-out": "bg-slate-600 text-white border-slate-700",
+  checked_out: "bg-slate-600 text-white border-slate-700",
   pending: "bg-amber-500 text-white border-amber-600",
   cancelled: "bg-red-500 text-white border-red-600",
+}
+
+const STATUS_LABELS: Record<string, string> = {
+  pending: "Pendiente",
+  confirmed: "Confirmada",
+  "checked-in": "Check-in",
+  checked_in: "Check-in",
+  "checked-out": "Check-out",
+  checked_out: "Check-out",
+  cancelled: "Cancelada",
 }
 
 function formatClp(value: number) {
@@ -75,6 +91,10 @@ function formatClp(value: number) {
     currency: "CLP",
     maximumFractionDigits: 0,
   }).format(value)
+}
+
+function normalizedStatus(status: string) {
+  return status.replaceAll("-", "_")
 }
 
 export default function BookingsPage() {
@@ -93,6 +113,7 @@ export default function BookingsPage() {
   const [preselectedBed, setPreselectedBed] = useState<Bed | null>(null)
   const [preselectedDate, setPreselectedDate] = useState<Date | null>(null)
   const [selectedReservation, setSelectedReservation] = useState<Reservation | null>(null)
+  const [updatingStatus, setUpdatingStatus] = useState<string | null>(null)
 
   const endDate = addDays(startDate, rangeDays)
   const dates = useMemo(
@@ -170,7 +191,7 @@ export default function BookingsPage() {
   const visibleReservations = useMemo(
     () => reservations.filter((reservation) => {
       const matchesBed = visibleBedIds.has(reservation.bed_id)
-      const matchesStatus = status === "all" || reservation.status === status
+      const matchesStatus = status === "all" || normalizedStatus(reservation.status) === status
       const matchesSearch = !search.trim() || reservation.guest_name.toLowerCase().includes(search.trim().toLowerCase())
       return matchesBed && matchesStatus && matchesSearch
     }),
@@ -188,7 +209,7 @@ export default function BookingsPage() {
   }, [visibleReservations])
 
   const metrics = useMemo(() => {
-    const active = visibleReservations.filter((reservation) => reservation.status !== "cancelled")
+    const active = visibleReservations.filter((reservation) => normalizedStatus(reservation.status) !== "cancelled")
     const availableNights = visibleBeds.length * rangeDays
     const occupiedNights = active.reduce((sum, reservation) => {
       const from = parseISO(reservation.check_in) < startDate ? startDate : parseISO(reservation.check_in)
@@ -222,6 +243,25 @@ export default function BookingsPage() {
     setNewReservationOpen(true)
   }
 
+  async function updateReservationStatus(reservation: Reservation, nextStatus: string) {
+    setUpdatingStatus(reservation.id)
+    setError(null)
+
+    const { error: updateError } = await supabase
+      .from("reservations")
+      .update({ status: nextStatus })
+      .eq("id", reservation.id)
+
+    if (updateError) {
+      setError(updateError.message)
+    } else {
+      setSelectedReservation({ ...reservation, status: nextStatus })
+      await loadData()
+    }
+
+    setUpdatingStatus(null)
+  }
+
   return (
     <div className="min-h-screen bg-background p-4 md:p-6">
       <div className="mx-auto max-w-[1800px] space-y-5">
@@ -231,6 +271,11 @@ export default function BookingsPage() {
             <p className="text-sm text-muted-foreground">Calendario operativo, disponibilidad y actividad diaria.</p>
           </div>
           <div className="flex flex-wrap gap-2">
+            <Button asChild variant="outline">
+              <Link href="/bookings/activities">
+                <ClipboardList className="mr-2 h-4 w-4" /> Actividades
+              </Link>
+            </Button>
             <Button variant="outline" onClick={() => setStartDate(startOfDay(new Date()))}>
               <CalendarDays className="mr-2 h-4 w-4" /> Hoy
             </Button>
@@ -267,7 +312,8 @@ export default function BookingsPage() {
                 <SelectItem value="all">Todos los estados</SelectItem>
                 <SelectItem value="pending">Pendiente</SelectItem>
                 <SelectItem value="confirmed">Confirmada</SelectItem>
-                <SelectItem value="checked-in">Check-in</SelectItem>
+                <SelectItem value="checked_in">Check-in</SelectItem>
+                <SelectItem value="checked_out">Check-out</SelectItem>
                 <SelectItem value="cancelled">Cancelada</SelectItem>
               </SelectContent>
             </Select>
@@ -331,7 +377,7 @@ export default function BookingsPage() {
                                 className={`h-full w-full rounded border px-2 text-left text-xs ${STATUS_STYLES[reservation.status] ?? "bg-slate-200 text-slate-900"}`}
                                 title={`${reservation.guest_name} · ${reservation.check_in} → ${reservation.check_out}`}
                               >
-                                {isStart ? <><div className="truncate font-semibold">{reservation.guest_name}</div><div className="truncate opacity-80">{reservation.status}</div></> : <div className="h-full opacity-40" />}
+                                {isStart ? <><div className="truncate font-semibold">{reservation.guest_name}</div><div className="truncate opacity-80">{STATUS_LABELS[reservation.status] ?? reservation.status}</div></> : <div className="h-full opacity-40" />}
                               </button>
                             ) : (
                               <button onClick={() => openNewReservation(bed, date)} className="h-full w-full rounded text-muted-foreground hover:bg-primary/10 hover:text-primary"><Plus className="mx-auto h-4 w-4" /></button>
@@ -364,7 +410,7 @@ export default function BookingsPage() {
             <div className="space-y-5">
               <div className="flex items-start justify-between gap-4">
                 <div><p className="text-xs text-muted-foreground">Huésped</p><p className="text-xl font-semibold">{selectedReservation.guest_name}</p></div>
-                <Badge>{selectedReservation.status}</Badge>
+                <Badge>{STATUS_LABELS[selectedReservation.status] ?? selectedReservation.status}</Badge>
               </div>
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <Detail label="Check-in" value={selectedReservation.check_in} />
@@ -375,7 +421,33 @@ export default function BookingsPage() {
                 <Detail label="Teléfono" value={selectedReservation.guest_phone || "—"} />
               </div>
               {selectedReservation.special_requests && <Detail label="Solicitudes especiales" value={selectedReservation.special_requests} />}
-              <p className="text-xs text-muted-foreground">La edición avanzada y el historial operativo se incorporarán en el siguiente bloque de esta fase.</p>
+
+              <div className="flex flex-wrap justify-end gap-2 border-t pt-4">
+                <Button asChild variant="outline">
+                  <Link href="/bookings/activities">Abrir actividades</Link>
+                </Button>
+                {normalizedStatus(selectedReservation.status) === "pending" && (
+                  <StatusButton
+                    loading={updatingStatus === selectedReservation.id}
+                    label="Confirmar reserva"
+                    onClick={() => updateReservationStatus(selectedReservation, "confirmed")}
+                  />
+                )}
+                {normalizedStatus(selectedReservation.status) === "confirmed" && (
+                  <StatusButton
+                    loading={updatingStatus === selectedReservation.id}
+                    label="Registrar check-in"
+                    onClick={() => updateReservationStatus(selectedReservation, "checked_in")}
+                  />
+                )}
+                {normalizedStatus(selectedReservation.status) === "checked_in" && (
+                  <StatusButton
+                    loading={updatingStatus === selectedReservation.id}
+                    label="Registrar check-out"
+                    onClick={() => updateReservationStatus(selectedReservation, "checked_out")}
+                  />
+                )}
+              </div>
             </div>
           )}
         </DialogContent>
@@ -395,4 +467,13 @@ function Metric({ title, value, icon }: { title: string; value: string; icon: Re
 
 function Detail({ label, value }: { label: string; value: string }) {
   return <div><p className="text-xs text-muted-foreground">{label}</p><p className="font-medium">{value}</p></div>
+}
+
+function StatusButton({ loading, label, onClick }: { loading: boolean; label: string; onClick: () => void }) {
+  return (
+    <Button onClick={onClick} disabled={loading}>
+      {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+      {label}
+    </Button>
+  )
 }
