@@ -8,6 +8,12 @@ const PUBLIC_PAGE_PATHS = new Set([
 
 const PUBLIC_API_PREFIXES = ["/api/auth"]
 
+const PROCUREMENT_APPROVER_EMAILS = new Set([
+  "juan@n3uralia.com",
+  "raimundo@blackswn.org",
+  "santiago@blackswn.org",
+])
+
 function isPublicRequest(pathname: string) {
   if (PUBLIC_PAGE_PATHS.has(pathname)) return true
   return PUBLIC_API_PREFIXES.some((prefix) => pathname.startsWith(prefix))
@@ -15,6 +21,10 @@ function isPublicRequest(pathname: string) {
 
 function isApiRequest(pathname: string) {
   return pathname.startsWith("/api/")
+}
+
+function isProcurementPath(pathname: string) {
+  return pathname === "/procurement" || pathname.startsWith("/procurement/")
 }
 
 export async function middleware(request: NextRequest) {
@@ -65,8 +75,36 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(loginUrl)
   }
 
+  const email = user.email?.toLowerCase() ?? ""
+  const role = user.app_metadata?.procurement_role
+  const isApprover =
+    PROCUREMENT_APPROVER_EMAILS.has(email) &&
+    (role === "approver" || role === "admin")
+
   if (pathname === "/auth/login") {
     return NextResponse.redirect(new URL("/", request.url))
+  }
+
+  if (isProcurementPath(pathname)) {
+    if (pathname === "/procurement") {
+      return NextResponse.redirect(
+        new URL(
+          isApprover ? "/procurement/approvals" : "/procurement/requests",
+          request.url,
+        ),
+      )
+    }
+
+    if (pathname.startsWith("/procurement/approvals") && !isApprover) {
+      return NextResponse.redirect(new URL("/procurement/requests", request.url))
+    }
+
+    if (
+      !isApprover &&
+      !pathname.startsWith("/procurement/requests")
+    ) {
+      return NextResponse.redirect(new URL("/procurement/requests", request.url))
+    }
   }
 
   return response
