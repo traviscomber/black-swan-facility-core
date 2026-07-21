@@ -85,12 +85,8 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL("/", request.url))
   }
 
-  if (isProcurementPath(pathname)) {
-    if (isApprover && !pathname.startsWith("/procurement/approvals")) {
-      return NextResponse.redirect(new URL("/procurement/approvals", request.url))
-    }
-
-    if (!isApprover && !pathname.startsWith("/procurement/requests")) {
+  if (isProcurementPath(pathname) && !isApprover) {
+    if (!pathname.startsWith("/procurement/requests")) {
       return NextResponse.redirect(new URL("/procurement/requests", request.url))
     }
   }
