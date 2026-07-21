@@ -1,17 +1,45 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useEffect, useMemo, useState } from "react"
+import Link from "next/link"
 import { createBrowserClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Plus, Search, Edit, Trash2, Mail, Phone, Star, FileText, MessageCircle, Building2 } from "lucide-react"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import {
+  ArrowLeft,
+  Building2,
+  CalendarClock,
+  CircleDollarSign,
+  Edit,
+  FileText,
+  Mail,
+  MessageCircle,
+  Phone,
+  Plus,
+  Search,
+  Star,
+  Trash2,
+  Users,
+} from "lucide-react"
 import { AddGuestDialog } from "@/components/add-guest-dialog"
 import { EditGuestDialog } from "@/components/edit-guest-dialog"
-import { format } from "date-fns"
-import { AppLayout } from "@/components/app-layout"
-import { useLanguage } from "@/lib/hooks/use-language"
+import { format, isAfter, isBefore, parseISO, startOfDay } from "date-fns"
+
+interface Reservation {
+  id: string
+  guest_name: string
+  guest_email?: string | null
+  guest_phone?: string | null
+  check_in: string
+  check_out: string
+  status: string
+  total_amount?: number | null
+  num_guests?: number | null
+  special_requests?: string | null
+}
 
 interface Guest {
   id: string
@@ -19,272 +47,254 @@ interface Guest {
   email: string
   phone: string
   address: string
-  company_name: string // Added company_name field
+  company_name: string
   notes: string
   vip_status: boolean
   created_at: string
+  reservations?: Reservation[]
+}
+
+function formatClp(value: number) {
+  return new Intl.NumberFormat("es-CL", {
+    style: "currency",
+    currency: "CLP",
+    maximumFractionDigits: 0,
+  }).format(value)
+}
+
+function normalizeStatus(status: string) {
+  return status.replace("-", "_")
 }
 
 export default function GuestsPage() {
+  const supabase = useMemo(() => createBrowserClient(), [])
   const [guests, setGuests] = useState<Guest[]>([])
-  const [filteredGuests, setFilteredGuests] = useState<Guest[]>([])
   const [searchQuery, setSearchQuery] = useState("")
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [showAddDialog, setShowAddDialog] = useState(false)
   const [showEditDialog, setShowEditDialog] = useState(false)
   const [selectedGuest, setSelectedGuest] = useState<Guest | null>(null)
-  const [guestBookings, setGuestBookings] = useState<Record<string, number>>({})
-
-  const supabase = createBrowserClient()
-  const { t } = useLanguage()
+  const [historyGuest, setHistoryGuest] = useState<Guest | null>(null)
 
   useEffect(() => {
     loadGuests()
   }, [])
 
-  useEffect(() => {
-    filterGuests()
-  }, [searchQuery, guests])
-
   async function loadGuests() {
     setLoading(true)
+    setError(null)
 
-    const { data: guestsData } = await supabase
+    const { data, error: queryError } = await supabase
       .from("guests")
       .select(`
-        *,
-        reservations:reservations(count)
+        id, name, email, phone, address, company_name, notes, vip_status, created_at,
+        reservations:reservations(
+          id, guest_name, guest_email, guest_phone, check_in, check_out,
+          status, total_amount, num_guests, special_requests
+        )
       `)
       .order("name")
 
-    if (guestsData) {
-      // Transform the data to extract booking counts
-      const transformedGuests = guestsData.map((guest) => ({
-        id: guest.id,
-        name: guest.name,
-        email: guest.email,
-        phone: guest.phone,
-        address: guest.address,
-        company_name: guest.company_name,
-        notes: guest.notes,
-        vip_status: guest.vip_status,
-        created_at: guest.created_at,
-      }))
-
-      const bookingCounts: Record<string, number> = {}
-      guestsData.forEach((guest) => {
-        bookingCounts[guest.id] = guest.reservations?.[0]?.count || 0
-      })
-
-      setGuests(transformedGuests)
-      setGuestBookings(bookingCounts)
+    if (queryError) {
+      setError(queryError.message)
+      setGuests([])
+    } else {
+      setGuests((data ?? []) as unknown as Guest[])
     }
 
     setLoading(false)
   }
 
-  function filterGuests() {
-    if (!searchQuery) {
-      setFilteredGuests(guests)
-      return
-    }
+  const enrichedGuests = useMemo(() => {
+    const today = startOfDay(new Date())
 
-    const query = searchQuery.toLowerCase()
-    const filtered = guests.filter(
-      (guest) =>
-        guest.name.toLowerCase().includes(query) ||
-        guest.email?.toLowerCase().includes(query) ||
-        guest.phone?.toLowerCase().includes(query),
+    return guests.map((guest) => {
+      const reservations = (guest.reservations ?? []).filter(
+        (reservation) => normalizeStatus(reservation.status) !== "cancelled",
+      )
+      const completed = reservations
+        .filter((reservation) =>
+          isBefore(parseISO(reservation.check_out), today) || normalizeStatus(reservation.status) === "checked_out",
+        )
+        .sort((a, b) => b.check_in.localeCompare(a.check_in))
+      const upcoming = reservations
+        .filter((reservation) => isAfter(parseISO(reservation.check_in), today))
+        .sort((a, b) => a.check_in.localeCompare(b.check_in))
+
+      return {
+        ...guest,
+        reservations,
+        stays: completed.length,
+        totalSpend: reservations.reduce((sum, reservation) => sum + Number(reservation.total_amount ?? 0), 0),
+        lastStay: completed[0] ?? null,
+        nextStay: upcoming[0] ?? null,
+      }
+    })
+  }, [guests])
+
+  const filteredGuests = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase()
+    if (!query) return enrichedGuests
+    return enrichedGuests.filter((guest) =>
+      [guest.name, guest.email, guest.phone, guest.company_name]
+        .filter(Boolean)
+        .some((value) => value.toLowerCase().includes(query)),
     )
-    setFilteredGuests(filtered)
-  }
+  }, [enrichedGuests, searchQuery])
+
+  const metrics = useMemo(() => ({
+    total: enrichedGuests.length,
+    vip: enrichedGuests.filter((guest) => guest.vip_status).length,
+    repeat: enrichedGuests.filter((guest) => guest.stays > 1).length,
+    spend: enrichedGuests.reduce((sum, guest) => sum + guest.totalSpend, 0),
+  }), [enrichedGuests])
 
   async function handleDeleteGuest(guestId: string) {
-    if (!confirm("Are you sure you want to delete this guest?")) return
-
-    const { error } = await supabase.from("guests").delete().eq("id", guestId)
-
-    if (error) {
-      console.error("Error deleting guest:", error)
-    } else {
-      loadGuests()
-    }
-  }
-
-  function handleEditGuest(guest: Guest) {
-    setSelectedGuest(guest)
-    setShowEditDialog(true)
-  }
-
-  function handleSendInvoice(guest: Guest) {
-    // Navigate to invoice creation with pre-filled customer data
-    window.location.href = `/bookings/invoices?customer=${encodeURIComponent(guest.name)}&email=${encodeURIComponent(guest.email || "")}`
+    if (!confirm("¿Eliminar este huésped?")) return
+    const { error: deleteError } = await supabase.from("guests").delete().eq("id", guestId)
+    if (deleteError) setError(deleteError.message)
+    else loadGuests()
   }
 
   function handleWhatsApp(guest: Guest) {
-    if (!guest.phone) {
-      alert("Guest has no phone number")
-      return
-    }
-    // Clean phone number (remove spaces, dashes, etc)
-    const cleanPhone = guest.phone.replace(/\D/g, "")
-    // Open WhatsApp Web with the phone number
-    window.open(`https://wa.me/${cleanPhone}`, "_blank")
+    const phone = guest.phone?.replace(/\D/g, "")
+    if (!phone) return
+    window.open(`https://wa.me/${phone}`, "_blank", "noopener,noreferrer")
   }
 
   return (
-    <AppLayout>
-      <div className="flex h-screen flex-col bg-background">
-        {/* Header */}
-        <div className="flex items-center justify-between border-b bg-card px-6 py-4">
-          <div>
-            <h1 className="text-2xl font-bold">{t("guests.title")}</h1>
-            <p className="text-sm text-muted-foreground">{t("guests.description")}</p>
-          </div>
-          <Button className="gap-2" onClick={() => setShowAddDialog(true)}>
-            <Plus className="h-4 w-4" />
-            {t("guests.add_guest")}
-          </Button>
-        </div>
-
-        {/* Search Bar */}
-        <div className="border-b bg-card px-6 py-4">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              placeholder={t("guests.search_placeholder")}
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10"
-            />
-          </div>
-        </div>
-
-        {/* Content */}
-        <div className="flex-1 overflow-auto p-6">
-          {loading ? (
-            <div className="flex items-center justify-center p-8">
-              <div className="text-muted-foreground">{t("guests.loading")}</div>
+    <div className="min-h-screen bg-background p-4 md:p-6">
+      <div className="mx-auto max-w-7xl space-y-5">
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div className="flex items-start gap-3">
+            <Button asChild variant="outline" size="icon">
+              <Link href="/bookings"><ArrowLeft className="h-4 w-4" /></Link>
+            </Button>
+            <div>
+              <h1 className="text-3xl font-bold tracking-tight">Huéspedes</h1>
+              <p className="text-sm text-muted-foreground">Perfiles, historial de estadías, valor y próximas reservas.</p>
             </div>
-          ) : filteredGuests.length === 0 ? (
-            <div className="flex flex-col items-center justify-center p-8 text-center">
-              <div className="text-muted-foreground">
-                {searchQuery ? t("guests.no_guests") : t("guests.no_guests")}
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button asChild variant="outline">
+              <Link href="/bookings/activities"><CalendarClock className="mr-2 h-4 w-4" />Centro operativo</Link>
+            </Button>
+            <Button onClick={() => setShowAddDialog(true)}><Plus className="mr-2 h-4 w-4" />Nuevo huésped</Button>
+          </div>
+        </div>
+
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <Metric title="Huéspedes" value={String(metrics.total)} icon={<Users className="h-4 w-4" />} />
+          <Metric title="VIP" value={String(metrics.vip)} icon={<Star className="h-4 w-4" />} />
+          <Metric title="Recurrentes" value={String(metrics.repeat)} icon={<CalendarClock className="h-4 w-4" />} />
+          <Metric title="Valor histórico" value={formatClp(metrics.spend)} icon={<CircleDollarSign className="h-4 w-4" />} />
+        </div>
+
+        <Card>
+          <CardContent className="p-4">
+            <div className="relative">
+              <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                className="pl-9"
+                placeholder="Buscar por nombre, email, teléfono o empresa"
+                value={searchQuery}
+                onChange={(event) => setSearchQuery(event.target.value)}
+              />
+            </div>
+          </CardContent>
+        </Card>
+
+        {error && <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-600">{error}</div>}
+
+        <Card>
+          <CardHeader><CardTitle className="text-base">Directorio consolidado</CardTitle></CardHeader>
+          <CardContent className="p-0">
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[1050px] text-sm">
+                <thead className="border-y bg-muted/40 text-left">
+                  <tr>
+                    <th className="px-4 py-3">Huésped</th>
+                    <th className="px-4 py-3">Contacto</th>
+                    <th className="px-4 py-3">Estadías</th>
+                    <th className="px-4 py-3">Gasto</th>
+                    <th className="px-4 py-3">Última</th>
+                    <th className="px-4 py-3">Próxima</th>
+                    <th className="px-4 py-3">Acciones</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {loading ? (
+                    <tr><td colSpan={7} className="p-12 text-center text-muted-foreground">Cargando huéspedes...</td></tr>
+                  ) : filteredGuests.length === 0 ? (
+                    <tr><td colSpan={7} className="p-12 text-center text-muted-foreground">No hay resultados.</td></tr>
+                  ) : filteredGuests.map((guest) => (
+                    <tr key={guest.id} className="border-b hover:bg-muted/30">
+                      <td className="px-4 py-3">
+                        <button className="text-left" onClick={() => setHistoryGuest(guest)}>
+                          <div className="font-medium hover:underline">{guest.name}</div>
+                          <div className="mt-1 flex gap-1">
+                            {guest.vip_status && <Badge className="bg-amber-500">VIP</Badge>}
+                            {guest.stays > 1 && <Badge variant="secondary">Recurrente</Badge>}
+                          </div>
+                        </button>
+                      </td>
+                      <td className="px-4 py-3 text-muted-foreground">
+                        <div>{guest.email || "Sin email"}</div><div>{guest.phone || "Sin teléfono"}</div>
+                        {guest.company_name && <div className="mt-1 flex items-center gap-1"><Building2 className="h-3 w-3" />{guest.company_name}</div>}
+                      </td>
+                      <td className="px-4 py-3 font-medium">{guest.stays}</td>
+                      <td className="px-4 py-3 font-medium">{formatClp(guest.totalSpend)}</td>
+                      <td className="px-4 py-3">{guest.lastStay ? format(parseISO(guest.lastStay.check_in), "dd MMM yyyy") : "—"}</td>
+                      <td className="px-4 py-3">{guest.nextStay ? format(parseISO(guest.nextStay.check_in), "dd MMM yyyy") : "—"}</td>
+                      <td className="px-4 py-3">
+                        <div className="flex gap-1">
+                          <Button size="icon" variant="outline" onClick={() => { setSelectedGuest(guest); setShowEditDialog(true) }}><Edit className="h-4 w-4" /></Button>
+                          <Button size="icon" variant="outline" disabled={!guest.phone} onClick={() => handleWhatsApp(guest)}><MessageCircle className="h-4 w-4" /></Button>
+                          <Button asChild size="icon" variant="outline"><Link href={`/bookings/invoices?customer=${encodeURIComponent(guest.name)}&email=${encodeURIComponent(guest.email || "")}`}><FileText className="h-4 w-4" /></Link></Button>
+                          <Button size="icon" variant="outline" onClick={() => handleDeleteGuest(guest.id)}><Trash2 className="h-4 w-4" /></Button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <AddGuestDialog open={showAddDialog} onOpenChange={setShowAddDialog} onSuccess={loadGuests} />
+      {selectedGuest && <EditGuestDialog open={showEditDialog} onOpenChange={setShowEditDialog} guest={selectedGuest} onSuccess={loadGuests} />}
+
+      <Dialog open={!!historyGuest} onOpenChange={(open) => !open && setHistoryGuest(null)}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader><DialogTitle>Historial del huésped</DialogTitle></DialogHeader>
+          {historyGuest && (
+            <div className="space-y-5">
+              <div className="flex items-start justify-between gap-4">
+                <div><h2 className="text-xl font-semibold">{historyGuest.name}</h2><p className="text-sm text-muted-foreground">{historyGuest.email || "Sin email"} · {historyGuest.phone || "Sin teléfono"}</p></div>
+                {historyGuest.vip_status && <Badge className="bg-amber-500">VIP</Badge>}
+              </div>
+              {historyGuest.notes && <div className="rounded-lg border p-3 text-sm"><p className="text-xs text-muted-foreground">Notas</p><p>{historyGuest.notes}</p></div>}
+              <div className="max-h-80 space-y-2 overflow-y-auto">
+                {(historyGuest.reservations ?? []).length === 0 ? (
+                  <p className="py-8 text-center text-muted-foreground">Sin reservas vinculadas.</p>
+                ) : (historyGuest.reservations ?? []).map((reservation) => (
+                  <div key={reservation.id} className="flex items-center justify-between rounded-lg border p-3">
+                    <div><p className="font-medium">{format(parseISO(reservation.check_in), "dd MMM yyyy")} — {format(parseISO(reservation.check_out), "dd MMM yyyy")}</p><p className="text-xs text-muted-foreground">{reservation.num_guests ?? 1} huésped(es) · {normalizeStatus(reservation.status)}</p></div>
+                    <div className="font-medium">{formatClp(Number(reservation.total_amount ?? 0))}</div>
+                  </div>
+                ))}
               </div>
             </div>
-          ) : (
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {filteredGuests.map((guest) => (
-                <Card key={guest.id} className="relative overflow-hidden">
-                  {guest.vip_status && (
-                    <div className="absolute right-4 top-4">
-                      <Badge className="gap-1 bg-yellow-500">
-                        <Star className="h-3 w-3" />
-                        VIP
-                      </Badge>
-                    </div>
-                  )}
-
-                  <CardHeader>
-                    <CardTitle className="flex items-start justify-between">
-                      <span className="pr-12">{guest.name}</span>
-                    </CardTitle>
-                  </CardHeader>
-
-                  <CardContent className="space-y-4">
-                    <div className="space-y-2 text-sm">
-                      {guest.email && (
-                        <div className="flex items-center gap-2 text-muted-foreground">
-                          <Mail className="h-4 w-4" />
-                          <span className="truncate">{guest.email}</span>
-                        </div>
-                      )}
-                      {guest.phone && (
-                        <div className="flex items-center gap-2 text-muted-foreground">
-                          <Phone className="h-4 w-4" />
-                          <span>{guest.phone}</span>
-                        </div>
-                      )}
-                      {guest.company_name && (
-                        <div className="flex items-center gap-2 text-muted-foreground">
-                          <Building2 className="h-4 w-4" />
-                          <span className="truncate">{guest.company_name}</span>
-                        </div>
-                      )}
-                    </div>
-
-                    {guest.address && (
-                      <div className="text-sm text-muted-foreground">
-                        <div className="font-medium">Address</div>
-                        <div className="line-clamp-2">{guest.address}</div>
-                      </div>
-                    )}
-
-                    {guest.notes && (
-                      <div className="text-sm text-muted-foreground">
-                        <div className="font-medium">Notes</div>
-                        <div className="line-clamp-2">{guest.notes}</div>
-                      </div>
-                    )}
-
-                    <div className="flex gap-2 border-t pt-4">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="flex-1 gap-2 bg-transparent"
-                        onClick={() => handleSendInvoice(guest)}
-                      >
-                        <FileText className="h-4 w-4" />
-                        Invoice
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="flex-1 gap-2 bg-transparent"
-                        onClick={() => handleWhatsApp(guest)}
-                        disabled={!guest.phone}
-                      >
-                        <MessageCircle className="h-4 w-4" />
-                        WhatsApp
-                      </Button>
-                    </div>
-
-                    <div className="flex items-center justify-between border-t pt-4">
-                      <div className="text-sm text-muted-foreground">
-                        <span className="font-semibold">{guestBookings[guest.id] || 0}</span> bookings
-                      </div>
-                      <div className="flex gap-2">
-                        <Button size="sm" variant="outline" onClick={() => handleEditGuest(guest)}>
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button size="sm" variant="outline" onClick={() => handleDeleteGuest(guest.id)}>
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-
-                    <div className="text-xs text-muted-foreground">
-                      Added {format(new Date(guest.created_at), "MMM d, yyyy")}
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
           )}
-        </div>
-
-        {/* Dialogs */}
-        <AddGuestDialog open={showAddDialog} onOpenChange={setShowAddDialog} onSuccess={loadGuests} />
-
-        {selectedGuest && (
-          <EditGuestDialog
-            open={showEditDialog}
-            onOpenChange={setShowEditDialog}
-            guest={selectedGuest}
-            onSuccess={loadGuests}
-          />
-        )}
-      </div>
-    </AppLayout>
+        </DialogContent>
+      </Dialog>
+    </div>
   )
+}
+
+function Metric({ title, value, icon }: { title: string; value: string; icon: React.ReactNode }) {
+  return <Card><CardHeader className="flex flex-row items-center justify-between pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">{title}</CardTitle>{icon}</CardHeader><CardContent><div className="text-2xl font-bold">{value}</div></CardContent></Card>
 }
