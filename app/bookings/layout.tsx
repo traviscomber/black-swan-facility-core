@@ -4,6 +4,7 @@ import type React from "react"
 import { usePathname, useRouter } from "next/navigation"
 import {
   Activity,
+  Calculator,
   CalendarDays,
   CalendarOff,
   CreditCard,
@@ -35,27 +36,29 @@ export default function BookingsLayout({ children }: { children: React.ReactNode
           ? "housekeeping"
           : pathname?.includes("/blocks")
             ? "blocks"
-            : pathname?.includes("/rates")
-              ? "rates"
-              : pathname?.includes("/extras")
-                ? "extras"
-                : pathname?.includes("/charges")
-                  ? "charges"
-                  : pathname?.includes("/audit")
-                    ? "audit"
-                    : pathname?.includes("/guests")
-                      ? "guests"
-                      : pathname?.includes("/payments")
-                        ? "payments"
-                        : pathname?.includes("/invoices")
-                          ? "invoices"
-                          : pathname?.includes("/reports")
-                            ? "reports"
-                            : pathname?.includes("/rooms")
-                              ? "rooms"
-                              : pathname?.includes("/facilities")
-                                ? "facilities"
-                                : "calendar"
+            : pathname?.includes("/quotes")
+              ? "quotes"
+              : pathname?.includes("/rates")
+                ? "rates"
+                : pathname?.includes("/extras")
+                  ? "extras"
+                  : pathname?.includes("/charges")
+                    ? "charges"
+                    : pathname?.includes("/audit")
+                      ? "audit"
+                      : pathname?.includes("/guests")
+                        ? "guests"
+                        : pathname?.includes("/payments")
+                          ? "payments"
+                          : pathname?.includes("/invoices")
+                            ? "invoices"
+                            : pathname?.includes("/reports")
+                              ? "reports"
+                              : pathname?.includes("/rooms")
+                                ? "rooms"
+                                : pathname?.includes("/facilities")
+                                  ? "facilities"
+                                  : "calendar"
 
   function handleTabChange(value: string) {
     const routes: Record<string, string> = {
@@ -63,6 +66,7 @@ export default function BookingsLayout({ children }: { children: React.ReactNode
       activities: "/bookings/activities",
       housekeeping: "/bookings/housekeeping",
       blocks: "/bookings/blocks",
+      quotes: "/bookings/quotes",
       rates: "/bookings/rates",
       extras: "/bookings/extras",
       charges: "/bookings/charges",
@@ -99,6 +103,10 @@ export default function BookingsLayout({ children }: { children: React.ReactNode
             <TabsTrigger value="blocks" className="shrink-0 gap-2">
               <CalendarOff className="h-4 w-4" />
               Bloqueos
+            </TabsTrigger>
+            <TabsTrigger value="quotes" className="shrink-0 gap-2">
+              <Calculator className="h-4 w-4" />
+              Cotizador
             </TabsTrigger>
             <TabsTrigger value="rates" className="shrink-0 gap-2">
               <Percent className="h-4 w-4" />
