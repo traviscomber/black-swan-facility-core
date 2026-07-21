@@ -9,6 +9,7 @@ import {
   FileText,
   Home,
   MapPin,
+  ShieldCheck,
   Sparkles,
   TrendingUp,
   Users,
@@ -28,25 +29,28 @@ export default function BookingsLayout({ children }: { children: React.ReactNode
         ? "activities"
         : pathname?.includes("/housekeeping")
           ? "housekeeping"
-          : pathname?.includes("/guests")
-            ? "guests"
-            : pathname?.includes("/payments")
-              ? "payments"
-              : pathname?.includes("/invoices")
-                ? "invoices"
-                : pathname?.includes("/reports")
-                  ? "reports"
-                  : pathname?.includes("/rooms")
-                    ? "rooms"
-                    : pathname?.includes("/facilities")
-                      ? "facilities"
-                      : "calendar"
+          : pathname?.includes("/audit")
+            ? "audit"
+            : pathname?.includes("/guests")
+              ? "guests"
+              : pathname?.includes("/payments")
+                ? "payments"
+                : pathname?.includes("/invoices")
+                  ? "invoices"
+                  : pathname?.includes("/reports")
+                    ? "reports"
+                    : pathname?.includes("/rooms")
+                      ? "rooms"
+                      : pathname?.includes("/facilities")
+                        ? "facilities"
+                        : "calendar"
 
   function handleTabChange(value: string) {
     const routes: Record<string, string> = {
       calendar: "/bookings",
       activities: "/bookings/activities",
       housekeeping: "/bookings/housekeeping",
+      audit: "/bookings/audit",
       guests: "/bookings/guests",
       payments: "/bookings/payments",
       invoices: "/bookings/invoices",
@@ -75,6 +79,10 @@ export default function BookingsLayout({ children }: { children: React.ReactNode
             <TabsTrigger value="housekeeping" className="shrink-0 gap-2">
               <Sparkles className="h-4 w-4" />
               Housekeeping
+            </TabsTrigger>
+            <TabsTrigger value="audit" className="shrink-0 gap-2">
+              <ShieldCheck className="h-4 w-4" />
+              Auditoría
             </TabsTrigger>
             <TabsTrigger value="guests" className="shrink-0 gap-2">
               <Users className="h-4 w-4" />
