@@ -3,43 +3,45 @@ import { createClient } from "@/lib/supabase/server"
 
 export async function PATCH(request: Request, { params }: { params: { id: string } }) {
   const supabase = await createClient()
-  const body = await request.json()
-  const invoiceId = params.id
 
   try {
-    const { data, error } = await supabase
-      .from("invoices")
-      .update({
-        ...body,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", invoiceId)
-      .select()
-      .single()
+    const body = await request.json()
+    const status = body?.status ? String(body.status) : null
+    const dueDate = body?.due_date ? String(body.due_date) : null
+    const notes = body?.notes === undefined ? null : String(body.notes)
+
+    const { data, error } = await supabase.rpc("set_invoice_lifecycle", {
+      p_invoice_id: params.id,
+      p_status: status,
+      p_due_date: dueDate,
+      p_notes: notes,
+    })
 
     if (error) throw error
-
-    console.log("[v0] Invoice updated:", invoiceId)
     return NextResponse.json(data)
   } catch (error) {
-    console.error("[v0] Error updating invoice:", error)
-    return NextResponse.json({ error: "Failed to update invoice" }, { status: 500 })
+    console.error("[invoices] lifecycle update failed", error)
+    const message = error instanceof Error ? error.message : "No se pudo actualizar la factura"
+    return NextResponse.json({ error: message }, { status: 409 })
   }
 }
 
-export async function DELETE(request: Request, { params }: { params: { id: string } }) {
+export async function DELETE(_request: Request, { params }: { params: { id: string } }) {
   const supabase = await createClient()
-  const invoiceId = params.id
 
   try {
-    const { error } = await supabase.from("invoices").delete().eq("id", invoiceId)
+    const { data, error } = await supabase.rpc("set_invoice_lifecycle", {
+      p_invoice_id: params.id,
+      p_status: "void",
+      p_due_date: null,
+      p_notes: null,
+    })
 
     if (error) throw error
-
-    console.log("[v0] Invoice deleted:", invoiceId)
-    return NextResponse.json({ success: true })
+    return NextResponse.json({ success: true, invoice: data })
   } catch (error) {
-    console.error("[v0] Error deleting invoice:", error)
-    return NextResponse.json({ error: "Failed to delete invoice" }, { status: 500 })
+    console.error("[invoices] void failed", error)
+    const message = error instanceof Error ? error.message : "No se pudo anular la factura"
+    return NextResponse.json({ error: message }, { status: 409 })
   }
 }
