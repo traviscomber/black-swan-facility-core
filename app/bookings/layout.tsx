@@ -10,6 +10,7 @@ import {
   FileText,
   Home,
   MapPin,
+  PackagePlus,
   Percent,
   ShieldCheck,
   Sparkles,
@@ -35,21 +36,23 @@ export default function BookingsLayout({ children }: { children: React.ReactNode
             ? "blocks"
             : pathname?.includes("/rates")
               ? "rates"
-              : pathname?.includes("/audit")
-                ? "audit"
-                : pathname?.includes("/guests")
-                  ? "guests"
-                  : pathname?.includes("/payments")
-                    ? "payments"
-                    : pathname?.includes("/invoices")
-                      ? "invoices"
-                      : pathname?.includes("/reports")
-                        ? "reports"
-                        : pathname?.includes("/rooms")
-                          ? "rooms"
-                          : pathname?.includes("/facilities")
-                            ? "facilities"
-                            : "calendar"
+              : pathname?.includes("/extras")
+                ? "extras"
+                : pathname?.includes("/audit")
+                  ? "audit"
+                  : pathname?.includes("/guests")
+                    ? "guests"
+                    : pathname?.includes("/payments")
+                      ? "payments"
+                      : pathname?.includes("/invoices")
+                        ? "invoices"
+                        : pathname?.includes("/reports")
+                          ? "reports"
+                          : pathname?.includes("/rooms")
+                            ? "rooms"
+                            : pathname?.includes("/facilities")
+                              ? "facilities"
+                              : "calendar"
 
   function handleTabChange(value: string) {
     const routes: Record<string, string> = {
@@ -58,6 +61,7 @@ export default function BookingsLayout({ children }: { children: React.ReactNode
       housekeeping: "/bookings/housekeeping",
       blocks: "/bookings/blocks",
       rates: "/bookings/rates",
+      extras: "/bookings/extras",
       audit: "/bookings/audit",
       guests: "/bookings/guests",
       payments: "/bookings/payments",
@@ -95,6 +99,10 @@ export default function BookingsLayout({ children }: { children: React.ReactNode
             <TabsTrigger value="rates" className="shrink-0 gap-2">
               <Percent className="h-4 w-4" />
               Tarifas
+            </TabsTrigger>
+            <TabsTrigger value="extras" className="shrink-0 gap-2">
+              <PackagePlus className="h-4 w-4" />
+              Extras
             </TabsTrigger>
             <TabsTrigger value="audit" className="shrink-0 gap-2">
               <ShieldCheck className="h-4 w-4" />
