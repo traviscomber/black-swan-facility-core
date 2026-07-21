@@ -41,59 +41,126 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex items-center justify-center min-h-screen">
-      <div className="w-full max-w-md px-4">
-        <div className="bg-slate-800 rounded-lg shadow-2xl p-8 border border-slate-700">
-          <div className="text-center mb-8">
-            <h1 className="text-3xl font-bold text-white mb-2">Black Swan Facility</h1>
-            <p className="text-slate-400">Procurement Approvals</p>
+    <div className="flex min-h-screen">
+      {/* Left panel — brand accent */}
+      <div
+        className="hidden lg:flex lg:w-1/2 flex-col justify-between p-12"
+        style={{ backgroundColor: 'var(--primary)' }}
+      >
+        <div>
+          <div className="flex items-center gap-2">
+            <div className="h-8 w-8 rounded-full bg-white/20 flex items-center justify-center">
+              <span className="text-white font-bold text-sm">BS</span>
+            </div>
+            <span className="text-white font-semibold tracking-wide text-sm uppercase">Black Swan Facility</span>
+          </div>
+        </div>
+        <div className="space-y-4">
+          <blockquote className="text-white/90 text-2xl font-light leading-relaxed">
+            &ldquo;Control de compras con trazabilidad total y límites de autorización por rol.&rdquo;
+          </blockquote>
+          <p className="text-white/60 text-sm">Portal de Aprobaciones — Acceso restringido</p>
+        </div>
+        <div>
+          <p className="text-white/40 text-xs">© 2026 Black Swan Facility Core</p>
+        </div>
+      </div>
+
+      {/* Right panel — form */}
+      <div
+        className="flex w-full lg:w-1/2 flex-col items-center justify-center px-6 py-12"
+        style={{ backgroundColor: 'var(--background)' }}
+      >
+        {/* Mobile logo */}
+        <div className="flex lg:hidden items-center gap-2 mb-10">
+          <div
+            className="h-8 w-8 rounded-full flex items-center justify-center"
+            style={{ backgroundColor: 'var(--primary)' }}
+          >
+            <span className="text-white font-bold text-sm">BS</span>
+          </div>
+          <span className="text-foreground font-semibold tracking-wide text-sm uppercase">Black Swan Facility</span>
+        </div>
+
+        <div className="w-full max-w-sm space-y-8">
+          <div className="space-y-1">
+            <h1
+              className="text-2xl font-bold tracking-tight"
+              style={{ color: 'var(--foreground)', fontSize: 'var(--font-size-3xl)' }}
+            >
+              Iniciar sesión
+            </h1>
+            <p style={{ color: 'var(--muted-foreground)', fontSize: 'var(--font-size-sm)' }}>
+              Procurement Approvals — ingresa tus credenciales
+            </p>
           </div>
 
-          <form onSubmit={handleLogin} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-slate-300 mb-2">
+          <form onSubmit={handleLogin} className="space-y-5">
+            <div className="space-y-2">
+              <label
+                htmlFor="email"
+                className="block text-sm font-medium"
+                style={{ color: 'var(--foreground)' }}
+              >
                 Email
               </label>
               <Input
+                id="email"
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="juan@n3uralia.com"
+                placeholder="usuario@dominio.com"
                 disabled={loading}
-                className="bg-slate-700 border-slate-600 text-white placeholder:text-slate-500"
                 required
+                style={{
+                  backgroundColor: 'var(--card)',
+                  borderColor: 'var(--border)',
+                  color: 'var(--foreground)',
+                }}
               />
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-slate-300 mb-2">
-                Password
+            <div className="space-y-2">
+              <label
+                htmlFor="password"
+                className="block text-sm font-medium"
+                style={{ color: 'var(--foreground)' }}
+              >
+                Contraseña
               </label>
               <Input
+                id="password"
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
                 disabled={loading}
-                className="bg-slate-700 border-slate-600 text-white placeholder:text-slate-500"
                 required
+                style={{
+                  backgroundColor: 'var(--card)',
+                  borderColor: 'var(--border)',
+                  color: 'var(--foreground)',
+                }}
               />
             </div>
 
             <Button
               type="submit"
               disabled={loading}
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2"
+              className="w-full font-semibold"
+              style={{
+                backgroundColor: 'var(--primary)',
+                color: 'var(--primary-foreground)',
+              }}
             >
-              {loading ? 'Signing in...' : 'Sign In'}
+              {loading ? 'Ingresando...' : 'Ingresar'}
             </Button>
           </form>
 
-          <div className="mt-6 pt-6 border-t border-slate-700">
-            <p className="text-xs text-slate-500 text-center">
-              Contraseña: blackswan2026
-            </p>
-          </div>
+          <p className="text-center text-xs" style={{ color: 'var(--muted-foreground)' }}>
+            Acceso restringido a usuarios autorizados.
+            <br />Contacta al administrador si no tienes acceso.
+          </p>
         </div>
       </div>
     </div>
