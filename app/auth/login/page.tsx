@@ -41,8 +41,8 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 to-slate-800">
-      <div className="w-full max-w-md">
+    <div className="flex items-center justify-center min-h-screen">
+      <div className="w-full max-w-md px-4">
         <div className="bg-slate-800 rounded-lg shadow-2xl p-8 border border-slate-700">
           <div className="text-center mb-8">
             <h1 className="text-3xl font-bold text-white mb-2">Black Swan Facility</h1>
@@ -58,7 +58,7 @@ export default function LoginPage() {
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="approver@blackswan.com"
+                placeholder="juan@n3uralia.com"
                 disabled={loading}
                 className="bg-slate-700 border-slate-600 text-white placeholder:text-slate-500"
                 required
