@@ -3,7 +3,6 @@ import { NextResponse, type NextRequest } from "next/server"
 
 const PUBLIC_PAGE_PATHS = new Set([
   "/auth/login",
-  "/admin/procurement-users",
 ])
 
 const PUBLIC_API_PREFIXES = ["/api/auth"]
@@ -82,6 +81,10 @@ export async function middleware(request: NextRequest) {
     (role === "approver" || role === "admin")
 
   if (pathname === "/auth/login") {
+    return NextResponse.redirect(new URL("/", request.url))
+  }
+
+  if (pathname.startsWith("/admin/procurement-users") && !isApprover) {
     return NextResponse.redirect(new URL("/", request.url))
   }
 
