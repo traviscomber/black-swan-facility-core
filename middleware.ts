@@ -35,17 +35,17 @@ export async function middleware(request: NextRequest) {
     }
   )
 
-  const { data } = await supabase.auth.getSession()
+  const { data: { user } } = await supabase.auth.getUser()
 
   // Check if user is trying to access protected routes
   if (protectedRoutes.some(route => pathname.startsWith(route))) {
-    if (!data.session) {
+    if (!user) {
       return NextResponse.redirect(new URL('/auth/login', request.url))
     }
   }
 
   // Redirect logged-in users away from login page
-  if (pathname === '/auth/login' && data.session) {
+  if (pathname === '/auth/login' && user) {
     return NextResponse.redirect(new URL('/procurement/approvals', request.url))
   }
 

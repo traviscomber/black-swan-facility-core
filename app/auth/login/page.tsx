@@ -30,7 +30,7 @@ export default function LoginPage() {
       }
 
       if (data?.user) {
-        toast.success('Logged in successfully!')
+        router.refresh()
         router.push('/procurement/approvals')
       }
     } catch (error: any) {
