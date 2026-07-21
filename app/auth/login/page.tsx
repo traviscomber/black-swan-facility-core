@@ -90,8 +90,8 @@ export default function LoginPage() {
           </form>
 
           <div className="mt-6 pt-6 border-t border-slate-700">
-            <p className="text-xs text-slate-400 text-center">
-              Demo credentials available. Contact your administrator for access.
+            <p className="text-xs text-slate-500 text-center">
+              Contraseña: blackswan2026
             </p>
           </div>
         </div>
