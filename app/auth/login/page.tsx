@@ -31,7 +31,7 @@ export default function LoginPage() {
 
       if (data?.user) {
         router.refresh()
-        router.push('/procurement/approvals')
+        router.push('/')
       }
     } catch (error: any) {
       toast.error(error.message || 'An error occurred')
@@ -42,7 +42,6 @@ export default function LoginPage() {
 
   return (
     <div className="flex min-h-screen">
-      {/* Left panel — brand accent */}
       <div
         className="hidden lg:flex lg:w-1/2 flex-col justify-between p-12"
         style={{ backgroundColor: 'var(--primary)' }}
@@ -57,21 +56,19 @@ export default function LoginPage() {
         </div>
         <div className="space-y-4">
           <blockquote className="text-white/90 text-2xl font-light leading-relaxed">
-            &ldquo;Control de compras con trazabilidad total y límites de autorización por rol.&rdquo;
+            &ldquo;Control operativo con trazabilidad y acceso seguro por usuario.&rdquo;
           </blockquote>
-          <p className="text-white/60 text-sm">Portal de Aprobaciones — Acceso restringido</p>
+          <p className="text-white/60 text-sm">Black Swan Facility Core</p>
         </div>
         <div>
           <p className="text-white/40 text-xs">© 2026 Black Swan Facility Core</p>
         </div>
       </div>
 
-      {/* Right panel — form */}
       <div
         className="flex w-full lg:w-1/2 flex-col items-center justify-center px-6 py-12"
         style={{ backgroundColor: 'var(--background)' }}
       >
-        {/* Mobile logo */}
         <div className="flex lg:hidden items-center gap-2 mb-10">
           <div
             className="h-8 w-8 rounded-full flex items-center justify-center"
@@ -91,7 +88,7 @@ export default function LoginPage() {
               Iniciar sesión
             </h1>
             <p style={{ color: 'var(--muted-foreground)', fontSize: 'var(--font-size-sm)' }}>
-              Aprobaciones de Compras — ingresa tus credenciales
+              Ingresa tus credenciales para acceder
             </p>
           </div>
 

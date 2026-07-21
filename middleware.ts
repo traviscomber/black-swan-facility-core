@@ -1,19 +1,40 @@
-import { createServerClient } from '@supabase/ssr'
-import { NextResponse, type NextRequest } from 'next/server'
+import { createServerClient } from "@supabase/ssr"
+import { NextResponse, type NextRequest } from "next/server"
 
-const publicExact = ['/']
-const publicPrefix = ['/auth/login', '/api/auth']
-const protectedRoutes = ['/procurement', '/dashboard', '/admin']
+const PUBLIC_PAGE_PATHS = new Set([
+  "/auth/login",
+  "/admin/procurement-users",
+])
+
+const PUBLIC_API_PREFIXES = ["/api/auth"]
+
+const PROCUREMENT_APPROVER_EMAILS = new Set([
+  "juan@n3uralia.com",
+  "raimundo@blackswn.org",
+  "santiago@blackswn.org",
+])
+
+function isPublicRequest(pathname: string) {
+  if (PUBLIC_PAGE_PATHS.has(pathname)) return true
+  return PUBLIC_API_PREFIXES.some((prefix) => pathname.startsWith(prefix))
+}
+
+function isApiRequest(pathname: string) {
+  return pathname.startsWith("/api/")
+}
+
+function isProcurementPath(pathname: string) {
+  return pathname === "/procurement" || pathname.startsWith("/procurement/")
+}
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
-  // Allow public routes
-  if (publicExact.includes(pathname) || publicPrefix.some(route => pathname.startsWith(route))) {
+  if (isPublicRequest(pathname)) {
     return NextResponse.next()
   }
 
-  let supabaseResponse = NextResponse.next({
+  let response = NextResponse.next({
     request: {
       headers: request.headers,
     },
@@ -28,40 +49,53 @@ export async function middleware(request: NextRequest) {
           return request.cookies.getAll()
         },
         setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, options }) =>
-            supabaseResponse.cookies.set(name, value, options)
-          )
+          cookiesToSet.forEach(({ name, value, options }) => {
+            request.cookies.set(name, value)
+            response.cookies.set(name, value, options)
+          })
         },
       },
-    }
+    },
   )
 
-  const { data: { user } } = await supabase.auth.getUser()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
 
-  // Check if user is trying to access protected routes
-  if (protectedRoutes.some(route => pathname.startsWith(route))) {
-    if (!user) {
-      return NextResponse.redirect(new URL('/auth/login', request.url))
+  if (!user) {
+    if (isApiRequest(pathname)) {
+      return NextResponse.json(
+        { error: "Authentication required" },
+        { status: 401 },
+      )
+    }
+
+    const loginUrl = new URL("/auth/login", request.url)
+    loginUrl.searchParams.set("next", pathname)
+    return NextResponse.redirect(loginUrl)
+  }
+
+  const email = user.email?.toLowerCase() ?? ""
+  const role = user.app_metadata?.procurement_role
+  const isApprover =
+    PROCUREMENT_APPROVER_EMAILS.has(email) &&
+    (role === "approver" || role === "admin")
+
+  if (pathname === "/auth/login") {
+    return NextResponse.redirect(new URL("/", request.url))
+  }
+
+  if (isProcurementPath(pathname) && !isApprover) {
+    if (!pathname.startsWith("/procurement/requests")) {
+      return NextResponse.redirect(new URL("/procurement/requests", request.url))
     }
   }
 
-  // Redirect logged-in users away from login page
-  if (pathname === '/auth/login' && user) {
-    return NextResponse.redirect(new URL('/procurement/approvals', request.url))
-  }
-
-  return supabaseResponse
+  return response
 }
 
 export const config = {
   matcher: [
-    /*
-     * Match all request paths except for the ones starting with:
-     * - api (API routes)
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     */
-    '/((?!api|_next/static|_next/image|favicon.ico).*)',
+    "/((?!_next/static|_next/image|favicon.ico|robots.txt|sitemap.xml|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|css|js|map|woff|woff2|ttf)$).*)",
   ],
 }
