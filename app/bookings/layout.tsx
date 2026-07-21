@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation"
 import {
   Activity,
   CalendarDays,
+  CalendarOff,
   CreditCard,
   FileText,
   Home,
@@ -29,27 +30,30 @@ export default function BookingsLayout({ children }: { children: React.ReactNode
         ? "activities"
         : pathname?.includes("/housekeeping")
           ? "housekeeping"
-          : pathname?.includes("/audit")
-            ? "audit"
-            : pathname?.includes("/guests")
-              ? "guests"
-              : pathname?.includes("/payments")
-                ? "payments"
-                : pathname?.includes("/invoices")
-                  ? "invoices"
-                  : pathname?.includes("/reports")
-                    ? "reports"
-                    : pathname?.includes("/rooms")
-                      ? "rooms"
-                      : pathname?.includes("/facilities")
-                        ? "facilities"
-                        : "calendar"
+          : pathname?.includes("/blocks")
+            ? "blocks"
+            : pathname?.includes("/audit")
+              ? "audit"
+              : pathname?.includes("/guests")
+                ? "guests"
+                : pathname?.includes("/payments")
+                  ? "payments"
+                  : pathname?.includes("/invoices")
+                    ? "invoices"
+                    : pathname?.includes("/reports")
+                      ? "reports"
+                      : pathname?.includes("/rooms")
+                        ? "rooms"
+                        : pathname?.includes("/facilities")
+                          ? "facilities"
+                          : "calendar"
 
   function handleTabChange(value: string) {
     const routes: Record<string, string> = {
       calendar: "/bookings",
       activities: "/bookings/activities",
       housekeeping: "/bookings/housekeeping",
+      blocks: "/bookings/blocks",
       audit: "/bookings/audit",
       guests: "/bookings/guests",
       payments: "/bookings/payments",
@@ -79,6 +83,10 @@ export default function BookingsLayout({ children }: { children: React.ReactNode
             <TabsTrigger value="housekeeping" className="shrink-0 gap-2">
               <Sparkles className="h-4 w-4" />
               Housekeeping
+            </TabsTrigger>
+            <TabsTrigger value="blocks" className="shrink-0 gap-2">
+              <CalendarOff className="h-4 w-4" />
+              Bloqueos
             </TabsTrigger>
             <TabsTrigger value="audit" className="shrink-0 gap-2">
               <ShieldCheck className="h-4 w-4" />
