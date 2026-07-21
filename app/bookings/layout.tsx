@@ -9,6 +9,7 @@ import {
   FileText,
   Home,
   MapPin,
+  Sparkles,
   TrendingUp,
   Users,
 } from "lucide-react"
@@ -25,24 +26,27 @@ export default function BookingsLayout({ children }: { children: React.ReactNode
       ? "calendar"
       : pathname?.includes("/activities")
         ? "activities"
-        : pathname?.includes("/guests")
-          ? "guests"
-          : pathname?.includes("/payments")
-            ? "payments"
-            : pathname?.includes("/invoices")
-              ? "invoices"
-              : pathname?.includes("/reports")
-                ? "reports"
-                : pathname?.includes("/rooms")
-                  ? "rooms"
-                  : pathname?.includes("/facilities")
-                    ? "facilities"
-                    : "calendar"
+        : pathname?.includes("/housekeeping")
+          ? "housekeeping"
+          : pathname?.includes("/guests")
+            ? "guests"
+            : pathname?.includes("/payments")
+              ? "payments"
+              : pathname?.includes("/invoices")
+                ? "invoices"
+                : pathname?.includes("/reports")
+                  ? "reports"
+                  : pathname?.includes("/rooms")
+                    ? "rooms"
+                    : pathname?.includes("/facilities")
+                      ? "facilities"
+                      : "calendar"
 
   function handleTabChange(value: string) {
     const routes: Record<string, string> = {
       calendar: "/bookings",
       activities: "/bookings/activities",
+      housekeeping: "/bookings/housekeeping",
       guests: "/bookings/guests",
       payments: "/bookings/payments",
       invoices: "/bookings/invoices",
@@ -67,6 +71,10 @@ export default function BookingsLayout({ children }: { children: React.ReactNode
             <TabsTrigger value="activities" className="shrink-0 gap-2">
               <Activity className="h-4 w-4" />
               Operaciones
+            </TabsTrigger>
+            <TabsTrigger value="housekeeping" className="shrink-0 gap-2">
+              <Sparkles className="h-4 w-4" />
+              Housekeeping
             </TabsTrigger>
             <TabsTrigger value="guests" className="shrink-0 gap-2">
               <Users className="h-4 w-4" />
