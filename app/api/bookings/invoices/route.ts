@@ -10,7 +10,11 @@ export async function GET(request: Request) {
 
   try {
     if (invoiceId) {
-      const { data, error } = await supabase.from("invoices").select("*").eq("id", invoiceId).single()
+      const { data, error } = await supabase
+        .from("invoices")
+        .select("*")
+        .eq("id", invoiceId)
+        .single()
 
       if (error) throw error
       return NextResponse.json(data)
@@ -27,13 +31,16 @@ export async function GET(request: Request) {
       return NextResponse.json(data)
     }
 
-    const { data, error } = await supabase.from("invoices").select("*").order("invoice_date", { ascending: false })
+    const { data, error } = await supabase
+      .from("invoices")
+      .select("*")
+      .order("invoice_date", { ascending: false })
 
     if (error) throw error
     return NextResponse.json(data)
   } catch (error) {
-    console.error("[v0] Error fetching invoices:", error)
-    return NextResponse.json({ error: "Failed to fetch invoices" }, { status: 500 })
+    console.error("[invoices] fetch failed", error)
+    return NextResponse.json({ error: "No se pudieron consultar las facturas" }, { status: 500 })
   }
 }
 
@@ -42,27 +49,31 @@ export async function POST(request: Request) {
 
   try {
     const body = await request.json()
+    const reservationId = String(body?.reservation_id ?? "").trim()
+    const dueDate = body?.due_date ? String(body.due_date) : null
+    const notes = body?.notes ? String(body.notes) : null
 
-    const { data: invoiceNumber, error: numberError } = await supabase.rpc("next_invoice_number")
-    if (numberError) throw numberError
-    if (typeof invoiceNumber !== "string" || !invoiceNumber) {
-      throw new Error("Invoice number generation returned an invalid value")
+    if (!reservationId) {
+      return NextResponse.json({ error: "reservation_id es obligatorio" }, { status: 400 })
     }
 
-    const invoiceData = {
-      ...body,
-      invoice_number: invoiceNumber,
-    }
+    const { data, error } = await supabase.rpc("create_reservation_invoice", {
+      p_reservation_id: reservationId,
+      p_due_date: dueDate,
+      p_notes: notes,
+    })
 
-    const { data, error } = await supabase.from("invoices").insert([invoiceData]).select().single()
     if (error) throw error
 
-    console.log("[v0] Invoice created:", data.id)
-    return NextResponse.json(data, { status: 201 })
-  } catch (error) {
-    console.error("[v0] Error creating invoice:", error)
+    const payload = data as { created?: boolean; invoice?: Record<string, unknown> } | null
+    if (!payload?.invoice) {
+      throw new Error("El RPC no devolvió una factura válida")
+    }
 
-    const message = error instanceof Error ? error.message : "Failed to create invoice"
+    return NextResponse.json(payload.invoice, { status: payload.created ? 201 : 200 })
+  } catch (error) {
+    console.error("[invoices] atomic creation failed", error)
+    const message = error instanceof Error ? error.message : "No se pudo crear la factura"
     return NextResponse.json({ error: message }, { status: 500 })
   }
 }
