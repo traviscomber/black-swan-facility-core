@@ -2,12 +2,13 @@
 
 import { useState, useEffect } from "react"
 
-import { LayoutDashboard, Calendar, Receipt, ClipboardList, Crown, Brain, TrendingUp, Beef, Box, Package, Wrench, Anchor, Zap, FileText, Lightbulb, Code, Users, Heart, MessageSquare, Tablet, ChefHat, CheckSquare, AlertCircle, Bot, Settings, X, ChevronDown, HelpCircle, Map, Fuel, Building, Leaf, Grape, Images, DollarSign } from "lucide-react"
+import { LayoutDashboard, Calendar, Receipt, ClipboardList, Crown, Brain, TrendingUp, Beef, Box, Package, Wrench, Anchor, Zap, FileText, Lightbulb, Code, Users, Heart, MessageSquare, Tablet, ChefHat, CheckSquare, AlertCircle, Bot, Settings, X, ChevronDown, HelpCircle, Map, Fuel, Building, Leaf, Grape, Images, DollarSign, LogOut } from "lucide-react"
 import Link from "next/link"
-import { usePathname } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 import { cn } from "@/lib/utils"
 import { LanguageSwitcher } from "@/components/language-switcher"
 import { useLanguage } from "@/lib/hooks/use-language"
+import { createClient } from "@/lib/supabase/client"
 
 const navigationGroups = [
   // GRUPO 1: ADMIN GENERAL (Operations Center, Administration, Energy, AI, Budgets)
@@ -127,9 +128,28 @@ interface SidebarProps {
 export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const pathname = usePathname()
   const { t } = useLanguage()
-  
+  const router = useRouter()
+  const supabase = createClient()
+
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set())
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set())
+  const [userEmail, setUserEmail] = useState<string | null>(null)
+  const [userInitials, setUserInitials] = useState<string>('?')
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (user?.email) {
+        setUserEmail(user.email)
+        const parts = user.user_metadata?.full_name?.split(' ') ?? user.email.split('@')[0].split('.')
+        setUserInitials(parts.slice(0, 2).map((p: string) => p[0]?.toUpperCase()).join(''))
+      }
+    })
+  }, [])
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut()
+    router.push('/auth/login')
+  }
 
   // Initialize expanded groups based on pathname (only run on pathname changes)
   useEffect(() => {
@@ -313,6 +333,26 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
         </nav>
 
         <div className="border-t border-secondary bg-secondary/20 p-3 sm:p-4 space-y-3">
+          {/* User profile + logout */}
+          {userEmail && (
+            <div className="flex items-center gap-2 rounded-lg bg-white/60 px-2 py-2 border border-secondary/60">
+              <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-primary text-white text-xs font-bold">
+                {userInitials}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-semibold text-gray-800 truncate">{userEmail}</p>
+                <p className="text-xs text-gray-500">Conectado</p>
+              </div>
+              <button
+                onClick={handleLogout}
+                className="flex-shrink-0 p-1.5 rounded-md hover:bg-red-50 hover:text-red-600 text-gray-400 transition-colors"
+                title="Cerrar sesión"
+              >
+                <LogOut className="h-4 w-4" />
+              </button>
+            </div>
+          )}
+
           <div className="w-full">
             <p className="text-xs sm:text-sm font-semibold text-gray-800 mb-2">Language</p>
             <LanguageSwitcher />
