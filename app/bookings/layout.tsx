@@ -1,9 +1,18 @@
 "use client"
 
 import type React from "react"
+import { usePathname, useRouter } from "next/navigation"
+import {
+  Activity,
+  CalendarDays,
+  CreditCard,
+  FileText,
+  Home,
+  MapPin,
+  TrendingUp,
+  Users,
+} from "lucide-react"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { useRouter, usePathname } from "next/navigation"
-import { Calendar, Users, TrendingUp, Home, MapPin } from "lucide-react"
 import { useLanguage } from "@/lib/hooks/use-language"
 
 export default function BookingsLayout({ children }: { children: React.ReactNode }) {
@@ -14,59 +23,72 @@ export default function BookingsLayout({ children }: { children: React.ReactNode
   const activeTab =
     pathname === "/bookings"
       ? "calendar"
-      : pathname?.includes("/guests")
-        ? "guests"
-        : pathname?.includes("/reports")
-          ? "reports"
-          : pathname?.includes("/rooms")
-            ? "rooms"
-            : pathname?.includes("/facilities")
-              ? "facilities"
-              : "calendar"
+      : pathname?.includes("/activities")
+        ? "activities"
+        : pathname?.includes("/guests")
+          ? "guests"
+          : pathname?.includes("/payments")
+            ? "payments"
+            : pathname?.includes("/invoices")
+              ? "invoices"
+              : pathname?.includes("/reports")
+                ? "reports"
+                : pathname?.includes("/rooms")
+                  ? "rooms"
+                  : pathname?.includes("/facilities")
+                    ? "facilities"
+                    : "calendar"
 
   function handleTabChange(value: string) {
-    switch (value) {
-      case "calendar":
-        router.push("/bookings")
-        break
-      case "guests":
-        router.push("/bookings/guests")
-        break
-      case "reports":
-        router.push("/bookings/reports")
-        break
-      case "rooms":
-        router.push("/bookings/rooms")
-        break
-      case "facilities":
-        router.push("/bookings/facilities")
-        break
+    const routes: Record<string, string> = {
+      calendar: "/bookings",
+      activities: "/bookings/activities",
+      guests: "/bookings/guests",
+      payments: "/bookings/payments",
+      invoices: "/bookings/invoices",
+      reports: "/bookings/reports",
+      rooms: "/bookings/rooms",
+      facilities: "/bookings/facilities",
     }
+
+    const route = routes[value]
+    if (route) router.push(route)
   }
 
   return (
-    <div className="flex flex-col">
-      {/* Sub-navigation tabs */}
-      <div className="border-b bg-card px-6 py-3">
+    <div className="flex min-h-screen flex-col bg-background">
+      <div className="sticky top-0 z-40 border-b bg-card/95 px-4 py-3 backdrop-blur md:px-6">
         <Tabs value={activeTab} onValueChange={handleTabChange}>
-          <TabsList>
-            <TabsTrigger value="calendar" className="gap-2">
-              <Calendar className="h-4 w-4" />
+          <TabsList className="h-auto max-w-full justify-start overflow-x-auto p-1">
+            <TabsTrigger value="calendar" className="shrink-0 gap-2">
+              <CalendarDays className="h-4 w-4" />
               {t("bookings.calendar")}
             </TabsTrigger>
-            <TabsTrigger value="facilities" className="gap-2">
-              <MapPin className="h-4 w-4" />
-              {t("bookings.facilities")}
+            <TabsTrigger value="activities" className="shrink-0 gap-2">
+              <Activity className="h-4 w-4" />
+              Operaciones
             </TabsTrigger>
-            <TabsTrigger value="rooms" className="gap-2">
-              <Home className="h-4 w-4" />
-              {t("bookings.rooms")}
-            </TabsTrigger>
-            <TabsTrigger value="guests" className="gap-2">
+            <TabsTrigger value="guests" className="shrink-0 gap-2">
               <Users className="h-4 w-4" />
               {t("bookings.guests")}
             </TabsTrigger>
-            <TabsTrigger value="reports" className="gap-2">
+            <TabsTrigger value="payments" className="shrink-0 gap-2">
+              <CreditCard className="h-4 w-4" />
+              Pagos
+            </TabsTrigger>
+            <TabsTrigger value="invoices" className="shrink-0 gap-2">
+              <FileText className="h-4 w-4" />
+              Facturas
+            </TabsTrigger>
+            <TabsTrigger value="facilities" className="shrink-0 gap-2">
+              <MapPin className="h-4 w-4" />
+              {t("bookings.facilities")}
+            </TabsTrigger>
+            <TabsTrigger value="rooms" className="shrink-0 gap-2">
+              <Home className="h-4 w-4" />
+              {t("bookings.rooms")}
+            </TabsTrigger>
+            <TabsTrigger value="reports" className="shrink-0 gap-2">
               <TrendingUp className="h-4 w-4" />
               {t("bookings.reports")}
             </TabsTrigger>
@@ -74,7 +96,6 @@ export default function BookingsLayout({ children }: { children: React.ReactNode
         </Tabs>
       </div>
 
-      {/* Page content */}
       <div className="flex-1 overflow-hidden">{children}</div>
     </div>
   )
