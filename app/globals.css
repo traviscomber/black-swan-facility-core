@@ -234,4 +234,16 @@
   .leaflet-control-attribution {
     @apply text-xs;
   }
+
+  /* KMZ point label markers — override Leaflet's pointer-events:none default */
+  .kmz-point-icon {
+    background: transparent !important;
+    border: none !important;
+    pointer-events: auto !important;
+  }
+
+  /* Map fullscreen page — cancel global main spacing/padding */
+  main.map-page {
+    @apply space-y-0 p-0 m-0;
+  }
 }
