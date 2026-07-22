@@ -40,11 +40,7 @@ export function KmzEditDialog({ open, kmz, onOpenChange, onSave }: KmzEditDialog
     try {
       const { error } = await supabase
         .from("gis_overlays")
-        .update({
-          name,
-          color,
-          updated_at: new Date().toISOString(),
-        })
+        .update({ name, color })
         .eq("id", kmz.id)
 
       if (error) throw error
