@@ -172,7 +172,7 @@ export default function KmzViewerPage() {
   const dateGroups = Object.keys(groupedFiles).sort().reverse()
 
   return (
-    <main className="map-page relative w-full bg-gray-100 overflow-hidden" style={{ height: "100dvh" }}>
+    <div className="relative w-full h-full bg-gray-100 overflow-hidden">
       <div ref={mapContainerRef} className="w-full h-full">
         <DynamicMap
           visibleLayers={visibleLayers}
@@ -426,6 +426,6 @@ export default function KmzViewerPage() {
         onOpenChange={setEditDialogOpen}
         onSave={fetchKmzFiles}
       />
-    </main>
+    </div>
   )
 }
