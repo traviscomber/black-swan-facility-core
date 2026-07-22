@@ -14,6 +14,7 @@ interface KmzMapViewProps {
   infrastructureData?: any[]
   onMapClick?: (lat: number, lng: number) => void
   onMarkerClick?: (infra: any) => void
+  onStats?: (id: string, stats: { features: number; types: string[]; folders: string[] }) => void
   isDrawingConnection?: boolean
   connectionStart?: any | null
 }
@@ -28,6 +29,7 @@ const KmzMapView = ({
   infrastructureData = [],
   onMapClick,
   onMarkerClick,
+  onStats,
   isDrawingConnection = false,
   connectionStart = null,
 }: KmzMapViewProps) => {
@@ -408,6 +410,33 @@ const KmzMapView = ({
 
         const geoJSON = kmlConverter(kmlDoc)
 
+        // Enrich features with folder hierarchy from raw KML
+        // @mapbox/togeojson loses Folder context — we recover it here
+        const folderMap = new Map<string, string>() // placemark name -> folder path
+        const folders = kmlDoc.querySelectorAll("Folder, Document")
+        folders.forEach((folder) => {
+          const folderName = folder.querySelector(":scope > name")?.textContent?.trim() || ""
+          const placemarks = folder.querySelectorAll(":scope > Placemark")
+          placemarks.forEach((pm) => {
+            const pmName = pm.querySelector("name")?.textContent?.trim() || ""
+            if (pmName) folderMap.set(pmName, folderName)
+          })
+        })
+
+        // Also extract altitude from coordinates where available
+        geoJSON.features.forEach((feature: any) => {
+          const pmName = feature.properties?.name || ""
+          if (folderMap.has(pmName)) {
+            feature.properties = { ...feature.properties, folder: folderMap.get(pmName) }
+          }
+          // Extract description text (strip HTML tags if any)
+          if (feature.properties?.description) {
+            const raw = feature.properties.description
+            const stripped = raw.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim()
+            if (stripped) feature.properties.description = stripped
+          }
+        })
+
         // Validate GeoJSON features have valid coordinates
         if (!geoJSON.features || geoJSON.features.length === 0) {
           console.error("[v0] No valid features found in GeoJSON from KMZ:", file.name)
@@ -437,6 +466,17 @@ const KmzMapView = ({
         if (validFeatures.length === 0) {
           console.warn("[v0] No valid features after filtering for KMZ:", file.name)
           return
+        }
+
+        // Emit stats for the sidebar
+        if (onStats) {
+          const types = [...new Set<string>(validFeatures.map((f: any) => {
+            const t = f.geometry?.type || ""
+            const labels: Record<string,string> = { Point:"Puntos", LineString:"Líneas", Polygon:"Polígonos", MultiPolygon:"Multipolígonos", MultiLineString:"Multilíneas" }
+            return labels[t] || t
+          }))].filter(Boolean)
+          const folders = [...new Set<string>(validFeatures.map((f: any) => f.properties?.folder || "").filter(Boolean))]
+          onStats(file.id, { features: validFeatures.length, types, folders })
         }
 
         // Create a new GeoJSON with only valid features
@@ -475,43 +515,46 @@ const KmzMapView = ({
               if (!layer || !layer.bindPopup) return
               
               const props = feature.properties || {}
-              let popupContent = `<div style="max-width: 300px; max-height: 400px; overflow-y: auto;">`
-              popupContent += `<strong style="color: ${polygonColor}; font-size: 16px;">${file.name}</strong><br/>`
+              const featureName = props.name || ""
+              const folder = props.folder || ""
+              const description = props.description || ""
+              const geomType = feature.geometry?.type || ""
 
-              // Show all properties from the KMZ
-              if (Object.keys(props).length > 0) {
-                popupContent += `<div style="margin-top: 8px; border-top: 1px solid #e5e7eb; padding-top: 8px;">`
+              let popupContent = `<div style="font-family:sans-serif;max-width:320px;max-height:420px;overflow-y:auto;">`
 
-                Object.entries(props).forEach(([key, value]) => {
-                  // Skip empty values
-                  if (value === null || value === undefined || value === "") return
-
-                  // Format the key (convert camelCase to Title Case)
-                  const formattedKey = key
-                    .replace(/([A-Z])/g, " $1")
-                    .replace(/^./, (str) => str.toUpperCase())
-                    .trim()
-
-                  // Handle different value types
-                  let formattedValue = value
-                  if (typeof value === "object") {
-                    formattedValue = JSON.stringify(value, null, 2)
-                  } else {
-                    formattedValue = String(value)
-                  }
-
-                  // Add to popup with styling
-                  popupContent += `
-                    <div style="margin-bottom: 6px;">
-                      <strong style="color: #4b5563; font-size: 12px;">${formattedKey}:</strong>
-                      <span style="color: #1f2937; font-size: 12px; margin-left: 4px;">${formattedValue}</span>
-                    </div>
-                  `
-                })
-
-                popupContent += `</div>`
+              // Header: folder > name hierarchy
+              if (folder) {
+                popupContent += `<div style="font-size:10px;color:#6b7280;margin-bottom:2px;text-transform:uppercase;letter-spacing:.05em;">${folder}</div>`
+              }
+              if (featureName) {
+                popupContent += `<div style="font-size:14px;font-weight:600;color:${polygonColor};margin-bottom:6px;line-height:1.3;">${featureName}</div>`
               } else {
-                popupContent += `<em style="color: #9ca3af; font-size: 12px;">No additional properties</em>`
+                popupContent += `<div style="font-size:13px;font-weight:600;color:${polygonColor};margin-bottom:6px;">${file.name}</div>`
+              }
+
+              // Geometry type badge
+              const geomLabels: Record<string,string> = { Point:"Punto", LineString:"Línea", Polygon:"Polígono", MultiPolygon:"Multipolígono", MultiLineString:"Multilínea" }
+              const geomLabel = geomLabels[geomType] || geomType
+              if (geomLabel) {
+                popupContent += `<span style="display:inline-block;background:#f3f4f6;color:#374151;font-size:10px;padding:1px 6px;border-radius:4px;margin-bottom:8px;">${geomLabel}</span>`
+              }
+
+              // Description
+              if (description) {
+                popupContent += `<div style="font-size:12px;color:#374151;background:#f9fafb;border-radius:4px;padding:6px 8px;margin-bottom:8px;line-height:1.5;">${description}</div>`
+              }
+
+              // Extra properties (skip name, description, folder already shown)
+              const skip = new Set(["name","description","folder","styleUrl","visibility"])
+              const extraEntries = Object.entries(props).filter(([k, v]) => !skip.has(k) && v !== null && v !== undefined && v !== "")
+              if (extraEntries.length > 0) {
+                popupContent += `<div style="border-top:1px solid #e5e7eb;padding-top:6px;">`
+                extraEntries.forEach(([key, value]) => {
+                  const label = key.replace(/([A-Z])/g," $1").replace(/^./,(s)=>s.toUpperCase()).trim()
+                  const val = typeof value === "object" ? JSON.stringify(value) : String(value)
+                  popupContent += `<div style="margin-bottom:4px;font-size:11px;"><span style="color:#6b7280;">${label}:</span> <span style="color:#111827;">${val}</span></div>`
+                })
+                popupContent += `</div>`
               }
 
               popupContent += `</div>`

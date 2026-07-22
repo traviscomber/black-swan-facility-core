@@ -40,6 +40,7 @@ export default function KmzViewerPage() {
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false)
   const [editingKmz, setEditingKmz] = useState<KmzFile | null>(null)
   const [editDialogOpen, setEditDialogOpen] = useState(false)
+  const [kmzStats, setKmzStats] = useState<Record<string, { features: number; types: string[]; folders: string[] }>>({})
   const [visibleLayers, setVisibleLayers] = useState<Set<string>>(new Set())
   const [searchTerm, setSearchTerm] = useState("")
   const [sidebarOpen, setSidebarOpen] = useState(true)
@@ -170,7 +171,11 @@ export default function KmzViewerPage() {
   return (
     <main className="relative w-full h-screen bg-gray-100 overflow-hidden">
       <div ref={mapContainerRef} className="w-full h-full">
-        <DynamicMap visibleLayers={visibleLayers} kmzFiles={kmzFiles} />
+        <DynamicMap
+          visibleLayers={visibleLayers}
+          kmzFiles={kmzFiles}
+          onStats={(id, stats) => setKmzStats(prev => ({ ...prev, [id]: stats }))}
+        />
       </div>
 
       <button
@@ -257,8 +262,18 @@ export default function KmzViewerPage() {
                             />
                             <div className="min-w-0">
                               <h4 className="font-medium text-sm text-gray-900 truncate">{file.name}</h4>
-                              {file.description && (
-                                <p className="text-xs text-gray-600 truncate mt-1">{file.description}</p>
+                              {kmzStats[file.id] && (
+                                <div className="flex flex-wrap gap-1 mt-1">
+                                  <span className="text-[10px] bg-gray-200 text-gray-600 rounded px-1.5 py-0.5">
+                                    {kmzStats[file.id].features} elementos
+                                  </span>
+                                  {kmzStats[file.id].types.map(t => (
+                                    <span key={t} className="text-[10px] bg-blue-50 text-blue-600 rounded px-1.5 py-0.5">{t}</span>
+                                  ))}
+                                  {kmzStats[file.id].folders.slice(0,2).map(f => (
+                                    <span key={f} className="text-[10px] bg-amber-50 text-amber-700 rounded px-1.5 py-0.5 truncate max-w-[100px]" title={f}>{f}</span>
+                                  ))}
+                                </div>
                               )}
                             </div>
                           </div>
