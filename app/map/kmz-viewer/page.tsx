@@ -32,6 +32,8 @@ interface KmzFilesByDate {
   [key: string]: KmzFile[]
 }
 
+const KMZ_PALETTE = ["#2196F3","#E53935","#43A047","#FB8C00","#8E24AA","#00ACC1","#FFB300","#6D4C41"]
+
 export default function KmzViewerPage() {
   const [kmzFiles, setKmzFiles] = useState<KmzFile[]>([])
   const [loading, setLoading] = useState(true)
@@ -238,17 +240,27 @@ export default function KmzViewerPage() {
 
                   {/* Files in this date */}
                   <div className="space-y-2">
-                    {groupedFiles[date].map((file) => (
+                    {groupedFiles[date].map((file) => {
+                      const globalIndex = kmzFiles.findIndex((f) => f.id === file.id)
+                      const dotColor = KMZ_PALETTE[globalIndex % KMZ_PALETTE.length]
+                      return (
                       <div
                         key={file.id}
                         className="p-3 bg-gray-50 rounded-lg border border-gray-200 hover:border-primary/30 transition-colors space-y-2"
                       >
                         <div className="flex items-start justify-between gap-2">
-                          <div className="flex-1 min-w-0">
-                            <h4 className="font-medium text-sm text-gray-900 truncate">{file.name}</h4>
-                            {file.description && (
-                              <p className="text-xs text-gray-600 truncate mt-1">{file.description}</p>
-                            )}
+                          <div className="flex items-center gap-2 flex-1 min-w-0">
+                            <span
+                              className="flex-shrink-0 h-3 w-3 rounded-full"
+                              style={{ backgroundColor: dotColor }}
+                              title={`Color de capa`}
+                            />
+                            <div className="min-w-0">
+                              <h4 className="font-medium text-sm text-gray-900 truncate">{file.name}</h4>
+                              {file.description && (
+                                <p className="text-xs text-gray-600 truncate mt-1">{file.description}</p>
+                              )}
+                            </div>
                           </div>
                           <button
                             onClick={() => toggleLayerVisibility(file.id)}
@@ -302,7 +314,7 @@ export default function KmzViewerPage() {
                           </Button>
                         </div>
                       </div>
-                    ))}
+                    )})}
                   </div>
                 </div>
               ))

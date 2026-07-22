@@ -358,7 +358,7 @@ const KmzMapView = ({
     console.log("[v0] Loading KMZ files:", kmzFiles.length)
 
     // Load and render each KMZ file
-    kmzFiles.forEach(async (file: any) => {
+    kmzFiles.forEach(async (file: any, fileIndex: number) => {
       try {
         console.log("[v0] Loading KMZ file:", file.name, "from", file.file_url)
 
@@ -447,14 +447,15 @@ const KmzMapView = ({
 
         // Add GeoJSON to map with proper error handling
         let layer
-        const polygonColor = file.color || "#2196F3"
+        const KMZ_PALETTE = ["#2196F3","#E53935","#43A047","#FB8C00","#8E24AA","#00ACC1","#FFB300","#6D4C41"]
+        const polygonColor = KMZ_PALETTE[fileIndex % KMZ_PALETTE.length]
         try {
           layer = L.geoJSON(validGeoJSON, {
             style: {
               color: polygonColor,
               weight: 3,
-              opacity: 0.8,
-              fillOpacity: 0.3,
+              opacity: 0.9,
+              fillOpacity: 0.25,
             },
             pointToLayer: (feature: any, latlng: any) => {
               if (!latlng || latlng === undefined) {
