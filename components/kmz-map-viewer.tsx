@@ -340,41 +340,28 @@ const KmzMapView = ({
   }, [infrastructureData, onMarkerClick, isDrawingConnection, connectionStart])
 
   useEffect(() => {
-    if (!mapRef.current || !mapReady || !kmzFiles || kmzFiles.length === 0) {
-      console.log("[v0] KMZ files not ready:", {
-        hasMap: !!mapRef.current,
-        mapReady,
-        kmzFilesCount: kmzFiles?.length || 0,
-      })
-      return
-    }
+    if (!mapRef.current || !mapReady || !kmzFiles || kmzFiles.length === 0) return
 
     const L = window.L
-    if (!L) return
+    let cancelled = false
 
+    // Remove ALL existing KMZ layers from map and clear ref
     kmzLayersRef.current.forEach((layer) => {
-      if (mapRef.current.hasLayer(layer)) {
-        mapRef.current.removeLayer(layer)
-      }
+      if (mapRef.current.hasLayer(layer)) mapRef.current.removeLayer(layer)
     })
     kmzLayersRef.current.clear()
 
-    console.log("[v0] Loading KMZ files:", kmzFiles.length)
-
-    // Load and render each KMZ file
+    // Load each KMZ file sequentially-safe with cancellation
     kmzFiles.forEach(async (file: any, fileIndex: number) => {
+      if (cancelled) return
       try {
         console.log("[v0] Loading KMZ file:", file.name, "from", file.file_url)
 
         // Fetch the KMZ file from Supabase Storage
         const response = await fetch(file.file_url)
-        if (!response.ok) {
-          console.error("[v0] Failed to fetch KMZ file:", file.name, response.statusText)
-          return
-        }
+        if (!response.ok) return
 
         const arrayBuffer = await response.arrayBuffer()
-        console.log("[v0] KMZ file loaded:", file.name, arrayBuffer.byteLength, "bytes")
 
         // Load JSZip to extract KMZ (which is a ZIP file)
         const zip = new JSZip()
@@ -388,8 +375,6 @@ const KmzMapView = ({
         }
 
         const kmlText = await zipData.files[kmlFile].async("string")
-        console.log("[v0] KML extracted from KMZ:", file.name, kmlText.length, "characters")
-
         // Parse KML to GeoJSON using browser's native DOMParser
         const parser = new DOMParser()
         const kmlDoc = parser.parseFromString(kmlText, "text/xml")
@@ -401,7 +386,7 @@ const KmzMapView = ({
           return
         }
 
-        console.log("[v0] KML parsed successfully, converting to GeoJSON...")
+
         const toGeoJSON = await import("@mapbox/togeojson")
         const kmlConverter = toGeoJSON.kml || toGeoJSON.default?.kml || toGeoJSON.default
 
@@ -410,6 +395,7 @@ const KmzMapView = ({
           return
         }
 
+        if (cancelled) return
         const geoJSON = kmlConverter(kmlDoc)
 
         // Enrich features with folder hierarchy from raw KML
@@ -600,13 +586,13 @@ const KmzMapView = ({
           return
         }
 
+        if (cancelled) return
+
         kmzLayersRef.current.set(file.id, layer)
 
+        // Only add if still visible — visibility useEffect handles show/hide after this
         if (visibleLayers.has(file.id)) {
           layer.addTo(mapRef.current)
-          console.log("[v0] ✓ KMZ rendered on map (visible):", file.name)
-        } else {
-          console.log("[v0] ✓ KMZ loaded but hidden:", file.name)
         }
 
         // Zoom to fit the first visible KMZ layer
@@ -624,12 +610,12 @@ const KmzMapView = ({
         console.error("[v0] Error loading KMZ file:", file.name, error)
       }
     })
-  }, [kmzFiles, visibleLayers, mapReady])
+
+    return () => { cancelled = true }
+  }, [kmzFiles, mapReady]) // visibleLayers intentionally excluded — handled by visibility useEffect below
 
   useEffect(() => {
-    if (!mapRef.current || kmzLayersRef.current.size === 0) return
-
-    console.log("[v0] Visibility changed, updating layers. Visible count:", visibleLayers.size)
+    if (!mapRef.current) return
 
     kmzLayersRef.current.forEach((layer, fileId) => {
       const shouldBeVisible = visibleLayers.has(fileId)
@@ -637,10 +623,8 @@ const KmzMapView = ({
 
       if (shouldBeVisible && !isCurrentlyVisible) {
         layer.addTo(mapRef.current)
-        console.log("[v0] Showing KMZ layer:", fileId)
       } else if (!shouldBeVisible && isCurrentlyVisible) {
         mapRef.current.removeLayer(layer)
-        console.log("[v0] Hiding KMZ layer:", fileId)
       }
     })
   }, [visibleLayers])
