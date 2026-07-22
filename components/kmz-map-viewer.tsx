@@ -14,6 +14,8 @@ interface KmzMapViewProps {
   infrastructureData?: any[]
   onMapClick?: (lat: number, lng: number) => void
   onMarkerClick?: (infra: any) => void
+  onStats?: (id: string, stats: { features: number; types: string[]; folders: string[] }) => void
+  onFeatures?: (id: string, features: Array<{ name: string; folder: string; type: string; description: string }>) => void
   isDrawingConnection?: boolean
   connectionStart?: any | null
 }
@@ -28,6 +30,8 @@ const KmzMapView = ({
   infrastructureData = [],
   onMapClick,
   onMarkerClick,
+  onStats,
+  onFeatures,
   isDrawingConnection = false,
   connectionStart = null,
 }: KmzMapViewProps) => {
@@ -336,41 +340,28 @@ const KmzMapView = ({
   }, [infrastructureData, onMarkerClick, isDrawingConnection, connectionStart])
 
   useEffect(() => {
-    if (!mapRef.current || !mapReady || !kmzFiles || kmzFiles.length === 0) {
-      console.log("[v0] KMZ files not ready:", {
-        hasMap: !!mapRef.current,
-        mapReady,
-        kmzFilesCount: kmzFiles?.length || 0,
-      })
-      return
-    }
+    if (!mapRef.current || !mapReady || !kmzFiles || kmzFiles.length === 0) return
 
     const L = window.L
-    if (!L) return
+    let cancelled = false
 
+    // Remove ALL existing KMZ layers from map and clear ref
     kmzLayersRef.current.forEach((layer) => {
-      if (mapRef.current.hasLayer(layer)) {
-        mapRef.current.removeLayer(layer)
-      }
+      if (mapRef.current.hasLayer(layer)) mapRef.current.removeLayer(layer)
     })
     kmzLayersRef.current.clear()
 
-    console.log("[v0] Loading KMZ files:", kmzFiles.length)
-
-    // Load and render each KMZ file
-    kmzFiles.forEach(async (file: any) => {
+    // Load each KMZ file sequentially-safe with cancellation
+    kmzFiles.forEach(async (file: any, fileIndex: number) => {
+      if (cancelled) return
       try {
         console.log("[v0] Loading KMZ file:", file.name, "from", file.file_url)
 
         // Fetch the KMZ file from Supabase Storage
         const response = await fetch(file.file_url)
-        if (!response.ok) {
-          console.error("[v0] Failed to fetch KMZ file:", file.name, response.statusText)
-          return
-        }
+        if (!response.ok) return
 
         const arrayBuffer = await response.arrayBuffer()
-        console.log("[v0] KMZ file loaded:", file.name, arrayBuffer.byteLength, "bytes")
 
         // Load JSZip to extract KMZ (which is a ZIP file)
         const zip = new JSZip()
@@ -384,8 +375,6 @@ const KmzMapView = ({
         }
 
         const kmlText = await zipData.files[kmlFile].async("string")
-        console.log("[v0] KML extracted from KMZ:", file.name, kmlText.length, "characters")
-
         // Parse KML to GeoJSON using browser's native DOMParser
         const parser = new DOMParser()
         const kmlDoc = parser.parseFromString(kmlText, "text/xml")
@@ -397,7 +386,7 @@ const KmzMapView = ({
           return
         }
 
-        console.log("[v0] KML parsed successfully, converting to GeoJSON...")
+
         const toGeoJSON = await import("@mapbox/togeojson")
         const kmlConverter = toGeoJSON.kml || toGeoJSON.default?.kml || toGeoJSON.default
 
@@ -406,7 +395,35 @@ const KmzMapView = ({
           return
         }
 
+        if (cancelled) return
         const geoJSON = kmlConverter(kmlDoc)
+
+        // Enrich features with folder hierarchy from raw KML
+        // @mapbox/togeojson loses Folder context — we recover it here
+        const folderMap = new Map<string, string>() // placemark name -> folder path
+        const folders = kmlDoc.querySelectorAll("Folder, Document")
+        folders.forEach((folder) => {
+          const folderName = folder.querySelector(":scope > name")?.textContent?.trim() || ""
+          const placemarks = folder.querySelectorAll(":scope > Placemark")
+          placemarks.forEach((pm) => {
+            const pmName = pm.querySelector("name")?.textContent?.trim() || ""
+            if (pmName) folderMap.set(pmName, folderName)
+          })
+        })
+
+        // Also extract altitude from coordinates where available
+        geoJSON.features.forEach((feature: any) => {
+          const pmName = feature.properties?.name || ""
+          if (folderMap.has(pmName)) {
+            feature.properties = { ...feature.properties, folder: folderMap.get(pmName) }
+          }
+          // Extract description text (strip HTML tags if any)
+          if (feature.properties?.description) {
+            const raw = feature.properties.description
+            const stripped = raw.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim()
+            if (stripped) feature.properties.description = stripped
+          }
+        })
 
         // Validate GeoJSON features have valid coordinates
         if (!geoJSON.features || geoJSON.features.length === 0) {
@@ -439,6 +456,29 @@ const KmzMapView = ({
           return
         }
 
+        // Emit stats for the sidebar
+        if (onStats) {
+          const types = [...new Set<string>(validFeatures.map((f: any) => {
+            const t = f.geometry?.type || ""
+            const labels: Record<string,string> = { Point:"Puntos", LineString:"Líneas", Polygon:"Polígonos", MultiPolygon:"Multipolígonos", MultiLineString:"Multilíneas" }
+            return labels[t] || t
+          }))].filter(Boolean)
+          const folders = [...new Set<string>(validFeatures.map((f: any) => f.properties?.folder || "").filter(Boolean))]
+          onStats(file.id, { features: validFeatures.length, types, folders })
+        }
+
+        // Emit full feature list for the bottom panel
+        if (onFeatures) {
+          const geomLabels: Record<string,string> = { Point:"Punto", LineString:"Línea", Polygon:"Polígono", MultiPolygon:"Multipolígono", MultiLineString:"Multilínea" }
+          const featureList = validFeatures.map((f: any) => ({
+            name: f.properties?.name || "",
+            folder: f.properties?.folder || "",
+            type: geomLabels[f.geometry?.type || ""] || f.geometry?.type || "",
+            description: f.properties?.description || "",
+          }))
+          onFeatures(file.id, featureList)
+        }
+
         // Create a new GeoJSON with only valid features
         const validGeoJSON = {
           type: "FeatureCollection",
@@ -447,69 +487,85 @@ const KmzMapView = ({
 
         // Add GeoJSON to map with proper error handling
         let layer
+        const KMZ_PALETTE = ["#2196F3","#E53935","#43A047","#FB8C00","#8E24AA","#00ACC1","#FFB300","#6D4C41"]
+        const polygonColor = KMZ_PALETTE[fileIndex % KMZ_PALETTE.length]
         try {
           layer = L.geoJSON(validGeoJSON, {
             style: {
-              color: "#2196F3",
+              color: polygonColor,
               weight: 3,
-              opacity: 0.8,
-              fillOpacity: 0.3,
+              opacity: 0.9,
+              fillOpacity: 0.25,
             },
             pointToLayer: (feature: any, latlng: any) => {
-              if (!latlng || latlng === undefined) {
-                console.warn("[v0] Invalid latlng for point feature:", feature)
-                return null
-              }
-              return L.circleMarker(latlng, {
-                radius: 8,
-                fillColor: "#2196F3",
-                color: "#fff",
-                weight: 2,
-                opacity: 1,
-                fillOpacity: 0.8,
+              if (!latlng || latlng === undefined) return null
+              const label = feature.properties?.name || ""
+              const short = label.length > 12 ? label.slice(0, 12) + "…" : label
+              const icon = L.divIcon({
+                className: "",
+                html: `<div style="
+                  background:${polygonColor};
+                  color:#fff;
+                  font-size:10px;
+                  font-weight:700;
+                  font-family:sans-serif;
+                  padding:2px 5px;
+                  border-radius:10px;
+                  white-space:nowrap;
+                  border:2px solid #fff;
+                  box-shadow:0 1px 4px rgba(0,0,0,.4);
+                  max-width:120px;
+                  overflow:hidden;
+                  text-overflow:ellipsis;
+                ">${short || "•"}</div>`,
+                iconAnchor: [0, 0],
               })
+              return L.marker(latlng, { icon })
             },
             onEachFeature: (feature: any, layer: any) => {
               if (!layer || !layer.bindPopup) return
               
               const props = feature.properties || {}
-              let popupContent = `<div style="max-width: 300px; max-height: 400px; overflow-y: auto;">`
-              popupContent += `<strong style="color: #2196F3; font-size: 16px;">${file.name}</strong><br/>`
+              const featureName = props.name || ""
+              const folder = props.folder || ""
+              const description = props.description || ""
+              const geomType = feature.geometry?.type || ""
 
-              // Show all properties from the KMZ
-              if (Object.keys(props).length > 0) {
-                popupContent += `<div style="margin-top: 8px; border-top: 1px solid #e5e7eb; padding-top: 8px;">`
+              let popupContent = `<div style="font-family:sans-serif;max-width:320px;max-height:420px;overflow-y:auto;">`
 
-                Object.entries(props).forEach(([key, value]) => {
-                  // Skip empty values
-                  if (value === null || value === undefined || value === "") return
-
-                  // Format the key (convert camelCase to Title Case)
-                  const formattedKey = key
-                    .replace(/([A-Z])/g, " $1")
-                    .replace(/^./, (str) => str.toUpperCase())
-                    .trim()
-
-                  // Handle different value types
-                  let formattedValue = value
-                  if (typeof value === "object") {
-                    formattedValue = JSON.stringify(value, null, 2)
-                  } else {
-                    formattedValue = String(value)
-                  }
-
-                  // Add to popup with styling
-                  popupContent += `
-                    <div style="margin-bottom: 6px;">
-                      <strong style="color: #4b5563; font-size: 12px;">${formattedKey}:</strong>
-                      <span style="color: #1f2937; font-size: 12px; margin-left: 4px;">${formattedValue}</span>
-                    </div>
-                  `
-                })
-
-                popupContent += `</div>`
+              // Header: folder > name hierarchy
+              if (folder) {
+                popupContent += `<div style="font-size:10px;color:#6b7280;margin-bottom:2px;text-transform:uppercase;letter-spacing:.05em;">${folder}</div>`
+              }
+              if (featureName) {
+                popupContent += `<div style="font-size:14px;font-weight:600;color:${polygonColor};margin-bottom:6px;line-height:1.3;">${featureName}</div>`
               } else {
-                popupContent += `<em style="color: #9ca3af; font-size: 12px;">No additional properties</em>`
+                popupContent += `<div style="font-size:13px;font-weight:600;color:${polygonColor};margin-bottom:6px;">${file.name}</div>`
+              }
+
+              // Geometry type badge
+              const geomLabels: Record<string,string> = { Point:"Punto", LineString:"Línea", Polygon:"Polígono", MultiPolygon:"Multipolígono", MultiLineString:"Multilínea" }
+              const geomLabel = geomLabels[geomType] || geomType
+              if (geomLabel) {
+                popupContent += `<span style="display:inline-block;background:#f3f4f6;color:#374151;font-size:10px;padding:1px 6px;border-radius:4px;margin-bottom:8px;">${geomLabel}</span>`
+              }
+
+              // Description
+              if (description) {
+                popupContent += `<div style="font-size:12px;color:#374151;background:#f9fafb;border-radius:4px;padding:6px 8px;margin-bottom:8px;line-height:1.5;">${description}</div>`
+              }
+
+              // Extra properties (skip name, description, folder already shown)
+              const skip = new Set(["name","description","folder","styleUrl","visibility"])
+              const extraEntries = Object.entries(props).filter(([k, v]) => !skip.has(k) && v !== null && v !== undefined && v !== "")
+              if (extraEntries.length > 0) {
+                popupContent += `<div style="border-top:1px solid #e5e7eb;padding-top:6px;">`
+                extraEntries.forEach(([key, value]) => {
+                  const label = key.replace(/([A-Z])/g," $1").replace(/^./,(s)=>s.toUpperCase()).trim()
+                  const val = typeof value === "object" ? JSON.stringify(value) : String(value)
+                  popupContent += `<div style="margin-bottom:4px;font-size:11px;"><span style="color:#6b7280;">${label}:</span> <span style="color:#111827;">${val}</span></div>`
+                })
+                popupContent += `</div>`
               }
 
               popupContent += `</div>`
@@ -530,13 +586,13 @@ const KmzMapView = ({
           return
         }
 
+        if (cancelled) return
+
         kmzLayersRef.current.set(file.id, layer)
 
+        // Only add if still visible — visibility useEffect handles show/hide after this
         if (visibleLayers.has(file.id)) {
           layer.addTo(mapRef.current)
-          console.log("[v0] ✓ KMZ rendered on map (visible):", file.name)
-        } else {
-          console.log("[v0] ✓ KMZ loaded but hidden:", file.name)
         }
 
         // Zoom to fit the first visible KMZ layer
@@ -554,12 +610,12 @@ const KmzMapView = ({
         console.error("[v0] Error loading KMZ file:", file.name, error)
       }
     })
-  }, [kmzFiles, mapReady])
+
+    return () => { cancelled = true }
+  }, [kmzFiles, mapReady]) // visibleLayers intentionally excluded — handled by visibility useEffect below
 
   useEffect(() => {
-    if (!mapRef.current || kmzLayersRef.current.size === 0) return
-
-    console.log("[v0] Visibility changed, updating layers. Visible count:", visibleLayers.size)
+    if (!mapRef.current) return
 
     kmzLayersRef.current.forEach((layer, fileId) => {
       const shouldBeVisible = visibleLayers.has(fileId)
@@ -567,10 +623,8 @@ const KmzMapView = ({
 
       if (shouldBeVisible && !isCurrentlyVisible) {
         layer.addTo(mapRef.current)
-        console.log("[v0] Showing KMZ layer:", fileId)
       } else if (!shouldBeVisible && isCurrentlyVisible) {
         mapRef.current.removeLayer(layer)
-        console.log("[v0] Hiding KMZ layer:", fileId)
       }
     })
   }, [visibleLayers])
