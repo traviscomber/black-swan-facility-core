@@ -53,8 +53,9 @@ export function KmzEditDialog({ open, kmz, onOpenChange, onSave }: KmzEditDialog
       onSave()
       onOpenChange(false)
     } catch (error) {
-      console.error("[v0] Error saving KMZ:", error)
-      toast.error("Error al guardar")
+      const errorMsg = error instanceof Error ? error.message : String(error)
+      console.error("[v0] Error saving KMZ:", errorMsg)
+      toast.error("Error al guardar: " + errorMsg)
     } finally {
       setSaving(false)
     }
