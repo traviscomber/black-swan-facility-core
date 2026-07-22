@@ -15,6 +15,7 @@ interface KmzMapViewProps {
   onMapClick?: (lat: number, lng: number) => void
   onMarkerClick?: (infra: any) => void
   onStats?: (id: string, stats: { features: number; types: string[]; folders: string[] }) => void
+  onFeatures?: (id: string, features: Array<{ name: string; folder: string; type: string; description: string }>) => void
   isDrawingConnection?: boolean
   connectionStart?: any | null
 }
@@ -30,6 +31,7 @@ const KmzMapView = ({
   onMapClick,
   onMarkerClick,
   onStats,
+  onFeatures,
   isDrawingConnection = false,
   connectionStart = null,
 }: KmzMapViewProps) => {
@@ -479,6 +481,18 @@ const KmzMapView = ({
           onStats(file.id, { features: validFeatures.length, types, folders })
         }
 
+        // Emit full feature list for the bottom panel
+        if (onFeatures) {
+          const geomLabels: Record<string,string> = { Point:"Punto", LineString:"Línea", Polygon:"Polígono", MultiPolygon:"Multipolígono", MultiLineString:"Multilínea" }
+          const featureList = validFeatures.map((f: any) => ({
+            name: f.properties?.name || "",
+            folder: f.properties?.folder || "",
+            type: geomLabels[f.geometry?.type || ""] || f.geometry?.type || "",
+            description: f.properties?.description || "",
+          }))
+          onFeatures(file.id, featureList)
+        }
+
         // Create a new GeoJSON with only valid features
         const validGeoJSON = {
           type: "FeatureCollection",
@@ -498,18 +512,29 @@ const KmzMapView = ({
               fillOpacity: 0.25,
             },
             pointToLayer: (feature: any, latlng: any) => {
-              if (!latlng || latlng === undefined) {
-                console.warn("[v0] Invalid latlng for point feature:", feature)
-                return null
-              }
-              return L.circleMarker(latlng, {
-                radius: 8,
-                fillColor: polygonColor,
-                color: "#fff",
-                weight: 2,
-                opacity: 1,
-                fillOpacity: 0.8,
+              if (!latlng || latlng === undefined) return null
+              const label = feature.properties?.name || ""
+              const short = label.length > 12 ? label.slice(0, 12) + "…" : label
+              const icon = L.divIcon({
+                className: "",
+                html: `<div style="
+                  background:${polygonColor};
+                  color:#fff;
+                  font-size:10px;
+                  font-weight:700;
+                  font-family:sans-serif;
+                  padding:2px 5px;
+                  border-radius:10px;
+                  white-space:nowrap;
+                  border:2px solid #fff;
+                  box-shadow:0 1px 4px rgba(0,0,0,.4);
+                  max-width:120px;
+                  overflow:hidden;
+                  text-overflow:ellipsis;
+                ">${short || "•"}</div>`,
+                iconAnchor: [0, 0],
               })
+              return L.marker(latlng, { icon })
             },
             onEachFeature: (feature: any, layer: any) => {
               if (!layer || !layer.bindPopup) return
