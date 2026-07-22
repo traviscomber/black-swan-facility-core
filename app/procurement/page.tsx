@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { createBrowserClient } from "@/lib/supabase/client"
-import { Plus, Pencil, Download, ClipboardList, ShieldCheck } from "lucide-react"
+import { Plus, Pencil, Download, ClipboardList, ShieldCheck, AlertTriangle, RefreshCw } from "lucide-react"
 import { useEffect, useState } from "react"
 import { AddProcurementDialog } from "@/components/add-procurement-dialog"
 import { EditProcurementDialog } from "@/components/edit-procurement-dialog"
@@ -32,23 +32,60 @@ interface Supplier {
   name: string
 }
 
+const statusLabels: Record<string, string> = {
+  pending: "Pendiente",
+  ordered: "Ordenada",
+  delivered: "Entregada",
+  cancelled: "Cancelada",
+}
+
+const priorityLabels: Record<string, string> = {
+  low: "Baja",
+  medium: "Media",
+  high: "Alta",
+  urgent: "Urgente",
+}
+
+const numberFormatter = new Intl.NumberFormat("es-CL", {
+  maximumFractionDigits: 2,
+})
+
 export default function ProcurementPage() {
   const [items, setItems] = useState<ProcurementItem[]>([])
   const [suppliers, setSuppliers] = useState<Supplier[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
   const [showAddDialog, setShowAddDialog] = useState(false)
   const [editingItem, setEditingItem] = useState<ProcurementItem | null>(null)
 
   const loadData = async () => {
-    const supabase = createBrowserClient()
-    const [itemsRes, suppliersRes] = await Promise.all([
-      supabase.from("procurement_items").select("*").order("expected_delivery", { ascending: false }),
-      supabase.from("suppliers").select("id, name").eq("is_active", true),
-    ])
+    setLoading(true)
+    setLoadError(null)
 
-    if (itemsRes.data) setItems(itemsRes.data)
-    if (suppliersRes.data) setSuppliers(suppliersRes.data)
-    setLoading(false)
+    try {
+      const supabase = createBrowserClient()
+      const [itemsRes, suppliersRes] = await Promise.all([
+        supabase.from("procurement_items").select("*").order("expected_delivery", { ascending: false }),
+        supabase.from("suppliers").select("id, name").eq("is_active", true),
+      ])
+
+      if (itemsRes.error || suppliersRes.error) {
+        const messages = [itemsRes.error?.message, suppliersRes.error?.message].filter(Boolean)
+        setLoadError(messages.join(" · ") || "No fue posible cargar la información de compras.")
+        setItems([])
+        setSuppliers([])
+        return
+      }
+
+      setItems(itemsRes.data ?? [])
+      setSuppliers(suppliersRes.data ?? [])
+    } catch (error) {
+      setLoadError(error instanceof Error ? error.message : "Ocurrió un error inesperado al cargar la información.")
+      setItems([])
+      setSuppliers([])
+    } finally {
+      setLoading(false)
+    }
   }
 
   useEffect(() => {
@@ -56,7 +93,7 @@ export default function ProcurementPage() {
   }, [])
 
   const getSupplierName = (supplierId: string) => {
-    return suppliers.find((s) => s.id === supplierId)?.name || "Unknown"
+    return suppliers.find((supplier) => supplier.id === supplierId)?.name || "Proveedor no disponible"
   }
 
   const getStatusColor = (status: string) => {
@@ -76,15 +113,15 @@ export default function ProcurementPage() {
 
   const exportToCSV = () => {
     const headers = [
-      "Item Name",
-      "Category",
-      "Supplier",
-      "Unit Price",
-      "Quantity",
-      "Total Cost",
-      "Status",
-      "Expected Delivery",
-      "Priority",
+      "Artículo",
+      "Categoría",
+      "Proveedor",
+      "Precio unitario",
+      "Cantidad",
+      "Costo total",
+      "Estado",
+      "Entrega esperada",
+      "Prioridad",
     ]
     const rows = items.map((item) => [
       item.item_name,
@@ -93,26 +130,28 @@ export default function ProcurementPage() {
       item.unit_price,
       item.quantity,
       item.total_cost,
-      item.status,
-      item.expected_delivery || "-",
-      item.priority,
+      statusLabels[item.status] ?? `Estado no reconocido: ${item.status}`,
+      item.expected_delivery || "Sin fecha",
+      priorityLabels[item.priority] ?? item.priority,
     ])
 
-    const csv = [headers, ...rows].map((row) => row.map((cell) => `"${cell}"`).join(",")).join("\n")
-    const blob = new Blob([csv], { type: "text/csv" })
+    const csv = [headers, ...rows]
+      .map((row) => row.map((cell) => `"${String(cell).replaceAll('"', '""')}"`).join(","))
+      .join("\n")
+    const blob = new Blob(["\uFEFF", csv], { type: "text/csv;charset=utf-8" })
     const url = window.URL.createObjectURL(blob)
-    const a = document.createElement("a")
-    a.href = url
-    a.download = `procurement_${new Date().toISOString().split("T")[0]}.csv`
-    a.click()
+    const anchor = document.createElement("a")
+    anchor.href = url
+    anchor.download = `compras_${new Date().toISOString().split("T")[0]}.csv`
+    anchor.click()
     window.URL.revokeObjectURL(url)
   }
 
   const stats = {
-    pending: items.filter((i) => i.status === "pending").length,
-    ordered: items.filter((i) => i.status === "ordered").length,
-    delivered: items.filter((i) => i.status === "delivered").length,
-    totalBudget: items.reduce((sum, i) => sum + (i.total_cost || 0), 0),
+    pending: items.filter((item) => item.status === "pending").length,
+    ordered: items.filter((item) => item.status === "ordered").length,
+    delivered: items.filter((item) => item.status === "delivered").length,
+    totalBudget: items.reduce((sum, item) => sum + (item.total_cost || 0), 0),
   }
 
   return (
@@ -134,123 +173,110 @@ export default function ProcurementPage() {
                 Aprobaciones
               </Link>
             </Button>
-            <Button variant="outline" onClick={exportToCSV} disabled={items.length === 0}>
+            <Button variant="outline" onClick={exportToCSV} disabled={items.length === 0 || loading || !!loadError}>
               <Download className="mr-2 h-4 w-4" />
-              Export CSV
+              Exportar CSV
             </Button>
-            <Button onClick={() => setShowAddDialog(true)}>
+            <Button onClick={() => setShowAddDialog(true)} disabled={loading || !!loadError}>
               <Plus className="mr-2 h-4 w-4" />
-              New Purchase Order
+              Nueva orden de compra
             </Button>
           </div>
         }
       />
 
-      <div className="p-8 space-y-6">
+      <div className="p-4 sm:p-8 space-y-6">
+        {loadError && (
+          <Card className="border-destructive/60">
+            <CardContent className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-start gap-3">
+                <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-destructive" />
+                <div>
+                  <p className="font-semibold">No se pudo cargar Compras</p>
+                  <p className="mt-1 text-sm text-muted-foreground">{loadError}</p>
+                </div>
+              </div>
+              <Button variant="outline" onClick={loadData}>
+                <RefreshCw className="mr-2 h-4 w-4" />
+                Reintentar
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+
         <div className="grid gap-4 md:grid-cols-4">
-          <Card className="border-secondary hover:border-primary/50 transition-colors">
+          <Card className="border-secondary">
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Pending Orders</CardTitle>
+              <CardTitle className="text-sm font-medium text-muted-foreground">Órdenes pendientes</CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold text-accent">{stats.pending}</div>
-            </CardContent>
+            <CardContent><div className="text-3xl font-bold text-accent">{stats.pending}</div></CardContent>
           </Card>
-
-          <Card className="border-secondary hover:border-primary/50 transition-colors">
+          <Card className="border-secondary">
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Ordered</CardTitle>
+              <CardTitle className="text-sm font-medium text-muted-foreground">Órdenes emitidas</CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold text-accent">{stats.ordered}</div>
-            </CardContent>
+            <CardContent><div className="text-3xl font-bold text-accent">{stats.ordered}</div></CardContent>
           </Card>
-
-          <Card className="border-secondary hover:border-primary/50 transition-colors">
+          <Card className="border-secondary">
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Delivered</CardTitle>
+              <CardTitle className="text-sm font-medium text-muted-foreground">Órdenes entregadas</CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold text-accent">{stats.delivered}</div>
-            </CardContent>
+            <CardContent><div className="text-3xl font-bold text-accent">{stats.delivered}</div></CardContent>
           </Card>
-
-          <Card className="border-secondary hover:border-primary/50 transition-colors">
+          <Card className="border-secondary">
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Total Budget Used</CardTitle>
+              <CardTitle className="text-sm font-medium text-muted-foreground">Monto total registrado</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-accent">${stats.totalBudget.toLocaleString()}</div>
+              <div className="text-2xl font-bold text-accent">{numberFormatter.format(stats.totalBudget)}</div>
+              <p className="mt-1 text-xs text-muted-foreground">Código de moneda no definido en el registro.</p>
             </CardContent>
           </Card>
         </div>
 
         <Card>
           <CardHeader>
-            <CardTitle>Purchase Orders</CardTitle>
-            <CardDescription>All procurement and acquisition items</CardDescription>
+            <CardTitle>Órdenes de compra</CardTitle>
+            <CardDescription>Registro operativo de artículos, proveedores, costos y estado de entrega.</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="rounded-lg border border-secondary overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Item</TableHead>
-                    <TableHead>Category</TableHead>
-                    <TableHead>Supplier</TableHead>
-                    <TableHead>Unit Price</TableHead>
-                    <TableHead>Qty</TableHead>
-                    <TableHead>Total</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Expected Delivery</TableHead>
-                    <TableHead>Priority</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
+                    <TableHead>Artículo</TableHead><TableHead>Categoría</TableHead><TableHead>Proveedor</TableHead>
+                    <TableHead>Precio unitario</TableHead><TableHead>Cantidad</TableHead><TableHead>Total</TableHead>
+                    <TableHead>Estado</TableHead><TableHead>Entrega esperada</TableHead><TableHead>Prioridad</TableHead>
+                    <TableHead className="text-right">Acciones</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {loading ? (
-                    <TableRow>
-                      <TableCell colSpan={10} className="text-center text-muted-foreground py-8">
-                        Loading procurement data...
-                      </TableCell>
-                    </TableRow>
+                    <TableRow><TableCell colSpan={10} className="text-center text-muted-foreground py-8">Cargando información de compras…</TableCell></TableRow>
+                  ) : loadError ? (
+                    <TableRow><TableCell colSpan={10} className="text-center text-muted-foreground py-8">La tabla no está disponible porque la carga falló.</TableCell></TableRow>
                   ) : items.length > 0 ? (
                     items.map((item) => (
                       <TableRow key={item.id} className="hover:bg-secondary/30">
                         <TableCell className="font-medium">{item.item_name}</TableCell>
                         <TableCell>{item.category}</TableCell>
                         <TableCell>{getSupplierName(item.supplier_id)}</TableCell>
-                        <TableCell>${item.unit_price?.toFixed(2)}</TableCell>
+                        <TableCell>{numberFormatter.format(item.unit_price ?? 0)}</TableCell>
                         <TableCell>{item.quantity}</TableCell>
-                        <TableCell className="font-semibold">${item.total_cost?.toLocaleString()}</TableCell>
-                        <TableCell>
-                          <Badge className={`${getStatusColor(item.status)} border`}>{item.status}</Badge>
-                        </TableCell>
-                        <TableCell className="text-sm">{item.expected_delivery || "-"}</TableCell>
-                        <TableCell>
-                          <Badge
-                            variant="outline"
-                            className={item.priority === "high" ? "border-red-500/50 text-red-400" : ""}
-                          >
-                            {item.priority}
-                          </Badge>
-                        </TableCell>
+                        <TableCell className="font-semibold">{numberFormatter.format(item.total_cost ?? 0)}</TableCell>
+                        <TableCell><Badge className={`${getStatusColor(item.status)} border`}>{statusLabels[item.status] ?? `No reconocido: ${item.status}`}</Badge></TableCell>
+                        <TableCell className="text-sm">{item.expected_delivery || "Sin fecha"}</TableCell>
+                        <TableCell><Badge variant="outline" className={item.priority === "high" || item.priority === "urgent" ? "border-red-500/50 text-red-400" : ""}>{priorityLabels[item.priority] ?? item.priority}</Badge></TableCell>
                         <TableCell className="text-right">
                           <div className="flex items-center justify-end gap-1">
-                            <Button variant="ghost" size="sm" onClick={() => setEditingItem(item)}>
-                              <Pencil className="h-4 w-4" />
-                            </Button>
+                            <Button variant="ghost" size="sm" onClick={() => setEditingItem(item)} aria-label={`Editar ${item.item_name}`}><Pencil className="h-4 w-4" /></Button>
                             <DeleteProcurementButton itemId={item.id} itemName={item.item_name} onDeleted={loadData} />
                           </div>
                         </TableCell>
                       </TableRow>
                     ))
                   ) : (
-                    <TableRow>
-                      <TableCell colSpan={10} className="text-center text-muted-foreground py-8">
-                        No procurement items found
-                      </TableCell>
-                    </TableRow>
+                    <TableRow><TableCell colSpan={10} className="text-center text-muted-foreground py-8">No hay órdenes de compra registradas.</TableCell></TableRow>
                   )}
                 </TableBody>
               </Table>
@@ -259,28 +285,8 @@ export default function ProcurementPage() {
         </Card>
       </div>
 
-      <AddProcurementDialog
-        open={showAddDialog}
-        onOpenChange={setShowAddDialog}
-        suppliers={suppliers}
-        onItemAdded={() => {
-          loadData()
-          setShowAddDialog(false)
-        }}
-      />
-
-      {editingItem && (
-        <EditProcurementDialog
-          item={editingItem}
-          open={!!editingItem}
-          onOpenChange={(open) => !open && setEditingItem(null)}
-          suppliers={suppliers}
-          onItemUpdated={() => {
-            loadData()
-            setEditingItem(null)
-          }}
-        />
-      )}
+      <AddProcurementDialog open={showAddDialog} onOpenChange={setShowAddDialog} suppliers={suppliers} onItemAdded={() => { loadData(); setShowAddDialog(false) }} />
+      {editingItem && <EditProcurementDialog item={editingItem} open={!!editingItem} onOpenChange={(open) => !open && setEditingItem(null)} suppliers={suppliers} onItemUpdated={() => { loadData(); setEditingItem(null) }} />}
     </AppLayout>
   )
 }
