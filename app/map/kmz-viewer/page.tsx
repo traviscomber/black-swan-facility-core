@@ -21,6 +21,7 @@ interface KmzFile {
   id: string
   name: string
   file_url: string
+  color?: string
   description?: string
   created_at?: string
   file_size?: number

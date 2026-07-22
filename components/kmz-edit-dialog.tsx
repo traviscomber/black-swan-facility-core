@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import React, { useState, useEffect } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -24,6 +24,14 @@ export function KmzEditDialog({ open, kmz, onOpenChange, onSave }: KmzEditDialog
   const [color, setColor] = useState(kmz?.color || "#3388ff")
   const [saving, setSaving] = useState(false)
   const supabase = createClient()
+
+  // Update state when kmz changes
+  useEffect(() => {
+    if (kmz) {
+      setName(kmz.name || "")
+      setColor(kmz.color || "#3388ff")
+    }
+  }, [kmz, open])
 
   const handleSave = async () => {
     if (!kmz) return

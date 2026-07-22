@@ -447,10 +447,11 @@ const KmzMapView = ({
 
         // Add GeoJSON to map with proper error handling
         let layer
+        const polygonColor = file.color || "#2196F3"
         try {
           layer = L.geoJSON(validGeoJSON, {
             style: {
-              color: "#2196F3",
+              color: polygonColor,
               weight: 3,
               opacity: 0.8,
               fillOpacity: 0.3,
@@ -462,7 +463,7 @@ const KmzMapView = ({
               }
               return L.circleMarker(latlng, {
                 radius: 8,
-                fillColor: "#2196F3",
+                fillColor: polygonColor,
                 color: "#fff",
                 weight: 2,
                 opacity: 1,
@@ -474,7 +475,7 @@ const KmzMapView = ({
               
               const props = feature.properties || {}
               let popupContent = `<div style="max-width: 300px; max-height: 400px; overflow-y: auto;">`
-              popupContent += `<strong style="color: #2196F3; font-size: 16px;">${file.name}</strong><br/>`
+              popupContent += `<strong style="color: ${polygonColor}; font-size: 16px;">${file.name}</strong><br/>`
 
               // Show all properties from the KMZ
               if (Object.keys(props).length > 0) {
