@@ -7,7 +7,8 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { KmzUploadDialog } from "@/components/kmz-upload-dialog"
 import dynamic from "next/dynamic"
-import { Upload, Trash2, Eye, EyeOff, ChevronRight, ChevronLeft, X } from "lucide-react"
+import { Upload, Trash2, Eye, EyeOff, ChevronRight, ChevronLeft, X, Edit2 } from "lucide-react"
+import { KmzEditDialog } from "@/components/kmz-edit-dialog"
 
 const DynamicMap = dynamic(() => import("@/components/kmz-map-viewer"), {
   ssr: false,
@@ -34,6 +35,8 @@ export default function KmzViewerPage() {
   const [kmzFiles, setKmzFiles] = useState<KmzFile[]>([])
   const [loading, setLoading] = useState(true)
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false)
+  const [editingKmz, setEditingKmz] = useState<KmzFile | null>(null)
+  const [editDialogOpen, setEditDialogOpen] = useState(false)
   const [visibleLayers, setVisibleLayers] = useState<Set<string>>(new Set())
   const [searchTerm, setSearchTerm] = useState("")
   const [sidebarOpen, setSidebarOpen] = useState(true)
@@ -279,6 +282,18 @@ export default function KmzViewerPage() {
                           <Button
                             variant="ghost"
                             size="sm"
+                            className="h-7 text-xs hover:bg-blue-50"
+                            onClick={() => {
+                              setEditingKmz(file)
+                              setEditDialogOpen(true)
+                            }}
+                            title="Editar"
+                          >
+                            <Edit2 className="h-3 w-3" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
                             className="h-7 text-xs text-red-600 hover:text-red-700 hover:bg-red-50"
                             onClick={() => handleDeleteKmz(file.id)}
                           >
@@ -296,6 +311,13 @@ export default function KmzViewerPage() {
       </div>
 
       <KmzUploadDialog open={uploadDialogOpen} onOpenChange={setUploadDialogOpen} onUploadSuccess={fetchKmzFiles} />
+      
+      <KmzEditDialog
+        open={editDialogOpen}
+        kmz={editingKmz}
+        onOpenChange={setEditDialogOpen}
+        onSave={fetchKmzFiles}
+      />
     </main>
   )
 }
