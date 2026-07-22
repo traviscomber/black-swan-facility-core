@@ -555,7 +555,7 @@ const KmzMapView = ({
         console.error("[v0] Error loading KMZ file:", file.name, error)
       }
     })
-  }, [kmzFiles, mapReady])
+  }, [kmzFiles, visibleLayers, mapReady])
 
   useEffect(() => {
     if (!mapRef.current || kmzLayersRef.current.size === 0) return
