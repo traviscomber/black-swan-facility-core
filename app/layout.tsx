@@ -9,7 +9,7 @@ const _geist = Geist({ subsets: ["latin"] })
 const _geistMono = Geist_Mono({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "BFCS | Black Swan Facility Core",
+  title: "BSFC | Black Swan Facility Core",
   description:
     "Sistema interno de Black Swan Facility para la gestión operativa, trazabilidad de instalaciones y control de acceso por usuario.",
   applicationName: "Black Swan Facility Core",
