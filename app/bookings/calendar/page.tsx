@@ -13,6 +13,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { type ReservationResizeEdge, useReservationResizeState } from "./use-reservation-resize-state"
 
 interface Location { id: string; name: string }
 interface Bed {
@@ -91,6 +92,12 @@ export default function BookingsCalendarPage() {
   const [draggingEventId, setDraggingEventId] = useState<string | null>(null)
   const [dropTargetBedId, setDropTargetBedId] = useState<string | null>(null)
   const [movingReservationId, setMovingReservationId] = useState<string | null>(null)
+  const {
+    resizingReservationId,
+    isResizing,
+    beginResize,
+    clearResize,
+  } = useReservationResizeState()
 
   const endDate = addDays(startDate, rangeDays)
   const dates = useMemo(() => Array.from({ length: rangeDays }, (_, index) => addDays(startDate, index)), [rangeDays, startDate])
@@ -219,14 +226,40 @@ export default function BookingsCalendarPage() {
   }
 
   function openReservationFromTimeline(bed: Bed, clientX: number, currentTarget: HTMLDivElement) {
-    if (draggingEventId) return
+    if (draggingEventId || isResizing) return
     const rect = currentTarget.getBoundingClientRect()
     const offset = Math.max(0, Math.min(timelineWidth - 1, clientX - rect.left))
     const dayIndex = Math.floor(offset / DAY_WIDTH)
     openNewReservation(bed, addDays(startDate, dayIndex))
   }
 
+  function beginReservationResize(event: CalendarEvent, edge: ReservationResizeEdge, pointerEvent: React.PointerEvent<HTMLSpanElement>) {
+    if (event.event_type !== "reservation" || movingReservationId || draggingEventId) return
+    pointerEvent.preventDefault()
+    pointerEvent.stopPropagation()
+    pointerEvent.currentTarget.setPointerCapture(pointerEvent.pointerId)
+    beginResize({
+      reservationId: event.event_id,
+      bedId: event.bed_id,
+      edge,
+      pointerId: pointerEvent.pointerId,
+      pointerStartX: pointerEvent.clientX,
+      startsOn: event.starts_on,
+      endsOn: event.ends_on,
+    })
+  }
+
+  function finishReservationResize(pointerEvent: React.PointerEvent<HTMLSpanElement>) {
+    pointerEvent.preventDefault()
+    pointerEvent.stopPropagation()
+    if (pointerEvent.currentTarget.hasPointerCapture(pointerEvent.pointerId)) {
+      pointerEvent.currentTarget.releasePointerCapture(pointerEvent.pointerId)
+    }
+    clearResize()
+  }
+
   function beginReservationDrag(event: CalendarEvent, transfer: DataTransfer) {
+    if (isResizing) return
     transfer.effectAllowed = "move"
     transfer.setData("text/plain", event.event_id)
     setDraggingEventId(event.event_id)
@@ -426,23 +459,42 @@ export default function BookingsCalendarPage() {
                         const geometry = eventGeometry(event)
                         const isBlock = event.event_type === "block"
                         const isMoving = movingReservationId === event.event_id
+                        const isEventResizing = resizingReservationId === event.event_id
                         return <button
                           key={`${event.event_type}-${event.event_id}-${bed.id}`}
                           type="button"
-                          draggable={!isBlock && !movingReservationId}
+                          draggable={!isBlock && !movingReservationId && !isResizing}
                           onDragStart={(dragEvent) => !isBlock && beginReservationDrag(event, dragEvent.dataTransfer)}
                           onDragEnd={finishReservationDrag}
                           onClick={(buttonEvent) => {
                             buttonEvent.stopPropagation()
-                            if (draggingEventId) return
+                            if (draggingEventId || isResizing) return
                             if (isBlock) void openBlock(event)
                             else void openReservation(event)
                           }}
-                          className={`absolute top-2 h-[52px] overflow-hidden rounded-md border px-3 text-left text-xs shadow-sm transition hover:brightness-110 focus:outline-none focus:ring-2 focus:ring-primary ${isBlock ? "border-zinc-500 bg-zinc-800 text-white" : `${STATUS_STYLES[event.status] ?? "bg-slate-200 text-slate-900"} cursor-grab active:cursor-grabbing`} ${draggingEventId === event.event_id ? "opacity-40" : ""}`}
+                          className={`group absolute top-2 h-[52px] overflow-hidden rounded-md border px-3 text-left text-xs shadow-sm transition hover:brightness-110 focus:outline-none focus:ring-2 focus:ring-primary ${isBlock ? "border-zinc-500 bg-zinc-800 text-white" : `${STATUS_STYLES[event.status] ?? "bg-slate-200 text-slate-900"} cursor-grab active:cursor-grabbing`} ${draggingEventId === event.event_id ? "opacity-40" : ""} ${isEventResizing ? "ring-2 ring-white/80" : ""}`}
                           style={{ left: geometry.left, width: geometry.width }}
-                          title={isBlock ? `${event.label} · ${event.starts_on} → ${event.ends_on}` : `Arrastra para cambiar de cama · ${event.guest_name ?? event.label} · ${event.starts_on} → ${event.ends_on}`}
+                          title={isBlock ? `${event.label} · ${event.starts_on} → ${event.ends_on}` : `Arrastra para cambiar de cama · usa los extremos para ajustar fechas · ${event.guest_name ?? event.label} · ${event.starts_on} → ${event.ends_on}`}
                         >
-                          <div className="truncate font-semibold">{isMoving ? "Validando movimiento…" : isBlock ? BLOCK_LABELS[event.block_type ?? "other"] ?? "Bloqueada" : event.guest_name ?? event.label}</div>
+                          {!isBlock && <>
+                            <span
+                              aria-hidden="true"
+                              className="absolute inset-y-0 left-0 z-10 w-2 cursor-ew-resize bg-white/0 opacity-0 transition hover:bg-white/35 group-hover:opacity-100"
+                              onClick={(handleEvent) => { handleEvent.preventDefault(); handleEvent.stopPropagation() }}
+                              onPointerDown={(pointerEvent) => beginReservationResize(event, "left", pointerEvent)}
+                              onPointerUp={finishReservationResize}
+                              onPointerCancel={finishReservationResize}
+                            />
+                            <span
+                              aria-hidden="true"
+                              className="absolute inset-y-0 right-0 z-10 w-2 cursor-ew-resize bg-white/0 opacity-0 transition hover:bg-white/35 group-hover:opacity-100"
+                              onClick={(handleEvent) => { handleEvent.preventDefault(); handleEvent.stopPropagation() }}
+                              onPointerDown={(pointerEvent) => beginReservationResize(event, "right", pointerEvent)}
+                              onPointerUp={finishReservationResize}
+                              onPointerCancel={finishReservationResize}
+                            />
+                          </>}
+                          <div className="truncate font-semibold">{isMoving ? "Validando movimiento…" : isEventResizing ? "Ajustando fechas…" : isBlock ? BLOCK_LABELS[event.block_type ?? "other"] ?? "Bloqueada" : event.guest_name ?? event.label}</div>
                           <div className="truncate opacity-80">{isBlock ? event.label : `${STATUS_LABELS[event.status] ?? event.status} · ${event.starts_on} → ${event.ends_on}`}</div>
                         </button>
                       })}
