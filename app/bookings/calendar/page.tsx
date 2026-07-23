@@ -4,6 +4,7 @@ import Link from "next/link"
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { addDays, differenceInCalendarDays, format, isSameDay, parseISO, startOfDay } from "date-fns"
 import { Ban, BedDouble, CalendarDays, ChevronLeft, ChevronRight, CircleDollarSign, Home, Loader2, LogIn, LogOut, Moon, Plus, Search, Users } from "lucide-react"
+import { toast } from "sonner"
 import { createClient } from "@/lib/supabase/client"
 import { AddReservationDialog } from "@/components/add-reservation-dialog"
 import { Badge } from "@/components/ui/badge"
@@ -87,6 +88,9 @@ export default function BookingsCalendarPage() {
   const [selectedReservation, setSelectedReservation] = useState<Reservation | null>(null)
   const [selectedBlock, setSelectedBlock] = useState<RoomBlock | null>(null)
   const [updatingStatus, setUpdatingStatus] = useState<string | null>(null)
+  const [draggingEventId, setDraggingEventId] = useState<string | null>(null)
+  const [dropTargetBedId, setDropTargetBedId] = useState<string | null>(null)
+  const [movingReservationId, setMovingReservationId] = useState<string | null>(null)
 
   const endDate = addDays(startDate, rangeDays)
   const dates = useMemo(() => Array.from({ length: rangeDays }, (_, index) => addDays(startDate, index)), [rangeDays, startDate])
@@ -127,7 +131,7 @@ export default function BookingsCalendarPage() {
 
   useEffect(() => { loadData() }, [loadData])
   useEffect(() => {
-    const channel = supabase.channel("bookings-calendar-v5")
+    const channel = supabase.channel("bookings-calendar-v6")
       .on("postgres_changes", { event: "*", schema: "public", table: "reservations" }, loadData)
       .on("postgres_changes", { event: "*", schema: "public", table: "room_blocks" }, loadData)
       .on("postgres_changes", { event: "*", schema: "public", table: "beds" }, loadData)
@@ -215,10 +219,81 @@ export default function BookingsCalendarPage() {
   }
 
   function openReservationFromTimeline(bed: Bed, clientX: number, currentTarget: HTMLDivElement) {
+    if (draggingEventId) return
     const rect = currentTarget.getBoundingClientRect()
     const offset = Math.max(0, Math.min(timelineWidth - 1, clientX - rect.left))
     const dayIndex = Math.floor(offset / DAY_WIDTH)
     openNewReservation(bed, addDays(startDate, dayIndex))
+  }
+
+  function beginReservationDrag(event: CalendarEvent, transfer: DataTransfer) {
+    transfer.effectAllowed = "move"
+    transfer.setData("text/plain", event.event_id)
+    setDraggingEventId(event.event_id)
+  }
+
+  function finishReservationDrag() {
+    setDraggingEventId(null)
+    setDropTargetBedId(null)
+  }
+
+  async function moveReservationToBed(targetBed: Bed) {
+    const draggedEvent = events.find((event) => event.event_id === draggingEventId && event.event_type === "reservation")
+    if (!draggedEvent || draggedEvent.bed_id === targetBed.id || movingReservationId) {
+      finishReservationDrag()
+      return
+    }
+
+    setMovingReservationId(draggedEvent.event_id)
+    setError(null)
+
+    const { data: available, error: availabilityError } = await supabase.rpc("is_booking_inventory_available", {
+      p_bed_id: targetBed.id,
+      p_room_id: targetBed.room.id,
+      p_location_id: targetBed.room.location_id,
+      p_check_in: draggedEvent.starts_on,
+      p_check_out: draggedEvent.ends_on,
+      p_exclude_reservation_id: draggedEvent.event_id,
+    })
+
+    if (availabilityError) {
+      setError(availabilityError.message)
+      toast.error("No fue posible validar la disponibilidad")
+      setMovingReservationId(null)
+      finishReservationDrag()
+      return
+    }
+
+    if (!available) {
+      toast.error("La cama seleccionada no está disponible para esas fechas")
+      setMovingReservationId(null)
+      finishReservationDrag()
+      return
+    }
+
+    const previousEvents = events
+    setEvents((current) => current.map((event) => event.event_id === draggedEvent.event_id && event.event_type === "reservation"
+      ? { ...event, bed_id: targetBed.id, room_id: targetBed.room.id, location_id: targetBed.room.location_id }
+      : event))
+
+    const { error: updateError } = await supabase.from("reservations").update({
+      bed_id: targetBed.id,
+      room_id: targetBed.room.id,
+      location_id: targetBed.room.location_id,
+      booking_type: "BED",
+    }).eq("id", draggedEvent.event_id)
+
+    if (updateError) {
+      setEvents(previousEvents)
+      setError(updateError.message)
+      toast.error("El movimiento fue rechazado y se restauró la reserva")
+    } else {
+      toast.success(`Reserva movida a Hab. ${targetBed.room.room_number} · ${targetBed.bed_number}`)
+      await loadData()
+    }
+
+    setMovingReservationId(null)
+    finishReservationDrag()
   }
 
   async function openReservation(event: CalendarEvent) {
@@ -268,7 +343,7 @@ export default function BookingsCalendarPage() {
           <div>
             <p className="mb-1 text-xs font-semibold uppercase tracking-[0.16em] text-primary">Hospitalidad · Fundo Corcovado</p>
             <h1 className="text-3xl font-semibold tracking-tight">Reservas y disponibilidad</h1>
-            <p className="mt-1 max-w-3xl text-sm text-muted-foreground">Timeline operativo conectado al Availability Engine de Blackswan Facility Core. Las estadías y bloqueos se muestran como períodos continuos.</p>
+            <p className="mt-1 max-w-3xl text-sm text-muted-foreground">Timeline operativo conectado al Availability Engine. Arrastra una reserva hacia otra cama para reasignarla con validación automática.</p>
           </div>
           <div className="flex flex-wrap gap-2">
             <Button asChild variant="outline"><Link href="/bookings/blocks"><Ban className="mr-2 h-4 w-4" />Gestionar bloqueos</Link></Button>
@@ -277,13 +352,11 @@ export default function BookingsCalendarPage() {
           </div>
         </div>
 
-        <Card>
-          <CardContent className="grid gap-4 p-4 sm:grid-cols-3">
-            <ContextMetric icon={<Home className="h-4 w-4" />} label="Propiedades hospedables" value={String(locations.length)} detail="Ubicaciones con camas configuradas" />
-            <ContextMetric icon={<BedDouble className="h-4 w-4" />} label="Camas registradas" value={String(beds.length)} detail="Capacidad física registrada en el sistema" />
-            <ContextMetric icon={<Users className="h-4 w-4" />} label="Reservas del rango" value={String(metrics.reservations)} detail="Reservas únicas desde el motor de disponibilidad" />
-          </CardContent>
-        </Card>
+        <Card><CardContent className="grid gap-4 p-4 sm:grid-cols-3">
+          <ContextMetric icon={<Home className="h-4 w-4" />} label="Propiedades hospedables" value={String(locations.length)} detail="Ubicaciones con camas configuradas" />
+          <ContextMetric icon={<BedDouble className="h-4 w-4" />} label="Camas registradas" value={String(beds.length)} detail="Capacidad física registrada en el sistema" />
+          <ContextMetric icon={<Users className="h-4 w-4" />} label="Reservas del rango" value={String(metrics.reservations)} detail="Reservas únicas desde el motor de disponibilidad" />
+        </CardContent></Card>
 
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
           <Metric title="Ocupación disponible" value={`${metrics.occupancy}%`} icon={<Users className="h-4 w-4" />} />
@@ -305,7 +378,7 @@ export default function BookingsCalendarPage() {
 
         <Card className="overflow-hidden">
           <CardHeader className="flex flex-row items-center justify-between border-b py-3">
-            <div><CardTitle className="text-base">{format(startDate, "dd MMM")} — {format(addDays(endDate, -1), "dd MMM yyyy")}</CardTitle><p className="text-xs text-muted-foreground">{visibleBeds.length} camas visibles · {metrics.blocks} bloqueos activos · haz clic en un espacio libre para reservar</p></div>
+            <div><CardTitle className="text-base">{format(startDate, "dd MMM")} — {format(addDays(endDate, -1), "dd MMM yyyy")}</CardTitle><p className="text-xs text-muted-foreground">{visibleBeds.length} camas visibles · {metrics.blocks} bloqueos activos · clic en un espacio libre para reservar · arrastra una reserva para cambiarla de cama</p></div>
             <div className="flex gap-2"><Button variant="outline" size="icon" onClick={() => setStartDate(addDays(startDate, -rangeDays))}><ChevronLeft className="h-4 w-4" /></Button><Button variant="outline" size="icon" onClick={() => setStartDate(addDays(startDate, rangeDays))}><ChevronRight className="h-4 w-4" /></Button></div>
           </CardHeader>
           <CardContent className="p-0">
@@ -320,37 +393,56 @@ export default function BookingsCalendarPage() {
 
                 {loading ? <div className="p-12 text-center text-muted-foreground">Cargando Availability Engine…</div> : visibleBeds.length === 0 ? <div className="p-12 text-center text-muted-foreground">No hay camas para los filtros seleccionados.</div> : visibleBeds.map((bed) => {
                   const bedEvents = eventsByBed.get(bed.id) ?? []
-                  return <div key={bed.id} className="flex border-b hover:bg-muted/20" style={{ height: ROW_HEIGHT }}>
+                  const isDropTarget = dropTargetBedId === bed.id && !!draggingEventId
+                  return <div
+                    key={bed.id}
+                    className={`flex border-b transition ${isDropTarget ? "bg-emerald-500/10 ring-1 ring-inset ring-emerald-500" : "hover:bg-muted/20"}`}
+                    style={{ height: ROW_HEIGHT }}
+                    onDragOver={(dragEvent) => {
+                      if (!draggingEventId) return
+                      dragEvent.preventDefault()
+                      dragEvent.dataTransfer.dropEffect = "move"
+                    }}
+                    onDragEnter={() => draggingEventId && setDropTargetBedId(bed.id)}
+                    onDragLeave={(dragEvent) => {
+                      if (!dragEvent.currentTarget.contains(dragEvent.relatedTarget as Node | null)) setDropTargetBedId(null)
+                    }}
+                    onDrop={(dropEvent) => {
+                      dropEvent.preventDefault()
+                      void moveReservationToBed(bed)
+                    }}
+                  >
                     <div className="sticky left-0 z-20 flex shrink-0 flex-col justify-center border-r bg-background px-4" style={{ width: LABEL_WIDTH, height: ROW_HEIGHT }}>
                       <div className="truncate font-medium">{bed.room.location_ref?.name ?? "Sin propiedad"}</div>
                       <div className="truncate text-xs text-muted-foreground">Hab. {bed.room.room_number} · {bed.bed_number} · {bed.bed_type}</div>
                     </div>
                     <div
                       className="relative cursor-crosshair"
-                      style={{
-                        width: timelineWidth,
-                        height: ROW_HEIGHT,
-                        backgroundImage: `repeating-linear-gradient(to right, transparent 0, transparent ${DAY_WIDTH - 1}px, hsl(var(--border)) ${DAY_WIDTH - 1}px, hsl(var(--border)) ${DAY_WIDTH}px)`,
-                      }}
+                      style={{ width: timelineWidth, height: ROW_HEIGHT, backgroundImage: `repeating-linear-gradient(to right, transparent 0, transparent ${DAY_WIDTH - 1}px, hsl(var(--border)) ${DAY_WIDTH - 1}px, hsl(var(--border)) ${DAY_WIDTH}px)` }}
                       onClick={(clickEvent) => openReservationFromTimeline(bed, clickEvent.clientX, clickEvent.currentTarget)}
                     >
                       {dates.map((date, index) => isSameDay(date, new Date()) ? <div key={`today-${bed.id}-${index}`} className="pointer-events-none absolute inset-y-0 bg-amber-50/70" style={{ left: index * DAY_WIDTH, width: DAY_WIDTH }} /> : null)}
                       {bedEvents.map((event) => {
                         const geometry = eventGeometry(event)
                         const isBlock = event.event_type === "block"
+                        const isMoving = movingReservationId === event.event_id
                         return <button
                           key={`${event.event_type}-${event.event_id}-${bed.id}`}
                           type="button"
+                          draggable={!isBlock && !movingReservationId}
+                          onDragStart={(dragEvent) => !isBlock && beginReservationDrag(event, dragEvent.dataTransfer)}
+                          onDragEnd={finishReservationDrag}
                           onClick={(buttonEvent) => {
                             buttonEvent.stopPropagation()
+                            if (draggingEventId) return
                             if (isBlock) void openBlock(event)
                             else void openReservation(event)
                           }}
-                          className={`absolute top-2 h-[52px] overflow-hidden rounded-md border px-3 text-left text-xs shadow-sm transition hover:brightness-110 focus:outline-none focus:ring-2 focus:ring-primary ${isBlock ? "border-zinc-500 bg-zinc-800 text-white" : STATUS_STYLES[event.status] ?? "bg-slate-200 text-slate-900"}`}
+                          className={`absolute top-2 h-[52px] overflow-hidden rounded-md border px-3 text-left text-xs shadow-sm transition hover:brightness-110 focus:outline-none focus:ring-2 focus:ring-primary ${isBlock ? "border-zinc-500 bg-zinc-800 text-white" : `${STATUS_STYLES[event.status] ?? "bg-slate-200 text-slate-900"} cursor-grab active:cursor-grabbing`} ${draggingEventId === event.event_id ? "opacity-40" : ""}`}
                           style={{ left: geometry.left, width: geometry.width }}
-                          title={`${event.guest_name ?? event.label} · ${event.starts_on} → ${event.ends_on}`}
+                          title={isBlock ? `${event.label} · ${event.starts_on} → ${event.ends_on}` : `Arrastra para cambiar de cama · ${event.guest_name ?? event.label} · ${event.starts_on} → ${event.ends_on}`}
                         >
-                          <div className="truncate font-semibold">{isBlock ? BLOCK_LABELS[event.block_type ?? "other"] ?? "Bloqueada" : event.guest_name ?? event.label}</div>
+                          <div className="truncate font-semibold">{isMoving ? "Validando movimiento…" : isBlock ? BLOCK_LABELS[event.block_type ?? "other"] ?? "Bloqueada" : event.guest_name ?? event.label}</div>
                           <div className="truncate opacity-80">{isBlock ? event.label : `${STATUS_LABELS[event.status] ?? event.status} · ${event.starts_on} → ${event.ends_on}`}</div>
                         </button>
                       })}
