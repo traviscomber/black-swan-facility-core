@@ -33,6 +33,13 @@ interface DashboardMetrics {
   assets: number
 }
 
+type MetricKey = keyof DashboardMetrics
+
+type CountResult = {
+  count: number | null
+  error: { message: string } | null
+}
+
 const EMPTY_METRICS: DashboardMetrics = {
   locations: 0,
   reservations: 0,
@@ -62,56 +69,45 @@ export default function OperationsDashboard() {
   const [userEmail, setUserEmail] = useState<string | null>(null)
   const [metrics, setMetrics] = useState<DashboardMetrics>(EMPTY_METRICS)
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const [warnings, setWarnings] = useState<string[]>([])
 
   const loadDashboard = useCallback(async () => {
     setLoading(true)
-    setError(null)
+    setWarnings([])
 
-    const [
-      userResult,
-      locationsResult,
-      reservationsResult,
-      maintenanceResult,
-      issuesResult,
-      procurementResult,
-      suppliersResult,
-      employeesResult,
-      assetsResult,
-    ] = await Promise.all([
-      supabase.auth.getUser(),
-      supabase.from("locations").select("id", { count: "exact", head: true }).eq("is_active", true),
-      supabase.from("reservations").select("id", { count: "exact", head: true }).in("status", ["pending", "confirmed", "checked_in", "checked-in"]),
-      supabase.from("maintenance_tasks").select("id", { count: "exact", head: true }).not("status", "in", "(completed,cancelled)"),
-      supabase.from("issues").select("id", { count: "exact", head: true }).not("status", "in", "(resolved,closed,cancelled)"),
-      supabase.from("procurement_requests").select("id", { count: "exact", head: true }).in("status", ["pending", "submitted", "under_review"]),
-      supabase.from("suppliers").select("id", { count: "exact", head: true }).eq("approval_status", "pending"),
-      supabase.from("employees").select("id", { count: "exact", head: true }).eq("is_active", true),
-      supabase.from("assets").select("id", { count: "exact", head: true }),
-    ])
-
+    const userResult = await supabase.auth.getUser()
     setUserEmail(userResult.data.user?.email ?? null)
-    const firstError = [locationsResult, reservationsResult, maintenanceResult, issuesResult, procurementResult, suppliersResult, employeesResult, assetsResult].find((result) => result.error)?.error
 
-    if (firstError) {
-      setError(firstError.message)
-    } else {
-      setMetrics({
-        locations: locationsResult.count ?? 0,
-        reservations: reservationsResult.count ?? 0,
-        maintenance: maintenanceResult.count ?? 0,
-        issues: issuesResult.count ?? 0,
-        procurement: procurementResult.count ?? 0,
-        suppliers: suppliersResult.count ?? 0,
-        employees: employeesResult.count ?? 0,
-        assets: assetsResult.count ?? 0,
-      })
+    const metricQueries: Array<[MetricKey, PromiseLike<CountResult>]> = [
+      ["locations", supabase.from("locations").select("id", { count: "exact", head: true }).eq("is_active", true)],
+      ["reservations", supabase.from("reservations").select("id", { count: "exact", head: true }).in("status", ["pending", "confirmed", "checked_in", "checked-in"])],
+      ["maintenance", supabase.from("maintenance_tasks").select("id", { count: "exact", head: true }).not("status", "in", "(completed,cancelled)")],
+      ["issues", supabase.from("issues").select("id", { count: "exact", head: true }).not("status", "in", "(resolved,closed,cancelled)")],
+      ["procurement", supabase.from("procurement_requests").select("id", { count: "exact", head: true }).in("status", ["pending", "submitted", "under_review")],
+      ["suppliers", supabase.from("suppliers").select("id", { count: "exact", head: true }).eq("approval_status", "pending")],
+      ["employees", supabase.from("employees").select("id", { count: "exact", head: true }).eq("is_active", true)],
+      ["assets", supabase.from("assets").select("id", { count: "exact", head: true })],
+    ]
+
+    const results = await Promise.all(metricQueries.map(async ([key, query]) => [key, await query] as const))
+    const nextMetrics = { ...EMPTY_METRICS }
+    const nextWarnings: string[] = []
+
+    for (const [key, result] of results) {
+      if (result.error) {
+        nextWarnings.push(`${key}: ${result.error.message}`)
+        continue
+      }
+      nextMetrics[key] = result.count ?? 0
     }
+
+    setMetrics(nextMetrics)
+    setWarnings(nextWarnings)
     setLoading(false)
   }, [supabase])
 
   useEffect(() => {
-    loadDashboard()
+    void loadDashboard()
   }, [loadDashboard])
 
   const handleLogout = async () => {
@@ -125,18 +121,11 @@ export default function OperationsDashboard() {
         <div className="mx-auto flex max-w-[1600px] items-center justify-between px-4 py-4 sm:px-8">
           <div className="flex items-center gap-3">
             <img src="/blackswan-logo.png" alt="Black Swan" className="h-10 w-10 object-contain" />
-            <div>
-              <p className="text-sm font-semibold tracking-wide">BSFC</p>
-              <p className="text-xs text-muted-foreground">Fundo Corcovado · Valdivia</p>
-            </div>
+            <div><p className="text-sm font-semibold tracking-wide">BSFC</p><p className="text-xs text-muted-foreground">Fundo Corcovado · Valdivia</p></div>
           </div>
           <div className="flex items-center gap-3">
             {userEmail && <span className="hidden text-sm text-muted-foreground sm:block">{userEmail}</span>}
-            {userEmail ? (
-              <Button variant="outline" size="sm" onClick={handleLogout}><LogOut className="mr-2 h-4 w-4" />Cerrar sesión</Button>
-            ) : (
-              <Button asChild size="sm"><Link href="/auth/login">Ingresar</Link></Button>
-            )}
+            {userEmail ? <Button variant="outline" size="sm" onClick={handleLogout}><LogOut className="mr-2 h-4 w-4" />Cerrar sesión</Button> : <Button asChild size="sm"><Link href="/auth/login">Ingresar</Link></Button>}
           </div>
         </div>
       </header>
@@ -145,23 +134,18 @@ export default function OperationsDashboard() {
         <section className="max-w-3xl">
           <p className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-primary">Centro interno de operaciones</p>
           <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">Fundo Corcovado</h1>
-          <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground sm:text-base">
-            Vista central para coordinar hospitalidad, campo, infraestructura, compras y equipo en la operación de Valdivia. Los indicadores provienen de los registros activos del sistema.
-          </p>
+          <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground sm:text-base">Vista central para coordinar hospitalidad, campo, infraestructura, compras y equipo en la operación de Valdivia. Los indicadores provienen de los registros activos del sistema.</p>
         </section>
 
-        {error && (
-          <div className="flex flex-col justify-between gap-3 rounded-lg border border-destructive/40 bg-destructive/5 p-4 text-sm text-destructive sm:flex-row sm:items-center">
-            <div className="flex gap-2"><AlertCircle className="mt-0.5 h-4 w-4 shrink-0" /><span>No fue posible cargar todo el resumen operativo: {error}</span></div>
-            <Button variant="outline" size="sm" onClick={loadDashboard}><RefreshCw className="mr-2 h-4 w-4" />Reintentar</Button>
+        {warnings.length > 0 && (
+          <div className="flex flex-col justify-between gap-3 rounded-lg border border-amber-300 bg-amber-50/60 p-4 text-sm text-amber-950 sm:flex-row sm:items-center">
+            <div className="flex gap-2"><AlertCircle className="mt-0.5 h-4 w-4 shrink-0" /><span>Se cargó un resumen parcial. {warnings.length} fuente{warnings.length === 1 ? "" : "s"} no respondió correctamente.</span></div>
+            <Button variant="outline" size="sm" onClick={() => void loadDashboard()}><RefreshCw className="mr-2 h-4 w-4" />Reintentar</Button>
           </div>
         )}
 
         <section>
-          <div className="mb-4">
-            <h2 className="text-lg font-semibold">Situación operativa</h2>
-            <p className="mt-1 text-sm text-muted-foreground">Registros abiertos o activos que requieren seguimiento.</p>
-          </div>
+          <div className="mb-4"><h2 className="text-lg font-semibold">Situación operativa</h2><p className="mt-1 text-sm text-muted-foreground">Registros abiertos o activos que requieren seguimiento.</p></div>
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             <MetricCard title="Reservas abiertas" value={metrics.reservations} detail="Pendientes, confirmadas o con check-in" loading={loading} href="/bookings" />
             <MetricCard title="Incidencias abiertas" value={metrics.issues} detail="Pendientes de resolución o cierre" loading={loading} href="/issues" alert={metrics.issues > 0} />
@@ -171,10 +155,7 @@ export default function OperationsDashboard() {
         </section>
 
         <section>
-          <div className="mb-4">
-            <h2 className="text-lg font-semibold">Base operativa registrada</h2>
-            <p className="mt-1 text-sm text-muted-foreground">Cobertura actual de ubicaciones, personas, activos y compras.</p>
-          </div>
+          <div className="mb-4"><h2 className="text-lg font-semibold">Base operativa registrada</h2><p className="mt-1 text-sm text-muted-foreground">Cobertura actual de ubicaciones, personas, activos y compras.</p></div>
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             <MetricCard title="Ubicaciones activas" value={metrics.locations} detail="Propiedades y áreas habilitadas" loading={loading} href="/property-management" />
             <MetricCard title="Personas activas" value={metrics.employees} detail="Colaboradores registrados como activos" loading={loading} href="/employees" />
@@ -184,43 +165,18 @@ export default function OperationsDashboard() {
         </section>
 
         <section>
-          <div className="mb-5">
-            <h2 className="text-lg font-semibold">Áreas de trabajo</h2>
-            <p className="mt-1 text-sm text-muted-foreground">Cada módulo corresponde a una función operativa del Fundo Corcovado.</p>
-          </div>
+          <div className="mb-5"><h2 className="text-lg font-semibold">Áreas de trabajo</h2><p className="mt-1 text-sm text-muted-foreground">Cada módulo corresponde a una función operativa del Fundo Corcovado.</p></div>
           <div className="grid gap-px overflow-hidden rounded-lg border border-border bg-border sm:grid-cols-2 lg:grid-cols-3">
-            {modules.map((module) => {
-              const Icon = module.icon
-              return (
-                <Link key={module.href} href={module.href} className="group flex min-h-40 flex-col justify-between bg-background p-5 transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-inset">
-                  <div className="flex items-start justify-between">
-                    <div className="flex h-9 w-9 items-center justify-center rounded-md border border-border bg-card"><Icon className="h-4 w-4 text-primary" /></div>
-                    <ChevronRight className="h-4 w-4 text-muted-foreground opacity-50 transition-all group-hover:translate-x-0.5 group-hover:opacity-100" />
-                  </div>
-                  <div className="mt-6"><p className="text-sm font-semibold">{module.label}</p><p className="mt-1 text-xs leading-5 text-muted-foreground">{module.description}</p></div>
-                </Link>
-              )
-            })}
+            {modules.map((module) => { const Icon = module.icon; return <Link key={module.href} href={module.href} className="group flex min-h-40 flex-col justify-between bg-background p-5 transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-inset"><div className="flex items-start justify-between"><div className="flex h-9 w-9 items-center justify-center rounded-md border border-border bg-card"><Icon className="h-4 w-4 text-primary" /></div><ChevronRight className="h-4 w-4 text-muted-foreground opacity-50 transition-all group-hover:translate-x-0.5 group-hover:opacity-100" /></div><div className="mt-6"><p className="text-sm font-semibold">{module.label}</p><p className="mt-1 text-xs leading-5 text-muted-foreground">{module.description}</p></div></Link> })}
           </div>
         </section>
       </main>
 
-      <footer className="border-t border-border px-4 py-5 text-center text-xs text-muted-foreground sm:px-8">
-        Black Swan Facility Core · Fundo Corcovado, Valdivia · Uso interno
-      </footer>
+      <footer className="border-t border-border px-4 py-5 text-center text-xs text-muted-foreground sm:px-8">Black Swan Facility Core · Fundo Corcovado, Valdivia · Uso interno</footer>
     </div>
   )
 }
 
 function MetricCard({ title, value, detail, loading, href, alert = false }: { title: string; value: number; detail: string; loading: boolean; href: string; alert?: boolean }) {
-  return (
-    <Card className={alert ? "border-amber-300" : undefined}>
-      <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">{title}</CardTitle></CardHeader>
-      <CardContent>
-        <div className="text-3xl font-semibold">{loading ? "—" : value.toLocaleString("es-CL")}</div>
-        <CardDescription className="mt-1 min-h-10">{detail}</CardDescription>
-        <Link href={href} className="mt-3 inline-flex items-center text-xs font-medium text-primary hover:underline">Revisar sección<ChevronRight className="ml-1 h-3 w-3" /></Link>
-      </CardContent>
-    </Card>
-  )
+  return <Card className={alert ? "border-amber-300" : undefined}><CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">{title}</CardTitle></CardHeader><CardContent><div className="text-3xl font-semibold">{loading ? "—" : value.toLocaleString("es-CL")}</div><CardDescription className="mt-1 min-h-10">{detail}</CardDescription><Link href={href} className="mt-3 inline-flex items-center text-xs font-medium text-primary hover:underline">Revisar sección<ChevronRight className="ml-1 h-3 w-3" /></Link></CardContent></Card>
 }
