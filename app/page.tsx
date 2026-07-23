@@ -83,7 +83,7 @@ export default function OperationsDashboard() {
       ["reservations", supabase.from("reservations").select("id", { count: "exact", head: true }).in("status", ["pending", "confirmed", "checked_in", "checked-in"])],
       ["maintenance", supabase.from("maintenance_tasks").select("id", { count: "exact", head: true }).not("status", "in", "(completed,cancelled)")],
       ["issues", supabase.from("issues").select("id", { count: "exact", head: true }).not("status", "in", "(resolved,closed,cancelled)")],
-      ["procurement", supabase.from("procurement_requests").select("id", { count: "exact", head: true }).in("status", ["pending", "submitted", "under_review")],
+      ["procurement", supabase.from("procurement_requests").select("id", { count: "exact", head: true }).in("status", ["pending", "submitted", "under_review"])],
       ["suppliers", supabase.from("suppliers").select("id", { count: "exact", head: true }).eq("approval_status", "pending")],
       ["employees", supabase.from("employees").select("id", { count: "exact", head: true }).eq("is_active", true)],
       ["assets", supabase.from("assets").select("id", { count: "exact", head: true })],
