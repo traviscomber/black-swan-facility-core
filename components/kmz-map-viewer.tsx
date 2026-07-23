@@ -19,7 +19,6 @@ interface KmzFile {
   file_url?: string
   is_visible?: boolean
   opacity?: number | string | null
-  color_code?: string | null
 }
 
 interface KmzFeature {
@@ -34,15 +33,11 @@ interface KmzMapViewProps {
   kmzFiles?: KmzFile[]
   connections?: InfrastructureConnection[]
   visibleConnections?: Set<string>
-  showRoads?: boolean
-  showBuildings?: boolean
   infrastructureData?: InfrastructureItem[]
   onMapClick?: (lat: number, lng: number) => void
   onMarkerClick?: (infra: InfrastructureItem) => void
   onStats?: (id: string, stats: { features: number; types: string[]; folders: string[] }) => void
   onFeatures?: (id: string, features: KmzFeature[]) => void
-  isDrawingConnection?: boolean
-  connectionStart?: InfrastructureItem | null
 }
 
 type LeafletMap = import("leaflet").Map
@@ -77,17 +72,14 @@ function parseKml(kml: string): ParsedGeometry[] {
       const pair = coordinatePairs(node.textContent || "")[0]
       if (pair) geometries.push({ type: "Point", coordinates: pair, name, description, folder })
     })
-
     placemark.querySelectorAll("LineString > coordinates").forEach((node) => {
       const pairs = coordinatePairs(node.textContent || "")
       if (pairs.length > 1) geometries.push({ type: "LineString", coordinates: pairs, name, description, folder })
     })
-
     placemark.querySelectorAll("Polygon outerBoundaryIs LinearRing > coordinates").forEach((node) => {
       const pairs = coordinatePairs(node.textContent || "")
       if (pairs.length > 2) geometries.push({ type: "Polygon", coordinates: [pairs], name, description, folder })
     })
-
     return geometries
   })
 }
@@ -97,9 +89,7 @@ async function readKml(file: KmzFile): Promise<string> {
   const response = await fetch(file.file_url)
   if (!response.ok) throw new Error(`Unable to load layer (${response.status})`)
   const buffer = await response.arrayBuffer()
-
   if (file.file_url.toLowerCase().includes(".kml")) return new TextDecoder().decode(buffer)
-
   const zip = await JSZip.loadAsync(buffer)
   const kmlEntry = Object.values(zip.files).find((entry) => !entry.dir && entry.name.toLowerCase().endsWith(".kml"))
   if (!kmlEntry) throw new Error("The KMZ archive does not contain a KML document")
@@ -107,7 +97,7 @@ async function readKml(file: KmzFile): Promise<string> {
 }
 
 export default function KmzMapView({
-  visibleLayers = new Set(),
+  visibleLayers,
   kmzFiles = [],
   connections = [],
   visibleConnections = new Set(),
@@ -116,8 +106,6 @@ export default function KmzMapView({
   onMarkerClick,
   onStats,
   onFeatures,
-  isDrawingConnection = false,
-  connectionStart = null,
 }: KmzMapViewProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<LeafletMap | null>(null)
@@ -131,21 +119,16 @@ export default function KmzMapView({
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return
     let cancelled = false
-
     void import("leaflet").then((L) => {
       if (cancelled || !containerRef.current || mapRef.current) return
       const map = L.map(containerRef.current, { zoomControl: true }).setView([-39.8255, -73.2215], 11)
-      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-        attribution: "© OpenStreetMap contributors",
-        maxZoom: 19,
-      }).addTo(map)
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { attribution: "© OpenStreetMap contributors", maxZoom: 19 }).addTo(map)
       map.on("click", (event: import("leaflet").LeafletMouseEvent) => clickHandlerRef.current?.(event.latlng.lat, event.latlng.lng))
       infrastructureLayerRef.current = L.layerGroup().addTo(map)
       connectionLayerRef.current = L.layerGroup().addTo(map)
       mapRef.current = map
       window.setTimeout(() => map.invalidateSize(), 100)
     })
-
     return () => {
       cancelled = true
       mapRef.current?.remove()
@@ -159,66 +142,51 @@ export default function KmzMapView({
   useEffect(() => {
     if (!mapRef.current || !infrastructureLayerRef.current) return
     let cancelled = false
-
     void import("leaflet").then((L) => {
-      if (cancelled || !mapRef.current || !infrastructureLayerRef.current) return
+      if (cancelled || !infrastructureLayerRef.current) return
       infrastructureLayerRef.current.clearLayers()
-      const valid = infrastructureData.filter((item) => Number.isFinite(item.latitude) && Number.isFinite(item.longitude))
-
-      valid.forEach((item) => {
-        const selected = connectionStart?.id === item.id
-        const marker = L.circleMarker([Number(item.latitude), Number(item.longitude)], {
-          radius: selected ? 8 : 6,
-          weight: selected ? 3 : 2,
-          fillOpacity: 0.8,
-        })
-        marker.bindPopup(`<strong>${item.name}</strong>${item.category ? `<br>${item.category}` : ""}${isDrawingConnection && selected ? "<br><em>Connection start</em>" : ""}`)
+      infrastructureData.filter((item) => Number.isFinite(item.latitude) && Number.isFinite(item.longitude)).forEach((item) => {
+        const marker = L.circleMarker([Number(item.latitude), Number(item.longitude)], { radius: 6, weight: 2, fillOpacity: 0.8 })
+        marker.bindPopup(`<strong>${item.name}</strong>${item.category ? `<br>${item.category}` : ""}`)
         if (onMarkerClick) marker.on("click", () => onMarkerClick(item))
         marker.addTo(infrastructureLayerRef.current!)
       })
-
-      if (valid.length === 1) mapRef.current.setView([Number(valid[0].latitude), Number(valid[0].longitude)], 14)
-      if (valid.length > 1) mapRef.current.fitBounds(L.latLngBounds(valid.map((item) => [Number(item.latitude), Number(item.longitude)])), { padding: [30, 30], maxZoom: 15 })
     })
-
     return () => { cancelled = true }
-  }, [infrastructureData, onMarkerClick, isDrawingConnection, connectionStart])
+  }, [infrastructureData, onMarkerClick])
 
   useEffect(() => {
     if (!connectionLayerRef.current) return
     let cancelled = false
-
     void import("leaflet").then((L) => {
       if (cancelled || !connectionLayerRef.current) return
       connectionLayerRef.current.clearLayers()
       const byId = new Map(infrastructureData.map((item) => [item.id, item]))
-
       connections.forEach((connection) => {
         const category = connection.connection_type || "general"
         if (visibleConnections.size > 0 && !visibleConnections.has(category)) return
         const from = byId.get(connection.from_infrastructure_id)
         const to = byId.get(connection.to_infrastructure_id)
         if (!from || !to || !Number.isFinite(from.latitude) || !Number.isFinite(from.longitude) || !Number.isFinite(to.latitude) || !Number.isFinite(to.longitude)) return
-        L.polyline(
-          [[Number(from.latitude), Number(from.longitude)], [Number(to.latitude), Number(to.longitude)]],
-          { weight: 3, opacity: 0.75, dashArray: connection.line_style === "dashed" ? "8 8" : undefined },
-        ).addTo(connectionLayerRef.current!)
+        L.polyline([[Number(from.latitude), Number(from.longitude)], [Number(to.latitude), Number(to.longitude)]], { weight: 3, opacity: 0.75, dashArray: connection.line_style === "dashed" ? "8 8" : undefined }).addTo(connectionLayerRef.current!)
       })
     })
-
     return () => { cancelled = true }
   }, [connections, infrastructureData, visibleConnections])
 
   useEffect(() => {
     if (!mapRef.current) return
     let cancelled = false
-
     void import("leaflet").then(async (L) => {
       if (cancelled || !mapRef.current) return
       kmzLayerRef.current.forEach((layer) => layer.remove())
       kmzLayerRef.current.clear()
 
-      const enabled = kmzFiles.filter((file) => file.file_url && file.is_visible !== false && (visibleLayers.size === 0 || visibleLayers.has(file.id)))
+      const allBounds: [number, number][] = infrastructureData
+        .filter((item) => Number.isFinite(item.latitude) && Number.isFinite(item.longitude))
+        .map((item) => [Number(item.latitude), Number(item.longitude)])
+      const enabled = kmzFiles.filter((file) => file.file_url && (visibleLayers ? visibleLayers.has(file.id) : file.is_visible !== false))
+
       for (const file of enabled) {
         if (cancelled || !mapRef.current) return
         try {
@@ -230,13 +198,19 @@ export default function KmzMapView({
             const popup = `<strong>${geometry.name}</strong>${geometry.description ? `<br>${geometry.description}` : ""}`
             if (geometry.type === "Point") {
               const [lng, lat] = geometry.coordinates as number[]
+              allBounds.push([lat, lng])
               L.circleMarker([lat, lng], { radius: 5, fillOpacity: opacity }).bindPopup(popup).addTo(group)
             } else if (geometry.type === "LineString") {
-              const latLngs = (geometry.coordinates as number[][]).map(([lng, lat]) => [lat, lng] as [number, number])
+              const latLngs = (geometry.coordinates as number[][]).map(([lng, lat]) => {
+                allBounds.push([lat, lng])
+                return [lat, lng] as [number, number]
+              })
               L.polyline(latLngs, { opacity, weight: 3 }).bindPopup(popup).addTo(group)
             } else {
-              const rings = geometry.coordinates as number[][][]
-              const latLngs = rings[0].map(([lng, lat]) => [lat, lng] as [number, number])
+              const latLngs = (geometry.coordinates as number[][][])[0].map(([lng, lat]) => {
+                allBounds.push([lat, lng])
+                return [lat, lng] as [number, number]
+              })
               L.polygon(latLngs, { opacity, fillOpacity: opacity * 0.25 }).bindPopup(popup).addTo(group)
             }
           })
@@ -244,21 +218,19 @@ export default function KmzMapView({
           kmzLayerRef.current.set(file.id, group)
           const features = geometries.map((geometry) => ({ name: geometry.name, folder: geometry.folder, type: geometry.type, description: geometry.description }))
           onFeatures?.(file.id, features)
-          onStats?.(file.id, {
-            features: features.length,
-            types: Array.from(new Set(features.map((feature) => feature.type))),
-            folders: Array.from(new Set(features.map((feature) => feature.folder).filter(Boolean))),
-          })
+          onStats?.(file.id, { features: features.length, types: Array.from(new Set(features.map((feature) => feature.type))), folders: Array.from(new Set(features.map((feature) => feature.folder).filter(Boolean))) })
         } catch (error) {
           console.error(`Unable to render GIS layer ${file.id}:`, error)
           onFeatures?.(file.id, [])
           onStats?.(file.id, { features: 0, types: [], folders: [] })
         }
       }
-    })
 
+      if (allBounds.length === 1) mapRef.current.setView(allBounds[0], 14)
+      if (allBounds.length > 1) mapRef.current.fitBounds(L.latLngBounds(allBounds), { padding: [30, 30], maxZoom: 15 })
+    })
     return () => { cancelled = true }
-  }, [kmzFiles, visibleLayers, onFeatures, onStats])
+  }, [kmzFiles, visibleLayers, infrastructureData, onFeatures, onStats])
 
   return <div ref={containerRef} className="h-full min-h-[520px] w-full rounded-lg border" aria-label="GIS map" />
 }
