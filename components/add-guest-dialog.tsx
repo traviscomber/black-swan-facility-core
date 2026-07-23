@@ -23,7 +23,6 @@ export function AddGuestDialog({ open, onOpenChange, onSuccess }: AddGuestDialog
     name: "",
     email: "",
     phone: "",
-    company_name: "", // Added company_name field
     address: "",
     notes: "",
     vip_status: false,
@@ -45,7 +44,7 @@ export function AddGuestDialog({ open, onOpenChange, onSuccess }: AddGuestDialog
       resetForm()
     } catch (error) {
       console.error("Error creating guest:", error)
-      alert("Failed to create guest")
+      alert("No se pudo crear el huésped")
     } finally {
       setLoading(false)
     }
@@ -56,7 +55,6 @@ export function AddGuestDialog({ open, onOpenChange, onSuccess }: AddGuestDialog
       name: "",
       email: "",
       phone: "",
-      company_name: "", // Reset company_name
       address: "",
       notes: "",
       vip_status: false,
@@ -65,14 +63,14 @@ export function AddGuestDialog({ open, onOpenChange, onSuccess }: AddGuestDialog
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-h-[90vh] max-w-md overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>New Guest</DialogTitle>
+          <DialogTitle>Nuevo huésped</DialogTitle>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="name">Name *</Label>
+            <Label htmlFor="name">Nombre *</Label>
             <Input
               id="name"
               value={formData.name}
@@ -92,7 +90,7 @@ export function AddGuestDialog({ open, onOpenChange, onSuccess }: AddGuestDialog
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="phone">Phone</Label>
+            <Label htmlFor="phone">Teléfono</Label>
             <Input
               id="phone"
               value={formData.phone}
@@ -101,17 +99,7 @@ export function AddGuestDialog({ open, onOpenChange, onSuccess }: AddGuestDialog
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="company_name">Company Name</Label>
-            <Input
-              id="company_name"
-              value={formData.company_name}
-              onChange={(e) => setFormData({ ...formData, company_name: e.target.value })}
-              placeholder="Optional company or organization"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="address">Address</Label>
+            <Label htmlFor="address">Dirección</Label>
             <Textarea
               id="address"
               value={formData.address}
@@ -121,7 +109,7 @@ export function AddGuestDialog({ open, onOpenChange, onSuccess }: AddGuestDialog
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="notes">Notes</Label>
+            <Label htmlFor="notes">Notas</Label>
             <Textarea
               id="notes"
               value={formData.notes}
@@ -137,16 +125,16 @@ export function AddGuestDialog({ open, onOpenChange, onSuccess }: AddGuestDialog
               onCheckedChange={(checked) => setFormData({ ...formData, vip_status: checked as boolean })}
             />
             <Label htmlFor="vip_status" className="font-normal">
-              VIP Guest
+              Huésped VIP
             </Label>
           </div>
 
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              Cancel
+              Cancelar
             </Button>
             <Button type="submit" disabled={loading}>
-              {loading ? "Creating..." : "Create Guest"}
+              {loading ? "Creando..." : "Crear huésped"}
             </Button>
           </DialogFooter>
         </form>
