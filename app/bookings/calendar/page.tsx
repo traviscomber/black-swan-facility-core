@@ -20,8 +20,23 @@ interface Bed {
   bed_type: string
   room: { id: string; room_number: string; room_type?: string; location_id: string; location_ref?: { id: string; name: string } }
 }
+interface CalendarEvent {
+  event_id: string
+  event_type: "reservation" | "block"
+  bed_id: string
+  room_id: string
+  location_id: string
+  starts_on: string
+  ends_on: string
+  status: string
+  label: string
+  guest_name: string | null
+  block_type: string | null
+  source: string | null
+  total_amount: number | null
+}
 interface Reservation {
-  id: string; bed_id: string; guest_name: string; guest_email?: string | null; guest_phone?: string | null
+  id: string; bed_id: string | null; guest_name: string; guest_email?: string | null; guest_phone?: string | null
   check_in: string; check_out: string; status: string; num_guests?: number | null; total_amount?: number | null; special_requests?: string | null
 }
 interface RoomBlock {
@@ -54,8 +69,7 @@ export default function BookingsCalendarPage() {
   const supabase = useMemo(() => createClient(), [])
   const [locations, setLocations] = useState<Location[]>([])
   const [beds, setBeds] = useState<Bed[]>([])
-  const [reservations, setReservations] = useState<Reservation[]>([])
-  const [blocks, setBlocks] = useState<RoomBlock[]>([])
+  const [events, setEvents] = useState<CalendarEvent[]>([])
   const [locationId, setLocationId] = useState("all")
   const [status, setStatus] = useState("all")
   const [search, setSearch] = useState("")
@@ -76,15 +90,17 @@ export default function BookingsCalendarPage() {
   const loadData = useCallback(async () => {
     setLoading(true)
     setError(null)
-    const [bedsResult, reservationsResult, blocksResult] = await Promise.all([
+
+    const [bedsResult, eventsResult] = await Promise.all([
       supabase.from("beds").select(`id, bed_number, bed_type, room:rooms!inner(id, room_number, room_type, location_id, location_ref:locations!inner(id, name, is_active))`).eq("room.location_ref.is_active", true).order("room_id"),
-      supabase.from("reservations").select("id, bed_id, guest_name, guest_email, guest_phone, check_in, check_out, status, num_guests, total_amount, special_requests")
-        .lt("check_in", format(endDate, "yyyy-MM-dd")).gt("check_out", format(startDate, "yyyy-MM-dd")).order("check_in"),
-      supabase.from("room_blocks").select("id, room_id, start_date, end_date, block_type, reason, notes, status")
-        .eq("status", "active").lt("start_date", format(endDate, "yyyy-MM-dd")).gt("end_date", format(startDate, "yyyy-MM-dd")).order("start_date"),
+      supabase.rpc("get_booking_inventory_events", {
+        p_start_date: format(startDate, "yyyy-MM-dd"),
+        p_end_date: format(endDate, "yyyy-MM-dd"),
+        p_location_id: null,
+      }),
     ])
 
-    const firstError = bedsResult.error || reservationsResult.error || blocksResult.error
+    const firstError = bedsResult.error || eventsResult.error
     if (firstError) {
       setError(firstError.message)
     } else {
@@ -99,17 +115,18 @@ export default function BookingsCalendarPage() {
 
       setLocations(lodgingLocations)
       setBeds(loadedBeds)
-      setReservations((reservationsResult.data ?? []) as Reservation[])
-      setBlocks((blocksResult.data ?? []) as RoomBlock[])
+      setEvents((eventsResult.data ?? []) as CalendarEvent[])
     }
     setLoading(false)
   }, [endDate, startDate, supabase])
 
   useEffect(() => { loadData() }, [loadData])
   useEffect(() => {
-    const channel = supabase.channel("bookings-calendar-v3")
+    const channel = supabase.channel("bookings-calendar-v4")
       .on("postgres_changes", { event: "*", schema: "public", table: "reservations" }, loadData)
       .on("postgres_changes", { event: "*", schema: "public", table: "room_blocks" }, loadData)
+      .on("postgres_changes", { event: "*", schema: "public", table: "beds" }, loadData)
+      .on("postgres_changes", { event: "*", schema: "public", table: "rooms" }, loadData)
       .subscribe()
     return () => { supabase.removeChannel(channel) }
   }, [loadData, supabase])
@@ -125,57 +142,88 @@ export default function BookingsCalendarPage() {
   }, [beds, locationId, search])
 
   const visibleBedIds = useMemo(() => new Set(visibleBeds.map((bed) => bed.id)), [visibleBeds])
-  const visibleRoomIds = useMemo(() => new Set(visibleBeds.map((bed) => bed.room.id)), [visibleBeds])
-  const visibleReservations = useMemo(() => reservations.filter((reservation) => {
-    const matchesBed = visibleBedIds.has(reservation.bed_id)
-    const matchesStatus = status === "all" || normalizedStatus(reservation.status) === status
-    const matchesSearch = !search.trim() || reservation.guest_name.toLowerCase().includes(search.trim().toLowerCase())
-    return matchesBed && matchesStatus && matchesSearch
-  }), [reservations, search, status, visibleBedIds])
-  const visibleBlocks = useMemo(() => blocks.filter((block) => visibleRoomIds.has(block.room_id)), [blocks, visibleRoomIds])
+  const visibleEvents = useMemo(() => {
+    const term = search.trim().toLowerCase()
+    return events.filter((event) => {
+      const matchesBed = visibleBedIds.has(event.bed_id)
+      const matchesStatus = event.event_type === "block" || status === "all" || normalizedStatus(event.status) === status
+      const matchesSearch = !term || event.event_type === "block" || (event.guest_name ?? event.label).toLowerCase().includes(term)
+      return matchesBed && matchesStatus && matchesSearch
+    })
+  }, [events, search, status, visibleBedIds])
 
-  const reservationsByBed = useMemo(() => {
-    const map = new Map<string, Reservation[]>()
-    visibleReservations.forEach((item) => map.set(item.bed_id, [...(map.get(item.bed_id) ?? []), item]))
-    return map
-  }, [visibleReservations])
-  const blocksByRoom = useMemo(() => {
-    const map = new Map<string, RoomBlock[]>()
-    visibleBlocks.forEach((item) => map.set(item.room_id, [...(map.get(item.room_id) ?? []), item]))
-    return map
-  }, [visibleBlocks])
+  const visibleReservationEvents = useMemo(() => visibleEvents.filter((event) => event.event_type === "reservation"), [visibleEvents])
+  const visibleBlockEvents = useMemo(() => visibleEvents.filter((event) => event.event_type === "block"), [visibleEvents])
 
-  function reservationAt(bedId: string, date: Date) {
-    return (reservationsByBed.get(bedId) ?? []).find((item) => date >= parseISO(item.check_in) && date < parseISO(item.check_out))
-  }
-  function blockAt(roomId: string, date: Date) {
-    return (blocksByRoom.get(roomId) ?? []).find((item) => date >= parseISO(item.start_date) && date < parseISO(item.end_date))
+  const eventsByBed = useMemo(() => {
+    const map = new Map<string, CalendarEvent[]>()
+    visibleEvents.forEach((event) => map.set(event.bed_id, [...(map.get(event.bed_id) ?? []), event]))
+    return map
+  }, [visibleEvents])
+
+  function eventAt(bedId: string, date: Date, type: CalendarEvent["event_type"]) {
+    return (eventsByBed.get(bedId) ?? []).find((event) => event.event_type === type && date >= parseISO(event.starts_on) && date < parseISO(event.ends_on))
   }
 
   const metrics = useMemo(() => {
-    const active = visibleReservations.filter((item) => normalizedStatus(item.status) !== "cancelled")
-    const blockedNights = visibleBeds.reduce((sum, bed) => sum + dates.filter((date) => !!blockAt(bed.room.id, date)).length, 0)
-    const sellableNights = Math.max(0, visibleBeds.length * rangeDays - blockedNights)
-    const occupiedNights = active.reduce((sum, item) => {
-      const from = parseISO(item.check_in) < startDate ? startDate : parseISO(item.check_in)
-      const to = parseISO(item.check_out) > endDate ? endDate : parseISO(item.check_out)
+    const blockedNights = visibleBlockEvents.reduce((sum, event) => {
+      const from = parseISO(event.starts_on) < startDate ? startDate : parseISO(event.starts_on)
+      const to = parseISO(event.ends_on) > endDate ? endDate : parseISO(event.ends_on)
       return sum + Math.max(0, differenceInCalendarDays(to, from))
     }, 0)
+    const occupiedNights = visibleReservationEvents.reduce((sum, event) => {
+      const from = parseISO(event.starts_on) < startDate ? startDate : parseISO(event.starts_on)
+      const to = parseISO(event.ends_on) > endDate ? endDate : parseISO(event.ends_on)
+      return sum + Math.max(0, differenceInCalendarDays(to, from))
+    }, 0)
+    const uniqueReservations = Array.from(new Map(visibleReservationEvents.map((event) => [event.event_id, event])).values())
+    const sellableNights = Math.max(0, visibleBeds.length * rangeDays - blockedNights)
+
     return {
       occupancy: sellableNights ? Math.round((occupiedNights / sellableNights) * 100) : 0,
       occupiedNights,
       blockedNights,
-      revenue: active.reduce((sum, item) => sum + Number(item.total_amount ?? 0), 0),
-      arrivals: active.filter((item) => isSameDay(parseISO(item.check_in), new Date())).length,
-      departures: active.filter((item) => isSameDay(parseISO(item.check_out), new Date())).length,
+      revenue: uniqueReservations.reduce((sum, event) => sum + Number(event.total_amount ?? 0), 0),
+      arrivals: uniqueReservations.filter((event) => isSameDay(parseISO(event.starts_on), new Date())).length,
+      departures: uniqueReservations.filter((event) => isSameDay(parseISO(event.ends_on), new Date())).length,
+      reservations: uniqueReservations.length,
+      blocks: new Set(visibleBlockEvents.map((event) => event.event_id)).size,
     }
-  }, [dates, endDate, rangeDays, startDate, visibleBeds, visibleReservations])
+  }, [endDate, rangeDays, startDate, visibleBeds, visibleBlockEvents, visibleReservationEvents])
 
   function openNewReservation(bed: Bed, date: Date) {
-    if (blockAt(bed.room.id, date)) return
+    if (eventAt(bed.id, date, "block")) return
     setPreselectedBed(bed)
     setPreselectedDate(date)
     setNewReservationOpen(true)
+  }
+
+  async function openReservation(event: CalendarEvent) {
+    setError(null)
+    const { data, error: detailError } = await supabase.from("reservations")
+      .select("id, bed_id, guest_name, guest_email, guest_phone, check_in, check_out, status, num_guests, total_amount, special_requests")
+      .eq("id", event.event_id)
+      .single()
+
+    if (detailError) {
+      setError(detailError.message)
+      return
+    }
+    setSelectedReservation(data as Reservation)
+  }
+
+  async function openBlock(event: CalendarEvent) {
+    setError(null)
+    const { data, error: detailError } = await supabase.from("room_blocks")
+      .select("id, room_id, start_date, end_date, block_type, reason, notes, status")
+      .eq("id", event.event_id)
+      .single()
+
+    if (detailError) {
+      setError(detailError.message)
+      return
+    }
+    setSelectedBlock(data as RoomBlock)
   }
 
   async function updateReservationStatus(reservation: Reservation, nextStatus: string) {
@@ -197,7 +245,7 @@ export default function BookingsCalendarPage() {
           <div>
             <p className="mb-1 text-xs font-semibold uppercase tracking-[0.16em] text-primary">Hospitalidad · Fundo Corcovado</p>
             <h1 className="text-3xl font-semibold tracking-tight">Reservas y disponibilidad</h1>
-            <p className="mt-1 max-w-3xl text-sm text-muted-foreground">Calendario de alojamiento para Bamboo House, Clubhouse y Prairy House 2. Solo se muestran propiedades con habitaciones y camas configuradas.</p>
+            <p className="mt-1 max-w-3xl text-sm text-muted-foreground">Calendario operativo conectado al Availability Engine de Blackswan Facility Core. Reservas y bloqueos se resuelven desde una única fuente de disponibilidad.</p>
           </div>
           <div className="flex flex-wrap gap-2">
             <Button asChild variant="outline"><Link href="/bookings/blocks"><Ban className="mr-2 h-4 w-4" />Gestionar bloqueos</Link></Button>
@@ -210,7 +258,7 @@ export default function BookingsCalendarPage() {
           <CardContent className="grid gap-4 p-4 sm:grid-cols-3">
             <ContextMetric icon={<Home className="h-4 w-4" />} label="Propiedades hospedables" value={String(locations.length)} detail="Ubicaciones con camas configuradas" />
             <ContextMetric icon={<BedDouble className="h-4 w-4" />} label="Camas registradas" value={String(beds.length)} detail="Capacidad física registrada en el sistema" />
-            <ContextMetric icon={<Users className="h-4 w-4" />} label="Reservas del rango" value={String(visibleReservations.length)} detail="Según filtros y fechas seleccionadas" />
+            <ContextMetric icon={<Users className="h-4 w-4" />} label="Reservas del rango" value={String(metrics.reservations)} detail="Reservas únicas desde el motor de disponibilidad" />
           </CardContent>
         </Card>
 
@@ -226,20 +274,20 @@ export default function BookingsCalendarPage() {
         <Card><CardContent className="flex flex-col gap-3 p-4 xl:flex-row xl:items-center">
           <div className="relative flex-1"><Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" /><Input className="pl-9" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar huésped, propiedad, habitación o cama" /></div>
           <Select value={locationId} onValueChange={setLocationId}><SelectTrigger className="w-full xl:w-56"><SelectValue placeholder="Alojamiento" /></SelectTrigger><SelectContent><SelectItem value="all">Todos los alojamientos</SelectItem>{locations.map((item) => <SelectItem key={item.id} value={item.id}>{item.name}</SelectItem>)}</SelectContent></Select>
-          <Select value={status} onValueChange={setStatus}><SelectTrigger className="w-full xl:w-48"><SelectValue placeholder="Estado" /></SelectTrigger><SelectContent><SelectItem value="all">Todos los estados</SelectItem><SelectItem value="pending">Pendiente</SelectItem><SelectItem value="confirmed">Confirmada</SelectItem><SelectItem value="checked_in">Check-in</SelectItem><SelectItem value="checked_out">Check-out</SelectItem><SelectItem value="cancelled">Cancelada</SelectItem></SelectContent></Select>
+          <Select value={status} onValueChange={setStatus}><SelectTrigger className="w-full xl:w-48"><SelectValue placeholder="Estado" /></SelectTrigger><SelectContent><SelectItem value="all">Todos los estados</SelectItem><SelectItem value="pending">Pendiente</SelectItem><SelectItem value="confirmed">Confirmada</SelectItem><SelectItem value="checked_in">Check-in</SelectItem><SelectItem value="checked_out">Check-out</SelectItem></SelectContent></Select>
           <Select value={String(rangeDays)} onValueChange={(value) => setRangeDays(Number(value))}><SelectTrigger className="w-full xl:w-36"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="7">7 días</SelectItem><SelectItem value="14">14 días</SelectItem><SelectItem value="30">30 días</SelectItem></SelectContent></Select>
         </CardContent></Card>
 
-        {error && <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-600">No fue posible cargar o actualizar las reservas: {error}</div>}
+        {error && <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-600">No fue posible cargar o actualizar la disponibilidad: {error}</div>}
 
-        <Card className="overflow-hidden"><CardHeader className="flex flex-row items-center justify-between border-b py-3"><div><CardTitle className="text-base">{format(startDate, "dd MMM")} — {format(addDays(endDate, -1), "dd MMM yyyy")}</CardTitle><p className="text-xs text-muted-foreground">{visibleBeds.length} camas visibles · {visibleBlocks.length} bloqueos activos</p></div><div className="flex gap-2"><Button variant="outline" size="icon" onClick={() => setStartDate(addDays(startDate, -rangeDays))}><ChevronLeft className="h-4 w-4" /></Button><Button variant="outline" size="icon" onClick={() => setStartDate(addDays(startDate, rangeDays))}><ChevronRight className="h-4 w-4" /></Button></div></CardHeader>
+        <Card className="overflow-hidden"><CardHeader className="flex flex-row items-center justify-between border-b py-3"><div><CardTitle className="text-base">{format(startDate, "dd MMM")} — {format(addDays(endDate, -1), "dd MMM yyyy")}</CardTitle><p className="text-xs text-muted-foreground">{visibleBeds.length} camas visibles · {metrics.blocks} bloqueos activos</p></div><div className="flex gap-2"><Button variant="outline" size="icon" onClick={() => setStartDate(addDays(startDate, -rangeDays))}><ChevronLeft className="h-4 w-4" /></Button><Button variant="outline" size="icon" onClick={() => setStartDate(addDays(startDate, rangeDays))}><ChevronRight className="h-4 w-4" /></Button></div></CardHeader>
           <CardContent className="p-0"><div className="overflow-auto"><table className="min-w-max border-collapse text-sm"><thead className="sticky top-0 z-20 bg-background"><tr><th className="sticky left-0 z-30 min-w-56 border-b border-r bg-background px-4 py-3 text-left">Propiedad / habitación / cama</th>{dates.map((date) => <th key={date.toISOString()} className={`min-w-24 border-b border-r px-2 py-2 text-center ${isSameDay(date, new Date()) ? "bg-amber-100" : ""}`}><div className="text-xs text-muted-foreground">{format(date, "EEE")}</div><div className="font-semibold">{format(date, "dd MMM")}</div></th>)}</tr></thead>
-            <tbody>{loading ? <tr><td colSpan={dates.length + 1} className="p-12 text-center text-muted-foreground">Cargando calendario…</td></tr> : visibleBeds.length === 0 ? <tr><td colSpan={dates.length + 1} className="p-12 text-center text-muted-foreground">No hay camas para los filtros seleccionados.</td></tr> : visibleBeds.map((bed) => <tr key={bed.id} className="hover:bg-muted/30"><td className="sticky left-0 z-10 border-b border-r bg-background px-4 py-3"><div className="font-medium">{bed.room.location_ref?.name ?? "Sin propiedad"}</div><div className="text-xs text-muted-foreground">Hab. {bed.room.room_number} · {bed.bed_number} · {bed.bed_type}</div></td>{dates.map((date) => {
-              const reservation = reservationAt(bed.id, date)
-              const block = blockAt(bed.room.id, date)
-              const reservationStart = reservation && isSameDay(parseISO(reservation.check_in), date)
-              const blockStart = block && isSameDay(parseISO(block.start_date), date)
-              return <td key={`${bed.id}-${date.toISOString()}`} className={`h-16 border-b border-r p-1 ${isSameDay(date, new Date()) ? "bg-amber-50" : ""}`}>{reservation ? <button onClick={() => setSelectedReservation(reservation)} className={`h-full w-full rounded border px-2 text-left text-xs ${STATUS_STYLES[reservation.status] ?? "bg-slate-200 text-slate-900"}`} title={`${reservation.guest_name} · ${reservation.check_in} → ${reservation.check_out}`}>{reservationStart ? <><div className="truncate font-semibold">{reservation.guest_name}</div><div className="truncate opacity-80">{STATUS_LABELS[reservation.status] ?? reservation.status}</div></> : <div className="h-full opacity-40" />}</button> : block ? <button onClick={() => setSelectedBlock(block)} className="h-full w-full rounded border border-zinc-500 bg-zinc-800 px-2 text-left text-xs text-white" title={`${block.reason} · ${block.start_date} → ${block.end_date}`}>{blockStart ? <><div className="truncate font-semibold">{BLOCK_LABELS[block.block_type] ?? "Bloqueada"}</div><div className="truncate opacity-80">{block.reason}</div></> : <div className="h-full opacity-40" />}</button> : <button onClick={() => openNewReservation(bed, date)} className="h-full w-full rounded text-muted-foreground hover:bg-primary/10 hover:text-primary"><Plus className="mx-auto h-4 w-4" /></button>}</td>
+            <tbody>{loading ? <tr><td colSpan={dates.length + 1} className="p-12 text-center text-muted-foreground">Cargando Availability Engine…</td></tr> : visibleBeds.length === 0 ? <tr><td colSpan={dates.length + 1} className="p-12 text-center text-muted-foreground">No hay camas para los filtros seleccionados.</td></tr> : visibleBeds.map((bed) => <tr key={bed.id} className="hover:bg-muted/30"><td className="sticky left-0 z-10 border-b border-r bg-background px-4 py-3"><div className="font-medium">{bed.room.location_ref?.name ?? "Sin propiedad"}</div><div className="text-xs text-muted-foreground">Hab. {bed.room.room_number} · {bed.bed_number} · {bed.bed_type}</div></td>{dates.map((date) => {
+              const reservation = eventAt(bed.id, date, "reservation")
+              const block = eventAt(bed.id, date, "block")
+              const reservationStart = reservation && isSameDay(parseISO(reservation.starts_on), date)
+              const blockStart = block && isSameDay(parseISO(block.starts_on), date)
+              return <td key={`${bed.id}-${date.toISOString()}`} className={`h-16 border-b border-r p-1 ${isSameDay(date, new Date()) ? "bg-amber-50" : ""}`}>{reservation ? <button onClick={() => openReservation(reservation)} className={`h-full w-full rounded border px-2 text-left text-xs ${STATUS_STYLES[reservation.status] ?? "bg-slate-200 text-slate-900"}`} title={`${reservation.guest_name ?? reservation.label} · ${reservation.starts_on} → ${reservation.ends_on}`}>{reservationStart ? <><div className="truncate font-semibold">{reservation.guest_name ?? reservation.label}</div><div className="truncate opacity-80">{STATUS_LABELS[reservation.status] ?? reservation.status}</div></> : <div className="h-full opacity-40" />}</button> : block ? <button onClick={() => openBlock(block)} className="h-full w-full rounded border border-zinc-500 bg-zinc-800 px-2 text-left text-xs text-white" title={`${block.label} · ${block.starts_on} → ${block.ends_on}`}>{blockStart ? <><div className="truncate font-semibold">{BLOCK_LABELS[block.block_type ?? "other"] ?? "Bloqueada"}</div><div className="truncate opacity-80">{block.label}</div></> : <div className="h-full opacity-40" />}</button> : <button onClick={() => openNewReservation(bed, date)} className="h-full w-full rounded text-muted-foreground hover:bg-primary/10 hover:text-primary"><Plus className="mx-auto h-4 w-4" /></button>}</td>
             })}</tr>)}</tbody></table></div></CardContent>
         </Card>
       </div>
