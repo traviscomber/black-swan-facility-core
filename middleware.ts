@@ -1,17 +1,8 @@
 import { createServerClient } from "@supabase/ssr"
 import { NextResponse, type NextRequest } from "next/server"
 
-const PUBLIC_PAGE_PATHS = new Set([
-  "/auth/login",
-])
-
+const PUBLIC_PAGE_PATHS = new Set(["/auth/login"])
 const PUBLIC_API_PREFIXES = ["/api/auth"]
-
-const PROCUREMENT_APPROVER_EMAILS = new Set([
-  "juan@n3uralia.com",
-  "raimundo@blackswn.org",
-  "santiago@blackswn.org",
-])
 
 function isPublicRequest(pathname: string) {
   if (PUBLIC_PAGE_PATHS.has(pathname)) return true
@@ -26,18 +17,16 @@ function isProcurementPath(pathname: string) {
   return pathname === "/procurement" || pathname.startsWith("/procurement/")
 }
 
+function isAdminPath(pathname: string) {
+  return pathname === "/admin" || pathname.startsWith("/admin/")
+}
+
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
-  if (isPublicRequest(pathname)) {
-    return NextResponse.next()
-  }
+  if (isPublicRequest(pathname)) return NextResponse.next()
 
-  let response = NextResponse.next({
-    request: {
-      headers: request.headers,
-    },
-  })
+  let response = NextResponse.next({ request: { headers: request.headers } })
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -63,10 +52,7 @@ export async function middleware(request: NextRequest) {
 
   if (!user) {
     if (isApiRequest(pathname)) {
-      return NextResponse.json(
-        { error: "Authentication required" },
-        { status: 401 },
-      )
+      return NextResponse.json({ error: "Authentication required" }, { status: 401 })
     }
 
     const loginUrl = new URL("/auth/login", request.url)
@@ -74,17 +60,18 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(loginUrl)
   }
 
-  const email = user.email?.toLowerCase() ?? ""
-  const role = user.app_metadata?.procurement_role
-  const isApprover =
-    PROCUREMENT_APPROVER_EMAILS.has(email) &&
-    (role === "approver" || role === "admin")
+  const procurementRole = user.app_metadata?.procurement_role
+  const isAdmin = procurementRole === "admin"
+  const isApprover = procurementRole === "approver" || isAdmin
 
   if (pathname === "/auth/login") {
     return NextResponse.redirect(new URL("/", request.url))
   }
 
-  if (pathname.startsWith("/admin/procurement-users") && !isApprover) {
+  if (isAdminPath(pathname) && !isAdmin) {
+    if (isApiRequest(pathname)) {
+      return NextResponse.json({ error: "Administrator role required" }, { status: 403 })
+    }
     return NextResponse.redirect(new URL("/", request.url))
   }
 
