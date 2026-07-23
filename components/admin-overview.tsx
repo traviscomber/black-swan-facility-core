@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { AlertTriangle, Box, Building2, List, ShieldAlert, Users, Wrench } from "lucide-react"
+import { AlertTriangle, Box, Building2, List, ShieldCheck, Users, Wrench } from "lucide-react"
 import { useLanguage } from "@/lib/hooks/use-language"
 import { PageHeader } from "@/components/page-header"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -24,7 +24,7 @@ interface AdminOverviewProps {
 const copy = {
   es: {
     title: "Administración y control",
-    description: "Resumen operativo, catálogos maestros y estado de seguridad verificado.",
+    description: "Resumen operativo, catálogos maestros y preparación para producción.",
     overview: "Resumen del sistema",
     assets: "Activos registrados",
     critical: "críticos",
@@ -37,18 +37,19 @@ const copy = {
     locations: "Ubicaciones",
     issueTypes: "Tipos de incidencia",
     manage: "Administrar",
-    security: "Estado de seguridad de datos",
-    securityDescription: "Auditoría directa del esquema público realizada el 22 de julio de 2026.",
+    security: "Postura de seguridad del entorno",
+    securityDescription: "Configuración observada en el esquema público durante la etapa de desarrollo.",
+    environment: "Entorno de desarrollo",
     totalTables: "112 tablas públicas",
     enabled: "91 con RLS habilitado",
     disabled: "21 con RLS desactivado",
-    noPolicies: "7 con RLS habilitado pero sin políticas",
-    warning: "La base de datos no está protegida de forma uniforme. Esta pantalla no debe afirmar que RLS está completamente configurado hasta corregir y validar las políticas tabla por tabla.",
-    noChanges: "Este estado es informativo. No se aplicaron cambios de seguridad ni permisos desde esta pantalla.",
+    noPolicies: "7 con RLS sin políticas",
+    status: "RLS se mantiene deliberadamente incompleto durante desarrollo. Antes del paso a producción deberá existir una revisión, definición de roles, matriz de acceso, políticas por tabla y prueba de regresión.",
+    noChanges: "No se aplicaron cambios de RLS ni permisos. Este panel registra el estado actual para preparar el checklist de producción.",
   },
   en: {
     title: "Administration and control",
-    description: "Operational summary, master catalogs and verified security status.",
+    description: "Operational summary, master catalogs and production readiness.",
     overview: "System overview",
     assets: "Registered assets",
     critical: "critical",
@@ -61,14 +62,15 @@ const copy = {
     locations: "Locations",
     issueTypes: "Issue types",
     manage: "Manage",
-    security: "Data security status",
-    securityDescription: "Direct audit of the public schema performed on July 22, 2026.",
+    security: "Environment security posture",
+    securityDescription: "Configuration observed in the public schema during the development stage.",
+    environment: "Development environment",
     totalTables: "112 public tables",
     enabled: "91 with RLS enabled",
     disabled: "21 with RLS disabled",
-    noPolicies: "7 with RLS enabled but no policies",
-    warning: "Database protection is not uniform. This screen must not claim that RLS is fully configured until policies are corrected and validated table by table.",
-    noChanges: "This status is informational. No security or permission changes were applied from this screen.",
+    noPolicies: "7 with RLS and no policies",
+    status: "RLS is intentionally incomplete during development. Before production, the system will require a review, defined roles, an access matrix, table-level policies and regression testing.",
+    noChanges: "No RLS or permission changes were applied. This panel records the current state for the production readiness checklist.",
   },
 } as const
 
@@ -96,16 +98,35 @@ export function AdminOverview({ counts }: AdminOverviewProps) {
           <h2 className="mb-4 text-lg font-semibold">{text.overview}</h2>
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
             {metrics.map(([label, value, detail, Icon]) => (
-              <Card key={label}><CardHeader className="flex flex-row items-center justify-between pb-2"><CardTitle className="text-sm font-medium">{label}</CardTitle><Icon className="h-4 w-4 text-muted-foreground" /></CardHeader><CardContent><div className="text-2xl font-semibold">{value}</div>{detail && <p className="mt-1 text-xs text-muted-foreground">{detail}</p>}</CardContent></Card>
+              <Card key={label}>
+                <CardHeader className="flex flex-row items-center justify-between pb-2">
+                  <CardTitle className="text-sm font-medium">{label}</CardTitle>
+                  <Icon className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-semibold">{value}</div>
+                  {detail && <p className="mt-1 text-xs text-muted-foreground">{detail}</p>}
+                </CardContent>
+              </Card>
             ))}
           </div>
         </section>
 
-        <Card className="border-amber-300">
-          <CardHeader><CardTitle className="flex items-center gap-2"><ShieldAlert className="h-5 w-5" />{text.security}</CardTitle><CardDescription>{text.securityDescription}</CardDescription></CardHeader>
+        <Card className="border-border">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2"><ShieldCheck className="h-5 w-5" />{text.security}</CardTitle>
+            <CardDescription>{text.securityDescription}</CardDescription>
+          </CardHeader>
           <CardContent className="space-y-4">
-            <div className="flex flex-wrap gap-2"><Badge variant="outline">{text.totalTables}</Badge><Badge variant="outline">{text.enabled}</Badge><Badge variant="destructive">{text.disabled}</Badge><Badge variant="destructive">{text.noPolicies}</Badge></div>
-            <p className="text-sm">{text.warning}</p><p className="text-xs text-muted-foreground">{text.noChanges}</p>
+            <div className="flex flex-wrap gap-2">
+              <Badge>{text.environment}</Badge>
+              <Badge variant="outline">{text.totalTables}</Badge>
+              <Badge variant="outline">{text.enabled}</Badge>
+              <Badge variant="outline">{text.disabled}</Badge>
+              <Badge variant="outline">{text.noPolicies}</Badge>
+            </div>
+            <p className="text-sm">{text.status}</p>
+            <p className="text-xs text-muted-foreground">{text.noChanges}</p>
           </CardContent>
         </Card>
 
@@ -113,7 +134,18 @@ export function AdminOverview({ counts }: AdminOverviewProps) {
           <h2 className="mb-4 text-lg font-semibold">{text.catalogs}</h2>
           <div className="grid gap-4 md:grid-cols-3">
             {catalogs.map(([label, value, href, Icon]) => (
-              <Link key={href} href={href}><Card className="h-full transition-colors hover:border-foreground/30"><CardHeader className="flex flex-row items-center justify-between pb-2"><CardTitle className="text-sm font-medium">{label}</CardTitle><Icon className="h-4 w-4 text-muted-foreground" /></CardHeader><CardContent><div className="text-2xl font-semibold">{value}</div><p className="mt-2 text-sm text-muted-foreground">{text.manage} →</p></CardContent></Card></Link>
+              <Link key={href} href={href}>
+                <Card className="h-full transition-colors hover:border-foreground/30">
+                  <CardHeader className="flex flex-row items-center justify-between pb-2">
+                    <CardTitle className="text-sm font-medium">{label}</CardTitle>
+                    <Icon className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-semibold">{value}</div>
+                    <p className="mt-2 text-sm text-muted-foreground">{text.manage} →</p>
+                  </CardContent>
+                </Card>
+              </Link>
             ))}
           </div>
         </section>
