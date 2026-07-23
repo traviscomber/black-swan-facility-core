@@ -1,18 +1,15 @@
 "use client"
 
+import { useCallback, useEffect, useMemo, useState } from "react"
+import { AlertTriangle, RefreshCw } from "lucide-react"
 import { AppLayout } from "@/components/app-layout"
 import { PageHeader } from "@/components/page-header"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { useEffect, useState } from "react"
-import { createBrowserClient } from "@/lib/supabase/client"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { EditPricingDialog } from "@/components/edit-pricing-dialog"
-import { EditCostDialog } from "@/components/edit-cost-dialog"
+import { createBrowserClient } from "@/lib/supabase/client"
 import { BusinessPlanUpload } from "@/components/cattle/business-plan-upload"
-import { Pencil, TrendingUp } from "lucide-react"
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line } from "recharts"
 
 interface PricingData {
   id: string
@@ -20,8 +17,8 @@ interface PricingData {
   price_pesos: number
   unit: string
   category: string
-  description: string
-  quantity_standard: number
+  description: string | null
+  quantity_standard: number | null
 }
 
 interface CostData {
@@ -29,7 +26,7 @@ interface CostData {
   cost_type: string
   amount_pesos: number
   unit: string
-  description: string
+  description: string | null
   business_unit: string
   is_fixed: boolean
 }
@@ -46,280 +43,158 @@ interface BusinessPlanRecord {
   business_unit: string
 }
 
+const clp = new Intl.NumberFormat("es-CL", { style: "currency", currency: "CLP", maximumFractionDigits: 0 })
+const number = new Intl.NumberFormat("es-CL", { maximumFractionDigits: 2 })
+
+const unitLabels: Record<string, string> = {
+  unit: "por animal",
+  kg: "por kilogramo",
+  year: "por año",
+  "one-time": "pago único",
+  percent: "porcentaje",
+}
+
 export default function PricingCostsPage() {
+  const supabase = useMemo(() => createBrowserClient(), [])
   const [pricing, setPricing] = useState<PricingData[]>([])
   const [costs, setCosts] = useState<CostData[]>([])
-  const [businessPlan, setBusinessPlan] = useState<BusinessPlanRecord[]>([])
+  const [plan, setPlan] = useState<BusinessPlanRecord[]>([])
   const [loading, setLoading] = useState(true)
-  const [editingPricing, setEditingPricing] = useState<PricingData | null>(null)
-  const [editingCost, setEditingCost] = useState<CostData | null>(null)
-  const [showPricingDialog, setShowPricingDialog] = useState(false)
-  const [showCostDialog, setShowCostDialog] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
-    fetchData()
-  }, [])
+  const fetchData = useCallback(async () => {
+    setLoading(true)
+    setError(null)
+    const [pricingRes, costsRes, planRes] = await Promise.all([
+      supabase.from("cattle_pricing").select("id, animal_type, price_pesos, unit, category, description, quantity_standard").eq("is_active", true).order("category").order("animal_type"),
+      supabase.from("cattle_operational_costs").select("id, cost_type, amount_pesos, unit, description, business_unit, is_fixed").order("business_unit").order("cost_type"),
+      supabase.from("cattle_business_plan").select("id, year, month, inventory_count, purchase_amount, sales_amount, operational_cost, profit_loss, business_unit").order("year").order("month"),
+    ])
 
-  const fetchData = async () => {
-    try {
-      const supabase = createBrowserClient()
-
-      const [pricingRes, costsRes, businessPlanRes] = await Promise.all([
-        supabase.from("cattle_pricing").select("*").eq("is_active", true),
-        supabase.from("cattle_operational_costs").select("*"),
-        supabase.from("cattle_business_plan").select("*").order("year").order("month"),
-      ])
-
-      if (pricingRes.data) setPricing(pricingRes.data)
-      if (costsRes.data) setCosts(costsRes.data)
-      if (businessPlanRes.data) {
-        console.log("[v0] Loaded business plan records:", businessPlanRes.data.length)
-        setBusinessPlan(businessPlanRes.data)
-      }
-    } catch (error) {
-      console.error("[v0] Error fetching data:", error)
-    } finally {
-      setLoading(false)
+    const loadError = pricingRes.error || costsRes.error || planRes.error
+    if (loadError) {
+      setError(loadError.message)
+      setPricing([])
+      setCosts([])
+      setPlan([])
+    } else {
+      setPricing((pricingRes.data ?? []) as PricingData[])
+      setCosts((costsRes.data ?? []) as CostData[])
+      setPlan((planRes.data ?? []) as BusinessPlanRecord[])
     }
-  }
+    setLoading(false)
+  }, [supabase])
 
-  const handlePricingUpdated = async () => {
-    try {
-      const supabase = createBrowserClient()
-      const { data } = await supabase.from("cattle_pricing").select("*").eq("is_active", true)
-      if (data) setPricing(data)
-    } catch (error) {
-      console.error("[v0] Error refreshing pricing:", error)
-    }
-  }
+  useEffect(() => { void fetchData() }, [fetchData])
 
-  const handleCostUpdated = async () => {
-    try {
-      const supabase = createBrowserClient()
-      const { data } = await supabase.from("cattle_operational_costs").select("*")
-      if (data) setCosts(data)
-    } catch (error) {
-      console.error("[v0] Error refreshing costs:", error)
-    }
-  }
+  const summary = useMemo(() => ({
+    firstYear: plan.length ? Math.min(...plan.map((item) => item.year)) : null,
+    lastYear: plan.length ? Math.max(...plan.map((item) => item.year)) : null,
+    purchases: plan.reduce((sum, item) => sum + Number(item.purchase_amount ?? 0), 0),
+    sales: plan.reduce((sum, item) => sum + Number(item.sales_amount ?? 0), 0),
+    costs: plan.reduce((sum, item) => sum + Number(item.operational_cost ?? 0), 0),
+    result: plan.reduce((sum, item) => sum + Number(item.profit_loss ?? 0), 0),
+  }), [plan])
 
-  const chartData = businessPlan
-    .filter((bp) => bp.business_unit?.includes("CRIANZA"))
-    .map((bp) => ({
-      period: `${bp.year}-${bp.month}`,
-      compra: bp.purchase_amount || 0,
-      venta: bp.sales_amount || 0,
-      ganancia: bp.profit_loss || 0,
-      costo: bp.operational_cost || 0,
-    }))
+  const questionablePrices = pricing.filter((item) => item.unit === "unit" && Number(item.price_pesos) < 10000).length
+  const breeding = pricing.filter((item) => item.category === "Breeding")
+  const fattening = pricing.filter((item) => item.category === "Fattening")
 
   return (
     <AppLayout>
-      <div className="space-y-6">
-        <PageHeader
-          title="Costos y Plan de Negocios"
-          description="Gestiona precios, costos operacionales y proyecciones del negocio ganadero"
-        />
+      <PageHeader
+        title="Ganadería · costos y escenarios"
+        description="Supuestos de precios, costos operacionales y proyecciones cargadas para la unidad ganadera de Fundo Corcovado."
+      />
 
-        {/* Business Plan Upload */}
-        <BusinessPlanUpload onDataLoaded={() => fetchData()} />
+      <div className="space-y-6 p-4 sm:p-8">
+        <Card className="border-amber-300">
+          <CardContent className="flex gap-3 p-5">
+            <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
+            <div>
+              <p className="font-medium">Escenario financiero, no contabilidad ejecutada</p>
+              <p className="mt-1 text-sm text-muted-foreground">Los registros de esta sección son supuestos y proyecciones. No deben interpretarse como compras, ventas, costos o utilidades efectivamente realizadas.</p>
+            </div>
+          </CardContent>
+        </Card>
 
-        {/* Business Plan Charts */}
-        {businessPlan.length > 0 && (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <TrendingUp className="h-5 w-5" />
-                  Proyección: Compra vs Venta
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={chartData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="period" angle={-45} height={80} />
-                    <YAxis />
-                    <Tooltip formatter={(value) => `$${value.toLocaleString()}`} />
-                    <Legend />
-                    <Bar dataKey="compra" fill="#ef4444" name="Compra" />
-                    <Bar dataKey="venta" fill="#22c55e" name="Venta" />
-                  </BarChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Proyección: Ganancia/Pérdida</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <ResponsiveContainer width="100%" height={300}>
-                  <LineChart data={chartData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="period" angle={-45} height={80} />
-                    <YAxis />
-                    <Tooltip formatter={(value) => `$${value.toLocaleString()}`} />
-                    <Legend />
-                    <Line type="monotone" dataKey="ganancia" stroke="#3b82f6" strokeWidth={2} name="Ganancia" />
-                  </LineChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
-          </div>
-        )}
-
-        {/* Business Plan Summary Table */}
-        {businessPlan.length > 0 && (
-          <Card>
-            <CardHeader>
-              <CardTitle>Resumen del Plan de Negocios</CardTitle>
-              <CardDescription>
-                {businessPlan.length} registros cargados
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Régimen</TableHead>
-                      <TableHead>Período</TableHead>
-                      <TableHead className="text-right">Compra</TableHead>
-                      <TableHead className="text-right">Venta</TableHead>
-                      <TableHead className="text-right">Costo Op.</TableHead>
-                      <TableHead className="text-right">Ganancia</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {businessPlan.slice(0, 10).map((record) => (
-                      <TableRow key={record.id}>
-                        <TableCell className="font-medium text-sm">
-                          <Badge variant="outline">{record.business_unit}</Badge>
-                        </TableCell>
-                        <TableCell>
-                          {record.year}-{record.month}
-                        </TableCell>
-                        <TableCell className="text-right text-sm">
-                          ${record.purchase_amount?.toLocaleString() || "-"}
-                        </TableCell>
-                        <TableCell className="text-right text-sm">
-                          ${record.sales_amount?.toLocaleString() || "-"}
-                        </TableCell>
-                        <TableCell className="text-right text-sm">
-                          ${record.operational_cost?.toLocaleString() || "-"}
-                        </TableCell>
-                        <TableCell className={`text-right text-sm font-medium ${record.profit_loss >= 0 ? "text-green-600" : "text-red-600"}`}>
-                          ${record.profit_loss?.toLocaleString() || "-"}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
+        {questionablePrices > 0 && (
+          <Card className="border-amber-300">
+            <CardContent className="p-5 text-sm">
+              <p className="font-medium">Hay {questionablePrices} precios con unidad “por animal” y valor inferior a $10.000.</p>
+              <p className="mt-1 text-muted-foreground">Es probable que algunos correspondan a precio por kilogramo o a otra unidad heredada. Se mantienen sin modificación hasta validación administrativa.</p>
             </CardContent>
           </Card>
         )}
 
-        {/* Pricing & Costs Tables */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Breeding Prices */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center justify-between">
-                <span>Precios - Crianza</span>
-                <Badge variant="outline">{pricing.filter(p => p.category === "Breeding").length}</Badge>
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Tipo</TableHead>
-                      <TableHead className="text-right">Precio</TableHead>
-                      <TableHead>Unidad</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {pricing.filter(p => p.category === "Breeding").map((item) => (
-                      <TableRow key={item.id}>
-                        <TableCell className="font-medium text-sm">{item.animal_type}</TableCell>
-                        <TableCell className="text-right">${item.price_pesos.toLocaleString()}</TableCell>
-                        <TableCell className="text-sm">{item.unit}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
+        {error && (
+          <Card className="border-destructive/60">
+            <CardContent className="flex items-center justify-between gap-4 p-5">
+              <p className="text-sm text-destructive">No fue posible cargar la información: {error}</p>
+              <Button variant="outline" size="sm" onClick={() => void fetchData()}><RefreshCw className="mr-2 h-4 w-4" />Reintentar</Button>
             </CardContent>
           </Card>
+        )}
 
-          {/* Fattening Prices */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center justify-between">
-                <span>Precios - Engorda</span>
-                <Badge variant="outline">{pricing.filter(p => p.category === "Fattening").length}</Badge>
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Tipo</TableHead>
-                      <TableHead className="text-right">Precio</TableHead>
-                      <TableHead>Unidad</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {pricing.filter(p => p.category === "Fattening").map((item) => (
-                      <TableRow key={item.id}>
-                        <TableCell className="font-medium text-sm">{item.animal_type}</TableCell>
-                        <TableCell className="text-right">${item.price_pesos.toLocaleString()}</TableCell>
-                        <TableCell className="text-sm">{item.unit}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            </CardContent>
-          </Card>
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+          <Metric title="Período proyectado" value={summary.firstYear && summary.lastYear ? `${summary.firstYear}–${summary.lastYear}` : "Sin datos"} detail={`${plan.length} registros cargados`} />
+          <Metric title="Compras proyectadas" value={clp.format(summary.purchases)} />
+          <Metric title="Ventas proyectadas" value={clp.format(summary.sales)} />
+          <Metric title="Costos proyectados" value={clp.format(summary.costs)} />
+          <Metric title="Resultado proyectado" value={clp.format(summary.result)} detail="Suma del campo profit_loss" />
         </div>
 
-        {/* Operational Costs */}
+        <BusinessPlanUpload onDataLoaded={() => void fetchData()} />
+
+        <div className="grid gap-6 xl:grid-cols-2">
+          <PricingTable title="Precios de crianza" records={breeding} />
+          <PricingTable title="Precios de engorda" records={fattening} />
+        </div>
+
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center justify-between">
-              <span>Costos Operacionales</span>
-              <Badge variant="outline">{costs.length}</Badge>
-            </CardTitle>
+            <CardTitle>Costos operacionales registrados</CardTitle>
+            <CardDescription>Montos de referencia; la periodicidad y unidad se muestran exactamente según el registro.</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto rounded-lg border">
               <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Tipo de Costo</TableHead>
-                    <TableHead>Descripción</TableHead>
-                    <TableHead className="text-right">Monto</TableHead>
-                    <TableHead>Unidad</TableHead>
-                    <TableHead>Régimen</TableHead>
-                  </TableRow>
-                </TableHeader>
+                <TableHeader><TableRow><TableHead>Concepto</TableHead><TableHead>Unidad ganadera</TableHead><TableHead>Tipo</TableHead><TableHead>Unidad</TableHead><TableHead className="text-right">Valor registrado</TableHead></TableRow></TableHeader>
                 <TableBody>
-                  {costs.map((item) => (
+                  {loading ? <TableRow><TableCell colSpan={5} className="py-8 text-center text-muted-foreground">Cargando costos…</TableCell></TableRow> : costs.length === 0 ? <TableRow><TableCell colSpan={5} className="py-8 text-center text-muted-foreground">No hay costos registrados.</TableCell></TableRow> : costs.map((item) => (
                     <TableRow key={item.id}>
-                      <TableCell className="font-medium text-sm">{item.cost_type}</TableCell>
-                      <TableCell className="text-sm">{item.description}</TableCell>
-                      <TableCell className="text-right">${item.amount_pesos.toLocaleString()}</TableCell>
-                      <TableCell className="text-sm">{item.unit}</TableCell>
-                      <TableCell>
-                        <Badge variant={item.is_fixed ? "default" : "secondary"}>
-                          {item.is_fixed ? "Fijo" : "Variable"}
-                        </Badge>
-                      </TableCell>
+                      <TableCell><p className="font-medium">{item.cost_type}</p>{item.description && <p className="mt-1 text-xs text-muted-foreground">{item.description}</p>}</TableCell>
+                      <TableCell>{item.business_unit || "General"}</TableCell>
+                      <TableCell><Badge variant="outline">{item.is_fixed ? "Fijo" : "Variable"}</Badge></TableCell>
+                      <TableCell>{unitLabels[item.unit] ?? item.unit}</TableCell>
+                      <TableCell className="text-right font-medium">{item.unit === "percent" ? `${number.format(item.amount_pesos)}%` : clp.format(item.amount_pesos)}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Detalle del escenario cargado</CardTitle>
+            <CardDescription>Primeros 20 registros ordenados por año y mes. Los montos están expresados como CLP según el esquema actual.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="overflow-x-auto rounded-lg border">
+              <Table>
+                <TableHeader><TableRow><TableHead>Unidad</TableHead><TableHead>Período</TableHead><TableHead className="text-right">Inventario</TableHead><TableHead className="text-right">Compras</TableHead><TableHead className="text-right">Ventas</TableHead><TableHead className="text-right">Costos</TableHead><TableHead className="text-right">Resultado</TableHead></TableRow></TableHeader>
+                <TableBody>
+                  {loading ? <TableRow><TableCell colSpan={7} className="py-8 text-center text-muted-foreground">Cargando escenario…</TableCell></TableRow> : plan.length === 0 ? <TableRow><TableCell colSpan={7} className="py-8 text-center text-muted-foreground">No hay proyecciones cargadas.</TableCell></TableRow> : plan.slice(0, 20).map((item) => (
+                    <TableRow key={item.id}>
+                      <TableCell><Badge variant="outline">{item.business_unit}</Badge></TableCell>
+                      <TableCell>{item.year}-{item.month}</TableCell>
+                      <TableCell className="text-right">{number.format(item.inventory_count ?? 0)}</TableCell>
+                      <TableCell className="text-right">{clp.format(item.purchase_amount ?? 0)}</TableCell>
+                      <TableCell className="text-right">{clp.format(item.sales_amount ?? 0)}</TableCell>
+                      <TableCell className="text-right">{clp.format(item.operational_cost ?? 0)}</TableCell>
+                      <TableCell className="text-right font-medium">{clp.format(item.profit_loss ?? 0)}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -330,4 +205,17 @@ export default function PricingCostsPage() {
       </div>
     </AppLayout>
   )
+}
+
+function PricingTable({ title, records }: { title: string; records: PricingData[] }) {
+  return (
+    <Card>
+      <CardHeader><CardTitle className="flex items-center justify-between text-base"><span>{title}</span><Badge variant="outline">{records.length}</Badge></CardTitle></CardHeader>
+      <CardContent><div className="overflow-x-auto rounded-lg border"><Table><TableHeader><TableRow><TableHead>Tipo</TableHead><TableHead>Unidad</TableHead><TableHead className="text-right">Precio registrado</TableHead></TableRow></TableHeader><TableBody>{records.length === 0 ? <TableRow><TableCell colSpan={3} className="py-8 text-center text-muted-foreground">Sin precios registrados.</TableCell></TableRow> : records.map((item) => <TableRow key={item.id}><TableCell><p className="font-medium">{item.animal_type}</p>{item.description && <p className="mt-1 text-xs text-muted-foreground">{item.description}</p>}</TableCell><TableCell>{unitLabels[item.unit] ?? item.unit}</TableCell><TableCell className="text-right font-medium">{clp.format(item.price_pesos)}</TableCell></TableRow>)}</TableBody></Table></div></CardContent>
+    </Card>
+  )
+}
+
+function Metric({ title, value, detail }: { title: string; value: string; detail?: string }) {
+  return <Card><CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">{title}</CardTitle></CardHeader><CardContent><div className="text-2xl font-semibold tracking-tight">{value}</div>{detail && <p className="mt-1 text-xs text-muted-foreground">{detail}</p>}</CardContent></Card>
 }
