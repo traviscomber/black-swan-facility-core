@@ -43,6 +43,10 @@ interface RoomBlock {
   id: string; room_id: string; start_date: string; end_date: string; block_type: string; reason: string; notes?: string | null; status: string
 }
 
+const DAY_WIDTH = 96
+const LABEL_WIDTH = 272
+const ROW_HEIGHT = 68
+
 const STATUS_STYLES: Record<string, string> = {
   confirmed: "bg-violet-600 text-white border-violet-700",
   checked_in: "bg-emerald-600 text-white border-emerald-700",
@@ -86,6 +90,7 @@ export default function BookingsCalendarPage() {
 
   const endDate = addDays(startDate, rangeDays)
   const dates = useMemo(() => Array.from({ length: rangeDays }, (_, index) => addDays(startDate, index)), [rangeDays, startDate])
+  const timelineWidth = rangeDays * DAY_WIDTH
 
   const loadData = useCallback(async () => {
     setLoading(true)
@@ -122,7 +127,7 @@ export default function BookingsCalendarPage() {
 
   useEffect(() => { loadData() }, [loadData])
   useEffect(() => {
-    const channel = supabase.channel("bookings-calendar-v4")
+    const channel = supabase.channel("bookings-calendar-v5")
       .on("postgres_changes", { event: "*", schema: "public", table: "reservations" }, loadData)
       .on("postgres_changes", { event: "*", schema: "public", table: "room_blocks" }, loadData)
       .on("postgres_changes", { event: "*", schema: "public", table: "beds" }, loadData)
@@ -165,6 +170,17 @@ export default function BookingsCalendarPage() {
     return (eventsByBed.get(bedId) ?? []).find((event) => event.event_type === type && date >= parseISO(event.starts_on) && date < parseISO(event.ends_on))
   }
 
+  function eventGeometry(event: CalendarEvent) {
+    const eventStart = parseISO(event.starts_on) < startDate ? startDate : parseISO(event.starts_on)
+    const eventEnd = parseISO(event.ends_on) > endDate ? endDate : parseISO(event.ends_on)
+    const offsetDays = Math.max(0, differenceInCalendarDays(eventStart, startDate))
+    const durationDays = Math.max(1, differenceInCalendarDays(eventEnd, eventStart))
+    return {
+      left: offsetDays * DAY_WIDTH + 4,
+      width: Math.max(24, durationDays * DAY_WIDTH - 8),
+    }
+  }
+
   const metrics = useMemo(() => {
     const blockedNights = visibleBlockEvents.reduce((sum, event) => {
       const from = parseISO(event.starts_on) < startDate ? startDate : parseISO(event.starts_on)
@@ -192,10 +208,17 @@ export default function BookingsCalendarPage() {
   }, [endDate, rangeDays, startDate, visibleBeds, visibleBlockEvents, visibleReservationEvents])
 
   function openNewReservation(bed: Bed, date: Date) {
-    if (eventAt(bed.id, date, "block")) return
+    if (eventAt(bed.id, date, "block") || eventAt(bed.id, date, "reservation")) return
     setPreselectedBed(bed)
     setPreselectedDate(date)
     setNewReservationOpen(true)
+  }
+
+  function openReservationFromTimeline(bed: Bed, clientX: number, currentTarget: HTMLDivElement) {
+    const rect = currentTarget.getBoundingClientRect()
+    const offset = Math.max(0, Math.min(timelineWidth - 1, clientX - rect.left))
+    const dayIndex = Math.floor(offset / DAY_WIDTH)
+    openNewReservation(bed, addDays(startDate, dayIndex))
   }
 
   async function openReservation(event: CalendarEvent) {
@@ -245,7 +268,7 @@ export default function BookingsCalendarPage() {
           <div>
             <p className="mb-1 text-xs font-semibold uppercase tracking-[0.16em] text-primary">Hospitalidad · Fundo Corcovado</p>
             <h1 className="text-3xl font-semibold tracking-tight">Reservas y disponibilidad</h1>
-            <p className="mt-1 max-w-3xl text-sm text-muted-foreground">Calendario operativo conectado al Availability Engine de Blackswan Facility Core. Reservas y bloqueos se resuelven desde una única fuente de disponibilidad.</p>
+            <p className="mt-1 max-w-3xl text-sm text-muted-foreground">Timeline operativo conectado al Availability Engine de Blackswan Facility Core. Las estadías y bloqueos se muestran como períodos continuos.</p>
           </div>
           <div className="flex flex-wrap gap-2">
             <Button asChild variant="outline"><Link href="/bookings/blocks"><Ban className="mr-2 h-4 w-4" />Gestionar bloqueos</Link></Button>
@@ -280,15 +303,63 @@ export default function BookingsCalendarPage() {
 
         {error && <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-600">No fue posible cargar o actualizar la disponibilidad: {error}</div>}
 
-        <Card className="overflow-hidden"><CardHeader className="flex flex-row items-center justify-between border-b py-3"><div><CardTitle className="text-base">{format(startDate, "dd MMM")} — {format(addDays(endDate, -1), "dd MMM yyyy")}</CardTitle><p className="text-xs text-muted-foreground">{visibleBeds.length} camas visibles · {metrics.blocks} bloqueos activos</p></div><div className="flex gap-2"><Button variant="outline" size="icon" onClick={() => setStartDate(addDays(startDate, -rangeDays))}><ChevronLeft className="h-4 w-4" /></Button><Button variant="outline" size="icon" onClick={() => setStartDate(addDays(startDate, rangeDays))}><ChevronRight className="h-4 w-4" /></Button></div></CardHeader>
-          <CardContent className="p-0"><div className="overflow-auto"><table className="min-w-max border-collapse text-sm"><thead className="sticky top-0 z-20 bg-background"><tr><th className="sticky left-0 z-30 min-w-56 border-b border-r bg-background px-4 py-3 text-left">Propiedad / habitación / cama</th>{dates.map((date) => <th key={date.toISOString()} className={`min-w-24 border-b border-r px-2 py-2 text-center ${isSameDay(date, new Date()) ? "bg-amber-100" : ""}`}><div className="text-xs text-muted-foreground">{format(date, "EEE")}</div><div className="font-semibold">{format(date, "dd MMM")}</div></th>)}</tr></thead>
-            <tbody>{loading ? <tr><td colSpan={dates.length + 1} className="p-12 text-center text-muted-foreground">Cargando Availability Engine…</td></tr> : visibleBeds.length === 0 ? <tr><td colSpan={dates.length + 1} className="p-12 text-center text-muted-foreground">No hay camas para los filtros seleccionados.</td></tr> : visibleBeds.map((bed) => <tr key={bed.id} className="hover:bg-muted/30"><td className="sticky left-0 z-10 border-b border-r bg-background px-4 py-3"><div className="font-medium">{bed.room.location_ref?.name ?? "Sin propiedad"}</div><div className="text-xs text-muted-foreground">Hab. {bed.room.room_number} · {bed.bed_number} · {bed.bed_type}</div></td>{dates.map((date) => {
-              const reservation = eventAt(bed.id, date, "reservation")
-              const block = eventAt(bed.id, date, "block")
-              const reservationStart = reservation && isSameDay(parseISO(reservation.starts_on), date)
-              const blockStart = block && isSameDay(parseISO(block.starts_on), date)
-              return <td key={`${bed.id}-${date.toISOString()}`} className={`h-16 border-b border-r p-1 ${isSameDay(date, new Date()) ? "bg-amber-50" : ""}`}>{reservation ? <button onClick={() => openReservation(reservation)} className={`h-full w-full rounded border px-2 text-left text-xs ${STATUS_STYLES[reservation.status] ?? "bg-slate-200 text-slate-900"}`} title={`${reservation.guest_name ?? reservation.label} · ${reservation.starts_on} → ${reservation.ends_on}`}>{reservationStart ? <><div className="truncate font-semibold">{reservation.guest_name ?? reservation.label}</div><div className="truncate opacity-80">{STATUS_LABELS[reservation.status] ?? reservation.status}</div></> : <div className="h-full opacity-40" />}</button> : block ? <button onClick={() => openBlock(block)} className="h-full w-full rounded border border-zinc-500 bg-zinc-800 px-2 text-left text-xs text-white" title={`${block.label} · ${block.starts_on} → ${block.ends_on}`}>{blockStart ? <><div className="truncate font-semibold">{BLOCK_LABELS[block.block_type ?? "other"] ?? "Bloqueada"}</div><div className="truncate opacity-80">{block.label}</div></> : <div className="h-full opacity-40" />}</button> : <button onClick={() => openNewReservation(bed, date)} className="h-full w-full rounded text-muted-foreground hover:bg-primary/10 hover:text-primary"><Plus className="mx-auto h-4 w-4" /></button>}</td>
-            })}</tr>)}</tbody></table></div></CardContent>
+        <Card className="overflow-hidden">
+          <CardHeader className="flex flex-row items-center justify-between border-b py-3">
+            <div><CardTitle className="text-base">{format(startDate, "dd MMM")} — {format(addDays(endDate, -1), "dd MMM yyyy")}</CardTitle><p className="text-xs text-muted-foreground">{visibleBeds.length} camas visibles · {metrics.blocks} bloqueos activos · haz clic en un espacio libre para reservar</p></div>
+            <div className="flex gap-2"><Button variant="outline" size="icon" onClick={() => setStartDate(addDays(startDate, -rangeDays))}><ChevronLeft className="h-4 w-4" /></Button><Button variant="outline" size="icon" onClick={() => setStartDate(addDays(startDate, rangeDays))}><ChevronRight className="h-4 w-4" /></Button></div>
+          </CardHeader>
+          <CardContent className="p-0">
+            <div className="overflow-auto">
+              <div style={{ minWidth: LABEL_WIDTH + timelineWidth }}>
+                <div className="sticky top-0 z-30 flex border-b bg-background">
+                  <div className="sticky left-0 z-40 flex shrink-0 items-center border-r bg-background px-4 font-medium" style={{ width: LABEL_WIDTH, height: 58 }}>Propiedad / habitación / cama</div>
+                  <div className="grid" style={{ width: timelineWidth, gridTemplateColumns: `repeat(${rangeDays}, ${DAY_WIDTH}px)` }}>
+                    {dates.map((date) => <div key={date.toISOString()} className={`flex flex-col items-center justify-center border-r text-center ${isSameDay(date, new Date()) ? "bg-amber-100" : ""}`} style={{ height: 58 }}><div className="text-xs text-muted-foreground">{format(date, "EEE")}</div><div className="font-semibold">{format(date, "dd MMM")}</div></div>)}
+                  </div>
+                </div>
+
+                {loading ? <div className="p-12 text-center text-muted-foreground">Cargando Availability Engine…</div> : visibleBeds.length === 0 ? <div className="p-12 text-center text-muted-foreground">No hay camas para los filtros seleccionados.</div> : visibleBeds.map((bed) => {
+                  const bedEvents = eventsByBed.get(bed.id) ?? []
+                  return <div key={bed.id} className="flex border-b hover:bg-muted/20" style={{ height: ROW_HEIGHT }}>
+                    <div className="sticky left-0 z-20 flex shrink-0 flex-col justify-center border-r bg-background px-4" style={{ width: LABEL_WIDTH, height: ROW_HEIGHT }}>
+                      <div className="truncate font-medium">{bed.room.location_ref?.name ?? "Sin propiedad"}</div>
+                      <div className="truncate text-xs text-muted-foreground">Hab. {bed.room.room_number} · {bed.bed_number} · {bed.bed_type}</div>
+                    </div>
+                    <div
+                      className="relative cursor-crosshair"
+                      style={{
+                        width: timelineWidth,
+                        height: ROW_HEIGHT,
+                        backgroundImage: `repeating-linear-gradient(to right, transparent 0, transparent ${DAY_WIDTH - 1}px, hsl(var(--border)) ${DAY_WIDTH - 1}px, hsl(var(--border)) ${DAY_WIDTH}px)`,
+                      }}
+                      onClick={(clickEvent) => openReservationFromTimeline(bed, clickEvent.clientX, clickEvent.currentTarget)}
+                    >
+                      {dates.map((date, index) => isSameDay(date, new Date()) ? <div key={`today-${bed.id}-${index}`} className="pointer-events-none absolute inset-y-0 bg-amber-50/70" style={{ left: index * DAY_WIDTH, width: DAY_WIDTH }} /> : null)}
+                      {bedEvents.map((event) => {
+                        const geometry = eventGeometry(event)
+                        const isBlock = event.event_type === "block"
+                        return <button
+                          key={`${event.event_type}-${event.event_id}-${bed.id}`}
+                          type="button"
+                          onClick={(buttonEvent) => {
+                            buttonEvent.stopPropagation()
+                            if (isBlock) void openBlock(event)
+                            else void openReservation(event)
+                          }}
+                          className={`absolute top-2 h-[52px] overflow-hidden rounded-md border px-3 text-left text-xs shadow-sm transition hover:brightness-110 focus:outline-none focus:ring-2 focus:ring-primary ${isBlock ? "border-zinc-500 bg-zinc-800 text-white" : STATUS_STYLES[event.status] ?? "bg-slate-200 text-slate-900"}`}
+                          style={{ left: geometry.left, width: geometry.width }}
+                          title={`${event.guest_name ?? event.label} · ${event.starts_on} → ${event.ends_on}`}
+                        >
+                          <div className="truncate font-semibold">{isBlock ? BLOCK_LABELS[event.block_type ?? "other"] ?? "Bloqueada" : event.guest_name ?? event.label}</div>
+                          <div className="truncate opacity-80">{isBlock ? event.label : `${STATUS_LABELS[event.status] ?? event.status} · ${event.starts_on} → ${event.ends_on}`}</div>
+                        </button>
+                      })}
+                    </div>
+                  </div>
+                })}
+              </div>
+            </div>
+          </CardContent>
         </Card>
       </div>
 
