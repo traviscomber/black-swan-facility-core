@@ -51,16 +51,28 @@ const EMPTY_METRICS: DashboardMetrics = {
   assets: 0,
 }
 
-const modules = [
-  { label: "Hospitalidad", description: "Reservas, habitaciones, huéspedes y solicitudes del Fundo Corcovado.", icon: Building2, href: "/bookings" },
-  { label: "Ganadería", description: "Potreros, crianza, engorda, salud animal y planificación ganadera.", icon: Beef, href: "/cattle" },
-  { label: "Viñedo", description: "Cuarteles, manejo, sanidad, cosechas y registros productivos.", icon: Grape, href: "/vineyard" },
-  { label: "Energía", description: "Consumos, generación, servicios y seguimiento energético.", icon: Zap, href: "/energy" },
-  { label: "Mantenimiento", description: "Trabajos preventivos, correctivos e incidencias de infraestructura.", icon: Wrench, href: "/maintenance" },
-  { label: "Inventario", description: "Activos, existencias, categorías, centros de costo y auditoría.", icon: Package, href: "/inventory" },
-  { label: "Personas", description: "Equipo activo, funciones y operación interna del fundo.", icon: Users, href: "/employees" },
-  { label: "Actividades", description: "Calendario de actividades, responsables y planificación diaria.", icon: Calendar, href: "/activities-calendar" },
-  { label: "Compras", description: "Solicitudes, aprobaciones, órdenes y proveedores pendientes.", icon: ShoppingCart, href: "/procurement" },
+const moduleGroups = [
+  {
+    label: "Operación",
+    description: "Coordinación diaria de hospitalidad, mantenimiento, compras y personas.",
+    modules: [
+      { label: "Hospitalidad", description: "Reservas, habitaciones, huéspedes y solicitudes del Fundo Corcovado.", icon: Building2, href: "/bookings" },
+      { label: "Mantenimiento", description: "Trabajos preventivos, correctivos e incidencias de infraestructura.", icon: Wrench, href: "/maintenance" },
+      { label: "Compras", description: "Solicitudes, aprobaciones, órdenes y proveedores pendientes.", icon: ShoppingCart, href: "/procurement" },
+      { label: "Personas", description: "Equipo activo, funciones y operación interna del fundo.", icon: Users, href: "/employees" },
+      { label: "Actividades", description: "Calendario de actividades, responsables y planificación diaria.", icon: Calendar, href: "/activities-calendar" },
+    ],
+  },
+  {
+    label: "Recursos y territorio",
+    description: "Activos, producción, energía y registros vinculados al territorio.",
+    modules: [
+      { label: "Inventario y activos", description: "Activos, existencias, categorías, centros de costo y auditoría.", icon: Package, href: "/inventory" },
+      { label: "Ganadería", description: "Potreros, crianza, engorda, salud animal y planificación ganadera.", icon: Beef, href: "/cattle" },
+      { label: "Viñedo y huerto", description: "Cuarteles, cultivos, manejo, sanidad, cosechas y registros productivos.", icon: Grape, href: "/vineyard" },
+      { label: "Energía y combustibles", description: "Consumos, generación, servicios, combustible y seguimiento energético.", icon: Zap, href: "/energy" },
+    ],
+  },
 ]
 
 export default function OperationsDashboard() {
@@ -120,7 +132,7 @@ export default function OperationsDashboard() {
       <header className="border-b border-border bg-background">
         <div className="mx-auto flex max-w-[1600px] items-center justify-between px-4 py-4 sm:px-8">
           <div className="flex items-center gap-3">
-            <img src="/blackswan-logo.png" alt="Black Swan" className="h-10 w-10 object-contain" />
+            <img src="/blackswan-logo.png" alt="Blackswan Facility Core" className="h-10 w-10 object-contain" />
             <div><p className="text-sm font-semibold tracking-wide">BSFC</p><p className="text-xs text-muted-foreground">Fundo Corcovado · Valdivia</p></div>
           </div>
           <div className="flex items-center gap-3">
@@ -130,11 +142,11 @@ export default function OperationsDashboard() {
         </div>
       </header>
 
-      <main className="mx-auto max-w-[1600px] space-y-8 px-4 py-8 sm:px-8">
+      <main className="mx-auto max-w-[1600px] space-y-10 px-4 py-8 sm:px-8">
         <section className="max-w-3xl">
           <p className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-primary">Centro interno de operaciones</p>
           <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">Fundo Corcovado</h1>
-          <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground sm:text-base">Vista central para coordinar hospitalidad, campo, infraestructura, compras y equipo en la operación de Valdivia. Los indicadores provienen de los registros activos del sistema.</p>
+          <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground sm:text-base">Vista central para coordinar hospitalidad, campo, infraestructura, compras y equipo en la operación de Valdivia. Los indicadores provienen de registros existentes y no modifican la información de producción.</p>
         </section>
 
         {warnings.length > 0 && (
@@ -159,20 +171,30 @@ export default function OperationsDashboard() {
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             <MetricCard title="Ubicaciones activas" value={metrics.locations} detail="Propiedades y áreas habilitadas" loading={loading} href="/property-management" />
             <MetricCard title="Personas activas" value={metrics.employees} detail="Colaboradores registrados como activos" loading={loading} href="/employees" />
-            <MetricCard title="Activos registrados" value={metrics.assets} detail="Total disponible en el módulo de activos" loading={loading} href="/assets" />
-            <MetricCard title="Compras en revisión" value={metrics.procurement} detail="Solicitudes pendientes, enviadas o revisándose" loading={loading} href="/procurement" />
+            <MetricCard title="Activos registrados" value={metrics.assets} detail="Total disponible en el registro principal de activos" loading={loading} href="/assets" />
+            <MetricCard title="Compras en revisión" value={metrics.procurement} detail="Solicitudes pendientes, enviadas o en revisión" loading={loading} href="/procurement" />
           </div>
         </section>
 
         <section>
-          <div className="mb-5"><h2 className="text-lg font-semibold">Áreas de trabajo</h2><p className="mt-1 text-sm text-muted-foreground">Cada módulo corresponde a una función operativa del Fundo Corcovado.</p></div>
-          <div className="grid gap-px overflow-hidden rounded-lg border border-border bg-border sm:grid-cols-2 lg:grid-cols-3">
-            {modules.map((module) => { const Icon = module.icon; return <Link key={module.href} href={module.href} className="group flex min-h-40 flex-col justify-between bg-background p-5 transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-inset"><div className="flex items-start justify-between"><div className="flex h-9 w-9 items-center justify-center rounded-md border border-border bg-card"><Icon className="h-4 w-4 text-primary" /></div><ChevronRight className="h-4 w-4 text-muted-foreground opacity-50 transition-all group-hover:translate-x-0.5 group-hover:opacity-100" /></div><div className="mt-6"><p className="text-sm font-semibold">{module.label}</p><p className="mt-1 text-xs leading-5 text-muted-foreground">{module.description}</p></div></Link> })}
+          <div className="mb-6"><h2 className="text-lg font-semibold">Secciones operativas</h2><p className="mt-1 text-sm text-muted-foreground">Las áreas se mantienen separadas y se organizan por contexto de trabajo, sin fusionar datos ni tablas.</p></div>
+          <div className="space-y-8">
+            {moduleGroups.map((group) => (
+              <div key={group.label}>
+                <div className="mb-3"><h3 className="text-sm font-semibold">{group.label}</h3><p className="mt-1 text-xs text-muted-foreground">{group.description}</p></div>
+                <div className="grid gap-px overflow-hidden rounded-lg border border-border bg-border sm:grid-cols-2 lg:grid-cols-3">
+                  {group.modules.map((module) => {
+                    const Icon = module.icon
+                    return <Link key={module.href} href={module.href} className="group flex min-h-40 flex-col justify-between bg-background p-5 transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-inset"><div className="flex items-start justify-between"><div className="flex h-9 w-9 items-center justify-center rounded-md border border-border bg-card"><Icon className="h-4 w-4 text-primary" /></div><ChevronRight className="h-4 w-4 text-muted-foreground opacity-50 transition-all group-hover:translate-x-0.5 group-hover:opacity-100" /></div><div className="mt-6"><p className="text-sm font-semibold">{module.label}</p><p className="mt-1 text-xs leading-5 text-muted-foreground">{module.description}</p></div></Link>
+                  })}
+                </div>
+              </div>
+            ))}
           </div>
         </section>
       </main>
 
-      <footer className="border-t border-border px-4 py-5 text-center text-xs text-muted-foreground sm:px-8">Black Swan Facility Core · Fundo Corcovado, Valdivia · Uso interno</footer>
+      <footer className="border-t border-border px-4 py-5 text-center text-xs text-muted-foreground sm:px-8">Blackswan Facility Core · Fundo Corcovado, Valdivia · Uso interno</footer>
     </div>
   )
 }
