@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server"
 
 export async function POST(request: Request) {
-  const supabase = createClient()
+  const supabase = await createClient()
   const { reservation_ids, operation_type } = await request.json()
   
   if (!reservation_ids?.length || !operation_type) {

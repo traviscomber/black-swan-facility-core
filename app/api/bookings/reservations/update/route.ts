@@ -78,7 +78,7 @@ export async function PATCH(request: Request) {
     if (roomData) {
       const { data: blocks } = await supabase
         .from("room_blocks")
-        .select("id")
+        .select("id, start_date, end_date")
         .eq("room_id", roomData.room_id)
         .eq("status", "active")
 

@@ -2,7 +2,7 @@ import { createClient } from "@/lib/supabase/server"
 import { NextRequest, NextResponse } from "next/server"
 
 export async function POST(req: NextRequest) {
-  const supabase = createClient()
+  const supabase = await createClient()
   const { reservation_ids, days_delta, days_extend } = await req.json()
 
   if (!Array.isArray(reservation_ids) || reservation_ids.length === 0) {
