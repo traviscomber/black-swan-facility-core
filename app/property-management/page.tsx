@@ -1,558 +1,176 @@
 "use client"
 
-import type React from "react"
-
-import { useEffect, useState } from "react"
-import { useRouter } from "next/navigation"
-import { createBrowserClient } from "@/lib/supabase/client"
+import { useCallback, useEffect, useMemo, useState } from "react"
+import { AlertTriangle, Building2, MapPin, Pencil, Plus, RefreshCw, Search } from "lucide-react"
 import { AppLayout } from "@/components/app-layout"
-import { useLanguage } from "@/lib/hooks/use-language"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
-import {
-  Home,
-  Package,
-  Droplets,
-  Leaf,
-  Building2,
-  Zap,
-  ParkingCircle,
-  MoreHorizontal,
-  Plus,
-  Pencil,
-  Trash2,
-} from "lucide-react"
+import { createBrowserClient } from "@/lib/supabase/client"
 
 interface Location {
   id: string
   name: string
   description: string | null
-  facility_type: string
-  is_active: boolean
-  created_at: string
+  latitude: number | null
+  longitude: number | null
+  is_active: boolean | null
+  facility_type: string | null
+  rooms?: { count: number }[]
 }
 
-const facilityTypeConfig = {
-  rental: {
-    icon: Home,
-    label: "property.rental_property",
-    color: "text-blue-600",
-    description: "property.rental_desc",
-    managePath: "/bookings/locations",
-  },
-  storage: {
-    icon: Package,
-    label: "property.storage_facility",
-    color: "text-amber-600",
-    description: "property.storage_desc",
-    managePath: "/facilities/storage",
-  },
-  laundry: {
-    icon: Droplets,
-    label: "property.laundry_facility",
-    color: "text-cyan-600",
-    description: "property.laundry_desc",
-    managePath: "/facilities/laundry",
-  },
-  garden: {
-    icon: Leaf,
-    label: "property.garden_grounds",
-    color: "text-green-600",
-    description: "property.garden_desc",
-    managePath: "/facilities/garden",
-  },
-  office: {
-    icon: Building2,
-    label: "property.office_space",
-    color: "text-purple-600",
-    description: "property.office_desc",
-    managePath: "/facilities/office",
-  },
-  utility: {
-    icon: Zap,
-    label: "property.utility_area",
-    color: "text-yellow-600",
-    description: "property.utility_desc",
-    managePath: "/facilities/utility",
-  },
-  parking: {
-    icon: ParkingCircle,
-    label: "property.parking_area",
-    color: "text-gray-600",
-    description: "property.parking_desc",
-    managePath: "/facilities/parking",
-  },
-  other: {
-    icon: MoreHorizontal,
-    label: "property.other_facility",
-    color: "text-gray-600",
-    description: "property.other_desc",
-    managePath: "/facilities/other",
-  },
+const TYPE_LABELS: Record<string, string> = {
+  rental: "Hospedaje / clasificación heredada",
+  storage: "Almacenamiento",
+  laundry: "Lavandería",
+  garden: "Jardines y exteriores",
+  office: "Oficina",
+  utility: "Servicios e infraestructura",
+  parking: "Estacionamiento o acceso",
+  other: "Otro",
 }
 
 export default function PropertyManagementPage() {
+  const supabase = useMemo(() => createBrowserClient(), [])
   const [locations, setLocations] = useState<Location[]>([])
   const [loading, setLoading] = useState(true)
-  const [addDialogOpen, setAddDialogOpen] = useState(false)
-  const [editDialogOpen, setEditDialogOpen] = useState(false)
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
-  const [selectedLocation, setSelectedLocation] = useState<Location | null>(null)
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [searchQuery, setSearchQuery] = useState("")
-  const router = useRouter()
-  const { t } = useLanguage()
+  const [error, setError] = useState<string | null>(null)
+  const [search, setSearch] = useState("")
+  const [editing, setEditing] = useState<Location | null>(null)
+  const [creating, setCreating] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [form, setForm] = useState({ name: "", description: "", facility_type: "other", latitude: "", longitude: "" })
 
-  const [formData, setFormData] = useState({
-    name: "",
-    description: "",
-    facility_type: "rental",
-  })
+  const loadLocations = useCallback(async () => {
+    setLoading(true)
+    setError(null)
+    const { data, error: loadError } = await supabase
+      .from("locations")
+      .select("id, name, description, latitude, longitude, is_active, facility_type, rooms(count)")
+      .order("name")
 
-  const supabase = createBrowserClient()
-
-  useEffect(() => {
-    fetchLocations()
-  }, [])
-
-  async function fetchLocations() {
-    try {
-      const { data } = await supabase.from("locations").select("*").order("name")
-      setLocations(data || [])
-    } catch (error) {
-      console.error("Error fetching locations:", error)
-    } finally {
-      setLoading(false)
+    if (loadError) {
+      setError(loadError.message)
+      setLocations([])
+    } else {
+      setLocations((data ?? []) as Location[])
     }
+    setLoading(false)
+  }, [supabase])
+
+  useEffect(() => { void loadLocations() }, [loadLocations])
+
+  const filtered = useMemo(() => {
+    const term = search.trim().toLowerCase()
+    return locations.filter((location) => !term || location.name.toLowerCase().includes(term) || location.description?.toLowerCase().includes(term) || location.facility_type?.toLowerCase().includes(term))
+  }, [locations, search])
+
+  const active = locations.filter((location) => location.is_active).length
+  const withCoordinates = locations.filter((location) => location.latitude != null && location.longitude != null).length
+  const withRooms = locations.filter((location) => Number(location.rooms?.[0]?.count ?? 0) > 0).length
+  const rentalClassified = locations.filter((location) => location.facility_type === "rental").length
+  const classificationWarning = locations.length > 0 && rentalClassified / locations.length >= 0.8
+
+  const beginCreate = () => {
+    setEditing(null)
+    setForm({ name: "", description: "", facility_type: "other", latitude: "", longitude: "" })
+    setCreating(true)
   }
 
-  async function handleAddLocation(e: React.FormEvent) {
-    e.preventDefault()
-    setIsSubmitting(true)
-
-    try {
-      const { error } = await supabase.from("locations").insert({
-        name: formData.name,
-        description: formData.description || null,
-        facility_type: formData.facility_type,
-        is_active: true,
-      })
-
-      if (error) throw error
-
-      setFormData({ name: "", description: "", facility_type: "rental" })
-      setAddDialogOpen(false)
-      fetchLocations()
-    } catch (error) {
-      console.error("Error adding location:", error)
-      alert("Failed to add location")
-    } finally {
-      setIsSubmitting(false)
-    }
-  }
-
-  async function handleEditLocation(e: React.FormEvent) {
-    e.preventDefault()
-    if (!selectedLocation) return
-
-    setIsSubmitting(true)
-
-    try {
-      const { error } = await supabase
-        .from("locations")
-        .update({
-          name: formData.name,
-          description: formData.description || null,
-          facility_type: formData.facility_type,
-        })
-        .eq("id", selectedLocation.id)
-
-      if (error) throw error
-
-      setEditDialogOpen(false)
-      setSelectedLocation(null)
-      fetchLocations()
-    } catch (error) {
-      console.error("Error updating location:", error)
-      alert("Failed to update location")
-    } finally {
-      setIsSubmitting(false)
-    }
-  }
-
-  async function handleDeleteLocation() {
-    if (!selectedLocation) return
-
-    setIsSubmitting(true)
-
-    try {
-      const { error } = await supabase.from("locations").delete().eq("id", selectedLocation.id)
-
-      if (error) throw error
-
-      setDeleteDialogOpen(false)
-      setSelectedLocation(null)
-      fetchLocations()
-    } catch (error) {
-      console.error("Error deleting location:", error)
-      alert(t("property.failed_delete"))
-    } finally {
-      setIsSubmitting(false)
-    }
-  }
-
-  async function toggleActive(location: Location) {
-    try {
-      const { error } = await supabase
-        .from("locations")
-        .update({ is_active: !location.is_active })
-        .eq("id", location.id)
-
-      if (error) throw error
-      fetchLocations()
-    } catch (error) {
-      console.error("Error toggling location status:", error)
-    }
-  }
-
-  function openEditDialog(location: Location) {
-    setSelectedLocation(location)
-    setFormData({
+  const beginEdit = (location: Location) => {
+    setCreating(false)
+    setEditing(location)
+    setForm({
       name: location.name,
-      description: location.description || "",
-      facility_type: location.facility_type || "other",
+      description: location.description ?? "",
+      facility_type: location.facility_type ?? "other",
+      latitude: location.latitude?.toString() ?? "",
+      longitude: location.longitude?.toString() ?? "",
     })
-    setEditDialogOpen(true)
   }
 
-  const groupedByType = locations.reduce(
-    (acc, location) => {
-      const type = location.facility_type || "other"
-      if (!acc[type]) acc[type] = []
-      acc[type].push(location)
-      return acc
-    },
-    {} as Record<string, Location[]>,
-  )
+  const closeForm = () => {
+    setCreating(false)
+    setEditing(null)
+  }
 
-  const filteredLocations = locations.filter(
-    (loc) =>
-      loc.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      loc.description?.toLowerCase().includes(searchQuery.toLowerCase()),
-  )
+  const saveLocation = async () => {
+    if (!form.name.trim()) return
+    setSaving(true)
+    setError(null)
+    const payload = {
+      name: form.name.trim(),
+      description: form.description.trim() || null,
+      facility_type: form.facility_type,
+      latitude: form.latitude ? Number(form.latitude) : null,
+      longitude: form.longitude ? Number(form.longitude) : null,
+      is_active: editing?.is_active ?? true,
+    }
+    const result = editing
+      ? await supabase.from("locations").update(payload).eq("id", editing.id)
+      : await supabase.from("locations").insert(payload)
 
-  const filteredGrouped = Object.entries(groupedByType).reduce(
-    (acc, [type, locs]) => {
-      acc[type] = locs.filter(
-        (loc) =>
-          loc.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          loc.description?.toLowerCase().includes(searchQuery.toLowerCase()),
-      )
-      return acc
-    },
-    {} as Record<string, Location[]>,
-  )
+    if (result.error) setError(result.error.message)
+    else {
+      closeForm()
+      await loadLocations()
+    }
+    setSaving(false)
+  }
 
-  if (loading) {
-    return (
-      <AppLayout>
-        <div className="flex items-center justify-center min-h-screen">
-          <div className="text-center space-y-4">
-            <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto"></div>
-            <p className="text-muted-foreground">{t("property.loading")}</p>
-          </div>
-        </div>
-      </AppLayout>
-    )
+  const toggleActive = async (location: Location) => {
+    const { error: updateError } = await supabase.from("locations").update({ is_active: !location.is_active }).eq("id", location.id)
+    if (updateError) setError(updateError.message)
+    else await loadLocations()
   }
 
   return (
     <AppLayout>
-      <div className="mx-auto max-w-7xl px-4 py-8 md:py-12 md:px-6 space-y-8">
-        {/* Header Section */}
-        <div className="flex items-center justify-between">
-          <div className="space-y-2">
-            <h1 className="text-3xl font-bold text-accent">{t("property.title")}</h1>
-            <p className="text-muted-foreground">{t("property.description")}</p>
+      <div className="space-y-6 p-4 md:p-6">
+        <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+          <div>
+            <p className="mb-1 text-xs font-semibold uppercase tracking-[0.16em] text-primary">Infraestructura · Fundo Corcovado</p>
+            <h1 className="text-3xl font-semibold tracking-tight">Propiedades y ubicaciones</h1>
+            <p className="mt-1 max-w-3xl text-sm text-muted-foreground">Directorio interno de casas, oficinas, accesos, almacenamiento, jardines y áreas de servicio. La clasificación corresponde al dato registrado en Supabase.</p>
           </div>
-          <Button onClick={() => setAddDialogOpen(true)} size="lg">
-            <Plus className="mr-2 h-4 w-4" />
-            {t("property.add_property")}
-          </Button>
+          <Button onClick={beginCreate}><Plus className="mr-2 h-4 w-4" />Registrar ubicación</Button>
         </div>
 
-        {/* Search Bar */}
-        <Input
-          placeholder={t("property.search_placeholder")}
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="max-w-md"
-        />
+        {classificationWarning && <Card className="border-amber-300"><CardContent className="flex gap-3 p-4"><AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" /><div><p className="font-medium">Clasificación pendiente de normalización</p><p className="mt-1 text-sm text-muted-foreground">{rentalClassified} de {locations.length} ubicaciones están marcadas como “rental”, aunque los nombres incluyen oficinas, lavandería, acceso, jardín y almacenamiento. La interfaz no corrige esos datos automáticamente.</p></div></CardContent></Card>}
 
-        {/* Facility Type Sections */}
-        <div className="space-y-8">
-          {Object.entries(facilityTypeConfig).map(([typeKey, config]) => {
-            const Icon = config.icon
-            const propertiesOfType = filteredGrouped[typeKey] || []
+        {error && <Card className="border-destructive/50"><CardContent className="flex items-center justify-between gap-4 p-4"><p className="text-sm text-destructive">No fue posible completar la operación: {error}</p><Button variant="outline" size="sm" onClick={() => void loadLocations()}><RefreshCw className="mr-2 h-4 w-4" />Reintentar</Button></CardContent></Card>}
 
-            return (
-              <div key={typeKey} className="space-y-4">
-                <div className="flex items-center gap-3 border-l-4 border-primary pl-4">
-                  <Icon className={`h-6 w-6 ${config.color}`} />
-                  <div className="flex-1">
-                    <h2 className="text-xl font-bold text-accent">{t(config.label as string)}</h2>
-                    <p className="text-sm text-muted-foreground">{t(config.description as string)}</p>
-                  </div>
-                  <span className="text-sm text-muted-foreground">{propertiesOfType.length} {t("property.properties_count")}</span>
-                </div>
-
-                {propertiesOfType.length === 0 ? (
-                  <Card className="border-dashed">
-                    <CardContent className="py-8 text-center">
-                      <p className="text-muted-foreground">
-                        {t("property.no_configured").replace("{type}", t(config.label as string).toLowerCase())}
-                      </p>
-                    </CardContent>
-                  </Card>
-                ) : (
-                  <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                    {propertiesOfType.map((location) => (
-                      <Card key={location.id} className="hover:shadow-lg transition-shadow">
-                        <CardHeader>
-                          <div className="flex items-start justify-between">
-                            <div className="flex-1">
-                              <CardTitle className="text-lg">{location.name}</CardTitle>
-                              <CardDescription>{location.description || t("property.no_description")}</CardDescription>
-                            </div>
-                            <div className="flex gap-1">
-                              <Button
-                                size="icon"
-                                variant="ghost"
-                                onClick={() => openEditDialog(location)}
-                                className="h-8 w-8"
-                              >
-                                <Pencil className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                size="icon"
-                                variant="ghost"
-                                onClick={() => {
-                                  setSelectedLocation(location)
-                                  setDeleteDialogOpen(true)
-                                }}
-                                className="h-8 w-8 text-red-600 hover:text-red-700"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          </div>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                          <div className="flex items-center justify-between text-sm">
-                            <span className={location.is_active ? "text-green-600 font-medium" : "text-gray-400"}>
-                              {location.is_active ? "Active" : "Inactive"}
-                            </span>
-                            <Button
-                              size="sm"
-                              variant={location.is_active ? "outline" : "secondary"}
-                              onClick={() => toggleActive(location)}
-                            >
-                              {location.is_active ? "Deactivate" : "Activate"}
-                            </Button>
-                          </div>
-                          <Button
-                            onClick={() => {
-                              if (typeKey === "rental") {
-                                router.push(`/bookings/locations/${location.id}`)
-                              } else {
-                                router.push(`/facilities/${typeKey}/${location.id}`)
-                              }
-                            }}
-                            className="w-full"
-                          >
-                            Manage Details
-                          </Button>
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )
-          })}
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <Metric title="Ubicaciones registradas" value={locations.length} />
+          <Metric title="Ubicaciones activas" value={active} />
+          <Metric title="Con habitaciones configuradas" value={withRooms} />
+          <Metric title="Con coordenadas" value={withCoordinates} alert={withCoordinates < locations.length} />
         </div>
+
+        {(creating || editing) && <Card><CardHeader><CardTitle>{editing ? `Editar ${editing.name}` : "Nueva ubicación"}</CardTitle></CardHeader><CardContent className="grid gap-4 md:grid-cols-2">
+          <label className="text-sm font-medium">Nombre<Input className="mt-1" value={form.name} onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))} /></label>
+          <label className="text-sm font-medium">Tipo<select className="mt-1 w-full rounded-md border bg-background px-3 py-2 text-sm" value={form.facility_type} onChange={(event) => setForm((current) => ({ ...current, facility_type: event.target.value }))}>{Object.entries(TYPE_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
+          <label className="text-sm font-medium md:col-span-2">Descripción<Input className="mt-1" value={form.description} onChange={(event) => setForm((current) => ({ ...current, description: event.target.value }))} /></label>
+          <label className="text-sm font-medium">Latitud<Input className="mt-1" type="number" step="any" value={form.latitude} onChange={(event) => setForm((current) => ({ ...current, latitude: event.target.value }))} /></label>
+          <label className="text-sm font-medium">Longitud<Input className="mt-1" type="number" step="any" value={form.longitude} onChange={(event) => setForm((current) => ({ ...current, longitude: event.target.value }))} /></label>
+          <div className="flex gap-2 md:col-span-2"><Button onClick={() => void saveLocation()} disabled={saving || !form.name.trim()}>{saving ? "Guardando…" : "Guardar"}</Button><Button variant="outline" onClick={closeForm}>Cancelar</Button></div>
+        </CardContent></Card>}
+
+        <Card>
+          <CardHeader><CardTitle className="text-base">Directorio operativo</CardTitle></CardHeader>
+          <CardContent className="space-y-4">
+            <div className="relative max-w-xl"><Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><Input className="pl-9" placeholder="Buscar por nombre, descripción o tipo" value={search} onChange={(event) => setSearch(event.target.value)} /></div>
+            {loading ? <p className="py-10 text-center text-sm text-muted-foreground">Cargando propiedades…</p> : filtered.length === 0 ? <p className="py-10 text-center text-sm text-muted-foreground">No hay ubicaciones para la búsqueda actual.</p> : <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{filtered.map((location) => {
+              const roomCount = Number(location.rooms?.[0]?.count ?? 0)
+              return <Card key={location.id} className={!location.is_active ? "opacity-65" : undefined}><CardHeader className="pb-3"><div className="flex items-start justify-between gap-3"><div><CardTitle className="text-base">{location.name}</CardTitle><p className="mt-1 text-xs text-muted-foreground">{TYPE_LABELS[location.facility_type ?? "other"] ?? location.facility_type ?? "Sin clasificar"}</p></div><Button variant="ghost" size="sm" onClick={() => beginEdit(location)} aria-label={`Editar ${location.name}`}><Pencil className="h-4 w-4" /></Button></div></CardHeader><CardContent className="space-y-3 text-sm"><p className="min-h-10 text-muted-foreground">{location.description || "Sin descripción operativa."}</p><div className="flex items-center gap-2"><Building2 className="h-4 w-4 text-muted-foreground" /><span>{roomCount} habitación{roomCount === 1 ? "" : "es"} configurada{roomCount === 1 ? "" : "s"}</span></div><div className="flex items-center gap-2"><MapPin className="h-4 w-4 text-muted-foreground" /><span>{location.latitude != null && location.longitude != null ? `${location.latitude}, ${location.longitude}` : "Sin coordenadas"}</span></div><div className="flex items-center justify-between border-t pt-3"><span className={location.is_active ? "font-medium" : "text-muted-foreground"}>{location.is_active ? "Activa" : "Inactiva"}</span><Button variant="outline" size="sm" onClick={() => void toggleActive(location)}>{location.is_active ? "Desactivar" : "Activar"}</Button></div></CardContent></Card>
+            })}</div>}
+          </CardContent>
+        </Card>
       </div>
-
-      {/* Add Property Dialog */}
-      <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
-        <DialogContent className="sm:max-w-[500px]">
-          <form onSubmit={handleAddLocation}>
-            <DialogHeader>
-              <DialogTitle>Add New Property</DialogTitle>
-              <DialogDescription>Create a new facility or property in your system</DialogDescription>
-            </DialogHeader>
-
-            <div className="space-y-4 py-4">
-              <div className="space-y-2">
-                <Label htmlFor="name">Property Name *</Label>
-                <Input
-                  id="name"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  placeholder="e.g., Bamboo House, Storage Unit 1"
-                  required
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="facility_type">Facility Type *</Label>
-                <Select
-                  value={formData.facility_type}
-                  onValueChange={(value) => setFormData({ ...formData, facility_type: value })}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {Object.entries(facilityTypeConfig).map(([key, config]) => (
-                      <SelectItem key={key} value={key}>
-                        {config.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="description">Description</Label>
-                <Textarea
-                  id="description"
-                  value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  placeholder="Provide details about this property"
-                  rows={3}
-                />
-              </div>
-            </div>
-
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setAddDialogOpen(false)} disabled={isSubmitting}>
-                Cancel
-              </Button>
-              <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting ? "Creating..." : "Create Property"}
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
-
-      {/* Edit Property Dialog */}
-      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
-        <DialogContent className="sm:max-w-[500px]">
-          <form onSubmit={handleEditLocation}>
-            <DialogHeader>
-              <DialogTitle>Edit Property</DialogTitle>
-              <DialogDescription>Update the property information</DialogDescription>
-            </DialogHeader>
-
-            <div className="space-y-4 py-4">
-              <div className="space-y-2">
-                <Label htmlFor="edit-name">Property Name *</Label>
-                <Input
-                  id="edit-name"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  required
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="edit-facility_type">Facility Type *</Label>
-                <Select
-                  value={formData.facility_type}
-                  onValueChange={(value) => setFormData({ ...formData, facility_type: value })}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {Object.entries(facilityTypeConfig).map(([key, config]) => (
-                      <SelectItem key={key} value={key}>
-                        {config.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="edit-description">Description</Label>
-                <Textarea
-                  id="edit-description"
-                  value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  rows={3}
-                />
-              </div>
-            </div>
-
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setEditDialogOpen(false)} disabled={isSubmitting}>
-                Cancel
-              </Button>
-              <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting ? "Saving..." : "Save Changes"}
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
-
-      {/* Delete Property Dialog */}
-      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete Property</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to delete "{selectedLocation?.name}"? This action cannot be undone and may affect
-              related records.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={isSubmitting}>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDeleteLocation}
-              disabled={isSubmitting}
-              className="bg-red-600 hover:bg-red-700"
-            >
-              {isSubmitting ? "Deleting..." : "Delete"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </AppLayout>
   )
+}
+
+function Metric({ title, value, alert = false }: { title: string; value: number; alert?: boolean }) {
+  return <Card className={alert ? "border-amber-300" : undefined}><CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">{title}</CardTitle></CardHeader><CardContent><div className="text-3xl font-semibold">{value.toLocaleString("es-CL")}</div></CardContent></Card>
 }

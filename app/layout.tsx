@@ -11,10 +11,10 @@ const _geistMono = Geist_Mono({ subsets: ["latin"] })
 export const revalidate = 0
 
 export const metadata: Metadata = {
-  title: "BFCS - Blackswan Facility Core System",
+  title: "BSFC | Blackswan Facility Core",
   description:
-    "Blackswan Facility Core System (BFCS) - Professional property management and facility operations platform for luxury vacation rentals and complex management",
-  generator: "v0.app",
+    "Sistema interno de Blackswan Facility Core para la gestión operativa, trazabilidad de instalaciones y control de acceso por usuario.",
+  applicationName: "Blackswan Facility Core",
   icons: {
     icon: [
       {
@@ -32,6 +32,10 @@ export const metadata: Metadata = {
     ],
     apple: "/apple-icon.png",
   },
+  robots: {
+    index: false,
+    follow: false,
+  },
 }
 
 export const viewport: Viewport = {
@@ -48,7 +52,7 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en" className="dark" suppressHydrationWarning>
+    <html lang="es" className="dark" suppressHydrationWarning>
       <body className={`${_geist.className} font-sans antialiased`}>
         <ClientProviders>
           {children}

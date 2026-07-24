@@ -1,210 +1,139 @@
 'use client'
 
+import Link from 'next/link'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { AlertCircle, ClipboardList, Filter, Plus, RefreshCw, Wrench } from 'lucide-react'
 import { AppLayout } from '@/components/app-layout'
 import { PageHeader } from '@/components/page-header'
 import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { MaintenanceWeekView } from '@/components/maintenance-week-view'
 import { MaintenanceQuickAddDrawer } from '@/components/maintenance-quick-add-drawer'
 import { createClient } from '@/lib/supabase/client'
-import { useLanguage } from '@/lib/hooks/use-language'
-import { Plus, Filter } from 'lucide-react'
-import { useEffect, useState } from 'react'
+
+type MaintenanceTask = {
+  id: string
+  title: string
+  description?: string | null
+  status?: string | null
+  estado_extendido?: string | null
+  prioridad?: string | null
+  priority?: string | null
+  next_run?: string | null
+  last_completed?: string | null
+  assigned_to?: string | null
+  bloqueado?: boolean | null
+  assets?: { name?: string | null } | null
+  employees?: { name?: string | null } | null
+}
+
+const STATE_LABELS: Record<string, string> = {
+  draft: 'Borrador',
+  scheduled: 'Programada',
+  assigned: 'Asignada',
+  in_progress: 'En ejecución',
+  completed: 'Completada',
+}
 
 export default function MaintenancePage() {
-  const supabase = createClient()
-  const { t } = useLanguage()
-  const [tasks, setTasks] = useState([])
-  const [filteredTasks, setFilteredTasks] = useState([])
+  const supabase = useMemo(() => createClient(), [])
+  const [tasks, setTasks] = useState<MaintenanceTask[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [isDrawerOpen, setIsDrawerOpen] = useState(false)
-  const [filters, setFilters] = useState({
-    state: 'all',
-    priority: 'all',
-    unassigned: false,
-  })
-  const [kpis, setKpis] = useState({
-    total_orders: 0,
-    completed_this_week: 0,
-    pending_orders: 0,
-    overdue_orders: 0,
-  })
+  const [filters, setFilters] = useState({ state: 'all', priority: 'all', unassigned: false })
 
-  useEffect(() => {
-    fetchTasks()
-  }, [])
+  const fetchTasks = useCallback(async () => {
+    setLoading(true)
+    setError(null)
+    const { data, error: loadError } = await supabase
+      .from('maintenance_tasks')
+      .select('*, assets(name), employees(name)')
+      .order('next_run', { ascending: true, nullsFirst: false })
 
-  useEffect(() => {
-    applyFilters()
-  }, [tasks, filters])
-
-  const fetchTasks = async () => {
-    try {
-      setLoading(true)
-      const { data, error } = await supabase
-        .from('maintenance_tasks')
-        .select('*, assets(name), employees(name)')
-        .order('next_run', { ascending: true })
-
-      if (error) throw error
-      
-      const tasksData = data || []
-      setTasks(tasksData)
-      
-      // Calculate KPIs
-      const now = new Date()
-      const weekStart = new Date(now.getTime() - now.getDay() * 24 * 60 * 60 * 1000)
-      const weekEnd = new Date(weekStart.getTime() + 6 * 24 * 60 * 60 * 1000)
-      
-      const completedThisWeek = tasksData.filter((task: any) => {
-        const completed = task.last_completed ? new Date(task.last_completed) : null
-        return completed && completed >= weekStart && completed <= weekEnd
-      }).length
-      
-      const pending = tasksData.filter((task: any) => task.status !== 'completed').length
-      const overdue = tasksData.filter((task: any) => {
-        const nextRun = new Date(task.next_run)
-        return nextRun < now && task.status !== 'completed'
-      }).length
-      
-      setKpis({
-        total_orders: tasksData.length,
-        completed_this_week: completedThisWeek,
-        pending_orders: pending,
-        overdue_orders: overdue,
-      })
-    } catch (error) {
-      console.error('[v0] Error fetching maintenance tasks:', error)
-    } finally {
-      setLoading(false)
+    if (loadError) {
+      setError(loadError.message)
+      setTasks([])
+    } else {
+      setTasks(((data ?? []) as MaintenanceTask[]).map((task) => ({ ...task, priority: task.prioridad ?? task.priority ?? 'medium' })))
     }
-  }
+    setLoading(false)
+  }, [supabase])
 
-  const applyFilters = () => {
-    let result = [...tasks]
+  useEffect(() => { fetchTasks() }, [fetchTasks])
 
-    // Filter by state
-    if (filters.state !== 'all') {
-      result = result.filter((task: any) => task.estado_extendido === filters.state)
-    }
+  const filteredTasks = useMemo(() => tasks.filter((task) => {
+    const taskState = task.estado_extendido ?? task.status ?? 'draft'
+    const taskPriority = task.prioridad ?? task.priority ?? 'medium'
+    return (filters.state === 'all' || taskState === filters.state)
+      && (filters.priority === 'all' || taskPriority === filters.priority)
+      && (!filters.unassigned || !task.assigned_to)
+  }), [tasks, filters])
 
-    // Filter by priority
-    if (filters.priority !== 'all') {
-      result = result.filter((task: any) => task.priority === filters.priority)
-    }
+  const now = new Date()
+  const weekStart = new Date(now)
+  weekStart.setHours(0, 0, 0, 0)
+  weekStart.setDate(now.getDate() - now.getDay())
+  const weekEnd = new Date(weekStart)
+  weekEnd.setDate(weekStart.getDate() + 7)
 
-    // Filter unassigned only
-    if (filters.unassigned) {
-      result = result.filter((task: any) => !task.assigned_to)
-    }
-
-    setFilteredTasks(result)
-  }
-
-  const handleFilterChange = (filterName: string, value: any) => {
-    setFilters((prev) => ({ ...prev, [filterName]: value }))
-  }
+  const completedThisWeek = tasks.filter((task) => {
+    if (!task.last_completed) return false
+    const date = new Date(task.last_completed)
+    return date >= weekStart && date < weekEnd
+  }).length
+  const pending = tasks.filter((task) => !['completed', 'cancelled'].includes(task.estado_extendido ?? task.status ?? '')).length
+  const overdue = tasks.filter((task) => task.next_run && new Date(task.next_run) < now && !['completed', 'cancelled'].includes(task.estado_extendido ?? task.status ?? '')).length
+  const blocked = tasks.filter((task) => task.bloqueado).length
 
   return (
     <AppLayout>
       <PageHeader
-        title={t('maintenance.title')}
-        description={t('maintenance.description')}
-        actions={
-          <Button onClick={() => setIsDrawerOpen(true)}>
-            <Plus className="mr-2 h-4 w-4" />
-            {t('maintenance.add_task')}
-          </Button>
-        }
+        title="Mantenimiento · Fundo Corcovado"
+        description="Planificación y seguimiento de trabajos preventivos y correctivos sobre activos e infraestructura de la operación en Valdivia."
+        actions={<Button onClick={() => setIsDrawerOpen(true)}><Plus className="mr-2 h-4 w-4" />Registrar trabajo</Button>}
       />
 
-      <div className="p-6 space-y-6">
-        {/* KPI Stats Row */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="bg-white p-4 rounded-lg border">
-            <div className="text-sm text-gray-600">{t('stats.total_orders')}</div>
-            <div className="text-3xl font-bold">{kpis.total_orders}</div>
-          </div>
-          <div className="bg-white p-4 rounded-lg border">
-            <div className="text-sm text-gray-600">{t('stats.completed_this_week')}</div>
-            <div className="text-3xl font-bold text-green-600">{kpis.completed_this_week}</div>
-          </div>
-          <div className="bg-white p-4 rounded-lg border">
-            <div className="text-sm text-gray-600">{t('stats.pending_orders')}</div>
-            <div className="text-3xl font-bold text-blue-600">{kpis.pending_orders}</div>
-          </div>
-          <div className="bg-white p-4 rounded-lg border">
-            <div className="text-sm text-gray-600">{t('stats.overdue_orders')}</div>
-            <div className="text-3xl font-bold text-red-600">{kpis.overdue_orders}</div>
-          </div>
+      <div className="space-y-6 p-4 md:p-6">
+        <Card>
+          <CardHeader><CardTitle className="text-base">Contexto operativo</CardTitle></CardHeader>
+          <CardContent className="text-sm leading-6 text-muted-foreground">
+            Esta sección administra trabajos de mantenimiento. Las incidencias reportadas por usuarios se gestionan por separado y pueden transformarse en tareas cuando requieren ejecución técnica.
+          </CardContent>
+        </Card>
+
+        {error && <div className="flex items-center justify-between gap-4 rounded-lg border border-destructive/40 bg-destructive/5 p-4 text-sm text-destructive"><span>No fue posible cargar mantenimiento: {error}</span><Button variant="outline" size="sm" onClick={fetchTasks}><RefreshCw className="mr-2 h-4 w-4" />Reintentar</Button></div>}
+
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+          <Metric title="Trabajos registrados" value={tasks.length} />
+          <Metric title="Completados esta semana" value={completedThisWeek} />
+          <Metric title="Pendientes" value={pending} />
+          <Metric title="Vencidos" value={overdue} alert={overdue > 0} />
+          <Metric title="Bloqueados" value={blocked} alert={blocked > 0} />
         </div>
 
-        {/* Filters */}
-        <div className="bg-white p-4 rounded-lg border space-y-3">
-          <div className="flex items-center gap-2 mb-4">
-            <Filter className="h-4 w-4 text-gray-600" />
-            <span className="font-medium text-sm">{t('common.filter')}</span>
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {/* State Filter */}
-            <div>
-              <label className="text-sm font-medium">{t('workorder.state')}</label>
-              <select
-                value={filters.state}
-                onChange={(e) => handleFilterChange('state', e.target.value)}
-                className="w-full mt-1 px-3 py-2 border rounded-md text-sm"
-              >
-                <option value="all">All States</option>
-                <option value="draft">{t('workorder.draft')}</option>
-                <option value="scheduled">{t('workorder.scheduled')}</option>
-                <option value="assigned">{t('workorder.assigned')}</option>
-                <option value="in_progress">{t('workorder.in_progress')}</option>
-                <option value="completed">{t('workorder.completed')}</option>
-              </select>
-            </div>
+        <Card>
+          <CardHeader className="pb-3"><div className="flex items-center gap-2"><Filter className="h-4 w-4" /><CardTitle className="text-base">Filtros operativos</CardTitle></div></CardHeader>
+          <CardContent className="grid gap-4 md:grid-cols-3">
+            <label className="text-sm font-medium">Estado<select value={filters.state} onChange={(e) => setFilters((current) => ({ ...current, state: e.target.value }))} className="mt-1 w-full rounded-md border bg-background px-3 py-2 text-sm"><option value="all">Todos los estados</option>{Object.entries(STATE_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
+            <label className="text-sm font-medium">Prioridad<select value={filters.priority} onChange={(e) => setFilters((current) => ({ ...current, priority: e.target.value }))} className="mt-1 w-full rounded-md border bg-background px-3 py-2 text-sm"><option value="all">Todas las prioridades</option><option value="low">Baja</option><option value="medium">Media</option><option value="high">Alta</option><option value="critical">Crítica</option></select></label>
+            <label className="flex items-end gap-2 pb-2 text-sm font-medium"><input type="checkbox" checked={filters.unassigned} onChange={(e) => setFilters((current) => ({ ...current, unassigned: e.target.checked }))} />Solo trabajos sin responsable</label>
+          </CardContent>
+        </Card>
 
-            {/* Priority Filter */}
-            <div>
-              <label className="text-sm font-medium">Priority</label>
-              <select
-                value={filters.priority}
-                onChange={(e) => handleFilterChange('priority', e.target.value)}
-                className="w-full mt-1 px-3 py-2 border rounded-md text-sm"
-              >
-                <option value="all">All Priorities</option>
-                <option value="low">Low</option>
-                <option value="medium">Medium</option>
-                <option value="high">High</option>
-                <option value="critical">Critical</option>
-              </select>
-            </div>
-
-            {/* Unassigned Filter */}
-            <div className="flex items-end">
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={filters.unassigned}
-                  onChange={(e) => handleFilterChange('unassigned', e.target.checked)}
-                  className="rounded"
-                />
-                <span className="text-sm font-medium">{t('maintenance.unassigned')}</span>
-              </label>
-            </div>
-          </div>
+        <div className="flex flex-wrap gap-2">
+          <Button asChild variant="outline"><Link href="/issues"><AlertCircle className="mr-2 h-4 w-4" />Ver incidencias abiertas</Link></Button>
+          <Button asChild variant="outline"><Link href="/tasks"><ClipboardList className="mr-2 h-4 w-4" />Ver tareas generales</Link></Button>
         </div>
 
-        {/* Week View */}
-        {!loading && <MaintenanceWeekView tasks={filteredTasks} />}
-        {loading && <div className="text-center py-12">{t('common.loading')}</div>}
+        {loading ? <Card><CardContent className="py-12 text-center text-sm text-muted-foreground">Cargando trabajos de mantenimiento…</CardContent></Card> : filteredTasks.length === 0 ? <Card><CardContent className="py-12 text-center"><Wrench className="mx-auto mb-3 h-6 w-6 text-muted-foreground" /><p className="font-medium">No hay trabajos para los filtros seleccionados.</p><p className="mt-1 text-sm text-muted-foreground">Registra un trabajo o revisa las incidencias abiertas.</p></CardContent></Card> : <MaintenanceWeekView tasks={filteredTasks as never[]} />}
       </div>
 
-      {/* Quick Add Drawer */}
-      <MaintenanceQuickAddDrawer
-        isOpen={isDrawerOpen}
-        onClose={() => setIsDrawerOpen(false)}
-        onTaskCreated={fetchTasks}
-      />
+      <MaintenanceQuickAddDrawer isOpen={isDrawerOpen} onClose={() => setIsDrawerOpen(false)} onTaskCreated={fetchTasks} />
     </AppLayout>
   )
+}
+
+function Metric({ title, value, alert = false }: { title: string; value: number; alert?: boolean }) {
+  return <Card className={alert ? 'border-amber-300' : undefined}><CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">{title}</CardTitle></CardHeader><CardContent><div className="text-3xl font-semibold">{value.toLocaleString('es-CL')}</div></CardContent></Card>
 }

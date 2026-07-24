@@ -1,7 +1,6 @@
 "use client"
 
 import type React from "react"
-
 import { useState } from "react"
 import {
   Dialog,
@@ -15,9 +14,10 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { Upload, Loader2 } from "lucide-react"
+import { Upload, Loader2, AlertTriangle } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import { useToast } from "@/hooks/use-toast"
+import { useLanguage } from "@/lib/hooks/use-language"
 
 interface KmzUploadDialogProps {
   open: boolean
@@ -25,105 +25,160 @@ interface KmzUploadDialogProps {
   onUploadSuccess: () => void
 }
 
+const MAX_FILE_SIZE = 20 * 1024 * 1024
+
+const copy = {
+  es: {
+    title: "Agregar capa GIS",
+    description: "Suba un archivo KMZ o KML validado para incorporarlo al mapa operativo. La capa quedará visible después de registrarse correctamente.",
+    name: "Nombre de la capa",
+    namePlaceholder: "Ej.: Límite predial 2026",
+    file: "Archivo KMZ o KML",
+    choose: "Seleccionar archivo",
+    noFile: "Ningún archivo seleccionado",
+    help: "Formatos permitidos: .kmz y .kml. Tamaño máximo: 20 MB.",
+    descriptionLabel: "Descripción opcional",
+    descriptionPlaceholder: "Indique origen, fecha, responsable o alcance de la capa.",
+    cancel: "Cancelar",
+    upload: "Guardar capa",
+    uploading: "Guardando…",
+    invalidType: "Formato no permitido",
+    invalidTypeBody: "Seleccione un archivo .kmz o .kml.",
+    tooLarge: "Archivo demasiado grande",
+    tooLargeBody: "El archivo supera el límite de 20 MB.",
+    noSelection: "Archivo requerido",
+    noSelectionBody: "Seleccione un archivo antes de guardar.",
+    success: "Capa GIS registrada",
+    successBody: (name: string) => `${name} fue agregada al mapa.`,
+    failure: "No fue posible guardar la capa",
+    failureBody: "Revise el archivo y vuelva a intentarlo.",
+    safety: "Si el registro en base de datos falla, el archivo cargado se elimina automáticamente para evitar residuos sin referencia.",
+  },
+  en: {
+    title: "Add GIS layer",
+    description: "Upload a validated KMZ or KML file to add it to the operational map. The layer becomes visible only after it is registered successfully.",
+    name: "Layer name",
+    namePlaceholder: "Example: Property boundary 2026",
+    file: "KMZ or KML file",
+    choose: "Select file",
+    noFile: "No file selected",
+    help: "Allowed formats: .kmz and .kml. Maximum size: 20 MB.",
+    descriptionLabel: "Optional description",
+    descriptionPlaceholder: "State the source, date, owner or scope of this layer.",
+    cancel: "Cancel",
+    upload: "Save layer",
+    uploading: "Saving…",
+    invalidType: "Unsupported format",
+    invalidTypeBody: "Select a .kmz or .kml file.",
+    tooLarge: "File is too large",
+    tooLargeBody: "The file exceeds the 20 MB limit.",
+    noSelection: "File required",
+    noSelectionBody: "Select a file before saving.",
+    success: "GIS layer registered",
+    successBody: (name: string) => `${name} was added to the map.`,
+    failure: "Unable to save layer",
+    failureBody: "Review the file and try again.",
+    safety: "If the database record fails, the uploaded file is removed automatically to avoid unreferenced storage objects.",
+  },
+} as const
+
 export function KmzUploadDialog({ open, onOpenChange, onUploadSuccess }: KmzUploadDialogProps) {
+  const { language } = useLanguage()
+  const text = copy[language === "es" ? "es" : "en"]
   const [loading, setLoading] = useState(false)
   const [kmzName, setKmzName] = useState("")
   const [kmzFile, setKmzFile] = useState<File | null>(null)
   const [description, setDescription] = useState("")
   const { toast } = useToast()
 
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (file) {
-      if (!file.name.endsWith(".kmz")) {
-        toast({
-          title: "Invalid file type",
-          description: "Please select a .kmz file",
-          variant: "destructive",
-        })
-        return
-      }
-      setKmzFile(file)
-      setKmzName(file.name.replace(".kmz", ""))
+  const reset = () => {
+    setKmzFile(null)
+    setKmzName("")
+    setDescription("")
+  }
+
+  const handleClose = () => {
+    if (loading) return
+    reset()
+    onOpenChange(false)
+  }
+
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    const lowerName = file.name.toLowerCase()
+    if (!lowerName.endsWith(".kmz") && !lowerName.endsWith(".kml")) {
+      toast({ title: text.invalidType, description: text.invalidTypeBody, variant: "destructive" })
+      event.target.value = ""
+      return
     }
+
+    if (file.size > MAX_FILE_SIZE) {
+      toast({ title: text.tooLarge, description: text.tooLargeBody, variant: "destructive" })
+      event.target.value = ""
+      return
+    }
+
+    setKmzFile(file)
+    setKmzName((current) => current || file.name.replace(/\.(kmz|kml)$/i, ""))
   }
 
   const handleUpload = async () => {
     if (!kmzFile) {
-      toast({
-        title: "No file selected",
-        description: "Please select a KMZ file to upload",
-        variant: "destructive",
-      })
+      toast({ title: text.noSelection, description: text.noSelectionBody, variant: "destructive" })
       return
     }
 
     setLoading(true)
+    const supabase = createClient()
+    const extension = kmzFile.name.toLowerCase().endsWith(".kml") ? "kml" : "kmz"
+    const safeBase = kmzFile.name
+      .replace(/\.(kmz|kml)$/i, "")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-zA-Z0-9-_]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .toLowerCase() || "gis-layer"
+    const filePath = `gis-overlays/${Date.now()}-${safeBase}.${extension}`
+
     try {
-      const supabase = createClient()
+      const { error: uploadError } = await supabase.storage.from("gis-overlays").upload(filePath, kmzFile, {
+        contentType: extension === "kml" ? "application/vnd.google-earth.kml+xml" : "application/vnd.google-earth.kmz",
+        cacheControl: "3600",
+        upsert: false,
+      })
+      if (uploadError) throw uploadError
 
-      const timestamp = Date.now()
-      const fileName = `${timestamp}-${kmzFile.name}`
-      const filePath = `gis-overlays/${fileName}`
-
-      console.log("[v0] Uploading KMZ file to storage:", filePath)
-
-      // Upload to Supabase Storage
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from("gis-overlays")
-        .upload(filePath, kmzFile, {
-          contentType: "application/zip", // Force content type to application/zip since KMZ files are ZIP archives
-          cacheControl: "3600",
-          upsert: false,
-        })
-
-      if (uploadError) {
-        console.error("[v0] Storage upload error:", uploadError)
-        throw new Error(`Storage upload failed: ${uploadError.message}`)
-      }
-
-      // Get public URL
       const { data: urlData } = supabase.storage.from("gis-overlays").getPublicUrl(filePath)
-
-      console.log("[v0] File uploaded successfully, URL:", urlData.publicUrl)
-
-      const { data: newOverlay, error: dbError } = await supabase
-        .from("gis_overlays")
-        .insert({
-          name: kmzName || kmzFile.name.replace(".kmz", ""),
-          description: description || null,
-          file_url: urlData.publicUrl,
-          file_path: filePath,
-          file_size: kmzFile.size,
-          file_type: kmzFile.name.endsWith(".kml") ? "kml" : "kmz",
-          is_visible: true,
-          layer_order: 0,
-          opacity: 1.0,
-        })
-        .select()
-        .single()
-
-      if (dbError) {
-        console.error("[v0] Database error:", dbError)
-        // Clean up uploaded file if database insert fails
-        await supabase.storage.from("gis-overlays").remove([filePath])
-        throw new Error(`Database error: ${dbError.message}`)
-      }
-
-      console.log("[v0] KMZ overlay created successfully:", newOverlay)
-
-      toast({
-        title: "KMZ file uploaded successfully",
-        description: `${kmzName || kmzFile.name} has been added to the map`,
+      const layerName = kmzName.trim() || kmzFile.name.replace(/\.(kmz|kml)$/i, "")
+      const { error: dbError } = await supabase.from("gis_overlays").insert({
+        name: layerName,
+        description: description.trim() || null,
+        file_url: urlData.publicUrl,
+        file_path: filePath,
+        file_size: kmzFile.size,
+        file_type: extension,
+        is_visible: true,
+        layer_order: 0,
+        opacity: 1,
+        metadata: { original_filename: kmzFile.name },
       })
 
+      if (dbError) {
+        await supabase.storage.from("gis-overlays").remove([filePath])
+        throw dbError
+      }
+
+      toast({ title: text.success, description: text.successBody(layerName) })
       onUploadSuccess()
-      handleClose()
+      reset()
+      onOpenChange(false)
     } catch (error) {
-      console.error("[v0] KMZ upload error:", error)
+      console.error("GIS layer upload failed:", error)
       toast({
-        title: "Upload failed",
-        description: error instanceof Error ? error.message : "Failed to upload KMZ file. Please try again.",
+        title: text.failure,
+        description: error instanceof Error && error.message ? error.message : text.failureBody,
         variant: "destructive",
       })
     } finally {
@@ -131,74 +186,46 @@ export function KmzUploadDialog({ open, onOpenChange, onUploadSuccess }: KmzUplo
     }
   }
 
-  const handleClose = () => {
-    setKmzFile(null)
-    setKmzName("")
-    setDescription("")
-    onOpenChange(false)
-  }
-
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={(nextOpen) => (nextOpen ? onOpenChange(true) : handleClose())}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Upload KMZ Overlay</DialogTitle>
-          <DialogDescription>Upload a KMZ file to add it as a layer to the GIS map</DialogDescription>
+          <DialogTitle>{text.title}</DialogTitle>
+          <DialogDescription>{text.description}</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
-          <div>
-            <Label htmlFor="kmz-name">Overlay Name</Label>
-            <Input
-              id="kmz-name"
-              placeholder="e.g., Facility Boundary"
-              value={kmzName}
-              onChange={(e) => setKmzName(e.target.value)}
-            />
+          <div className="space-y-2">
+            <Label htmlFor="kmz-name">{text.name}</Label>
+            <Input id="kmz-name" placeholder={text.namePlaceholder} value={kmzName} onChange={(event) => setKmzName(event.target.value)} maxLength={120} />
           </div>
 
-          <div>
-            <Label htmlFor="kmz-file">KMZ File</Label>
-            <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center cursor-pointer hover:border-gray-400 transition">
-              <input id="kmz-file" type="file" accept=".kmz" onChange={handleFileSelect} className="hidden" />
-              <label htmlFor="kmz-file" className="cursor-pointer flex flex-col items-center gap-2">
-                <Upload className="h-6 w-6 text-gray-400" />
-                <div>
-                  <p className="font-medium text-sm">Click to upload or drag KMZ file</p>
-                  <p className="text-xs text-gray-500">{kmzFile?.name || "No file selected"}</p>
-                </div>
-              </label>
-            </div>
+          <div className="space-y-2">
+            <Label htmlFor="kmz-file">{text.file}</Label>
+            <label htmlFor="kmz-file" className="flex cursor-pointer flex-col items-center gap-2 rounded-lg border border-dashed p-6 text-center hover:bg-muted/40">
+              <Upload className="h-6 w-6 text-muted-foreground" />
+              <span className="text-sm font-medium">{text.choose}</span>
+              <span className="max-w-full truncate text-xs text-muted-foreground">{kmzFile?.name || text.noFile}</span>
+            </label>
+            <input id="kmz-file" type="file" accept=".kmz,.kml,application/vnd.google-earth.kmz,application/vnd.google-earth.kml+xml" onChange={handleFileSelect} className="hidden" disabled={loading} />
+            <p className="text-xs text-muted-foreground">{text.help}</p>
           </div>
 
-          <div>
-            <Label htmlFor="kmz-description">Description (Optional)</Label>
-            <Textarea
-              id="kmz-description"
-              placeholder="Describe this KMZ overlay..."
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              rows={3}
-            />
+          <div className="space-y-2">
+            <Label htmlFor="kmz-description">{text.descriptionLabel}</Label>
+            <Textarea id="kmz-description" placeholder={text.descriptionPlaceholder} value={description} onChange={(event) => setDescription(event.target.value)} rows={3} maxLength={500} />
+          </div>
+
+          <div className="flex gap-2 rounded-md border p-3 text-xs text-muted-foreground">
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+            <p>{text.safety}</p>
           </div>
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={handleClose} disabled={loading}>
-            Cancel
-          </Button>
-          <Button onClick={handleUpload} disabled={loading || !kmzFile}>
-            {loading ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Uploading...
-              </>
-            ) : (
-              <>
-                <Upload className="mr-2 h-4 w-4" />
-                Upload KMZ
-              </>
-            )}
+          <Button variant="outline" onClick={handleClose} disabled={loading}>{text.cancel}</Button>
+          <Button onClick={() => void handleUpload()} disabled={loading || !kmzFile}>
+            {loading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />{text.uploading}</> : <><Upload className="mr-2 h-4 w-4" />{text.upload}</>}
           </Button>
         </DialogFooter>
       </DialogContent>

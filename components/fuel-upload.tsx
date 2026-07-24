@@ -1,56 +1,86 @@
 'use client'
 
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Upload, AlertTriangle, CheckCircle2 } from 'lucide-react'
+import { Upload, AlertTriangle, CheckCircle2, FileCheck2 } from 'lucide-react'
 import { parseFuelFile, type FuelRecord } from '@/lib/fuel-parser'
 import { detectAnomaliesAction } from '@/app/combustibles/actions'
+import { useLanguage } from '@/lib/hooks/use-language'
 
 interface FuelUploadProps {
   onRecordsLoaded?: (records: FuelRecord[]) => void
-  onAnomaliesDetected?: (anomalies: any[]) => void
+  onAnomaliesDetected?: (anomalies: unknown[]) => void
 }
 
+const copy = {
+  es: {
+    title: 'Validar reporte de combustible',
+    description: 'El archivo se analiza localmente y se revisa contra vehículos y personas registradas. Esta acción no guarda datos en Supabase.',
+    choose: 'Seleccionar archivo',
+    validating: 'Validando…',
+    validate: 'Validar archivo',
+    formats: 'Formatos admitidos: CSV y Excel (.xlsx, .xls).',
+    noFile: 'Seleccione un archivo antes de validar.',
+    noRecords: 'No se encontraron registros válidos en el archivo.',
+    unknownError: 'Error desconocido',
+    success: (records: number, anomalies: number) => `${records} registros fueron analizados y ${anomalies} posibles anomalías fueron detectadas. Ningún registro fue guardado.`,
+    previewTitle: 'Resultado de validación',
+    records: 'registros analizados',
+    total: 'litros totales declarados',
+    safeguard: 'Para persistir una importación se requiere un flujo separado de revisión, confirmación y control de duplicados.',
+  },
+  en: {
+    title: 'Validate fuel report',
+    description: 'The file is parsed locally and checked against registered vehicles and people. This action does not save data to Supabase.',
+    choose: 'Select file',
+    validating: 'Validating…',
+    validate: 'Validate file',
+    formats: 'Supported formats: CSV and Excel (.xlsx, .xls).',
+    noFile: 'Select a file before validating.',
+    noRecords: 'No valid records were found in the file.',
+    unknownError: 'Unknown error',
+    success: (records: number, anomalies: number) => `${records} records were analyzed and ${anomalies} possible anomalies were detected. No records were saved.`,
+    previewTitle: 'Validation result',
+    records: 'records analyzed',
+    total: 'declared total liters',
+    safeguard: 'Persisting an import requires a separate review, confirmation and duplicate-control workflow.',
+  },
+} as const
+
 export function FuelUploadComponent({ onRecordsLoaded, onAnomaliesDetected }: FuelUploadProps) {
+  const { language } = useLanguage()
+  const text = copy[language === 'es' ? 'es' : 'en']
+  const inputRef = useRef<HTMLInputElement>(null)
+  const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
   const [parsedRecords, setParsedRecords] = useState<FuelRecord[]>([])
 
-  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0]
-    if (!file) return
+  const handleValidation = async () => {
+    if (!selectedFile) {
+      setError(text.noFile)
+      return
+    }
 
     setIsLoading(true)
     setError(null)
     setSuccess(null)
+    setParsedRecords([])
 
     try {
-      console.log('[v0] Parsing fuel file:', file.name)
-      const records = await parseFuelFile(file)
-      console.log('[v0] Parsed records:', records.length)
+      const records = await parseFuelFile(selectedFile)
+      if (records.length === 0) throw new Error(text.noRecords)
 
-      if (records.length === 0) {
-        throw new Error('No se encontraron registros válidos en el archivo')
-      }
-
-      setParsedRecords(records)
-
-      // Detect anomalies using server action
-      console.log('[v0] Detecting anomalies...')
       const anomalies = await detectAnomaliesAction(records)
-      console.log('[v0] Found anomalies:', anomalies.length)
-
+      setParsedRecords(records)
       onRecordsLoaded?.(records)
       onAnomaliesDetected?.(anomalies)
-
-      setSuccess(`✓ Se cargaron ${records.length} registros. ${anomalies.length} anomalías detectadas.`)
+      setSuccess(text.success(records.length, anomalies.length))
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Error desconocido'
-      console.error('[v0] Upload error:', errorMessage)
-      setError(`Error: ${errorMessage}`)
+      setError(err instanceof Error ? err.message : text.unknownError)
     } finally {
       setIsLoading(false)
     }
@@ -59,47 +89,44 @@ export function FuelUploadComponent({ onRecordsLoaded, onAnomaliesDetected }: Fu
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Upload className="h-5 w-5" />
-          Cargar Reporte de Combustible
-        </CardTitle>
+        <CardTitle className="flex items-center gap-2"><Upload className="h-5 w-5" />{text.title}</CardTitle>
+        <CardDescription>{text.description}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="flex items-center gap-4">
-          <input
-            type="file"
-            accept=".csv,.xlsx,.xls"
-            onChange={handleFileUpload}
-            disabled={isLoading}
-            className="flex-1 px-4 py-2 border rounded-md"
-          />
-          <Button disabled={isLoading} variant="outline">
-            {isLoading ? 'Cargando...' : 'Cargar'}
+        <input
+          ref={inputRef}
+          type="file"
+          accept=".csv,.xlsx,.xls"
+          onChange={(event) => {
+            setSelectedFile(event.target.files?.[0] ?? null)
+            setError(null)
+            setSuccess(null)
+            setParsedRecords([])
+          }}
+          disabled={isLoading}
+          className="hidden"
+        />
+
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+          <Button type="button" variant="outline" disabled={isLoading} onClick={() => inputRef.current?.click()}>
+            <FileCheck2 className="mr-2 h-4 w-4" />{text.choose}
+          </Button>
+          <p className="min-w-0 flex-1 truncate text-sm text-muted-foreground">{selectedFile?.name ?? text.formats}</p>
+          <Button type="button" disabled={isLoading || !selectedFile} onClick={() => void handleValidation()}>
+            {isLoading ? text.validating : text.validate}
           </Button>
         </div>
 
-        <p className="text-sm text-gray-500">Formatos soportados: CSV, Excel (.xlsx, .xls)</p>
-
-        {error && (
-          <Alert variant="destructive">
-            <AlertTriangle className="h-4 w-4" />
-            <AlertDescription>{error}</AlertDescription>
-          </Alert>
-        )}
-
-        {success && (
-          <Alert className="bg-green-50 border-green-200">
-            <CheckCircle2 className="h-4 w-4 text-green-600" />
-            <AlertDescription className="text-green-800">{success}</AlertDescription>
-          </Alert>
-        )}
+        {error && <Alert variant="destructive"><AlertTriangle className="h-4 w-4" /><AlertDescription>{error}</AlertDescription></Alert>}
+        {success && <Alert><CheckCircle2 className="h-4 w-4" /><AlertDescription>{success}</AlertDescription></Alert>}
 
         {parsedRecords.length > 0 && (
-          <div className="mt-4 p-4 bg-blue-50 rounded-lg">
-            <p className="text-sm font-semibold text-blue-900">Registros cargados:</p>
-            <p className="text-sm text-blue-800">
-              {parsedRecords.length} registros - {parsedRecords.reduce((sum, r) => sum + r.liters, 0).toFixed(2)}L total
+          <div className="rounded-lg border p-4">
+            <p className="font-medium">{text.previewTitle}</p>
+            <p className="mt-2 text-sm text-muted-foreground">
+              {parsedRecords.length.toLocaleString(language === 'es' ? 'es-CL' : 'en-US')} {text.records} · {parsedRecords.reduce((sum, record) => sum + Number(record.liters || 0), 0).toLocaleString(language === 'es' ? 'es-CL' : 'en-US', { maximumFractionDigits: 2 })} {text.total}
             </p>
+            <p className="mt-3 text-xs text-muted-foreground">{text.safeguard}</p>
           </div>
         )}
       </CardContent>

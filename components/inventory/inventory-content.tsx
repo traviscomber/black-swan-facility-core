@@ -1,10 +1,10 @@
 "use client"
 
-import { useEffect, useState } from "react"
-import { Plus, Search } from "lucide-react"
+import { useCallback, useEffect, useMemo, useState } from "react"
+import { AlertTriangle, Package, Plus, RefreshCw, Search } from "lucide-react"
 import { AppLayout } from "@/components/app-layout"
 import { Button } from "@/components/ui/button"
-import { Card } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { createBrowserClient } from "@/lib/supabase/client"
 import { InventoryTable } from "@/components/inventory/inventory-table"
@@ -15,224 +15,160 @@ interface Asset {
   id: string
   asset_code: string
   name: string
-  category: { name: string; color: string }
-  cost_center: { name: string; code: string }
+  category_id?: string | null
+  cost_center_id?: string | null
+  category?: { name: string; color?: string | null } | null
+  cost_center?: { name: string; code?: string | null } | null
   status: string
-  location: string
-  assigned_to: string
-  photo_url: string
-  purchase_price: number
+  location?: string | null
+  assigned_to?: string | null
+  photo_url?: string | null
+  purchase_price?: number | null
   created_at: string
 }
 
+interface MetadataOption {
+  id: string
+  name: string
+  code?: string | null
+  color?: string | null
+}
+
+const STATUS_LABELS: Record<string, string> = {
+  active: "Activo",
+  inactive: "Inactivo",
+  maintenance: "En mantenimiento",
+  deprecated: "Retirado",
+}
+
 export function InventoryContent() {
+  const supabase = useMemo(() => createBrowserClient(), [])
+  const { toast } = useToast()
   const [assets, setAssets] = useState<Asset[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState("")
   const [selectedCategory, setSelectedCategory] = useState("all")
   const [selectedStatus, setSelectedStatus] = useState("all")
   const [showForm, setShowForm] = useState(false)
   const [editingAsset, setEditingAsset] = useState<Asset | null>(null)
-  const [categories, setCategories] = useState([])
-  const [costCenters, setCostCenters] = useState([])
+  const [categories, setCategories] = useState<MetadataOption[]>([])
+  const [costCenters, setCostCenters] = useState<MetadataOption[]>([])
 
-  const supabase = createBrowserClient()
-  const { toast } = useToast()
+  const loadAssets = useCallback(async () => {
+    setLoading(true)
+    setError(null)
+    const { data, error: loadError } = await supabase
+      .from("multimedia_assets")
+      .select(`id, asset_code, name, status, location, assigned_to, photo_url, purchase_price, created_at, category_id, cost_center_id, asset_categories(name, color), cost_centers(name, code)`)
+      .order("created_at", { ascending: false })
 
-  useEffect(() => {
-    loadAssets()
-    loadMetadata()
-  }, [])
-
-  async function loadAssets() {
-    try {
-      setLoading(true)
-      const { data, error } = await supabase
-        .from("multimedia_assets")
-        .select(
-          `
-          id,
-          asset_code,
-          name,
-          status,
-          location,
-          assigned_to,
-          photo_url,
-          purchase_price,
-          created_at,
-          category_id,
-          cost_center_id,
-          asset_categories(name, color),
-          cost_centers(name, code)
-        `,
-        )
-        .order("created_at", { ascending: false })
-
-      if (error) throw error
-      const transformedData = (data || []).map((asset: any) => ({
+    if (loadError) {
+      setError(loadError.message)
+      setAssets([])
+    } else {
+      setAssets((data ?? []).map((asset: any) => ({
         ...asset,
         category: asset.asset_categories,
         cost_center: asset.cost_centers,
-      }))
-      setAssets(transformedData)
-    } catch (error) {
-      console.error("Error loading assets:", error)
-      toast({ title: "Error", description: "Failed to load assets", variant: "destructive" })
-    } finally {
-      setLoading(false)
+      })))
     }
-  }
+    setLoading(false)
+  }, [supabase])
 
-  async function loadMetadata() {
-    try {
-      const [categoriesData, costCentersData] = await Promise.all([
-        supabase.from("asset_categories").select("*").eq("is_active", true),
-        supabase.from("cost_centers").select("*").eq("is_active", true),
-      ])
-
-      setCategories(categoriesData.data || [])
-      setCostCenters(costCentersData.data || [])
-    } catch (error) {
-      console.error("Error loading metadata:", error)
+  const loadMetadata = useCallback(async () => {
+    const [categoriesResult, costCentersResult] = await Promise.all([
+      supabase.from("asset_categories").select("id, name, color").eq("is_active", true).order("name"),
+      supabase.from("cost_centers").select("id, name, code").eq("is_active", true).order("name"),
+    ])
+    if (categoriesResult.error || costCentersResult.error) {
+      setError(categoriesResult.error?.message ?? costCentersResult.error?.message ?? "No fue posible cargar la configuración de inventario.")
+      return
     }
-  }
+    setCategories((categoriesResult.data ?? []) as MetadataOption[])
+    setCostCenters((costCentersResult.data ?? []) as MetadataOption[])
+  }, [supabase])
 
-  const filteredAssets = assets.filter((asset) => {
-    const matchesSearch =
-      asset.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      asset.asset_code.toLowerCase().includes(searchTerm.toLowerCase())
+  useEffect(() => {
+    void Promise.all([loadAssets(), loadMetadata()])
+  }, [loadAssets, loadMetadata])
+
+  const filteredAssets = useMemo(() => assets.filter((asset) => {
+    const term = searchTerm.trim().toLowerCase()
+    const matchesSearch = !term || asset.name.toLowerCase().includes(term) || asset.asset_code.toLowerCase().includes(term) || asset.location?.toLowerCase().includes(term)
     const matchesCategory = selectedCategory === "all" || asset.category_id === selectedCategory
     const matchesStatus = selectedStatus === "all" || asset.status === selectedStatus
     return matchesSearch && matchesCategory && matchesStatus
-  })
+  }), [assets, searchTerm, selectedCategory, selectedStatus])
+
+  const registeredValue = filteredAssets.reduce((sum, asset) => sum + Number(asset.purchase_price ?? 0), 0)
+  const withoutLocation = filteredAssets.filter((asset) => !asset.location?.trim()).length
+  const withoutAssignment = filteredAssets.filter((asset) => !asset.assigned_to?.trim()).length
+  const availableStatuses = Array.from(new Set(assets.map((asset) => asset.status).filter(Boolean))).sort()
 
   const handleFormClose = () => {
     setShowForm(false)
     setEditingAsset(null)
   }
 
-  const handleFormSuccess = () => {
-    loadAssets()
-    handleFormClose()
-  }
-
   const handleDelete = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this asset?")) return
+    const asset = assets.find((item) => item.id === id)
+    if (!asset || !window.confirm(`¿Eliminar definitivamente el activo “${asset.name}” (${asset.asset_code})? Esta acción no se puede deshacer.`)) return
 
-    try {
-      const { error } = await supabase.from("multimedia_assets").delete().eq("id", id)
-      if (error) throw error
-      toast({ title: "Success", description: "Asset deleted successfully" })
-      loadAssets()
-    } catch (error) {
-      console.error("Error deleting asset:", error)
-      toast({ title: "Error", description: "Failed to delete asset", variant: "destructive" })
+    const { error: deleteError } = await supabase.from("multimedia_assets").delete().eq("id", id)
+    if (deleteError) {
+      toast({ title: "No se pudo eliminar", description: deleteError.message, variant: "destructive" })
+      return
     }
+    toast({ title: "Activo eliminado", description: `${asset.name} fue eliminado del inventario.` })
+    await loadAssets()
   }
 
   return (
     <AppLayout>
-      <div className="space-y-6">
-        {/* Header */}
-        <div className="bg-gradient-to-r from-accent/10 to-primary/10 border border-primary/20 rounded-lg p-6">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-            <div>
-              <h1 className="text-3xl font-bold text-accent">Blackswan Inventory System</h1>
-              <p className="text-muted-foreground mt-1">Manage and track all assets across cost centers</p>
-            </div>
-            <Button onClick={() => setShowForm(true)} className="gap-2 w-full md:w-auto">
-              <Plus className="h-4 w-4" />
-              Add Asset
-            </Button>
+      <div className="space-y-6 p-4 md:p-6">
+        <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+          <div>
+            <p className="mb-1 text-xs font-semibold uppercase tracking-[0.16em] text-primary">Inventario · Fundo Corcovado</p>
+            <h1 className="text-3xl font-semibold tracking-tight">Activos registrados</h1>
+            <p className="mt-1 max-w-3xl text-sm text-muted-foreground">Registro interno de equipos, herramientas y bienes asociados a centros de costo. Los valores corresponden a precios de compra ingresados, no a valorizaciones contables actuales.</p>
           </div>
+          <Button onClick={() => setShowForm(true)}><Plus className="mr-2 h-4 w-4" />Registrar activo</Button>
         </div>
 
-        {/* Filters */}
-        <div className="grid gap-4 md:grid-cols-4">
-          <div className="md:col-span-2">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search by name or asset code..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
-              />
-            </div>
+        {assets.length <= 5 && !loading && !error && (
+          <div className="flex gap-3 rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+            <div><p className="font-medium">Cobertura de inventario aún limitada</p><p className="mt-1">El sistema contiene {assets.length} activo{assets.length === 1 ? "" : "s"}. Esta cifra refleja registros cargados, no necesariamente el inventario físico completo del fundo.</p></div>
           </div>
-
-          <select
-            value={selectedCategory}
-            onChange={(e) => setSelectedCategory(e.target.value)}
-            className="px-3 py-2 bg-input border border-border rounded-md text-sm"
-          >
-            <option value="all">All Categories</option>
-            {categories.map((cat: any) => (
-              <option key={cat.id} value={cat.id}>
-                {cat.name}
-              </option>
-            ))}
-          </select>
-
-          <select
-            value={selectedStatus}
-            onChange={(e) => setSelectedStatus(e.target.value)}
-            className="px-3 py-2 bg-input border border-border rounded-md text-sm"
-          >
-            <option value="all">All Status</option>
-            <option value="active">Active</option>
-            <option value="inactive">Inactive</option>
-            <option value="maintenance">Maintenance</option>
-            <option value="deprecated">Deprecated</option>
-          </select>
-        </div>
-
-        {/* Summary Cards */}
-        <div className="grid gap-4 md:grid-cols-4">
-          <Card className="p-4 border-primary/20">
-            <p className="text-sm text-muted-foreground">Total Assets</p>
-            <p className="text-2xl font-bold text-accent mt-1">{filteredAssets.length}</p>
-          </Card>
-          <Card className="p-4 border-emerald-500/20">
-            <p className="text-sm text-muted-foreground">Active</p>
-            <p className="text-2xl font-bold text-emerald-600 mt-1">
-              {filteredAssets.filter((a) => a.status === "active").length}
-            </p>
-          </Card>
-          <Card className="p-4 border-orange-500/20">
-            <p className="text-sm text-muted-foreground">In Maintenance</p>
-            <p className="text-2xl font-bold text-orange-600 mt-1">
-              {filteredAssets.filter((a) => a.status === "maintenance").length}
-            </p>
-          </Card>
-          <Card className="p-4 border-red-500/20">
-            <p className="text-sm text-muted-foreground">Deprecated</p>
-            <p className="text-2xl font-bold text-red-600 mt-1">
-              {filteredAssets.filter((a) => a.status === "deprecated").length}
-            </p>
-          </Card>
-        </div>
-
-        {/* Assets Table */}
-        <InventoryTable
-          assets={filteredAssets}
-          loading={loading}
-          onEdit={setEditingAsset}
-          onDelete={handleDelete}
-          onEditClick={() => setShowForm(true)}
-        />
-
-        {/* Forms */}
-        {showForm && (
-          <InventoryForm
-            asset={editingAsset}
-            categories={categories}
-            costCenters={costCenters}
-            onClose={handleFormClose}
-            onSuccess={handleFormSuccess}
-          />
         )}
+
+        {error && <div className="flex items-center justify-between gap-4 rounded-lg border border-destructive/40 bg-destructive/5 p-4 text-sm text-destructive"><span>No fue posible cargar inventario: {error}</span><Button variant="outline" size="sm" onClick={() => void Promise.all([loadAssets(), loadMetadata()])}><RefreshCw className="mr-2 h-4 w-4" />Reintentar</Button></div>}
+
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <Metric title="Activos visibles" value={filteredAssets.length.toLocaleString("es-CL")} />
+          <Metric title="Valor de compra registrado" value={new Intl.NumberFormat("es-CL", { style: "currency", currency: "CLP", maximumFractionDigits: 0 }).format(registeredValue)} />
+          <Metric title="Sin ubicación informada" value={withoutLocation.toLocaleString("es-CL")} alert={withoutLocation > 0} />
+          <Metric title="Sin responsable asignado" value={withoutAssignment.toLocaleString("es-CL")} alert={withoutAssignment > 0} />
+        </div>
+
+        <Card>
+          <CardHeader className="pb-3"><CardTitle className="text-base">Buscar y filtrar</CardTitle></CardHeader>
+          <CardContent className="grid gap-3 md:grid-cols-4">
+            <div className="relative md:col-span-2"><Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><Input className="pl-9" placeholder="Buscar por nombre, código o ubicación" value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} /></div>
+            <select value={selectedCategory} onChange={(event) => setSelectedCategory(event.target.value)} className="rounded-md border bg-background px-3 py-2 text-sm"><option value="all">Todas las categorías</option>{categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}</select>
+            <select value={selectedStatus} onChange={(event) => setSelectedStatus(event.target.value)} className="rounded-md border bg-background px-3 py-2 text-sm"><option value="all">Todos los estados</option>{availableStatuses.map((status) => <option key={status} value={status}>{STATUS_LABELS[status] ?? status}</option>)}</select>
+          </CardContent>
+        </Card>
+
+        {loading ? <Card><CardContent className="py-12 text-center text-sm text-muted-foreground">Cargando inventario…</CardContent></Card> : filteredAssets.length === 0 ? <Card><CardContent className="py-12 text-center"><Package className="mx-auto mb-3 h-6 w-6 text-muted-foreground" /><p className="font-medium">No hay activos para los filtros seleccionados.</p><p className="mt-1 text-sm text-muted-foreground">Ajusta los filtros o registra un nuevo activo.</p></CardContent></Card> : <InventoryTable assets={filteredAssets} loading={false} onEdit={setEditingAsset} onDelete={handleDelete} onEditClick={() => setShowForm(true)} />}
+
+        {showForm && <InventoryForm asset={editingAsset} categories={categories} costCenters={costCenters} onClose={handleFormClose} onSuccess={async () => { await loadAssets(); handleFormClose() }} />}
       </div>
     </AppLayout>
   )
+}
+
+function Metric({ title, value, alert = false }: { title: string; value: string; alert?: boolean }) {
+  return <Card className={alert ? "border-amber-300" : undefined}><CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">{title}</CardTitle></CardHeader><CardContent><div className="text-2xl font-semibold">{value}</div></CardContent></Card>
 }

@@ -23,7 +23,7 @@ export function AddGuestDialog({ open, onOpenChange, onSuccess }: AddGuestDialog
     name: "",
     email: "",
     phone: "",
-    company_name: "", // Added company_name field
+    company_name: "",
     address: "",
     notes: "",
     vip_status: false,
@@ -37,7 +37,6 @@ export function AddGuestDialog({ open, onOpenChange, onSuccess }: AddGuestDialog
 
     try {
       const { error } = await supabase.from("guests").insert([formData])
-
       if (error) throw error
 
       onSuccess()
@@ -45,7 +44,7 @@ export function AddGuestDialog({ open, onOpenChange, onSuccess }: AddGuestDialog
       resetForm()
     } catch (error) {
       console.error("Error creating guest:", error)
-      alert("Failed to create guest")
+      alert("No se pudo crear el huésped")
     } finally {
       setLoading(false)
     }
@@ -56,7 +55,7 @@ export function AddGuestDialog({ open, onOpenChange, onSuccess }: AddGuestDialog
       name: "",
       email: "",
       phone: "",
-      company_name: "", // Reset company_name
+      company_name: "",
       address: "",
       notes: "",
       vip_status: false,
@@ -65,89 +64,50 @@ export function AddGuestDialog({ open, onOpenChange, onSuccess }: AddGuestDialog
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-h-[90vh] max-w-md overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>New Guest</DialogTitle>
+          <DialogTitle>Nuevo huésped</DialogTitle>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="name">Name *</Label>
-            <Input
-              id="name"
-              value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              required
-            />
+            <Label htmlFor="name">Nombre *</Label>
+            <Input id="name" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} required />
           </div>
 
           <div className="space-y-2">
             <Label htmlFor="email">Email</Label>
-            <Input
-              id="email"
-              type="email"
-              value={formData.email}
-              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-            />
+            <Input id="email" type="email" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="phone">Phone</Label>
-            <Input
-              id="phone"
-              value={formData.phone}
-              onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-            />
+            <Label htmlFor="phone">Teléfono</Label>
+            <Input id="phone" value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="company_name">Company Name</Label>
-            <Input
-              id="company_name"
-              value={formData.company_name}
-              onChange={(e) => setFormData({ ...formData, company_name: e.target.value })}
-              placeholder="Optional company or organization"
-            />
+            <Label htmlFor="company_name">Empresa u organización</Label>
+            <Input id="company_name" value={formData.company_name} onChange={(e) => setFormData({ ...formData, company_name: e.target.value })} placeholder="Opcional" />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="address">Address</Label>
-            <Textarea
-              id="address"
-              value={formData.address}
-              onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-              rows={2}
-            />
+            <Label htmlFor="address">Dirección</Label>
+            <Textarea id="address" value={formData.address} onChange={(e) => setFormData({ ...formData, address: e.target.value })} rows={2} />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="notes">Notes</Label>
-            <Textarea
-              id="notes"
-              value={formData.notes}
-              onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-              rows={3}
-            />
+            <Label htmlFor="notes">Notas</Label>
+            <Textarea id="notes" value={formData.notes} onChange={(e) => setFormData({ ...formData, notes: e.target.value })} rows={3} />
           </div>
 
           <div className="flex items-center space-x-2">
-            <Checkbox
-              id="vip_status"
-              checked={formData.vip_status}
-              onCheckedChange={(checked) => setFormData({ ...formData, vip_status: checked as boolean })}
-            />
-            <Label htmlFor="vip_status" className="font-normal">
-              VIP Guest
-            </Label>
+            <Checkbox id="vip_status" checked={formData.vip_status} onCheckedChange={(checked) => setFormData({ ...formData, vip_status: checked as boolean })} />
+            <Label htmlFor="vip_status" className="font-normal">Huésped VIP</Label>
           </div>
 
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              Cancel
-            </Button>
-            <Button type="submit" disabled={loading}>
-              {loading ? "Creating..." : "Create Guest"}
-            </Button>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
+            <Button type="submit" disabled={loading}>{loading ? "Creando..." : "Crear huésped"}</Button>
           </DialogFooter>
         </form>
       </DialogContent>
