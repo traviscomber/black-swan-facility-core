@@ -1,18 +1,25 @@
 import { createClient } from "@supabase/supabase-js"
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
-
 const VINEYARD_BUCKET = "vineyard"
 const IMAGE_EXTENSIONS = [".jpg", ".jpeg", ".png", ".gif", ".webp"]
 const EXCEL_EXTENSIONS = [".xlsx", ".xls", ".csv"]
 const MAX_FILE_SIZE = 50 * 1024 * 1024 // 50MB
 
+// Get Supabase client - instantiate inside functions to avoid build-time issues
+function getSupabaseClient() {
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    throw new Error("Supabase credentials not configured")
+  }
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL,
+    process.env.SUPABASE_SERVICE_ROLE_KEY
+  )
+}
+
 // Ensure bucket exists and is properly configured
 async function ensureBucketExists() {
   try {
+    const supabase = getSupabaseClient()
     const { data: buckets } = await supabase.storage.listBuckets()
     const bucketExists = buckets?.some(b => b.name === VINEYARD_BUCKET)
     
@@ -46,6 +53,7 @@ export async function uploadImage(
   const fileName = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}.${fileExt}`
   const filePath = `${folder}/${fileName}`
 
+  const supabase = getSupabaseClient()
   const { data, error } = await supabase.storage
     .from(VINEYARD_BUCKET)
     .upload(filePath, file, {
@@ -85,6 +93,7 @@ export async function uploadExcelFile(
   const fileName = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}.${fileExt}`
   const filePath = `${folder}/${fileName}`
 
+  const supabase = getSupabaseClient()
   const { data, error } = await supabase.storage
     .from(VINEYARD_BUCKET)
     .upload(filePath, file, {
@@ -105,6 +114,7 @@ export async function uploadExcelFile(
 }
 
 export async function deleteFile(filePath: string): Promise<void> {
+  const supabase = getSupabaseClient()
   const { error } = await supabase.storage
     .from(VINEYARD_BUCKET)
     .remove([filePath])
