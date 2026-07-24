@@ -199,12 +199,16 @@ export default function BookingsCalendarPage() {
     setSuggestions(newSuggestions)
   }, [visibleBeds, reservations, rangeDays, gaps.length, computeGaps])
   useEffect(() => {
+    // Subscribe to real-time updates - reload data when reservations/blocks change
+    const handleChange = () => { loadData() }
     const channel = supabase.channel("bookings-calendar-v2")
-      .on("postgres_changes", { event: "*", schema: "public", table: "reservations" }, loadData)
-      .on("postgres_changes", { event: "*", schema: "public", table: "room_blocks" }, loadData)
+      .on("postgres_changes", { event: "*", schema: "public", table: "reservations" }, handleChange)
+      .on("postgres_changes", { event: "*", schema: "public", table: "room_blocks" }, handleChange)
       .subscribe()
     return () => { supabase.removeChannel(channel) }
-  }, [loadData, supabase])
+    // Only depend on supabase, not loadData (loadData changes on date range changes which we don't want to re-subscribe on)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [supabase])
 
   const visibleReservations = useMemo(() => reservations.filter((reservation) => {
     const matchesBed = visibleBedIds.has(reservation.bed_id)
