@@ -2,11 +2,6 @@ import { uploadImage, uploadExcelFile } from "@/lib/vineyard/file-operations"
 import { createClient } from "@supabase/supabase-js"
 import { NextRequest, NextResponse } from "next/server"
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
-
 export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData()
@@ -35,17 +30,25 @@ export async function POST(request: NextRequest) {
       
       // Si es una foto de viña y tenemos vineId, actualizar la BD
       if (vineId && folder.includes("vines")) {
-        console.log("[v0] Updating vine photo in DB for vine:", vineId)
-        const { error: dbError } = await supabase
-          .from("vineyard_vines")
-          .update({ photo_url: result.url })
-          .eq("id", vineId)
-
-        if (dbError) {
-          console.error("[v0] Error updating vine photo:", dbError)
-          // No lanzar error, solo logear - la foto se subió correctamente
+        if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+          console.warn("[v0] Skipping DB update - Supabase not configured")
         } else {
-          console.log("[v0] Vine photo updated in DB successfully")
+          const supabase = createClient(
+            process.env.NEXT_PUBLIC_SUPABASE_URL,
+            process.env.SUPABASE_SERVICE_ROLE_KEY
+          )
+          console.log("[v0] Updating vine photo in DB for vine:", vineId)
+          const { error: dbError } = await supabase
+            .from("vineyard_vines")
+            .update({ photo_url: result.url })
+            .eq("id", vineId)
+
+          if (dbError) {
+            console.error("[v0] Error updating vine photo:", dbError)
+            // No lanzar error, solo logear - la foto se subió correctamente
+          } else {
+            console.log("[v0] Vine photo updated in DB successfully")
+          }
         }
       }
     } else if (fileType === "excel") {

@@ -6,10 +6,11 @@ import { Badge } from "@/components/ui/badge"
 import { AlertCircle } from "lucide-react"
 
 // Add animation styles to document if not already present
-if (typeof document !== "undefined" && !document.getElementById("flip-animations")) {
-  const style = document.createElement("style")
-  style.id = "flip-animations"
-  style.textContent = `
+function ensureFlipAnimations() {
+  if (typeof document !== "undefined" && !document.getElementById("flip-animations")) {
+    const style = document.createElement("style")
+    style.id = "flip-animations"
+    style.textContent = `
     @keyframes flip-move {
       from {
         transform: translate(var(--flip-dx), var(--flip-dy)) scaleX(var(--flip-scaleX, 1));
@@ -60,8 +61,12 @@ if (typeof document !== "undefined" && !document.getElementById("flip-animations
       }
     }
   `
-  document.head.appendChild(style)
+    document.head.appendChild(style)
+  }
 }
+
+// Call on first mount
+ensureFlipAnimations()
 
 interface ResizableReservationBlockProps {
   reservation: {

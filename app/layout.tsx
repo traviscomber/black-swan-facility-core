@@ -8,6 +8,8 @@ import { ClientProviders } from "@/components/client-providers"
 const _geist = Geist({ subsets: ["latin"] })
 const _geistMono = Geist_Mono({ subsets: ["latin"] })
 
+export const revalidate = 0
+
 export const metadata: Metadata = {
   title: "BFCS - Blackswan Facility Core System",
   description:
