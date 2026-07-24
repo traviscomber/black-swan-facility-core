@@ -6,6 +6,7 @@ import { addDays, differenceInCalendarDays, format, isSameDay, parseISO, startOf
 import { Ban, CalendarDays, ChevronLeft, ChevronRight, CircleDollarSign, Loader2, LogIn, LogOut, Moon, Plus, Search, Users } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import { AddReservationDialog } from "@/components/add-reservation-dialog"
+import { ResizableReservationBlock } from "@/components/resizable-reservation-block"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -167,6 +168,40 @@ export default function BookingsCalendarPage() {
     if (updateError) setError(updateError.message)
     else { setSelectedReservation({ ...reservation, status: nextStatus }); await loadData() }
     setUpdatingStatus(null)
+  }
+
+  async function handleReservationResize(reservationId: string, newCheckIn: string, newCheckOut: string) {
+    try {
+      setError(null)
+      
+      // Get reservation to verify it exists
+      const reservationToUpdate = reservations.find((r) => r.id === reservationId)
+      if (!reservationToUpdate) throw new Error("Reservation not found")
+
+      // Call API to update with conflict checking
+      const response = await fetch("/api/bookings/reservations/update", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          reservation_id: reservationId,
+          check_in: newCheckIn,
+          check_out: newCheckOut,
+        }),
+      })
+
+      const result = await response.json()
+
+      if (!response.ok) {
+        throw new Error(result.error || "Failed to update reservation dates")
+      }
+
+      // Reload data to reflect changes
+      await loadData()
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Error updating reservation"
+      setError(message)
+      throw err
+    }
   }
 
   return (

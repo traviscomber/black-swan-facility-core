@@ -2,6 +2,7 @@
 
 import type React from "react"
 import { ReservationConfirmationModal } from "@/components/reservation-confirmation-modal"
+import { AvailabilityCalendarPicker } from "@/components/availability-calendar-picker"
 import { useState, useEffect } from "react"
 import { createBrowserClient } from "@/lib/supabase/client"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
@@ -211,8 +212,12 @@ export function AddReservationDialog({
   async function confirmAndCreateReservation() {
     setLoading(true)
     try {
-      const { error } = await supabase.from("reservations").insert([
-        {
+
+      // Call atomic API endpoint that handles reservation + conflict check + invoice in one transaction
+      const response = await fetch("/api/bookings/reservations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
           bed_id: formData.bed_id,
           guest_name: formData.guest_name,
           guest_email: formData.guest_email,
@@ -223,10 +228,30 @@ export function AddReservationDialog({
           total_amount: formData.total_amount,
           status: formData.status,
           special_requests: formData.special_requests,
-        },
-      ])
+        }),
+      })
 
-      if (error) throw error
+      const result = await response.json()
+
+      if (!response.ok) {
+        // Handle specific error cases
+        if (response.status === 409) {
+          alert(
+            result.error ||
+              "This bed is no longer available for these dates. It was booked by someone else. Please refresh and try again with a different bed or date."
+          )
+        } else {
+          alert(result.error || "Failed to create reservation")
+        }
+        setShowConfirmation(false)
+        return
+      }
+
+      if (!result.success) {
+        alert(result.error || "Failed to create reservation")
+        setShowConfirmation(false)
+        return
+      }
 
       setShowConfirmation(false)
       onSuccess()
@@ -234,7 +259,8 @@ export function AddReservationDialog({
       resetForm()
     } catch (error) {
       console.error("Error creating reservation:", error)
-      alert("Error creating reservation")
+      const message = error instanceof Error ? error.message : "Error creating reservation"
+      alert(message)
     } finally {
       setLoading(false)
     }
@@ -389,27 +415,29 @@ export function AddReservationDialog({
                 <p className="text-xs text-muted-foreground">You can add more guests than room capacity if needed</p>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="check_in">Check-in *</Label>
-                <Input
-                  id="check_in"
-                  type="date"
-                  value={formData.check_in}
-                  onChange={(e) => setFormData({ ...formData, check_in: e.target.value })}
-                  required
-                />
-              </div>
+              {formData.bed_id && (
+                <div className="space-y-2 sm:col-span-2">
+                  <Label>Select Dates *</Label>
+                  <AvailabilityCalendarPicker
+                    bedId={formData.bed_id}
+                    onDateRangeSelect={(checkIn, checkOut) => {
+                      setFormData({
+                        ...formData,
+                        check_in: checkIn,
+                        check_out: checkOut,
+                      })
+                    }}
+                    currentCheckIn={formData.check_in}
+                    currentCheckOut={formData.check_out}
+                  />
+                </div>
+              )}
 
-              <div className="space-y-2">
-                <Label htmlFor="check_out">Check-out *</Label>
-                <Input
-                  id="check_out"
-                  type="date"
-                  value={formData.check_out}
-                  onChange={(e) => setFormData({ ...formData, check_out: e.target.value })}
-                  required
-                />
-              </div>
+              {!formData.bed_id && (
+                <div className="sm:col-span-2 text-sm text-muted-foreground italic">
+                  Select a bed above to view availability and pick dates
+                </div>
+              )}
 
               <div className="space-y-2">
                 <Label htmlFor="total_amount">Total Amount</Label>
