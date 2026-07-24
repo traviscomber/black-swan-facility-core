@@ -67,6 +67,9 @@ export default function BookingsCalendarPage() {
   const [selectedReservation, setSelectedReservation] = useState<Reservation | null>(null)
   const [selectedBlock, setSelectedBlock] = useState<RoomBlock | null>(null)
   const [updatingStatus, setUpdatingStatus] = useState<string | null>(null)
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [bulkOperationOpen, setBulkOperationOpen] = useState(false)
+  const [bulkConflicts, setBulkConflicts] = useState<{ id: string; reason: string }[]>([])
 
   const endDate = addDays(startDate, rangeDays)
   const dates = useMemo(() => Array.from({ length: rangeDays }, (_, index) => addDays(startDate, index)), [rangeDays, startDate])
@@ -204,6 +207,44 @@ export default function BookingsCalendarPage() {
     }
   }
 
+  const toggleSelectReservation = useCallback((id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }, [])
+
+  const executeBulkOperation = useCallback(async (daysDelta: number, daysExtend: number) => {
+    if (selectedIds.size === 0) return
+    setError(null)
+    const response = await fetch("/api/bookings/bulk/execute", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        reservation_ids: Array.from(selectedIds),
+        days_delta: daysDelta,
+        days_extend: daysExtend,
+      }),
+    })
+    const result = await response.json()
+    if (!response.ok) {
+      setBulkConflicts(result.conflicts || [])
+      setError(result.error || "Bulk operation failed")
+      return
+    }
+    setSelectedIds(new Set())
+    setBulkOperationOpen(false)
+    setBulkConflicts([])
+    await loadData()
+  }, [selectedIds])
+
+  const clearSelection = useCallback(() => {
+    setSelectedIds(new Set())
+    setBulkConflicts([])
+  }, [])
+
   return (
     <div className="min-h-screen bg-background p-4 md:p-6">
       <div className="mx-auto max-w-[1800px] space-y-5">
@@ -233,18 +274,62 @@ export default function BookingsCalendarPage() {
         </CardContent></Card>
 
         {error && <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-600">{error}</div>}
+        
+        {selectedIds.size > 0 && (
+          <div className="sticky top-0 z-40 flex items-center justify-between gap-3 rounded-lg border border-blue-500/30 bg-blue-500/10 p-3">
+            <span className="text-sm font-medium">{selectedIds.size} reserva(s) seleccionada(s)</span>
+            <div className="flex gap-2">
+              <Button size="sm" variant="outline" onClick={() => setBulkOperationOpen(true)}>Mover/Extender</Button>
+              <Button size="sm" variant="ghost" onClick={clearSelection}>Limpiar</Button>
+            </div>
+          </div>
+        )}
         <Card className="overflow-hidden"><CardHeader className="flex flex-row items-center justify-between border-b py-3"><div><CardTitle className="text-base">{format(startDate, "dd MMM")} — {format(addDays(endDate, -1), "dd MMM yyyy")}</CardTitle><p className="text-xs text-muted-foreground">{visibleBeds.length} unidades visibles · {visibleBlocks.length} bloqueos activos</p></div><div className="flex gap-2"><Button variant="outline" size="icon" onClick={() => setStartDate(addDays(startDate, -rangeDays))}><ChevronLeft className="h-4 w-4" /></Button><Button variant="outline" size="icon" onClick={() => setStartDate(addDays(startDate, rangeDays))}><ChevronRight className="h-4 w-4" /></Button></div></CardHeader>
           <CardContent className="p-0"><div className="overflow-auto"><table className="min-w-max border-collapse text-sm"><thead className="sticky top-0 z-20 bg-background"><tr><th className="sticky left-0 z-30 min-w-48 border-b border-r bg-background px-4 py-3 text-left">Habitación / cama</th>{dates.map((date) => <th key={date.toISOString()} className={`min-w-24 border-b border-r px-2 py-2 text-center ${isSameDay(date, new Date()) ? "bg-amber-100" : ""}`}><div className="text-xs text-muted-foreground">{format(date, "EEE")}</div><div className="font-semibold">{format(date, "dd MMM")}</div></th>)}</tr></thead>
             <tbody>{loading ? <tr><td colSpan={dates.length + 1} className="p-12 text-center text-muted-foreground">Cargando calendario...</td></tr> : visibleBeds.length === 0 ? <tr><td colSpan={dates.length + 1} className="p-12 text-center text-muted-foreground">No hay unidades para los filtros seleccionados.</td></tr> : visibleBeds.map((bed) => <tr key={bed.id} className="hover:bg-muted/30"><td className="sticky left-0 z-10 border-b border-r bg-background px-4 py-3"><div className="font-medium">Hab. {bed.room.room_number}</div><div className="text-xs text-muted-foreground">{bed.bed_number} · {bed.bed_type}</div></td>{dates.map((date) => {
               const reservation = reservationAt(bed.id, date); const block = blockAt(bed.room.id, date)
               const reservationStart = reservation && isSameDay(parseISO(reservation.check_in), date)
               const blockStart = block && isSameDay(parseISO(block.start_date), date)
-              return <td key={`${bed.id}-${date.toISOString()}`} className={`h-16 border-b border-r p-1 ${isSameDay(date, new Date()) ? "bg-amber-50" : ""}`}>{reservation ? <button onClick={() => setSelectedReservation(reservation)} className={`h-full w-full rounded border px-2 text-left text-xs ${STATUS_STYLES[reservation.status] ?? "bg-slate-200 text-slate-900"}`} title={`${reservation.guest_name} · ${reservation.check_in} → ${reservation.check_out}`}>{reservationStart ? <><div className="truncate font-semibold">{reservation.guest_name}</div><div className="truncate opacity-80">{STATUS_LABELS[reservation.status] ?? reservation.status}</div></> : <div className="h-full opacity-40" />}</button> : block ? <button onClick={() => setSelectedBlock(block)} className="h-full w-full rounded border border-zinc-500 bg-zinc-800 px-2 text-left text-xs text-white" title={`${block.reason} · ${block.start_date} → ${block.end_date}`}>{blockStart ? <><div className="truncate font-semibold">{BLOCK_LABELS[block.block_type] ?? "Bloqueada"}</div><div className="truncate opacity-80">{block.reason}</div></> : <div className="h-full opacity-40" />}</button> : <button onClick={() => openNewReservation(bed, date)} className="h-full w-full rounded text-muted-foreground hover:bg-primary/10 hover:text-primary"><Plus className="mx-auto h-4 w-4" /></button>}</td>
+              const isSelected = reservation && selectedIds.has(reservation.id)
+              return <td key={`${bed.id}-${date.toISOString()}`} className={`h-16 border-b border-r p-1 ${isSameDay(date, new Date()) ? "bg-amber-50" : ""}`}>{reservation ? <button onClick={() => {
+                if (isSelected) toggleSelectReservation(reservation.id)
+                else setSelectedReservation(reservation)
+              }} onContextMenu={(e) => { e.preventDefault(); toggleSelectReservation(reservation.id) }} className={`h-full w-full rounded border px-2 text-left text-xs transition-all ${isSelected ? "ring-2 ring-blue-500" : ""} ${STATUS_STYLES[reservation.status] ?? "bg-slate-200 text-slate-900"}`} title={`${reservation.guest_name} · ${reservation.check_in} → ${reservation.check_out} · Click derecho para seleccionar`}>{reservationStart ? <><div className="truncate font-semibold">{reservation.guest_name}</div><div className="truncate opacity-80">{STATUS_LABELS[reservation.status] ?? reservation.status}</div></> : <div className="h-full opacity-40" />}</button> : block ? <button onClick={() => setSelectedBlock(block)} className="h-full w-full rounded border border-zinc-500 bg-zinc-800 px-2 text-left text-xs text-white" title={`${block.reason} · ${block.start_date} → ${block.end_date}`}>{blockStart ? <><div className="truncate font-semibold">{BLOCK_LABELS[block.block_type] ?? "Bloqueada"}</div><div className="truncate opacity-80">{block.reason}</div></> : <div className="h-full opacity-40" />}</button> : <button onClick={() => openNewReservation(bed, date)} className="h-full w-full rounded text-muted-foreground hover:bg-primary/10 hover:text-primary"><Plus className="mx-auto h-4 w-4" /></button>}</td>
             })}</tr>)}</tbody></table></div></CardContent>
         </Card>
       </div>
 
       <AddReservationDialog open={newReservationOpen} onOpenChange={setNewReservationOpen} onSuccess={loadData} preselectedBed={preselectedBed?.id} preselectedDate={preselectedDate ?? undefined} preselectedLocation={preselectedBed?.room.location_ref?.name} />
+      
+      <Dialog open={bulkOperationOpen} onOpenChange={setBulkOperationOpen}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Operación masiva ({selectedIds.size} reserva{selectedIds.size !== 1 ? "s" : ""})</DialogTitle></DialogHeader>
+          <div className="space-y-4">
+            {bulkConflicts.length > 0 && (
+              <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm">
+                <p className="font-medium text-red-600">Conflictos detectados:</p>
+                <ul className="mt-2 space-y-1 text-red-600">{bulkConflicts.map((c) => <li key={c.id}>• {c.reason}</li>)}</ul>
+              </div>
+            )}
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Mover {selectedIds.size} días</label>
+              <Input type="number" defaultValue="0" min="-180" max="180" id="daysDelta" placeholder="Ej: 3 para mover 3 días adelante" />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Extender {selectedIds.size} días</label>
+              <Input type="number" defaultValue="0" min="0" max="180" id="daysExtend" placeholder="Ej: 1 para añadir 1 día al check-out" />
+            </div>
+            <div className="flex gap-2 pt-2">
+              <Button className="flex-1" onClick={() => {
+                const delta = Number((document.getElementById("daysDelta") as HTMLInputElement)?.value || 0)
+                const extend = Number((document.getElementById("daysExtend") as HTMLInputElement)?.value || 0)
+                executeBulkOperation(delta, extend)
+              }}>Ejecutar</Button>
+              <Button variant="outline" onClick={() => setBulkOperationOpen(false)}>Cancelar</Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
       <Dialog open={!!selectedBlock} onOpenChange={(open) => !open && setSelectedBlock(null)}><DialogContent><DialogHeader><DialogTitle>Bloqueo de habitación</DialogTitle></DialogHeader>{selectedBlock && <div className="space-y-4"><Badge variant="secondary">{BLOCK_LABELS[selectedBlock.block_type] ?? selectedBlock.block_type}</Badge><Detail label="Motivo" value={selectedBlock.reason} /><div className="grid grid-cols-2 gap-4"><Detail label="Desde" value={selectedBlock.start_date} /><Detail label="Hasta" value={selectedBlock.end_date} /></div>{selectedBlock.notes && <Detail label="Notas" value={selectedBlock.notes} />}<Button asChild className="w-full"><Link href="/bookings/blocks">Administrar bloqueos</Link></Button></div>}</DialogContent></Dialog>
       <Dialog open={!!selectedReservation} onOpenChange={(open) => !open && setSelectedReservation(null)}><DialogContent className="max-w-lg"><DialogHeader><DialogTitle>Detalle de reserva</DialogTitle></DialogHeader>{selectedReservation && <div className="space-y-5"><div className="flex items-start justify-between gap-4"><div><p className="text-xs text-muted-foreground">Huésped</p><p className="text-xl font-semibold">{selectedReservation.guest_name}</p></div><Badge>{STATUS_LABELS[selectedReservation.status] ?? selectedReservation.status}</Badge></div><div className="grid grid-cols-2 gap-4 text-sm"><Detail label="Check-in" value={selectedReservation.check_in} /><Detail label="Check-out" value={selectedReservation.check_out} /><Detail label="Huéspedes" value={String(selectedReservation.num_guests ?? 1)} /><Detail label="Total" value={formatClp(Number(selectedReservation.total_amount ?? 0))} /></div><div className="flex flex-wrap justify-end gap-2 border-t pt-4">{normalizedStatus(selectedReservation.status) === "pending" && <StatusButton loading={updatingStatus === selectedReservation.id} label="Confirmar reserva" onClick={() => updateReservationStatus(selectedReservation, "confirmed")} />}{normalizedStatus(selectedReservation.status) === "confirmed" && <StatusButton loading={updatingStatus === selectedReservation.id} label="Registrar check-in" onClick={() => updateReservationStatus(selectedReservation, "checked_in")} />}{normalizedStatus(selectedReservation.status) === "checked_in" && <StatusButton loading={updatingStatus === selectedReservation.id} label="Registrar check-out" onClick={() => updateReservationStatus(selectedReservation, "checked_out")} />}</div></div>}</DialogContent></Dialog>
     </div>
