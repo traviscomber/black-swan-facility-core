@@ -9,6 +9,9 @@ import { AddReservationDialog } from "@/components/add-reservation-dialog"
 import { ResizableReservationBlock } from "@/components/resizable-reservation-block"
 import { OccupancyHeatmap } from "@/components/occupancy-heatmap"
 import { GapFillerDialog } from "@/components/gap-filler-dialog"
+import { HousekeepingTimeline } from "@/components/housekeeping-timeline"
+import { MaintenanceTimeline } from "@/components/maintenance-timeline"
+import { RoomStateMatrix } from "@/components/room-state-matrix"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -79,6 +82,10 @@ export default function BookingsCalendarPage() {
   const [gaps, setGaps] = useState<{ bedId: string; startDate: string; endDate: string; days: number }[]>([])
   const [suggestions, setSuggestions] = useState<{ type: string; message: string; action?: string }[]>([])
   const [selectedGap, setSelectedGap] = useState<{ bedId: string; startDate: string; endDate: string; days: number } | null>(null)
+  const [showOperations, setShowOperations] = useState(false)
+  const [housekeepingTasks, setHousekeepingTasks] = useState<any[]>([])
+  const [maintenanceTasks, setMaintenanceTasks] = useState<any[]>([])
+  const [roomStates, setRoomStates] = useState<any[]>([])
 
   const endDate = addDays(startDate, rangeDays)
   const dates = useMemo(() => Array.from({ length: rangeDays }, (_, index) => addDays(startDate, index)), [rangeDays, startDate])
@@ -107,6 +114,17 @@ export default function BookingsCalendarPage() {
 
   useEffect(() => {
     loadData()
+    const loadOperations = async () => {
+      const [hk, mt, rs] = await Promise.all([
+        fetch("/api/operations/housekeeping").then(r => r.json()),
+        fetch("/api/operations/maintenance").then(r => r.json()),
+        fetch("/api/operations/room-state").then(r => r.json()),
+      ])
+      setHousekeepingTasks(hk.data || [])
+      setMaintenanceTasks(mt.data || [])
+      setRoomStates(rs.data || [])
+    }
+    loadOperations()
   }, [loadData])
 
   // C3: Gap detection
@@ -373,8 +391,9 @@ export default function BookingsCalendarPage() {
           <div className="sticky top-0 z-40 flex items-center justify-between gap-3 rounded-lg border border-blue-500/30 bg-blue-500/10 p-3">
             <span className="text-sm font-medium">{selectedIds.size} reserva(s) seleccionada(s)</span>
             <div className="flex gap-2">
-              <Button size="sm" variant={showPricingOverlay ? "default" : "outline"} onClick={() => setShowPricingOverlay(!showPricingOverlay)}>💰 Precios</Button>
-              <Button size="sm" variant={showHeatmap ? "default" : "outline"} onClick={() => setShowHeatmap(!showHeatmap)}>🔥 Heatmap</Button>
+              <Button size="sm" variant={showPricingOverlay ? "default" : "outline"} onClick={() => setShowPricingOverlay(!showPricingOverlay)}>Precios</Button>
+              <Button size="sm" variant={showHeatmap ? "default" : "outline"} onClick={() => setShowHeatmap(!showHeatmap)}>Heatmap</Button>
+              <Button size="sm" variant={showOperations ? "default" : "outline"} onClick={() => setShowOperations(!showOperations)}>Operaciones</Button>
               <Button variant="outline" onClick={() => setStartDate(addDays(startDate, -rangeDays))}><ChevronLeft className="h-4 w-4" /></Button>
               <Button variant="outline" onClick={() => setStartDate(addDays(startDate, rangeDays))}><ChevronRight className="h-4 w-4" /></Button>
             </div>
@@ -418,6 +437,14 @@ export default function BookingsCalendarPage() {
       )}
       
       <GapFillerDialog open={selectedGap !== null} onOpenChange={(open) => !open && setSelectedGap(null)} gap={selectedGap} onFill={fillGap} />
+      
+      {showOperations && (
+        <div className="mt-4 grid grid-cols-1 lg:grid-cols-3 gap-4">
+          <div><HousekeepingTimeline tasks={housekeepingTasks} onStatusChange={loadData} /></div>
+          <div><MaintenanceTimeline tasks={maintenanceTasks} /></div>
+          <div><RoomStateMatrix rooms={roomStates} /></div>
+        </div>
+      )}
       
       <Dialog open={bulkOperationOpen} onOpenChange={setBulkOperationOpen}>
         <DialogContent className="max-w-sm">
