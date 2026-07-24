@@ -55,7 +55,7 @@ export default function BookingsCalendarPage() {
   const [movingReservationId, setMovingReservationId] = useState<string | null>(null)
   const { resizeState, resizingReservationId, confirmingReservationId, isResizing, beginResize, updatePreview, markConfirming, clearResize } = useReservationResizeState()
 
-  const endDate = addDays(startDate, rangeDays)
+  const endDate = useMemo(() => addDays(startDate, rangeDays), [startDate, rangeDays])
   const dates = useMemo(() => Array.from({ length: rangeDays }, (_, index) => addDays(startDate, index)), [rangeDays, startDate])
   const timelineWidth = rangeDays * DAY_WIDTH
 
