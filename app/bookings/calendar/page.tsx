@@ -70,6 +70,8 @@ export default function BookingsCalendarPage() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [bulkOperationOpen, setBulkOperationOpen] = useState(false)
   const [bulkConflicts, setBulkConflicts] = useState<{ id: string; reason: string }[]>([])
+  const [bulkOperationType, setBulkOperationType] = useState<"move" | "status" | "delete">("move")
+  const [lastBulkOperation, setLastBulkOperation] = useState<{ ids: string[]; type: string; timestamp: number } | null>(null)
 
   const endDate = addDays(startDate, rangeDays)
   const dates = useMemo(() => Array.from({ length: rangeDays }, (_, index) => addDays(startDate, index)), [rangeDays, startDate])
@@ -216,29 +218,53 @@ export default function BookingsCalendarPage() {
     })
   }, [])
 
-  const executeBulkOperation = useCallback(async (daysDelta: number, daysExtend: number) => {
+  const executeBulkOperation = useCallback(async (daysDelta: number = 0, daysExtend: number = 0, newStatus?: string) => {
     if (selectedIds.size === 0) return
     setError(null)
-    const response = await fetch("/api/bookings/bulk/execute", {
+    const ids = Array.from(selectedIds)
+    const endpoint = bulkOperationType === "status" ? "/api/bookings/bulk/status" : 
+                     bulkOperationType === "delete" ? "/api/bookings/bulk/delete" :
+                     "/api/bookings/bulk/execute"
+    const payload = bulkOperationType === "status" ? { reservation_ids: ids, status: newStatus } :
+                    bulkOperationType === "delete" ? { reservation_ids: ids } :
+                    { reservation_ids: ids, days_delta: daysDelta, days_extend: daysExtend }
+    const response = await fetch(endpoint, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        reservation_ids: Array.from(selectedIds),
-        days_delta: daysDelta,
-        days_extend: daysExtend,
-      }),
+      body: JSON.stringify(payload),
     })
     const result = await response.json()
     if (!response.ok) {
       setBulkConflicts(result.conflicts || [])
-      setError(result.error || "Bulk operation failed")
+      setError(result.error || "Operación masiva fallida")
       return
     }
+    setLastBulkOperation({ ids, type: bulkOperationType, timestamp: Date.now() })
     setSelectedIds(new Set())
     setBulkOperationOpen(false)
     setBulkConflicts([])
     await loadData()
-  }, [selectedIds])
+  }, [selectedIds, bulkOperationType])
+
+  const undoLastOperation = useCallback(async () => {
+    if (!lastBulkOperation) return
+    setError(null)
+    const response = await fetch("/api/bookings/bulk/undo", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        reservation_ids: lastBulkOperation.ids,
+        operation_type: lastBulkOperation.type,
+      }),
+    })
+    const result = await response.json()
+    if (!response.ok) {
+      setError(result.error || "Deshacer falló")
+      return
+    }
+    setLastBulkOperation(null)
+    await loadData()
+  }, [lastBulkOperation])
 
   const clearSelection = useCallback(() => {
     setSelectedIds(new Set())
@@ -302,34 +328,65 @@ export default function BookingsCalendarPage() {
       <AddReservationDialog open={newReservationOpen} onOpenChange={setNewReservationOpen} onSuccess={loadData} preselectedBed={preselectedBed?.id} preselectedDate={preselectedDate ?? undefined} preselectedLocation={preselectedBed?.room.location_ref?.name} />
       
       <Dialog open={bulkOperationOpen} onOpenChange={setBulkOperationOpen}>
-        <DialogContent>
-          <DialogHeader><DialogTitle>Operación masiva ({selectedIds.size} reserva{selectedIds.size !== 1 ? "s" : ""})</DialogTitle></DialogHeader>
+        <DialogContent className="max-w-sm">
+          <DialogHeader><DialogTitle>Operación masiva ({selectedIds.size})</DialogTitle></DialogHeader>
           <div className="space-y-4">
             {bulkConflicts.length > 0 && (
-              <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm">
-                <p className="font-medium text-red-600">Conflictos detectados:</p>
-                <ul className="mt-2 space-y-1 text-red-600">{bulkConflicts.map((c) => <li key={c.id}>• {c.reason}</li>)}</ul>
+              <div className="rounded border border-red-500/30 bg-red-500/10 p-2 text-xs text-red-600">
+                <p className="font-medium">Conflictos: {bulkConflicts.map(c => c.reason).join(", ")}</p>
               </div>
             )}
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Mover {selectedIds.size} días</label>
-              <Input type="number" defaultValue="0" min="-180" max="180" id="daysDelta" placeholder="Ej: 3 para mover 3 días adelante" />
+            <div className="flex gap-2 border-b">
+              {["move", "status", "delete"].map((op) => (
+                <button key={op} onClick={() => setBulkOperationType(op as any)} className={`px-3 py-2 text-sm font-medium border-b-2 transition ${bulkOperationType === op ? "border-blue-500 text-blue-500" : "border-transparent text-muted-foreground hover:text-foreground"}`}>
+                  {op === "move" ? "Mover/Extender" : op === "status" ? "Estado" : "Eliminar"}
+                </button>
+              ))}
             </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Extender {selectedIds.size} días</label>
-              <Input type="number" defaultValue="0" min="0" max="180" id="daysExtend" placeholder="Ej: 1 para añadir 1 día al check-out" />
-            </div>
+            {bulkOperationType === "move" && (
+              <div className="space-y-3">
+                <div><label className="text-xs font-medium">Mover días</label><Input type="number" defaultValue="0" min="-180" max="180" id="daysDelta" /></div>
+                <div><label className="text-xs font-medium">Extender días</label><Input type="number" defaultValue="0" min="0" max="180" id="daysExtend" /></div>
+              </div>
+            )}
+            {bulkOperationType === "status" && (
+              <div><label className="text-xs font-medium">Nuevo estado</label>
+                <Select defaultValue="confirmed">
+                  <SelectTrigger id="statusSelect"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {Object.entries(STATUS_LABELS).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+            {bulkOperationType === "delete" && (
+              <p className="text-xs text-muted-foreground">Se eliminarán {selectedIds.size} reserva(s). Esta acción no se puede deshacer automáticamente.</p>
+            )}
             <div className="flex gap-2 pt-2">
               <Button className="flex-1" onClick={() => {
-                const delta = Number((document.getElementById("daysDelta") as HTMLInputElement)?.value || 0)
-                const extend = Number((document.getElementById("daysExtend") as HTMLInputElement)?.value || 0)
-                executeBulkOperation(delta, extend)
+                if (bulkOperationType === "move") {
+                  const delta = Number((document.getElementById("daysDelta") as HTMLInputElement)?.value || 0)
+                  const extend = Number((document.getElementById("daysExtend") as HTMLInputElement)?.value || 0)
+                  executeBulkOperation(delta, extend)
+                } else if (bulkOperationType === "status") {
+                  const status = (document.getElementById("statusSelect") as HTMLInputElement)?.value || "confirmed"
+                  executeBulkOperation(0, 0, status)
+                } else {
+                  executeBulkOperation()
+                }
               }}>Ejecutar</Button>
               <Button variant="outline" onClick={() => setBulkOperationOpen(false)}>Cancelar</Button>
             </div>
           </div>
         </DialogContent>
       </Dialog>
+      
+      {lastBulkOperation && Date.now() - lastBulkOperation.timestamp < 30000 && (
+        <div className="fixed bottom-4 right-4 flex gap-2 rounded-lg border border-blue-500/30 bg-blue-500/10 p-3 text-sm">
+          <span className="text-blue-600">Última operación: {lastBulkOperation.type} ({lastBulkOperation.ids.length})</span>
+          <Button size="sm" variant="ghost" onClick={undoLastOperation} className="text-blue-600 hover:text-blue-700">Deshacer</Button>
+        </div>
+      )}
       <Dialog open={!!selectedBlock} onOpenChange={(open) => !open && setSelectedBlock(null)}><DialogContent><DialogHeader><DialogTitle>Bloqueo de habitación</DialogTitle></DialogHeader>{selectedBlock && <div className="space-y-4"><Badge variant="secondary">{BLOCK_LABELS[selectedBlock.block_type] ?? selectedBlock.block_type}</Badge><Detail label="Motivo" value={selectedBlock.reason} /><div className="grid grid-cols-2 gap-4"><Detail label="Desde" value={selectedBlock.start_date} /><Detail label="Hasta" value={selectedBlock.end_date} /></div>{selectedBlock.notes && <Detail label="Notas" value={selectedBlock.notes} />}<Button asChild className="w-full"><Link href="/bookings/blocks">Administrar bloqueos</Link></Button></div>}</DialogContent></Dialog>
       <Dialog open={!!selectedReservation} onOpenChange={(open) => !open && setSelectedReservation(null)}><DialogContent className="max-w-lg"><DialogHeader><DialogTitle>Detalle de reserva</DialogTitle></DialogHeader>{selectedReservation && <div className="space-y-5"><div className="flex items-start justify-between gap-4"><div><p className="text-xs text-muted-foreground">Huésped</p><p className="text-xl font-semibold">{selectedReservation.guest_name}</p></div><Badge>{STATUS_LABELS[selectedReservation.status] ?? selectedReservation.status}</Badge></div><div className="grid grid-cols-2 gap-4 text-sm"><Detail label="Check-in" value={selectedReservation.check_in} /><Detail label="Check-out" value={selectedReservation.check_out} /><Detail label="Huéspedes" value={String(selectedReservation.num_guests ?? 1)} /><Detail label="Total" value={formatClp(Number(selectedReservation.total_amount ?? 0))} /></div><div className="flex flex-wrap justify-end gap-2 border-t pt-4">{normalizedStatus(selectedReservation.status) === "pending" && <StatusButton loading={updatingStatus === selectedReservation.id} label="Confirmar reserva" onClick={() => updateReservationStatus(selectedReservation, "confirmed")} />}{normalizedStatus(selectedReservation.status) === "confirmed" && <StatusButton loading={updatingStatus === selectedReservation.id} label="Registrar check-in" onClick={() => updateReservationStatus(selectedReservation, "checked_in")} />}{normalizedStatus(selectedReservation.status) === "checked_in" && <StatusButton loading={updatingStatus === selectedReservation.id} label="Registrar check-out" onClick={() => updateReservationStatus(selectedReservation, "checked_out")} />}</div></div>}</DialogContent></Dialog>
     </div>
