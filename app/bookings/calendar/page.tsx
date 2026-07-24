@@ -127,6 +127,19 @@ export default function BookingsCalendarPage() {
     loadOperations()
   }, [loadData])
 
+  // Calculate visibleBeds early (needed by computeGaps)
+  const visibleBeds = useMemo(() => {
+    const term = search.trim().toLowerCase()
+    return beds.filter((bed) => {
+      const matchesLocation = locationId === "all" || bed.room.location_id === locationId
+      const matchesSearch = !term || bed.room.room_number.toLowerCase().includes(term) || bed.bed_number.toLowerCase().includes(term) || bed.bed_type.toLowerCase().includes(term)
+      return matchesLocation && matchesSearch
+    })
+  }, [beds, locationId, search])
+
+  const visibleBedIds = useMemo(() => new Set(visibleBeds.map((bed) => bed.id)), [visibleBeds])
+  const visibleRoomIds = useMemo(() => new Set(visibleBeds.map((bed) => bed.room.id)), [visibleBeds])
+
   // C3: Gap detection
   const computeGaps = useCallback(() => {
     const newGaps = []
@@ -171,17 +184,6 @@ export default function BookingsCalendarPage() {
     return () => { supabase.removeChannel(channel) }
   }, [loadData, supabase])
 
-  const visibleBeds = useMemo(() => {
-    const term = search.trim().toLowerCase()
-    return beds.filter((bed) => {
-      const matchesLocation = locationId === "all" || bed.room.location_id === locationId
-      const matchesSearch = !term || bed.room.room_number.toLowerCase().includes(term) || bed.bed_number.toLowerCase().includes(term) || bed.bed_type.toLowerCase().includes(term)
-      return matchesLocation && matchesSearch
-    })
-  }, [beds, locationId, search])
-
-  const visibleBedIds = useMemo(() => new Set(visibleBeds.map((bed) => bed.id)), [visibleBeds])
-  const visibleRoomIds = useMemo(() => new Set(visibleBeds.map((bed) => bed.room.id)), [visibleBeds])
   const visibleReservations = useMemo(() => reservations.filter((reservation) => {
     const matchesBed = visibleBedIds.has(reservation.bed_id)
     const matchesStatus = status === "all" || normalizedStatus(reservation.status) === status
