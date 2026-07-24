@@ -20,6 +20,8 @@ import {
 import { format, startOfMonth, endOfMonth, subMonths } from "date-fns"
 import { AppLayout } from "@/components/app-layout"
 import { useLanguage } from "@/lib/hooks/use-language"
+import { OccupancyHeatmap } from "./occupancy-heatmap"
+import { Grid2x2 } from "lucide-react"
 
 interface Statistics {
   totalRevenue: number
@@ -173,9 +175,10 @@ export default function ReportsPage() {
     const occupancyRate = totalRoomNights > 0 ? (bookedRoomNights / totalRoomNights) * 100 : 0
 
     const locationBreakdown: { [key: string]: LocationStats } = {}
-    reservations?.forEach((res) => {
+    reservations?.forEach((res: any) => {
       const locId = res.location_id
-      const locName = res.rooms?.location || "Unknown"
+      const rawLoc = res.rooms?.location
+      const locName = (typeof rawLoc === "object" && rawLoc !== null ? rawLoc.name : rawLoc) || "Unknown"
 
       if (!locationBreakdown[locId]) {
         locationBreakdown[locId] = {
@@ -210,10 +213,11 @@ export default function ReportsPage() {
     setLocationStats(Object.values(locationBreakdown).sort((a, b) => b.revenue - a.revenue))
 
     const roomStats: { [key: string]: RoomPerformance } = {}
-    reservations?.forEach((res) => {
+    reservations?.forEach((res: any) => {
       const roomId = res.room_id
       const roomName = res.rooms?.room_number || "Unknown"
-      const locName = res.rooms?.location || "Unknown"
+      const rawLocR = res.rooms?.location
+      const locName = (typeof rawLocR === "object" && rawLocR !== null ? rawLocR.name : rawLocR) || "Unknown"
 
       if (!roomStats[roomId]) {
         roomStats[roomId] = {
@@ -564,6 +568,18 @@ export default function ReportsPage() {
                     <p className="text-xs text-muted-foreground">{t("reports.first_time_bookings")}</p>
                   </CardContent>
                 </Card>
+              </div>
+
+              {/* Occupancy Heatmap */}
+              <div>
+                <div className="mb-4 flex items-center gap-2">
+                  <Grid2x2 className="h-5 w-5" />
+                  <h2 className="text-lg font-semibold">Mapa de Ocupacion</h2>
+                  <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
+                    por cama · por dia
+                  </span>
+                </div>
+                <OccupancyHeatmap locations={locations} />
               </div>
 
               {/* Location Performance */}
