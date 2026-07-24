@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useMemo } from "react"
+import { useState, useEffect, useMemo, useCallback } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -744,35 +744,33 @@ export function RevenueIntelligence({
   const [autoFillTarget, setAutoFillTarget] = useState<{ gap: Gap; rate: number } | null>(null)
   const [refreshKey, setRefreshKey] = useState(0)
 
-  const supabase = createClient()
+  const supabase = useMemo(() => createClient(), [])
+
+  const load = useCallback(async () => {
+    setLoading(true)
+    const [roomsRes, resRes, blocksRes, prRes] = await Promise.all([
+      supabase.from("rooms").select("id,room_number,room_type,rate_per_night,location,capacity,status"),
+      supabase
+        .from("reservations")
+        .select("id,room_id,bed_id,check_in,check_out,status,total_amount,guest_name")
+        .gte("check_out", new Date().toISOString().substring(0, 10))
+        .lte("check_in", format(addDays(new Date(), 90), "yyyy-MM-dd")),
+      supabase
+        .from("room_blocks")
+        .select("id,room_id,start_date,end_date,status")
+        .eq("status", "active"),
+      supabase.from("pricing_rules").select("*"),
+    ])
+    setRooms((roomsRes.data ?? []) as Room[])
+    setReservations((resRes.data ?? []) as Reservation[])
+    setBlocks((blocksRes.data ?? []) as RoomBlock[])
+    setPricingRules((prRes.data ?? []) as PricingRule[])
+    setLoading(false)
+  }, [supabase])
 
   useEffect(() => {
-    let cancelled = false
-    async function load() {
-      setLoading(true)
-      const [roomsRes, resRes, blocksRes, prRes] = await Promise.all([
-        supabase.from("rooms").select("id,room_number,room_type,rate_per_night,location,capacity,status"),
-        supabase
-          .from("reservations")
-          .select("id,room_id,bed_id,check_in,check_out,status,total_amount,guest_name")
-          .gte("check_out", new Date().toISOString().substring(0, 10))
-          .lte("check_in", format(addDays(new Date(), 90), "yyyy-MM-dd")),
-        supabase
-          .from("room_blocks")
-          .select("id,room_id,start_date,end_date,status")
-          .eq("status", "active"),
-        supabase.from("pricing_rules").select("*"),
-      ])
-      if (cancelled) return
-      setRooms((roomsRes.data ?? []) as Room[])
-      setReservations((resRes.data ?? []) as Reservation[])
-      setBlocks((blocksRes.data ?? []) as RoomBlock[])
-      setPricingRules((prRes.data ?? []) as PricingRule[])
-      setLoading(false)
-    }
-    load()
-    return () => { cancelled = true }
-  }, [refreshKey])
+    void load()
+  }, [load, refreshKey])
 
   const gaps = useMemo(() => computeGaps(rooms, reservations, blocks), [rooms, reservations, blocks])
   const suggestions = useMemo(() => computeSuggestions(gaps, pricingRules), [gaps, pricingRules])

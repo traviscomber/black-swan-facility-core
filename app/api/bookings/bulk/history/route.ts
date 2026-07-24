@@ -25,5 +25,11 @@ export async function GET(req: NextRequest) {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-  return NextResponse.json({ data, total: count ?? 0, limit, offset })
+  // Derive reservation_count from array length (no extra query needed)
+  const enriched = (data ?? []).map((row) => ({
+    ...row,
+    reservation_count: Array.isArray(row.reservation_ids) ? row.reservation_ids.length : 0,
+  }))
+
+  return NextResponse.json({ data: enriched, total: count ?? 0, limit, offset })
 }

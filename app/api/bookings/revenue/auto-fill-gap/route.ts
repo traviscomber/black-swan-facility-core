@@ -25,6 +25,7 @@ export async function POST(req: NextRequest) {
     if (!guest_name || typeof guest_name !== "string" || !guest_name.trim()) {
       return NextResponse.json({ error: "guest_name es obligatorio" }, { status: 400 })
     }
+
     const checkIn  = new Date(gap_start)
     const checkOut = new Date(gap_end)
     if (isNaN(checkIn.getTime()) || isNaN(checkOut.getTime())) {
@@ -45,7 +46,7 @@ export async function POST(req: NextRequest) {
     // ── Verify room exists ────────────────────────────────────────────────
     const { data: room, error: roomErr } = await supabase
       .from("rooms")
-      .select("id, location_id, room_number")
+      .select("id, room_number")
       .eq("id", room_id)
       .single()
 
@@ -53,7 +54,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Habitacion no encontrada" }, { status: 404 })
     }
 
-    // ── Find first available bed for this room (optional) ─────────────────
+    // ── Find first available bed for this room ────────────────────────────
     const { data: bed } = await supabase
       .from("beds")
       .select("id")
@@ -62,15 +63,22 @@ export async function POST(req: NextRequest) {
       .limit(1)
       .maybeSingle()
 
-    // ── Delegate to create_reservation_atomic ─────────────────────────────
-    // This RPC enforces double-booking prevention, applies all DB constraints,
-    // and never allows guest_name="[GAP FILLER]" or num_guests=0 bypasses.
+    if (!bed) {
+      return NextResponse.json(
+        { error: "Sin camas disponibles para esta habitacion" },
+        { status: 409 },
+      )
+    }
+
+    // ── Delegate to create_reservation_atomic ────────────────────────────
+    // The RPC enforces double-booking prevention and all DB constraints.
+    // Signature: p_bed_id, p_guest_name, p_guest_email, p_guest_phone,
+    //            p_check_in, p_check_out, p_num_guests, p_total_amount,
+    //            p_status, p_special_requests, p_invoice_due_date
     const { data: reservationId, error: rpcErr } = await supabase.rpc(
       "create_reservation_atomic",
       {
-        p_room_id:      room_id,
-        p_bed_id:       bed?.id ?? null,
-        p_location_id:  room.location_id ?? null,
+        p_bed_id:       bed.id,
         p_guest_name:   guest_name.trim(),
         p_guest_email:  guest_email?.trim() ?? null,
         p_check_in:     gap_start,
@@ -78,13 +86,10 @@ export async function POST(req: NextRequest) {
         p_num_guests:   Math.max(1, Number(num_guests)),
         p_total_amount: totalAmount,
         p_status:       "confirmed",
-        p_source:       "auto_fill",
-        p_booking_type: "BED",
       },
     )
 
     if (rpcErr) {
-      // Surface constraint violations (double-booking, date order, etc.)
       return NextResponse.json(
         { error: rpcErr.message ?? "Error al crear la reserva" },
         { status: 409 },
