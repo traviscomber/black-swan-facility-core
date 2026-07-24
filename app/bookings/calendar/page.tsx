@@ -54,7 +54,7 @@ function formatClp(value: number) {
 }
 
 export default function BookingsCalendarPage() {
-  const supabase = useMemo(() => createClient(), [])
+  const supabase = useMemo(() => createClient(), []) // Stable reference
   const [locations, setLocations] = useState<Location[]>([])
   const [beds, setBeds] = useState<Bed[]>([])
   const [reservations, setReservations] = useState<Reservation[]>([])
@@ -90,42 +90,64 @@ export default function BookingsCalendarPage() {
   const endDate = addDays(startDate, rangeDays)
   const dates = useMemo(() => Array.from({ length: rangeDays }, (_, index) => addDays(startDate, index)), [rangeDays, startDate])
 
+  // Callback for refresh button and real-time updates - separate from initial load
   const loadData = useCallback(async () => {
     setLoading(true)
     setError(null)
-    const [locationsResult, bedsResult, reservationsResult, blocksResult] = await Promise.all([
-      supabase.from("locations").select("id, name").eq("is_active", true).order("name"),
-      supabase.from("beds").select(`id, bed_number, bed_type, room:rooms!inner(id, room_number, room_type, location_id, location_ref:locations(id, name))`).order("room_id"),
-      supabase.from("reservations").select("id, bed_id, guest_name, guest_email, guest_phone, check_in, check_out, status, num_guests, total_amount, special_requests")
-        .lt("check_in", format(endDate, "yyyy-MM-dd")).gt("check_out", format(startDate, "yyyy-MM-dd")).order("check_in"),
-      supabase.from("room_blocks").select("id, room_id, start_date, end_date, block_type, reason, notes, status")
-        .eq("status", "active").lt("start_date", format(endDate, "yyyy-MM-dd")).gt("end_date", format(startDate, "yyyy-MM-dd")).order("start_date"),
-    ])
-    const firstError = locationsResult.error || bedsResult.error || reservationsResult.error || blocksResult.error
-    if (firstError) setError(firstError.message)
-    else {
-      setLocations((locationsResult.data ?? []) as Location[])
-      setBeds((bedsResult.data ?? []) as unknown as Bed[])
-      setReservations((reservationsResult.data ?? []) as Reservation[])
-      setBlocks((blocksResult.data ?? []) as RoomBlock[])
+    
+    try {
+      const [locationsResult, bedsResult, reservationsResult, blocksResult] = await Promise.all([
+        supabase.from("locations").select("id, name").eq("is_active", true).order("name"),
+        supabase.from("beds").select(`id, bed_number, bed_type, room:rooms!inner(id, room_number, room_type, location_id, location_ref:locations(id, name))`).order("room_id"),
+        supabase.from("reservations").select("id, bed_id, guest_name, guest_email, guest_phone, check_in, check_out, status, num_guests, total_amount, special_requests")
+          .lt("check_in", format(endDate, "yyyy-MM-dd")).gt("check_out", format(startDate, "yyyy-MM-dd")).order("check_in"),
+        supabase.from("room_blocks").select("id, room_id, start_date, end_date, block_type, reason, notes, status")
+          .eq("status", "active").lt("start_date", format(endDate, "yyyy-MM-dd")).gt("end_date", format(startDate, "yyyy-MM-dd")).order("start_date"),
+      ])
+      
+      const firstError = locationsResult.error || bedsResult.error || reservationsResult.error || blocksResult.error
+      if (firstError) {
+        setError(firstError.message)
+      } else {
+        setLocations((locationsResult.data ?? []) as Location[])
+        setBeds((bedsResult.data ?? []) as unknown as Bed[])
+        setReservations((reservationsResult.data ?? []) as Reservation[])
+        setBlocks((blocksResult.data ?? []) as RoomBlock[])
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Unknown error"
+      setError(message)
+    } finally {
+      setLoading(false)
     }
-    setLoading(false)
   }, [endDate, startDate, supabase])
 
+
+
+  // Load data on mount only
   useEffect(() => {
     loadData()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  useEffect(() => {
+    // Load operations separately
     const loadOperations = async () => {
-      const [hk, mt, rs] = await Promise.all([
-        fetch("/api/operations/housekeeping").then(r => r.json()),
-        fetch("/api/operations/maintenance").then(r => r.json()),
-        fetch("/api/operations/room-state").then(r => r.json()),
-      ])
-      setHousekeepingTasks(hk.data || [])
-      setMaintenanceTasks(mt.data || [])
-      setRoomStates(rs.data || [])
+      try {
+        const [hk, mt, rs] = await Promise.all([
+          fetch("/api/operations/housekeeping").then(r => r.json()),
+          fetch("/api/operations/maintenance").then(r => r.json()),
+          fetch("/api/operations/room-state").then(r => r.json()),
+        ])
+        setHousekeepingTasks(hk.data || [])
+        setMaintenanceTasks(mt.data || [])
+        setRoomStates(rs.data || [])
+      } catch (err) {
+        console.warn("[calendar] operations load failed:", err)
+      }
     }
     loadOperations()
-  }, [loadData])
+  }, [])
 
   // Calculate visibleBeds early (needed by computeGaps)
   const visibleBeds = useMemo(() => {
@@ -142,7 +164,7 @@ export default function BookingsCalendarPage() {
 
   // C3: Gap detection
   const computeGaps = useCallback(() => {
-    const newGaps = []
+    const newGaps: typeof gaps = []
     visibleBeds.forEach((bed) => {
       const bedReservations = reservations.filter((r) => r.bed_id === bed.id && r.status !== "cancelled")
         .sort((a, b) => new Date(a.check_in).getTime() - new Date(b.check_in).getTime())
@@ -401,9 +423,12 @@ export default function BookingsCalendarPage() {
             </div>
           </div>
         )}
+        {error && (
+          <Card className="border-red-500 bg-red-50"><CardHeader><CardTitle className="text-red-900">Error al cargar</CardTitle><p className="text-sm text-red-800">{error}</p></CardHeader><CardContent><Button onClick={loadData} variant="outline" className="mt-2">Reintentar</Button></CardContent></Card>
+        )}
         <Card className="overflow-hidden"><CardHeader className="flex flex-row items-center justify-between border-b py-3"><div><CardTitle className="text-base">{format(startDate, "dd MMM")} — {format(addDays(endDate, -1), "dd MMM yyyy")}</CardTitle><p className="text-xs text-muted-foreground">{visibleBeds.length} unidades visibles · {visibleBlocks.length} bloqueos activos</p></div><div className="flex gap-2"><Button variant="outline" size="icon" onClick={() => setStartDate(addDays(startDate, -rangeDays))}><ChevronLeft className="h-4 w-4" /></Button><Button variant="outline" size="icon" onClick={() => setStartDate(addDays(startDate, rangeDays))}><ChevronRight className="h-4 w-4" /></Button></div></CardHeader>
           <CardContent className="p-0"><div className="overflow-auto"><table className="min-w-max border-collapse text-sm"><thead className="sticky top-0 z-20 bg-background"><tr><th className="sticky left-0 z-30 min-w-48 border-b border-r bg-background px-4 py-3 text-left">Habitación / cama</th>{dates.map((date) => <th key={date.toISOString()} className={`min-w-24 border-b border-r px-2 py-2 text-center ${isSameDay(date, new Date()) ? "bg-amber-100" : ""}`}><div className="text-xs text-muted-foreground">{format(date, "EEE")}</div><div className="font-semibold">{format(date, "dd MMM")}</div></th>)}</tr></thead>
-            <tbody>{loading ? <tr><td colSpan={dates.length + 1} className="p-12 text-center text-muted-foreground">Cargando calendario...</td></tr> : visibleBeds.length === 0 ? <tr><td colSpan={dates.length + 1} className="p-12 text-center text-muted-foreground">No hay unidades para los filtros seleccionados.</td></tr> : visibleBeds.map((bed) => <tr key={bed.id} className="hover:bg-muted/30"><td className="sticky left-0 z-10 border-b border-r bg-background px-4 py-3"><div className="font-medium">Hab. {bed.room.room_number}</div><div className="text-xs text-muted-foreground">{bed.bed_number} · {bed.bed_type}</div></td>{dates.map((date) => {
+            <tbody>{loading ? <tr><td colSpan={dates.length + 1} className="p-12 text-center"><div className="flex items-center justify-center gap-2 text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /><span>Cargando calendario...</span></div></td></tr> : beds.length === 0 ? <tr><td colSpan={dates.length + 1} className="p-12 text-center text-muted-foreground">No hay habitaciones o camas configuradas.</td></tr> : visibleBeds.length === 0 ? <tr><td colSpan={dates.length + 1} className="p-12 text-center text-muted-foreground">No hay unidades para los filtros seleccionados.</td></tr> : visibleBeds.map((bed) => <tr key={bed.id} className="hover:bg-muted/30"><td className="sticky left-0 z-10 border-b border-r bg-background px-4 py-3"><div className="font-medium">Hab. {bed.room.room_number}</div><div className="text-xs text-muted-foreground">{bed.bed_number} · {bed.bed_type}</div></td>{dates.map((date) => {
               const reservation = reservationAt(bed.id, date); const block = blockAt(bed.room.id, date)
               const reservationStart = reservation && isSameDay(parseISO(reservation.check_in), date)
               const blockStart = block && isSameDay(parseISO(block.start_date), date)
