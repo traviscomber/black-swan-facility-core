@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
 import { addDays, differenceInCalendarDays, format, isSameDay, parseISO, startOfDay } from "date-fns"
 import { Ban, BedDouble, CalendarDays, CheckSquare, ChevronLeft, ChevronRight, CircleDollarSign, Home, Loader2, LogIn, LogOut, Moon, Plus, RotateCcw, Search, Square, Trash2, Users, X } from "lucide-react"
 import { toast } from "sonner"
@@ -14,6 +14,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { type ReservationResizeEdge, useReservationResizeState } from "./use-reservation-resize-state"
+import { useFlipAnimation } from "./use-flip-animation"
 
 interface Location { id: string; name: string }
 interface Bed { id: string; bed_number: string; bed_type: string; room: { id: string; room_number: string; room_type?: string; location_id: string; location_ref?: { id: string; name: string } } }
@@ -55,6 +56,22 @@ export default function BookingsCalendarPage() {
   const [dropTargetBedId, setDropTargetBedId] = useState<string | null>(null)
   const [movingReservationId, setMovingReservationId] = useState<string | null>(null)
   const { resizeState, resizingReservationId, confirmingReservationId, isResizing, beginResize, updatePreview, markConfirming, clearResize } = useReservationResizeState()
+  const { captureRect, flipTo } = useFlipAnimation()
+  // blockRefs holds a ref to each rendered reservation button, keyed by event_id
+  const blockRefs = useRef<Map<string, HTMLButtonElement>>(new Map())
+  // pendingFlips: ids that need flipTo called after the next layout paint
+  const pendingFlipIds = useRef<string[]>([])
+
+  // After every render, flush pending FLIP animations
+  useLayoutEffect(() => {
+    if (pendingFlipIds.current.length === 0) return
+    const ids = pendingFlipIds.current
+    pendingFlipIds.current = []
+    for (const id of ids) {
+      const el = blockRefs.current.get(id)
+      flipTo(id, el ?? null)
+    }
+  })
 
   // Phase B: multi-select state
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
@@ -157,11 +174,22 @@ export default function BookingsCalendarPage() {
     if (resizeConflict) { toast.error(resizeConflict.event_type === "block" ? "Las nuevas fechas chocan con un bloqueo" : "Las nuevas fechas chocan con otra reserva"); clearResize(); return }
     const previousEvents = events
     setError(null)
+    // FLIP: capture position before optimistic resize
+    captureRect(pendingResize.reservationId, blockRefs.current.get(pendingResize.reservationId) ?? null)
+    pendingFlipIds.current.push(pendingResize.reservationId)
     setEvents((current) => current.map((event) => event.event_type === "reservation" && event.event_id === pendingResize.reservationId ? { ...event, starts_on: pendingResize.previewStart, ends_on: pendingResize.previewEnd } : event))
     markConfirming(pendingResize.reservationId)
     const { data, error: resizeError } = await supabase.rpc("resize_booking_reservation", { p_reservation_id: pendingResize.reservationId, p_check_in: pendingResize.previewStart, p_check_out: pendingResize.previewEnd })
     const result = ((data ?? [])[0] ?? null) as ResizeRpcResult | null
-    if (resizeError || !result?.success) { setEvents(previousEvents); const message = resizeError?.message ?? result?.message ?? "La disponibilidad cambió antes de confirmar las fechas"; setError(message); toast.error("El cambio de fechas fue rechazado y se restauró la reserva"); clearResize(); return }
+    if (resizeError || !result?.success) {
+      // FLIP: animate rollback from preview position back to original
+      captureRect(pendingResize.reservationId, blockRefs.current.get(pendingResize.reservationId) ?? null)
+      pendingFlipIds.current.push(pendingResize.reservationId)
+      setEvents(previousEvents); const message = resizeError?.message ?? result?.message ?? "La disponibilidad cambió antes de confirmar las fechas"; setError(message); toast.error("El cambio de fechas fue rechazado y se restauró la reserva"); clearResize(); return
+    }
+    // FLIP: animate from preview to confirmed server dates
+    captureRect(pendingResize.reservationId, blockRefs.current.get(pendingResize.reservationId) ?? null)
+    pendingFlipIds.current.push(pendingResize.reservationId)
     setEvents((current) => current.map((event) => event.event_type === "reservation" && event.event_id === pendingResize.reservationId ? { ...event, starts_on: result.check_in, ends_on: result.check_out } : event))
     toast.success(`Reserva actualizada: ${result.check_in} → ${result.check_out}`); clearResize(); await loadData()
   }
@@ -176,9 +204,17 @@ export default function BookingsCalendarPage() {
     if (availabilityError) { setError(availabilityError.message); toast.error("No fue posible validar la disponibilidad"); setMovingReservationId(null); finishReservationDrag(); return }
     if (!available) { toast.error("La cama seleccionada no está disponible para esas fechas"); setMovingReservationId(null); finishReservationDrag(); return }
     const previousEvents = events
+    // FLIP: capture position before optimistic move
+    captureRect(draggedEvent.event_id, blockRefs.current.get(draggedEvent.event_id) ?? null)
+    pendingFlipIds.current.push(draggedEvent.event_id)
     setEvents((current) => current.map((event) => event.event_id === draggedEvent.event_id && event.event_type === "reservation" ? { ...event, bed_id: targetBed.id, room_id: targetBed.room.id, location_id: targetBed.room.location_id } : event))
     const { error: updateError } = await supabase.from("reservations").update({ bed_id: targetBed.id, room_id: targetBed.room.id, location_id: targetBed.room.location_id, booking_type: "BED" }).eq("id", draggedEvent.event_id)
-    if (updateError) { setEvents(previousEvents); setError(updateError.message); toast.error("El movimiento fue rechazado y se restauró la reserva") } else { toast.success(`Reserva movida a Hab. ${targetBed.room.room_number} · ${targetBed.bed_number}`); await loadData() }
+    if (updateError) {
+      // FLIP: capture rollback position and animate back to original
+      captureRect(draggedEvent.event_id, blockRefs.current.get(draggedEvent.event_id) ?? null)
+      pendingFlipIds.current.push(draggedEvent.event_id)
+      setEvents(previousEvents); setError(updateError.message); toast.error("El movimiento fue rechazado y se restauró la reserva")
+    } else { toast.success(`Reserva movida a Hab. ${targetBed.room.room_number} · ${targetBed.bed_number}`); await loadData() }
     setMovingReservationId(null); finishReservationDrag()
   }
 
@@ -338,6 +374,10 @@ export default function BookingsCalendarPage() {
                 {previewGeometry && <div className={`pointer-events-none absolute top-2 z-20 h-[52px] rounded-md border-2 border-dashed shadow-sm transition-all duration-150 ${hasConflict ? "border-red-200 bg-red-600/75" : "border-white/90 bg-emerald-500/65"}`} style={{ left: previewGeometry.left, width: previewGeometry.width }}><div className="truncate px-3 pt-1 text-xs font-semibold text-white">{hasConflict ? "No disponible" : "Disponible"} · {resizeState!.previewStart} → {resizeState!.previewEnd}</div><div className="truncate px-3 text-[10px] text-white/90">{hasConflict ? (resizeConflict?.event_type === "block" ? "Conflicto con bloqueo" : "Conflicto con otra reserva") : "Suelta para confirmar"}</div></div>}
                 <button
                   type="button"
+                  ref={(el) => {
+                    if (el) blockRefs.current.set(event.event_id, el)
+                    else blockRefs.current.delete(event.event_id)
+                  }}
                   draggable={!isBlock && !movingReservationId && !isResizing && !confirmingReservationId && !isBulkMode}
                   onDragStart={(dragEvent) => !isBlock && beginReservationDrag(event, dragEvent.dataTransfer)}
                   onDragEnd={finishReservationDrag}
