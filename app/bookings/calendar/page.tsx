@@ -434,13 +434,49 @@ export default function BookingsCalendarPage() {
           <CardContent className="p-0"><div className="overflow-auto"><table className="min-w-max border-collapse text-sm"><thead className="sticky top-0 z-20 bg-background"><tr><th className="sticky left-0 z-30 min-w-48 border-b border-r bg-background px-4 py-3 text-left">Habitación / cama</th>{dates.map((date) => <th key={date.toISOString()} className={`min-w-24 border-b border-r px-2 py-2 text-center ${isSameDay(date, new Date()) ? "bg-amber-100" : ""}`}><div className="text-xs text-muted-foreground">{format(date, "EEE")}</div><div className="font-semibold">{format(date, "dd MMM")}</div></th>)}</tr></thead>
             <tbody>{loading ? <tr><td colSpan={dates.length + 1} className="p-12 text-center"><div className="flex items-center justify-center gap-2 text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /><span>Cargando calendario...</span></div></td></tr> : beds.length === 0 ? <tr><td colSpan={dates.length + 1} className="p-12 text-center text-muted-foreground">No hay habitaciones o camas configuradas.</td></tr> : visibleBeds.length === 0 ? <tr><td colSpan={dates.length + 1} className="p-12 text-center text-muted-foreground">No hay unidades para los filtros seleccionados.</td></tr> : visibleBeds.map((bed) => <tr key={bed.id} className="hover:bg-muted/30"><td className="sticky left-0 z-10 border-b border-r bg-background px-4 py-3"><div className="font-medium">Hab. {bed.room.room_number}</div><div className="text-xs text-muted-foreground">{bed.bed_number} · {bed.bed_type}</div></td>{dates.map((date) => {
               const reservation = reservationAt(bed.id, date); const block = blockAt(bed.room.id, date)
-              const reservationStart = reservation && isSameDay(parseISO(reservation.check_in), date)
-              const blockStart = block && isSameDay(parseISO(block.start_date), date)
               const isSelected = reservation && selectedIds.has(reservation.id)
-              return <td key={`${bed.id}-${date.toISOString()}`} className={`h-16 border-b border-r p-1 ${isSameDay(date, new Date()) ? "bg-amber-50" : ""}`}>{reservation ? <button onClick={() => {
-                if (isSelected) toggleSelectReservation(reservation.id)
-                else setSelectedReservation(reservation)
-              }} onContextMenu={(e) => { e.preventDefault(); toggleSelectReservation(reservation.id)               }} className={`h-full w-full rounded border px-2 text-left text-xs transition-all ${isSelected ? "ring-2 ring-blue-500" : ""} ${STATUS_STYLES[reservation.status] ?? "bg-slate-200 text-slate-900"}`} title={`${reservation.guest_name} · ${reservation.check_in} → ${reservation.check_out} · Click derecho para seleccionar`}>{reservationStart ? <><div className="truncate font-semibold">{reservation.guest_name}</div><div className="truncate opacity-80">{showPricingOverlay && reservation.total_amount ? `$${reservation.total_amount}` : (STATUS_LABELS[reservation.status] ?? reservation.status)}</div></> : <div className="h-full opacity-40" />}</button> : block ? <button onClick={() => setSelectedBlock(block)} className="h-full w-full rounded border border-zinc-500 bg-zinc-800 px-2 text-left text-xs text-white" title={`${block.reason} · ${block.start_date} → ${block.end_date}`}>{blockStart ? <><div className="truncate font-semibold">{BLOCK_LABELS[block.block_type] ?? "Bloqueada"}</div><div className="truncate opacity-80">{block.reason}</div></> : <div className="h-full opacity-40" />}</button> : <button onClick={() => openNewReservation(bed, date)} className="h-full w-full rounded text-muted-foreground hover:bg-primary/10 hover:text-primary"><Plus className="mx-auto h-4 w-4" /></button>}</td>
+              return <td key={`${bed.id}-${date.toISOString()}`} className={`h-16 border-b border-r p-0 ${isSameDay(date, new Date()) ? "bg-amber-50" : ""}`}>
+                {reservation ? (
+                  <ResizableReservationBlock
+                    reservation={reservation}
+                    columnWidth={24}
+                    startDate={startDate}
+                    statusStyles={STATUS_STYLES}
+                    onResize={(resId, newCheckIn, newCheckOut) => {
+                      // Update reservation dates
+                      const updated = reservations.map(r => 
+                        r.id === resId ? { ...r, check_in: newCheckIn, check_out: newCheckOut } : r
+                      )
+                      setReservations(updated)
+                      // Trigger API update
+                      fetch("/api/bookings/reservations/update", {
+                        method: "PATCH",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ id: resId, check_in: newCheckIn, check_out: newCheckOut })
+                      }).catch(err => console.error("Update failed:", err))
+                    }}
+                    onSelected={(resId) => {
+                      if (isSelected) toggleSelectReservation(resId)
+                      else setSelectedReservation(reservations.find(r => r.id === resId) ?? null)
+                    }}
+                  />
+                ) : block ? (
+                  <button onClick={() => setSelectedBlock(block)} className="h-full w-full rounded border border-zinc-500 bg-zinc-800 px-2 text-left text-xs text-white" title={`${block.reason} · ${block.start_date} → ${block.end_date}`}>
+                    {isSameDay(parseISO(block.start_date), date) ? (
+                      <>
+                        <div className="truncate font-semibold">{BLOCK_LABELS[block.block_type] ?? "Bloqueada"}</div>
+                        <div className="truncate opacity-80">{block.reason}</div>
+                      </>
+                    ) : (
+                      <div className="h-full opacity-40" />
+                    )}
+                  </button>
+                ) : (
+                  <button onClick={() => openNewReservation(bed, date)} className="h-full w-full rounded text-muted-foreground hover:bg-primary/10 hover:text-primary">
+                    <Plus className="mx-auto h-4 w-4" />
+                  </button>
+                )}
+              </td>
             })}</tr>)}</tbody></table></div></CardContent>
         </Card>
       </div>
