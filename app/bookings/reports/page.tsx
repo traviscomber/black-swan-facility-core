@@ -21,7 +21,8 @@ import { format, startOfMonth, endOfMonth, subMonths } from "date-fns"
 import { AppLayout } from "@/components/app-layout"
 import { useLanguage } from "@/lib/hooks/use-language"
 import { OccupancyHeatmap } from "./occupancy-heatmap"
-import { Grid2x2 } from "lucide-react"
+import { Grid2x2, Brain } from "lucide-react"
+import { RevenueIntelligence } from "./revenue-intelligence"
 
 interface Statistics {
   totalRevenue: number
@@ -580,6 +581,18 @@ export default function ReportsPage() {
                   </span>
                 </div>
                 <OccupancyHeatmap locations={locations} />
+              </div>
+
+              {/* Revenue Intelligence — C2 Pricing Overlay · C3 Gap Detector · C4 Smart Suggestions */}
+              <div>
+                <div className="mb-4 flex items-center gap-2">
+                  <Brain className="h-5 w-5" />
+                  <h2 className="text-lg font-semibold">Revenue Intelligence</h2>
+                  <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
+                    gaps · pricing · sugerencias
+                  </span>
+                </div>
+                <RevenueIntelligence locations={locations} />
               </div>
 
               {/* Location Performance */}
