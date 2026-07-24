@@ -7,6 +7,8 @@ import { Ban, CalendarDays, ChevronLeft, ChevronRight, CircleDollarSign, Loader2
 import { createClient } from "@/lib/supabase/client"
 import { AddReservationDialog } from "@/components/add-reservation-dialog"
 import { ResizableReservationBlock } from "@/components/resizable-reservation-block"
+import { OccupancyHeatmap } from "@/components/occupancy-heatmap"
+import { GapFillerDialog } from "@/components/gap-filler-dialog"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -72,6 +74,11 @@ export default function BookingsCalendarPage() {
   const [bulkConflicts, setBulkConflicts] = useState<{ id: string; reason: string }[]>([])
   const [bulkOperationType, setBulkOperationType] = useState<"move" | "status" | "delete">("move")
   const [lastBulkOperation, setLastBulkOperation] = useState<{ ids: string[]; type: string; timestamp: number } | null>(null)
+  const [showPricingOverlay, setShowPricingOverlay] = useState(false)
+  const [showHeatmap, setShowHeatmap] = useState(false)
+  const [gaps, setGaps] = useState<{ bedId: string; startDate: string; endDate: string; days: number }[]>([])
+  const [suggestions, setSuggestions] = useState<{ type: string; message: string; action?: string }[]>([])
+  const [selectedGap, setSelectedGap] = useState<{ bedId: string; startDate: string; endDate: string; days: number } | null>(null)
 
   const endDate = addDays(startDate, rangeDays)
   const dates = useMemo(() => Array.from({ length: rangeDays }, (_, index) => addDays(startDate, index)), [rangeDays, startDate])
@@ -98,7 +105,46 @@ export default function BookingsCalendarPage() {
     setLoading(false)
   }, [endDate, startDate, supabase])
 
-  useEffect(() => { loadData() }, [loadData])
+  useEffect(() => {
+    loadData()
+  }, [loadData])
+
+  // C3: Gap detection
+  const computeGaps = useCallback(() => {
+    const newGaps = []
+    visibleBeds.forEach((bed) => {
+      const bedReservations = reservations.filter((r) => r.bed_id === bed.id && r.status !== "cancelled")
+        .sort((a, b) => new Date(a.check_in).getTime() - new Date(b.check_in).getTime())
+      
+      for (let i = 0; i < bedReservations.length - 1; i++) {
+        const gap = differenceInCalendarDays(new Date(bedReservations[i + 1].check_in), new Date(bedReservations[i].check_out))
+        if (gap > 2) {
+          newGaps.push({
+            bedId: bed.id,
+            startDate: bedReservations[i].check_out,
+            endDate: bedReservations[i + 1].check_in,
+            days: gap,
+          })
+        }
+      }
+    })
+    setGaps(newGaps)
+  }, [visibleBeds, reservations])
+
+  // C4: Smart suggestions
+  useEffect(() => {
+    computeGaps()
+    const newSuggestions = []
+    const avgOccupancy = visibleBeds.length > 0 
+      ? (reservations.length * 3) / (visibleBeds.length * rangeDays) * 100 
+      : 0
+    
+    if (gaps.length > 0) newSuggestions.push({ type: "gap", message: `${gaps.length} gaps detectados - considere promociones` })
+    if (avgOccupancy > 90) newSuggestions.push({ type: "high", message: "Ocupación >90% - aumente precios 15-20%" })
+    if (avgOccupancy < 50) newSuggestions.push({ type: "low", message: "Ocupación <50% - considere descuentos" })
+    
+    setSuggestions(newSuggestions)
+  }, [visibleBeds, reservations, rangeDays, gaps.length, computeGaps])
   useEffect(() => {
     const channel = supabase.channel("bookings-calendar-v2")
       .on("postgres_changes", { event: "*", schema: "public", table: "reservations" }, loadData)
@@ -271,6 +317,22 @@ export default function BookingsCalendarPage() {
     setBulkConflicts([])
   }, [])
 
+  const fillGap = useCallback(async (bedId: string, checkIn: string, checkOut: string, dailyRate: number) => {
+    try {
+      const response = await fetch("/api/bookings/revenue/auto-fill-gap", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ bed_id: bedId, check_in: checkIn, check_out: checkOut, daily_rate: dailyRate }),
+      })
+      const result = await response.json()
+      if (!response.ok) throw new Error(result.error)
+      setSelectedGap(null)
+      await loadData()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Error filling gap")
+    }
+  }, [loadData])
+
   return (
     <div className="min-h-screen bg-background p-4 md:p-6">
       <div className="mx-auto max-w-[1800px] space-y-5">
@@ -301,12 +363,20 @@ export default function BookingsCalendarPage() {
 
         {error && <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-600">{error}</div>}
         
+        {suggestions.length > 0 && (
+          <div className="rounded-lg border border-blue-500/30 bg-blue-500/10 p-3 space-y-1 text-xs">
+            {suggestions.map((s, i) => <div key={i} className={s.type === "gap" ? "text-blue-600" : s.type === "high" ? "text-green-600" : "text-amber-600"}>{s.message}</div>)}
+          </div>
+        )}
+        
         {selectedIds.size > 0 && (
           <div className="sticky top-0 z-40 flex items-center justify-between gap-3 rounded-lg border border-blue-500/30 bg-blue-500/10 p-3">
             <span className="text-sm font-medium">{selectedIds.size} reserva(s) seleccionada(s)</span>
             <div className="flex gap-2">
-              <Button size="sm" variant="outline" onClick={() => setBulkOperationOpen(true)}>Mover/Extender</Button>
-              <Button size="sm" variant="ghost" onClick={clearSelection}>Limpiar</Button>
+              <Button size="sm" variant={showPricingOverlay ? "default" : "outline"} onClick={() => setShowPricingOverlay(!showPricingOverlay)}>💰 Precios</Button>
+              <Button size="sm" variant={showHeatmap ? "default" : "outline"} onClick={() => setShowHeatmap(!showHeatmap)}>🔥 Heatmap</Button>
+              <Button variant="outline" onClick={() => setStartDate(addDays(startDate, -rangeDays))}><ChevronLeft className="h-4 w-4" /></Button>
+              <Button variant="outline" onClick={() => setStartDate(addDays(startDate, rangeDays))}><ChevronRight className="h-4 w-4" /></Button>
             </div>
           </div>
         )}
@@ -320,12 +390,34 @@ export default function BookingsCalendarPage() {
               return <td key={`${bed.id}-${date.toISOString()}`} className={`h-16 border-b border-r p-1 ${isSameDay(date, new Date()) ? "bg-amber-50" : ""}`}>{reservation ? <button onClick={() => {
                 if (isSelected) toggleSelectReservation(reservation.id)
                 else setSelectedReservation(reservation)
-              }} onContextMenu={(e) => { e.preventDefault(); toggleSelectReservation(reservation.id) }} className={`h-full w-full rounded border px-2 text-left text-xs transition-all ${isSelected ? "ring-2 ring-blue-500" : ""} ${STATUS_STYLES[reservation.status] ?? "bg-slate-200 text-slate-900"}`} title={`${reservation.guest_name} · ${reservation.check_in} → ${reservation.check_out} · Click derecho para seleccionar`}>{reservationStart ? <><div className="truncate font-semibold">{reservation.guest_name}</div><div className="truncate opacity-80">{STATUS_LABELS[reservation.status] ?? reservation.status}</div></> : <div className="h-full opacity-40" />}</button> : block ? <button onClick={() => setSelectedBlock(block)} className="h-full w-full rounded border border-zinc-500 bg-zinc-800 px-2 text-left text-xs text-white" title={`${block.reason} · ${block.start_date} → ${block.end_date}`}>{blockStart ? <><div className="truncate font-semibold">{BLOCK_LABELS[block.block_type] ?? "Bloqueada"}</div><div className="truncate opacity-80">{block.reason}</div></> : <div className="h-full opacity-40" />}</button> : <button onClick={() => openNewReservation(bed, date)} className="h-full w-full rounded text-muted-foreground hover:bg-primary/10 hover:text-primary"><Plus className="mx-auto h-4 w-4" /></button>}</td>
+              }} onContextMenu={(e) => { e.preventDefault(); toggleSelectReservation(reservation.id)               }} className={`h-full w-full rounded border px-2 text-left text-xs transition-all ${isSelected ? "ring-2 ring-blue-500" : ""} ${STATUS_STYLES[reservation.status] ?? "bg-slate-200 text-slate-900"}`} title={`${reservation.guest_name} · ${reservation.check_in} → ${reservation.check_out} · Click derecho para seleccionar`}>{reservationStart ? <><div className="truncate font-semibold">{reservation.guest_name}</div><div className="truncate opacity-80">{showPricingOverlay && reservation.total_amount ? `$${reservation.total_amount}` : (STATUS_LABELS[reservation.status] ?? reservation.status)}</div></> : <div className="h-full opacity-40" />}</button> : block ? <button onClick={() => setSelectedBlock(block)} className="h-full w-full rounded border border-zinc-500 bg-zinc-800 px-2 text-left text-xs text-white" title={`${block.reason} · ${block.start_date} → ${block.end_date}`}>{blockStart ? <><div className="truncate font-semibold">{BLOCK_LABELS[block.block_type] ?? "Bloqueada"}</div><div className="truncate opacity-80">{block.reason}</div></> : <div className="h-full opacity-40" />}</button> : <button onClick={() => openNewReservation(bed, date)} className="h-full w-full rounded text-muted-foreground hover:bg-primary/10 hover:text-primary"><Plus className="mx-auto h-4 w-4" /></button>}</td>
             })}</tr>)}</tbody></table></div></CardContent>
         </Card>
       </div>
 
       <AddReservationDialog open={newReservationOpen} onOpenChange={setNewReservationOpen} onSuccess={loadData} preselectedBed={preselectedBed?.id} preselectedDate={preselectedDate ?? undefined} preselectedLocation={preselectedBed?.room.location_ref?.name} />
+      
+      {showHeatmap && (
+        <div className="mt-4 grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <OccupancyHeatmap reservations={reservations} totalBeds={visibleBeds.length} startDate={startDate} />
+          {gaps.length > 0 && (
+            <div className="rounded-lg border p-4 space-y-2">
+              <div className="text-sm font-medium">Gaps detectados ({gaps.length})</div>
+              {gaps.map((gap, i) => (
+                <button
+                  key={i}
+                  onClick={() => setSelectedGap(gap)}
+                  className="w-full text-left rounded border border-blue-500/30 bg-blue-500/10 p-2 text-xs hover:bg-blue-500/20 transition"
+                >
+                  Cama {gap.bedId}: {gap.startDate} → {gap.endDate} ({gap.days} noches)
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+      
+      <GapFillerDialog open={selectedGap !== null} onOpenChange={(open) => !open && setSelectedGap(null)} gap={selectedGap} onFill={fillGap} />
       
       <Dialog open={bulkOperationOpen} onOpenChange={setBulkOperationOpen}>
         <DialogContent className="max-w-sm">
