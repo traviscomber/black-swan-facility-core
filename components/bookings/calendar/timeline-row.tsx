@@ -14,7 +14,7 @@ interface TimelineRowProps {
   labelWidth: number
   rowHeight: number
   timelineWidth: number
-  isDropTarget: boolean
+  isInteractionTarget: boolean
   isTouchDevice: boolean
   interactionsDisabled: boolean
   selectedIds: Set<string>
@@ -30,12 +30,29 @@ interface TimelineRowProps {
   onOpenEvent: (event: CalendarInventoryEvent) => void
   onToggleSelect: (eventId: string, shiftKey: boolean) => void
   onTimelineClick: (bed: CalendarBed, clientX: number, element: HTMLDivElement) => void
-  onDragStart: (event: CalendarInventoryEvent, transfer: DataTransfer) => void
-  onDragEnd: () => void
-  onDragOver: (event: React.DragEvent<HTMLDivElement>) => void
-  onDragEnter: (bed: CalendarBed) => void
-  onDragLeave: (event: React.DragEvent<HTMLDivElement>) => void
-  onDrop: (bed: CalendarBed, event: React.DragEvent<HTMLDivElement>) => void
+  onTimelinePointerDown: (
+    bed: CalendarBed,
+    event: React.PointerEvent<HTMLDivElement>,
+  ) => void
+  onTimelinePointerMove: (
+    bed: CalendarBed,
+    event: React.PointerEvent<HTMLDivElement>,
+  ) => void
+  onTimelinePointerUp: (
+    bed: CalendarBed,
+    event: React.PointerEvent<HTMLDivElement>,
+  ) => void
+  onTimelinePointerCancel: (
+    bed: CalendarBed,
+    event: React.PointerEvent<HTMLDivElement>,
+  ) => void
+  onMoveStart: (
+    event: CalendarInventoryEvent,
+    pointerEvent: React.PointerEvent<HTMLButtonElement>,
+  ) => void
+  onMove: (event: React.PointerEvent<HTMLButtonElement>) => void
+  onMoveEnd: (event: React.PointerEvent<HTMLButtonElement>) => void
+  onMoveCancel: (event: React.PointerEvent<HTMLButtonElement>) => void
   onResizeStart: (
     event: CalendarInventoryEvent,
     edge: ReservationResizeEdge,
@@ -45,6 +62,7 @@ interface TimelineRowProps {
   onResizeEnd: (event: React.PointerEvent<HTMLSpanElement>) => void
   onResizeCancel: (event: React.PointerEvent<HTMLSpanElement>) => void
   renderPreview?: (event: CalendarInventoryEvent) => React.ReactNode
+  renderRowPreview?: (bed: CalendarBed) => React.ReactNode
 }
 
 export function TimelineRow({
@@ -55,7 +73,7 @@ export function TimelineRow({
   labelWidth,
   rowHeight,
   timelineWidth,
-  isDropTarget,
+  isInteractionTarget,
   isTouchDevice,
   interactionsDisabled,
   selectedIds,
@@ -71,26 +89,26 @@ export function TimelineRow({
   onOpenEvent,
   onToggleSelect,
   onTimelineClick,
-  onDragStart,
-  onDragEnd,
-  onDragOver,
-  onDragEnter,
-  onDragLeave,
-  onDrop,
+  onTimelinePointerDown,
+  onTimelinePointerMove,
+  onTimelinePointerUp,
+  onTimelinePointerCancel,
+  onMoveStart,
+  onMove,
+  onMoveEnd,
+  onMoveCancel,
   onResizeStart,
   onResizeMove,
   onResizeEnd,
   onResizeCancel,
   renderPreview,
+  renderRowPreview,
 }: TimelineRowProps) {
   return (
     <div
-      className={`flex border-b transition ${isDropTarget ? "bg-emerald-500/10 ring-1 ring-inset ring-emerald-500" : "hover:bg-muted/20"}`}
+      className={`flex border-b transition ${isInteractionTarget ? "bg-emerald-500/10 ring-1 ring-inset ring-emerald-500" : "hover:bg-muted/20"}`}
       style={{ height: rowHeight }}
-      onDragOver={onDragOver}
-      onDragEnter={() => onDragEnter(bed)}
-      onDragLeave={onDragLeave}
-      onDrop={(event) => onDrop(bed, event)}
+      data-bed-id={bed.id}
     >
       <div
         className="sticky left-0 z-20 flex shrink-0 items-center gap-2 border-r bg-background px-4"
@@ -109,9 +127,21 @@ export function TimelineRow({
         style={{
           width: timelineWidth,
           height: rowHeight,
+          touchAction: "none",
           backgroundImage: `repeating-linear-gradient(to right, transparent 0, transparent ${dayWidth - 1}px, hsl(var(--border)) ${dayWidth - 1}px, hsl(var(--border)) ${dayWidth}px)`,
         }}
-        onClick={(event) => onTimelineClick(bed, event.clientX, event.currentTarget)}
+        onClick={(event) => {
+          if (event.target !== event.currentTarget) return
+          onTimelineClick(bed, event.clientX, event.currentTarget)
+        }}
+        onPointerDown={(event) => {
+          if (event.target !== event.currentTarget || interactionsDisabled) return
+          onTimelinePointerDown(bed, event)
+        }}
+        onPointerMove={(event) => onTimelinePointerMove(bed, event)}
+        onPointerUp={(event) => onTimelinePointerUp(bed, event)}
+        onPointerCancel={(event) => onTimelinePointerCancel(bed, event)}
+        onLostPointerCapture={(event) => onTimelinePointerCancel(bed, event)}
       >
         {dates.map((date, index) =>
           isSameDay(date, new Date()) ? (
@@ -122,6 +152,8 @@ export function TimelineRow({
             />
           ) : null,
         )}
+
+        {renderRowPreview?.(bed)}
 
         {events.map((event) => {
           const isBlock = event.event_type === "block"
@@ -149,8 +181,10 @@ export function TimelineRow({
                 setElementRef={(element) => setBlockRef(event.event_id, element)}
                 onOpen={() => onOpenEvent(event)}
                 onToggleSelect={(shiftKey) => onToggleSelect(event.event_id, shiftKey)}
-                onDragStart={(transfer) => onDragStart(event, transfer)}
-                onDragEnd={onDragEnd}
+                onMoveStart={(pointerEvent) => onMoveStart(event, pointerEvent)}
+                onMove={onMove}
+                onMoveEnd={onMoveEnd}
+                onMoveCancel={onMoveCancel}
                 onResizeStart={(edge, pointerEvent) => onResizeStart(event, edge, pointerEvent)}
                 onResizeMove={onResizeMove}
                 onResizeEnd={onResizeEnd}
