@@ -22,8 +22,10 @@ interface ReservationBlockProps {
   setElementRef: (element: HTMLButtonElement | null) => void
   onOpen: () => void
   onToggleSelect: (shiftKey: boolean) => void
-  onDragStart: (transfer: DataTransfer) => void
-  onDragEnd: () => void
+  onMoveStart: (event: React.PointerEvent<HTMLButtonElement>) => void
+  onMove: (event: React.PointerEvent<HTMLButtonElement>) => void
+  onMoveEnd: (event: React.PointerEvent<HTMLButtonElement>) => void
+  onMoveCancel: (event: React.PointerEvent<HTMLButtonElement>) => void
   onResizeStart: (edge: ReservationResizeEdge, event: React.PointerEvent<HTMLSpanElement>) => void
   onResizeMove: (event: React.PointerEvent<HTMLSpanElement>) => void
   onResizeEnd: (event: React.PointerEvent<HTMLSpanElement>) => void
@@ -47,8 +49,10 @@ export function ReservationBlock({
   setElementRef,
   onOpen,
   onToggleSelect,
-  onDragStart,
-  onDragEnd,
+  onMoveStart,
+  onMove,
+  onMoveEnd,
+  onMoveCancel,
   onResizeStart,
   onResizeMove,
   onResizeEnd,
@@ -77,14 +81,25 @@ export function ReservationBlock({
     <button
       type="button"
       ref={setElementRef}
-      draggable={!isBlock && !interactionsDisabled && !isBulkMode}
-      onDragStart={(dragEvent) => {
-        if (!isBlock) onDragStart(dragEvent.dataTransfer)
+      onPointerDown={(pointerEvent) => {
+        if (isBlock || interactionsDisabled || isBulkMode || pointerEvent.button !== 0) return
+        onMoveStart(pointerEvent)
       }}
-      onDragEnd={onDragEnd}
+      onPointerMove={(pointerEvent) => {
+        if (!isBlock) onMove(pointerEvent)
+      }}
+      onPointerUp={(pointerEvent) => {
+        if (!isBlock) onMoveEnd(pointerEvent)
+      }}
+      onPointerCancel={(pointerEvent) => {
+        if (!isBlock) onMoveCancel(pointerEvent)
+      }}
+      onLostPointerCapture={(pointerEvent) => {
+        if (!isBlock) onMoveCancel(pointerEvent)
+      }}
       onClick={(buttonEvent) => {
         buttonEvent.stopPropagation()
-        if (interactionsDisabled) return
+        if (interactionsDisabled || isMoving || isResizing) return
         if (!isBlock && (buttonEvent.ctrlKey || buttonEvent.metaKey || isBulkMode)) {
           onToggleSelect(buttonEvent.shiftKey)
           return
@@ -98,6 +113,7 @@ export function ReservationBlock({
       {!isBlock && (
         <span
           className={`absolute left-1 top-1 z-20 transition ${isSelected || isTouchDevice ? "opacity-100" : "opacity-0 group-hover:opacity-60"}`}
+          onPointerDown={(selectionEvent) => selectionEvent.stopPropagation()}
           onClick={(selectionEvent) => {
             selectionEvent.stopPropagation()
             onToggleSelect(false)
@@ -156,7 +172,10 @@ function ResizeHandle({ side, edge, className, onStart, onMove, onEnd, onCancel 
         handleEvent.preventDefault()
         handleEvent.stopPropagation()
       }}
-      onPointerDown={(pointerEvent) => onStart(edge, pointerEvent)}
+      onPointerDown={(pointerEvent) => {
+        pointerEvent.stopPropagation()
+        onStart(edge, pointerEvent)
+      }}
       onPointerMove={onMove}
       onPointerUp={onEnd}
       onPointerCancel={onCancel}
