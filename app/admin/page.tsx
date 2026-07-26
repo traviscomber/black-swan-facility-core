@@ -1,5 +1,8 @@
+import Link from "next/link"
+import { ShieldAlert } from "lucide-react"
 import { AppLayout } from "@/components/app-layout"
 import { AdminOverview } from "@/components/admin-overview"
+import { Card, CardContent } from "@/components/ui/card"
 import { createClient } from "@/lib/supabase/server"
 
 export default async function AdminPage() {
@@ -61,6 +64,22 @@ export default async function AdminPage() {
           verifiedOn: "26-07-2026",
         }}
       />
+      <div className="px-4 pb-8 md:px-8">
+        <Link href="/admin/security">
+          <Card className="border-amber-500/50 transition-colors hover:border-amber-500">
+            <CardContent className="flex items-center justify-between gap-4 p-4">
+              <div className="flex items-center gap-3">
+                <ShieldAlert className="h-5 w-5 text-muted-foreground" />
+                <div>
+                  <p className="text-sm font-medium">Revisar riesgo de acceso a datos</p>
+                  <p className="text-xs text-muted-foreground">Clasificación de las 75 políticas amplias y plan de endurecimiento por fases.</p>
+                </div>
+              </div>
+              <span className="text-sm">Abrir →</span>
+            </CardContent>
+          </Card>
+        </Link>
+      </div>
     </AppLayout>
   )
 }
