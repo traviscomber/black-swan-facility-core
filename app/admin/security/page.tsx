@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 
 const remainingAreas = [
-  { name: "Finanzas y operaciones auxiliares", risk: "Alto", examples: "costos, presupuestos, incidencias, operaciones y resúmenes" },
+  { name: "Últimos accesos amplios", risk: "Alto", examples: "bulk_operations, reviews y volunteers" },
 ] as const
 
 const phaseOneTables = [
@@ -17,21 +17,21 @@ const phaseOneTables = [
   { table: "payments", rows: 0, access: "Sin anon; CRUD separado; DELETE admin", data: "Monto, método, estado y transacción" },
   { table: "leads", rows: 0, access: "Acceso público retirado; DELETE admin", data: "Teléfono, nombre, fechas, preferencias y notas" },
   { table: "messages", rows: 0, access: "Acceso público retirado; DELETE admin", data: "Teléfono, contenido, intención y sentimiento" },
-  { table: "budgets", rows: 25, access: "Acceso público retirado; DELETE admin", data: "Presupuesto, gasto real, variación y notas" },
+  { table: "budgets", rows: 25, access: "Acceso público retirado; DELETE admin", data: "Presupuesto, gasto real, variación y notas en contexto CLP" },
 ] as const
 
 const phases = [
   { step: "1", title: "RPC y funciones privilegiadas", status: "Completado", detail: "Los 13 SECURITY DEFINER fueron inventariados. Ninguno conserva EXECUTE para anon o PUBLIC; las operaciones masivas además verifican rol admin dentro del RPC." },
-  { step: "2", title: "Datos personales y financieros", status: "En curso", detail: "Ocho tablas sensibles ya usan políticas separadas por operación, sin privilegios anon y con eliminación exclusiva para admin." },
+  { step: "2", title: "Datos personales y financieros", status: "En curso", detail: "Datos personales, facturación, presupuestos, centros de costo y catálogos financieros ya usan políticas separadas y acceso operativo autenticado." },
   { step: "3", title: "Bitácoras inmutables", status: "Completado", detail: "Nueve bitácoras operativas y administrativas son append-only, sin acceso anónimo ni capacidad de alterar o borrar eventos existentes." },
-  { step: "4", title: "Permisos operativos", status: "En curso", detail: "GIS, operaciones, infraestructura, energía, IA, catálogos y seis tablas de hospitalidad y configuración ya usan políticas separadas, sin acceso anónimo, sin TRUNCATE y con DELETE exclusivo para admin." },
+  { step: "4", title: "Permisos operativos", status: "En curso", detail: "GIS, operaciones, infraestructura, energía, IA, hospitalidad, finanzas e incidencias ya usan políticas separadas, sin acceso anónimo, sin TRUNCATE y con DELETE exclusivo para admin." },
   { step: "5", title: "Validación integral", status: "Pendiente", detail: "Probar usuarios autenticados, approver, admin y service_role en rutas críticas, desktop y móvil." },
 ] as const
 
 export default function AdminSecurityPage() {
   return (
     <AppLayout>
-      <PageHeader title="Riesgo de acceso a datos" description="Estado verificado de políticas RLS, funciones privilegiadas y dependencias críticas en producción." />
+      <PageHeader title="Riesgo de acceso a datos" description="Estado verificado de políticas RLS, funciones privilegiadas y dependencias críticas en producción para Fundo Corcovado, Chile." />
       <div className="space-y-6 p-4 md:p-8">
         <Link href="/admin" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
           <ArrowLeft className="h-4 w-4" /> Volver a Administración
@@ -39,10 +39,10 @@ export default function AdminSecurityPage() {
 
         <div className="grid gap-4 md:grid-cols-3">
           <Card className="border-amber-500/50">
-            <CardHeader><CardTitle className="flex items-center gap-2"><ShieldAlert className="h-5 w-5" />15 tablas</CardTitle><CardDescription>Aún conservan política ALL amplia y sin restricción efectiva</CardDescription></CardHeader>
+            <CardHeader><CardTitle className="flex items-center gap-2"><ShieldAlert className="h-5 w-5" />3 tablas</CardTitle><CardDescription>Aún conservan política ALL amplia y sin restricción efectiva</CardDescription></CardHeader>
           </Card>
           <Card className="border-destructive/40">
-            <CardHeader><CardTitle className="flex items-center gap-2"><TriangleAlert className="h-5 w-5" />14 tablas</CardTitle><CardDescription>Política ALL amplia dirigida a PUBLIC</CardDescription></CardHeader>
+            <CardHeader><CardTitle className="flex items-center gap-2"><TriangleAlert className="h-5 w-5" />2 tablas</CardTitle><CardDescription>Política ALL amplia dirigida a PUBLIC</CardDescription></CardHeader>
           </Card>
           <Card>
             <CardHeader><CardTitle className="flex items-center gap-2"><Database className="h-5 w-5" />1 tabla</CardTitle><CardDescription>Política ALL amplia dirigida a authenticated</CardDescription></CardHeader>
@@ -51,13 +51,14 @@ export default function AdminSecurityPage() {
 
         <Card className="border-emerald-500/40">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2"><CheckCircle2 className="h-5 w-5" />Hospitalidad y configuración protegidas</CardTitle>
-            <CardDescription>Camas, habitaciones, ajustes de reserva, tarifas y extras.</CardDescription>
+            <CardTitle className="flex items-center gap-2"><CheckCircle2 className="h-5 w-5" />Finanzas, incidencias y operaciones protegidas</CardTitle>
+            <CardDescription>Presupuestos, costos, plantillas, clasificaciones de incidencias y resúmenes operativos.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-2 text-sm">
-            <p><span className="font-mono">beds</span>, <span className="font-mono">rooms</span>, <span className="font-mono">booking_settings</span>, <span className="font-mono">pricing_rules</span>, <span className="font-mono">booking_extras</span> y <span className="font-mono">reservation_extras</span> ya no permiten acceso anónimo ni <span className="font-mono">TRUNCATE</span>.</p>
+            <p>Doce tablas de costos, presupuestos, facturación auxiliar, incidencias y operaciones ya no permiten acceso anónimo ni <span className="font-mono">TRUNCATE</span>.</p>
             <p>Usuarios autenticados conservan lectura, creación y actualización. La eliminación queda limitada a <span className="font-mono">admin</span>.</p>
-            <p>Se preservaron 20 camas, 9 habitaciones y 1 configuración de reservas. Reglas de precio y extras permanecen sin registros.</p>
+            <p>Se preservaron 26 categorías presupuestarias, 7 divisiones, 4 centros de costo, 10 categorías de incidencia, 8 etiquetas y 20 tipos de incidencia. Costos reales, plantillas, asignaciones y resúmenes operativos permanecen sin registros.</p>
+            <p>La interfaz mantiene terminología chilena y montos financieros interpretados en CLP cuando corresponda.</p>
             <p className="text-muted-foreground">Las cinco reservas con prefijo TEST_ permanecen intactas.</p>
           </CardContent>
         </Card>
@@ -65,7 +66,7 @@ export default function AdminSecurityPage() {
         <Card className="border-amber-500/50">
           <CardHeader><CardTitle>Interpretación</CardTitle><CardDescription>RLS habilitado sigue sin equivaler a acceso restringido.</CardDescription></CardHeader>
           <CardContent className="space-y-2 text-sm">
-            <p>Las políticas ALL amplias sin restricción efectiva bajaron a 15. El trabajo continúa sobre costos, presupuestos, incidencias, operaciones y resúmenes auxiliares.</p>
+            <p>Las políticas ALL amplias sin restricción efectiva bajaron a 3. Solo quedan <span className="font-mono">bulk_operations</span>, <span className="font-mono">reviews</span> y <span className="font-mono">volunteers</span>.</p>
             <p className="text-muted-foreground">Estado verificado en pg_policies y privilegios de tabla el 26-07-2026. Las migraciones no modificaron registros operativos.</p>
           </CardContent>
         </Card>
@@ -78,7 +79,7 @@ export default function AdminSecurityPage() {
                 <CardHeader>
                   <div className="flex items-start justify-between gap-3">
                     <div><CardTitle className="text-base">{area.name}</CardTitle><CardDescription>{area.examples}</CardDescription></div>
-                    <Badge variant={area.risk === "Crítico" ? "destructive" : "outline"}>{area.risk}</Badge>
+                    <Badge variant="outline">{area.risk}</Badge>
                   </div>
                 </CardHeader>
               </Card>
@@ -87,7 +88,7 @@ export default function AdminSecurityPage() {
         </section>
 
         <Card>
-          <CardHeader><CardTitle>Fase de datos personales y financieros</CardTitle><CardDescription>Conteos verificados y acceso efectivo después de la migración.</CardDescription></CardHeader>
+          <CardHeader><CardTitle>Fase de datos personales y financieros</CardTitle><CardDescription>Conteos verificados y acceso efectivo después de las migraciones.</CardDescription></CardHeader>
           <CardContent className="overflow-x-auto">
             <table className="w-full min-w-[760px] text-sm">
               <thead><tr className="border-b text-left"><th className="p-3">Tabla</th><th className="p-3">Filas</th><th className="p-3">Acceso vigente</th><th className="p-3">Contenido sensible</th></tr></thead>
