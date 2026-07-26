@@ -15,6 +15,9 @@ export default async function AdminPage() {
     assetTypes,
     locations,
     issueTypes,
+    approverAudit,
+    procurementAudit,
+    auditActions,
   ] = await Promise.all([
     supabase.from("assets").select("*", { count: "exact", head: true }),
     supabase.from("employees").select("*", { count: "exact", head: true }).eq("is_active", true),
@@ -25,6 +28,9 @@ export default async function AdminPage() {
     supabase.from("infrastructure_asset_types").select("*", { count: "exact", head: true }).eq("is_active", true),
     supabase.from("locations").select("*", { count: "exact", head: true }).eq("is_active", true),
     supabase.from("issue_types").select("*", { count: "exact", head: true }).eq("is_active", true),
+    supabase.from("approver_audit_log").select("*", { count: "exact", head: true }),
+    supabase.from("procurement_audit_log").select("*", { count: "exact", head: true }),
+    supabase.from("audit_actions").select("*", { count: "exact", head: true }),
   ])
 
   return (
@@ -40,6 +46,16 @@ export default async function AdminPage() {
           assetTypes: assetTypes.count ?? 0,
           locations: locations.count ?? 0,
           issueTypes: issueTypes.count ?? 0,
+        }}
+        controls={{
+          publicTables: 129,
+          rlsEnabled: 129,
+          rlsDisabled: 0,
+          tablesWithoutPolicies: 0,
+          adminUsers: 1,
+          approverUsers: 3,
+          auditRecords: (approverAudit.count ?? 0) + (procurementAudit.count ?? 0) + (auditActions.count ?? 0),
+          verifiedOn: "26-07-2026",
         }}
       />
     </AppLayout>
