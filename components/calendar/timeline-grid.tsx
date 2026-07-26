@@ -1,5 +1,6 @@
 "use client"
 
+import { useEffect } from "react"
 import { format, isSameDay } from "date-fns"
 import { CheckSquare, Square } from "lucide-react"
 import { CardContent } from "@/components/ui/card"
@@ -128,6 +129,19 @@ export function TimelineGrid({
   const totalWidth  = LABEL_WIDTH + timelineWidth
   const isInteracting = !!draggingEventId || isResizing
   const scrollRef   = useCalendarAutoscroll({ active: isInteracting })
+
+  // Scroll to today on mount
+  useEffect(() => {
+    if (!scrollRef.current || dates.length === 0) return
+    const today = new Date()
+    const todayIndex = dates.findIndex((date) => isSameDay(date, today))
+    if (todayIndex >= 0) {
+      // Scroll to position today at the left edge, accounting for LABEL_WIDTH
+      const scrollLeft = todayIndex * DAY_WIDTH
+      scrollRef.current.scrollLeft = scrollLeft
+    }
+  }, [dates, scrollRef])
+
 
   // Shared props forwarded to every TimelineRow (excludes per-bed fields)
   const sharedRowProps: Omit<TimelineRowProps, "bed" | "bedEvents"> = {
