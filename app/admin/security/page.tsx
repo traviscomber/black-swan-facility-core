@@ -6,7 +6,6 @@ import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 
 const remainingAreas = [
-  { name: "Finanzas y energía", risk: "Alto", examples: "utilities, vehicles y tablas auxiliares pendientes" },
   { name: "IA y soberanía", risk: "Medio", examples: "ai_agents, ai_context, ai_sessions, sovereignty_layers" },
   { name: "Catálogos y módulos auxiliares", risk: "Revisión", examples: "multimedia, activos, catálogos y tablas de soporte" },
 ] as const
@@ -26,7 +25,7 @@ const phases = [
   { step: "1", title: "RPC y funciones privilegiadas", status: "Completado", detail: "Los 13 SECURITY DEFINER fueron inventariados. Ninguno conserva EXECUTE para anon o PUBLIC; las operaciones masivas además verifican rol admin dentro del RPC." },
   { step: "2", title: "Datos personales y financieros", status: "En curso", detail: "Ocho tablas sensibles ya usan políticas separadas por operación, sin privilegios anon y con eliminación exclusiva para admin." },
   { step: "3", title: "Bitácoras inmutables", status: "Completado", detail: "Nueve bitácoras operativas y administrativas son append-only, sin acceso anónimo ni capacidad de alterar o borrar eventos existentes." },
-  { step: "4", title: "Permisos operativos", status: "En curso", detail: "GIS, KMZ, operaciones centrales, operaciones auxiliares y seis tablas de infraestructura ya usan políticas separadas, sin acceso anónimo, sin TRUNCATE y con DELETE exclusivo para admin." },
+  { step: "4", title: "Permisos operativos", status: "En curso", detail: "GIS, KMZ, operaciones, infraestructura y cuatro tablas de combustible y vehículos ya usan políticas separadas, sin acceso anónimo, sin TRUNCATE y con DELETE exclusivo para admin." },
   { step: "5", title: "Validación integral", status: "Pendiente", detail: "Probar usuarios autenticados, approver, admin y service_role en rutas críticas, desktop y móvil." },
 ] as const
 
@@ -41,10 +40,10 @@ export default function AdminSecurityPage() {
 
         <div className="grid gap-4 md:grid-cols-3">
           <Card className="border-amber-500/50">
-            <CardHeader><CardTitle className="flex items-center gap-2"><ShieldAlert className="h-5 w-5" />41 tablas</CardTitle><CardDescription>Aún conservan política ALL amplia y sin restricción efectiva</CardDescription></CardHeader>
+            <CardHeader><CardTitle className="flex items-center gap-2"><ShieldAlert className="h-5 w-5" />38 tablas</CardTitle><CardDescription>Aún conservan política ALL amplia y sin restricción efectiva</CardDescription></CardHeader>
           </Card>
           <Card className="border-destructive/40">
-            <CardHeader><CardTitle className="flex items-center gap-2"><TriangleAlert className="h-5 w-5" />34 tablas</CardTitle><CardDescription>Política ALL amplia dirigida a PUBLIC</CardDescription></CardHeader>
+            <CardHeader><CardTitle className="flex items-center gap-2"><TriangleAlert className="h-5 w-5" />31 tablas</CardTitle><CardDescription>Política ALL amplia dirigida a PUBLIC</CardDescription></CardHeader>
           </Card>
           <Card>
             <CardHeader><CardTitle className="flex items-center gap-2"><Database className="h-5 w-5" />7 tablas</CardTitle><CardDescription>Política ALL amplia dirigida a authenticated</CardDescription></CardHeader>
@@ -53,13 +52,13 @@ export default function AdminSecurityPage() {
 
         <Card className="border-emerald-500/40">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2"><CheckCircle2 className="h-5 w-5" />Infraestructura protegida</CardTitle>
-            <CardDescription>Catálogos, conexiones, documentos, fotografías, planos y embarcaciones.</CardDescription>
+            <CardTitle className="flex items-center gap-2"><CheckCircle2 className="h-5 w-5" />Combustible y vehículos protegidos</CardTitle>
+            <CardDescription>Consumos, anomalías, resumen mensual y flota operativa.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-2 text-sm">
-            <p><span className="font-mono">infrastructure_asset_types</span>, <span className="font-mono">infrastructure_connections</span>, <span className="font-mono">infrastructure_documents</span>, <span className="font-mono">infrastructure_photos</span>, <span className="font-mono">infrastructure_plans</span> y <span className="font-mono">ports_boats</span> ya no permiten acceso anónimo ni <span className="font-mono">TRUNCATE</span>.</p>
-            <p>Usuarios autenticados conservan lectura, creación y actualización. La eliminación queda limitada a <span className="font-mono">admin</span>.</p>
-            <p>Se preservaron 24 tipos de activo, 7 conexiones, 67 fotografías, 82 planos y 4 registros de puertos o embarcaciones; documentos permanece sin registros.</p>
+            <p><span className="font-mono">fuel_consumption</span>, <span className="font-mono">fuel_consumption_anomalies</span>, <span className="font-mono">monthly_fuel_summary</span> y <span className="font-mono">vehicles</span> ya no permiten acceso anónimo ni <span className="font-mono">TRUNCATE</span>.</p>
+            <p>Usuarios autenticados conservan lectura, creación y actualización. La eliminación queda limitada a <span className="font-mono">admin</span>; la gestión de anomalías continúa limitada a <span className="font-mono">admin</span> y <span className="font-mono">approver</span>.</p>
+            <p>Se preservaron 153 registros de consumo y 32 vehículos. Anomalías y resumen mensual permanecen sin registros.</p>
             <p className="text-muted-foreground">Las cinco reservas con prefijo TEST_ permanecen intactas.</p>
           </CardContent>
         </Card>
@@ -67,7 +66,7 @@ export default function AdminSecurityPage() {
         <Card className="border-amber-500/50">
           <CardHeader><CardTitle>Interpretación</CardTitle><CardDescription>RLS habilitado sigue sin equivaler a acceso restringido.</CardDescription></CardHeader>
           <CardContent className="space-y-2 text-sm">
-            <p>Las políticas ALL amplias sin restricción efectiva bajaron a 41. El trabajo continúa sobre energía, IA y módulos de soporte.</p>
+            <p>Las políticas ALL amplias sin restricción efectiva bajaron a 38. El trabajo continúa sobre IA, soberanía y módulos de soporte.</p>
             <p className="text-muted-foreground">Estado verificado en pg_policies y privilegios de tabla el 26-07-2026. Las migraciones no modificaron registros operativos.</p>
           </CardContent>
         </Card>
