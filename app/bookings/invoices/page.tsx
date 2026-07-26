@@ -1,191 +1,216 @@
 "use client"
 
-import { useEffect, useState } from "react"
-import { format } from "date-fns"
-import { Edit, Eye, Plus, Trash2 } from "lucide-react"
+import { useEffect, useMemo, useState } from "react"
+import { Edit, Eye, FileText, Search, Trash2 } from "lucide-react"
+import { toast } from "sonner"
 import { AppLayout } from "@/components/app-layout"
 import { InvoiceEditorModal } from "@/components/invoice-editor-modal"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { useLanguage } from "@/lib/hooks/use-language"
+import { createClient } from "@/lib/supabase/client"
 import { formatClp } from "@/lib/money"
+
+type AppRole = "admin" | "approver" | "operator" | "viewer" | null
 
 interface Invoice {
   id: string
+  reservation_id: string | null
   invoice_number: string
   invoice_date: string
   due_date: string
   customer_name: string
-  customer_email: string
+  customer_email: string | null
   total_amount: number
+  amount_paid: number | null
   payment_status: string
   status: string
 }
 
+const paymentStatusLabels: Record<string, string> = {
+  pending: "Pendiente",
+  partial: "Pago parcial",
+  paid: "Pagada",
+  overdue: "Vencida",
+}
+
+function formatDate(value: string) {
+  return new Intl.DateTimeFormat("es-CL", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    timeZone: "UTC",
+  }).format(new Date(`${value}T00:00:00Z`))
+}
+
+function getStatusClass(status: string) {
+  switch (status) {
+    case "paid":
+      return "bg-emerald-100 text-emerald-800"
+    case "pending":
+      return "bg-amber-100 text-amber-800"
+    case "partial":
+      return "bg-sky-100 text-sky-800"
+    case "overdue":
+      return "bg-red-100 text-red-800"
+    default:
+      return "bg-muted text-muted-foreground"
+  }
+}
+
 export default function InvoicesPage() {
-  const { t } = useLanguage()
   const [invoices, setInvoices] = useState<Invoice[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState("")
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null)
   const [editorOpen, setEditorOpen] = useState(false)
+  const [role, setRole] = useState<AppRole>(null)
 
   useEffect(() => {
+    const supabase = createClient()
+    void supabase.auth.getUser().then(({ data: { user } }) => {
+      setRole((user?.app_metadata?.procurement_role as AppRole) ?? null)
+    })
     void loadInvoices()
   }, [])
 
   async function loadInvoices() {
     setLoading(true)
+    setError(null)
     try {
       const response = await fetch("/api/bookings/invoices")
-      const data = await response.json()
+      const data = (await response.json()) as Invoice[] | { error?: string }
+      if (!response.ok) throw new Error(!Array.isArray(data) ? data.error : "No se pudieron cargar las facturas")
       setInvoices(Array.isArray(data) ? data : [])
-    } catch (error) {
-      console.error("[invoices] Error loading invoices:", error)
+    } catch (loadError) {
+      setError(loadError instanceof Error ? loadError.message : "No se pudieron cargar las facturas")
+      setInvoices([])
     } finally {
       setLoading(false)
     }
   }
 
-  async function handleDeleteInvoice(invoiceId: string) {
-    if (!confirm(t("invoices.delete_confirmation"))) return
+  async function handleDeleteInvoice(invoice: Invoice) {
+    if (!confirm(`¿Eliminar definitivamente la factura ${invoice.invoice_number}? Esta acción solo procede si no tiene pagos.`)) return
 
     try {
-      const response = await fetch(`/api/bookings/invoices/${invoiceId}`, {
-        method: "DELETE",
-      })
-      if (!response.ok) throw new Error("No se pudo eliminar la factura")
-      setInvoices((current) => current.filter((invoice) => invoice.id !== invoiceId))
-    } catch (error) {
-      console.error("[invoices] Error deleting invoice:", error)
+      const response = await fetch(`/api/bookings/invoices/${invoice.id}`, { method: "DELETE" })
+      const data = (await response.json()) as { error?: string }
+      if (!response.ok) throw new Error(data.error ?? "No se pudo eliminar la factura")
+      setInvoices((current) => current.filter((item) => item.id !== invoice.id))
+      toast.success("Factura eliminada")
+    } catch (deleteError) {
+      toast.error(deleteError instanceof Error ? deleteError.message : "No se pudo eliminar la factura")
     }
   }
 
-  const filteredInvoices = invoices.filter(
-    (invoice) =>
-      invoice.invoice_number.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      invoice.customer_name.toLowerCase().includes(searchTerm.toLowerCase()),
-  )
+  const filteredInvoices = useMemo(() => {
+    const query = searchTerm.trim().toLocaleLowerCase("es-CL")
+    if (!query) return invoices
+    return invoices.filter(
+      (invoice) =>
+        invoice.invoice_number.toLocaleLowerCase("es-CL").includes(query) ||
+        invoice.customer_name.toLocaleLowerCase("es-CL").includes(query) ||
+        invoice.customer_email?.toLocaleLowerCase("es-CL").includes(query),
+    )
+  }, [invoices, searchTerm])
 
-  function getStatusColor(status: string) {
-    switch (status) {
-      case "paid":
-        return "bg-green-100 text-green-800"
-      case "pending":
-        return "bg-yellow-100 text-yellow-800"
-      case "overdue":
-        return "bg-red-100 text-red-800"
-      case "draft":
-        return "bg-gray-100 text-gray-800"
-      default:
-        return "bg-blue-100 text-blue-800"
-    }
-  }
+  const canEdit = role === "admin" || role === "approver"
+  const canDelete = role === "admin"
 
   return (
     <AppLayout>
-      <div className="space-y-6 p-6">
-        <div className="flex items-center justify-between">
+      <div className="space-y-5 p-4 sm:p-6">
+        <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <h1 className="text-3xl font-bold">{t("invoices.management")}</h1>
-            <p className="text-muted-foreground">{t("invoices.create_edit_manage")}</p>
+            <h1 className="text-2xl font-semibold sm:text-3xl">Facturas</h1>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Documentos internos asociados a reservas, expresados en pesos chilenos.
+            </p>
           </div>
-          <Button
-            onClick={() => {
-              setSelectedInvoice(null)
-              setEditorOpen(true)
-            }}
-            size="lg"
-          >
-            <Plus className="mr-2 h-4 w-4" />
-            {t("invoices.new_invoice")}
-          </Button>
-        </div>
+          <div className="rounded-lg border bg-muted/30 px-3 py-2 text-xs text-muted-foreground sm:max-w-sm">
+            Las facturas nuevas se generan desde una reserva para conservar cargos, huésped y trazabilidad.
+          </div>
+        </header>
 
         <Card>
-          <CardHeader>
-            <CardTitle>{t("invoices.search_invoices")}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Input
-              placeholder={t("invoices.search_placeholder")}
-              value={searchTerm}
-              onChange={(event) => setSearchTerm(event.target.value)}
-            />
+          <CardContent className="p-4">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                placeholder="Buscar por número, cliente o correo"
+                value={searchTerm}
+                onChange={(event) => setSearchTerm(event.target.value)}
+                className="pl-9"
+              />
+            </div>
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader>
-            <CardTitle>
-              {t("invoices.all_invoices")} ({filteredInvoices.length})
-            </CardTitle>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">Facturas registradas ({filteredInvoices.length})</CardTitle>
           </CardHeader>
           <CardContent>
             {loading ? (
-              <div className="py-8 text-center">{t("invoices.loading")}</div>
+              <div className="py-10 text-center text-sm text-muted-foreground">Cargando facturas…</div>
+            ) : error ? (
+              <div className="space-y-3 py-8 text-center">
+                <p className="text-sm text-destructive">{error}</p>
+                <Button variant="outline" onClick={() => void loadInvoices()}>Reintentar</Button>
+              </div>
             ) : filteredInvoices.length === 0 ? (
-              <div className="py-8 text-center text-muted-foreground">{t("invoices.no_invoices")}</div>
+              <div className="flex flex-col items-center gap-3 py-12 text-center">
+                <FileText className="h-9 w-9 text-muted-foreground" />
+                <div>
+                  <p className="font-medium">No hay facturas registradas</p>
+                  <p className="mt-1 text-sm text-muted-foreground">Genera la primera desde el detalle de una reserva confirmada.</p>
+                </div>
+              </div>
             ) : (
-              <div className="space-y-4">
-                {filteredInvoices.map((invoice) => (
-                  <div
-                    key={invoice.id}
-                    className="flex items-center justify-between rounded-lg border p-4 transition-colors hover:bg-accent"
-                  >
-                    <div className="flex-1">
-                      <div className="font-semibold">{invoice.invoice_number}</div>
-                      <div className="text-sm text-muted-foreground">{invoice.customer_name}</div>
-                      <div className="text-sm text-muted-foreground">
-                        {format(new Date(`${invoice.invoice_date}T00:00:00`), "dd MMM yyyy")}
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-4">
-                      <div className="text-right">
-                        <div className="font-semibold">{formatClp(invoice.total_amount)}</div>
-                        <Badge className={getStatusColor(invoice.payment_status)}>
-                          {t(`invoices.${invoice.payment_status.toLowerCase()}`)}
-                        </Badge>
+              <div className="divide-y rounded-lg border">
+                {filteredInvoices.map((invoice) => {
+                  const balance = Math.max(0, Number(invoice.total_amount) - Number(invoice.amount_paid ?? 0))
+                  return (
+                    <div key={invoice.id} className="grid gap-3 p-4 md:grid-cols-[1.4fr_1fr_auto] md:items-center">
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="font-semibold">{invoice.invoice_number}</span>
+                          <Badge className={getStatusClass(invoice.payment_status)}>
+                            {paymentStatusLabels[invoice.payment_status] ?? invoice.payment_status}
+                          </Badge>
+                        </div>
+                        <p className="mt-1 truncate text-sm">{invoice.customer_name}</p>
+                        <p className="text-xs text-muted-foreground">
+                          Emitida {formatDate(invoice.invoice_date)} · Vence {formatDate(invoice.due_date)}
+                        </p>
                       </div>
 
-                      <div className="flex gap-2">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => {
-                            setSelectedInvoice(invoice)
-                            setEditorOpen(true)
-                          }}
-                          aria-label={`Ver ${invoice.invoice_number}`}
-                        >
+                      <div className="md:text-right">
+                        <p className="font-semibold">{formatClp(invoice.total_amount)}</p>
+                        {balance > 0 && <p className="text-xs text-muted-foreground">Saldo {formatClp(balance)}</p>}
+                      </div>
+
+                      <div className="flex justify-end gap-2">
+                        <Button size="icon" variant="outline" onClick={() => { setSelectedInvoice(invoice); setEditorOpen(true) }} aria-label={`Ver ${invoice.invoice_number}`}>
                           <Eye className="h-4 w-4" />
                         </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => {
-                            setSelectedInvoice(invoice)
-                            setEditorOpen(true)
-                          }}
-                          aria-label={`Editar ${invoice.invoice_number}`}
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleDeleteInvoice(invoice.id)}
-                          aria-label={`Eliminar ${invoice.invoice_number}`}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                        {canEdit && (
+                          <Button size="icon" variant="outline" onClick={() => { setSelectedInvoice(invoice); setEditorOpen(true) }} aria-label={`Editar ${invoice.invoice_number}`}>
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                        )}
+                        {canDelete && (
+                          <Button size="icon" variant="outline" onClick={() => void handleDeleteInvoice(invoice)} aria-label={`Eliminar ${invoice.invoice_number}`}>
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        )}
                       </div>
                     </div>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
             )}
           </CardContent>
