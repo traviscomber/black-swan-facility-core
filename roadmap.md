@@ -25,6 +25,7 @@ Cerrar las brechas críticas de seguridad, permisos, trazabilidad y confiabilida
 - [x] Endurecer cuatro tablas de combustible, anomalías, resumen mensual y vehículos.
 - [x] Endurecer once tablas de IA, sesiones, contexto y soberanía.
 - [x] Endurecer seis tablas de catálogos, multimedia, ubicaciones y soporte.
+- [x] Endurecer seis tablas de hospitalidad, habitaciones, tarifas y extras.
 - [ ] Completar cobertura de acciones críticas y permisos por módulo.
 - [ ] Validar flujos completos por rol y dispositivo.
 
@@ -55,7 +56,9 @@ Cerrar las brechas críticas de seguridad, permisos, trazabilidad y confiabilida
 - Se preservaron 8 ejecuciones, 5 agentes, 3 artefactos, 10 eventos, 5 sesiones, 5 capas y 8 métricas. `ai_context`, dependencias, objetivos y cronología permanecen sin registros.
 - `asset_categories`, `multimedia_assets`, `locations`, `kitchens`, `utilities` y `vineyard_equipment` ya no permiten acceso anónimo ni `TRUNCATE`; usan políticas separadas y `DELETE` queda limitado a `admin`.
 - Se preservaron 12 categorías de activo, 1 recurso multimedia, 14 ubicaciones, 2 cocinas y 3 servicios. `vineyard_equipment` permanece sin registros.
-- Las tablas con política `ALL` amplia sin restricción efectiva bajaron a 21: 14 dirigidas a `PUBLIC` y 7 a `authenticated`.
+- `beds`, `rooms`, `booking_settings`, `pricing_rules`, `booking_extras` y `reservation_extras` ya no permiten acceso anónimo ni `TRUNCATE`; usan políticas separadas y `DELETE` queda limitado a `admin`.
+- Se preservaron 20 camas, 9 habitaciones y 1 configuración de reservas. Reglas de precio y extras permanecen sin registros.
+- Las tablas con política `ALL` amplia sin restricción efectiva bajaron a 15: 14 dirigidas a `PUBLIC` y 1 a `authenticated`.
 - `ai_operation_logs` conserva 8 registros y permanece append-only.
 - Existen cinco reservas `TEST_` en producción. No deben eliminarse sin autorización específica sobre esos registros.
 
@@ -63,7 +66,7 @@ Cerrar las brechas críticas de seguridad, permisos, trazabilidad y confiabilida
 
 1. Auditar operaciones destructivas restantes.
 2. Conectar y verificar registro de acciones críticas reales.
-3. Continuar RLS en hospitalidad, configuración, costos, incidencias y operaciones auxiliares.
+3. Continuar RLS en costos, presupuestos, incidencias, operaciones y resúmenes auxiliares.
 4. Alinear permisos reales con `admin`, `approver` y usuarios autenticados.
 5. Validar flujos completos por rol y dispositivo.
 6. Eliminar datos de prueba únicamente con autorización específica.
@@ -89,6 +92,7 @@ Cerrar las brechas críticas de seguridad, permisos, trazabilidad y confiabilida
 - [x] Auditar y endurecer operaciones destructivas de cuatro tablas de combustible, anomalías, resumen mensual y vehículos.
 - [x] Auditar y endurecer operaciones destructivas de once tablas de IA y soberanía.
 - [x] Auditar y endurecer operaciones destructivas de seis tablas de catálogos, multimedia, ubicaciones y soporte.
+- [x] Auditar y endurecer operaciones destructivas de seis tablas de hospitalidad, habitaciones, tarifas y extras.
 - [x] Confirmar que `/admin` y sus rutas hijas están protegidas en middleware.
 - [ ] Completar matriz inicial de permisos por módulo y acción.
 
@@ -140,6 +144,7 @@ Cerrar las brechas críticas de seguridad, permisos, trazabilidad y confiabilida
 - [x] Actualizar Administración con el estado real de combustible y vehículos.
 - [x] Actualizar Administración con el estado real de IA y soberanía.
 - [x] Actualizar Administración con el estado real de catálogos, multimedia, ubicaciones y soporte.
+- [x] Actualizar Administración con el estado real de hospitalidad, habitaciones, tarifas y extras.
 
 ### Criterio de cierre
 
