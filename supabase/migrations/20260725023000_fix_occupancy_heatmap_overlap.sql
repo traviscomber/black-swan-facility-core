@@ -20,6 +20,7 @@ returns table(
 )
 language plpgsql
 stable
+set search_path = ''
 as $function$
 declare
   v_max_days integer := 90;
@@ -39,7 +40,7 @@ begin
   return query
   with date_series as (
     select d::date as day
-    from generate_series(p_start_date, p_end_date - 1, interval '1 day') d
+    from pg_catalog.generate_series(p_start_date, p_end_date - 1, interval '1 day') d
   ),
   bed_universe as (
     select
@@ -47,7 +48,7 @@ begin
       b.room_id,
       r.location_id,
       l.name as location_name,
-      coalesce(r.rate_per_night, 0) as rate_per_night
+      pg_catalog.coalesce(r.rate_per_night, 0) as rate_per_night
     from public.beds b
     join public.rooms r on r.id = b.room_id
     join public.locations l on l.id = r.location_id
@@ -76,10 +77,10 @@ begin
           and ds.day >= rb.start_date
           and ds.day < rb.end_date
       ) as is_blocked,
-      coalesce((
-        select sum(
-          coalesce(res.total_amount, bu.rate_per_night)
-          / greatest(res.check_out - res.check_in, 1)
+      pg_catalog.coalesce((
+        select pg_catalog.sum(
+          pg_catalog.coalesce(res.total_amount, bu.rate_per_night)
+          / pg_catalog.greatest(res.check_out - res.check_in, 1)
         )
         from public.reservations res
         where res.bed_id = bu.bed_id
@@ -94,11 +95,11 @@ begin
     select
       s.day,
       s.location_id,
-      max(s.location_name) as location_name,
-      count(*)::integer as total_beds,
-      count(*) filter (where s.is_occupied)::integer as occupied_beds,
-      count(*) filter (where not s.is_occupied and s.is_blocked)::integer as blocked_beds,
-      sum(s.daily_revenue) as revenue
+      pg_catalog.max(s.location_name) as location_name,
+      pg_catalog.count(*)::integer as total_beds,
+      pg_catalog.count(*) filter (where s.is_occupied)::integer as occupied_beds,
+      pg_catalog.count(*) filter (where not s.is_occupied and s.is_blocked)::integer as blocked_beds,
+      pg_catalog.sum(s.daily_revenue) as revenue
     from bed_day_state s
     group by s.day, s.location_id
   )
@@ -109,14 +110,14 @@ begin
     d.total_beds,
     d.occupied_beds,
     d.blocked_beds,
-    greatest(d.total_beds - d.occupied_beds - d.blocked_beds, 0)::integer as available_beds,
+    pg_catalog.greatest(d.total_beds - d.occupied_beds - d.blocked_beds, 0)::integer as available_beds,
     case
-      when d.total_beds > 0 then round((d.occupied_beds::numeric / d.total_beds) * 100, 1)
+      when d.total_beds > 0 then pg_catalog.round((d.occupied_beds::numeric / d.total_beds) * 100, 1)
       else 0
     end as occupancy_pct,
-    round(d.revenue, 0) as revenue,
+    pg_catalog.round(d.revenue, 0) as revenue,
     case
-      when d.occupied_beds > 0 then round(d.revenue / d.occupied_beds, 0)
+      when d.occupied_beds > 0 then pg_catalog.round(d.revenue / d.occupied_beds, 0)
       else 0
     end as avg_rate
   from daily d
@@ -138,10 +139,10 @@ begin
     select
       total_beds,
       occupied_beds,
-      least(raw_blocked_beds, greatest(total_beds - occupied_beds, 0)) as blocked_beds
+      pg_catalog.least(raw_blocked_beds, pg_catalog.greatest(total_beds - occupied_beds, 0)) as blocked_beds
     from scenarios
   )
-  select count(*) into v_invalid
+  select pg_catalog.count(*) into v_invalid
   from normalized
   where occupied_beds + blocked_beds > total_beds
      or total_beds - occupied_beds - blocked_beds < 0;
@@ -157,7 +158,7 @@ do $validate$
 declare
   v_invalid integer;
 begin
-  select count(*) into v_invalid
+  select pg_catalog.count(*) into v_invalid
   from public.get_occupancy_heatmap(current_date, current_date + 30, null)
   where occupied_beds < 0
      or blocked_beds < 0
