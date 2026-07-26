@@ -21,6 +21,7 @@ Cerrar brechas críticas de seguridad, permisos, trazabilidad y confiabilidad op
 - [x] Incorporar prevalidación de facturación de solo lectura.
 - [x] Llevar políticas RLS `ALL` amplias sin restricción efectiva a cero.
 - [x] Ampliar tareas operativas para trabajadores y voluntarios en todas las áreas de Black Swan.
+- [x] Conectar tareas con hospitalidad, housekeeping, mantenimiento, ganadería e incidencias.
 - [ ] Completar cobertura de acciones críticas y permisos por módulo.
 - [ ] Validar flujos completos por rol y dispositivo.
 
@@ -38,25 +39,28 @@ Cerrar brechas críticas de seguridad, permisos, trazabilidad y confiabilidad op
 - La tabla `invoices` permanece con 0 registros. No se crearon ni alteraron facturas durante el refactor.
 - Producción contiene 7 reservas confirmadas; 5 tienen prefijo `TEST_`. Ninguna fue modificada.
 - Una reserva histórica no TEST presenta salida anterior a entrada y queda bloqueada por la prevalidación.
-- `reviews` permanece con 0 registros.
-- `volunteers` conserva 1 registro.
+- `reviews` permanece con 0 registros y `volunteers` conserva 1 registro.
 - `reviews` y `volunteers` ya no permiten acceso `anon`, `TRUNCATE` ni políticas `ALL` amplias.
-- Ambas tablas conservan lectura, creación y actualización para usuarios autenticados; la eliminación exige `admin`.
 - Conteo verificado de políticas `ALL` amplias sin restricción efectiva: **0**.
-- No se modificaron filas de producción durante el endurecimiento de `reviews` y `volunteers`.
-- El módulo `/tasks` ahora admite responsables de dos tipos: trabajadores y voluntarios, sin duplicar sistemas de seguimiento.
+- El módulo `/tasks` admite responsables trabajadores y voluntarios sin duplicar sistemas de seguimiento.
 - `task_assignments` acepta exactamente un `employee_id` o un `volunteer_id` por asignación y conserva integridad referencial.
-- `tasks` incorpora área operativa, categoría, duración estimada, indicador de manejo animal e instrucciones de seguridad.
-- Se agregaron plantillas para ganadería y animales, hospitalidad, housekeeping, mantenimiento, huerto y viñedo, infraestructura, logística, seguridad y administración.
-- Las tareas de creación y edición usan RPC atómicos con validación interna de sesión y rol `admin` o `approver`, siguiendo el patrón bed-booking de operación todo-o-nada.
-- La UI diferencia trabajadores y voluntarios, muestra área, categoría, duración y advertencias de seguridad, y conserva ubicación al cambiar de estado.
-- Producción mantiene 20 trabajadores, 1 voluntario, 0 tareas y 0 asignaciones. No se crearon tareas ni se modificaron personas durante este bloque.
+- `tasks` incorpora área, categoría, duración, manejo animal, seguridad y referencia al módulo de origen.
+- Se agregaron plantillas para ganadería, hospitalidad, housekeeping, mantenimiento, huerto, viñedo, infraestructura, logística, seguridad y administración.
+- Las tareas de creación y edición usan RPC atómicos con validación interna de sesión y rol `admin` o `approver`.
+- Cada tarea derivada puede guardar `source_type`, `source_id`, `source_label` y `source_path`; un índice impide más de una tarea abierta para el mismo registro de origen.
+- `/tasks` abre el formulario precompletado desde el módulo de origen y muestra la referencia en su listado.
+- Ganadería permite crear tareas por área o potrero registrado.
+- Housekeeping permite derivar sus registros a tareas operativas asignables.
+- Mantenimiento permite crear una tarea operacional desde cada trabajo programado.
+- Incidencias permiten crear una tarea precompletada y el RPC enlaza el registro con `issue_task_assignments` dentro de la misma transacción.
+- Concierge incorpora una vista interna de solicitudes de hospitalidad y permite derivarlas a tareas sin reemplazar el formulario público de huéspedes.
+- Producción mantiene 20 trabajadores, 1 voluntario, 0 tareas, 0 asignaciones, 0 solicitudes de hospitalidad, 0 housekeeping, 0 mantenimiento y 4 incidencias. No se crearon ni modificaron filas operativas durante este bloque.
 
 ## Prioridades
 
-1. Probar creación, edición y cambio de estado de tareas con un trabajador y un voluntario mediante datos controlados.
-2. Conectar tareas con hospitalidad, housekeeping, mantenimiento, ganadería e incidencias para crear seguimiento desde cada módulo sin duplicar datos.
-3. Añadir evidencia de ejecución, comentarios y notificaciones WhatsApp a responsables.
+1. Probar creación, edición y cambio de estado con un trabajador y un voluntario mediante datos controlados.
+2. Añadir evidencia de ejecución, comentarios y notificaciones WhatsApp a responsables.
+3. Mostrar en cada módulo el estado de la tarea vinculada y permitir volver al registro de origen desde el detalle.
 4. Auditar operaciones destructivas restantes en pagos, presupuestos, inventario y compras.
 5. Conectar y verificar registro de acciones críticas reales: anulaciones, pagos, cambios financieros, permisos y borrados.
 6. Completar matriz de permisos para `admin`, `approver` y usuario autenticado en UI, API y Supabase.
@@ -109,7 +113,7 @@ Cerrar brechas críticas de seguridad, permisos, trazabilidad y confiabilidad op
 - [x] Retirar acceso anónimo a bitácoras y RPC escritores identificados.
 - [x] Permitir asignación de tareas a trabajadores y voluntarios con creación y edición atómicas.
 - [x] Añadir catálogo operacional de tareas para todas las áreas principales de Fundo Corcovado.
-- [ ] Conectar creación de tareas desde hospitalidad, housekeeping, mantenimiento, ganadería e incidencias.
+- [x] Conectar creación de tareas desde hospitalidad, housekeeping, mantenimiento, ganadería e incidencias.
 - [ ] Añadir evidencia, comentarios y notificaciones de tareas.
 - [ ] Restringir inserción de `approver_audit_log` cuando exista un escritor real identificado.
 - [ ] Registrar borrados masivos, cambios de estado, aprobaciones, permisos, KMZ y modificaciones financieras.
