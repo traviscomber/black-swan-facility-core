@@ -52,7 +52,7 @@ export default function BookingsLayout({ children }: { children: React.ReactNode
                           ? "payments"
                           : pathname?.includes("/invoices")
                             ? "invoices"
-                            : pathname?.includes("/reports")
+                            : pathname?.includes("/reports") || pathname?.includes("/revenue")
                               ? "reports"
                               : pathname?.includes("/rooms")
                                 ? "rooms"
