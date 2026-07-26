@@ -371,6 +371,16 @@ export function TimelineRow({
                     ? event.label
                     : `${STATUS_LABELS[normalizedStatus(event.status)] ?? event.status} · ${event.starts_on} → ${event.ends_on}`}
                 </div>
+
+                {/* Check-in today indicator */}
+                {!isBlock && isSameDay(parseISO(event.starts_on), new Date()) && (
+                  <div className="absolute left-0 top-0 h-full w-1 bg-emerald-400" title="Check-in hoy" />
+                )}
+
+                {/* Check-out today indicator */}
+                {!isBlock && isSameDay(parseISO(event.ends_on), new Date()) && (
+                  <div className="absolute right-0 top-0 h-full w-1 bg-amber-400" title="Check-out hoy" />
+                )}
               </button>
             </div>
           )
