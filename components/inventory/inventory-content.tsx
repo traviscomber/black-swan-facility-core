@@ -67,18 +67,14 @@ export function InventoryContent() {
       setError(loadError.message)
       setAssets([])
     } else {
-      setAssets((data ?? []).map((asset: any) => ({
-        ...asset,
-        category: asset.asset_categories,
-        cost_center: asset.cost_centers,
-      })))
+      setAssets((data ?? []).map((asset: any) => ({ ...asset, category: asset.asset_categories, cost_center: asset.cost_centers })))
     }
     setLoading(false)
   }, [supabase])
 
   const loadMetadata = useCallback(async () => {
     const [categoriesResult, costCentersResult] = await Promise.all([
-      supabase.from("asset_categories").select("id, name, color").eq("is_active", true).order("name"),
+      supabase.from("asset_categories").select("id, name, code, color").eq("is_active", true).order("name"),
       supabase.from("cost_centers").select("id, name, code").eq("is_active", true).order("name"),
     ])
     if (categoriesResult.error || costCentersResult.error) {
@@ -89,9 +85,7 @@ export function InventoryContent() {
     setCostCenters((costCentersResult.data ?? []) as MetadataOption[])
   }, [supabase])
 
-  useEffect(() => {
-    void Promise.all([loadAssets(), loadMetadata()])
-  }, [loadAssets, loadMetadata])
+  useEffect(() => { void Promise.all([loadAssets(), loadMetadata()]) }, [loadAssets, loadMetadata])
 
   const filteredAssets = useMemo(() => assets.filter((asset) => {
     const term = searchTerm.trim().toLowerCase()
@@ -106,21 +100,23 @@ export function InventoryContent() {
   const withoutAssignment = filteredAssets.filter((asset) => !asset.assigned_to?.trim()).length
   const availableStatuses = Array.from(new Set(assets.map((asset) => asset.status).filter(Boolean))).sort()
 
-  const handleFormClose = () => {
-    setShowForm(false)
-    setEditingAsset(null)
-  }
+  const handleFormClose = () => { setShowForm(false); setEditingAsset(null) }
 
-  const handleDelete = async (id: string) => {
+  const handleRetire = async (id: string) => {
     const asset = assets.find((item) => item.id === id)
-    if (!asset || !window.confirm(`¿Eliminar definitivamente el activo “${asset.name}” (${asset.asset_code})? Esta acción no se puede deshacer.`)) return
+    if (!asset || asset.status === "deprecated") return
+    if (!window.confirm(`¿Marcar “${asset.name}” (${asset.asset_code}) como retirado? El registro y su historial se conservarán.`)) return
 
-    const { error: deleteError } = await supabase.from("multimedia_assets").delete().eq("id", id)
-    if (deleteError) {
-      toast({ title: "No se pudo eliminar", description: deleteError.message, variant: "destructive" })
+    const { error: updateError } = await supabase
+      .from("multimedia_assets")
+      .update({ status: "deprecated", updated_at: new Date().toISOString() })
+      .eq("id", id)
+
+    if (updateError) {
+      toast({ title: "No se pudo retirar", description: updateError.message, variant: "destructive" })
       return
     }
-    toast({ title: "Activo eliminado", description: `${asset.name} fue eliminado del inventario.` })
+    toast({ title: "Activo retirado", description: `${asset.name} permanece en inventario con estado Retirado.` })
     await loadAssets()
   }
 
@@ -161,7 +157,7 @@ export function InventoryContent() {
           </CardContent>
         </Card>
 
-        {loading ? <Card><CardContent className="py-12 text-center text-sm text-muted-foreground">Cargando inventario…</CardContent></Card> : filteredAssets.length === 0 ? <Card><CardContent className="py-12 text-center"><Package className="mx-auto mb-3 h-6 w-6 text-muted-foreground" /><p className="font-medium">No hay activos para los filtros seleccionados.</p><p className="mt-1 text-sm text-muted-foreground">Ajusta los filtros o registra un nuevo activo.</p></CardContent></Card> : <InventoryTable assets={filteredAssets} loading={false} onEdit={setEditingAsset} onDelete={handleDelete} onEditClick={() => setShowForm(true)} />}
+        {loading ? <Card><CardContent className="py-12 text-center text-sm text-muted-foreground">Cargando inventario…</CardContent></Card> : filteredAssets.length === 0 ? <Card><CardContent className="py-12 text-center"><Package className="mx-auto mb-3 h-6 w-6 text-muted-foreground" /><p className="font-medium">No hay activos para los filtros seleccionados.</p><p className="mt-1 text-sm text-muted-foreground">Ajusta los filtros o registra un nuevo activo.</p></CardContent></Card> : <InventoryTable assets={filteredAssets} loading={false} onEdit={setEditingAsset} onDelete={handleRetire} onEditClick={() => setShowForm(true)} />}
 
         {showForm && <InventoryForm asset={editingAsset} categories={categories} costCenters={costCenters} onClose={handleFormClose} onSuccess={async () => { await loadAssets(); handleFormClose() }} />}
       </div>
