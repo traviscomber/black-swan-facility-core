@@ -110,6 +110,7 @@ export interface TimelineRowProps {
   draggingEventId: string | null
   dropTargetBedId: string | null
   movingReservationId: string | null
+  moveConflict: boolean
   draggingEvent: CalendarEvent | null
   onEventPointerDown: (event: CalendarEvent, pointerEvent: React.PointerEvent<HTMLButtonElement>) => void
   onEventPointerMove: (event: CalendarEvent, pointerEvent: React.PointerEvent<HTMLButtonElement>) => void
@@ -164,6 +165,7 @@ export function TimelineRow({
   draggingEventId,
   dropTargetBedId,
   movingReservationId,
+  moveConflict,
   draggingEvent,
   onEventPointerDown,
   onEventPointerMove,
@@ -392,8 +394,8 @@ export function TimelineRow({
             left={eventGeometry(draggingEvent).left}
             width={eventGeometry(draggingEvent).width}
             intent="move"
-            conflict="none"
-            label={`Mover a: ${draggingEvent.starts_on} → ${draggingEvent.ends_on}`}
+            conflict={moveConflict ? "reservation" : "none"}
+            label={moveConflict ? "No disponible" : `Mover a: ${draggingEvent.starts_on} → ${draggingEvent.ends_on}`}
           />
         )}
       </div>

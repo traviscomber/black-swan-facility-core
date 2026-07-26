@@ -65,6 +65,7 @@ export function useCalendarInteraction({
   const [moveState, setMoveState]             = useState<MoveState | null>(null)
   const [dropTargetBedId, setDropTargetBedId] = useState<string | null>(null)
   const [movingReservationId, setMovingReservationId] = useState<string | null>(null)
+  const [moveConflict, setMoveConflict]       = useState(false)
   const [creatingRange, setCreatingRange]     = useState<CreatingRange | null>(null)
 
   // Ref to the source element that holds pointer capture
@@ -104,9 +105,10 @@ export function useCalendarInteraction({
   // -------------------------------------------------------------------------
   // updateMove — called from onPointerMove on the same element
   // Uses elementFromPoint to detect which bed row the pointer is over
+  // Validates availability in real-time and shows conflict state
   // -------------------------------------------------------------------------
   const updateMove = useCallback(
-    (pointerEvent: React.PointerEvent<HTMLElement>) => {
+    async (pointerEvent: React.PointerEvent<HTMLElement>, beds: Bed[]) => {
       if (!moveState || moveState.pointerId !== pointerEvent.pointerId) return
       pointerEvent.preventDefault()
 
@@ -127,9 +129,31 @@ export function useCalendarInteraction({
         node = node.parentElement
       }
 
-      setDropTargetBedId(foundBedId !== moveState.sourceBedId ? foundBedId : null)
+      const nextDropTarget = foundBedId !== moveState.sourceBedId ? foundBedId : null
+      setDropTargetBedId(nextDropTarget)
+
+      // Validate availability for the target bed if changed
+      if (nextDropTarget && nextDropTarget !== moveState.sourceBedId) {
+        const targetBed = beds.find((b) => b.id === nextDropTarget)
+        if (targetBed) {
+          const { data: available } = await supabase.rpc(
+            "is_booking_inventory_available",
+            {
+              p_bed_id:                   targetBed.id,
+              p_room_id:                  targetBed.room.id,
+              p_location_id:              targetBed.room.location_id,
+              p_check_in:                 moveState.event.starts_on,
+              p_check_out:                moveState.event.ends_on,
+              p_exclude_reservation_id:   moveState.event.event_id,
+            },
+          )
+          setMoveConflict(!available)
+        }
+      } else {
+        setMoveConflict(false)
+      }
     },
-    [moveState],
+    [moveState, supabase],
   )
 
   // -------------------------------------------------------------------------
@@ -273,6 +297,7 @@ export function useCalendarInteraction({
     draggingEventId:     moveState?.event.event_id ?? null,
     dropTargetBedId,
     movingReservationId,
+    moveConflict,
     creatingRange,
     draggingEvent,
 
