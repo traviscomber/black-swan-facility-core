@@ -19,6 +19,7 @@ Cerrar las brechas críticas de seguridad, permisos, trazabilidad y confiabilida
 - [x] Endurecer primera fase RLS en datos personales y financieros.
 - [x] Volver append-only nueve bitácoras operativas y administrativas.
 - [x] Endurecer acceso inicial a GIS y KMZ.
+- [x] Endurecer nueve tablas centrales de operaciones.
 - [ ] Completar cobertura de acciones críticas y permisos por módulo.
 - [ ] Validar flujos completos por rol y dispositivo.
 
@@ -36,7 +37,9 @@ Cerrar las brechas críticas de seguridad, permisos, trazabilidad y confiabilida
 - No se identificó un escritor activo para `approver_audit_log` en funciones de base de datos ni en el código indexado.
 - `gis_overlays` y `operation_kmz_files` ya no permiten acceso anónimo ni `TRUNCATE`; usan políticas separadas y `DELETE` queda limitado a `admin`.
 - `gis_overlays` conserva 5 registros y `operation_kmz_files` permanece sin registros; la migración no alteró filas.
-- Las tablas con política `ALL` amplia sin restricción efectiva bajaron de 60 a 58: 50 dirigidas a `PUBLIC` y 8 a `authenticated`.
+- `activities`, `activity_attendees`, `activity_types`, `checklists`, `checklist_items`, `incidents`, `maintenance_tasks`, `task_assignments` y `task_comments` ya no permiten acceso anónimo ni `TRUNCATE`; usan políticas separadas y `DELETE` queda limitado a `admin`.
+- Se preservaron 3 actividades y 12 tipos de actividad. Las otras siete tablas operativas revisadas permanecen sin registros.
+- Las tablas con política `ALL` amplia sin restricción efectiva bajaron a 55: 44 dirigidas a `PUBLIC` y 11 a `authenticated`.
 - `ai_operation_logs` conserva 8 registros; las otras ocho bitácoras revisadas permanecen sin registros.
 - Existen cinco reservas `TEST_` en producción. No deben eliminarse sin autorización específica sobre esos registros.
 
@@ -44,7 +47,7 @@ Cerrar las brechas críticas de seguridad, permisos, trazabilidad y confiabilida
 
 1. Auditar operaciones destructivas restantes.
 2. Conectar y verificar registro de acciones críticas reales.
-3. Continuar RLS en operaciones, infraestructura, energía, IA y módulos auxiliares.
+3. Continuar RLS en operaciones auxiliares, infraestructura, energía, IA y módulos de soporte.
 4. Alinear permisos reales con `admin`, `approver` y usuarios autenticados.
 5. Validar flujos completos por rol y dispositivo.
 6. Eliminar datos de prueba únicamente con autorización específica.
@@ -64,6 +67,7 @@ Cerrar las brechas críticas de seguridad, permisos, trazabilidad y confiabilida
 - [x] Exigir rol `admin` dentro de los RPC de actualización y restauración masiva.
 - [ ] Auditar rutas destructivas o masivas de reservas, facturas, pagos, presupuestos, inventario y compras.
 - [x] Auditar y endurecer operaciones destructivas de `gis_overlays` y `operation_kmz_files`.
+- [x] Auditar y endurecer operaciones destructivas de nueve tablas centrales de actividades, incidencias, mantenimiento y tareas.
 - [x] Confirmar que `/admin` y sus rutas hijas están protegidas en middleware.
 - [ ] Completar matriz inicial de permisos por módulo y acción.
 
@@ -109,6 +113,7 @@ Cerrar las brechas críticas de seguridad, permisos, trazabilidad y confiabilida
 - [ ] Implementar matriz final de permisos en UI, middleware, API y Supabase.
 - [x] Actualizar Administración con estado verificable de nueve bitácoras append-only.
 - [x] Actualizar Administración con el estado real de acceso GIS y KMZ.
+- [x] Actualizar Administración con el estado real de las nueve tablas operativas endurecidas.
 
 ### Criterio de cierre
 
