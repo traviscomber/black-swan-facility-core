@@ -1,165 +1,70 @@
 "use client"
 
 import type React from "react"
+import { useEffect, useRef, useState } from "react"
 import { useChat } from "@ai-sdk/react"
 import { DefaultChatTransport } from "ai"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { ArrowLeft, Loader2, MessageSquare, Send } from "lucide-react"
+import Link from "next/link"
+import { AppLayout } from "@/components/app-layout"
 import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { Loader2, Send, MessageSquare } from "lucide-react"
-import { useRef, useEffect, useState } from "react"
-import { AppLayout } from "@/components/app-layout"
+
+const quickQuestions = [
+  "Resume el último control biométrico registrado.",
+  "¿Qué alertas o tratamientos están abiertos?",
+  "Resume la proyección económica de Crianza.",
+  "¿Qué precios y costos registrados requieren validación?",
+]
 
 export default function CattleExpertAgent() {
   const [inputValue, setInputValue] = useState("")
-
   const { messages, sendMessage, status } = useChat({
-    transport: new DefaultChatTransport({
-      api: "/api/cattle/expert-agent",
-    }),
+    transport: new DefaultChatTransport({ api: "/api/cattle/expert-agent" }),
   })
-
   const scrollRef = useRef<HTMLDivElement>(null)
+  const isWorking = status === "submitted" || status === "streaming" || status === "in_progress"
 
   useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollIntoView({ behavior: "smooth" })
-    }
+    scrollRef.current?.scrollIntoView({ behavior: "smooth" })
   }, [messages])
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (inputValue && inputValue.trim()) {
-      sendMessage({ text: inputValue })
-      setInputValue("")
-    }
+  function submitQuestion(question: string) {
+    const cleanQuestion = question.trim()
+    if (!cleanQuestion || isWorking) return
+    sendMessage({ text: cleanQuestion })
+    setInputValue("")
   }
 
-  const handleQuickQuestion = (question: string) => {
-    setInputValue(question)
-    setTimeout(() => {
-      sendMessage({ text: question })
-      setInputValue("")
-    }, 100)
+  function handleSubmit(event: React.FormEvent) {
+    event.preventDefault()
+    submitQuestion(inputValue)
   }
 
   return (
     <AppLayout>
-      <div className="mx-auto max-w-4xl px-4 py-8 space-y-6">
-        <div className="space-y-2">
-          <div className="flex items-center gap-2">
-            <MessageSquare className="h-6 w-6 text-primary" />
-            <h1 className="text-3xl font-bold text-accent">Cattle Management Expert</h1>
-          </div>
-          <p className="text-muted-foreground">
-            AI-powered advisor for your cattle business. Ask questions about profitability, animal management, breeding
-            strategies, and cost optimization.
-          </p>
+      <div className="mx-auto max-w-4xl space-y-6 px-4 py-6 sm:py-8">
+        <div className="space-y-3">
+          <Button asChild variant="ghost" className="-ml-3 w-fit"><Link href="/cattle"><ArrowLeft className="mr-2 h-4 w-4" />Volver a Ganadería</Link></Button>
+          <div className="flex items-center gap-2"><MessageSquare className="h-6 w-6 text-primary" /><h1 className="text-2xl font-bold text-accent sm:text-3xl">Asistente ganadero</h1></div>
+          <p className="max-w-3xl text-sm text-muted-foreground sm:text-base">Consulta registros clínicos, costos, precios y proyecciones disponibles en el sistema. Las respuestas distinguen datos operativos de supuestos y no reemplazan evaluación veterinaria ni financiera.</p>
         </div>
 
-        <Card className="border-secondary h-[600px] flex flex-col">
-          <CardHeader className="border-b border-secondary pb-3">
-            <CardTitle className="text-lg">Expert Chat</CardTitle>
-            <CardDescription>Conversation with your cattle management AI advisor</CardDescription>
-          </CardHeader>
-
+        <Card className="flex min-h-[560px] flex-col overflow-hidden border-secondary">
+          <CardHeader className="border-b border-secondary pb-3"><CardTitle className="text-base">Consulta interna</CardTitle><CardDescription>El asistente debe verificar los datos antes de responder con cifras.</CardDescription></CardHeader>
           <ScrollArea className="flex-1 p-4">
             <div className="space-y-4">
-              {messages.length === 0 ? (
-                <div className="flex flex-col items-center justify-center h-full text-center py-12">
-                  <MessageSquare className="h-12 w-12 text-muted-foreground mb-4 opacity-50" />
-                  <p className="text-muted-foreground">
-                    Ask me anything about your cattle business plan, profitability, breeding strategies, or operational
-                    costs.
-                  </p>
-                </div>
-              ) : (
-                messages.map((message, index) => (
-                  <div
-                    key={index}
-                    className={`flex gap-3 ${message.role === "user" ? "justify-end" : "justify-start"}`}
-                  >
-                    <div
-                      className={`rounded-lg px-4 py-2 max-w-xs lg:max-w-md ${
-                        message.role === "user"
-                          ? "bg-primary text-primary-foreground"
-                          : "bg-secondary text-secondary-foreground"
-                      }`}
-                    >
-                      {message.parts ? (
-                        message.parts.map((part: any, partIndex: number) => (
-                          <p key={partIndex} className="text-sm">
-                            {typeof part === "string" ? part : part.text}
-                          </p>
-                        ))
-                      ) : (
-                        <p className="text-sm">{message.content}</p>
-                      )}
-                    </div>
-                  </div>
-                ))
-              )}
-              {status === "in_progress" && (
-                <div className="flex gap-3 justify-start">
-                  <div className="rounded-lg px-4 py-2 bg-secondary text-secondary-foreground">
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  </div>
-                </div>
-              )}
+              {messages.length === 0 ? <div className="flex min-h-[330px] flex-col items-center justify-center px-4 text-center"><MessageSquare className="mb-4 h-10 w-10 text-muted-foreground opacity-50" /><p className="max-w-md text-sm text-muted-foreground">Pregunta por registros existentes. Cuando falte información o los datos sean antiguos, el asistente debe indicarlo explícitamente.</p></div> : messages.map((message) => <div key={message.id} className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}><div className={`max-w-[88%] rounded-lg px-4 py-3 text-sm sm:max-w-[75%] ${message.role === "user" ? "bg-primary text-primary-foreground" : "bg-secondary text-secondary-foreground"}`}>{message.parts.map((part, index) => part.type === "text" ? <p key={index} className="whitespace-pre-wrap">{part.text}</p> : null)}</div></div>)}
+              {isWorking && <div className="flex justify-start"><div className="rounded-lg bg-secondary px-4 py-3"><Loader2 className="h-4 w-4 animate-spin" /></div></div>}
               <div ref={scrollRef} />
             </div>
           </ScrollArea>
-
-          <div className="border-t border-secondary p-4">
-            <form onSubmit={handleSubmit} className="flex gap-2">
-              <Input
-                value={inputValue}
-                onChange={(e) => setInputValue(e.target.value)}
-                placeholder="Ask about your cattle business..."
-                disabled={status === "in_progress"}
-                className="flex-1"
-              />
-              <Button type="submit" disabled={status === "in_progress" || !inputValue.trim()} size="icon">
-                {status === "in_progress" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-              </Button>
-            </form>
-          </div>
+          <div className="border-t border-secondary p-4"><form onSubmit={handleSubmit} className="flex gap-2"><Input value={inputValue} onChange={(event) => setInputValue(event.target.value)} placeholder="Escribe una consulta sobre los registros ganaderos…" disabled={isWorking} className="flex-1" /><Button type="submit" disabled={isWorking || !inputValue.trim()} size="icon" aria-label="Enviar consulta">{isWorking ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}</Button></form></div>
         </Card>
 
-        <Card className="border-secondary/50 bg-secondary/20">
-          <CardHeader>
-            <CardTitle className="text-base">Example Questions</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid gap-2 md:grid-cols-2">
-              <button
-                onClick={() => handleQuickQuestion("What is my current profitability margin for Crianza?")}
-                className="text-left text-sm p-3 rounded border border-secondary hover:bg-secondary/50 transition-colors"
-              >
-                → Current profitability margins
-              </button>
-              <button
-                onClick={() => handleQuickQuestion("When will I break even on my investment?")}
-                className="text-left text-sm p-3 rounded border border-secondary hover:bg-secondary/50 transition-colors"
-              >
-                → Break-even timeline
-              </button>
-              <button
-                onClick={() => handleQuickQuestion("How can I optimize my Engorda costs?")}
-                className="text-left text-sm p-3 rounded border border-secondary hover:bg-secondary/50 transition-colors"
-              >
-                → Cost optimization strategies
-              </button>
-              <button
-                onClick={() => handleQuickQuestion("What breeding recommendations do you have?")}
-                className="text-left text-sm p-3 rounded border border-secondary hover:bg-secondary/50 transition-colors"
-              >
-                → Breeding recommendations
-              </button>
-            </div>
-          </CardContent>
-        </Card>
+        <Card><CardHeader><CardTitle className="text-base">Consultas sugeridas</CardTitle><CardDescription>Estas preguntas usan datos registrados y evitan presentar proyecciones como hechos actuales.</CardDescription></CardHeader><CardContent><div className="grid gap-2 md:grid-cols-2">{quickQuestions.map((question) => <button key={question} type="button" onClick={() => submitQuestion(question)} disabled={isWorking} className="rounded-md border p-3 text-left text-sm transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50">{question}</button>)}</div></CardContent></Card>
       </div>
     </AppLayout>
   )
