@@ -15,6 +15,17 @@ const domains = [
   { name: "Otros catálogos y módulos", tables: 39, anon: 34, authenticated: 39, risk: "Revisión", examples: "catálogos, multimedia, activos y módulos auxiliares" },
 ] as const
 
+const phaseOneTables = [
+  { table: "guests", rows: 4, exposure: "Authenticated ALL", data: "Nombre, email, teléfono, dirección y notas", dependencies: "reservations.guest_id", priority: "Crítica" },
+  { table: "reservations", rows: 7, exposure: "Authenticated ALL", data: "Datos de huésped, fechas, solicitudes y montos", dependencies: "guests, rooms, beds, locations; 9 triggers operativos", priority: "Crítica" },
+  { table: "invoices", rows: 0, exposure: "Authenticated ALL", data: "Datos de cliente, líneas, impuestos y totales", dependencies: "reservations y employees", priority: "Crítica" },
+  { table: "invoice_payments", rows: 0, exposure: "Authenticated ALL", data: "Monto, método, transacción y responsable", dependencies: "invoices y employees", priority: "Crítica" },
+  { table: "payments", rows: 0, exposure: "Authenticated ALL", data: "Monto, método, estado y transacción", dependencies: "reservations", priority: "Crítica" },
+  { table: "leads", rows: 0, exposure: "Public ALL", data: "Teléfono, nombre, fechas, preferencias y notas", dependencies: "reservations", priority: "Crítica" },
+  { table: "messages", rows: 0, exposure: "Public ALL", data: "Teléfono, contenido, intención y sentimiento", dependencies: "leads y reservations", priority: "Crítica" },
+  { table: "budgets", rows: 25, exposure: "Public ALL", data: "Presupuesto, gasto real, variación y notas", dependencies: "budget_divisions y budget_categories", priority: "Alta" },
+] as const
+
 const phases = [
   { step: "1", title: "Proteger datos personales y financieros", detail: "Retirar acceso anónimo y limitar escritura en huéspedes, leads, mensajes, reservas, facturas, pagos y presupuestos." },
   { step: "2", title: "Hacer inmutables las bitácoras", detail: "Separar lectura de escritura y evitar UPDATE, DELETE y TRUNCATE en tablas de auditoría e historial." },
@@ -26,7 +37,7 @@ const phases = [
 export default function AdminSecurityPage() {
   return (
     <AppLayout>
-      <PageHeader title="Riesgo de acceso a datos" description="Clasificación verificada de políticas RLS amplias y privilegios efectivos en producción." />
+      <PageHeader title="Riesgo de acceso a datos" description="Clasificación verificada de políticas RLS amplias, privilegios efectivos y dependencias críticas en producción." />
       <div className="space-y-6 p-4 md:p-8">
         <Link href="/admin" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"><ArrowLeft className="h-4 w-4" /> Volver a Administración</Link>
 
@@ -38,7 +49,7 @@ export default function AdminSecurityPage() {
 
         <Card className="border-amber-500/50">
           <CardHeader><CardTitle>Interpretación correcta</CardTitle><CardDescription>RLS habilitado no equivale a acceso restringido.</CardDescription></CardHeader>
-          <CardContent className="space-y-2 text-sm"><p>Estas tablas combinan políticas que aceptan todas las filas con privilegios efectivos de SELECT, INSERT, UPDATE o DELETE.</p><p className="text-muted-foreground">La clasificación se verificó directamente en pg_policies e information_schema.role_table_grants el 26-07-2026. No se modificaron políticas ni datos.</p></CardContent>
+          <CardContent className="space-y-2 text-sm"><p>Estas tablas combinan políticas que aceptan todas las filas con privilegios efectivos de SELECT, INSERT, UPDATE o DELETE.</p><p className="text-muted-foreground">La clasificación se verificó directamente en pg_policies, information_schema.role_table_grants, columnas, claves foráneas, conteos y triggers el 26-07-2026. No se modificaron políticas ni datos.</p></CardContent>
         </Card>
 
         <section className="space-y-3">
@@ -47,6 +58,16 @@ export default function AdminSecurityPage() {
             {domains.map((domain) => <Card key={domain.name}><CardHeader><div className="flex items-start justify-between gap-3"><div><CardTitle className="text-base">{domain.name}</CardTitle><CardDescription>{domain.examples}</CardDescription></div><Badge variant={domain.risk === "Crítico" ? "destructive" : "outline"}>{domain.risk}</Badge></div></CardHeader><CardContent className="grid grid-cols-3 gap-3"><div><p className="text-2xl font-semibold">{domain.tables}</p><p className="text-xs text-muted-foreground">tablas amplias</p></div><div><p className="text-2xl font-semibold">{domain.anon}</p><p className="text-xs text-muted-foreground">con acceso anon</p></div><div><p className="text-2xl font-semibold">{domain.authenticated}</p><p className="text-xs text-muted-foreground">con acceso autenticado</p></div></CardContent></Card>)}
           </div>
         </section>
+
+        <Card>
+          <CardHeader><CardTitle>Dependencias verificadas para la fase 1</CardTitle><CardDescription>La primera migración no debe bloquear reservas ni automatizaciones existentes.</CardDescription></CardHeader>
+          <CardContent className="overflow-x-auto">
+            <table className="w-full min-w-[900px] text-sm">
+              <thead><tr className="border-b text-left"><th className="p-3">Tabla</th><th className="p-3">Filas</th><th className="p-3">Acceso actual</th><th className="p-3">Contenido sensible</th><th className="p-3">Dependencias</th><th className="p-3">Prioridad</th></tr></thead>
+              <tbody>{phaseOneTables.map((item) => <tr key={item.table} className="border-b last:border-0"><td className="p-3 font-mono text-xs">{item.table}</td><td className="p-3">{item.rows}</td><td className="p-3">{item.exposure}</td><td className="p-3">{item.data}</td><td className="p-3 text-muted-foreground">{item.dependencies}</td><td className="p-3"><Badge variant={item.priority === "Crítica" ? "destructive" : "outline"}>{item.priority}</Badge></td></tr>)}</tbody>
+            </table>
+          </CardContent>
+        </Card>
 
         <Card>
           <CardHeader><CardTitle>Plan de endurecimiento por fases</CardTitle><CardDescription>No se aplicará ninguna fase sin revisar dependencias y autorizar la migración correspondiente.</CardDescription></CardHeader>
