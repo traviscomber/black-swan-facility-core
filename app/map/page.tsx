@@ -75,6 +75,7 @@ const MAPLIBRE_VERSION = "6.0.0"
 const MAPLIBRE_MODULE = `https://unpkg.com/maplibre-gl@${MAPLIBRE_VERSION}/dist/maplibre-gl.mjs`
 const MAPLIBRE_CSS = `https://unpkg.com/maplibre-gl@${MAPLIBRE_VERSION}/dist/maplibre-gl.css`
 const FALLBACK_COLORS = ["#0f766e", "#b45309", "#7c3aed", "#be123c", "#0369a1", "#4d7c0f"]
+const CATEGORY_ORDER = ["internet", "water", "electricity", "ports", "cattle", "food_storage", "uncategorized"]
 
 export default function MapPage() {
   const mapContainerRef = useRef<HTMLDivElement>(null)
@@ -95,16 +96,28 @@ export default function MapPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  const categories = useMemo(() => Array.from(new Set(infrastructure.map((item) => normalizeCategory(item.category)))).sort((a, b) => a.localeCompare(b, "es")), [infrastructure])
+  const categories = useMemo(() => Array.from(new Set(infrastructure.map((item) => normalizeCategory(item.category)))).sort(compareCategories), [infrastructure])
   const statuses = useMemo(() => Array.from(new Set(infrastructure.map((item) => item.status ?? "unknown"))).sort(), [infrastructure])
   const filteredPoints = useMemo(() => {
     const query = searchTerm.trim().toLocaleLowerCase("es")
-    return infrastructure.filter((item) => {
-      const category = normalizeCategory(item.category)
-      const matchesSearch = !query || [item.name, item.description, category, item.status].some((value) => value?.toLocaleLowerCase("es").includes(query))
-      return matchesSearch && (categoryFilter === "all" || category === categoryFilter) && (statusFilter === "all" || (item.status ?? "unknown") === statusFilter)
-    })
+    return infrastructure
+      .filter((item) => {
+        const category = normalizeCategory(item.category)
+        const matchesSearch = !query || [item.name, item.description, categoryLabel(category), statusLabel(item.status ?? "unknown")].some((value) => value?.toLocaleLowerCase("es").includes(query))
+        return matchesSearch && (categoryFilter === "all" || category === categoryFilter) && (statusFilter === "all" || (item.status ?? "unknown") === statusFilter)
+      })
+      .sort((a, b) => a.name.localeCompare(b.name, "es", { numeric: true }))
   }, [infrastructure, searchTerm, categoryFilter, statusFilter])
+  const groupedPoints = useMemo(() => {
+    const groups = new Map<string, InfrastructureItem[]>()
+    filteredPoints.forEach((point) => {
+      const category = normalizeCategory(point.category)
+      const existing = groups.get(category) ?? []
+      existing.push(point)
+      groups.set(category, existing)
+    })
+    return Array.from(groups.entries()).sort(([a], [b]) => compareCategories(a, b))
+  }, [filteredPoints])
 
   useEffect(() => {
     if (document.querySelector('link[data-maplibre-map="true"]')) return
@@ -276,16 +289,16 @@ export default function MapPage() {
 
           <div className="space-y-5">
             <Card>
-              <CardHeader><CardTitle className="text-base">Puntos GIS</CardTitle><CardDescription>Busque un punto y selecciónelo para centrar el mapa.</CardDescription></CardHeader>
+              <CardHeader><CardTitle className="text-base">Puntos GIS por grupo</CardTitle><CardDescription>Los puntos están ordenados por categoría operativa. Seleccione uno para centrar el mapa.</CardDescription></CardHeader>
               <CardContent className="space-y-3">
                 <div className="relative"><Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" /><input value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} placeholder="Buscar por nombre o descripción" className="h-9 w-full rounded-md border bg-background pl-9 pr-3 text-sm" /></div>
                 <div className="grid grid-cols-2 gap-2">
-                  <select value={categoryFilter} onChange={(event) => setCategoryFilter(event.target.value)} className="h-9 rounded-md border bg-background px-2 text-sm"><option value="all">Todas las categorías</option>{categories.map((category) => <option key={category} value={category}>{categoryLabel(category)}</option>)}</select>
+                  <select value={categoryFilter} onChange={(event) => setCategoryFilter(event.target.value)} className="h-9 rounded-md border bg-background px-2 text-sm"><option value="all">Todos los grupos</option>{categories.map((category) => <option key={category} value={category}>{categoryLabel(category)}</option>)}</select>
                   <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)} className="h-9 rounded-md border bg-background px-2 text-sm"><option value="all">Todos los estados</option>{statuses.map((status) => <option key={status} value={status}>{statusLabel(status)}</option>)}</select>
                 </div>
                 <p className="text-xs text-muted-foreground">{filteredPoints.length.toLocaleString("es-CL")} de {infrastructure.length.toLocaleString("es-CL")} puntos</p>
-                <div className="max-h-[340px] space-y-2 overflow-y-auto pr-1">
-                  {filteredPoints.map((point) => <button key={point.id} type="button" onClick={() => focusPoint(point)} className={`flex w-full items-start justify-between gap-3 rounded-md border p-3 text-left transition-colors hover:bg-muted/50 ${selectedPointId === point.id ? "border-primary bg-muted/60" : ""}`}><div className="min-w-0"><p className="truncate text-sm font-medium">{point.name}</p><p className="mt-1 text-xs text-muted-foreground">{categoryLabel(normalizeCategory(point.category))} · {statusLabel(point.status ?? "unknown")}</p></div><LocateFixed className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" /></button>)}
+                <div className="max-h-[390px] space-y-4 overflow-y-auto pr-1">
+                  {groupedPoints.map(([category, points]) => <section key={category} className="space-y-2"><div className="sticky top-0 z-10 flex items-center justify-between border-b bg-card py-1.5"><p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{categoryLabel(category)}</p><Badge variant="outline">{points.length}</Badge></div>{points.map((point) => <button key={point.id} type="button" onClick={() => focusPoint(point)} className={`flex w-full items-start justify-between gap-3 rounded-md border p-3 text-left transition-colors hover:bg-muted/50 ${selectedPointId === point.id ? "border-primary bg-muted/60" : ""}`}><div className="min-w-0"><p className="truncate text-sm font-medium">{point.name}</p><p className="mt-1 text-xs text-muted-foreground">{statusLabel(point.status ?? "unknown")}</p></div><LocateFixed className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" /></button>)}</section>)}
                   {filteredPoints.length === 0 && <p className="py-6 text-center text-sm text-muted-foreground">No hay puntos para estos filtros.</p>}
                 </div>
               </CardContent>
@@ -307,9 +320,10 @@ export default function MapPage() {
 function Metric({ icon: Icon, label, value }: { icon: typeof MapPin; label: string; value: string }) { return <Card><CardContent className="flex items-center gap-3 p-4"><Icon className="h-5 w-5 text-muted-foreground" /><div><p className="text-xs text-muted-foreground">{label}</p><p className="font-semibold">{value}</p></div></CardContent></Card> }
 function hasCoordinates(item: InfrastructureItem) { return Number.isFinite(item.latitude) && Number.isFinite(item.longitude) }
 function normalizeCategory(value: string | null) { return (value ?? "uncategorized").trim().toLocaleLowerCase("en") }
+function compareCategories(a: string, b: string) { const aIndex = CATEGORY_ORDER.indexOf(a); const bIndex = CATEGORY_ORDER.indexOf(b); if (aIndex === -1 && bIndex === -1) return a.localeCompare(b, "es"); if (aIndex === -1) return 1; if (bIndex === -1) return -1; return aIndex - bIndex }
 function categoryLabel(value: string) { return ({ internet: "Internet", water: "Agua", electricity: "Electricidad", ports: "Puertos", cattle: "Ganadería", food_storage: "Almacenamiento de alimentos", uncategorized: "Sin categoría" } as Record<string, string>)[value] ?? value }
 function statusLabel(value: string) { return ({ active: "Activo", operational: "Operativo", planned: "Planificado", unknown: "Sin estado" } as Record<string, string>)[value] ?? value }
-function pointPopupHtml(properties: Record<string, unknown>) { return `<strong>${escapeHtml(String(properties.name ?? "Punto"))}</strong><br><span>${escapeHtml(String(properties.category ?? ""))}</span><br><small>${escapeHtml(statusLabel(String(properties.status ?? "unknown")))}</small>` }
+function pointPopupHtml(properties: Record<string, unknown>) { return `<strong>${escapeHtml(String(properties.name ?? "Punto"))}</strong><br><span>${escapeHtml(categoryLabel(String(properties.category ?? "uncategorized")))}</span><br><small>${escapeHtml(statusLabel(String(properties.status ?? "unknown")))}</small>` }
 
 async function loadOverlayGeoJson(overlay: GisOverlay): Promise<GeoJsonFeatureCollection> {
   const response = await fetch(overlay.file_url)
