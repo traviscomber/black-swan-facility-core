@@ -48,7 +48,7 @@ begin
       b.room_id,
       r.location_id,
       l.name as location_name,
-      pg_catalog.coalesce(r.rate_per_night, 0) as rate_per_night
+      coalesce(r.rate_per_night, 0) as rate_per_night
     from public.beds b
     join public.rooms r on r.id = b.room_id
     join public.locations l on l.id = r.location_id
@@ -77,10 +77,10 @@ begin
           and ds.day >= rb.start_date
           and ds.day < rb.end_date
       ) as is_blocked,
-      pg_catalog.coalesce((
+      coalesce((
         select pg_catalog.sum(
-          pg_catalog.coalesce(res.total_amount, bu.rate_per_night)
-          / pg_catalog.greatest(res.check_out - res.check_in, 1)
+          coalesce(res.total_amount, bu.rate_per_night)
+          / greatest(res.check_out - res.check_in, 1)
         )
         from public.reservations res
         where res.bed_id = bu.bed_id
@@ -110,7 +110,7 @@ begin
     d.total_beds,
     d.occupied_beds,
     d.blocked_beds,
-    pg_catalog.greatest(d.total_beds - d.occupied_beds - d.blocked_beds, 0)::integer as available_beds,
+    greatest(d.total_beds - d.occupied_beds - d.blocked_beds, 0)::integer as available_beds,
     case
       when d.total_beds > 0 then pg_catalog.round((d.occupied_beds::numeric / d.total_beds) * 100, 1)
       else 0
@@ -139,7 +139,7 @@ begin
     select
       total_beds,
       occupied_beds,
-      pg_catalog.least(raw_blocked_beds, pg_catalog.greatest(total_beds - occupied_beds, 0)) as blocked_beds
+      least(raw_blocked_beds, greatest(total_beds - occupied_beds, 0)) as blocked_beds
     from scenarios
   )
   select pg_catalog.count(*) into v_invalid
