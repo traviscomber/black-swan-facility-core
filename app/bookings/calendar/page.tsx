@@ -116,10 +116,14 @@ export default function BookingsCalendarPage() {
     draggingEventId,
     dropTargetBedId,
     movingReservationId,
+    creatingRange,
     beginMove,
     updateMove,
     commitMove,
     cancelMove,
+    beginCreation,
+    abortCreation,
+    commitCreation,
   } = useCalendarInteraction({
     supabase,
     events,
@@ -382,6 +386,13 @@ export default function BookingsCalendarPage() {
         onEventPointerMove={(event, pe) => updateMove(pe)}
         onEventPointerUp={(event, pe) => void commitMove(pe, visibleBeds)}
         onEventPointerCancel={cancelMove}
+        creatingRange={creatingRange}
+        onCreationStart={beginCreation}
+        onCreationAbort={abortCreation}
+        onCreationCommit={(range) => {
+          commitCreation(range)
+          openNewReservation(visibleBeds.find((b) => b.id === range.bedId)!, parseISO(range.startDate))
+        }}
         resizeState={resizeState}
         resizingReservationId={resizingReservationId}
         confirmingReservationId={confirmingReservationId}

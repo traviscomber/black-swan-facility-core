@@ -67,6 +67,13 @@ export interface TimelineGridProps {
 
   // Row interactions
   onRowClick: (bed: Bed, clientX: number, currentTarget: HTMLDivElement) => void
+
+  // Creation (PR 3 task)
+  creatingRange: { bedId: string; startDate: string; endDate: string } | null
+  onCreationStart: (range: { bedId: string; startDate: string; endDate: string }) => void
+  onCreationAbort: () => void
+  onCreationCommit: (range: { bedId: string; startDate: string; endDate: string }) => void
+
   onOpenReservation: (event: CalendarEvent) => void
   onOpenBlock: (event: CalendarEvent) => void
 }
@@ -109,6 +116,10 @@ export function TimelineGrid({
   eventGeometry,
   geometryForDates,
   onRowClick,
+  creatingRange,
+  onCreationStart,
+  onCreationAbort,
+  onCreationCommit,
   onOpenReservation,
   onOpenBlock,
 }: TimelineGridProps) {
@@ -145,6 +156,10 @@ export function TimelineGrid({
     eventGeometry,
     geometryForDates,
     onRowClick,
+    creatingRange,
+    onCreationStart,
+    onCreationAbort,
+    onCreationCommit,
     onOpenReservation,
     onOpenBlock,
   }

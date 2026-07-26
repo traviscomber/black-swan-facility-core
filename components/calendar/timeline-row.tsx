@@ -4,6 +4,7 @@ import { isSameDay, parseISO } from "date-fns"
 import { CheckSquare, Square } from "lucide-react"
 import type { ReservationResizeEdge } from "@/app/bookings/calendar/use-reservation-resize-state"
 import { ReservationPreview, type PreviewConflict } from "@/components/calendar/reservation-preview"
+import { CreationSelection, type CreationRange } from "@/components/calendar/creation-selection"
 
 // ---------------------------------------------------------------------------
 // Shared constants (kept in sync with calendar/page.tsx)
@@ -135,6 +136,12 @@ export interface TimelineRowProps {
   // Row click (create new reservation)
   onRowClick: (bed: Bed, clientX: number, currentTarget: HTMLDivElement) => void
 
+  // Creation (PR 3 task)
+  creatingRange: { bedId: string; startDate: string; endDate: string } | null
+  onCreationStart: (range: CreationRange) => void
+  onCreationAbort: () => void
+  onCreationCommit: (range: CreationRange) => void
+
   // Event detail
   onOpenReservation: (event: CalendarEvent) => void
   onOpenBlock: (event: CalendarEvent) => void
@@ -173,10 +180,15 @@ export function TimelineRow({
   eventGeometry,
   geometryForDates,
   onRowClick,
+  creatingRange,
+  onCreationStart,
+  onCreationAbort,
+  onCreationCommit,
   onOpenReservation,
   onOpenBlock,
 }: TimelineRowProps) {
   const isDropTarget = dropTargetBedId === bed.id && !!draggingEventId
+  const isCreating = creatingRange?.bedId === bed.id
 
   return (
     <div
@@ -207,6 +219,17 @@ export function TimelineRow({
         }}
         onClick={(e) => onRowClick(bed, e.clientX, e.currentTarget)}
       >
+        {/* Creation selection overlay */}
+        <CreationSelection
+          bedId={bed.id}
+          dates={dates}
+          timelineWidth={timelineWidth}
+          isActive={!draggingEventId && !isResizing && !isBulkMode}
+          onCreationStart={onCreationStart}
+          onCreationAbort={onCreationAbort}
+          onCreationCommit={onCreationCommit}
+        />
+
         {/* Today highlight */}
         {dates.map((date, index) =>
           isSameDay(date, new Date()) ? (

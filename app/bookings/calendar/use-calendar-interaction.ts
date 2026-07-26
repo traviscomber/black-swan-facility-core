@@ -20,10 +20,17 @@ export interface MoveState {
   sourceBedId: string
 }
 
+export interface CreatingRange {
+  bedId: string
+  startDate: string
+  endDate: string
+}
+
 export interface CalendarInteractionState {
   draggingEventId: string | null
   dropTargetBedId: string | null
   movingReservationId: string | null
+  creatingRange: CreatingRange | null
 }
 
 export interface UseCalendarInteractionOptions {
@@ -58,6 +65,7 @@ export function useCalendarInteraction({
   const [moveState, setMoveState]             = useState<MoveState | null>(null)
   const [dropTargetBedId, setDropTargetBedId] = useState<string | null>(null)
   const [movingReservationId, setMovingReservationId] = useState<string | null>(null)
+  const [creatingRange, setCreatingRange]     = useState<CreatingRange | null>(null)
 
   // Ref to the source element that holds pointer capture
   const captureElRef = useRef<HTMLElement | null>(null)
@@ -241,16 +249,38 @@ export function useCalendarInteraction({
     captureElRef.current = null
   }, [])
 
+  // -------------------------------------------------------------------------
+  // Creation callbacks — wired from CreationSelection
+  // -------------------------------------------------------------------------
+  const beginCreation = useCallback((range: CreatingRange) => {
+    setCreatingRange(range)
+  }, [])
+
+  const abortCreation = useCallback(() => {
+    setCreatingRange(null)
+  }, [])
+
+  const commitCreation = useCallback((range: CreatingRange) => {
+    setCreatingRange(null)
+    // Caller (page.tsx) will handle opening the dialog with preselected dates
+  }, [])
+
   return {
     // State exposed to TimelineGrid/TimelineRow
     draggingEventId:     moveState?.event.event_id ?? null,
     dropTargetBedId,
     movingReservationId,
+    creatingRange,
 
-    // Handlers
+    // Handlers — Move
     beginMove,
     updateMove,
     commitMove,
     cancelMove,
+
+    // Handlers — Creation
+    beginCreation,
+    abortCreation,
+    commitCreation,
   }
 }
