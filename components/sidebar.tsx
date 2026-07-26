@@ -6,7 +6,6 @@ import {
   AlertCircle,
   Beef,
   Bot,
-  Box,
   Building,
   Calendar,
   CheckSquare,
@@ -131,19 +130,7 @@ const navigationGroups: NavigationGroup[] = [
     descKey: "nav.infrastructure_desc",
     items: [
       { nameKey: "nav.property_management", href: "/property-management", icon: Building, tipKey: "nav.property_management_desc" },
-      { nameKey: "nav.assets", href: "/assets", icon: Box, tipKey: "nav.assets_tip" },
-      {
-        nameKey: "nav.inventory",
-        href: "/inventory",
-        icon: Package,
-        tipKey: "nav.inventory_tip",
-        subItems: [
-          { nameKey: "nav.all_assets", href: "/inventory", icon: "📦" },
-          { nameKey: "nav.by_category", href: "/inventory/categories", icon: "🏷️" },
-          { nameKey: "nav.cost_centers", href: "/inventory/cost-centers", icon: "💼" },
-          { nameKey: "nav.audit_logs", href: "/inventory/audit-logs", icon: "📋" },
-        ],
-      },
+      { nameKey: "nav.inventory", href: "/inventory", icon: Package, tipKey: "nav.inventory_tip" },
       { nameKey: "nav.procurement", href: "/procurement", icon: TrendingUp, tipKey: "nav.procurement_tip", procurementOnly: true },
       { nameKey: "nav.maintenance", href: "/maintenance", icon: Wrench, tipKey: "nav.maintenance_tip" },
       { nameKey: "nav.tasks", href: "/tasks", icon: ClipboardList, tipKey: "nav.tasks_tip" },
