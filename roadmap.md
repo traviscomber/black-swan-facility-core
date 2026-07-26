@@ -32,6 +32,7 @@ Cerrar las brechas críticas de seguridad, permisos, trazabilidad y confiabilida
 - [x] Endurecer consulta, creación, edición y eliminación de facturas con validación de servidor y permisos por rol.
 - [x] Alinear el listado de facturas con flujo desde reservas, CLP, fechas chilenas y acciones por rol.
 - [x] Implementar salida de impresión y PDF A4 limpia para facturas Black Swan.
+- [x] Incorporar prevalidación de facturación de solo lectura antes de crear una factura.
 - [ ] Completar cobertura de acciones críticas y permisos por módulo.
 - [ ] Validar flujos completos por rol y dispositivo.
 
@@ -79,6 +80,10 @@ Cerrar las brechas críticas de seguridad, permisos, trazabilidad y confiabilida
 - La salida de impresión oculta navegación, controles y fondos de la aplicación; usa A4 vertical, fondo blanco, texto oscuro, logo Black Swan y evita cortes internos en secciones y filas.
 - Los campos editables se presentan como contenido limpio al imprimir o guardar como PDF, sin bordes, botones ni controles del modal.
 - La validación visual final de impresión en navegadores y tamaños de pantalla sigue pendiente porque producción aún no contiene facturas reales.
+- `GET /api/bookings/invoices/preview` es una prevalidación de solo lectura limitada a `admin` y `approver`; no crea ni altera facturas, reservas o extras.
+- La prevalidación calcula alojamiento, extras, impuestos y total previsto en CLP, detecta fechas inválidas, reservas anuladas y facturas activas existentes.
+- El editor consume esa prevalidación antes de habilitar la creación: cliente, alojamiento y extras quedan derivados de la reserva y el botón se bloquea ante inconsistencias.
+- La revisión de producción detectó 7 reservas confirmadas, 5 de ellas `TEST_`, ninguna con extras y ninguna con factura activa. Una reserva histórica no TEST tiene salida anterior a la entrada y queda bloqueada por la prevalidación.
 - La pantalla declara que el documento es de gestión interna y que su validez tributaria depende de la emisión en el sistema autorizado correspondiente.
 - La tabla `invoices` permanece con 0 registros; el refactor no creó, alteró ni eliminó datos de producción.
 - El sistema debe presentar fechas en formato chileno y montos financieros en CLP cuando corresponda; no se convertirán montos existentes sin autorización.
@@ -88,7 +93,7 @@ Cerrar las brechas críticas de seguridad, permisos, trazabilidad y confiabilida
 
 ## Prioridades
 
-1. Verificar creación atómica de facturas y extras mediante pruebas controladas o fixtures fuera de producción.
+1. Validar el flujo de creación con una reserva controlada fuera de producción o con autorización explícita sobre una reserva `TEST_`.
 2. Validar visualmente impresión y PDF en desktop y móvil cuando exista una factura controlada.
 3. Auditar y endurecer `reviews` y `volunteers` para llevar las políticas `ALL` amplias a cero.
 4. Revisar cada módulo contra su equivalente o patrón del sistema bed-booking antes de refactorizarlo.
@@ -148,6 +153,7 @@ Cerrar las brechas críticas de seguridad, permisos, trazabilidad y confiabilida
 - [x] Endurecer `GET`, `POST`, `PATCH` y `DELETE` de facturas con autenticación, validación de campos, estados, montos CLP y permisos por rol.
 - [x] Retirar la creación genérica desde el listado y alinear sus acciones con `admin` y `approver`.
 - [x] Implementar impresión y salida PDF A4 limpia, sin navegación ni controles de edición.
+- [x] Implementar prevalidación de solo lectura para reservas, alojamiento, extras, impuestos, duplicados y fechas antes de crear una factura.
 - [ ] Validar visualmente impresión y salida PDF de factura en desktop y móvil con una factura controlada.
 - [ ] Verificar creación atómica de reservas, facturación, extras, reportes, auto-fill y conciliación.
 - [ ] Añadir pruebas negativas para usuario autenticado común, `approver`, `admin` y `service_role`.
