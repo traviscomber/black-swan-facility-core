@@ -23,6 +23,7 @@ Cerrar las brechas críticas de seguridad, permisos, trazabilidad y confiabilida
 - [x] Endurecer cinco tablas auxiliares de hospitalidad, housekeeping, mantenimiento y asignaciones.
 - [x] Endurecer seis tablas de infraestructura, documentos, fotografías, planos y embarcaciones.
 - [x] Endurecer cuatro tablas de combustible, anomalías, resumen mensual y vehículos.
+- [x] Endurecer once tablas de IA, sesiones, contexto y soberanía.
 - [ ] Completar cobertura de acciones críticas y permisos por módulo.
 - [ ] Validar flujos completos por rol y dispositivo.
 
@@ -49,15 +50,17 @@ Cerrar las brechas críticas de seguridad, permisos, trazabilidad y confiabilida
 - `fuel_consumption`, `fuel_consumption_anomalies`, `monthly_fuel_summary` y `vehicles` ya no permiten acceso anónimo ni `TRUNCATE`; usan políticas separadas y `DELETE` queda limitado a `admin`.
 - `fuel_consumption_anomalies` conserva escritura limitada a `admin` y `approver`.
 - Se preservaron 153 registros de consumo y 32 vehículos. Las tablas de anomalías y resumen mensual permanecen sin registros.
-- Las tablas con política `ALL` amplia sin restricción efectiva bajaron a 38: 31 dirigidas a `PUBLIC` y 7 a `authenticated`.
-- `ai_operation_logs` conserva 8 registros; las otras ocho bitácoras revisadas permanecen sin registros.
+- `ai_agent_executions`, `ai_agents`, `ai_artifacts`, `ai_context`, `ai_events`, `ai_sessions`, `sovereignty_dependencies`, `sovereignty_layers`, `sovereignty_metrics`, `sovereignty_objectives` y `sovereignty_timeline` ya no permiten acceso anónimo ni `TRUNCATE`; usan políticas separadas y `DELETE` queda limitado a `admin`.
+- Se preservaron 8 ejecuciones, 5 agentes, 3 artefactos, 10 eventos, 5 sesiones, 5 capas y 8 métricas. `ai_context`, dependencias, objetivos y cronología permanecen sin registros.
+- Las tablas con política `ALL` amplia sin restricción efectiva bajaron a 27: 20 dirigidas a `PUBLIC` y 7 a `authenticated`.
+- `ai_operation_logs` conserva 8 registros y permanece append-only.
 - Existen cinco reservas `TEST_` en producción. No deben eliminarse sin autorización específica sobre esos registros.
 
 ## Prioridades
 
 1. Auditar operaciones destructivas restantes.
 2. Conectar y verificar registro de acciones críticas reales.
-3. Continuar RLS en IA, soberanía y módulos de soporte.
+3. Continuar RLS en catálogos, multimedia, activos y módulos de soporte.
 4. Alinear permisos reales con `admin`, `approver` y usuarios autenticados.
 5. Validar flujos completos por rol y dispositivo.
 6. Eliminar datos de prueba únicamente con autorización específica.
@@ -81,6 +84,7 @@ Cerrar las brechas críticas de seguridad, permisos, trazabilidad y confiabilida
 - [x] Auditar y endurecer operaciones destructivas de cinco tablas auxiliares de hospitalidad, housekeeping, mantenimiento y asignaciones.
 - [x] Auditar y endurecer operaciones destructivas de seis tablas de infraestructura, documentos, fotografías, planos y embarcaciones.
 - [x] Auditar y endurecer operaciones destructivas de cuatro tablas de combustible, anomalías, resumen mensual y vehículos.
+- [x] Auditar y endurecer operaciones destructivas de once tablas de IA y soberanía.
 - [x] Confirmar que `/admin` y sus rutas hijas están protegidas en middleware.
 - [ ] Completar matriz inicial de permisos por módulo y acción.
 
@@ -130,6 +134,7 @@ Cerrar las brechas críticas de seguridad, permisos, trazabilidad y confiabilida
 - [x] Actualizar Administración con el estado real de las cinco tablas auxiliares endurecidas.
 - [x] Actualizar Administración con el estado real de las seis tablas de infraestructura endurecidas.
 - [x] Actualizar Administración con el estado real de combustible y vehículos.
+- [x] Actualizar Administración con el estado real de IA y soberanía.
 
 ### Criterio de cierre
 
