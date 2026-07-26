@@ -2,20 +2,11 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
+import { UserMinus } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog"
-import { Trash2 } from "lucide-react"
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"
 import { createBrowserClient } from "@/lib/supabase/client"
+import { useToast } from "@/hooks/use-toast"
 
 interface DeleteEmployeeButtonProps {
   employeeId: string
@@ -24,48 +15,32 @@ interface DeleteEmployeeButtonProps {
 
 export function DeleteEmployeeButton({ employeeId, employeeName }: DeleteEmployeeButtonProps) {
   const router = useRouter()
-  const [isDeleting, setIsDeleting] = useState(false)
+  const { toast } = useToast()
+  const [isUpdating, setIsUpdating] = useState(false)
 
-  const handleDelete = async () => {
-    setIsDeleting(true)
-
-    try {
-      const supabase = createBrowserClient()
-
-      const { error } = await supabase.from("employees").delete().eq("id", employeeId)
-
-      if (error) throw error
-
-      router.refresh()
-    } catch (error) {
-      console.error("Error deleting employee:", error)
-      alert("Failed to delete employee")
-    } finally {
-      setIsDeleting(false)
+  async function handleDeactivate() {
+    setIsUpdating(true)
+    const supabase = createBrowserClient()
+    const { error } = await supabase.from("employees").update({ is_active: false, updated_at: new Date().toISOString() }).eq("id", employeeId)
+    if (error) {
+      toast({ title: "No fue posible desactivar", description: error.message, variant: "destructive" })
+      setIsUpdating(false)
+      return
     }
+    toast({ title: "Persona desactivada", description: `${employeeName} se mantiene en el historial, pero ya no figura como activa.` })
+    setIsUpdating(false)
+    router.refresh()
   }
 
   return (
     <AlertDialog>
-      <AlertDialogTrigger asChild>
-        <Button variant="outline" size="sm" className="flex-1 text-red-600 hover:text-red-700 bg-transparent">
-          <Trash2 className="h-4 w-4 mr-1" />
-          Delete
-        </Button>
-      </AlertDialogTrigger>
+      <AlertDialogTrigger asChild><Button variant="outline" size="sm" className="flex-1 gap-1 bg-transparent text-muted-foreground"><UserMinus className="h-4 w-4" />Desactivar</Button></AlertDialogTrigger>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Delete Employee</AlertDialogTitle>
-          <AlertDialogDescription>
-            Are you sure you want to delete <strong>{employeeName}</strong>? This action cannot be undone.
-          </AlertDialogDescription>
+          <AlertDialogTitle>Desactivar a {employeeName}</AlertDialogTitle>
+          <AlertDialogDescription>La persona dejará de aparecer como activa, pero el registro se conservará para mantener trazabilidad. Puede reactivarse desde Editar.</AlertDialogDescription>
         </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel>Cancel</AlertDialogCancel>
-          <AlertDialogAction onClick={handleDelete} disabled={isDeleting} className="bg-red-600 hover:bg-red-700">
-            {isDeleting ? "Deleting..." : "Delete"}
-          </AlertDialogAction>
-        </AlertDialogFooter>
+        <AlertDialogFooter><AlertDialogCancel>Cancelar</AlertDialogCancel><AlertDialogAction onClick={handleDeactivate} disabled={isUpdating}>{isUpdating ? "Actualizando…" : "Desactivar"}</AlertDialogAction></AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
   )
