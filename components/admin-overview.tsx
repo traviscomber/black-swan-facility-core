@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { AlertTriangle, Box, Building2, List, ShieldCheck, Users, Wrench } from "lucide-react"
+import { AlertTriangle, Box, Building2, FileClock, List, ShieldCheck, UserCog, Users, Wrench } from "lucide-react"
 import { useLanguage } from "@/lib/hooks/use-language"
 import { PageHeader } from "@/components/page-header"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -19,12 +19,22 @@ interface AdminOverviewProps {
     locations: number
     issueTypes: number
   }
+  controls: {
+    publicTables: number
+    rlsEnabled: number
+    rlsDisabled: number
+    tablesWithoutPolicies: number
+    adminUsers: number
+    approverUsers: number
+    auditRecords: number
+    verifiedOn: string
+  }
 }
 
 const copy = {
   es: {
     title: "Administración y control",
-    description: "Resumen operativo, catálogos maestros y controles de acceso.",
+    description: "Resumen operativo, catálogos maestros, acceso interno y trazabilidad.",
     overview: "Resumen del sistema",
     assets: "Activos registrados",
     critical: "críticos",
@@ -38,18 +48,28 @@ const copy = {
     issueTypes: "Tipos de incidencia",
     manage: "Administrar",
     security: "Seguridad del esquema público",
-    securityDescription: "Estado verificado directamente en Supabase después de la implementación de RLS.",
-    environment: "RLS operativo",
-    totalTables: "112 tablas públicas",
-    enabled: "112 con RLS habilitado",
-    disabled: "0 con RLS desactivado",
-    noPolicies: "0 sin políticas",
-    status: "Todas las tablas públicas tienen RLS habilitado y al menos una política activa. Las tablas operativas sensibles se restringieron a usuarios autenticados con rol interno admin o approver.",
-    noChanges: "La implementación modificó políticas y configuración de seguridad, sin alterar registros operativos.",
+    securityDescription: "Fotografía verificada directamente en producción.",
+    verified: "Verificado",
+    publicTables: "tablas públicas",
+    rlsEnabled: "con RLS habilitado",
+    rlsDisabled: "con RLS desactivado",
+    noPolicies: "sin políticas",
+    secureStatus: "Todas las tablas públicas tienen RLS habilitado y al menos una política activa.",
+    access: "Acceso interno",
+    accessDescription: "Roles almacenados en app_metadata y usados para controlar funciones administrativas y de aprobación.",
+    admins: "Administradores",
+    approvers: "Aprobadores",
+    totalInternal: "Cuentas internas con rol",
+    audit: "Trazabilidad administrativa",
+    auditDescription: "Registros disponibles en approver_audit_log, procurement_audit_log y audit_actions.",
+    auditRecords: "registros de auditoría",
+    auditEmpty: "No hay eventos registrados actualmente. Las acciones futuras deben generar trazabilidad antes de considerar este control operativo.",
+    auditActive: "Hay eventos registrados en las tablas de auditoría.",
+    noDataChanges: "Esta revisión no modificó registros operativos ni permisos.",
   },
   en: {
     title: "Administration and control",
-    description: "Operational summary, master catalogs and access controls.",
+    description: "Operational summary, master catalogs, internal access and traceability.",
     overview: "System overview",
     assets: "Registered assets",
     critical: "critical",
@@ -63,18 +83,28 @@ const copy = {
     issueTypes: "Issue types",
     manage: "Manage",
     security: "Public schema security",
-    securityDescription: "Status verified directly in Supabase after the RLS rollout.",
-    environment: "RLS operational",
-    totalTables: "112 public tables",
-    enabled: "112 with RLS enabled",
-    disabled: "0 with RLS disabled",
-    noPolicies: "0 without policies",
-    status: "Every public table has RLS enabled and at least one active policy. Sensitive operational tables are restricted to authenticated users with the internal admin or approver role.",
-    noChanges: "The rollout changed security policies and configuration without altering operational records.",
+    securityDescription: "Snapshot verified directly in production.",
+    verified: "Verified",
+    publicTables: "public tables",
+    rlsEnabled: "with RLS enabled",
+    rlsDisabled: "with RLS disabled",
+    noPolicies: "without policies",
+    secureStatus: "Every public table has RLS enabled and at least one active policy.",
+    access: "Internal access",
+    accessDescription: "Roles stored in app_metadata and used to control administrative and approval functions.",
+    admins: "Administrators",
+    approvers: "Approvers",
+    totalInternal: "Internal accounts with a role",
+    audit: "Administrative traceability",
+    auditDescription: "Records available in approver_audit_log, procurement_audit_log and audit_actions.",
+    auditRecords: "audit records",
+    auditEmpty: "No events are currently recorded. Future actions must create traceability before this control can be considered operational.",
+    auditActive: "Audit events are present in the audit tables.",
+    noDataChanges: "This review did not modify operational records or permissions.",
   },
 } as const
 
-export function AdminOverview({ counts }: AdminOverviewProps) {
+export function AdminOverview({ counts, controls }: AdminOverviewProps) {
   const { language } = useLanguage()
   const text = copy[language === "es" ? "es" : "en"]
   const metrics = [
@@ -89,6 +119,7 @@ export function AdminOverview({ counts }: AdminOverviewProps) {
     [text.locations, counts.locations, "/admin/locations", Building2],
     [text.issueTypes, counts.issueTypes, "/admin/issue-types", AlertTriangle],
   ] as const
+  const totalInternalUsers = controls.adminUsers + controls.approverUsers
 
   return (
     <>
@@ -112,23 +143,52 @@ export function AdminOverview({ counts }: AdminOverviewProps) {
           </div>
         </section>
 
-        <Card className="border-border">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2"><ShieldCheck className="h-5 w-5" />{text.security}</CardTitle>
-            <CardDescription>{text.securityDescription}</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex flex-wrap gap-2">
-              <Badge>{text.environment}</Badge>
-              <Badge variant="outline">{text.totalTables}</Badge>
-              <Badge variant="outline">{text.enabled}</Badge>
-              <Badge variant="outline">{text.disabled}</Badge>
-              <Badge variant="outline">{text.noPolicies}</Badge>
-            </div>
-            <p className="text-sm">{text.status}</p>
-            <p className="text-xs text-muted-foreground">{text.noChanges}</p>
-          </CardContent>
-        </Card>
+        <div className="grid gap-4 xl:grid-cols-3">
+          <Card className="border-border">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2"><ShieldCheck className="h-5 w-5" />{text.security}</CardTitle>
+              <CardDescription>{text.securityDescription}</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex flex-wrap gap-2">
+                <Badge>{text.verified} {controls.verifiedOn}</Badge>
+                <Badge variant="outline">{controls.publicTables} {text.publicTables}</Badge>
+                <Badge variant="outline">{controls.rlsEnabled} {text.rlsEnabled}</Badge>
+                <Badge variant="outline">{controls.rlsDisabled} {text.rlsDisabled}</Badge>
+                <Badge variant="outline">{controls.tablesWithoutPolicies} {text.noPolicies}</Badge>
+              </div>
+              <p className="text-sm">{text.secureStatus}</p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2"><UserCog className="h-5 w-5" />{text.access}</CardTitle>
+              <CardDescription>{text.accessDescription}</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="rounded-md border p-3"><p className="text-xs text-muted-foreground">{text.admins}</p><p className="text-2xl font-semibold">{controls.adminUsers}</p></div>
+                <div className="rounded-md border p-3"><p className="text-xs text-muted-foreground">{text.approvers}</p><p className="text-2xl font-semibold">{controls.approverUsers}</p></div>
+              </div>
+              <p className="text-sm text-muted-foreground">{totalInternalUsers} {text.totalInternal.toLocaleLowerCase()}</p>
+            </CardContent>
+          </Card>
+
+          <Card className={controls.auditRecords === 0 ? "border-amber-500/50" : undefined}>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2"><FileClock className="h-5 w-5" />{text.audit}</CardTitle>
+              <CardDescription>{text.auditDescription}</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="text-2xl font-semibold">{controls.auditRecords}</div>
+              <p className="text-xs text-muted-foreground">{text.auditRecords}</p>
+              <p className="text-sm">{controls.auditRecords === 0 ? text.auditEmpty : text.auditActive}</p>
+            </CardContent>
+          </Card>
+        </div>
+
+        <p className="text-xs text-muted-foreground">{text.noDataChanges}</p>
 
         <section>
           <h2 className="mb-4 text-lg font-semibold">{text.catalogs}</h2>
