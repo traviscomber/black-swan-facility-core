@@ -1,234 +1,72 @@
 "use client"
 
-import { useEffect, useState } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { createBrowserClient } from "@/lib/supabase/client"
-import { MessageSquare, Users, AlertTriangle, CheckCircle2, Clock, TrendingUp } from "lucide-react"
 import Link from "next/link"
-import { format } from "date-fns"
+import { useEffect, useMemo, useState } from "react"
+import { AlertTriangle, CalendarCheck, ClipboardList, Loader2, MessageSquare, RefreshCw, Users } from "lucide-react"
+import { AppLayout } from "@/components/app-layout"
+import { PageHeader } from "@/components/page-header"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { createBrowserClient } from "@/lib/supabase/client"
 
-interface Stats {
-  newLeads: number
-  activeConversations: number
+type ConciergeStats = {
+  leads: number
+  messages24h: number
   openIncidents: number
+  openRequests: number
   tasksToday: number
-  conversionRate: number
-  avgResponseTime: number
 }
 
-export default function ConciergeDashboard() {
-  const [stats, setStats] = useState<Stats>({
-    newLeads: 0,
-    activeConversations: 0,
-    openIncidents: 0,
-    tasksToday: 0,
-    conversionRate: 0,
-    avgResponseTime: 0,
-  })
-  const [recentActivity, setRecentActivity] = useState<any[]>([])
-  const [loading, setLoading] = useState(true)
+const emptyStats: ConciergeStats = { leads: 0, messages24h: 0, openIncidents: 0, openRequests: 0, tasksToday: 0 }
 
-  useEffect(() => {
-    loadDashboard()
-  }, [])
+export default function ConciergeDashboard() {
+  const supabase = useMemo(() => createBrowserClient(), [])
+  const [stats, setStats] = useState<ConciergeStats>(emptyStats)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   async function loadDashboard() {
-    const supabase = createBrowserClient()
-
-    const [leadsRes, messagesRes, incidentsRes, tasksRes, auditRes] = await Promise.all([
-      supabase.from("leads").select("*").eq("stage", "new"),
-      supabase
-        .from("messages")
-        .select("*")
-        .gte("ts", new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()),
-      supabase.from("incidents").select("*").eq("status", "open"),
-      supabase.from("tasks").select("*").eq("due_date", format(new Date(), "yyyy-MM-dd")),
-      supabase.from("audit_actions").select("*").order("ts", { ascending: false }).limit(10),
+    setLoading(true)
+    setError(null)
+    const today = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Santiago", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date())
+    const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
+    const [leads, messages, incidents, requests, tasks] = await Promise.all([
+      supabase.from("leads").select("id", { count: "exact", head: true }).eq("stage", "new"),
+      supabase.from("messages").select("id", { count: "exact", head: true }).gte("ts", since),
+      supabase.from("incidents").select("id", { count: "exact", head: true }).eq("status", "open"),
+      supabase.from("hospitality_requests").select("id", { count: "exact", head: true }).not("status", "in", "(completed,cancelled)"),
+      supabase.from("tasks").select("id", { count: "exact", head: true }).eq("due_date", today).in("status", ["nueva", "en_progreso"]),
     ])
-
-    // Calculate conversion rate
-    const { data: allLeads } = await supabase.from("leads").select("stage")
-    const converted = allLeads?.filter((l) => l.stage === "converted").length || 0
-    const total = allLeads?.length || 1
-    const conversionRate = Math.round((converted / total) * 100)
-
-    let avgResponseTime = 0
-    if (messagesRes.data && messagesRes.data.length > 0) {
-      // Calculate average response time from timestamps
-      const times = messagesRes.data.map((m: any) => new Date(m.ts).getTime())
-      if (times.length > 1) {
-        const diffs = []
-        for (let i = 1; i < times.length; i++) {
-          diffs.push((times[i] - times[i - 1]) / 1000 / 60) // Convert to minutes
-        }
-        avgResponseTime = Math.round(diffs.reduce((a, b) => a + b, 0) / diffs.length)
-      }
-    }
-
-    setStats({
-      newLeads: leadsRes.data?.length || 0,
-      activeConversations: messagesRes.data?.length || 0,
-      openIncidents: incidentsRes.data?.length || 0,
-      tasksToday: tasksRes.data?.length || 0,
-      conversionRate,
-      avgResponseTime,
-    })
-
-    setRecentActivity(auditRes.data || [])
+    const firstError = leads.error ?? messages.error ?? incidents.error ?? requests.error ?? tasks.error
+    if (firstError) setError(firstError.message)
+    setStats({ leads: leads.count ?? 0, messages24h: messages.count ?? 0, openIncidents: incidents.count ?? 0, openRequests: requests.count ?? 0, tasksToday: tasks.count ?? 0 })
     setLoading(false)
   }
 
+  useEffect(() => { void loadDashboard() }, [])
+
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold">Concierge Command Center</h1>
-        <p className="text-muted-foreground">AI-powered WhatsApp operations & guest management</p>
+    <AppLayout>
+      <PageHeader title="Concierge y hospitalidad" description="Control operativo de huéspedes, mensajes, solicitudes, incidencias y tareas de atención en Fundo Corcovado." actions={<Button variant="outline" onClick={() => void loadDashboard()} disabled={loading}><RefreshCw className={`mr-2 h-4 w-4 ${loading ? "animate-spin" : ""}`} />Actualizar</Button>} />
+      <div className="space-y-6 p-4 md:p-6">
+        {error && <Card className="border-destructive/40"><CardContent className="p-4 text-sm text-destructive">No fue posible actualizar el panel: {error}</CardContent></Card>}
+        {loading ? <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin" /></div> : <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5"><Metric title="Nuevos contactos" value={stats.leads} icon={Users} /><Metric title="Mensajes últimas 24 h" value={stats.messages24h} icon={MessageSquare} /><Metric title="Solicitudes abiertas" value={stats.openRequests} icon={CalendarCheck} /><Metric title="Incidencias abiertas" value={stats.openIncidents} icon={AlertTriangle} /><Metric title="Tareas para hoy" value={stats.tasksToday} icon={ClipboardList} /></div>}
+
+        <Card><CardHeader><CardTitle className="text-base">Operación de hospitalidad</CardTitle></CardHeader><CardContent className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <Button asChild><Link href="/concierge/requests">Gestionar solicitudes de huéspedes</Link></Button>
+          <Button asChild variant="outline"><Link href="/guest-requests">Abrir formulario para huéspedes</Link></Button>
+          <Button asChild variant="outline"><Link href="/tasks">Ver tareas operativas</Link></Button>
+          <Button asChild variant="outline"><Link href="/bookings">Reservas y disponibilidad</Link></Button>
+          <Button asChild variant="outline"><Link href="/concierge/leads">Contactos y oportunidades</Link></Button>
+          <Button asChild variant="outline"><Link href="/concierge/messages">Mensajes</Link></Button>
+        </CardContent></Card>
+
+        <Card><CardHeader><CardTitle className="text-base">Regla de seguimiento</CardTitle></CardHeader><CardContent className="text-sm leading-6 text-muted-foreground">Las solicitudes de huéspedes permanecen como registro de hospitalidad. Cuando requieren ejecución, se genera una tarea vinculada para asignar trabajadores o voluntarios, registrar seguridad, estado y resultado sin duplicar el origen.</CardContent></Card>
       </div>
-
-      {/* Stats Grid */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">New Leads</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.newLeads}</div>
-            <p className="text-xs text-muted-foreground">Awaiting qualification</p>
-            <Link href="/concierge/leads">
-              <Button size="sm" variant="link" className="px-0">
-                View all leads →
-              </Button>
-            </Link>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Active Conversations</CardTitle>
-            <MessageSquare className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.activeConversations}</div>
-            <p className="text-xs text-muted-foreground">Last 24 hours</p>
-            <Link href="/concierge/messages">
-              <Button size="sm" variant="link" className="px-0">
-                View messages →
-              </Button>
-            </Link>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Open Incidents</CardTitle>
-            <AlertTriangle className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.openIncidents}</div>
-            <p className="text-xs text-muted-foreground">Require attention</p>
-            <Link href="/concierge/incidents">
-              <Button size="sm" variant="link" className="px-0">
-                View incidents →
-              </Button>
-            </Link>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Tasks Today</CardTitle>
-            <Clock className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.tasksToday}</div>
-            <p className="text-xs text-muted-foreground">Due today</p>
-            <Link href="/tasks">
-              <Button size="sm" variant="link" className="px-0">
-                View tasks →
-              </Button>
-            </Link>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Conversion Rate</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.conversionRate}%</div>
-            <p className="text-xs text-muted-foreground">Lead to booking</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Avg Response Time</CardTitle>
-            <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.avgResponseTime}m</div>
-            <p className="text-xs text-muted-foreground">WhatsApp replies</p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Recent Activity */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Recent Agent Activity</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {loading ? (
-            <div className="text-muted-foreground">Loading activity...</div>
-          ) : recentActivity.length === 0 ? (
-            <div className="text-muted-foreground">No recent activity</div>
-          ) : (
-            <div className="space-y-4">
-              {recentActivity.map((action) => (
-                <div key={action.id} className="flex items-start justify-between border-b pb-3 last:border-0">
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2">
-                      <Badge variant={action.actor === "agent" ? "default" : "secondary"}>{action.actor}</Badge>
-                      <span className="text-sm font-medium">{action.action_type.replace(/_/g, " ")}</span>
-                    </div>
-                    {action.phone && <div className="text-xs text-muted-foreground">Phone: {action.phone}</div>}
-                  </div>
-                  <div className="text-xs text-muted-foreground">{format(new Date(action.ts), "MMM d, h:mm a")}</div>
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Quick Actions */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Quick Actions</CardTitle>
-        </CardHeader>
-        <CardContent className="flex flex-wrap gap-2">
-          <Link href="/concierge/leads">
-            <Button variant="outline">Manage Leads</Button>
-          </Link>
-          <Link href="/concierge/messages">
-            <Button variant="outline">View Messages</Button>
-          </Link>
-          <Link href="/concierge/incidents">
-            <Button variant="outline">Report Incident</Button>
-          </Link>
-          <Link href="/tasks">
-            <Button variant="outline">Create Task</Button>
-          </Link>
-          <Link href="/bookings">
-            <Button variant="outline">Check Availability</Button>
-          </Link>
-        </CardContent>
-      </Card>
-    </div>
+    </AppLayout>
   )
+}
+
+function Metric({ title, value, icon: Icon }: { title: string; value: number; icon: typeof Users }) {
+  return <Card><CardContent className="flex items-start justify-between p-4"><div><p className="text-sm text-muted-foreground">{title}</p><p className="mt-1 text-3xl font-semibold tabular-nums">{value.toLocaleString("es-CL")}</p></div><Icon className="h-5 w-5 text-muted-foreground" /></CardContent></Card>
 }
