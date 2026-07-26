@@ -1,35 +1,24 @@
 import { createClient } from "@/lib/supabase/server"
 import { NextRequest, NextResponse } from "next/server"
 
+const ALLOWED_OPERATION_TYPES = new Set(["move", "resize", "status_change", "delete"])
+const ALLOWED_STATUSES = new Set(["completed", "undone"])
+
+function parseBoundedInteger(value: string | null, fallback: number, min: number, max: number) {
+  const parsed = Number(value ?? fallback)
+  if (!Number.isInteger(parsed)) return fallback
+  return Math.min(Math.max(parsed, min), max)
+}
+
 export async function GET(req: NextRequest) {
   const supabase = await createClient()
-  const { searchParams } = new URL(req.url)
-  const limit = Math.min(Number(searchParams.get("limit") ?? "50"), 200)
-  const offset = Number(searchParams.get("offset") ?? "0")
-  const operation_type = searchParams.get("operation_type") ?? null
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser()
 
-  const status = searchParams.get("status") ?? null
+  if (authError || !user) {
+    return NextResponse.json({ error: "Autenticación requerida" }, { status: 401 })
+  }
 
-  let query = supabase
-    .from("bulk_operations")
-    .select("id, operation_type, reservation_ids, status, created_at, expires_at, applied_state", {
-      count: "exact",
-    })
-    .order("created_at", { ascending: false })
-    .range(offset, offset + limit - 1)
-
-  if (operation_type) query = query.eq("operation_type", operation_type)
-  if (status)         query = query.eq("status",         status)
-
-  const { data, error, count } = await query
-
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-
-  // Derive reservation_count from array length (no extra query needed)
-  const enriched = (data ?? []).map((row) => ({
-    ...row,
-    reservation_count: Array.isArray(row.reservation_ids) ? row.reservation_ids.length : 0,
-  }))
-
-  return NextResponse.json({ data: enriched, total: count ?? 0, limit, offset })
-}
+  if (user
