@@ -265,12 +265,16 @@ export function useCalendarInteraction({
     // Caller (page.tsx) will handle opening the dialog with preselected dates
   }, [])
 
+  // Expose dragging event for move preview rendering in target bed row
+  const draggingEvent = moveState?.event ?? null
+
   return {
     // State exposed to TimelineGrid/TimelineRow
     draggingEventId:     moveState?.event.event_id ?? null,
     dropTargetBedId,
     movingReservationId,
     creatingRange,
+    draggingEvent,
 
     // Handlers — Move
     beginMove,

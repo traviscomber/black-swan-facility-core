@@ -117,6 +117,7 @@ export default function BookingsCalendarPage() {
     dropTargetBedId,
     movingReservationId,
     creatingRange,
+    draggingEvent,
     beginMove,
     updateMove,
     commitMove,
@@ -382,6 +383,7 @@ export default function BookingsCalendarPage() {
         draggingEventId={draggingEventId}
         dropTargetBedId={dropTargetBedId}
         movingReservationId={movingReservationId}
+        draggingEvent={draggingEvent}
         onEventPointerDown={(event, pe) => beginMove(event, pe)}
         onEventPointerMove={(event, pe) => updateMove(pe)}
         onEventPointerUp={(event, pe) => void commitMove(pe, visibleBeds)}

@@ -110,6 +110,7 @@ export interface TimelineRowProps {
   draggingEventId: string | null
   dropTargetBedId: string | null
   movingReservationId: string | null
+  draggingEvent: CalendarEvent | null
   onEventPointerDown: (event: CalendarEvent, pointerEvent: React.PointerEvent<HTMLButtonElement>) => void
   onEventPointerMove: (event: CalendarEvent, pointerEvent: React.PointerEvent<HTMLButtonElement>) => void
   onEventPointerUp: (event: CalendarEvent, pointerEvent: React.PointerEvent<HTMLButtonElement>) => void
@@ -163,6 +164,7 @@ export function TimelineRow({
   draggingEventId,
   dropTargetBedId,
   movingReservationId,
+  draggingEvent,
   onEventPointerDown,
   onEventPointerMove,
   onEventPointerUp,
@@ -373,6 +375,17 @@ export function TimelineRow({
             </div>
           )
         })}
+
+        {/* Move preview pastilla in target bed */}
+        {dropTargetBedId === bed.id && draggingEvent && (
+          <ReservationPreview
+            left={eventGeometry(draggingEvent).left}
+            width={eventGeometry(draggingEvent).width}
+            intent="move"
+            conflict="none"
+            label={`Mover a: ${draggingEvent.starts_on} → ${draggingEvent.ends_on}`}
+          />
+        )}
       </div>
     </div>
   )

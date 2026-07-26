@@ -42,6 +42,7 @@ export interface TimelineGridProps {
   draggingEventId: string | null
   dropTargetBedId: string | null
   movingReservationId: string | null
+  draggingEvent: CalendarEvent | null
   onEventPointerDown: (event: CalendarEvent, pe: React.PointerEvent<HTMLButtonElement>) => void
   onEventPointerMove: (event: CalendarEvent, pe: React.PointerEvent<HTMLButtonElement>) => void
   onEventPointerUp: (event: CalendarEvent, pe: React.PointerEvent<HTMLButtonElement>) => void
@@ -99,6 +100,7 @@ export function TimelineGrid({
   draggingEventId,
   dropTargetBedId,
   movingReservationId,
+  draggingEvent,
   onEventPointerDown,
   onEventPointerMove,
   onEventPointerUp,
@@ -139,6 +141,7 @@ export function TimelineGrid({
     draggingEventId,
     dropTargetBedId,
     movingReservationId,
+    draggingEvent,
     onEventPointerDown,
     onEventPointerMove,
     onEventPointerUp,
