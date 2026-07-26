@@ -2,16 +2,9 @@
 
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { createBrowserClient } from "@/lib/supabase/client"
-import { Trash2 } from "lucide-react"
+import { Archive } from "lucide-react"
 
 interface DeleteSupplierButtonProps {
   supplierId: string
@@ -22,46 +15,46 @@ interface DeleteSupplierButtonProps {
 export function DeleteSupplierButton({ supplierId, supplierName, onDeleted }: DeleteSupplierButtonProps) {
   const [open, setOpen] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
-  const handleDelete = async () => {
+  const handleDeactivate = async () => {
     setLoading(true)
+    setError(null)
     const supabase = createBrowserClient()
-    const { error } = await supabase.from("suppliers").delete().eq("id", supplierId)
+    const { error: updateError } = await supabase.from("suppliers").update({
+      is_active: false,
+      approval_status: "rejected",
+      approved_at: null,
+      approved_by: null,
+      updated_at: new Date().toISOString(),
+    }).eq("id", supplierId)
 
-    if (!error) {
-      onDeleted()
-      setOpen(false)
+    if (updateError) {
+      setError(updateError.message)
+      setLoading(false)
+      return
     }
+
+    onDeleted()
+    setOpen(false)
     setLoading(false)
   }
 
   return (
     <>
-      <Button
-        variant="ghost"
-        size="sm"
-        onClick={() => setOpen(true)}
-        className="text-destructive hover:text-destructive hover:bg-destructive/10"
-      >
-        <Trash2 className="h-4 w-4" />
+      <Button variant="ghost" size="sm" onClick={() => setOpen(true)} aria-label={`Desactivar ${supplierName}`} title="Desactivar">
+        <Archive className="h-4 w-4" />
       </Button>
-
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Delete Supplier</DialogTitle>
-            <DialogDescription>
-              Are you sure you want to delete "{supplierName}"? This action cannot be undone. All associated orders will
-              be affected.
-            </DialogDescription>
+            <DialogTitle>Desactivar proveedor</DialogTitle>
+            <DialogDescription>“{supplierName}” quedará inactivo y rechazado. Su registro y cualquier relación histórica se conservarán.</DialogDescription>
           </DialogHeader>
+          {error && <p className="text-sm text-destructive">No fue posible desactivar: {error}</p>}
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => setOpen(false)}>
-              Cancel
-            </Button>
-            <Button type="button" variant="destructive" onClick={handleDelete} disabled={loading}>
-              {loading ? "Deleting..." : "Delete"}
-            </Button>
+            <Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancelar</Button>
+            <Button type="button" onClick={handleDeactivate} disabled={loading}>{loading ? "Desactivando…" : "Desactivar proveedor"}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
