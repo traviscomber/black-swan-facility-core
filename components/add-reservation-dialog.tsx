@@ -62,6 +62,7 @@ interface AddReservationDialogProps {
   onSuccess: () => void
   preselectedBed?: string
   preselectedDate?: Date
+  preselectedCheckOut?: Date
   preselectedLocation?: string
 }
 
@@ -71,6 +72,7 @@ export function AddReservationDialog({
   onSuccess,
   preselectedBed,
   preselectedDate,
+  preselectedCheckOut,
   preselectedLocation,
 }: AddReservationDialogProps) {
   const [beds, setBeds] = useState<Bed[]>([])
@@ -156,8 +158,8 @@ export function AddReservationDialog({
   useEffect(() => {
     if (preselectedDate) {
       const checkInDate = new Date(preselectedDate)
-      const checkOutDate = new Date(checkInDate)
-      checkOutDate.setDate(checkOutDate.getDate() + 1)
+      const checkOutDate = preselectedCheckOut ?? new Date(checkInDate)
+      if (!preselectedCheckOut) checkOutDate.setDate(checkOutDate.getDate() + 1)
 
       setFormData((prev) => ({
         ...prev,
@@ -165,7 +167,7 @@ export function AddReservationDialog({
         check_out: format(checkOutDate, "yyyy-MM-dd"),
       }))
     }
-  }, [preselectedDate])
+  }, [preselectedDate, preselectedCheckOut])
 
   useEffect(() => {
     if (formData.bed_id && formData.num_guests) {

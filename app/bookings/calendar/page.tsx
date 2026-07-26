@@ -47,6 +47,7 @@ export default function BookingsCalendarPage() {
   const [newReservationOpen, setNewReservationOpen] = useState(false)
   const [preselectedBed, setPreselectedBed] = useState<Bed | null>(null)
   const [preselectedDate, setPreselectedDate] = useState<Date | null>(null)
+  const [preselectedCheckOutDate, setPreselectedCheckOutDate] = useState<Date | null>(null)
   const [selectedReservation, setSelectedReservation] = useState<Reservation | null>(null)
   const [selectedBlock, setSelectedBlock] = useState<RoomBlock | null>(null)
   const [updatingStatus, setUpdatingStatus] = useState<string | null>(null)
@@ -393,7 +394,13 @@ export default function BookingsCalendarPage() {
         onCreationAbort={abortCreation}
         onCreationCommit={(range) => {
           commitCreation(range)
-          openNewReservation(visibleBeds.find((b) => b.id === range.bedId)!, parseISO(range.startDate))
+          const bed = visibleBeds.find((b) => b.id === range.bedId)
+          if (bed) {
+            setPreselectedBed(bed)
+            setPreselectedDate(parseISO(range.startDate))
+            setPreselectedCheckOutDate(parseISO(range.endDate))
+            setNewReservationOpen(true)
+          }
         }}
         resizeState={resizeState}
         resizingReservationId={resizingReservationId}
@@ -415,7 +422,7 @@ export default function BookingsCalendarPage() {
         onOpenBlock={(event) => void openBlock(event)}
       /></Card>
   </div>
-  <AddReservationDialog open={newReservationOpen} onOpenChange={setNewReservationOpen} onSuccess={loadData} preselectedBed={preselectedBed?.id} preselectedDate={preselectedDate ?? undefined} preselectedLocation={preselectedBed?.room.location_ref?.name} />
+  <AddReservationDialog open={newReservationOpen} onOpenChange={setNewReservationOpen} onSuccess={loadData} preselectedBed={preselectedBed?.id} preselectedDate={preselectedDate ?? undefined} preselectedCheckOut={preselectedCheckOutDate ?? undefined} preselectedLocation={preselectedBed?.room.location_ref?.name} />
   <Dialog open={!!selectedBlock} onOpenChange={(open) => !open && setSelectedBlock(null)}><DialogContent><DialogHeader><DialogTitle>Bloqueo de habitación</DialogTitle></DialogHeader>{selectedBlock && <div className="space-y-4"><Badge variant="secondary">{BLOCK_LABELS[selectedBlock.block_type] ?? selectedBlock.block_type}</Badge><Detail label="Motivo" value={selectedBlock.reason} /><div className="grid grid-cols-2 gap-4"><Detail label="Desde" value={selectedBlock.start_date} /><Detail label="Hasta" value={selectedBlock.end_date} /></div>{selectedBlock.notes && <Detail label="Notas" value={selectedBlock.notes} />}<Button asChild className="w-full"><Link href="/bookings/blocks">Administrar bloqueos</Link></Button></div>}</DialogContent></Dialog>
   <Dialog open={!!selectedReservation} onOpenChange={(open) => !open && setSelectedReservation(null)}><DialogContent className="max-w-lg"><DialogHeader><DialogTitle>Detalle de reserva</DialogTitle></DialogHeader>{selectedReservation && <div className="space-y-5"><div className="flex items-start justify-between gap-4"><div><p className="text-xs text-muted-foreground">Huésped</p><p className="text-xl font-semibold">{selectedReservation.guest_name}</p></div><Badge>{STATUS_LABELS[selectedReservation.status] ?? selectedReservation.status}</Badge></div><div className="grid grid-cols-2 gap-4 text-sm"><Detail label="Check-in" value={selectedReservation.check_in} /><Detail label="Check-out" value={selectedReservation.check_out} /><Detail label="Huéspedes" value={String(selectedReservation.num_guests ?? 1)} /><Detail label="Monto registrado" value={formatClp(Number(selectedReservation.total_amount ?? 0))} /></div>{selectedReservation.special_requests && <Detail label="Solicitudes especiales" value={selectedReservation.special_requests} />}<div className="flex flex-wrap justify-end gap-2 border-t pt-4">{normalizedStatus(selectedReservation.status) === "pending" && <StatusButton loading={updatingStatus === selectedReservation.id} label="Confirmar reserva" onClick={() => updateReservationStatus(selectedReservation, "confirmed")} />}{normalizedStatus(selectedReservation.status) === "confirmed" && <StatusButton loading={updatingStatus === selectedReservation.id} label="Registrar check-in" onClick={() => updateReservationStatus(selectedReservation, "checked_in")} />}{normalizedStatus(selectedReservation.status) === "checked_in" && <StatusButton loading={updatingStatus === selectedReservation.id} label="Registrar check-out" onClick={() => updateReservationStatus(selectedReservation, "checked_out")} />}</div></div>}</DialogContent></Dialog>
   </div>
