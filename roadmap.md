@@ -22,6 +22,7 @@ Cerrar las brechas críticas de seguridad, permisos, trazabilidad y confiabilida
 - [x] Endurecer nueve tablas centrales de operaciones.
 - [x] Endurecer cinco tablas auxiliares de hospitalidad, housekeeping, mantenimiento y asignaciones.
 - [x] Endurecer seis tablas de infraestructura, documentos, fotografías, planos y embarcaciones.
+- [x] Endurecer cuatro tablas de combustible, anomalías, resumen mensual y vehículos.
 - [ ] Completar cobertura de acciones críticas y permisos por módulo.
 - [ ] Validar flujos completos por rol y dispositivo.
 
@@ -45,7 +46,10 @@ Cerrar las brechas críticas de seguridad, permisos, trazabilidad y confiabilida
 - Las cinco tablas auxiliares revisadas permanecen sin registros; la migración no alteró filas.
 - `infrastructure_asset_types`, `infrastructure_connections`, `infrastructure_documents`, `infrastructure_photos`, `infrastructure_plans` y `ports_boats` ya no permiten acceso anónimo ni `TRUNCATE`; usan políticas separadas y `DELETE` queda limitado a `admin`.
 - Se preservaron 24 tipos de activo, 7 conexiones, 67 fotografías, 82 planos y 4 registros de puertos o embarcaciones. `infrastructure_documents` permanece sin registros.
-- Las tablas con política `ALL` amplia sin restricción efectiva bajaron a 41: 34 dirigidas a `PUBLIC` y 7 a `authenticated`.
+- `fuel_consumption`, `fuel_consumption_anomalies`, `monthly_fuel_summary` y `vehicles` ya no permiten acceso anónimo ni `TRUNCATE`; usan políticas separadas y `DELETE` queda limitado a `admin`.
+- `fuel_consumption_anomalies` conserva escritura limitada a `admin` y `approver`.
+- Se preservaron 153 registros de consumo y 32 vehículos. Las tablas de anomalías y resumen mensual permanecen sin registros.
+- Las tablas con política `ALL` amplia sin restricción efectiva bajaron a 38: 31 dirigidas a `PUBLIC` y 7 a `authenticated`.
 - `ai_operation_logs` conserva 8 registros; las otras ocho bitácoras revisadas permanecen sin registros.
 - Existen cinco reservas `TEST_` en producción. No deben eliminarse sin autorización específica sobre esos registros.
 
@@ -53,7 +57,7 @@ Cerrar las brechas críticas de seguridad, permisos, trazabilidad y confiabilida
 
 1. Auditar operaciones destructivas restantes.
 2. Conectar y verificar registro de acciones críticas reales.
-3. Continuar RLS en energía, IA y módulos de soporte.
+3. Continuar RLS en IA, soberanía y módulos de soporte.
 4. Alinear permisos reales con `admin`, `approver` y usuarios autenticados.
 5. Validar flujos completos por rol y dispositivo.
 6. Eliminar datos de prueba únicamente con autorización específica.
@@ -76,6 +80,7 @@ Cerrar las brechas críticas de seguridad, permisos, trazabilidad y confiabilida
 - [x] Auditar y endurecer operaciones destructivas de nueve tablas centrales de actividades, incidencias, mantenimiento y tareas.
 - [x] Auditar y endurecer operaciones destructivas de cinco tablas auxiliares de hospitalidad, housekeeping, mantenimiento y asignaciones.
 - [x] Auditar y endurecer operaciones destructivas de seis tablas de infraestructura, documentos, fotografías, planos y embarcaciones.
+- [x] Auditar y endurecer operaciones destructivas de cuatro tablas de combustible, anomalías, resumen mensual y vehículos.
 - [x] Confirmar que `/admin` y sus rutas hijas están protegidas en middleware.
 - [ ] Completar matriz inicial de permisos por módulo y acción.
 
@@ -124,6 +129,7 @@ Cerrar las brechas críticas de seguridad, permisos, trazabilidad y confiabilida
 - [x] Actualizar Administración con el estado real de las nueve tablas operativas endurecidas.
 - [x] Actualizar Administración con el estado real de las cinco tablas auxiliares endurecidas.
 - [x] Actualizar Administración con el estado real de las seis tablas de infraestructura endurecidas.
+- [x] Actualizar Administración con el estado real de combustible y vehículos.
 
 ### Criterio de cierre
 
