@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useRef } from "react"
+import { useEffect, useRef, useState } from "react"
 import JSZip from "jszip"
 import type { InfrastructureConnection } from "@/lib/types"
 
@@ -60,10 +60,10 @@ function coordinatePairs(value: string): number[][] {
 
 function parseKml(kml: string): ParsedGeometry[] {
   const document = new DOMParser().parseFromString(kml, "application/xml")
-  if (document.querySelector("parsererror")) throw new Error("Invalid KML document")
+  if (document.querySelector("parsererror")) throw new Error("Documento KML inválido")
 
   return Array.from(document.querySelectorAll("Placemark")).flatMap((placemark) => {
-    const name = placemark.querySelector(":scope > name")?.textContent?.trim() || "Unnamed feature"
+    const name = placemark.querySelector(":scope > name")?.textContent?.trim() || "Elemento sin nombre"
     const description = placemark.querySelector(":scope > description")?.textContent?.trim() || ""
     const folder = placemark.parentElement?.querySelector(":scope > name")?.textContent?.trim() || ""
     const geometries: ParsedGeometry[] = []
@@ -85,14 +85,14 @@ function parseKml(kml: string): ParsedGeometry[] {
 }
 
 async function readKml(file: KmzFile): Promise<string> {
-  if (!file.file_url) throw new Error("KMZ file URL is missing")
+  if (!file.file_url) throw new Error("La capa no tiene URL")
   const response = await fetch(file.file_url)
-  if (!response.ok) throw new Error(`Unable to load layer (${response.status})`)
+  if (!response.ok) throw new Error(`No fue posible cargar la capa (${response.status})`)
   const buffer = await response.arrayBuffer()
   if (file.file_url.toLowerCase().includes(".kml")) return new TextDecoder().decode(buffer)
   const zip = await JSZip.loadAsync(buffer)
   const kmlEntry = Object.values(zip.files).find((entry) => !entry.dir && entry.name.toLowerCase().endsWith(".kml"))
-  if (!kmlEntry) throw new Error("The KMZ archive does not contain a KML document")
+  if (!kmlEntry) throw new Error("El archivo KMZ no contiene un documento KML")
   return kmlEntry.async("text")
 }
 
@@ -113,8 +113,19 @@ export default function KmzMapView({
   const connectionLayerRef = useRef<import("leaflet").LayerGroup | null>(null)
   const kmzLayerRef = useRef<Map<string, import("leaflet").LayerGroup>>(new Map())
   const clickHandlerRef = useRef(onMapClick)
+  const [mapReady, setMapReady] = useState(false)
 
   useEffect(() => { clickHandlerRef.current = onMapClick }, [onMapClick])
+
+  useEffect(() => {
+    const existing = document.querySelector<HTMLLinkElement>('link[data-leaflet-map="true"]')
+    if (existing) return
+    const stylesheet = document.createElement("link")
+    stylesheet.rel = "stylesheet"
+    stylesheet.href = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    stylesheet.dataset.leafletMap = "true"
+    document.head.appendChild(stylesheet)
+  }, [])
 
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return
@@ -122,15 +133,21 @@ export default function KmzMapView({
     void import("leaflet").then((L) => {
       if (cancelled || !containerRef.current || mapRef.current) return
       const map = L.map(containerRef.current, { zoomControl: true }).setView([-39.8255, -73.2215], 11)
-      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { attribution: "© OpenStreetMap contributors", maxZoom: 19 }).addTo(map)
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        attribution: "© OpenStreetMap contributors",
+        maxZoom: 19,
+      }).addTo(map)
       map.on("click", (event: import("leaflet").LeafletMouseEvent) => clickHandlerRef.current?.(event.latlng.lat, event.latlng.lng))
       infrastructureLayerRef.current = L.layerGroup().addTo(map)
       connectionLayerRef.current = L.layerGroup().addTo(map)
       mapRef.current = map
-      window.setTimeout(() => map.invalidateSize(), 100)
-    })
+      setMapReady(true)
+      window.setTimeout(() => map.invalidateSize(), 150)
+    }).catch((error) => console.error("No fue posible iniciar Leaflet:", error))
+
     return () => {
       cancelled = true
+      setMapReady(false)
       mapRef.current?.remove()
       mapRef.current = null
       infrastructureLayerRef.current = null
@@ -140,7 +157,7 @@ export default function KmzMapView({
   }, [])
 
   useEffect(() => {
-    if (!mapRef.current || !infrastructureLayerRef.current) return
+    if (!mapReady || !infrastructureLayerRef.current) return
     let cancelled = false
     void import("leaflet").then((L) => {
       if (cancelled || !infrastructureLayerRef.current) return
@@ -153,10 +170,10 @@ export default function KmzMapView({
       })
     })
     return () => { cancelled = true }
-  }, [infrastructureData, onMarkerClick])
+  }, [mapReady, infrastructureData, onMarkerClick])
 
   useEffect(() => {
-    if (!connectionLayerRef.current) return
+    if (!mapReady || !connectionLayerRef.current) return
     let cancelled = false
     void import("leaflet").then((L) => {
       if (cancelled || !connectionLayerRef.current) return
@@ -168,14 +185,18 @@ export default function KmzMapView({
         const from = byId.get(connection.from_infrastructure_id)
         const to = byId.get(connection.to_infrastructure_id)
         if (!from || !to || !Number.isFinite(from.latitude) || !Number.isFinite(from.longitude) || !Number.isFinite(to.latitude) || !Number.isFinite(to.longitude)) return
-        L.polyline([[Number(from.latitude), Number(from.longitude)], [Number(to.latitude), Number(to.longitude)]], { weight: 3, opacity: 0.75, dashArray: connection.line_style === "dashed" ? "8 8" : undefined }).addTo(connectionLayerRef.current!)
+        L.polyline([[Number(from.latitude), Number(from.longitude)], [Number(to.latitude), Number(to.longitude)]], {
+          weight: 3,
+          opacity: 0.75,
+          dashArray: connection.line_style === "dashed" ? "8 8" : undefined,
+        }).addTo(connectionLayerRef.current!)
       })
     })
     return () => { cancelled = true }
-  }, [connections, infrastructureData, visibleConnections])
+  }, [mapReady, connections, infrastructureData, visibleConnections])
 
   useEffect(() => {
-    if (!mapRef.current) return
+    if (!mapReady || !mapRef.current) return
     let cancelled = false
     void import("leaflet").then(async (L) => {
       if (cancelled || !mapRef.current) return
@@ -218,9 +239,13 @@ export default function KmzMapView({
           kmzLayerRef.current.set(file.id, group)
           const features = geometries.map((geometry) => ({ name: geometry.name, folder: geometry.folder, type: geometry.type, description: geometry.description }))
           onFeatures?.(file.id, features)
-          onStats?.(file.id, { features: features.length, types: Array.from(new Set(features.map((feature) => feature.type))), folders: Array.from(new Set(features.map((feature) => feature.folder).filter(Boolean))) })
+          onStats?.(file.id, {
+            features: features.length,
+            types: Array.from(new Set(features.map((feature) => feature.type))),
+            folders: Array.from(new Set(features.map((feature) => feature.folder).filter(Boolean))),
+          })
         } catch (error) {
-          console.error(`Unable to render GIS layer ${file.id}:`, error)
+          console.error(`No fue posible renderizar la capa GIS ${file.id}:`, error)
           onFeatures?.(file.id, [])
           onStats?.(file.id, { features: 0, types: [], folders: [] })
         }
@@ -228,9 +253,10 @@ export default function KmzMapView({
 
       if (allBounds.length === 1) mapRef.current.setView(allBounds[0], 14)
       if (allBounds.length > 1) mapRef.current.fitBounds(L.latLngBounds(allBounds), { padding: [30, 30], maxZoom: 15 })
+      window.setTimeout(() => mapRef.current?.invalidateSize(), 50)
     })
     return () => { cancelled = true }
-  }, [kmzFiles, visibleLayers, infrastructureData, onFeatures, onStats])
+  }, [mapReady, kmzFiles, visibleLayers, infrastructureData, onFeatures, onStats])
 
-  return <div ref={containerRef} className="h-full min-h-[520px] w-full rounded-lg border" aria-label="GIS map" />
+  return <div ref={containerRef} className="h-full min-h-[520px] w-full rounded-lg border bg-muted" aria-label="Mapa GIS" />
 }
