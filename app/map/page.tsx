@@ -36,9 +36,17 @@ type GisOverlay = {
   opacity: number | string | null
 }
 
+type GeoJsonProperties = Record<string, string | number | boolean | null | undefined>
+
+type GeoJsonFeature = {
+  type: "Feature"
+  geometry?: { type?: string; coordinates?: unknown }
+  properties?: GeoJsonProperties | null
+}
+
 type GeoJsonFeatureCollection = {
   type: "FeatureCollection"
-  features: Array<Record<string, unknown>>
+  features: GeoJsonFeature[]
 }
 
 type RuntimeMapLibre = {
@@ -72,7 +80,7 @@ type RuntimeMapEvent = {
 const MAPLIBRE_VERSION = "6.0.0"
 const MAPLIBRE_MODULE = `https://unpkg.com/maplibre-gl@${MAPLIBRE_VERSION}/dist/maplibre-gl.mjs`
 const MAPLIBRE_CSS = `https://unpkg.com/maplibre-gl@${MAPLIBRE_VERSION}/dist/maplibre-gl.css`
-const COLORS = ["#0f766e", "#b45309", "#7c3aed", "#be123c", "#0369a1", "#4d7c0f"]
+const FALLBACK_COLORS = ["#0f766e", "#b45309", "#7c3aed", "#be123c", "#0369a1", "#4d7c0f"]
 
 export default function MapPage() {
   const mapContainerRef = useRef<HTMLDivElement>(null)
@@ -83,6 +91,8 @@ export default function MapPage() {
   const [overlays, setOverlays] = useState<GisOverlay[]>([])
   const [visibleOverlays, setVisibleOverlays] = useState<Set<string>>(new Set())
   const [featureCounts, setFeatureCounts] = useState<Record<string, number>>({})
+  const [overlayColors, setOverlayColors] = useState<Record<string, string>>({})
+  const [nativeStyleLayers, setNativeStyleLayers] = useState<Set<string>>(new Set())
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -208,11 +218,50 @@ export default function MapPage() {
               if (cancelled) return
               setFeatureCounts((current) => ({ ...current, [overlay.id]: geojson.features.length }))
               map.addSource(`overlay-${overlay.id}`, { type: "geojson", data: geojson })
-              const color = COLORS[index % COLORS.length]
+
+              const fallbackColor = FALLBACK_COLORS[index % FALLBACK_COLORS.length]
+              const nativeColor = findNativeColor(geojson)
+              const hasNativeStyle = geojson.features.some((feature) => hasKmlStyle(feature.properties))
+              setOverlayColors((current) => ({ ...current, [overlay.id]: nativeColor ?? fallbackColor }))
+              if (hasNativeStyle) setNativeStyleLayers((current) => new Set(current).add(overlay.id))
+
               const opacity = Math.max(0.15, Math.min(1, Number(overlay.opacity ?? 0.75)))
-              map.addLayer({ id: `overlay-fill-${overlay.id}`, type: "fill", source: `overlay-${overlay.id}`, filter: ["==", ["geometry-type"], "Polygon"], paint: { "fill-color": color, "fill-opacity": opacity * 0.28 } })
-              map.addLayer({ id: `overlay-line-${overlay.id}`, type: "line", source: `overlay-${overlay.id}`, filter: ["in", ["geometry-type"], ["literal", ["LineString", "Polygon"]]], paint: { "line-color": color, "line-width": 2, "line-opacity": opacity } })
-              map.addLayer({ id: `overlay-point-${overlay.id}`, type: "circle", source: `overlay-${overlay.id}`, filter: ["==", ["geometry-type"], "Point"], paint: { "circle-radius": 5, "circle-color": color, "circle-stroke-color": "#ffffff", "circle-stroke-width": 1.25, "circle-opacity": opacity } })
+              map.addLayer({
+                id: `overlay-fill-${overlay.id}`,
+                type: "fill",
+                source: `overlay-${overlay.id}`,
+                filter: ["==", ["geometry-type"], "Polygon"],
+                paint: {
+                  "fill-color": ["coalesce", ["get", "fill"], fallbackColor],
+                  "fill-opacity": ["*", opacity, ["coalesce", ["to-number", ["get", "fill-opacity"]], 0.32]],
+                },
+              })
+              map.addLayer({
+                id: `overlay-line-${overlay.id}`,
+                type: "line",
+                source: `overlay-${overlay.id}`,
+                filter: ["in", ["geometry-type"], ["literal", ["LineString", "Polygon"]]],
+                paint: {
+                  "line-color": ["coalesce", ["get", "stroke"], ["get", "fill"], fallbackColor],
+                  "line-width": ["coalesce", ["to-number", ["get", "stroke-width"]], 2],
+                  "line-opacity": ["*", opacity, ["coalesce", ["to-number", ["get", "stroke-opacity"]], 1]],
+                },
+              })
+              map.addLayer({
+                id: `overlay-point-${overlay.id}`,
+                type: "circle",
+                source: `overlay-${overlay.id}`,
+                filter: ["==", ["geometry-type"], "Point"],
+                paint: {
+                  "circle-radius": ["interpolate", ["linear"], ["zoom"], 10, 4, 16, 8],
+                  "circle-color": ["coalesce", ["get", "fill"], ["get", "stroke"], fallbackColor],
+                  "circle-opacity": ["*", opacity, ["coalesce", ["to-number", ["get", "fill-opacity"]], 1]],
+                  "circle-stroke-color": ["coalesce", ["get", "stroke"], "#ffffff"],
+                  "circle-stroke-width": ["coalesce", ["to-number", ["get", "stroke-width"]], 1.25],
+                  "circle-stroke-opacity": ["*", opacity, ["coalesce", ["to-number", ["get", "stroke-opacity"]], 1]],
+                },
+              })
+
               const visibility = overlay.is_visible === false ? "none" : "visible"
               for (const layerType of ["fill", "line", "point"]) map.setLayoutProperty(`overlay-${layerType}-${overlay.id}`, "visibility", visibility)
             } catch (overlayError) {
@@ -280,12 +329,15 @@ export default function MapPage() {
 
           <div className="space-y-5">
             <Card>
-              <CardHeader><CardTitle className="text-base">Capas KMZ</CardTitle><CardDescription>Active u oculte cada capa para revisar su información territorial.</CardDescription></CardHeader>
+              <CardHeader><CardTitle className="text-base">Capas KMZ</CardTitle><CardDescription>Active u oculte cada capa. Se respetan los colores, opacidades y anchos definidos en el archivo original.</CardDescription></CardHeader>
               <CardContent className="space-y-3">
                 {overlays.length === 0 ? <p className="text-sm text-muted-foreground">No hay capas registradas.</p> : overlays.map((overlay) => {
                   const visible = visibleOverlays.has(overlay.id)
                   return <button key={overlay.id} type="button" onClick={() => toggleOverlay(overlay.id)} className="flex w-full items-center justify-between gap-3 rounded-md border p-3 text-left hover:bg-muted/40">
-                    <div className="min-w-0"><p className="truncate text-sm font-medium">{overlay.name}</p><p className="text-xs text-muted-foreground">{featureCounts[overlay.id] == null ? "Procesando…" : `${featureCounts[overlay.id].toLocaleString("es-CL")} elementos`}</p></div>
+                    <div className="flex min-w-0 items-center gap-3">
+                      <span className="h-3 w-3 shrink-0 rounded-full border border-white/40" style={{ backgroundColor: overlayColors[overlay.id] ?? "#64748b" }} />
+                      <div className="min-w-0"><p className="truncate text-sm font-medium">{overlay.name}</p><p className="text-xs text-muted-foreground">{featureCounts[overlay.id] == null ? "Procesando…" : `${featureCounts[overlay.id].toLocaleString("es-CL")} elementos · ${nativeStyleLayers.has(overlay.id) ? "estilo KMZ" : "color de respaldo"}`}</p></div>
+                    </div>
                     <Badge variant={visible ? "default" : "outline"}>{visible ? "Visible" : "Oculta"}</Badge>
                   </button>
                 })}
@@ -297,7 +349,7 @@ export default function MapPage() {
               <CardContent className="space-y-2 text-sm text-muted-foreground">
                 <p>Imagen satelital de alta resolución.</p>
                 <p>Puntos administrativos y conexiones técnicas.</p>
-                <p>Capas KMZ procesadas como geometrías GIS.</p>
+                <p>Colores y estilos originales de KML/KMZ cuando están disponibles.</p>
                 <p>Controles de zoom, inclinación y pantalla completa.</p>
                 <Badge variant="outline">Fuente de datos sin cambios</Badge>
               </CardContent>
@@ -327,6 +379,19 @@ async function loadOverlayGeoJson(overlay: GisOverlay): Promise<GeoJsonFeatureCo
   const document = new DOMParser().parseFromString(kmlText, "text/xml")
   if (document.querySelector("parsererror")) throw new Error("KML inválido")
   return toGeoJSON.kml(document) as unknown as GeoJsonFeatureCollection
+}
+
+function hasKmlStyle(properties?: GeoJsonProperties | null) {
+  return Boolean(properties?.fill || properties?.stroke || properties?.["fill-opacity"] != null || properties?.["stroke-opacity"] != null || properties?.["stroke-width"] != null)
+}
+
+function findNativeColor(geojson: GeoJsonFeatureCollection) {
+  for (const feature of geojson.features) {
+    const properties = feature.properties
+    const color = properties?.fill || properties?.stroke
+    if (typeof color === "string" && /^#[0-9a-f]{6}$/i.test(color)) return color
+  }
+  return null
 }
 
 function calculateBounds(coordinates: [number, number][]): [[number, number], [number, number]] {
