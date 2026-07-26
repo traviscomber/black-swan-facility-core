@@ -17,7 +17,7 @@ const domains = [
 
 const phaseOneTables = [
   { table: "guests", rows: 4, exposure: "Authenticated ALL", data: "Nombre, email, teléfono, dirección y notas", dependencies: "reservations.guest_id", priority: "Crítica" },
-  { table: "reservations", rows: 7, exposure: "Authenticated ALL", data: "Datos de huésped, fechas, solicitudes y montos", dependencies: "guests, rooms, beds, locations; 9 triggers operativos", priority: "Crítica" },
+  { table: "reservations", rows: 7, exposure: "Authenticated ALL + RPC anon", data: "Datos de huésped, fechas, solicitudes y montos", dependencies: "guests, rooms, beds, locations; 9 triggers operativos", priority: "Crítica" },
   { table: "invoices", rows: 0, exposure: "Authenticated ALL", data: "Datos de cliente, líneas, impuestos y totales", dependencies: "reservations y employees", priority: "Crítica" },
   { table: "invoice_payments", rows: 0, exposure: "Authenticated ALL", data: "Monto, método, transacción y responsable", dependencies: "invoices y employees", priority: "Crítica" },
   { table: "payments", rows: 0, exposure: "Authenticated ALL", data: "Monto, método, estado y transacción", dependencies: "reservations", priority: "Crítica" },
@@ -27,11 +27,11 @@ const phaseOneTables = [
 ] as const
 
 const phases = [
-  { step: "1", title: "Proteger datos personales y financieros", detail: "Retirar acceso anónimo y limitar escritura en huéspedes, leads, mensajes, reservas, facturas, pagos y presupuestos." },
-  { step: "2", title: "Hacer inmutables las bitácoras", detail: "Separar lectura de escritura y evitar UPDATE, DELETE y TRUNCATE en tablas de auditoría e historial." },
-  { step: "3", title: "Alinear operación con roles internos", detail: "Aplicar app_metadata.procurement_role o reglas equivalentes donde exista una función administrativa real." },
-  { step: "4", title: "Endurecer GIS y catálogos", detail: "Mantener lectura operativa donde corresponda, pero restringir cambios de capas, infraestructura y catálogos maestros." },
-  { step: "5", title: "Probar por rol antes de producción", detail: "Validar anon, authenticated, approver y admin con consultas SELECT y pruebas de escritura antes de aplicar cada migración." },
+  { step: "1", title: "Cerrar el RPC anónimo", detail: "Revocar EXECUTE a PUBLIC y anon en create_reservation_atomic y exigir una sesión válida dentro de la función." },
+  { step: "2", title: "Proteger datos personales y financieros", detail: "Retirar acceso anónimo y limitar escritura en huéspedes, leads, mensajes, reservas, facturas, pagos y presupuestos." },
+  { step: "3", title: "Hacer inmutables las bitácoras", detail: "Separar lectura de escritura y evitar UPDATE, DELETE y TRUNCATE en tablas de auditoría e historial." },
+  { step: "4", title: "Alinear operación con roles internos", detail: "Aplicar app_metadata.procurement_role o reglas equivalentes donde exista una función administrativa real." },
+  { step: "5", title: "Probar por rol antes de producción", detail: "Validar anon, authenticated, approver, admin y service_role antes de aplicar cada migración." },
 ] as const
 
 export default function AdminSecurityPage() {
@@ -47,9 +47,14 @@ export default function AdminSecurityPage() {
           <Card><CardHeader><CardTitle className="flex items-center gap-2"><Database className="h-5 w-5" />75 tablas</CardTitle><CardDescription>Accesibles a usuarios autenticados</CardDescription></CardHeader></Card>
         </div>
 
+        <Card className="border-destructive/50">
+          <CardHeader><CardTitle className="flex items-center gap-2"><TriangleAlert className="h-5 w-5" />RPC de reservas expuesto a anon</CardTitle><CardDescription>Hallazgo verificado directamente en pg_proc y privilegios de función.</CardDescription></CardHeader>
+          <CardContent className="space-y-2 text-sm"><p><span className="font-mono">create_reservation_atomic</span> es SECURITY DEFINER, pertenece a postgres, no comprueba <span className="font-mono">auth.uid()</span> y permite EXECUTE a PUBLIC y anon.</p><p>Una llamada directa al RPC puede crear reservas sin pasar por el middleware de la aplicación.</p><p className="text-muted-foreground">Además existen cinco reservas con prefijo TEST_ en producción. No se modificaron ni eliminaron.</p></CardContent>
+        </Card>
+
         <Card className="border-amber-500/50">
           <CardHeader><CardTitle>Interpretación correcta</CardTitle><CardDescription>RLS habilitado no equivale a acceso restringido.</CardDescription></CardHeader>
-          <CardContent className="space-y-2 text-sm"><p>Estas tablas combinan políticas que aceptan todas las filas con privilegios efectivos de SELECT, INSERT, UPDATE o DELETE.</p><p className="text-muted-foreground">La clasificación se verificó directamente en pg_policies, information_schema.role_table_grants, columnas, claves foráneas, conteos y triggers el 26-07-2026. No se modificaron políticas ni datos.</p></CardContent>
+          <CardContent className="space-y-2 text-sm"><p>Estas tablas combinan políticas que aceptan todas las filas con privilegios efectivos de SELECT, INSERT, UPDATE o DELETE.</p><p className="text-muted-foreground">La clasificación se verificó directamente en pg_policies, role_table_grants, pg_proc, columnas, claves foráneas, conteos y triggers el 26-07-2026. No se modificaron políticas ni datos.</p></CardContent>
         </Card>
 
         <section className="space-y-3">
