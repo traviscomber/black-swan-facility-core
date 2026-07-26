@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { AlertTriangle, Box, Building2, Check, FileClock, List, ShieldCheck, UserCog, Users, Wrench, X } from "lucide-react"
+import { AlertTriangle, Box, Building2, Check, FileClock, List, ShieldAlert, UserCog, Users, Wrench, X } from "lucide-react"
 import { useLanguage } from "@/lib/hooks/use-language"
 import { PageHeader } from "@/components/page-header"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -24,6 +24,9 @@ interface AdminOverviewProps {
     rlsEnabled: number
     rlsDisabled: number
     tablesWithoutPolicies: number
+    permissiveTables: number
+    publicRoleTables: number
+    authenticatedRoleTables: number
     adminUsers: number
     approverUsers: number
     auditRecords: number
@@ -54,20 +57,24 @@ const copy = {
     rlsEnabled: "con RLS habilitado",
     rlsDisabled: "con RLS desactivado",
     noPolicies: "sin políticas",
-    secureStatus: "Todas las tablas públicas tienen RLS habilitado y al menos una política activa.",
+    broadPolicies: "tablas con política ALL sin restricción",
+    publicRole: "asignadas al rol public",
+    authenticatedRole: "asignadas a authenticated",
+    securityWarning: "RLS está habilitado en todas las tablas, pero esto no significa que el acceso sea restrictivo. Existen políticas amplias que permiten todas las operaciones sin validar propietario ni rol interno.",
     access: "Acceso interno",
     accessDescription: "Roles almacenados en app_metadata y aplicados por middleware.",
     admins: "Administradores",
     approvers: "Aprobadores",
     totalInternal: "Cuentas internas con rol",
-    permissions: "Matriz de permisos",
+    permissions: "Matriz de permisos de rutas",
+    permissionScope: "Esta matriz describe el middleware de la aplicación. Las políticas de base de datos pueden ser más amplias y deben revisarse por separado.",
     role: "Rol",
     operations: "Operación general",
     procurement: "Compras y aprobaciones",
     administration: "Administración",
     adminRole: "Admin",
     approverRole: "Approver",
-    authenticatedRole: "Autenticado sin rol",
+    authenticatedRoleName: "Autenticado sin rol",
     requestsOnly: "Solo solicitudes",
     audit: "Trazabilidad administrativa",
     auditDescription: "Registros disponibles en approver_audit_log, procurement_audit_log y audit_actions.",
@@ -99,20 +106,24 @@ const copy = {
     rlsEnabled: "with RLS enabled",
     rlsDisabled: "with RLS disabled",
     noPolicies: "without policies",
-    secureStatus: "Every public table has RLS enabled and at least one active policy.",
+    broadPolicies: "tables with unrestricted ALL policies",
+    publicRole: "assigned to public role",
+    authenticatedRole: "assigned to authenticated",
+    securityWarning: "RLS is enabled on every table, but this does not mean access is restrictive. Broad policies allow every operation without validating ownership or internal role.",
     access: "Internal access",
     accessDescription: "Roles stored in app_metadata and enforced by middleware.",
     admins: "Administrators",
     approvers: "Approvers",
     totalInternal: "Internal accounts with a role",
-    permissions: "Permission matrix",
+    permissions: "Route permission matrix",
+    permissionScope: "This matrix describes application middleware. Database policies may be broader and require separate review.",
     role: "Role",
     operations: "General operations",
     procurement: "Procurement and approvals",
     administration: "Administration",
     adminRole: "Admin",
     approverRole: "Approver",
-    authenticatedRole: "Authenticated without role",
+    authenticatedRoleName: "Authenticated without role",
     requestsOnly: "Requests only",
     audit: "Administrative traceability",
     auditDescription: "Records available in approver_audit_log, procurement_audit_log and audit_actions.",
@@ -159,7 +170,7 @@ export function AdminOverview({ counts, controls }: AdminOverviewProps) {
         </section>
 
         <div className="grid gap-4 xl:grid-cols-3">
-          <Card className="border-border"><CardHeader><CardTitle className="flex items-center gap-2"><ShieldCheck className="h-5 w-5" />{text.security}</CardTitle><CardDescription>{text.securityDescription}</CardDescription></CardHeader><CardContent className="space-y-4"><div className="flex flex-wrap gap-2"><Badge>{text.verified} {controls.verifiedOn}</Badge><Badge variant="outline">{controls.publicTables} {text.publicTables}</Badge><Badge variant="outline">{controls.rlsEnabled} {text.rlsEnabled}</Badge><Badge variant="outline">{controls.rlsDisabled} {text.rlsDisabled}</Badge><Badge variant="outline">{controls.tablesWithoutPolicies} {text.noPolicies}</Badge></div><p className="text-sm">{text.secureStatus}</p></CardContent></Card>
+          <Card className="border-amber-500/50"><CardHeader><CardTitle className="flex items-center gap-2"><ShieldAlert className="h-5 w-5" />{text.security}</CardTitle><CardDescription>{text.securityDescription}</CardDescription></CardHeader><CardContent className="space-y-4"><div className="flex flex-wrap gap-2"><Badge>{text.verified} {controls.verifiedOn}</Badge><Badge variant="outline">{controls.publicTables} {text.publicTables}</Badge><Badge variant="outline">{controls.rlsEnabled} {text.rlsEnabled}</Badge><Badge variant="outline">{controls.rlsDisabled} {text.rlsDisabled}</Badge><Badge variant="outline">{controls.tablesWithoutPolicies} {text.noPolicies}</Badge></div><div className="grid grid-cols-3 gap-2"><div className="rounded-md border p-2"><p className="text-xl font-semibold">{controls.permissiveTables}</p><p className="text-xs text-muted-foreground">{text.broadPolicies}</p></div><div className="rounded-md border p-2"><p className="text-xl font-semibold">{controls.publicRoleTables}</p><p className="text-xs text-muted-foreground">{text.publicRole}</p></div><div className="rounded-md border p-2"><p className="text-xl font-semibold">{controls.authenticatedRoleTables}</p><p className="text-xs text-muted-foreground">{text.authenticatedRole}</p></div></div><p className="text-sm">{text.securityWarning}</p></CardContent></Card>
 
           <Card><CardHeader><CardTitle className="flex items-center gap-2"><UserCog className="h-5 w-5" />{text.access}</CardTitle><CardDescription>{text.accessDescription}</CardDescription></CardHeader><CardContent className="space-y-3"><div className="grid grid-cols-2 gap-3"><div className="rounded-md border p-3"><p className="text-xs text-muted-foreground">{text.admins}</p><p className="text-2xl font-semibold">{controls.adminUsers}</p></div><div className="rounded-md border p-3"><p className="text-xs text-muted-foreground">{text.approvers}</p><p className="text-2xl font-semibold">{controls.approverUsers}</p></div></div><p className="text-sm text-muted-foreground">{totalInternalUsers} {text.totalInternal.toLocaleLowerCase()}</p></CardContent></Card>
 
@@ -167,14 +178,14 @@ export function AdminOverview({ counts, controls }: AdminOverviewProps) {
         </div>
 
         <Card>
-          <CardHeader><CardTitle>{text.permissions}</CardTitle><CardDescription>{text.accessDescription}</CardDescription></CardHeader>
+          <CardHeader><CardTitle>{text.permissions}</CardTitle><CardDescription>{text.permissionScope}</CardDescription></CardHeader>
           <CardContent className="overflow-x-auto">
             <table className="w-full min-w-[640px] text-sm">
               <thead><tr className="border-b text-left"><th className="p-3 font-medium">{text.role}</th><th className="p-3 font-medium">{text.operations}</th><th className="p-3 font-medium">{text.procurement}</th><th className="p-3 font-medium">{text.administration}</th></tr></thead>
               <tbody>
                 <tr className="border-b"><td className="p-3 font-medium">{text.adminRole}</td><td className="p-3"><Permission allowed /></td><td className="p-3"><Permission allowed /></td><td className="p-3"><Permission allowed /></td></tr>
                 <tr className="border-b"><td className="p-3 font-medium">{text.approverRole}</td><td className="p-3"><Permission allowed /></td><td className="p-3"><Permission allowed /></td><td className="p-3"><Permission allowed={false} /></td></tr>
-                <tr><td className="p-3 font-medium">{text.authenticatedRole}</td><td className="p-3"><Permission allowed /></td><td className="p-3"><Permission allowed label={text.requestsOnly} /></td><td className="p-3"><Permission allowed={false} /></td></tr>
+                <tr><td className="p-3 font-medium">{text.authenticatedRoleName}</td><td className="p-3"><Permission allowed /></td><td className="p-3"><Permission allowed label={text.requestsOnly} /></td><td className="p-3"><Permission allowed={false} /></td></tr>
               </tbody>
             </table>
           </CardContent>
