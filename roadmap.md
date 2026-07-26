@@ -21,6 +21,7 @@ Cerrar las brechas críticas de seguridad, permisos, trazabilidad y confiabilida
 - [x] Endurecer acceso inicial a GIS y KMZ.
 - [x] Endurecer nueve tablas centrales de operaciones.
 - [x] Endurecer cinco tablas auxiliares de hospitalidad, housekeeping, mantenimiento y asignaciones.
+- [x] Endurecer seis tablas de infraestructura, documentos, fotografías, planos y embarcaciones.
 - [ ] Completar cobertura de acciones críticas y permisos por módulo.
 - [ ] Validar flujos completos por rol y dispositivo.
 
@@ -42,7 +43,9 @@ Cerrar las brechas críticas de seguridad, permisos, trazabilidad y confiabilida
 - Se preservaron 3 actividades y 12 tipos de actividad. Las otras siete tablas operativas revisadas permanecen sin registros.
 - `hospitality_requests`, `housekeeping_schedules`, `housekeeping_tasks`, `maintenance_schedules` y `staff_assignments` ya no permiten acceso anónimo ni `TRUNCATE`; usan políticas separadas y `DELETE` queda limitado a `admin`.
 - Las cinco tablas auxiliares revisadas permanecen sin registros; la migración no alteró filas.
-- Las tablas con política `ALL` amplia sin restricción efectiva bajaron a 47: 40 dirigidas a `PUBLIC` y 7 a `authenticated`.
+- `infrastructure_asset_types`, `infrastructure_connections`, `infrastructure_documents`, `infrastructure_photos`, `infrastructure_plans` y `ports_boats` ya no permiten acceso anónimo ni `TRUNCATE`; usan políticas separadas y `DELETE` queda limitado a `admin`.
+- Se preservaron 24 tipos de activo, 7 conexiones, 67 fotografías, 82 planos y 4 registros de puertos o embarcaciones. `infrastructure_documents` permanece sin registros.
+- Las tablas con política `ALL` amplia sin restricción efectiva bajaron a 41: 34 dirigidas a `PUBLIC` y 7 a `authenticated`.
 - `ai_operation_logs` conserva 8 registros; las otras ocho bitácoras revisadas permanecen sin registros.
 - Existen cinco reservas `TEST_` en producción. No deben eliminarse sin autorización específica sobre esos registros.
 
@@ -50,7 +53,7 @@ Cerrar las brechas críticas de seguridad, permisos, trazabilidad y confiabilida
 
 1. Auditar operaciones destructivas restantes.
 2. Conectar y verificar registro de acciones críticas reales.
-3. Continuar RLS en infraestructura, energía, IA y módulos de soporte.
+3. Continuar RLS en energía, IA y módulos de soporte.
 4. Alinear permisos reales con `admin`, `approver` y usuarios autenticados.
 5. Validar flujos completos por rol y dispositivo.
 6. Eliminar datos de prueba únicamente con autorización específica.
@@ -72,6 +75,7 @@ Cerrar las brechas críticas de seguridad, permisos, trazabilidad y confiabilida
 - [x] Auditar y endurecer operaciones destructivas de `gis_overlays` y `operation_kmz_files`.
 - [x] Auditar y endurecer operaciones destructivas de nueve tablas centrales de actividades, incidencias, mantenimiento y tareas.
 - [x] Auditar y endurecer operaciones destructivas de cinco tablas auxiliares de hospitalidad, housekeeping, mantenimiento y asignaciones.
+- [x] Auditar y endurecer operaciones destructivas de seis tablas de infraestructura, documentos, fotografías, planos y embarcaciones.
 - [x] Confirmar que `/admin` y sus rutas hijas están protegidas en middleware.
 - [ ] Completar matriz inicial de permisos por módulo y acción.
 
@@ -119,6 +123,7 @@ Cerrar las brechas críticas de seguridad, permisos, trazabilidad y confiabilida
 - [x] Actualizar Administración con el estado real de acceso GIS y KMZ.
 - [x] Actualizar Administración con el estado real de las nueve tablas operativas endurecidas.
 - [x] Actualizar Administración con el estado real de las cinco tablas auxiliares endurecidas.
+- [x] Actualizar Administración con el estado real de las seis tablas de infraestructura endurecidas.
 
 ### Criterio de cierre
 
