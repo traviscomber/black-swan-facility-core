@@ -27,6 +27,7 @@ Cerrar las brechas críticas de seguridad, permisos, trazabilidad y confiabilida
 - [x] Endurecer seis tablas de catálogos, multimedia, ubicaciones y soporte.
 - [x] Endurecer seis tablas de hospitalidad, habitaciones, tarifas y extras.
 - [x] Endurecer doce tablas de costos, presupuestos, facturación auxiliar, incidencias y operaciones.
+- [x] Endurecer `bulk_operations` y sus rutas con la lógica transaccional del módulo bed-booking.
 - [ ] Completar cobertura de acciones críticas y permisos por módulo.
 - [ ] Validar flujos completos por rol y dispositivo.
 
@@ -61,20 +62,24 @@ Cerrar las brechas críticas de seguridad, permisos, trazabilidad y confiabilida
 - Se preservaron 20 camas, 9 habitaciones y 1 configuración de reservas. Reglas de precio y extras permanecen sin registros.
 - `budget_categories`, `budget_divisions`, `cost_actuals`, `cost_centers`, `invoice_templates`, `issue_categories`, `issue_label_assignments`, `issue_labels`, `issue_task_assignments`, `issue_types`, `monthly_operation_summary` y `operations` ya no permiten acceso anónimo ni `TRUNCATE`; usan políticas separadas y `DELETE` queda limitado a `admin`.
 - Se preservaron 26 categorías presupuestarias, 7 divisiones, 4 centros de costo, 10 categorías de incidencia, 8 etiquetas y 20 tipos de incidencia. Costos reales, plantillas, asignaciones y resúmenes operativos permanecen sin registros.
+- `bulk_operations` conserva 3 registros históricos y queda como bitácora de solo lectura para administradores. La escritura y restauración siguen exclusivamente por RPC con validación interna de rol.
+- Las rutas bed-booking de comprobación de conflictos, ejecución masiva, historial y deshacer validan autenticación, rol administrador, UUID, fechas, estados y correspondencia entre selección y actualizaciones.
+- La solución conserva el patrón BedBooking: prevalidación de disponibilidad, ejecución atómica, historial consultable y reversión trazable.
 - El sistema debe presentar fechas en formato chileno y montos financieros en CLP cuando corresponda; no se convertirán montos existentes sin autorización.
-- Las tablas con política `ALL` amplia sin restricción efectiva bajaron a 3: 2 dirigidas a `PUBLIC` y 1 a `authenticated`.
+- Las tablas con política `ALL` amplia sin restricción efectiva bajaron a 2: ambas dirigidas a `PUBLIC`; no quedan políticas `ALL` amplias dirigidas a `authenticated`.
 - `ai_operation_logs` conserva 8 registros y permanece append-only.
 - Existen cinco reservas `TEST_` en producción. No deben eliminarse sin autorización específica sobre esos registros.
 
 ## Prioridades
 
-1. Auditar y endurecer `bulk_operations`, `reviews` y `volunteers`.
-2. Auditar operaciones destructivas restantes.
-3. Conectar y verificar registro de acciones críticas reales.
-4. Alinear permisos reales con `admin`, `approver` y usuarios autenticados.
-5. Validar flujos completos por rol y dispositivo.
-6. Verificar consistencia Chile: CLP, `es-CL`, fechas locales, textos tributarios y contexto Valdivia.
-7. Eliminar datos de prueba únicamente con autorización específica.
+1. Auditar y endurecer `reviews` y `volunteers` para llevar las políticas `ALL` amplias a cero.
+2. Revisar cada módulo contra su equivalente o patrón del sistema bed-booking antes de refactorizarlo.
+3. Auditar operaciones destructivas restantes.
+4. Conectar y verificar registro de acciones críticas reales.
+5. Alinear permisos reales con `admin`, `approver` y usuarios autenticados.
+6. Validar flujos completos por rol y dispositivo.
+7. Verificar consistencia Chile: CLP, `es-CL`, fechas locales, textos tributarios y contexto Valdivia.
+8. Eliminar datos de prueba únicamente con autorización específica.
 
 ---
 
@@ -99,6 +104,7 @@ Cerrar las brechas críticas de seguridad, permisos, trazabilidad y confiabilida
 - [x] Auditar y endurecer operaciones destructivas de seis tablas de catálogos, multimedia, ubicaciones y soporte.
 - [x] Auditar y endurecer operaciones destructivas de seis tablas de hospitalidad, habitaciones, tarifas y extras.
 - [x] Auditar y endurecer operaciones destructivas de doce tablas de costos, presupuestos, incidencias y operaciones.
+- [x] Auditar y endurecer `bulk_operations`, historial, comprobación de conflictos, ejecución y deshacer del módulo bed-booking.
 - [x] Confirmar que `/admin` y sus rutas hijas están protegidas en middleware.
 - [ ] Completar matriz inicial de permisos por módulo y acción.
 
@@ -118,6 +124,7 @@ Cerrar las brechas críticas de seguridad, permisos, trazabilidad y confiabilida
 - [x] Separar permisos de lectura, creación, actualización y eliminación.
 - [x] Eliminar privilegios `anon` en esas ocho tablas.
 - [x] Limitar `DELETE` a `admin`.
+- [x] Alinear las operaciones masivas de reservas con prevalidación de conflictos, RPC atómico, historial y deshacer del módulo bed-booking.
 - [ ] Verificar creación atómica de reservas, facturación, extras, reportes, auto-fill y conciliación.
 - [ ] Añadir pruebas negativas para usuario autenticado común, `approver`, `admin` y `service_role`.
 - [ ] Revisar exposición de datos personales en respuestas API y logs.
@@ -153,6 +160,7 @@ Cerrar las brechas críticas de seguridad, permisos, trazabilidad y confiabilida
 - [x] Actualizar Administración con el estado real de catálogos, multimedia, ubicaciones y soporte.
 - [x] Actualizar Administración con el estado real de hospitalidad, habitaciones, tarifas y extras.
 - [x] Actualizar Administración con el estado real de costos, presupuestos, incidencias y operaciones.
+- [x] Actualizar Administración con el estado real del historial y operaciones masivas bed-booking.
 
 ### Criterio de cierre
 
@@ -207,10 +215,11 @@ Cerrar las brechas críticas de seguridad, permisos, trazabilidad y confiabilida
 ## Regla de ejecución
 
 1. Inspección de código y esquema real.
-2. Cambio pequeño y trazable.
-3. Migración únicamente cuando corresponda.
-4. Commit directo a `main`.
-5. Verificación del deployment correspondiente.
-6. Actualización de este roadmap.
-7. Registro de impacto y riesgo residual.
-8. Verificación explícita de contexto chileno en cambios financieros, fechas, impuestos y moneda.
+2. Comparación con la lógica del módulo bed-booking equivalente o con su patrón de disponibilidad, atomicidad, trazabilidad y reversión.
+3. Cambio pequeño y trazable.
+4. Migración únicamente cuando corresponda.
+5. Commit directo a `main`.
+6. Verificación del deployment correspondiente.
+7. Actualización de este roadmap.
+8. Registro de impacto y riesgo residual.
+9. Verificación explícita de contexto chileno en cambios financieros, fechas, impuestos y moneda.
