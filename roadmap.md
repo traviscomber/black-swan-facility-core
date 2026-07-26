@@ -2,11 +2,11 @@
 
 Fecha de inicio: 26-07-2026  
 Horizonte máximo: 30 días  
-Sistema: Black Swan Facility Core — Fundo Corcovado
+Sistema: Black Swan Facility Core — Fundo Corcovado, Valdivia, Chile
 
 ## Objetivo
 
-Cerrar las brechas críticas de seguridad, permisos, trazabilidad y confiabilidad operativa sin interrumpir reservas, finanzas, mantenimiento, compras, mapas ni la operación diaria.
+Cerrar las brechas críticas de seguridad, permisos, trazabilidad y confiabilidad operativa sin interrumpir reservas, finanzas, mantenimiento, compras, mapas ni la operación diaria. Mantener terminología, formatos de fecha, contexto tributario y moneda acordes a Chile; usar CLP cuando corresponda.
 
 ## Estado de ejecución
 
@@ -26,6 +26,7 @@ Cerrar las brechas críticas de seguridad, permisos, trazabilidad y confiabilida
 - [x] Endurecer once tablas de IA, sesiones, contexto y soberanía.
 - [x] Endurecer seis tablas de catálogos, multimedia, ubicaciones y soporte.
 - [x] Endurecer seis tablas de hospitalidad, habitaciones, tarifas y extras.
+- [x] Endurecer doce tablas de costos, presupuestos, facturación auxiliar, incidencias y operaciones.
 - [ ] Completar cobertura de acciones críticas y permisos por módulo.
 - [ ] Validar flujos completos por rol y dispositivo.
 
@@ -58,18 +59,22 @@ Cerrar las brechas críticas de seguridad, permisos, trazabilidad y confiabilida
 - Se preservaron 12 categorías de activo, 1 recurso multimedia, 14 ubicaciones, 2 cocinas y 3 servicios. `vineyard_equipment` permanece sin registros.
 - `beds`, `rooms`, `booking_settings`, `pricing_rules`, `booking_extras` y `reservation_extras` ya no permiten acceso anónimo ni `TRUNCATE`; usan políticas separadas y `DELETE` queda limitado a `admin`.
 - Se preservaron 20 camas, 9 habitaciones y 1 configuración de reservas. Reglas de precio y extras permanecen sin registros.
-- Las tablas con política `ALL` amplia sin restricción efectiva bajaron a 15: 14 dirigidas a `PUBLIC` y 1 a `authenticated`.
+- `budget_categories`, `budget_divisions`, `cost_actuals`, `cost_centers`, `invoice_templates`, `issue_categories`, `issue_label_assignments`, `issue_labels`, `issue_task_assignments`, `issue_types`, `monthly_operation_summary` y `operations` ya no permiten acceso anónimo ni `TRUNCATE`; usan políticas separadas y `DELETE` queda limitado a `admin`.
+- Se preservaron 26 categorías presupuestarias, 7 divisiones, 4 centros de costo, 10 categorías de incidencia, 8 etiquetas y 20 tipos de incidencia. Costos reales, plantillas, asignaciones y resúmenes operativos permanecen sin registros.
+- El sistema debe presentar fechas en formato chileno y montos financieros en CLP cuando corresponda; no se convertirán montos existentes sin autorización.
+- Las tablas con política `ALL` amplia sin restricción efectiva bajaron a 3: 2 dirigidas a `PUBLIC` y 1 a `authenticated`.
 - `ai_operation_logs` conserva 8 registros y permanece append-only.
 - Existen cinco reservas `TEST_` en producción. No deben eliminarse sin autorización específica sobre esos registros.
 
 ## Prioridades
 
-1. Auditar operaciones destructivas restantes.
-2. Conectar y verificar registro de acciones críticas reales.
-3. Continuar RLS en costos, presupuestos, incidencias, operaciones y resúmenes auxiliares.
+1. Auditar y endurecer `bulk_operations`, `reviews` y `volunteers`.
+2. Auditar operaciones destructivas restantes.
+3. Conectar y verificar registro de acciones críticas reales.
 4. Alinear permisos reales con `admin`, `approver` y usuarios autenticados.
 5. Validar flujos completos por rol y dispositivo.
-6. Eliminar datos de prueba únicamente con autorización específica.
+6. Verificar consistencia Chile: CLP, `es-CL`, fechas locales, textos tributarios y contexto Valdivia.
+7. Eliminar datos de prueba únicamente con autorización específica.
 
 ---
 
@@ -93,6 +98,7 @@ Cerrar las brechas críticas de seguridad, permisos, trazabilidad y confiabilida
 - [x] Auditar y endurecer operaciones destructivas de once tablas de IA y soberanía.
 - [x] Auditar y endurecer operaciones destructivas de seis tablas de catálogos, multimedia, ubicaciones y soporte.
 - [x] Auditar y endurecer operaciones destructivas de seis tablas de hospitalidad, habitaciones, tarifas y extras.
+- [x] Auditar y endurecer operaciones destructivas de doce tablas de costos, presupuestos, incidencias y operaciones.
 - [x] Confirmar que `/admin` y sus rutas hijas están protegidas en middleware.
 - [ ] Completar matriz inicial de permisos por módulo y acción.
 
@@ -115,6 +121,7 @@ Cerrar las brechas críticas de seguridad, permisos, trazabilidad y confiabilida
 - [ ] Verificar creación atómica de reservas, facturación, extras, reportes, auto-fill y conciliación.
 - [ ] Añadir pruebas negativas para usuario autenticado común, `approver`, `admin` y `service_role`.
 - [ ] Revisar exposición de datos personales en respuestas API y logs.
+- [ ] Validar que facturación, impuestos, fechas y montos usen criterios chilenos y CLP donde corresponda.
 
 ### Criterio de cierre
 
@@ -145,6 +152,7 @@ Cerrar las brechas críticas de seguridad, permisos, trazabilidad y confiabilida
 - [x] Actualizar Administración con el estado real de IA y soberanía.
 - [x] Actualizar Administración con el estado real de catálogos, multimedia, ubicaciones y soporte.
 - [x] Actualizar Administración con el estado real de hospitalidad, habitaciones, tarifas y extras.
+- [x] Actualizar Administración con el estado real de costos, presupuestos, incidencias y operaciones.
 
 ### Criterio de cierre
 
@@ -163,6 +171,7 @@ Cerrar las brechas críticas de seguridad, permisos, trazabilidad y confiabilida
 - [ ] Revisar errores de runtime y logs de Vercel de los últimos siete días.
 - [ ] Corregir regresiones de permisos, carga, estados vacíos y formularios.
 - [ ] Confirmar que no quedan mocks, métricas inventadas ni textos de seguridad desactualizados.
+- [ ] Confirmar formato `es-CL`, CLP, fechas locales y terminología operativa chilena en pantallas críticas.
 - [ ] Documentar permisos, migraciones, rollback, rutas críticas y soporte.
 - [ ] Decidir específicamente si se eliminan las cinco reservas `TEST_`.
 
@@ -193,6 +202,7 @@ Cerrar las brechas críticas de seguridad, permisos, trazabilidad y confiabilida
 - [ ] 100% de operaciones críticas con registro de auditoría.
 - [ ] 100% de deployments del periodo en `READY` o corregidos antes de continuar.
 - [x] 0 modificaciones de datos de producción no autorizadas.
+- [ ] 100% de pantallas financieras críticas verificadas para Chile, CLP y `es-CL`.
 
 ## Regla de ejecución
 
@@ -203,3 +213,4 @@ Cerrar las brechas críticas de seguridad, permisos, trazabilidad y confiabilida
 5. Verificación del deployment correspondiente.
 6. Actualización de este roadmap.
 7. Registro de impacto y riesgo residual.
+8. Verificación explícita de contexto chileno en cambios financieros, fechas, impuestos y moneda.
