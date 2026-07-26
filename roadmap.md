@@ -15,23 +15,24 @@ Cerrar las brechas críticas de seguridad, permisos, trazabilidad y confiabilida
 - [x] Restringir cambio masivo de estado a administradores.
 - [x] Clasificar políticas RLS amplias y exposición efectiva por rol.
 - [x] Documentar dependencias de hospitalidad y finanzas.
-- [ ] Cerrar ejecución anónima de RPC críticos.
+- [x] Cerrar ejecución anónima de RPC críticos.
 - [ ] Endurecer RLS en datos personales y financieros.
 - [ ] Hacer confiables e inmutables las bitácoras.
 - [ ] Alinear permisos reales con roles internos.
 - [ ] Validar flujos completos por rol y dispositivo.
 
-## Estado de partida
+## Estado de partida actualizado
 
 - Las principales áreas operativas ya fueron revisadas y corregidas: dashboard, reservas, mantenimiento, compras, proveedores, propiedades, inventario, personas, tareas, ganadería, viñedo, energía, combustibles y mapas.
 - Administración muestra el estado real de RLS, roles y auditoría.
-- Persisten RPC `SECURITY DEFINER` con ejecución demasiado amplia y políticas RLS permisivas en tablas sensibles.
+- Los 13 RPC `SECURITY DEFINER` fueron inventariados.
+- Ningún RPC `SECURITY DEFINER` conserva ejecución para `anon` o `PUBLIC` después de la migración `restrict_public_security_definer_execution`.
 - Existen cinco reservas `TEST_` en producción. No deben eliminarse sin autorización específica sobre esos registros.
 
 ## Prioridades
 
-1. Cerrar ejecución anónima de RPC críticos.
-2. Endurecer RLS en datos personales y financieros.
+1. Endurecer RLS en datos personales y financieros.
+2. Auditar operaciones destructivas restantes.
 3. Hacer confiables e inmutables las bitácoras.
 4. Alinear permisos reales con roles `admin`, `approver`, `operator` y `viewer`.
 5. Validar flujos completos por rol y dispositivo.
@@ -44,19 +45,20 @@ Cerrar las brechas críticas de seguridad, permisos, trazabilidad y confiabilida
 ### Entregables
 
 - [x] Verificar que los deployments anteriores estén en `READY`.
-- [ ] Inventariar todos los RPC `SECURITY DEFINER`, sus propietarios, permisos `EXECUTE` y llamadas desde código.
-- [ ] Revocar `EXECUTE` a `PUBLIC` y `anon` en `create_reservation_atomic`.
-- [ ] Revocar `EXECUTE` a `PUBLIC` y `anon` en `execute_bulk_update`.
-- [ ] Conservar únicamente los roles requeridos por los flujos reales.
+- [x] Inventariar todos los RPC `SECURITY DEFINER`, sus propietarios y permisos `EXECUTE`.
+- [x] Revocar `EXECUTE` a `PUBLIC` y `anon` en `create_reservation_atomic`.
+- [x] Revocar `EXECUTE` a `PUBLIC` y `anon` en `execute_bulk_update`.
+- [x] Revocar ejecución anónima de validación, restauración masiva y funciones de compras expuestas.
+- [x] Conservar ejecución autenticada solo en los RPC requeridos por los flujos actuales.
 - [ ] Auditar rutas destructivas o masivas de reservas, facturas, pagos, presupuestos, inventario, compras y GIS/KMZ.
 - [x] Confirmar que `/admin` y sus rutas hijas están protegidas en middleware.
 - [ ] Completar matriz inicial de permisos por módulo y acción.
 
 ### Criterio de cierre
 
-- Ningún RPC crítico ejecutable por `anon` o `PUBLIC`.
-- Ninguna operación destructiva masiva accesible fuera de `admin`.
-- Deployments verificados en `READY`.
+- [x] Ningún RPC crítico ejecutable por `anon` o `PUBLIC`.
+- [ ] Ninguna operación destructiva masiva accesible fuera de `admin`.
+- [x] Deployments anteriores verificados en `READY`.
 
 ---
 
@@ -130,12 +132,12 @@ Cerrar las brechas críticas de seguridad, permisos, trazabilidad y confiabilida
 
 ## Indicadores de éxito
 
-- 0 RPC críticos ejecutables por `anon` o `PUBLIC`.
-- 0 tablas sensibles con políticas `ALL` sin restricción efectiva.
-- 100% de rutas administrativas protegidas en servidor.
-- 100% de operaciones críticas con registro de auditoría.
-- 100% de deployments del periodo en `READY` o corregidos antes de continuar.
-- 0 modificaciones de datos de producción no autorizadas.
+- [x] 0 RPC críticos ejecutables por `anon` o `PUBLIC`.
+- [ ] 0 tablas sensibles con políticas `ALL` sin restricción efectiva.
+- [x] 100% de rutas administrativas protegidas en servidor.
+- [ ] 100% de operaciones críticas con registro de auditoría.
+- [ ] 100% de deployments del periodo en `READY` o corregidos antes de continuar.
+- [x] 0 modificaciones de datos de producción no autorizadas.
 
 ## Regla de ejecución
 
