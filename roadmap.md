@@ -6,191 +6,99 @@ Sistema: Black Swan Facility Core — Fundo Corcovado, Valdivia, Chile
 
 ## Objetivo
 
-Cerrar las brechas críticas de seguridad, permisos, trazabilidad y confiabilidad operativa sin interrumpir reservas, finanzas, mantenimiento, compras, mapas ni la operación diaria. Mantener terminología, formatos de fecha, contexto tributario y moneda acordes a Chile; usar CLP cuando corresponda.
+Cerrar brechas críticas de seguridad, permisos, trazabilidad y confiabilidad operativa sin interrumpir reservas, finanzas, mantenimiento, compras, mapas ni la operación diaria. Mantener terminología chilena, fechas `es-CL`, zona `America/Santiago` y CLP cuando corresponda.
 
 ## Estado de ejecución
 
 - [x] Retirar endpoint de seed de reservas en producción.
-- [x] Restringir eliminación masiva de reservas a administradores.
-- [x] Restringir cambio masivo de estado a administradores.
-- [x] Clasificar políticas RLS amplias y exposición efectiva por rol.
-- [x] Documentar dependencias de hospitalidad y finanzas.
-- [x] Cerrar ejecución anónima de RPC críticos.
-- [x] Endurecer primera fase RLS en datos personales y financieros.
+- [x] Restringir operaciones masivas de reservas a administradores.
+- [x] Inventariar y cerrar ejecución anónima de RPC críticos.
+- [x] Endurecer RLS en datos personales, financieros y operativos.
 - [x] Volver append-only nueve bitácoras operativas y administrativas.
-- [x] Endurecer acceso inicial a GIS y KMZ.
-- [x] Endurecer nueve tablas centrales de operaciones.
-- [x] Endurecer cinco tablas auxiliares de hospitalidad, housekeeping, mantenimiento y asignaciones.
-- [x] Endurecer seis tablas de infraestructura, documentos, fotografías, planos y embarcaciones.
-- [x] Endurecer cuatro tablas de combustible, anomalías, resumen mensual y vehículos.
-- [x] Endurecer once tablas de IA, sesiones, contexto y soberanía.
-- [x] Endurecer seis tablas de catálogos, multimedia, ubicaciones y soporte.
-- [x] Endurecer seis tablas de hospitalidad, habitaciones, tarifas y extras.
-- [x] Endurecer doce tablas de costos, presupuestos, facturación auxiliar, incidencias y operaciones.
-- [x] Endurecer `bulk_operations` y sus rutas con la lógica transaccional del módulo bed-booking.
-- [x] Refactorizar el editor de facturas con marca Black Swan, CLP, fechas chilenas y trazabilidad desde reservas.
-- [x] Endurecer consulta, creación, edición y eliminación de facturas con validación de servidor y permisos por rol.
-- [x] Alinear el listado de facturas con flujo desde reservas, CLP, fechas chilenas y acciones por rol.
-- [x] Implementar salida de impresión y PDF A4 limpia para facturas Black Swan.
-- [x] Incorporar prevalidación de facturación de solo lectura antes de crear una factura.
+- [x] Endurecer GIS, KMZ, infraestructura, energía, combustibles, IA, catálogos y hospitalidad.
+- [x] Alinear operaciones masivas con el patrón bed-booking: prevalidación, atomicidad, historial y deshacer.
+- [x] Refactorizar facturas con logo Black Swan, CLP, fechas chilenas, impresión A4 y creación desde reservas.
+- [x] Incorporar prevalidación de facturación de solo lectura.
+- [x] Llevar políticas RLS `ALL` amplias sin restricción efectiva a cero.
 - [ ] Completar cobertura de acciones críticas y permisos por módulo.
 - [ ] Validar flujos completos por rol y dispositivo.
 
-## Estado actualizado
+## Estado verificado
 
-- Las principales áreas operativas ya fueron revisadas y corregidas: dashboard, reservas, mantenimiento, compras, proveedores, propiedades, inventario, personas, tareas, ganadería, viñedo, energía, combustibles y mapas.
-- Administración muestra el estado real de RLS, roles y auditoría.
-- Los 13 RPC `SECURITY DEFINER` fueron inventariados.
-- Ningún RPC `SECURITY DEFINER` conserva ejecución para `anon` o `PUBLIC`.
-- `execute_bulk_update` y `restore_bulk_operation_state` exigen rol `admin` dentro de la función.
-- Ocho tablas sensibles ya no usan políticas `ALL`: `guests`, `reservations`, `invoices`, `invoice_payments`, `payments`, `leads`, `messages` y `budgets`.
-- Estas ocho tablas no conservan privilegios para `anon`; `DELETE` queda limitado a `admin`.
-- Nueve bitácoras ya no permiten acceso anónimo ni `UPDATE`, `DELETE` o `TRUNCATE` autenticado.
-- `procurement_audit_log` conserva como escritores reales `start_procurement_quotation`, `build_procurement_comparison` y `approve_procurement_comparison`; las tres funciones mantienen validación interna de rol y ya no son ejecutables por `anon`.
-- No se identificó un escritor activo para `approver_audit_log` en funciones de base de datos ni en el código indexado.
-- `gis_overlays` y `operation_kmz_files` ya no permiten acceso anónimo ni `TRUNCATE`; usan políticas separadas y `DELETE` queda limitado a `admin`.
-- `gis_overlays` conserva 5 registros y `operation_kmz_files` permanece sin registros; la migración no alteró filas.
-- `activities`, `activity_attendees`, `activity_types`, `checklists`, `checklist_items`, `incidents`, `maintenance_tasks`, `task_assignments` y `task_comments` ya no permiten acceso anónimo ni `TRUNCATE`; usan políticas separadas y `DELETE` queda limitado a `admin`.
-- Se preservaron 3 actividades y 12 tipos de actividad. Las otras siete tablas operativas revisadas permanecen sin registros.
-- `hospitality_requests`, `housekeeping_schedules`, `housekeeping_tasks`, `maintenance_schedules` y `staff_assignments` ya no permiten acceso anónimo ni `TRUNCATE`; usan políticas separadas y `DELETE` queda limitado a `admin`.
-- Las cinco tablas auxiliares revisadas permanecen sin registros; la migración no alteró filas.
-- `infrastructure_asset_types`, `infrastructure_connections`, `infrastructure_documents`, `infrastructure_photos`, `infrastructure_plans` y `ports_boats` ya no permiten acceso anónimo ni `TRUNCATE`; usan políticas separadas y `DELETE` queda limitado a `admin`.
-- Se preservaron 24 tipos de activo, 7 conexiones, 67 fotografías, 82 planos y 4 registros de puertos o embarcaciones. `infrastructure_documents` permanece sin registros.
-- `fuel_consumption`, `fuel_consumption_anomalies`, `monthly_fuel_summary` y `vehicles` ya no permiten acceso anónimo ni `TRUNCATE`; usan políticas separadas y `DELETE` queda limitado a `admin`.
-- `fuel_consumption_anomalies` conserva escritura limitada a `admin` y `approver`.
-- Se preservaron 153 registros de consumo y 32 vehículos. Las tablas de anomalías y resumen mensual permanecen sin registros.
-- `ai_agent_executions`, `ai_agents`, `ai_artifacts`, `ai_context`, `ai_events`, `ai_sessions`, `sovereignty_dependencies`, `sovereignty_layers`, `sovereignty_metrics`, `sovereignty_objectives` y `sovereignty_timeline` ya no permiten acceso anónimo ni `TRUNCATE`; usan políticas separadas y `DELETE` queda limitado a `admin`.
-- Se preservaron 8 ejecuciones, 5 agentes, 3 artefactos, 10 eventos, 5 sesiones, 5 capas y 8 métricas. `ai_context`, dependencias, objetivos y cronología permanecen sin registros.
-- `asset_categories`, `multimedia_assets`, `locations`, `kitchens`, `utilities` y `vineyard_equipment` ya no permiten acceso anónimo ni `TRUNCATE`; usan políticas separadas y `DELETE` queda limitado a `admin`.
-- Se preservaron 12 categorías de activo, 1 recurso multimedia, 14 ubicaciones, 2 cocinas y 3 servicios. `vineyard_equipment` permanece sin registros.
-- `beds`, `rooms`, `booking_settings`, `pricing_rules`, `booking_extras` y `reservation_extras` ya no permiten acceso anónimo ni `TRUNCATE`; usan políticas separadas y `DELETE` queda limitado a `admin`.
-- Se preservaron 20 camas, 9 habitaciones y 1 configuración de reservas. Reglas de precio y extras permanecen sin registros.
-- `budget_categories`, `budget_divisions`, `cost_actuals`, `cost_centers`, `invoice_templates`, `issue_categories`, `issue_label_assignments`, `issue_labels`, `issue_task_assignments`, `issue_types`, `monthly_operation_summary` y `operations` ya no permiten acceso anónimo ni `TRUNCATE`; usan políticas separadas y `DELETE` queda limitado a `admin`.
-- Se preservaron 26 categorías presupuestarias, 7 divisiones, 4 centros de costo, 10 categorías de incidencia, 8 etiquetas y 20 tipos de incidencia. Costos reales, plantillas, asignaciones y resúmenes operativos permanecen sin registros.
-- `bulk_operations` conserva 3 registros históricos y queda como bitácora de solo lectura para administradores. La escritura y restauración siguen exclusivamente por RPC con validación interna de rol.
-- Las rutas bed-booking de comprobación de conflictos, ejecución masiva, historial y deshacer validan autenticación, rol administrador, UUID, fechas, estados y correspondencia entre selección y actualizaciones.
-- La solución conserva el patrón BedBooking: prevalidación de disponibilidad, ejecución atómica, historial consultable y reversión trazable.
-- El editor de facturas usa el mismo activo `/blackswan-logo.png` del encabezado de navegación, identifica a Black Swan y Fundo Corcovado, y ordena cliente, emisión, detalle, condiciones y totales.
-- La facturación muestra CLP sin decimales mediante `formatClp`, fechas `es-CL` basadas en `America/Santiago`, teléfono `+56` y textos operativos en español.
-- Las facturas nuevas deben originarse desde una reserva y delegar su creación al RPC `create_reservation_invoice`; el editor ya no escribe directamente desde el cliente a Supabase.
-- `GET` y `POST /api/bookings/invoices` exigen sesión, validan UUID y fechas, y limitan la creación a `admin` y `approver`.
-- `PATCH /api/bookings/invoices/[id]` usa una lista explícita de campos, recalcula subtotal, descuentos, impuestos y total en servidor, y limita actualización a `admin` y `approver`.
-- `DELETE /api/bookings/invoices/[id]` queda limitado a `admin` y bloquea el borrado de facturas con pagos o monto abonado; esas facturas deben anularse.
-- El listado de facturas ya no ofrece creación genérica: dirige al flujo de reservas, muestra fechas chilenas, CLP, saldo y acciones según rol.
-- La salida de impresión oculta navegación, controles y fondos de la aplicación; usa A4 vertical, fondo blanco, texto oscuro, logo Black Swan y evita cortes internos en secciones y filas.
-- Los campos editables se presentan como contenido limpio al imprimir o guardar como PDF, sin bordes, botones ni controles del modal.
-- La validación visual final de impresión en navegadores y tamaños de pantalla sigue pendiente porque producción aún no contiene facturas reales.
-- `GET /api/bookings/invoices/preview` es una prevalidación de solo lectura limitada a `admin` y `approver`; no crea ni altera facturas, reservas o extras.
-- La prevalidación calcula alojamiento, extras, impuestos y total previsto en CLP, detecta fechas inválidas, reservas anuladas y facturas activas existentes.
-- El editor consume esa prevalidación antes de habilitar la creación: cliente, alojamiento y extras quedan derivados de la reserva y el botón se bloquea ante inconsistencias.
-- La revisión de producción detectó 7 reservas confirmadas, 5 de ellas `TEST_`, ninguna con extras y ninguna con factura activa. Una reserva histórica no TEST tiene salida anterior a la entrada y queda bloqueada por la prevalidación.
-- La pantalla declara que el documento es de gestión interna y que su validez tributaria depende de la emisión en el sistema autorizado correspondiente.
-- La tabla `invoices` permanece con 0 registros; el refactor no creó, alteró ni eliminó datos de producción.
-- El sistema debe presentar fechas en formato chileno y montos financieros en CLP cuando corresponda; no se convertirán montos existentes sin autorización.
-- Las tablas con política `ALL` amplia sin restricción efectiva bajaron a 2: ambas dirigidas a `PUBLIC`; no quedan políticas `ALL` amplias dirigidas a `authenticated`.
-- `ai_operation_logs` conserva 8 registros y permanece append-only.
-- Existen cinco reservas `TEST_` en producción. No deben eliminarse sin autorización específica sobre esos registros.
+- Los 13 RPC `SECURITY DEFINER` fueron inventariados; ninguno conserva `EXECUTE` para `anon` o `PUBLIC`.
+- `execute_bulk_update` y `restore_bulk_operation_state` verifican rol `admin` dentro del RPC.
+- Las tablas sensibles y operativas revisadas usan políticas separadas por operación y no permiten `TRUNCATE` a usuarios autenticados.
+- `DELETE` queda limitado a `admin` en los módulos endurecidos.
+- Nueve bitácoras son append-only y no permiten alteración o borrado por usuarios operativos.
+- `bulk_operations` conserva 3 registros históricos y solo puede escribirse o restaurarse mediante RPC controlado.
+- El módulo de facturas exige sesión, valida UUID, fechas, estados y montos CLP, y limita creación/edición a `admin` y `approver`; eliminación solo para `admin` y bloqueada cuando existen pagos.
+- El editor de facturas usa `/blackswan-logo.png`, identifica Black Swan y Fundo Corcovado, muestra CLP sin decimales y fechas chilenas, y genera salida A4 limpia para impresión/PDF.
+- `GET /api/bookings/invoices/preview` valida reserva, huésped, habitación, extras, fechas, duplicados e importes antes de habilitar creación.
+- La tabla `invoices` permanece con 0 registros. No se crearon ni alteraron facturas durante el refactor.
+- Producción contiene 7 reservas confirmadas; 5 tienen prefijo `TEST_`. Ninguna fue modificada.
+- Una reserva histórica no TEST presenta salida anterior a entrada y queda bloqueada por la prevalidación.
+- `reviews` permanece con 0 registros.
+- `volunteers` conserva 1 registro.
+- `reviews` y `volunteers` ya no permiten acceso `anon`, `TRUNCATE` ni políticas `ALL` amplias.
+- Ambas tablas conservan lectura, creación y actualización para usuarios autenticados; la eliminación exige `admin`.
+- Conteo verificado de políticas `ALL` amplias sin restricción efectiva: **0**.
+- No se modificaron filas de producción durante el endurecimiento de `reviews` y `volunteers`.
 
 ## Prioridades
 
-1. Validar el flujo de creación con una reserva controlada fuera de producción o con autorización explícita sobre una reserva `TEST_`.
-2. Validar visualmente impresión y PDF en desktop y móvil cuando exista una factura controlada.
-3. Auditar y endurecer `reviews` y `volunteers` para llevar las políticas `ALL` amplias a cero.
-4. Revisar cada módulo contra su equivalente o patrón del sistema bed-booking antes de refactorizarlo.
-5. Auditar operaciones destructivas restantes.
-6. Conectar y verificar registro de acciones críticas reales.
-7. Alinear permisos reales con `admin`, `approver` y usuarios autenticados.
-8. Validar flujos completos por rol y dispositivo.
-9. Verificar consistencia Chile: CLP, `es-CL`, fechas locales, textos tributarios y contexto Valdivia.
-10. Eliminar datos de prueba únicamente con autorización específica.
-
----
+1. Auditar operaciones destructivas restantes en pagos, presupuestos, inventario y compras.
+2. Conectar y verificar registro de acciones críticas reales: anulaciones, pagos, cambios financieros, permisos y borrados.
+3. Completar matriz de permisos para `admin`, `approver` y usuario autenticado en UI, API y Supabase.
+4. Validar por rol los módulos críticos en desktop y móvil.
+5. Validar visualmente impresión/PDF con una factura controlada fuera de producción o con autorización explícita sobre una reserva `TEST_`.
+6. Revisar exposición de datos personales en respuestas API y logs.
+7. Confirmar consistencia Chile: CLP, `es-CL`, zona local, textos tributarios y contexto Valdivia.
+8. Eliminar datos de prueba únicamente con autorización específica.
 
 ## Semana 1 — Contención crítica
 
-### Entregables
-
-- [x] Verificar que los deployments anteriores estén en `READY`.
-- [x] Inventariar todos los RPC `SECURITY DEFINER`, sus propietarios y permisos `EXECUTE`.
-- [x] Revocar `EXECUTE` a `PUBLIC` y `anon` en `create_reservation_atomic`.
-- [x] Revocar `EXECUTE` a `PUBLIC` y `anon` en `execute_bulk_update`.
-- [x] Revocar ejecución anónima de validación, restauración masiva y funciones de compras expuestas.
-- [x] Conservar ejecución autenticada solo en los RPC requeridos por los flujos actuales.
-- [x] Exigir rol `admin` dentro de los RPC de actualización y restauración masiva.
-- [ ] Auditar rutas destructivas o masivas de reservas, facturas, pagos, presupuestos, inventario y compras.
-- [x] Auditar y endurecer operaciones destructivas de `gis_overlays` y `operation_kmz_files`.
-- [x] Auditar y endurecer operaciones destructivas de nueve tablas centrales de actividades, incidencias, mantenimiento y tareas.
-- [x] Auditar y endurecer operaciones destructivas de cinco tablas auxiliares de hospitalidad, housekeeping, mantenimiento y asignaciones.
-- [x] Auditar y endurecer operaciones destructivas de seis tablas de infraestructura, documentos, fotografías, planos y embarcaciones.
-- [x] Auditar y endurecer operaciones destructivas de cuatro tablas de combustible, anomalías, resumen mensual y vehículos.
-- [x] Auditar y endurecer operaciones destructivas de once tablas de IA y soberanía.
-- [x] Auditar y endurecer operaciones destructivas de seis tablas de catálogos, multimedia, ubicaciones y soporte.
-- [x] Auditar y endurecer operaciones destructivas de seis tablas de hospitalidad, habitaciones, tarifas y extras.
-- [x] Auditar y endurecer operaciones destructivas de doce tablas de costos, presupuestos, incidencias y operaciones.
-- [x] Auditar y endurecer `bulk_operations`, historial, comprobación de conflictos, ejecución y deshacer del módulo bed-booking.
-- [x] Auditar y endurecer consulta, creación, edición y eliminación de facturas.
-- [x] Confirmar que `/admin` y sus rutas hijas están protegidas en middleware.
+- [x] Verificar deployments anteriores en `READY`.
+- [x] Cerrar ejecución anónima de RPC críticos.
+- [x] Proteger rutas administrativas en servidor.
+- [x] Endurecer operaciones masivas de reservas.
+- [x] Endurecer consulta, creación, edición y eliminación de facturas.
+- [ ] Completar auditoría de operaciones destructivas en pagos, presupuestos, inventario y compras.
 - [ ] Completar matriz inicial de permisos por módulo y acción.
 
 ### Criterio de cierre
 
 - [x] Ningún RPC crítico ejecutable por `anon` o `PUBLIC`.
 - [ ] Ninguna operación destructiva masiva accesible fuera de `admin`.
-- [x] Deployments verificados en `READY`.
-
----
+- [x] Deployments funcionales verificados en `READY`.
 
 ## Semana 2 — Datos personales y financieros
 
-### Entregables
-
 - [x] Endurecer RLS en `guests`, `reservations`, `invoices`, `invoice_payments`, `payments`, `leads`, `messages` y `budgets`.
-- [x] Separar permisos de lectura, creación, actualización y eliminación.
-- [x] Eliminar privilegios `anon` en esas ocho tablas.
+- [x] Separar lectura, creación, actualización y eliminación.
+- [x] Eliminar privilegios `anon` en tablas sensibles revisadas.
 - [x] Limitar `DELETE` a `admin`.
-- [x] Alinear las operaciones masivas de reservas con prevalidación de conflictos, RPC atómico, historial y deshacer del módulo bed-booking.
-- [x] Refactorizar el editor de facturas con marca Black Swan, orden visual, CLP, `es-CL` y creación trazable desde reservas.
-- [x] Endurecer `GET`, `POST`, `PATCH` y `DELETE` de facturas con autenticación, validación de campos, estados, montos CLP y permisos por rol.
-- [x] Retirar la creación genérica desde el listado y alinear sus acciones con `admin` y `approver`.
-- [x] Implementar impresión y salida PDF A4 limpia, sin navegación ni controles de edición.
-- [x] Implementar prevalidación de solo lectura para reservas, alojamiento, extras, impuestos, duplicados y fechas antes de crear una factura.
-- [ ] Validar visualmente impresión y salida PDF de factura en desktop y móvil con una factura controlada.
-- [ ] Verificar creación atómica de reservas, facturación, extras, reportes, auto-fill y conciliación.
-- [ ] Añadir pruebas negativas para usuario autenticado común, `approver`, `admin` y `service_role`.
-- [ ] Revisar exposición de datos personales en respuestas API y logs.
-- [ ] Validar que facturación, impuestos, fechas y montos usen criterios chilenos y CLP donde corresponda.
+- [x] Refactorizar facturación para Chile y Black Swan.
+- [x] Implementar impresión/PDF A4.
+- [x] Implementar prevalidación de facturación.
+- [x] Endurecer `reviews` y `volunteers` y llevar políticas `ALL` amplias a cero.
+- [ ] Validar visualmente impresión/PDF con una factura controlada.
+- [ ] Añadir pruebas negativas por rol.
+- [ ] Revisar exposición de datos personales en API y logs.
 
 ### Criterio de cierre
 
-- [x] Acceso anónimo eliminado en datos personales y financieros revisados.
+- [x] Acceso anónimo eliminado en datos sensibles revisados.
 - [x] Escritura separada por operación; eliminación limitada a `admin`.
-- [ ] Reservas y facturación verificadas después de las migraciones.
-
----
+- [x] Cero políticas `ALL` amplias sin restricción efectiva.
+- [ ] Reservas y facturación verificadas con pruebas controladas.
 
 ## Semana 3 — Auditoría, roles y trazabilidad
 
-### Entregables
-
-- [x] Revisar `audit_actions` y seis historiales operativos amplios.
-- [x] Impedir `UPDATE`, `DELETE` y `TRUNCATE` en las siete bitácoras operativas revisadas.
-- [x] Retirar acceso anónimo y conservar solo `SELECT` + `INSERT` autenticado en esas siete tablas.
-- [x] Revisar en detalle `approver_audit_log` y `procurement_audit_log`.
-- [x] Volver append-only ambas bitácoras de compras y retirar ejecución anónima de sus tres RPC escritores identificados.
-- [ ] Restringir más la inserción de `approver_audit_log` cuando exista un escritor real identificado.
+- [x] Revisar historiales y volver append-only nueve bitácoras.
+- [x] Retirar acceso anónimo a bitácoras y RPC escritores identificados.
+- [ ] Restringir inserción de `approver_audit_log` cuando exista un escritor real identificado.
 - [ ] Registrar borrados masivos, cambios de estado, aprobaciones, permisos, KMZ y modificaciones financieras.
 - [ ] Implementar matriz final de permisos en UI, middleware, API y Supabase.
-- [x] Actualizar Administración con estado verificable de nueve bitácoras append-only.
-- [x] Actualizar Administración con el estado real de acceso GIS y KMZ.
-- [x] Actualizar Administración con el estado real de las nueve tablas operativas endurecidas.
-- [x] Actualizar Administración con el estado real de las cinco tablas auxiliares endurecidas.
-- [x] Actualizar Administración con el estado real de las seis tablas de infraestructura endurecidas.
-- [x] Actualizar Administración con el estado real de combustible y vehículos.
-- [x] Actualizar Administración con el estado real de IA y soberanía.
-- [x] Actualizar Administración con el estado real de catálogos, multimedia, ubicaciones y soporte.
-- [x] Actualizar Administración con el estado real de hospitalidad, habitaciones, tarifas y extras.
-- [x] Actualizar Administración con el estado real de costos, presupuestos, incidencias y operaciones.
-- [x] Actualizar Administración con el estado real del historial y operaciones masivas bed-booking.
 
 ### Criterio de cierre
 
@@ -198,58 +106,35 @@ Cerrar las brechas críticas de seguridad, permisos, trazabilidad y confiabilida
 - [x] Las nueve bitácoras revisadas no pueden ser alteradas ni borradas por usuarios operativos.
 - [ ] La UI coincide con los permisos reales del servidor y Supabase en todos los módulos.
 
----
-
 ## Semana 4 — Validación integral y cierre
-
-### Entregables
 
 - [ ] Ejecutar pruebas por rol en desktop y móvil.
 - [ ] Validar dashboard, reservas, mantenimiento, inventario, compras, propiedades, personas, ganadería, viñedo, energía, mapas y administración.
 - [ ] Revisar errores de runtime y logs de Vercel de los últimos siete días.
 - [ ] Corregir regresiones de permisos, carga, estados vacíos y formularios.
-- [ ] Confirmar que no quedan mocks, métricas inventadas ni textos de seguridad desactualizados.
-- [ ] Confirmar formato `es-CL`, CLP, fechas locales y terminología operativa chilena en pantallas críticas.
+- [ ] Confirmar que no quedan mocks, métricas inventadas ni textos desactualizados.
+- [ ] Confirmar formato `es-CL`, CLP, fechas locales y terminología chilena en pantallas críticas.
 - [ ] Documentar permisos, migraciones, rollback, rutas críticas y soporte.
 - [ ] Decidir específicamente si se eliminan las cinco reservas `TEST_`.
-
-### Criterio de cierre
-
-- Cero vulnerabilidades críticas conocidas en rutas y RPC revisados.
-- Cero deployments en error.
-- Flujos críticos validados por rol.
-- Administración refleja datos reales y trazabilidad operativa.
-- Riesgos residuales documentados con prioridad.
-
----
-
-## Backlog posterior al mes
-
-- Sustituir MapLibre cargado desde CDN por dependencia versionada.
-- Mejorar automatización de pruebas de permisos en CI.
-- Crear panel de salud de integraciones y jobs.
-- Añadir retención y archivado formal de logs.
-- Revisar rendimiento de consultas históricas y reportes extensos.
-- Evaluar separación más fina de roles fuera de `procurement_role`.
 
 ## Indicadores de éxito
 
 - [x] 0 RPC críticos ejecutables por `anon` o `PUBLIC`.
-- [ ] 0 tablas sensibles con políticas `ALL` sin restricción efectiva.
+- [x] 0 tablas con políticas `ALL` amplias sin restricción efectiva.
 - [x] 100% de rutas administrativas protegidas en servidor.
 - [ ] 100% de operaciones críticas con registro de auditoría.
-- [ ] 100% de deployments del periodo en `READY` o corregidos antes de continuar.
+- [ ] 100% de flujos críticos verificados por rol y dispositivo.
 - [x] 0 modificaciones de datos de producción no autorizadas.
 - [ ] 100% de pantallas financieras críticas verificadas para Chile, CLP y `es-CL`.
 
 ## Regla de ejecución
 
 1. Inspección de código y esquema real.
-2. Comparación con la lógica del módulo bed-booking equivalente o con su patrón de disponibilidad, atomicidad, trazabilidad y reversión.
+2. Comparación con el patrón bed-booking equivalente antes de refactorizar.
 3. Cambio pequeño y trazable.
-4. Migración únicamente cuando corresponda.
+4. DDL únicamente mediante migración.
 5. Commit directo a `main`.
 6. Verificación del deployment correspondiente.
-7. Actualización de este roadmap.
-8. Registro de impacto y riesgo residual.
+7. Actualización inmediata de este roadmap en commit separado.
+8. Registro de impacto, datos preservados y riesgo residual.
 9. Verificación explícita de contexto chileno en cambios financieros, fechas, impuestos y moneda.
