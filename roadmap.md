@@ -16,25 +16,29 @@ Cerrar las brechas críticas de seguridad, permisos, trazabilidad y confiabilida
 - [x] Clasificar políticas RLS amplias y exposición efectiva por rol.
 - [x] Documentar dependencias de hospitalidad y finanzas.
 - [x] Cerrar ejecución anónima de RPC críticos.
-- [ ] Endurecer RLS en datos personales y financieros.
+- [x] Endurecer primera fase RLS en datos personales y financieros.
 - [ ] Hacer confiables e inmutables las bitácoras.
-- [ ] Alinear permisos reales con roles internos.
+- [ ] Alinear permisos reales con `admin`, `approver` y usuarios autenticados.
 - [ ] Validar flujos completos por rol y dispositivo.
 
-## Estado de partida actualizado
+## Estado actualizado
 
 - Las principales áreas operativas ya fueron revisadas y corregidas: dashboard, reservas, mantenimiento, compras, proveedores, propiedades, inventario, personas, tareas, ganadería, viñedo, energía, combustibles y mapas.
 - Administración muestra el estado real de RLS, roles y auditoría.
 - Los 13 RPC `SECURITY DEFINER` fueron inventariados.
-- Ningún RPC `SECURITY DEFINER` conserva ejecución para `anon` o `PUBLIC` después de la migración `restrict_public_security_definer_execution`.
+- Ningún RPC `SECURITY DEFINER` conserva ejecución para `anon` o `PUBLIC`.
+- `execute_bulk_update` y `restore_bulk_operation_state` exigen rol `admin` dentro de la función.
+- Ocho tablas sensibles ya no usan políticas `ALL`: `guests`, `reservations`, `invoices`, `invoice_payments`, `payments`, `leads`, `messages` y `budgets`.
+- Estas ocho tablas no conservan privilegios para `anon`; `DELETE` queda limitado a `admin`.
+- Las tablas con política `ALL` amplia bajaron de 75 a 67: 57 dirigidas a `PUBLIC` y 10 a `authenticated`.
 - Existen cinco reservas `TEST_` en producción. No deben eliminarse sin autorización específica sobre esos registros.
 
 ## Prioridades
 
-1. Endurecer RLS en datos personales y financieros.
-2. Auditar operaciones destructivas restantes.
-3. Hacer confiables e inmutables las bitácoras.
-4. Alinear permisos reales con roles `admin`, `approver`, `operator` y `viewer`.
+1. Auditar operaciones destructivas restantes.
+2. Hacer confiables e inmutables las bitácoras.
+3. Continuar RLS en operaciones, GIS, energía, IA y módulos auxiliares.
+4. Alinear permisos reales con `admin`, `approver` y usuarios autenticados.
 5. Validar flujos completos por rol y dispositivo.
 6. Eliminar datos de prueba únicamente con autorización específica.
 
@@ -50,6 +54,7 @@ Cerrar las brechas críticas de seguridad, permisos, trazabilidad y confiabilida
 - [x] Revocar `EXECUTE` a `PUBLIC` y `anon` en `execute_bulk_update`.
 - [x] Revocar ejecución anónima de validación, restauración masiva y funciones de compras expuestas.
 - [x] Conservar ejecución autenticada solo en los RPC requeridos por los flujos actuales.
+- [x] Exigir rol `admin` dentro de los RPC de actualización y restauración masiva.
 - [ ] Auditar rutas destructivas o masivas de reservas, facturas, pagos, presupuestos, inventario, compras y GIS/KMZ.
 - [x] Confirmar que `/admin` y sus rutas hijas están protegidas en middleware.
 - [ ] Completar matriz inicial de permisos por módulo y acción.
@@ -58,7 +63,7 @@ Cerrar las brechas críticas de seguridad, permisos, trazabilidad y confiabilida
 
 - [x] Ningún RPC crítico ejecutable por `anon` o `PUBLIC`.
 - [ ] Ninguna operación destructiva masiva accesible fuera de `admin`.
-- [x] Deployments anteriores verificados en `READY`.
+- [x] Deployments verificados en `READY`.
 
 ---
 
@@ -66,17 +71,19 @@ Cerrar las brechas críticas de seguridad, permisos, trazabilidad y confiabilida
 
 ### Entregables
 
-- [ ] Endurecer RLS en `guests`, `reservations`, `invoices`, `invoice_payments`, `payments`, `leads`, `messages` y `budgets`.
-- [ ] Separar permisos de lectura, creación, actualización y eliminación.
+- [x] Endurecer RLS en `guests`, `reservations`, `invoices`, `invoice_payments`, `payments`, `leads`, `messages` y `budgets`.
+- [x] Separar permisos de lectura, creación, actualización y eliminación.
+- [x] Eliminar privilegios `anon` en esas ocho tablas.
+- [x] Limitar `DELETE` a `admin`.
 - [ ] Verificar creación atómica de reservas, facturación, extras, reportes, auto-fill y conciliación.
-- [ ] Añadir pruebas negativas para `anon`, `viewer`, `operator`, `approver` y `admin`.
+- [ ] Añadir pruebas negativas para usuario autenticado común, `approver`, `admin` y `service_role`.
 - [ ] Revisar exposición de datos personales en respuestas API y logs.
 
 ### Criterio de cierre
 
-- Acceso anónimo eliminado en datos personales y financieros.
-- Escritura limitada por función real.
-- Reservas y facturación operativas después de las migraciones.
+- [x] Acceso anónimo eliminado en datos personales y financieros revisados.
+- [x] Escritura separada por operación; eliminación limitada a `admin`.
+- [ ] Reservas y facturación verificadas después de las migraciones.
 
 ---
 
