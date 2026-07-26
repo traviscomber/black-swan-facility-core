@@ -1,438 +1,364 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { Dialog, DialogContent, DialogClose } from "@/components/ui/dialog"
+import { useEffect, useMemo, useState } from "react"
+import { FileText, Loader2, Plus, Printer, Trash2 } from "lucide-react"
+import { toast } from "sonner"
+import { Dialog, DialogClose, DialogContent } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { createBrowserClient } from "@supabase/ssr"
-import { Plus, Trash2, ImageIcon } from "lucide-react"
+import { formatClp, roundClp } from "@/lib/money"
+
+type InvoiceLineItem = {
+  description: string
+  qty: number
+  unit_price: number
+}
+
+type InvoiceRecord = {
+  id: string
+  reservation_id?: string | null
+  invoice_number?: string | null
+  invoice_date?: string | null
+  due_date?: string | null
+  status?: string | null
+  customer_name?: string | null
+  customer_email?: string | null
+  customer_phone?: string | null
+  customer_address?: string | null
+  line_items?: InvoiceLineItem[] | null
+  discount_amount?: number | null
+  discount_percentage?: number | null
+  tax_rate?: number | null
+  additional_fees?: number | null
+  payment_status?: string | null
+  notes?: string | null
+  terms_conditions?: string | null
+}
 
 interface InvoiceEditorModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
+  invoice?: InvoiceRecord | null
   invoiceId?: string
+  reservationId?: string
   guestName?: string
   guestEmail?: string
   guestPhone?: string
+  onSave?: () => void
+}
+
+const EMPTY_ITEM: InvoiceLineItem = { description: "", qty: 1, unit_price: 0 }
+
+function todayInChile() {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Santiago",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date())
+}
+
+function addDays(date: string, days: number) {
+  const value = new Date(`${date}T12:00:00Z`)
+  value.setUTCDate(value.getUTCDate() + days)
+  return value.toISOString().slice(0, 10)
+}
+
+function formatChileDate(value?: string | null) {
+  if (!value) return "—"
+  return new Intl.DateTimeFormat("es-CL", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    timeZone: "UTC",
+  }).format(new Date(`${value}T00:00:00Z`))
 }
 
 export function InvoiceEditorModal({
   open,
   onOpenChange,
+  invoice,
   invoiceId,
+  reservationId,
   guestName = "",
   guestEmail = "",
   guestPhone = "",
+  onSave,
 }: InvoiceEditorModalProps) {
+  const effectiveInvoiceId = invoice?.id ?? invoiceId
+  const today = useMemo(() => todayInChile(), [])
+  const [loading, setLoading] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [invoiceNumber, setInvoiceNumber] = useState(invoice?.invoice_number ?? "")
   const [formData, setFormData] = useState({
-    customer_name: guestName,
-    customer_email: guestEmail,
-    customer_phone: guestPhone,
-    customer_company: "",
-    customer_address: "",
-    invoice_date: new Date().toISOString().split("T")[0],
-    due_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
-    line_items: [{ description: "", qty: 1, unit_price: 0 }],
-    discount_amount: 0,
-    discount_percentage: 0,
-    tax_rate: 0,
-    additional_fees: 0,
-    invoice_status: "draft",
-    payment_status: "pending",
-    notes: "",
+    customer_name: invoice?.customer_name ?? guestName,
+    customer_email: invoice?.customer_email ?? guestEmail,
+    customer_phone: invoice?.customer_phone ?? guestPhone,
+    customer_address: invoice?.customer_address ?? "",
+    invoice_date: invoice?.invoice_date ?? today,
+    due_date: invoice?.due_date ?? addDays(today, 30),
+    status: invoice?.status ?? "draft",
+    payment_status: invoice?.payment_status ?? "pending",
+    discount_amount: Number(invoice?.discount_amount ?? 0),
+    discount_percentage: Number(invoice?.discount_percentage ?? 0),
+    tax_rate: Number(invoice?.tax_rate ?? 0),
+    additional_fees: Number(invoice?.additional_fees ?? 0),
+    notes: invoice?.notes ?? "",
+    terms_conditions: invoice?.terms_conditions ?? "",
   })
-
-  const [lineItems, setLineItems] = useState(formData.line_items)
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-  )
+  const [lineItems, setLineItems] = useState<InvoiceLineItem[]>(invoice?.line_items?.length ? invoice.line_items : [EMPTY_ITEM])
 
   useEffect(() => {
-    if (invoiceId) {
-      loadInvoice()
-    }
-  }, [invoiceId, open])
+    if (!open) return
 
-  const loadInvoice = async () => {
-    const { data } = await supabase.from("invoices").select("*").eq("id", invoiceId).single()
-
-    if (data) {
-      setFormData(data)
-      setLineItems(data.line_items || [{ description: "", qty: 1, unit_price: 0 }])
-    }
-  }
-
-  const handleInputChange = (field: string, value: any) => {
-    setFormData({ ...formData, [field]: value })
-  }
-
-  const handleLineItemChange = (index: number, field: string, value: any) => {
-    const updated = [...lineItems]
-    updated[index] = { ...updated[index], [field]: value }
-    setLineItems(updated)
-  }
-
-  const addLineItem = () => {
-    setLineItems([...lineItems, { description: "", qty: 1, unit_price: 0 }])
-  }
-
-  const removeLineItem = (index: number) => {
-    setLineItems(lineItems.filter((_, i) => i !== index))
-  }
-
-  const calculateSubtotal = () => {
-    return lineItems.reduce((sum, item) => sum + item.qty * item.unit_price, 0)
-  }
-
-  const subtotal = calculateSubtotal()
-  const discountAmount = formData.discount_percentage
-    ? (subtotal * formData.discount_percentage) / 100
-    : formData.discount_amount
-  const taxAmount = ((subtotal - discountAmount) * formData.tax_rate) / 100
-  const total = subtotal - discountAmount + taxAmount + formData.additional_fees
-
-  const saveInvoice = async () => {
-    const invoiceData = {
-      ...formData,
-      line_items: lineItems,
+    if (!effectiveInvoiceId) {
+      setInvoiceNumber("")
+      setFormData({
+        customer_name: guestName,
+        customer_email: guestEmail,
+        customer_phone: guestPhone,
+        customer_address: "",
+        invoice_date: today,
+        due_date: addDays(today, 30),
+        status: "draft",
+        payment_status: "pending",
+        discount_amount: 0,
+        discount_percentage: 0,
+        tax_rate: 0,
+        additional_fees: 0,
+        notes: "",
+        terms_conditions: "",
+      })
+      setLineItems([EMPTY_ITEM])
+      setError(null)
+      return
     }
 
-    if (invoiceId) {
-      await supabase.from("invoices").update(invoiceData).eq("id", invoiceId)
-    } else {
-      await supabase.from("invoices").insert([invoiceData])
+    let cancelled = false
+    async function loadInvoice() {
+      setLoading(true)
+      setError(null)
+      try {
+        const response = await fetch(`/api/bookings/invoices?invoiceId=${encodeURIComponent(effectiveInvoiceId!)}`)
+        const data = (await response.json()) as InvoiceRecord & { error?: string }
+        if (!response.ok) throw new Error(data.error ?? "No se pudo cargar la factura")
+        if (cancelled) return
+
+        setInvoiceNumber(data.invoice_number ?? "")
+        setFormData({
+          customer_name: data.customer_name ?? "",
+          customer_email: data.customer_email ?? "",
+          customer_phone: data.customer_phone ?? "",
+          customer_address: data.customer_address ?? "",
+          invoice_date: data.invoice_date ?? today,
+          due_date: data.due_date ?? addDays(today, 30),
+          status: data.status ?? "draft",
+          payment_status: data.payment_status ?? "pending",
+          discount_amount: Number(data.discount_amount ?? 0),
+          discount_percentage: Number(data.discount_percentage ?? 0),
+          tax_rate: Number(data.tax_rate ?? 0),
+          additional_fees: Number(data.additional_fees ?? 0),
+          notes: data.notes ?? "",
+          terms_conditions: data.terms_conditions ?? "",
+        })
+        setLineItems(data.line_items?.length ? data.line_items : [EMPTY_ITEM])
+      } catch (loadError) {
+        if (!cancelled) setError(loadError instanceof Error ? loadError.message : "No se pudo cargar la factura")
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
     }
 
-    onOpenChange(false)
+    void loadInvoice()
+    return () => {
+      cancelled = true
+    }
+  }, [effectiveInvoiceId, guestEmail, guestName, guestPhone, open, today])
+
+  const subtotal = useMemo(
+    () => roundClp(lineItems.reduce((sum, item) => sum + Number(item.qty || 0) * Number(item.unit_price || 0), 0)),
+    [lineItems],
+  )
+  const discountAmount = roundClp(
+    formData.discount_percentage > 0
+      ? (subtotal * formData.discount_percentage) / 100
+      : formData.discount_amount,
+  )
+  const taxableBase = Math.max(0, subtotal - discountAmount)
+  const taxAmount = roundClp((taxableBase * formData.tax_rate) / 100)
+  const total = roundClp(taxableBase + taxAmount + formData.additional_fees)
+
+  function updateField<K extends keyof typeof formData>(field: K, value: (typeof formData)[K]) {
+    setFormData((current) => ({ ...current, [field]: value }))
+  }
+
+  function updateLineItem(index: number, field: keyof InvoiceLineItem, value: string | number) {
+    setLineItems((current) =>
+      current.map((item, itemIndex) => (itemIndex === index ? { ...item, [field]: value } : item)),
+    )
+  }
+
+  async function saveInvoice() {
+    if (!formData.customer_name.trim()) {
+      setError("El nombre o razón social del cliente es obligatorio")
+      return
+    }
+    if (!lineItems.some((item) => item.description.trim() && item.qty > 0)) {
+      setError("Agrega al menos un ítem válido")
+      return
+    }
+
+    setSaving(true)
+    setError(null)
+    try {
+      if (!effectiveInvoiceId) {
+        if (!reservationId) {
+          throw new Error("Las facturas nuevas deben generarse desde una reserva para mantener trazabilidad")
+        }
+        const response = await fetch("/api/bookings/invoices", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ reservation_id: reservationId, due_date: formData.due_date, notes: formData.notes }),
+        })
+        const result = (await response.json()) as { error?: string }
+        if (!response.ok) throw new Error(result.error ?? "No se pudo generar la factura")
+      } else {
+        const response = await fetch(`/api/bookings/invoices/${effectiveInvoiceId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            customer_name: formData.customer_name.trim(),
+            customer_email: formData.customer_email.trim() || null,
+            customer_phone: formData.customer_phone.trim() || null,
+            customer_address: formData.customer_address.trim() || null,
+            invoice_date: formData.invoice_date,
+            due_date: formData.due_date,
+            status: formData.status,
+            payment_status: formData.payment_status,
+            line_items: lineItems.map((item) => ({
+              description: item.description.trim(),
+              qty: Number(item.qty),
+              unit_price: roundClp(Number(item.unit_price)),
+            })),
+            subtotal,
+            discount_amount: discountAmount,
+            discount_percentage: formData.discount_percentage,
+            tax_rate: formData.tax_rate,
+            tax_amount: taxAmount,
+            additional_fees: roundClp(formData.additional_fees),
+            total_amount: total,
+            notes: formData.notes.trim() || null,
+            terms_conditions: formData.terms_conditions.trim() || null,
+          }),
+        })
+        const result = (await response.json()) as { error?: string }
+        if (!response.ok) throw new Error(result.error ?? "No se pudo guardar la factura")
+      }
+
+      toast.success("Factura guardada")
+      onSave?.()
+      onOpenChange(false)
+    } catch (saveError) {
+      setError(saveError instanceof Error ? saveError.message : "No se pudo guardar la factura")
+    } finally {
+      setSaving(false)
+    }
   }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[98vw] max-w-[98vw] max-h-[98vh] overflow-y-auto p-0 bg-slate-900 border-slate-700">
-        {/* Header */}
-        <div className="sticky top-0 bg-gradient-to-r from-slate-950 via-slate-900 to-slate-950 border-b border-slate-800 px-8 py-4 z-50 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-white/10 rounded-lg flex items-center justify-center flex-shrink-0">
-              <ImageIcon className="h-6 w-6 text-amber-500" />
-            </div>
-            <div>
-              <h1 className="text-xl font-bold text-white">New Invoice</h1>
-              <p className="text-xs text-slate-400">Black Swan Facility Management</p>
+      <DialogContent className="max-h-[96vh] w-[96vw] max-w-6xl overflow-y-auto p-0">
+        <header className="sticky top-0 z-20 flex items-center justify-between border-b bg-background/95 px-4 py-3 backdrop-blur sm:px-6">
+          <div className="flex min-w-0 items-center gap-3">
+            <img src="/blackswan-logo.png" alt="Black Swan" className="h-11 w-11 shrink-0 object-contain" />
+            <div className="min-w-0">
+              <p className="truncate text-lg font-semibold">Black Swan · Fundo Corcovado</p>
+              <p className="text-xs text-muted-foreground">Factura interna · Valdivia, Chile</p>
             </div>
           </div>
-          <DialogClose className="text-slate-400 hover:text-white transition-colors" />
-        </div>
-
-        {/* Main Content */}
-        <div className="p-8 space-y-6">
-          {/* Header Section - Customer & Dates */}
-          <div className="grid grid-cols-4 gap-6">
-            {/* Customer Info */}
-            <div className="col-span-2 space-y-4">
-              <h3 className="text-sm font-semibold text-white flex items-center gap-2">
-                <span className="w-1.5 h-1.5 bg-amber-500 rounded-full"></span>
-                Customer Information
-              </h3>
-              <div>
-                <label className="text-xs text-slate-400 block mb-1">Customer Name *</label>
-                <Input
-                  value={formData.customer_name}
-                  onChange={(e) => handleInputChange("customer_name", e.target.value)}
-                  placeholder="John Doe"
-                  className="bg-slate-800 border-slate-700 text-white"
-                />
-              </div>
-              <div>
-                <label className="text-xs text-slate-400 block mb-1">Email</label>
-                <Input
-                  value={formData.customer_email}
-                  onChange={(e) => handleInputChange("customer_email", e.target.value)}
-                  type="email"
-                  placeholder="customer@example.com"
-                  className="bg-slate-800 border-slate-700 text-white"
-                />
-              </div>
-              <div>
-                <label className="text-xs text-slate-400 block mb-1">Phone</label>
-                <Input
-                  value={formData.customer_phone}
-                  onChange={(e) => handleInputChange("customer_phone", e.target.value)}
-                  placeholder="+1 234 567 8900"
-                  className="bg-slate-800 border-slate-700 text-white"
-                />
-              </div>
-              <div>
-                <label className="text-xs text-slate-400 block mb-1">Company</label>
-                <Input
-                  value={formData.customer_company}
-                  onChange={(e) => handleInputChange("customer_company", e.target.value)}
-                  placeholder="Company Name"
-                  className="bg-slate-800 border-slate-700 text-white"
-                />
-              </div>
-              <div>
-                <label className="text-xs text-slate-400 block mb-1">Address</label>
-                <textarea
-                  value={formData.customer_address}
-                  onChange={(e) => handleInputChange("customer_address", e.target.value)}
-                  placeholder="Street address, city, state"
-                  className="w-full bg-slate-800 border border-slate-700 rounded text-white text-sm p-2 resize-none"
-                  rows={3}
-                />
-              </div>
-            </div>
-
-            {/* Dates & Status */}
-            <div className="col-span-2 space-y-4">
-              <h3 className="text-sm font-semibold text-white flex items-center gap-2">
-                <span className="w-1.5 h-1.5 bg-amber-500 rounded-full"></span>
-                Invoice Details
-              </h3>
-              <div>
-                <label className="text-xs text-slate-400 block mb-1">Invoice Date</label>
-                <Input
-                  type="date"
-                  value={formData.invoice_date}
-                  onChange={(e) => handleInputChange("invoice_date", e.target.value)}
-                  className="bg-slate-800 border-slate-700 text-white"
-                />
-              </div>
-              <div>
-                <label className="text-xs text-slate-400 block mb-1">Due Date</label>
-                <Input
-                  type="date"
-                  value={formData.due_date}
-                  onChange={(e) => handleInputChange("due_date", e.target.value)}
-                  className="bg-slate-800 border-slate-700 text-white"
-                />
-              </div>
-              <div>
-                <label className="text-xs text-slate-400 block mb-1">Invoice Status</label>
-                <select
-                  value={formData.invoice_status}
-                  onChange={(e) => handleInputChange("invoice_status", e.target.value)}
-                  className="w-full bg-slate-800 border border-slate-700 rounded text-white text-sm p-2"
-                >
-                  <option value="draft">Draft</option>
-                  <option value="sent">Sent</option>
-                  <option value="paid">Paid</option>
-                </select>
-              </div>
-              <div>
-                <label className="text-xs text-slate-400 block mb-1">Payment Status</label>
-                <select
-                  value={formData.payment_status}
-                  onChange={(e) => handleInputChange("payment_status", e.target.value)}
-                  className="w-full bg-slate-800 border border-slate-700 rounded text-white text-sm p-2"
-                >
-                  <option value="pending">Pending</option>
-                  <option value="partial">Partial</option>
-                  <option value="paid">Paid</option>
-                  <option value="overdue">Overdue</option>
-                </select>
-              </div>
-            </div>
+          <div className="flex items-center gap-2">
+            <Button type="button" variant="outline" size="sm" onClick={() => window.print()} className="hidden sm:inline-flex">
+              <Printer className="mr-2 h-4 w-4" /> Imprimir
+            </Button>
+            <DialogClose aria-label="Cerrar" />
           </div>
+        </header>
 
-          {/* Line Items - Full Width */}
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-white flex items-center gap-2">
-                <span className="w-1.5 h-1.5 bg-amber-500 rounded-full"></span>
-                Line Items
-              </h3>
-              <Button onClick={addLineItem} size="sm" className="bg-amber-600 hover:bg-amber-700 text-white gap-1">
-                <Plus className="h-4 w-4" />
-                Add Item
-              </Button>
-            </div>
-
-            <div className="bg-slate-800/50 rounded-lg overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-slate-700">
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-slate-300">Description</th>
-                    <th className="px-4 py-3 text-center text-xs font-semibold text-slate-300 w-20">Qty</th>
-                    <th className="px-4 py-3 text-right text-xs font-semibold text-slate-300 w-24">Unit Price</th>
-                    <th className="px-4 py-3 text-right text-xs font-semibold text-slate-300 w-24">Total</th>
-                    <th className="px-4 py-3 text-center w-10"></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {lineItems.map((item, index) => (
-                    <tr key={index} className="border-b border-slate-700/50 hover:bg-slate-700/30 transition">
-                      <td className="px-4 py-3">
-                        <Input
-                          value={item.description}
-                          onChange={(e) => handleLineItemChange(index, "description", e.target.value)}
-                          placeholder="Item description"
-                          className="bg-slate-700 border-slate-600 text-white text-sm h-8"
-                        />
-                      </td>
-                      <td className="px-4 py-3 text-center">
-                        <Input
-                          type="number"
-                          min="1"
-                          value={item.qty}
-                          onChange={(e) => handleLineItemChange(index, "qty", Number.parseFloat(e.target.value) || 1)}
-                          className="bg-slate-700 border-slate-600 text-white text-sm h-8 text-center"
-                        />
-                      </td>
-                      <td className="px-4 py-3 text-right">
-                        <Input
-                          type="number"
-                          min="0"
-                          step="0.01"
-                          value={item.unit_price}
-                          onChange={(e) =>
-                            handleLineItemChange(index, "unit_price", Number.parseFloat(e.target.value) || 0)
-                          }
-                          placeholder="0.00"
-                          className="bg-slate-700 border-slate-600 text-white text-sm h-8 text-right"
-                        />
-                      </td>
-                      <td className="px-4 py-3 text-right font-semibold text-amber-400">
-                        ${(item.qty * item.unit_price).toFixed(2)}
-                      </td>
-                      <td className="px-4 py-3 text-center">
-                        <button
-                          onClick={() => removeLineItem(index)}
-                          className="text-red-500 hover:text-red-400 transition"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          {/* Financial Details */}
-          <div className="grid grid-cols-4 gap-6">
-            <div className="space-y-3">
-              <h3 className="text-xs font-semibold text-slate-400 uppercase">Discount</h3>
+        {loading ? (
+          <div className="flex min-h-80 items-center justify-center"><Loader2 className="h-6 w-6 animate-spin" /></div>
+        ) : (
+          <div className="space-y-6 p-4 sm:p-6">
+            <section className="grid gap-4 rounded-xl border bg-muted/20 p-4 md:grid-cols-[1fr_auto]">
               <div>
-                <label className="text-xs text-slate-500 block mb-1">Amount ($)</label>
-                <Input
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={formData.discount_amount}
-                  onChange={(e) => handleInputChange("discount_amount", Number.parseFloat(e.target.value) || 0)}
-                  className="bg-slate-800 border-slate-700 text-white text-sm h-9"
-                />
+                <div className="flex items-center gap-2"><FileText className="h-5 w-5" /><h2 className="text-xl font-semibold">Factura {invoiceNumber || "sin emitir"}</h2></div>
+                <p className="mt-1 text-sm text-muted-foreground">Documento de gestión interna. La validez tributaria depende de la emisión en el sistema autorizado correspondiente.</p>
               </div>
-              <div>
-                <label className="text-xs text-slate-500 block mb-1">Percentage (%)</label>
-                <Input
-                  type="number"
-                  min="0"
-                  max="100"
-                  step="0.01"
-                  value={formData.discount_percentage}
-                  onChange={(e) => handleInputChange("discount_percentage", Number.parseFloat(e.target.value) || 0)}
-                  className="bg-slate-800 border-slate-700 text-white text-sm h-9"
-                />
-              </div>
-            </div>
+              <dl className="grid grid-cols-2 gap-x-6 gap-y-1 text-sm md:text-right">
+                <dt className="text-muted-foreground">Emisión</dt><dd>{formatChileDate(formData.invoice_date)}</dd>
+                <dt className="text-muted-foreground">Vencimiento</dt><dd>{formatChileDate(formData.due_date)}</dd>
+              </dl>
+            </section>
 
-            <div className="space-y-3">
-              <h3 className="text-xs font-semibold text-slate-400 uppercase">Tax</h3>
-              <div>
-                <label className="text-xs text-slate-500 block mb-1">Tax Rate (%)</label>
-                <Input
-                  type="number"
-                  min="0"
-                  max="100"
-                  step="0.01"
-                  value={formData.tax_rate}
-                  onChange={(e) => handleInputChange("tax_rate", Number.parseFloat(e.target.value) || 0)}
-                  className="bg-slate-800 border-slate-700 text-white text-sm h-9"
-                />
-              </div>
-            </div>
+            {error && <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">{error}</div>}
 
-            <div className="space-y-3">
-              <h3 className="text-xs font-semibold text-slate-400 uppercase">Additional Fees</h3>
-              <div>
-                <label className="text-xs text-slate-500 block mb-1">Fees ($)</label>
-                <Input
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={formData.additional_fees}
-                  onChange={(e) => handleInputChange("additional_fees", Number.parseFloat(e.target.value) || 0)}
-                  className="bg-slate-800 border-slate-700 text-white text-sm h-9"
-                />
-              </div>
-            </div>
-
-            {/* Summary */}
-            <div className="space-y-3 bg-slate-800/50 p-4 rounded-lg">
-              <h3 className="text-xs font-semibold text-slate-400 uppercase">Summary</h3>
-              <div className="space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span className="text-slate-400">Subtotal:</span>
-                  <span className="text-white font-medium">${subtotal.toFixed(2)}</span>
+            <section className="grid gap-6 lg:grid-cols-2">
+              <div className="space-y-4 rounded-xl border p-4">
+                <h3 className="font-semibold">Cliente</h3>
+                <div><label className="mb-1 block text-xs text-muted-foreground">Nombre o razón social *</label><Input value={formData.customer_name} onChange={(event) => updateField("customer_name", event.target.value)} placeholder="Nombre del cliente" /></div>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div><label className="mb-1 block text-xs text-muted-foreground">Correo</label><Input type="email" value={formData.customer_email} onChange={(event) => updateField("customer_email", event.target.value)} placeholder="cliente@correo.cl" /></div>
+                  <div><label className="mb-1 block text-xs text-muted-foreground">Teléfono</label><Input value={formData.customer_phone} onChange={(event) => updateField("customer_phone", event.target.value)} placeholder="+56 9 1234 5678" /></div>
                 </div>
-                {discountAmount > 0 && (
-                  <div className="flex justify-between text-sm text-red-400">
-                    <span>Discount:</span>
-                    <span>-${discountAmount.toFixed(2)}</span>
-                  </div>
-                )}
-                {taxAmount > 0 && (
-                  <div className="flex justify-between text-sm text-blue-400">
-                    <span>Tax:</span>
-                    <span>+${taxAmount.toFixed(2)}</span>
-                  </div>
-                )}
-                {formData.additional_fees > 0 && (
-                  <div className="flex justify-between text-sm text-orange-400">
-                    <span>Fees:</span>
-                    <span>+${formData.additional_fees.toFixed(2)}</span>
-                  </div>
-                )}
-                <div className="border-t border-slate-700 pt-2 flex justify-between">
-                  <span className="text-white font-bold">Total:</span>
-                  <span className="text-amber-400 font-bold text-lg">${total.toFixed(2)}</span>
+                <div><label className="mb-1 block text-xs text-muted-foreground">Dirección</label><textarea value={formData.customer_address} onChange={(event) => updateField("customer_address", event.target.value)} placeholder="Dirección, comuna y región" rows={3} className="w-full rounded-md border bg-background px-3 py-2 text-sm" /></div>
+              </div>
+
+              <div className="space-y-4 rounded-xl border p-4">
+                <h3 className="font-semibold">Emisión y estado</h3>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div><label className="mb-1 block text-xs text-muted-foreground">Fecha de emisión</label><Input type="date" value={formData.invoice_date} onChange={(event) => updateField("invoice_date", event.target.value)} /></div>
+                  <div><label className="mb-1 block text-xs text-muted-foreground">Fecha de vencimiento</label><Input type="date" value={formData.due_date} onChange={(event) => updateField("due_date", event.target.value)} /></div>
+                  <div><label className="mb-1 block text-xs text-muted-foreground">Estado del documento</label><select value={formData.status} onChange={(event) => updateField("status", event.target.value)} className="h-10 w-full rounded-md border bg-background px-3 text-sm"><option value="draft">Borrador</option><option value="sent">Emitida</option><option value="paid">Pagada</option><option value="cancelled">Anulada</option></select></div>
+                  <div><label className="mb-1 block text-xs text-muted-foreground">Estado de pago</label><select value={formData.payment_status} onChange={(event) => updateField("payment_status", event.target.value)} className="h-10 w-full rounded-md border bg-background px-3 text-sm"><option value="pending">Pendiente</option><option value="partial">Pago parcial</option><option value="paid">Pagada</option><option value="overdue">Vencida</option></select></div>
                 </div>
               </div>
-            </div>
-          </div>
+            </section>
 
-          {/* Notes */}
-          <div className="space-y-2">
-            <h3 className="text-sm font-semibold text-white flex items-center gap-2">
-              <span className="w-1.5 h-1.5 bg-amber-500 rounded-full"></span>
-              Notes
-            </h3>
-            <textarea
-              value={formData.notes}
-              onChange={(e) => handleInputChange("notes", e.target.value)}
-              placeholder="Add any additional notes or terms..."
-              className="w-full bg-slate-800 border border-slate-700 rounded text-white text-sm p-3 resize-none"
-              rows={3}
-            />
-          </div>
-        </div>
+            <section className="space-y-3 rounded-xl border p-4">
+              <div className="flex items-center justify-between"><h3 className="font-semibold">Detalle</h3><Button type="button" variant="outline" size="sm" onClick={() => setLineItems((current) => [...current, { ...EMPTY_ITEM }])}><Plus className="mr-2 h-4 w-4" />Agregar ítem</Button></div>
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[720px] text-sm">
+                  <thead><tr className="border-b text-left"><th className="p-2">Descripción</th><th className="w-24 p-2 text-right">Cantidad</th><th className="w-40 p-2 text-right">Valor unitario</th><th className="w-40 p-2 text-right">Total</th><th className="w-12 p-2" /></tr></thead>
+                  <tbody>{lineItems.map((item, index) => <tr key={index} className="border-b last:border-0"><td className="p-2"><Input value={item.description} onChange={(event) => updateLineItem(index, "description", event.target.value)} placeholder="Alojamiento, servicio o extra" /></td><td className="p-2"><Input type="number" min="1" step="1" value={item.qty} onChange={(event) => updateLineItem(index, "qty", Math.max(1, Number(event.target.value) || 1))} className="text-right" /></td><td className="p-2"><Input type="number" min="0" step="1" value={item.unit_price} onChange={(event) => updateLineItem(index, "unit_price", Math.max(0, Number(event.target.value) || 0))} className="text-right" /></td><td className="p-2 text-right font-medium">{formatClp(item.qty * item.unit_price)}</td><td className="p-2"><Button type="button" size="icon" variant="ghost" disabled={lineItems.length === 1} onClick={() => setLineItems((current) => current.filter((_, itemIndex) => itemIndex !== index))} aria-label="Eliminar ítem"><Trash2 className="h-4 w-4" /></Button></td></tr>)}</tbody>
+                </table>
+              </div>
+            </section>
 
-        {/* Footer */}
-        <div className="sticky bottom-0 bg-gradient-to-r from-slate-950 via-slate-900 to-slate-950 border-t border-slate-800 px-8 py-4 flex justify-end gap-3">
-          <Button
-            onClick={() => onOpenChange(false)}
-            variant="outline"
-            className="border-slate-700 text-slate-300 hover:bg-slate-800"
-          >
-            Cancel
-          </Button>
-          <Button onClick={saveInvoice} className="bg-amber-600 hover:bg-amber-700 text-white">
-            Save Invoice
-          </Button>
-        </div>
+            <section className="grid gap-6 lg:grid-cols-[1fr_360px]">
+              <div className="space-y-4 rounded-xl border p-4">
+                <h3 className="font-semibold">Observaciones y condiciones</h3>
+                <div><label className="mb-1 block text-xs text-muted-foreground">Observaciones</label><textarea value={formData.notes} onChange={(event) => updateField("notes", event.target.value)} rows={3} className="w-full rounded-md border bg-background px-3 py-2 text-sm" placeholder="Información adicional para el cliente" /></div>
+                <div><label className="mb-1 block text-xs text-muted-foreground">Términos y condiciones</label><textarea value={formData.terms_conditions} onChange={(event) => updateField("terms_conditions", event.target.value)} rows={3} className="w-full rounded-md border bg-background px-3 py-2 text-sm" placeholder="Plazo de pago, medios aceptados u otras condiciones" /></div>
+              </div>
+
+              <div className="space-y-4 rounded-xl border p-4">
+                <h3 className="font-semibold">Totales en CLP</h3>
+                <div className="grid grid-cols-2 gap-3">
+                  <div><label className="mb-1 block text-xs text-muted-foreground">Descuento (%)</label><Input type="number" min="0" max="100" step="1" value={formData.discount_percentage} onChange={(event) => updateField("discount_percentage", Math.min(100, Math.max(0, Number(event.target.value) || 0)))} /></div>
+                  <div><label className="mb-1 block text-xs text-muted-foreground">Descuento ($)</label><Input type="number" min="0" step="1" value={formData.discount_amount} onChange={(event) => updateField("discount_amount", Math.max(0, Number(event.target.value) || 0))} disabled={formData.discount_percentage > 0} /></div>
+                  <div><label className="mb-1 block text-xs text-muted-foreground">IVA / impuesto (%)</label><Input type="number" min="0" max="100" step="1" value={formData.tax_rate} onChange={(event) => updateField("tax_rate", Math.min(100, Math.max(0, Number(event.target.value) || 0)))} /></div>
+                  <div><label className="mb-1 block text-xs text-muted-foreground">Cargos adicionales ($)</label><Input type="number" min="0" step="1" value={formData.additional_fees} onChange={(event) => updateField("additional_fees", Math.max(0, Number(event.target.value) || 0))} /></div>
+                </div>
+                <dl className="space-y-2 border-t pt-4 text-sm"><div className="flex justify-between"><dt className="text-muted-foreground">Subtotal</dt><dd>{formatClp(subtotal)}</dd></div>{discountAmount > 0 && <div className="flex justify-between"><dt className="text-muted-foreground">Descuento</dt><dd>-{formatClp(discountAmount)}</dd></div>}{taxAmount > 0 && <div className="flex justify-between"><dt className="text-muted-foreground">IVA / impuesto</dt><dd>{formatClp(taxAmount)}</dd></div>}{formData.additional_fees > 0 && <div className="flex justify-between"><dt className="text-muted-foreground">Cargos adicionales</dt><dd>{formatClp(formData.additional_fees)}</dd></div>}<div className="flex justify-between border-t pt-3 text-lg font-semibold"><dt>Total</dt><dd>{formatClp(total)}</dd></div></dl>
+              </div>
+            </section>
+          </div>
+        )}
+
+        <footer className="sticky bottom-0 flex flex-col-reverse gap-2 border-t bg-background/95 px-4 py-3 backdrop-blur sm:flex-row sm:justify-end sm:px-6">
+          <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
+          <Button type="button" onClick={() => void saveInvoice()} disabled={saving || loading}>{saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}{effectiveInvoiceId ? "Guardar cambios" : "Generar desde reserva"}</Button>
+        </footer>
       </DialogContent>
     </Dialog>
   )
