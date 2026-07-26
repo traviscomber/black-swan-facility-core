@@ -1,82 +1,121 @@
 import Link from "next/link"
-import { ArrowLeft, Database, ShieldAlert, TriangleAlert } from "lucide-react"
+import { ArrowLeft, CheckCircle2, Database, ShieldAlert, TriangleAlert } from "lucide-react"
 import { AppLayout } from "@/components/app-layout"
 import { PageHeader } from "@/components/page-header"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 
-const domains = [
-  { name: "Hospitalidad y finanzas", tables: 10, anon: 3, authenticated: 10, risk: "Crítico", examples: "guests, reservations, invoices, payments, leads, messages" },
-  { name: "Bitácoras y auditoría", tables: 7, anon: 7, authenticated: 7, risk: "Crítico", examples: "activity_logs, asset_logs, task_status_history, ai_events" },
-  { name: "Finanzas y energía", tables: 3, anon: 3, authenticated: 3, risk: "Alto", examples: "budgets, utilities, vehicles" },
-  { name: "GIS e infraestructura", tables: 2, anon: 2, authenticated: 2, risk: "Alto", examples: "operation_kmz_files, ports_boats" },
-  { name: "Operaciones", tables: 5, anon: 5, authenticated: 5, risk: "Alto", examples: "activities, checklists, incidents, maintenance_tasks, task_assignments" },
-  { name: "IA y soberanía", tables: 9, anon: 9, authenticated: 9, risk: "Medio", examples: "ai_agents, ai_context, ai_sessions, sovereignty_layers" },
-  { name: "Otros catálogos y módulos", tables: 39, anon: 34, authenticated: 39, risk: "Revisión", examples: "catálogos, multimedia, activos y módulos auxiliares" },
+const remainingAreas = [
+  { name: "Bitácoras y auditoría", risk: "Crítico", examples: "activity_logs, asset_logs, task_status_history, ai_events" },
+  { name: "Operaciones", risk: "Alto", examples: "activities, checklists, incidents, maintenance_tasks, task_assignments" },
+  { name: "GIS e infraestructura", risk: "Alto", examples: "operation_kmz_files, ports_boats" },
+  { name: "Finanzas y energía", risk: "Alto", examples: "utilities, vehicles y tablas auxiliares pendientes" },
+  { name: "IA y soberanía", risk: "Medio", examples: "ai_agents, ai_context, ai_sessions, sovereignty_layers" },
+  { name: "Catálogos y módulos auxiliares", risk: "Revisión", examples: "multimedia, activos, catálogos y tablas de soporte" },
 ] as const
 
 const phaseOneTables = [
-  { table: "guests", rows: 4, exposure: "Authenticated ALL", data: "Nombre, email, teléfono, dirección y notas", dependencies: "reservations.guest_id", priority: "Crítica" },
-  { table: "reservations", rows: 7, exposure: "Authenticated ALL + RPC anon", data: "Datos de huésped, fechas, solicitudes y montos", dependencies: "guests, rooms, beds, locations; 9 triggers operativos", priority: "Crítica" },
-  { table: "invoices", rows: 0, exposure: "Authenticated ALL", data: "Datos de cliente, líneas, impuestos y totales", dependencies: "reservations y employees", priority: "Crítica" },
-  { table: "invoice_payments", rows: 0, exposure: "Authenticated ALL", data: "Monto, método, transacción y responsable", dependencies: "invoices y employees", priority: "Crítica" },
-  { table: "payments", rows: 0, exposure: "Authenticated ALL", data: "Monto, método, estado y transacción", dependencies: "reservations", priority: "Crítica" },
-  { table: "leads", rows: 0, exposure: "Public ALL", data: "Teléfono, nombre, fechas, preferencias y notas", dependencies: "reservations", priority: "Crítica" },
-  { table: "messages", rows: 0, exposure: "Public ALL", data: "Teléfono, contenido, intención y sentimiento", dependencies: "leads y reservations", priority: "Crítica" },
-  { table: "budgets", rows: 25, exposure: "Public ALL", data: "Presupuesto, gasto real, variación y notas", dependencies: "budget_divisions y budget_categories", priority: "Alta" },
+  { table: "guests", rows: 4, access: "Sin anon; CRUD separado; DELETE admin", data: "Nombre, email, teléfono, dirección y notas" },
+  { table: "reservations", rows: 7, access: "Sin anon; CRUD separado; DELETE admin", data: "Datos de huésped, fechas, solicitudes y montos" },
+  { table: "invoices", rows: 0, access: "Sin anon; CRUD separado; DELETE admin", data: "Datos de cliente, líneas, impuestos y totales" },
+  { table: "invoice_payments", rows: 0, access: "Sin anon; CRUD separado; DELETE admin", data: "Monto, método, transacción y responsable" },
+  { table: "payments", rows: 0, access: "Sin anon; CRUD separado; DELETE admin", data: "Monto, método, estado y transacción" },
+  { table: "leads", rows: 0, access: "Acceso público retirado; DELETE admin", data: "Teléfono, nombre, fechas, preferencias y notas" },
+  { table: "messages", rows: 0, access: "Acceso público retirado; DELETE admin", data: "Teléfono, contenido, intención y sentimiento" },
+  { table: "budgets", rows: 25, access: "Acceso público retirado; DELETE admin", data: "Presupuesto, gasto real, variación y notas" },
 ] as const
 
 const phases = [
-  { step: "1", title: "Cerrar el RPC anónimo", detail: "Revocar EXECUTE a PUBLIC y anon en create_reservation_atomic y exigir una sesión válida dentro de la función." },
-  { step: "2", title: "Proteger datos personales y financieros", detail: "Retirar acceso anónimo y limitar escritura en huéspedes, leads, mensajes, reservas, facturas, pagos y presupuestos." },
-  { step: "3", title: "Hacer inmutables las bitácoras", detail: "Separar lectura de escritura y evitar UPDATE, DELETE y TRUNCATE en tablas de auditoría e historial." },
-  { step: "4", title: "Alinear operación con roles internos", detail: "Aplicar app_metadata.procurement_role o reglas equivalentes donde exista una función administrativa real." },
-  { step: "5", title: "Probar por rol antes de producción", detail: "Validar anon, authenticated, approver, admin y service_role antes de aplicar cada migración." },
+  { step: "1", title: "RPC y funciones privilegiadas", status: "Completado", detail: "Los 13 SECURITY DEFINER fueron inventariados. Ninguno conserva EXECUTE para anon o PUBLIC; las operaciones masivas además verifican rol admin dentro del RPC." },
+  { step: "2", title: "Datos personales y financieros", status: "En curso", detail: "Ocho tablas sensibles ya usan políticas separadas por operación, sin privilegios anon y con eliminación exclusiva para admin." },
+  { step: "3", title: "Bitácoras inmutables", status: "Pendiente", detail: "Separar lectura e inserción y retirar UPDATE, DELETE y TRUNCATE en auditoría e historiales." },
+  { step: "4", title: "Permisos operativos", status: "Pendiente", detail: "Alinear middleware, API, Supabase y navegación con los roles reales observados en producción." },
+  { step: "5", title: "Validación integral", status: "Pendiente", detail: "Probar usuarios autenticados, approver, admin y service_role en rutas críticas, desktop y móvil." },
 ] as const
 
 export default function AdminSecurityPage() {
   return (
     <AppLayout>
-      <PageHeader title="Riesgo de acceso a datos" description="Clasificación verificada de políticas RLS amplias, privilegios efectivos y dependencias críticas en producción." />
+      <PageHeader title="Riesgo de acceso a datos" description="Estado verificado de políticas RLS, funciones privilegiadas y dependencias críticas en producción." />
       <div className="space-y-6 p-4 md:p-8">
-        <Link href="/admin" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"><ArrowLeft className="h-4 w-4" /> Volver a Administración</Link>
+        <Link href="/admin" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
+          <ArrowLeft className="h-4 w-4" /> Volver a Administración
+        </Link>
 
         <div className="grid gap-4 md:grid-cols-3">
-          <Card className="border-amber-500/50"><CardHeader><CardTitle className="flex items-center gap-2"><ShieldAlert className="h-5 w-5" />75 tablas</CardTitle><CardDescription>Política ALL sin restricción efectiva</CardDescription></CardHeader></Card>
-          <Card className="border-destructive/40"><CardHeader><CardTitle className="flex items-center gap-2"><TriangleAlert className="h-5 w-5" />60 tablas</CardTitle><CardDescription>Privilegios concedidos al rol anónimo</CardDescription></CardHeader></Card>
-          <Card><CardHeader><CardTitle className="flex items-center gap-2"><Database className="h-5 w-5" />75 tablas</CardTitle><CardDescription>Accesibles a usuarios autenticados</CardDescription></CardHeader></Card>
+          <Card className="border-amber-500/50">
+            <CardHeader><CardTitle className="flex items-center gap-2"><ShieldAlert className="h-5 w-5" />67 tablas</CardTitle><CardDescription>Aún conservan política ALL amplia</CardDescription></CardHeader>
+          </Card>
+          <Card className="border-destructive/40">
+            <CardHeader><CardTitle className="flex items-center gap-2"><TriangleAlert className="h-5 w-5" />57 tablas</CardTitle><CardDescription>Política ALL amplia dirigida a PUBLIC</CardDescription></CardHeader>
+          </Card>
+          <Card>
+            <CardHeader><CardTitle className="flex items-center gap-2"><Database className="h-5 w-5" />10 tablas</CardTitle><CardDescription>Política ALL amplia dirigida a authenticated</CardDescription></CardHeader>
+          </Card>
         </div>
 
-        <Card className="border-destructive/50">
-          <CardHeader><CardTitle className="flex items-center gap-2"><TriangleAlert className="h-5 w-5" />RPC de reservas expuesto a anon</CardTitle><CardDescription>Hallazgo verificado directamente en pg_proc y privilegios de función.</CardDescription></CardHeader>
-          <CardContent className="space-y-2 text-sm"><p><span className="font-mono">create_reservation_atomic</span> es SECURITY DEFINER, pertenece a postgres, no comprueba <span className="font-mono">auth.uid()</span> y permite EXECUTE a PUBLIC y anon.</p><p>Una llamada directa al RPC puede crear reservas sin pasar por el middleware de la aplicación.</p><p className="text-muted-foreground">Además existen cinco reservas con prefijo TEST_ en producción. No se modificaron ni eliminaron.</p></CardContent>
+        <Card className="border-emerald-500/40">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2"><CheckCircle2 className="h-5 w-5" />Contención crítica completada</CardTitle>
+            <CardDescription>Funciones SECURITY DEFINER y primera fase de datos sensibles.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-2 text-sm">
+            <p>Ninguna de las 13 funciones SECURITY DEFINER conserva ejecución para <span className="font-mono">anon</span> o <span className="font-mono">PUBLIC</span>.</p>
+            <p><span className="font-mono">execute_bulk_update</span> y <span className="font-mono">restore_bulk_operation_state</span> exigen rol <span className="font-mono">admin</span> dentro de la función, además de la protección de sus rutas.</p>
+            <p className="text-muted-foreground">Las cinco reservas con prefijo TEST_ permanecen intactas.</p>
+          </CardContent>
         </Card>
 
         <Card className="border-amber-500/50">
-          <CardHeader><CardTitle>Interpretación correcta</CardTitle><CardDescription>RLS habilitado no equivale a acceso restringido.</CardDescription></CardHeader>
-          <CardContent className="space-y-2 text-sm"><p>Estas tablas combinan políticas que aceptan todas las filas con privilegios efectivos de SELECT, INSERT, UPDATE o DELETE.</p><p className="text-muted-foreground">La clasificación se verificó directamente en pg_policies, role_table_grants, pg_proc, columnas, claves foráneas, conteos y triggers el 26-07-2026. No se modificaron políticas ni datos.</p></CardContent>
+          <CardHeader><CardTitle>Interpretación</CardTitle><CardDescription>RLS habilitado sigue sin equivaler a acceso restringido.</CardDescription></CardHeader>
+          <CardContent className="space-y-2 text-sm">
+            <p>La primera migración redujo de 75 a 67 las tablas con política ALL amplia. El trabajo continúa sobre bitácoras, operaciones, GIS, energía, IA y módulos auxiliares.</p>
+            <p className="text-muted-foreground">Estado verificado en pg_policies, role_table_grants y pg_proc el 26-07-2026. Las migraciones no modificaron registros operativos.</p>
+          </CardContent>
         </Card>
 
         <section className="space-y-3">
-          <h2 className="text-lg font-semibold">Clasificación por dominio</h2>
+          <h2 className="text-lg font-semibold">Áreas pendientes</h2>
           <div className="grid gap-4 lg:grid-cols-2">
-            {domains.map((domain) => <Card key={domain.name}><CardHeader><div className="flex items-start justify-between gap-3"><div><CardTitle className="text-base">{domain.name}</CardTitle><CardDescription>{domain.examples}</CardDescription></div><Badge variant={domain.risk === "Crítico" ? "destructive" : "outline"}>{domain.risk}</Badge></div></CardHeader><CardContent className="grid grid-cols-3 gap-3"><div><p className="text-2xl font-semibold">{domain.tables}</p><p className="text-xs text-muted-foreground">tablas amplias</p></div><div><p className="text-2xl font-semibold">{domain.anon}</p><p className="text-xs text-muted-foreground">con acceso anon</p></div><div><p className="text-2xl font-semibold">{domain.authenticated}</p><p className="text-xs text-muted-foreground">con acceso autenticado</p></div></CardContent></Card>)}
+            {remainingAreas.map((area) => (
+              <Card key={area.name}>
+                <CardHeader>
+                  <div className="flex items-start justify-between gap-3">
+                    <div><CardTitle className="text-base">{area.name}</CardTitle><CardDescription>{area.examples}</CardDescription></div>
+                    <Badge variant={area.risk === "Crítico" ? "destructive" : "outline"}>{area.risk}</Badge>
+                  </div>
+                </CardHeader>
+              </Card>
+            ))}
           </div>
         </section>
 
         <Card>
-          <CardHeader><CardTitle>Dependencias verificadas para la fase 1</CardTitle><CardDescription>La primera migración no debe bloquear reservas ni automatizaciones existentes.</CardDescription></CardHeader>
+          <CardHeader><CardTitle>Fase de datos personales y financieros</CardTitle><CardDescription>Conteos verificados y acceso efectivo después de la migración.</CardDescription></CardHeader>
           <CardContent className="overflow-x-auto">
-            <table className="w-full min-w-[900px] text-sm">
-              <thead><tr className="border-b text-left"><th className="p-3">Tabla</th><th className="p-3">Filas</th><th className="p-3">Acceso actual</th><th className="p-3">Contenido sensible</th><th className="p-3">Dependencias</th><th className="p-3">Prioridad</th></tr></thead>
-              <tbody>{phaseOneTables.map((item) => <tr key={item.table} className="border-b last:border-0"><td className="p-3 font-mono text-xs">{item.table}</td><td className="p-3">{item.rows}</td><td className="p-3">{item.exposure}</td><td className="p-3">{item.data}</td><td className="p-3 text-muted-foreground">{item.dependencies}</td><td className="p-3"><Badge variant={item.priority === "Crítica" ? "destructive" : "outline"}>{item.priority}</Badge></td></tr>)}</tbody>
+            <table className="w-full min-w-[760px] text-sm">
+              <thead><tr className="border-b text-left"><th className="p-3">Tabla</th><th className="p-3">Filas</th><th className="p-3">Acceso vigente</th><th className="p-3">Contenido sensible</th></tr></thead>
+              <tbody>
+                {phaseOneTables.map((item) => (
+                  <tr key={item.table} className="border-b last:border-0">
+                    <td className="p-3 font-mono text-xs">{item.table}</td><td className="p-3">{item.rows}</td><td className="p-3">{item.access}</td><td className="p-3 text-muted-foreground">{item.data}</td>
+                  </tr>
+                ))}
+              </tbody>
             </table>
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader><CardTitle>Plan de endurecimiento por fases</CardTitle><CardDescription>No se aplicará ninguna fase sin revisar dependencias y autorizar la migración correspondiente.</CardDescription></CardHeader>
-          <CardContent className="space-y-4">{phases.map((phase) => <div key={phase.step} className="flex gap-3 border-b pb-4 last:border-0 last:pb-0"><Badge variant="outline" className="h-6 min-w-6 justify-center">{phase.step}</Badge><div><p className="text-sm font-medium">{phase.title}</p><p className="mt-1 text-sm text-muted-foreground">{phase.detail}</p></div></div>)}</CardContent>
+          <CardHeader><CardTitle>Plan de endurecimiento</CardTitle><CardDescription>Progreso registrado en roadmap.md.</CardDescription></CardHeader>
+          <CardContent className="space-y-4">
+            {phases.map((phase) => (
+              <div key={phase.step} className="flex gap-3 border-b pb-4 last:border-0 last:pb-0">
+                <Badge variant="outline" className="h-6 min-w-6 justify-center">{phase.step}</Badge>
+                <div className="flex-1"><div className="flex flex-wrap items-center gap-2"><p className="text-sm font-medium">{phase.title}</p><Badge variant={phase.status === "Completado" ? "secondary" : "outline"}>{phase.status}</Badge></div><p className="mt-1 text-sm text-muted-foreground">{phase.detail}</p></div>
+              </div>
+            ))}
+          </CardContent>
         </Card>
       </div>
     </AppLayout>
