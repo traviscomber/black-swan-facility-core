@@ -27,6 +27,8 @@ type InfrastructureConnection = {
   connection_type: string | null
 }
 
+type OverlayMetadata = Record<string, unknown> & { display_color?: string }
+
 type GisOverlay = {
   id: string
   name: string
@@ -34,6 +36,7 @@ type GisOverlay = {
   file_type: string | null
   is_visible: boolean | null
   opacity: number | string | null
+  metadata: OverlayMetadata | null
 }
 
 type GeoJsonProperties = Record<string, string | number | boolean | null | undefined>
@@ -69,6 +72,7 @@ type RuntimeMap = {
   addLayer: (layer: Record<string, unknown>) => void
   getLayer: (id: string) => unknown
   setLayoutProperty: (id: string, property: string, value: unknown) => void
+  setPaintProperty: (id: string, property: string, value: unknown) => void
   fitBounds: (bounds: [[number, number], [number, number]], options?: Record<string, unknown>) => void
   remove: () => void
 }
@@ -92,7 +96,7 @@ export default function MapPage() {
   const [visibleOverlays, setVisibleOverlays] = useState<Set<string>>(new Set())
   const [featureCounts, setFeatureCounts] = useState<Record<string, number>>({})
   const [overlayColors, setOverlayColors] = useState<Record<string, string>>({})
-  const [nativeStyleLayers, setNativeStyleLayers] = useState<Set<string>>(new Set())
+  const [savingColors, setSavingColors] = useState<Set<string>>(new Set())
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -116,7 +120,7 @@ export default function MapPage() {
         const [infrastructureResult, connectionsResult, overlaysResult] = await Promise.all([
           supabase.from("infrastructure_plans").select("id,name,category,description,latitude,longitude,status").order("name"),
           supabase.from("infrastructure_connections").select("id,from_infrastructure_id,to_infrastructure_id,connection_type"),
-          supabase.from("gis_overlays").select("id,name,file_url,file_type,is_visible,opacity").order("layer_order").order("created_at"),
+          supabase.from("gis_overlays").select("id,name,file_url,file_type,is_visible,opacity,metadata").order("layer_order").order("created_at"),
         ])
 
         const firstError = infrastructureResult.error || connectionsResult.error || overlaysResult.error
@@ -220,10 +224,10 @@ export default function MapPage() {
               map.addSource(`overlay-${overlay.id}`, { type: "geojson", data: geojson })
 
               const fallbackColor = FALLBACK_COLORS[index % FALLBACK_COLORS.length]
+              const savedColor = validHexColor(overlay.metadata?.display_color) ? overlay.metadata?.display_color : null
               const nativeColor = findNativeColor(geojson)
-              const hasNativeStyle = geojson.features.some((feature) => hasKmlStyle(feature.properties))
-              setOverlayColors((current) => ({ ...current, [overlay.id]: nativeColor ?? fallbackColor }))
-              if (hasNativeStyle) setNativeStyleLayers((current) => new Set(current).add(overlay.id))
+              const displayColor = savedColor ?? nativeColor ?? fallbackColor
+              setOverlayColors((current) => ({ ...current, [overlay.id]: displayColor }))
 
               const opacity = Math.max(0.15, Math.min(1, Number(overlay.opacity ?? 0.75)))
               map.addLayer({
@@ -232,7 +236,7 @@ export default function MapPage() {
                 source: `overlay-${overlay.id}`,
                 filter: ["==", ["geometry-type"], "Polygon"],
                 paint: {
-                  "fill-color": ["coalesce", ["get", "fill"], fallbackColor],
+                  "fill-color": displayColor,
                   "fill-opacity": ["*", opacity, ["coalesce", ["to-number", ["get", "fill-opacity"]], 0.32]],
                 },
               })
@@ -242,7 +246,7 @@ export default function MapPage() {
                 source: `overlay-${overlay.id}`,
                 filter: ["in", ["geometry-type"], ["literal", ["LineString", "Polygon"]]],
                 paint: {
-                  "line-color": ["coalesce", ["get", "stroke"], ["get", "fill"], fallbackColor],
+                  "line-color": displayColor,
                   "line-width": ["coalesce", ["to-number", ["get", "stroke-width"]], 2],
                   "line-opacity": ["*", opacity, ["coalesce", ["to-number", ["get", "stroke-opacity"]], 1]],
                 },
@@ -254,9 +258,9 @@ export default function MapPage() {
                 filter: ["==", ["geometry-type"], "Point"],
                 paint: {
                   "circle-radius": ["interpolate", ["linear"], ["zoom"], 10, 4, 16, 8],
-                  "circle-color": ["coalesce", ["get", "fill"], ["get", "stroke"], fallbackColor],
+                  "circle-color": displayColor,
                   "circle-opacity": ["*", opacity, ["coalesce", ["to-number", ["get", "fill-opacity"]], 1]],
-                  "circle-stroke-color": ["coalesce", ["get", "stroke"], "#ffffff"],
+                  "circle-stroke-color": "#ffffff",
                   "circle-stroke-width": ["coalesce", ["to-number", ["get", "stroke-width"]], 1.25],
                   "circle-stroke-opacity": ["*", opacity, ["coalesce", ["to-number", ["get", "stroke-opacity"]], 1]],
                 },
@@ -305,6 +309,36 @@ export default function MapPage() {
     })
   }
 
+  const changeOverlayColor = async (overlay: GisOverlay, color: string) => {
+    if (!validHexColor(color)) return
+    setOverlayColors((current) => ({ ...current, [overlay.id]: color }))
+    const map = mapRef.current
+    if (map) {
+      const paintSettings = [
+        [`overlay-fill-${overlay.id}`, "fill-color"],
+        [`overlay-line-${overlay.id}`, "line-color"],
+        [`overlay-point-${overlay.id}`, "circle-color"],
+      ] as const
+      paintSettings.forEach(([layerId, property]) => {
+        if (map.getLayer(layerId)) map.setPaintProperty(layerId, property, color)
+      })
+    }
+
+    setSavingColors((current) => new Set(current).add(overlay.id))
+    const nextMetadata: OverlayMetadata = { ...(overlay.metadata ?? {}), display_color: color }
+    const { error: saveError } = await supabase.from("gis_overlays").update({ metadata: nextMetadata, updated_at: new Date().toISOString() }).eq("id", overlay.id)
+    setSavingColors((current) => {
+      const next = new Set(current)
+      next.delete(overlay.id)
+      return next
+    })
+    if (saveError) {
+      setError(`No fue posible guardar el color de ${overlay.name}: ${saveError.message}`)
+      return
+    }
+    setOverlays((current) => current.map((item) => item.id === overlay.id ? { ...item, metadata: nextMetadata } : item))
+  }
+
   return (
     <AppLayout>
       <PageHeader title="Mapa operativo y capas GIS" description="Infraestructura, conexiones técnicas y capas KMZ del Fundo Corcovado sobre imagen satelital." />
@@ -319,7 +353,7 @@ export default function MapPage() {
 
         {error && <Card className="border-destructive/50"><CardContent className="p-4 text-sm text-destructive">{error}</CardContent></Card>}
 
-        <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_320px]">
+        <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_340px]">
           <Card className="overflow-hidden">
             <CardContent className="relative p-0">
               <div ref={mapContainerRef} className="h-[68vh] min-h-[520px] w-full bg-muted" />
@@ -329,17 +363,25 @@ export default function MapPage() {
 
           <div className="space-y-5">
             <Card>
-              <CardHeader><CardTitle className="text-base">Capas KMZ</CardTitle><CardDescription>Active u oculte cada capa. Se respetan los colores, opacidades y anchos definidos en el archivo original.</CardDescription></CardHeader>
+              <CardHeader><CardTitle className="text-base">Capas KMZ</CardTitle><CardDescription>Cambie el color de cada capa y active u oculte su contenido. La selección se guarda para todos los usuarios.</CardDescription></CardHeader>
               <CardContent className="space-y-3">
                 {overlays.length === 0 ? <p className="text-sm text-muted-foreground">No hay capas registradas.</p> : overlays.map((overlay) => {
                   const visible = visibleOverlays.has(overlay.id)
-                  return <button key={overlay.id} type="button" onClick={() => toggleOverlay(overlay.id)} className="flex w-full items-center justify-between gap-3 rounded-md border p-3 text-left hover:bg-muted/40">
-                    <div className="flex min-w-0 items-center gap-3">
-                      <span className="h-3 w-3 shrink-0 rounded-full border border-white/40" style={{ backgroundColor: overlayColors[overlay.id] ?? "#64748b" }} />
-                      <div className="min-w-0"><p className="truncate text-sm font-medium">{overlay.name}</p><p className="text-xs text-muted-foreground">{featureCounts[overlay.id] == null ? "Procesando…" : `${featureCounts[overlay.id].toLocaleString("es-CL")} elementos · ${nativeStyleLayers.has(overlay.id) ? "estilo KMZ" : "color de respaldo"}`}</p></div>
+                  const saving = savingColors.has(overlay.id)
+                  return <div key={overlay.id} className="space-y-3 rounded-md border p-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="min-w-0"><p className="truncate text-sm font-medium">{overlay.name}</p><p className="text-xs text-muted-foreground">{featureCounts[overlay.id] == null ? "Procesando…" : `${featureCounts[overlay.id].toLocaleString("es-CL")} elementos`}</p></div>
+                      <button type="button" onClick={() => toggleOverlay(overlay.id)} className="shrink-0"><Badge variant={visible ? "default" : "outline"}>{visible ? "Visible" : "Oculta"}</Badge></button>
                     </div>
-                    <Badge variant={visible ? "default" : "outline"}>{visible ? "Visible" : "Oculta"}</Badge>
-                  </button>
+                    <div className="flex items-center justify-between gap-3">
+                      <label htmlFor={`color-${overlay.id}`} className="text-xs text-muted-foreground">Color de capa</label>
+                      <div className="flex items-center gap-2">
+                        {saving && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
+                        <input id={`color-${overlay.id}`} type="color" value={overlayColors[overlay.id] ?? "#64748b"} onChange={(event) => void changeOverlayColor(overlay, event.target.value)} className="h-8 w-12 cursor-pointer rounded border bg-transparent p-1" aria-label={`Cambiar color de ${overlay.name}`} />
+                        <span className="w-16 font-mono text-xs text-muted-foreground">{overlayColors[overlay.id] ?? "#64748b"}</span>
+                      </div>
+                    </div>
+                  </div>
                 })}
               </CardContent>
             </Card>
@@ -348,10 +390,9 @@ export default function MapPage() {
               <CardHeader><CardTitle className="text-base">Uso operativo</CardTitle></CardHeader>
               <CardContent className="space-y-2 text-sm text-muted-foreground">
                 <p>Imagen satelital de alta resolución.</p>
+                <p>Color configurable y persistente por capa.</p>
                 <p>Puntos administrativos y conexiones técnicas.</p>
-                <p>Colores y estilos originales de KML/KMZ cuando están disponibles.</p>
                 <p>Controles de zoom, inclinación y pantalla completa.</p>
-                <Badge variant="outline">Fuente de datos sin cambios</Badge>
               </CardContent>
             </Card>
           </div>
@@ -381,15 +422,15 @@ async function loadOverlayGeoJson(overlay: GisOverlay): Promise<GeoJsonFeatureCo
   return toGeoJSON.kml(document) as unknown as GeoJsonFeatureCollection
 }
 
-function hasKmlStyle(properties?: GeoJsonProperties | null) {
-  return Boolean(properties?.fill || properties?.stroke || properties?.["fill-opacity"] != null || properties?.["stroke-opacity"] != null || properties?.["stroke-width"] != null)
+function validHexColor(value: unknown): value is string {
+  return typeof value === "string" && /^#[0-9a-f]{6}$/i.test(value)
 }
 
 function findNativeColor(geojson: GeoJsonFeatureCollection) {
   for (const feature of geojson.features) {
     const properties = feature.properties
     const color = properties?.fill || properties?.stroke
-    if (typeof color === "string" && /^#[0-9a-f]{6}$/i.test(color)) return color
+    if (validHexColor(color)) return color
   }
   return null
 }
