@@ -28,6 +28,7 @@ Cerrar las brechas críticas de seguridad, permisos, trazabilidad y confiabilida
 - [x] Endurecer seis tablas de hospitalidad, habitaciones, tarifas y extras.
 - [x] Endurecer doce tablas de costos, presupuestos, facturación auxiliar, incidencias y operaciones.
 - [x] Endurecer `bulk_operations` y sus rutas con la lógica transaccional del módulo bed-booking.
+- [x] Refactorizar el editor de facturas con marca Black Swan, CLP, fechas chilenas y trazabilidad desde reservas.
 - [ ] Completar cobertura de acciones críticas y permisos por módulo.
 - [ ] Validar flujos completos por rol y dispositivo.
 
@@ -65,6 +66,11 @@ Cerrar las brechas críticas de seguridad, permisos, trazabilidad y confiabilida
 - `bulk_operations` conserva 3 registros históricos y queda como bitácora de solo lectura para administradores. La escritura y restauración siguen exclusivamente por RPC con validación interna de rol.
 - Las rutas bed-booking de comprobación de conflictos, ejecución masiva, historial y deshacer validan autenticación, rol administrador, UUID, fechas, estados y correspondencia entre selección y actualizaciones.
 - La solución conserva el patrón BedBooking: prevalidación de disponibilidad, ejecución atómica, historial consultable y reversión trazable.
+- El editor de facturas usa el mismo activo `/blackswan-logo.png` del encabezado de navegación, identifica a Black Swan y Fundo Corcovado, y ordena cliente, emisión, detalle, condiciones y totales.
+- La facturación muestra CLP sin decimales mediante `formatClp`, fechas `es-CL` basadas en `America/Santiago`, teléfono `+56` y textos operativos en español.
+- Las facturas nuevas deben originarse desde una reserva y delegar su creación al RPC `create_reservation_invoice`; el editor ya no escribe directamente desde el cliente a Supabase.
+- La pantalla declara que el documento es de gestión interna y que su validez tributaria depende de la emisión en el sistema autorizado correspondiente.
+- La tabla `invoices` permanece con 0 registros; el refactor no creó, alteró ni eliminó datos de producción.
 - El sistema debe presentar fechas en formato chileno y montos financieros en CLP cuando corresponda; no se convertirán montos existentes sin autorización.
 - Las tablas con política `ALL` amplia sin restricción efectiva bajaron a 2: ambas dirigidas a `PUBLIC`; no quedan políticas `ALL` amplias dirigidas a `authenticated`.
 - `ai_operation_logs` conserva 8 registros y permanece append-only.
@@ -72,14 +78,15 @@ Cerrar las brechas críticas de seguridad, permisos, trazabilidad y confiabilida
 
 ## Prioridades
 
-1. Auditar y endurecer `reviews` y `volunteers` para llevar las políticas `ALL` amplias a cero.
-2. Revisar cada módulo contra su equivalente o patrón del sistema bed-booking antes de refactorizarlo.
-3. Auditar operaciones destructivas restantes.
-4. Conectar y verificar registro de acciones críticas reales.
-5. Alinear permisos reales con `admin`, `approver` y usuarios autenticados.
-6. Validar flujos completos por rol y dispositivo.
-7. Verificar consistencia Chile: CLP, `es-CL`, fechas locales, textos tributarios y contexto Valdivia.
-8. Eliminar datos de prueba únicamente con autorización específica.
+1. Completar el flujo de facturas: generar exclusivamente desde reservas, endurecer `PATCH`/`DELETE`, validar estados y revisar impresión/PDF con formato Chile.
+2. Auditar y endurecer `reviews` y `volunteers` para llevar las políticas `ALL` amplias a cero.
+3. Revisar cada módulo contra su equivalente o patrón del sistema bed-booking antes de refactorizarlo.
+4. Auditar operaciones destructivas restantes.
+5. Conectar y verificar registro de acciones críticas reales.
+6. Alinear permisos reales con `admin`, `approver` y usuarios autenticados.
+7. Validar flujos completos por rol y dispositivo.
+8. Verificar consistencia Chile: CLP, `es-CL`, fechas locales, textos tributarios y contexto Valdivia.
+9. Eliminar datos de prueba únicamente con autorización específica.
 
 ---
 
@@ -125,6 +132,9 @@ Cerrar las brechas críticas de seguridad, permisos, trazabilidad y confiabilida
 - [x] Eliminar privilegios `anon` en esas ocho tablas.
 - [x] Limitar `DELETE` a `admin`.
 - [x] Alinear las operaciones masivas de reservas con prevalidación de conflictos, RPC atómico, historial y deshacer del módulo bed-booking.
+- [x] Refactorizar el editor de facturas con marca Black Swan, orden visual, CLP, `es-CL` y creación trazable desde reservas.
+- [ ] Endurecer las rutas `PATCH` y `DELETE` de facturas con validación de campos, estados, montos CLP y rol administrativo para eliminación.
+- [ ] Validar impresión y salida PDF de factura en desktop y móvil.
 - [ ] Verificar creación atómica de reservas, facturación, extras, reportes, auto-fill y conciliación.
 - [ ] Añadir pruebas negativas para usuario autenticado común, `approver`, `admin` y `service_role`.
 - [ ] Revisar exposición de datos personales en respuestas API y logs.
