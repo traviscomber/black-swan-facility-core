@@ -17,7 +17,7 @@ Cerrar las brechas críticas de seguridad, permisos, trazabilidad y confiabilida
 - [x] Documentar dependencias de hospitalidad y finanzas.
 - [x] Cerrar ejecución anónima de RPC críticos.
 - [x] Endurecer primera fase RLS en datos personales y financieros.
-- [x] Volver append-only las siete bitácoras operativas amplias.
+- [x] Volver append-only nueve bitácoras operativas y administrativas.
 - [ ] Completar cobertura de acciones críticas y permisos por módulo.
 - [ ] Validar flujos completos por rol y dispositivo.
 
@@ -30,9 +30,11 @@ Cerrar las brechas críticas de seguridad, permisos, trazabilidad y confiabilida
 - `execute_bulk_update` y `restore_bulk_operation_state` exigen rol `admin` dentro de la función.
 - Ocho tablas sensibles ya no usan políticas `ALL`: `guests`, `reservations`, `invoices`, `invoice_payments`, `payments`, `leads`, `messages` y `budgets`.
 - Estas ocho tablas no conservan privilegios para `anon`; `DELETE` queda limitado a `admin`.
-- Siete bitácoras operativas ya no permiten acceso anónimo ni `UPDATE`, `DELETE` o `TRUNCATE` autenticado.
+- Nueve bitácoras ya no permiten acceso anónimo ni `UPDATE`, `DELETE` o `TRUNCATE` autenticado.
+- `procurement_audit_log` conserva como escritores reales `start_procurement_quotation`, `build_procurement_comparison` y `approve_procurement_comparison`; las tres funciones mantienen validación interna de rol y ya no son ejecutables por `anon`.
+- No se identificó un escritor activo para `approver_audit_log` en funciones de base de datos ni en el código indexado.
 - Las tablas con política `ALL` amplia bajaron de 75 a 60: 52 dirigidas a `PUBLIC` y 8 a `authenticated`.
-- `ai_operation_logs` conserva 8 registros; las otras seis bitácoras revisadas permanecen sin registros.
+- `ai_operation_logs` conserva 8 registros; las otras ocho bitácoras revisadas permanecen sin registros.
 - Existen cinco reservas `TEST_` en producción. No deben eliminarse sin autorización específica sobre esos registros.
 
 ## Prioridades
@@ -94,18 +96,19 @@ Cerrar las brechas críticas de seguridad, permisos, trazabilidad y confiabilida
 ### Entregables
 
 - [x] Revisar `audit_actions` y seis historiales operativos amplios.
-- [x] Impedir `UPDATE`, `DELETE` y `TRUNCATE` en las siete bitácoras revisadas.
-- [x] Retirar acceso anónimo y conservar solo `SELECT` + `INSERT` autenticado.
-- [ ] Revisar en detalle `approver_audit_log` y `procurement_audit_log`.
-- [ ] Restringir inserción a funciones, triggers o rutas autorizadas donde exista un escritor identificado.
+- [x] Impedir `UPDATE`, `DELETE` y `TRUNCATE` en las siete bitácoras operativas revisadas.
+- [x] Retirar acceso anónimo y conservar solo `SELECT` + `INSERT` autenticado en esas siete tablas.
+- [x] Revisar en detalle `approver_audit_log` y `procurement_audit_log`.
+- [x] Volver append-only ambas bitácoras de compras y retirar ejecución anónima de sus tres RPC escritores identificados.
+- [ ] Restringir más la inserción de `approver_audit_log` cuando exista un escritor real identificado.
 - [ ] Registrar borrados masivos, cambios de estado, aprobaciones, permisos, KMZ y modificaciones financieras.
 - [ ] Implementar matriz final de permisos en UI, middleware, API y Supabase.
-- [x] Actualizar Administración con estado verificable de bitácoras append-only.
+- [x] Actualizar Administración con estado verificable de nueve bitácoras append-only.
 
 ### Criterio de cierre
 
 - [ ] Toda acción crítica deja rastro verificable.
-- [x] Las siete bitácoras operativas revisadas no pueden ser alteradas ni borradas por usuarios operativos.
+- [x] Las nueve bitácoras revisadas no pueden ser alteradas ni borradas por usuarios operativos.
 - [ ] La UI coincide con los permisos reales del servidor y Supabase en todos los módulos.
 
 ---
