@@ -18,8 +18,8 @@ type InventoryAsset = {
   asset_code: string
   name: string
   description?: string | null
-  category_id: string
-  cost_center_id: string
+  category_id?: string | null
+  cost_center_id?: string | null
   serial_number?: string | null
   brand?: string | null
   model?: string | null
@@ -31,6 +31,7 @@ type InventoryAsset = {
   notes?: string | null
   photo_url?: string | null
   qr_code_url?: string | null
+  type?: string | null
 }
 
 interface InventoryFormProps {
@@ -78,7 +79,7 @@ export function InventoryForm({ asset, categories, costCenters, onClose, onSucce
       const costCenterCode = costCenter?.code || "FC"
       const prefix = `${costCenterCode}-${categoryCode}`
       const { data, error: codeError } = await supabase
-        .from("multimedia_assets")
+        .from("assets")
         .select("asset_code")
         .ilike("asset_code", `${prefix}-%`)
         .order("asset_code", { ascending: false })
@@ -143,9 +144,11 @@ export function InventoryForm({ asset, categories, costCenters, onClose, onSucce
       photoUrl = supabase.storage.from("asset-photos").getPublicUrl(filePath).data.publicUrl
     }
 
+    const category = categories.find((item) => item.id === formData.category_id)
     const payload = {
       asset_code: formData.asset_code,
       name: formData.name.trim(),
+      type: category?.name || asset?.type || "Activo",
       description: formData.description.trim() || null,
       category_id: formData.category_id,
       cost_center_id: formData.cost_center_id,
@@ -165,8 +168,8 @@ export function InventoryForm({ asset, categories, costCenters, onClose, onSucce
     }
 
     const result = asset
-      ? await supabase.from("multimedia_assets").update(payload).eq("id", asset.id)
-      : await supabase.from("multimedia_assets").insert(payload)
+      ? await supabase.from("assets").update(payload).eq("id", asset.id)
+      : await supabase.from("assets").insert(payload)
 
     if (result.error) {
       setError(`No fue posible guardar el activo: ${result.error.message}`)
@@ -174,7 +177,7 @@ export function InventoryForm({ asset, categories, costCenters, onClose, onSucce
       return
     }
 
-    toast({ title: asset ? "Activo actualizado" : "Activo registrado", description: `${formData.name.trim()} quedó guardado en inventario.` })
+    toast({ title: asset ? "Activo actualizado" : "Activo registrado", description: `${formData.name.trim()} quedó guardado en assets.` })
     setLoading(false)
     onSuccess()
   }
@@ -183,7 +186,7 @@ export function InventoryForm({ asset, categories, costCenters, onClose, onSucce
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
       <Card className="max-h-[92vh] w-full max-w-3xl overflow-y-auto">
         <div className="sticky top-0 z-10 flex items-start justify-between border-b bg-card p-5">
-          <div><h2 className="text-xl font-semibold">{asset ? "Editar activo" : "Registrar activo"}</h2><p className="mt-1 text-sm text-muted-foreground">Inventario interno de Fundo Corcovado.</p></div>
+          <div><h2 className="text-xl font-semibold">{asset ? "Editar activo" : "Registrar activo"}</h2><p className="mt-1 text-sm text-muted-foreground">Registro canónico de activos de Fundo Corcovado.</p></div>
           <Button type="button" variant="ghost" size="icon" onClick={onClose} aria-label="Cerrar"><X className="h-4 w-4" /></Button>
         </div>
 
