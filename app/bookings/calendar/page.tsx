@@ -15,6 +15,7 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { type ReservationResizeEdge, useReservationResizeState } from "./use-reservation-resize-state"
 import { useFlipAnimation } from "./use-flip-animation"
+import { TimelineGrid } from "@/components/calendar/timeline-grid"
 
 interface Location { id: string; name: string }
 interface Bed { id: string; bed_number: string; bed_type: string; room: { id: string; room_number: string; room_type?: string; location_id: string; location_ref?: { id: string; name: string } } }
@@ -26,8 +27,6 @@ interface BulkConflict { reservation_id: string; reason: string }
 
 const DAY_WIDTH = 96
 const LABEL_WIDTH = 272
-const ROW_HEIGHT = 68
-const STATUS_STYLES: Record<string, string> = { confirmed: "bg-violet-600 text-white border-violet-700", checked_in: "bg-emerald-600 text-white border-emerald-700", "checked-in": "bg-emerald-600 text-white border-emerald-700", checked_out: "bg-slate-600 text-white border-slate-700", "checked-out": "bg-slate-600 text-white border-slate-700", pending: "bg-amber-500 text-white border-amber-600", cancelled: "bg-red-500 text-white border-red-600" }
 const STATUS_LABELS: Record<string, string> = { pending: "Pendiente", confirmed: "Confirmada", checked_in: "Check-in", "checked-in": "Check-in", checked_out: "Check-out", "checked-out": "Check-out", cancelled: "Cancelada" }
 const BLOCK_LABELS: Record<string, string> = { maintenance: "Mantenimiento", owner_use: "Uso propietario", out_of_service: "Fuera de servicio", other: "Bloqueada" }
 function normalizedStatus(value: string) { return value.replaceAll("-", "_") }
@@ -359,64 +358,48 @@ export default function BookingsCalendarPage() {
         </div>
       )}
 
-      <CardContent className="p-0"><div className="overflow-auto"><div style={{ minWidth: LABEL_WIDTH + timelineWidth }}>
-        <div className="sticky top-0 z-30 flex border-b bg-background"><div className="sticky left-0 z-40 flex shrink-0 items-center gap-2 border-r bg-background px-4 font-medium" style={{ width: LABEL_WIDTH, height: 58 }}>{visibleReservationEvents.length > 0 && <button type="button" onClick={isBulkMode ? clearSelection : selectAll} className="shrink-0 text-muted-foreground transition hover:text-foreground" aria-label={isBulkMode ? "Deseleccionar todo" : "Seleccionar todo"}>{isBulkMode ? <CheckSquare className="h-4 w-4 text-primary" /> : <Square className="h-4 w-4" />}</button>}<span>Propiedad / habitación / cama</span></div><div className="grid" style={{ width: timelineWidth, gridTemplateColumns: `repeat(${rangeDays}, ${DAY_WIDTH}px)` }}>{dates.map((date) => <div key={date.toISOString()} className={`flex flex-col items-center justify-center border-r text-center ${isSameDay(date, new Date()) ? "bg-amber-100" : ""}`} style={{ height: 58 }}><div className="text-xs text-muted-foreground">{format(date, "EEE")}</div><div className="font-semibold">{format(date, "dd MMM")}</div></div>)}</div></div>
-        {loading ? <div className="p-12 text-center text-muted-foreground">Cargando Availability Engine…</div> : visibleBeds.length === 0 ? <div className="p-12 text-center text-muted-foreground">No hay camas para los filtros seleccionados.</div> : visibleBeds.map((bed) => { const bedEvents = eventsByBed.get(bed.id) ?? []; const isDropTarget = dropTargetBedId === bed.id && !!draggingEventId; return <div key={bed.id} className={`flex border-b transition ${isDropTarget ? "bg-emerald-500/10 ring-1 ring-inset ring-emerald-500" : "hover:bg-muted/20"}`} style={{ height: ROW_HEIGHT }} onDragOver={(dragEvent) => { if (!draggingEventId) return; dragEvent.preventDefault(); dragEvent.dataTransfer.dropEffect = "move" }} onDragEnter={() => draggingEventId && setDropTargetBedId(bed.id)} onDragLeave={(dragEvent) => { if (!dragEvent.currentTarget.contains(dragEvent.relatedTarget as Node | null)) setDropTargetBedId(null) }} onDrop={(dropEvent) => { dropEvent.preventDefault(); void moveReservationToBed(bed) }}>
-          <div className="sticky left-0 z-20 flex shrink-0 items-center gap-2 border-r bg-background px-4" style={{ width: LABEL_WIDTH, height: ROW_HEIGHT }}>
-            <div className="flex-1 overflow-hidden"><div className="truncate font-medium">{bed.room.location_ref?.name ?? "Sin propiedad"}</div><div className="truncate text-xs text-muted-foreground">Hab. {bed.room.room_number} · {bed.bed_number} · {bed.bed_type}</div></div>
-          </div>
-          <div className="relative cursor-crosshair" style={{ width: timelineWidth, height: ROW_HEIGHT, backgroundImage: `repeating-linear-gradient(to right, transparent 0, transparent ${DAY_WIDTH - 1}px, hsl(var(--border)) ${DAY_WIDTH - 1}px, hsl(var(--border)) ${DAY_WIDTH}px)` }} onClick={(clickEvent) => openReservationFromTimeline(bed, clickEvent.clientX, clickEvent.currentTarget)}>{dates.map((date, index) => isSameDay(date, new Date()) ? <div key={`today-${bed.id}-${index}`} className="pointer-events-none absolute inset-y-0 bg-amber-50/70" style={{ left: index * DAY_WIDTH, width: DAY_WIDTH }} /> : null)}
-            {bedEvents.map((event) => {
-              const geometry = eventGeometry(event)
-              const isBlock = event.event_type === "block"
-              const isMoving = movingReservationId === event.event_id
-              const isEventResizing = resizingReservationId === event.event_id
-              const isConfirmingResize = confirmingReservationId === event.event_id
-              const previewGeometry = isEventResizing && resizeState ? geometryForDates(resizeState.previewStart, resizeState.previewEnd) : null
-              const hasConflict = isEventResizing && !!resizeConflict
-              const isSelected = !isBlock && selectedIds.has(event.event_id)
-              const isBulkConflict = conflictIds.has(event.event_id)
-              return <div key={`${event.event_type}-${event.event_id}-${bed.id}`}>
-                {previewGeometry && <div className={`pointer-events-none absolute top-2 z-20 h-[52px] rounded-md border-2 border-dashed shadow-sm transition-all duration-150 ${hasConflict ? "border-red-200 bg-red-600/75" : "border-white/90 bg-emerald-500/65"}`} style={{ left: previewGeometry.left, width: previewGeometry.width }}><div className="truncate px-3 pt-1 text-xs font-semibold text-white">{hasConflict ? "No disponible" : "Disponible"} · {resizeState!.previewStart} → {resizeState!.previewEnd}</div><div className="truncate px-3 text-[10px] text-white/90">{hasConflict ? (resizeConflict?.event_type === "block" ? "Conflicto con bloqueo" : "Conflicto con otra reserva") : "Suelta para confirmar"}</div></div>}
-                <button
-                  type="button"
-                  ref={(el) => {
-                    if (el) blockRefs.current.set(event.event_id, el)
-                    else blockRefs.current.delete(event.event_id)
-                  }}
-                  draggable={!isBlock && !movingReservationId && !isResizing && !confirmingReservationId && !isBulkMode}
-                  onDragStart={(dragEvent) => !isBlock && beginReservationDrag(event, dragEvent.dataTransfer)}
-                  onDragEnd={finishReservationDrag}
-                  onClick={(buttonEvent) => {
-                    buttonEvent.stopPropagation()
-                    if (draggingEventId || isResizing || confirmingReservationId) return
-                    if (!isBlock && (buttonEvent.ctrlKey || buttonEvent.metaKey || isBulkMode)) {
-                      toggleSelect(event.event_id, buttonEvent.shiftKey)
-                      return
-                    }
-                    if (isBlock) void openBlock(event); else void openReservation(event)
-                  }}
-                  className={`group absolute top-2 h-[52px] overflow-hidden rounded-md border px-3 text-left text-xs shadow-sm transition-all duration-200 hover:brightness-110 focus:outline-none focus:ring-2 focus:ring-primary ${isBulkConflict ? "ring-2 ring-amber-400" : ""} ${isSelected ? "ring-2 ring-white ring-offset-1 ring-offset-primary brightness-110" : ""} ${isBlock ? "border-zinc-500 bg-zinc-800 text-white" : `${STATUS_STYLES[normalizedStatus(event.status)] ?? "bg-slate-600 text-white border-slate-700"}`} ${isMoving || isConfirmingResize ? "opacity-60" : ""}`}
-                  style={{ left: geometry.left, width: geometry.width }}
-                  aria-label={`${isBlock ? (BLOCK_LABELS[event.block_type ?? "other"] ?? "Bloqueada") : event.guest_name ?? event.label} ${isBlock ? event.label : `${STATUS_LABELS[event.status] ?? event.status} · ${event.starts_on} → ${event.ends_on}`}`}
-                >
-                  {!isBlock && (
-                    <span
-                      className={`absolute left-1 top-1 z-10 transition ${isSelected ? "opacity-100" : "opacity-0 group-hover:opacity-60"}`}
-                      onClick={(e) => { e.stopPropagation(); toggleSelect(event.event_id, false) }}
-                    >
-                      {isSelected ? <CheckSquare className="h-3 w-3" /> : <Square className="h-3 w-3" />}
-                    </span>
-                  )}
-                  {!isBlock && <><span aria-hidden="true" className={`absolute inset-y-0 left-0 z-10 cursor-ew-resize bg-white/0 opacity-0 transition hover:bg-white/35 group-hover:opacity-100 ${isTouchDevice ? "w-8" : "w-2"}`} onClick={(handleEvent) => { handleEvent.preventDefault(); handleEvent.stopPropagation() }} onPointerDown={(pointerEvent) => beginReservationResize(event, "left", pointerEvent)} onPointerMove={moveReservationResize} onPointerUp={(pointerEvent) => { void finishReservationResize(pointerEvent) }} onPointerCancel={(pointerEvent) => { pointerEvent.preventDefault(); pointerEvent.stopPropagation(); clearResize() }} /><span aria-hidden="true" className={`absolute inset-y-0 right-0 z-10 cursor-ew-resize bg-white/0 opacity-0 transition hover:bg-white/35 group-hover:opacity-100 ${isTouchDevice ? "w-8" : "w-2"}`} onClick={(handleEvent) => { handleEvent.preventDefault(); handleEvent.stopPropagation() }} onPointerDown={(pointerEvent) => beginReservationResize(event, "right", pointerEvent)} onPointerMove={moveReservationResize} onPointerUp={(pointerEvent) => { void finishReservationResize(pointerEvent) }} onPointerCancel={(pointerEvent) => { pointerEvent.preventDefault(); pointerEvent.stopPropagation(); clearResize() }} /></>}
-                  <div className="truncate font-semibold">{isMoving ? "Validando movimiento…" : isConfirmingResize ? "Confirmando fechas…" : isEventResizing ? "Ajustando fechas…" : isBlock ? BLOCK_LABELS[event.block_type ?? "other"] ?? "Bloqueada" : event.guest_name ?? event.label}</div>
-                  <div className="truncate opacity-80">{isBlock ? event.label : `${STATUS_LABELS[normalizedStatus(event.status)] ?? event.status} · ${event.starts_on} → ${event.ends_on}`}</div>
-                </button>
-              </div>
-            })}
-          </div>
-        </div> })}
-      </div></div></CardContent></Card>
+      <TimelineGrid
+        dates={dates}
+        rangeDays={rangeDays}
+        timelineWidth={timelineWidth}
+        isTouchDevice={isTouchDevice}
+        visibleBeds={visibleBeds}
+        loading={loading}
+        eventsByBed={eventsByBed}
+        selectedIds={selectedIds}
+        conflictIds={conflictIds}
+        isBulkMode={isBulkMode}
+        visibleReservationEvents={visibleReservationEvents}
+        onToggleSelect={toggleSelect}
+        onSelectAll={selectAll}
+        onClearSelection={clearSelection}
+        draggingEventId={draggingEventId}
+        dropTargetBedId={dropTargetBedId}
+        movingReservationId={movingReservationId}
+        onBedDragEnter={(bedId) => setDropTargetBedId(bedId)}
+        onBedDragLeave={() => setDropTargetBedId(null)}
+        onDropOnBed={(bed) => void moveReservationToBed(bed)}
+        onEventDragStart={beginReservationDrag}
+        onEventDragEnd={finishReservationDrag}
+        resizeState={resizeState}
+        resizingReservationId={resizingReservationId}
+        confirmingReservationId={confirmingReservationId}
+        isResizing={isResizing}
+        resizeConflict={resizeConflict}
+        onBeginResize={beginReservationResize}
+        onMoveResize={moveReservationResize}
+        onFinishResize={finishReservationResize}
+        onClearResize={clearResize}
+        blockRefCallback={(eventId, el) => {
+          if (el) blockRefs.current.set(eventId, el)
+          else blockRefs.current.delete(eventId)
+        }}
+        eventGeometry={eventGeometry}
+        geometryForDates={geometryForDates}
+        onRowClick={openReservationFromTimeline}
+        onOpenReservation={(event) => void openReservation(event)}
+        onOpenBlock={(event) => void openBlock(event)}
+      /></Card>
   </div>
   <AddReservationDialog open={newReservationOpen} onOpenChange={setNewReservationOpen} onSuccess={loadData} preselectedBed={preselectedBed?.id} preselectedDate={preselectedDate ?? undefined} preselectedLocation={preselectedBed?.room.location_ref?.name} />
   <Dialog open={!!selectedBlock} onOpenChange={(open) => !open && setSelectedBlock(null)}><DialogContent><DialogHeader><DialogTitle>Bloqueo de habitación</DialogTitle></DialogHeader>{selectedBlock && <div className="space-y-4"><Badge variant="secondary">{BLOCK_LABELS[selectedBlock.block_type] ?? selectedBlock.block_type}</Badge><Detail label="Motivo" value={selectedBlock.reason} /><div className="grid grid-cols-2 gap-4"><Detail label="Desde" value={selectedBlock.start_date} /><Detail label="Hasta" value={selectedBlock.end_date} /></div>{selectedBlock.notes && <Detail label="Notas" value={selectedBlock.notes} />}<Button asChild className="w-full"><Link href="/bookings/blocks">Administrar bloqueos</Link></Button></div>}</DialogContent></Dialog>
