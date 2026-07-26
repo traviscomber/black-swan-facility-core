@@ -13,11 +13,19 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { createBrowserClient } from "@/lib/supabase/client"
+import { operationalAreaLabels, type OperationalArea } from "@/lib/operational-task-templates"
 
 type TaskStatus = "nueva" | "en_progreso" | "completada" | "cancelada"
 type TaskPriority = "baja" | "media" | "alta" | "urgente"
 
-type Task = {
+type TaskAssignment = {
+  employee_id?: string | null
+  volunteer_id?: string | null
+  employees?: { id: string; name: string; email?: string | null } | null
+  volunteers?: { id: string; name: string; email?: string | null; volunteer_role?: string | null } | null
+}
+
+export type OperationalTask = {
   id: string
   title: string
   description?: string | null
@@ -25,14 +33,17 @@ type Task = {
   status: TaskStatus
   due_date?: string | null
   location_name?: string | null
+  location_id?: string | null
   latitude?: number | null
   longitude?: number | null
   created_at: string
   completed_at?: string | null
-  task_assignments: Array<{
-    employee_id: string
-    employees?: { id: string; name: string; email?: string | null } | null
-  }>
+  operational_area?: OperationalArea | null
+  task_category?: string | null
+  estimated_minutes?: number | null
+  animal_handling?: boolean
+  safety_notes?: string | null
+  task_assignments: TaskAssignment[]
 }
 
 const priorityLabels: Record<TaskPriority, string> = { baja: "Baja", media: "Media", alta: "Alta", urgente: "Urgente" }
@@ -46,9 +57,9 @@ const priorityClasses: Record<TaskPriority, string> = {
 
 export default function TasksPage() {
   const supabase = useMemo(() => createBrowserClient(), [])
-  const [tasks, setTasks] = useState<Task[]>([])
-  const [selectedTask, setSelectedTask] = useState<Task | null>(null)
-  const [taskToEdit, setTaskToEdit] = useState<Task | null>(null)
+  const [tasks, setTasks] = useState<OperationalTask[]>([])
+  const [selectedTask, setSelectedTask] = useState<OperationalTask | null>(null)
+  const [taskToEdit, setTaskToEdit] = useState<OperationalTask | null>(null)
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [activeTab, setActiveTab] = useState("pendientes")
@@ -60,13 +71,13 @@ export default function TasksPage() {
     setError(null)
     const { data, error: fetchError } = await supabase
       .from("tasks")
-      .select("*, task_assignments(employee_id, employees(id, name, email))")
+      .select("*, task_assignments(employee_id, volunteer_id, employees(id, name, email), volunteers(id, name, email, volunteer_role))")
       .order("due_date", { ascending: true, nullsFirst: false })
       .order("created_at", { ascending: false })
 
     if (fetchError) setError(fetchError.message)
     else {
-      const nextTasks = (data ?? []) as Task[]
+      const nextTasks = (data ?? []) as OperationalTask[]
       setTasks(nextTasks)
       setSelectedTask((current) => current ? nextTasks.find((task) => task.id === current.id) ?? null : null)
     }
@@ -81,7 +92,7 @@ export default function TasksPage() {
     pendientes: openTasks.length,
     hoy: openTasks.filter((task) => task.due_date && isToday(parseISO(task.due_date))).length,
     completadasSemana: tasks.filter((task) => task.status === "completada" && task.completed_at && isThisWeek(parseISO(task.completed_at), { weekStartsOn: 1 })).length,
-    responsables: new Set(openTasks.flatMap((task) => task.task_assignments.map((assignment) => assignment.employee_id))).size,
+    responsables: new Set(openTasks.flatMap((task) => task.task_assignments.map((assignment) => assignment.employee_id ?? assignment.volunteer_id).filter(Boolean))).size,
   }
 
   const filteredTasks = tasks.filter((task) => {
@@ -95,12 +106,12 @@ export default function TasksPage() {
     <AppLayout>
       <div className="space-y-6 p-4 sm:p-8">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-          <div><h1 className="text-2xl font-bold text-accent sm:text-3xl">Tareas operativas</h1><p className="mt-1 text-sm text-muted-foreground">Coordinación simple de trabajos, responsables, lugar y fecha objetivo.</p></div>
+          <div><h1 className="text-2xl font-bold text-accent sm:text-3xl">Tareas operativas</h1><p className="mt-1 text-sm text-muted-foreground">Trabajo coordinado para trabajadores y voluntarios en ganadería, hospitalidad y todas las áreas de Fundo Corcovado.</p></div>
           <Button onClick={() => setIsAddDialogOpen(true)}><Plus className="mr-2 h-4 w-4" />Nueva tarea</Button>
         </div>
 
         {error && <Card className="border-destructive/50"><CardContent className="p-4 text-sm text-destructive">No fue posible cargar las tareas: {error}</CardContent></Card>}
-        {overdue > 0 && !error && <Card className="border-amber-300"><CardContent className="flex gap-3 p-4"><AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" /><div><p className="font-medium">Hay {overdue} tarea{overdue === 1 ? "" : "s"} vencida{overdue === 1 ? "" : "s"}</p><p className="mt-1 text-sm text-muted-foreground">Los registros antiguos o de prueba deben revisarse, completarse o cancelarse; no se eliminaron automáticamente.</p></div></CardContent></Card>}
+        {overdue > 0 && !error && <Card className="border-amber-300"><CardContent className="flex gap-3 p-4"><AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" /><div><p className="font-medium">Hay {overdue} tarea{overdue === 1 ? "" : "s"} vencida{overdue === 1 ? "" : "s"}</p><p className="mt-1 text-sm text-muted-foreground">Revisar, completar o cancelar conservando el historial. No se eliminan automáticamente.</p></div></CardContent></Card>}
 
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           <Metric icon={Clock} label="Pendientes" value={stats.pendientes} />
@@ -115,23 +126,24 @@ export default function TasksPage() {
           </TabsList>
         </Tabs>
 
-        <div className="grid gap-6 lg:grid-cols-[minmax(0,420px)_minmax(0,1fr)]">
+        <div className="grid gap-6 lg:grid-cols-[minmax(0,440px)_minmax(0,1fr)]">
           <Card>
-            <CardHeader><CardTitle className="text-base">Lista de trabajo</CardTitle><p className="text-sm text-muted-foreground">Una tarea puede tener uno o más responsables. No representa control de asistencia ni turnos.</p></CardHeader>
+            <CardHeader><CardTitle className="text-base">Lista de trabajo</CardTitle><p className="text-sm text-muted-foreground">Cada tarea puede combinar trabajadores y voluntarios, con área, seguridad, lugar y fecha objetivo.</p></CardHeader>
             <CardContent>
-              {isLoading ? <p className="py-10 text-center text-sm text-muted-foreground">Cargando tareas…</p> : filteredTasks.length === 0 ? <div className="py-10 text-center"><p className="font-medium">No hay tareas en esta vista.</p><p className="mt-1 text-sm text-muted-foreground">Registra solo trabajos que necesiten responsable o seguimiento.</p></div> : <div className="space-y-3">{filteredTasks.map((task) => {
+              {isLoading ? <p className="py-10 text-center text-sm text-muted-foreground">Cargando tareas…</p> : filteredTasks.length === 0 ? <div className="py-10 text-center"><p className="font-medium">No hay tareas en esta vista.</p><p className="mt-1 text-sm text-muted-foreground">Usa una plantilla de Black Swan o crea un trabajo personalizado.</p></div> : <div className="space-y-3">{filteredTasks.map((task) => {
                 const due = task.due_date ? parseISO(task.due_date) : null
                 const isOverdue = due && isPast(due) && !isToday(due) && task.status !== "completada" && task.status !== "cancelada"
-                const names = task.task_assignments.map((assignment) => assignment.employees?.name).filter(Boolean) as string[]
+                const names = task.task_assignments.map((assignment) => assignment.employees?.name ?? assignment.volunteers?.name).filter(Boolean) as string[]
                 return <button key={task.id} type="button" onClick={() => setSelectedTask(task)} className={`w-full rounded-lg border p-4 text-left transition-colors hover:bg-muted/50 ${selectedTask?.id === task.id ? "border-primary bg-primary/5" : ""}`}>
                   <div className="flex items-start justify-between gap-3"><div className="min-w-0"><h2 className="font-semibold">{task.title}</h2><p className="mt-1 text-xs text-muted-foreground">{statusLabels[task.status]}</p></div><Badge variant="outline" className={priorityClasses[task.priority]}>{priorityLabels[task.priority]}</Badge></div>
+                  <div className="mt-2 flex flex-wrap gap-2">{task.operational_area && <Badge variant="secondary">{operationalAreaLabels[task.operational_area]}</Badge>}{task.task_category && <Badge variant="outline">{task.task_category}</Badge>}{task.animal_handling && <Badge variant="outline" className="border-amber-400 text-amber-700">Manejo animal</Badge>}</div>
                   <div className="mt-3 space-y-1.5 text-xs text-muted-foreground">{task.location_name && <p className="flex items-center gap-1.5"><MapPin className="h-3.5 w-3.5" />{task.location_name}</p>}{due && <p className={`flex items-center gap-1.5 ${isOverdue ? "font-medium text-destructive" : ""}`}><Calendar className="h-3.5 w-3.5" />{isOverdue ? "Vencida · " : ""}{format(due, "d 'de' MMMM 'de' yyyy", { locale: es })}</p>}<p className="flex items-center gap-1.5"><Users className="h-3.5 w-3.5" />{names.length ? names.join(", ") : "Sin responsable"}</p></div>
                 </button>
               })}</div>}
             </CardContent>
           </Card>
 
-          <Card className="min-h-[360px] overflow-hidden">{selectedTask ? <TaskDetailPanel task={selectedTask} onUpdate={() => void fetchTasks()} onClose={() => setSelectedTask(null)} onEdit={(task) => { setTaskToEdit(task as Task); setIsEditDialogOpen(true) }} /> : <div className="flex min-h-[360px] items-center justify-center p-8 text-center text-sm text-muted-foreground">Selecciona una tarea para revisar su detalle y actualizar el estado.</div>}</Card>
+          <Card className="min-h-[360px] overflow-hidden">{selectedTask ? <TaskDetailPanel task={selectedTask} onUpdate={() => void fetchTasks()} onClose={() => setSelectedTask(null)} onEdit={(task) => { setTaskToEdit(task); setIsEditDialogOpen(true) }} /> : <div className="flex min-h-[360px] items-center justify-center p-8 text-center text-sm text-muted-foreground">Selecciona una tarea para revisar su detalle, responsables y seguridad.</div>}</Card>
         </div>
 
         <AddTaskDialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen} onTaskCreated={() => void fetchTasks()} />
