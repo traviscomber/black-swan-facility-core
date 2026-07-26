@@ -2,129 +2,183 @@
 
 import Link from "next/link"
 import { useCallback, useEffect, useMemo, useState } from "react"
-import { AlertTriangle, ClipboardList, Download, Pencil, Plus, RefreshCw, ShieldCheck, Users } from "lucide-react"
+import { ClipboardList, RefreshCw, ShieldCheck, ShoppingCart, Users } from "lucide-react"
 import { AppLayout } from "@/components/app-layout"
 import { PageHeader } from "@/components/page-header"
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { createBrowserClient } from "@/lib/supabase/client"
-import { AddProcurementDialog } from "@/components/add-procurement-dialog"
-import { EditProcurementDialog } from "@/components/edit-procurement-dialog"
-import { DeleteProcurementButton } from "@/components/delete-procurement-button"
 
-interface ProcurementItem {
+type RequestRow = {
   id: string
-  item_name: string
+  request_number: string | null
+  title: string
   category: string
-  supplier_id: string
-  unit_price: number
-  quantity: number
-  total_cost: number
-  status: string
-  expected_delivery: string
   priority: string
+  status: string
+  estimated_budget_clp: number | null
+  required_date: string | null
+  created_at: string
 }
 
-interface Supplier { id: string; name: string }
+type PurchaseOrderRow = {
+  id: string
+  order_number: string | null
+  status: string
+  currency: string
+  total: number
+  expected_delivery: string | null
+  created_at: string
+  supplier: { name: string } | null
+  request: { title: string; request_number: string | null } | null
+}
 
-const statusLabels: Record<string, string> = { pending: "Pendiente", ordered: "Ordenada", delivered: "Entregada", cancelled: "Cancelada" }
-const priorityLabels: Record<string, string> = { low: "Baja", medium: "Media", high: "Alta", urgent: "Urgente" }
-const numberFormatter = new Intl.NumberFormat("es-CL", { maximumFractionDigits: 2 })
+const REQUEST_STATUS_LABELS: Record<string, string> = {
+  draft: "Borrador",
+  submitted: "Enviada",
+  under_review: "En revisión",
+  approved: "Aprobada",
+  rejected: "Rechazada",
+  converted: "Convertida",
+}
+
+const ORDER_STATUS_LABELS: Record<string, string> = {
+  draft: "Borrador",
+  issued: "Emitida",
+  confirmed: "Confirmada",
+  partially_received: "Recepción parcial",
+  received: "Recibida",
+  cancelled: "Cancelada",
+}
+
+const PRIORITY_LABELS: Record<string, string> = {
+  low: "Baja",
+  normal: "Normal",
+  medium: "Media",
+  high: "Alta",
+  critical: "Crítica",
+  urgent: "Urgente",
+}
+
+function formatMoney(value: number, currency = "CLP") {
+  return new Intl.NumberFormat("es-CL", {
+    style: "currency",
+    currency,
+    maximumFractionDigits: currency === "CLP" ? 0 : 2,
+  }).format(value)
+}
+
+function formatDate(value: string | null) {
+  if (!value) return "Sin fecha"
+  return new Intl.DateTimeFormat("es-CL", { timeZone: "America/Santiago" }).format(new Date(`${value}T12:00:00`))
+}
 
 export default function ProcurementPage() {
   const supabase = useMemo(() => createBrowserClient(), [])
-  const [items, setItems] = useState<ProcurementItem[]>([])
-  const [suppliers, setSuppliers] = useState<Supplier[]>([])
+  const [requests, setRequests] = useState<RequestRow[]>([])
+  const [orders, setOrders] = useState<PurchaseOrderRow[]>([])
+  const [approvedSuppliers, setApprovedSuppliers] = useState(0)
   const [pendingSuppliers, setPendingSuppliers] = useState(0)
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
-  const [showAddDialog, setShowAddDialog] = useState(false)
-  const [editingItem, setEditingItem] = useState<ProcurementItem | null>(null)
 
   const loadData = useCallback(async () => {
     setLoading(true)
     setLoadError(null)
-    const [itemsRes, approvedRes, pendingRes] = await Promise.all([
-      supabase.from("procurement_items").select("*").order("expected_delivery", { ascending: false }),
-      supabase.from("suppliers").select("id, name").eq("is_active", true).eq("approval_status", "approved").order("name"),
+
+    const [requestsResult, ordersResult, approvedResult, pendingResult] = await Promise.all([
+      supabase
+        .from("procurement_requests")
+        .select("id, request_number, title, category, priority, status, estimated_budget_clp, required_date, created_at")
+        .order("created_at", { ascending: false })
+        .limit(8),
+      supabase
+        .from("procurement_purchase_orders")
+        .select("id, order_number, status, currency, total, expected_delivery, created_at, suppliers(name), procurement_requests(title, request_number)")
+        .order("created_at", { ascending: false })
+        .limit(8),
+      supabase.from("suppliers").select("id", { count: "exact", head: true }).eq("is_active", true).eq("approval_status", "approved"),
       supabase.from("suppliers").select("id", { count: "exact", head: true }).eq("approval_status", "pending"),
     ])
 
-    const error = itemsRes.error || approvedRes.error || pendingRes.error
+    const error = requestsResult.error || ordersResult.error || approvedResult.error || pendingResult.error
     if (error) {
       setLoadError(error.message)
-      setItems([])
-      setSuppliers([])
+      setRequests([])
+      setOrders([])
+      setApprovedSuppliers(0)
       setPendingSuppliers(0)
     } else {
-      setItems((itemsRes.data ?? []) as ProcurementItem[])
-      setSuppliers((approvedRes.data ?? []) as Supplier[])
-      setPendingSuppliers(pendingRes.count ?? 0)
+      setRequests((requestsResult.data ?? []) as RequestRow[])
+      setOrders((ordersResult.data ?? []).map((order: any) => ({
+        ...order,
+        supplier: order.suppliers,
+        request: order.procurement_requests,
+      })) as PurchaseOrderRow[])
+      setApprovedSuppliers(approvedResult.count ?? 0)
+      setPendingSuppliers(pendingResult.count ?? 0)
     }
+
     setLoading(false)
   }, [supabase])
 
   useEffect(() => { void loadData() }, [loadData])
 
-  const supplierName = (id: string) => suppliers.find((supplier) => supplier.id === id)?.name ?? "Proveedor no aprobado o no disponible"
-  const stats = {
-    pending: items.filter((item) => item.status === "pending").length,
-    ordered: items.filter((item) => item.status === "ordered").length,
-    delivered: items.filter((item) => item.status === "delivered").length,
-    amount: items.reduce((sum, item) => sum + Number(item.total_cost ?? 0), 0),
-  }
-
-  const exportToCSV = () => {
-    const rows = items.map((item) => [item.item_name, item.category, supplierName(item.supplier_id), item.unit_price, item.quantity, item.total_cost, statusLabels[item.status] ?? item.status, item.expected_delivery || "Sin fecha", priorityLabels[item.priority] ?? item.priority])
-    const headers = ["Artículo", "Categoría", "Proveedor", "Precio unitario", "Cantidad", "Costo total", "Estado", "Entrega esperada", "Prioridad"]
-    const csv = [headers, ...rows].map((row) => row.map((cell) => `"${String(cell).replaceAll('"', '""')}"`).join(",")).join("\n")
-    const url = URL.createObjectURL(new Blob(["\uFEFF", csv], { type: "text/csv;charset=utf-8" }))
-    const anchor = document.createElement("a")
-    anchor.href = url
-    anchor.download = `compras_${new Date().toISOString().slice(0, 10)}.csv`
-    anchor.click()
-    URL.revokeObjectURL(url)
-  }
+  const requestBudget = requests.reduce((sum, request) => sum + Number(request.estimated_budget_clp ?? 0), 0)
+  const orderTotals = orders.reduce<Record<string, number>>((totals, order) => {
+    totals[order.currency] = (totals[order.currency] ?? 0) + Number(order.total ?? 0)
+    return totals
+  }, {})
 
   return (
     <AppLayout>
       <PageHeader
         title="Compras · Fundo Corcovado"
-        description="Control interno de solicitudes, aprobación de proveedores y órdenes operativas para la gestión en Valdivia."
+        description="Flujo interno desde la solicitud y aprobación hasta la emisión y recepción de órdenes de compra."
         actions={<div className="flex flex-wrap gap-2">
           <Button variant="outline" asChild><Link href="/procurement/requests"><ClipboardList className="mr-2 h-4 w-4" />Solicitudes</Link></Button>
           <Button variant="outline" asChild><Link href="/suppliers"><Users className="mr-2 h-4 w-4" />Proveedores</Link></Button>
           <Button variant="outline" asChild><Link href="/procurement/approvals"><ShieldCheck className="mr-2 h-4 w-4" />Aprobaciones</Link></Button>
-          <Button variant="outline" onClick={exportToCSV} disabled={items.length === 0 || loading || !!loadError}><Download className="mr-2 h-4 w-4" />Exportar CSV</Button>
-          <Button onClick={() => setShowAddDialog(true)} disabled={loading || !!loadError || suppliers.length === 0}><Plus className="mr-2 h-4 w-4" />Nueva orden</Button>
         </div>}
       />
 
       <div className="space-y-6 p-4 sm:p-8">
-        {pendingSuppliers > 0 && suppliers.length === 0 && !loading && !loadError && <Card className="border-amber-300"><CardContent className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between"><div className="flex items-start gap-3"><AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" /><div><p className="font-semibold">No hay proveedores habilitados para emitir órdenes</p><p className="mt-1 text-sm text-muted-foreground">Existen {pendingSuppliers} candidatos pendientes de revisión. Deben aprobarse antes de utilizarlos en compras.</p></div></div><Button asChild variant="outline"><Link href="/suppliers">Revisar proveedores</Link></Button></CardContent></Card>}
-
         {loadError && <Card className="border-destructive/60"><CardContent className="flex items-center justify-between gap-4 p-5"><p className="text-sm text-destructive">No fue posible cargar Compras: {loadError}</p><Button variant="outline" size="sm" onClick={() => void loadData()}><RefreshCw className="mr-2 h-4 w-4" />Reintentar</Button></CardContent></Card>}
 
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
-          <Metric title="Proveedores aprobados" value={suppliers.length} />
-          <Metric title="Candidatos pendientes" value={pendingSuppliers} alert={pendingSuppliers > 0} />
-          <Metric title="Órdenes pendientes" value={stats.pending} />
-          <Metric title="Órdenes emitidas" value={stats.ordered} />
-          <Metric title="Monto registrado" value={numberFormatter.format(stats.amount)} detail="Moneda no definida en el esquema actual" />
+          <Metric title="Solicitudes registradas" value={requests.length} />
+          <Metric title="Presupuesto solicitado" value={formatMoney(requestBudget)} detail="Suma de presupuestos registrados" />
+          <Metric title="Órdenes emitidas" value={orders.length} />
+          <Metric title="Proveedores aprobados" value={approvedSuppliers} />
+          <Metric title="Proveedores pendientes" value={pendingSuppliers} alert={pendingSuppliers > 0} />
         </div>
 
+        {Object.keys(orderTotals).length > 0 && <Card><CardHeader><CardTitle className="text-base">Monto de órdenes por moneda</CardTitle><CardDescription>Totales registrados; no equivalen a pagos ejecutados.</CardDescription></CardHeader><CardContent className="flex flex-wrap gap-3">{Object.entries(orderTotals).map(([currency, total]) => <Badge key={currency} variant="outline" className="px-3 py-2 text-sm">{formatMoney(total, currency)}</Badge>)}</CardContent></Card>}
+
         <Card>
-          <CardHeader><CardTitle>Órdenes de compra</CardTitle><CardDescription>Registro operativo; no sustituye la aprobación presupuestaria ni la contabilidad.</CardDescription></CardHeader>
-          <CardContent><div className="overflow-x-auto rounded-lg border"><Table><TableHeader><TableRow><TableHead>Artículo</TableHead><TableHead>Categoría</TableHead><TableHead>Proveedor</TableHead><TableHead>Precio unitario</TableHead><TableHead>Cantidad</TableHead><TableHead>Total</TableHead><TableHead>Estado</TableHead><TableHead>Entrega</TableHead><TableHead>Prioridad</TableHead><TableHead className="text-right">Acciones</TableHead></TableRow></TableHeader><TableBody>
-            {loading ? <TableRow><TableCell colSpan={10} className="py-10 text-center text-muted-foreground">Cargando compras…</TableCell></TableRow> : loadError ? <TableRow><TableCell colSpan={10} className="py-10 text-center text-muted-foreground">La información no está disponible.</TableCell></TableRow> : items.length === 0 ? <TableRow><TableCell colSpan={10} className="py-10 text-center"><p className="font-medium">No hay órdenes registradas.</p><p className="mt-1 text-sm text-muted-foreground">Primero revisa y aprueba proveedores; luego registra las compras operativas.</p></TableCell></TableRow> : items.map((item) => <TableRow key={item.id}><TableCell className="font-medium">{item.item_name}</TableCell><TableCell>{item.category}</TableCell><TableCell>{supplierName(item.supplier_id)}</TableCell><TableCell>{numberFormatter.format(item.unit_price ?? 0)}</TableCell><TableCell>{item.quantity}</TableCell><TableCell>{numberFormatter.format(item.total_cost ?? 0)}</TableCell><TableCell><Badge variant="outline">{statusLabels[item.status] ?? item.status}</Badge></TableCell><TableCell>{item.expected_delivery || "Sin fecha"}</TableCell><TableCell>{priorityLabels[item.priority] ?? item.priority}</TableCell><TableCell className="text-right"><Button variant="ghost" size="sm" onClick={() => setEditingItem(item)}><Pencil className="h-4 w-4" /></Button><DeleteProcurementButton itemId={item.id} itemName={item.item_name} onDeleted={loadData} /></TableCell></TableRow>)}
-          </TableBody></Table></div></CardContent>
+          <CardHeader><CardTitle>Solicitudes recientes</CardTitle><CardDescription>Requerimientos que alimentan el proceso de cotización, comparación y aprobación.</CardDescription></CardHeader>
+          <CardContent>
+            <div className="overflow-x-auto rounded-lg border">
+              <Table><TableHeader><TableRow><TableHead>Número</TableHead><TableHead>Solicitud</TableHead><TableHead>Categoría</TableHead><TableHead>Presupuesto</TableHead><TableHead>Fecha requerida</TableHead><TableHead>Prioridad</TableHead><TableHead>Estado</TableHead></TableRow></TableHeader><TableBody>
+                {loading ? <TableRow><TableCell colSpan={7} className="py-10 text-center text-muted-foreground">Cargando solicitudes…</TableCell></TableRow> : requests.length === 0 ? <TableRow><TableCell colSpan={7} className="py-10 text-center"><ClipboardList className="mx-auto mb-3 h-6 w-6 text-muted-foreground" /><p className="font-medium">No hay solicitudes registradas.</p><Button className="mt-4" asChild><Link href="/procurement/requests">Crear primera solicitud</Link></Button></TableCell></TableRow> : requests.map((request) => <TableRow key={request.id}><TableCell className="font-mono text-xs">{request.request_number ?? "Pendiente"}</TableCell><TableCell className="font-medium">{request.title}</TableCell><TableCell>{request.category}</TableCell><TableCell>{request.estimated_budget_clp === null ? "Sin monto" : formatMoney(request.estimated_budget_clp)}</TableCell><TableCell>{formatDate(request.required_date)}</TableCell><TableCell>{PRIORITY_LABELS[request.priority] ?? request.priority}</TableCell><TableCell><Badge variant="outline">{REQUEST_STATUS_LABELS[request.status] ?? request.status}</Badge></TableCell></TableRow>)}
+              </TableBody></Table>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader><CardTitle>Órdenes de compra recientes</CardTitle><CardDescription>Órdenes generadas desde solicitudes aprobadas y proveedores seleccionados.</CardDescription></CardHeader>
+          <CardContent>
+            <div className="overflow-x-auto rounded-lg border">
+              <Table><TableHeader><TableRow><TableHead>Orden</TableHead><TableHead>Solicitud</TableHead><TableHead>Proveedor</TableHead><TableHead>Total</TableHead><TableHead>Entrega esperada</TableHead><TableHead>Estado</TableHead></TableRow></TableHeader><TableBody>
+                {loading ? <TableRow><TableCell colSpan={6} className="py-10 text-center text-muted-foreground">Cargando órdenes…</TableCell></TableRow> : orders.length === 0 ? <TableRow><TableCell colSpan={6} className="py-10 text-center"><ShoppingCart className="mx-auto mb-3 h-6 w-6 text-muted-foreground" /><p className="font-medium">No hay órdenes de compra emitidas.</p><p className="mt-1 text-sm text-muted-foreground">Las órdenes deben originarse en solicitudes aprobadas y proveedores habilitados.</p></TableCell></TableRow> : orders.map((order) => <TableRow key={order.id}><TableCell className="font-mono text-xs">{order.order_number ?? "Sin número"}</TableCell><TableCell>{order.request?.request_number ? `${order.request.request_number} · ${order.request.title}` : order.request?.title ?? "Solicitud no disponible"}</TableCell><TableCell>{order.supplier?.name ?? "Proveedor no disponible"}</TableCell><TableCell>{formatMoney(Number(order.total ?? 0), order.currency)}</TableCell><TableCell>{formatDate(order.expected_delivery)}</TableCell><TableCell><Badge variant="outline">{ORDER_STATUS_LABELS[order.status] ?? order.status}</Badge></TableCell></TableRow>)}
+              </TableBody></Table>
+            </div>
+          </CardContent>
         </Card>
       </div>
-
-      <AddProcurementDialog open={showAddDialog} onOpenChange={setShowAddDialog} suppliers={suppliers} onItemAdded={() => { void loadData(); setShowAddDialog(false) }} />
-      {editingItem && <EditProcurementDialog item={editingItem} open={!!editingItem} onOpenChange={(open) => !open && setEditingItem(null)} suppliers={suppliers} onItemUpdated={() => { void loadData(); setEditingItem(null) }} />}
     </AppLayout>
   )
 }
