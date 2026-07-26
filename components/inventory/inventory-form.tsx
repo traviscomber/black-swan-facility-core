@@ -1,429 +1,237 @@
 "use client"
 
 import type React from "react"
-import { useState, useRef, useEffect } from "react"
-import { Upload, X, QrCodeIcon } from "lucide-react"
+import { useEffect, useMemo, useRef, useState } from "react"
+import { AlertCircle, QrCodeIcon, Upload, X } from "lucide-react"
+import QRCode from "qrcode"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import { Card } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
 import { createBrowserClient } from "@/lib/supabase/client"
 import { useToast } from "@/hooks/use-toast"
-import QRCode from "qrcode"
 import { CategorySelector } from "./category-selector"
 
+type MetadataOption = { id: string; name: string; code?: string | null }
+
+type InventoryAsset = {
+  id: string
+  asset_code: string
+  name: string
+  description?: string | null
+  category_id: string
+  cost_center_id: string
+  serial_number?: string | null
+  brand?: string | null
+  model?: string | null
+  purchase_date?: string | null
+  purchase_price?: number | null
+  status?: string | null
+  location?: string | null
+  assigned_to?: string | null
+  notes?: string | null
+  photo_url?: string | null
+  qr_code_url?: string | null
+}
+
 interface InventoryFormProps {
-  asset?: any
-  categories: any[]
-  costCenters: any[]
+  asset?: InventoryAsset | null
+  categories: MetadataOption[]
+  costCenters: MetadataOption[]
   onClose: () => void
   onSuccess: () => void
 }
 
 export function InventoryForm({ asset, categories, costCenters, onClose, onSuccess }: InventoryFormProps) {
-  const [loading, setLoading] = useState(false)
-  const [photoPreview, setPhotoPreview] = useState(asset?.photo_url || "")
-  const [qrCodeData, setQrCodeData] = useState(asset?.qr_code_url || "")
-  const fileInputRef = useRef<HTMLInputElement>(null)
+  const supabase = useMemo(() => createBrowserClient(), [])
   const { toast } = useToast()
-  const supabase = createBrowserClient()
-
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [selectedPhoto, setSelectedPhoto] = useState<File | null>(null)
+  const [photoPreview, setPhotoPreview] = useState(asset?.photo_url ?? "")
+  const [qrCodeData, setQrCodeData] = useState(asset?.qr_code_url ?? "")
   const [formData, setFormData] = useState({
-    asset_code: asset?.asset_code || "",
-    name: asset?.name || "",
-    description: asset?.description || "",
-    category_id: asset?.category_id || categories[0]?.id || "",
-    cost_center_id: asset?.cost_center_id || costCenters[0]?.id || "",
-    serial_number: asset?.serial_number || "",
-    brand: asset?.brand || "",
-    model: asset?.model || "",
-    purchase_date: asset?.purchase_date || "",
-    purchase_price: asset?.purchase_price || "",
-    status: asset?.status || "active",
-    location: asset?.location || "",
-    assigned_to: asset?.assigned_to || "",
-    notes: asset?.notes || "",
+    asset_code: asset?.asset_code ?? "",
+    name: asset?.name ?? "",
+    description: asset?.description ?? "",
+    category_id: asset?.category_id ?? categories[0]?.id ?? "",
+    cost_center_id: asset?.cost_center_id ?? costCenters[0]?.id ?? "",
+    serial_number: asset?.serial_number ?? "",
+    brand: asset?.brand ?? "",
+    model: asset?.model ?? "",
+    purchase_date: asset?.purchase_date ?? "",
+    purchase_price: asset?.purchase_price?.toString() ?? "",
+    status: asset?.status ?? "active",
+    location: asset?.location ?? "",
+    assigned_to: asset?.assigned_to ?? "",
+    notes: asset?.notes ?? "",
   })
 
   useEffect(() => {
-    if (!asset) {
-      generateAssetCode()
-    }
-  }, [formData.cost_center_id, formData.category_id])
+    if (asset || !formData.category_id || !formData.cost_center_id) return
+    let cancelled = false
 
-  const generateAssetCode = async () => {
-    try {
-      const { data, error } = await supabase
-        .from("assets")
+    async function generateAssetCode() {
+      const category = categories.find((item) => item.id === formData.category_id)
+      const costCenter = costCenters.find((item) => item.id === formData.cost_center_id)
+      const categoryCode = category?.code || category?.name.slice(0, 3).toUpperCase() || "ACT"
+      const costCenterCode = costCenter?.code || "FC"
+      const prefix = `${costCenterCode}-${categoryCode}`
+      const { data, error: codeError } = await supabase
+        .from("multimedia_assets")
         .select("asset_code")
-        .order("created_at", { ascending: false })
+        .ilike("asset_code", `${prefix}-%`)
+        .order("asset_code", { ascending: false })
         .limit(1)
 
-      if (!error && data?.length > 0) {
-        const lastCode = data[0].asset_code
-        const parts = lastCode.split("-")
-        if (parts.length >= 3) {
-          const sequence = Number.parseInt(parts[parts.length - 1]) + 1
-          const newCode = `${parts.slice(0, -1).join("-")}-${String(sequence).padStart(3, "0")}`
-          setFormData((prev) => ({ ...prev, asset_code: newCode }))
-          generateQRCode(newCode)
-          return
-        }
+      if (cancelled) return
+      if (codeError) {
+        setError(`No fue posible generar el código: ${codeError.message}`)
+        return
       }
 
-      const categoryCode =
-        categories.find((c) => c.id === formData.category_id)?.code ||
-        categories
-          .find((c) => c.id === formData.category_id)
-          ?.name?.substring(0, 3)
-          .toUpperCase() ||
-        "UNK"
-
-      const costCenterCode = costCenters.find((c) => c.id === formData.cost_center_id)?.code || "BS"
-
-      const newCode = `${costCenterCode}-${categoryCode}-001`
-      setFormData((prev) => ({ ...prev, asset_code: newCode }))
-      generateQRCode(newCode)
-    } catch (error) {
-      console.error("Error generating asset code:", error)
+      const previous = data?.[0]?.asset_code
+      const sequence = previous ? Number.parseInt(previous.split("-").at(-1) || "0", 10) + 1 : 1
+      const code = `${prefix}-${String(Number.isFinite(sequence) ? sequence : 1).padStart(3, "0")}`
+      setFormData((current) => ({ ...current, asset_code: code }))
     }
+
+    void generateAssetCode()
+    return () => { cancelled = true }
+  }, [asset, categories, costCenters, formData.category_id, formData.cost_center_id, supabase])
+
+  function updateField(name: string, value: string) {
+    setFormData((current) => ({ ...current, [name]: value }))
   }
 
-  const generateQRCodeWithData = async (code: string, name: string) => {
-    try {
-      const qrData = `ASSET|${code}|${name}|${new Date().toISOString()}`
-      const qrDataUrl = await QRCode.toDataURL(qrData, { width: 300, margin: 2 })
-      setQrCodeData(qrDataUrl)
-    } catch (error) {
-      console.error("Error generating QR:", error)
-    }
-  }
-
-  const generateQRCode = async (code: string) => {
-    try {
-      await generateQRCodeWithData(code, formData.name)
-      toast({ title: "Success", description: "QR code generated" })
-    } catch (error) {
-      console.error("Error generating QR:", error)
-      toast({ title: "Error", description: "Failed to generate QR code", variant: "destructive" })
-    }
-  }
-
-  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
+  function handlePhotoSelection(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0]
     if (!file) return
-
-    try {
-      setLoading(true)
-      const fileExt = file.name.split(".").pop()
-      const fileName = `${Date.now()}.${fileExt}`
-      const filePath = `assets/${fileName}`
-
-      const { error: uploadError } = await supabase.storage
-        .from("asset-photos")
-        .upload(filePath, file, { upsert: true })
-
-      if (uploadError) throw uploadError
-
-      const { data: publicUrl } = supabase.storage.from("asset-photos").getPublicUrl(filePath)
-
-      setPhotoPreview(publicUrl.publicUrl)
-    } catch (error) {
-      console.error("Error uploading photo:", error)
-      toast({ title: "Error", description: "Failed to upload photo", variant: "destructive" })
-    } finally {
-      setLoading(false)
-    }
+    setSelectedPhoto(file)
+    setPhotoPreview(URL.createObjectURL(file))
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setLoading(true)
-
-    try {
-      let photoUrl = asset?.photo_url || ""
-      if (fileInputRef.current?.files?.[0]) {
-        const file = fileInputRef.current.files[0]
-        const fileName = `${Date.now()}-${file.name}`
-        const filePath = `assets/${fileName}`
-
-        const { error: uploadError } = await supabase.storage.from("asset-photos").upload(filePath, file)
-        if (uploadError) throw uploadError
-
-        const {
-          data: { publicUrl },
-        } = supabase.storage.from("asset-photos").getPublicUrl(filePath)
-        photoUrl = publicUrl
-      }
-
-      const payload = {
-        ...formData,
-        photo_url: photoUrl,
-        qr_code_url: qrCodeData,
-      }
-
-      if (asset) {
-        const { error } = await supabase.from("assets").update(payload).eq("id", asset.id)
-        if (error) throw error
-      } else {
-        const { error } = await supabase.from("assets").insert([payload])
-        if (error) throw error
-      }
-
-      toast({ title: "Success", description: asset ? "Asset updated" : "Asset created" })
-      onSuccess()
-    } catch (error) {
-      console.error("Error saving asset:", error)
-      toast({ title: "Error", description: "Failed to save asset", variant: "destructive" })
-    } finally {
-      setLoading(false)
+  async function generateQrCode() {
+    if (!formData.asset_code || !formData.name.trim()) {
+      setError("Completa el código y el nombre antes de generar el QR.")
+      return
     }
+    const qrPayload = `ASSET|${formData.asset_code}|${formData.name.trim()}`
+    setQrCodeData(await QRCode.toDataURL(qrPayload, { width: 300, margin: 2 }))
+  }
+
+  async function handleSubmit(event: React.FormEvent) {
+    event.preventDefault()
+    if (!formData.name.trim() || !formData.asset_code || !formData.category_id || !formData.cost_center_id) {
+      setError("Código, nombre, categoría y centro de costo son obligatorios.")
+      return
+    }
+
+    setLoading(true)
+    setError(null)
+
+    let photoUrl = asset?.photo_url ?? null
+    if (selectedPhoto) {
+      const extension = selectedPhoto.name.split(".").pop() || "jpg"
+      const filePath = `assets/${formData.asset_code}-${Date.now()}.${extension}`
+      const { error: uploadError } = await supabase.storage.from("asset-photos").upload(filePath, selectedPhoto)
+      if (uploadError) {
+        setError(`No fue posible subir la fotografía: ${uploadError.message}`)
+        setLoading(false)
+        return
+      }
+      photoUrl = supabase.storage.from("asset-photos").getPublicUrl(filePath).data.publicUrl
+    }
+
+    const payload = {
+      asset_code: formData.asset_code,
+      name: formData.name.trim(),
+      description: formData.description.trim() || null,
+      category_id: formData.category_id,
+      cost_center_id: formData.cost_center_id,
+      serial_number: formData.serial_number.trim() || null,
+      brand: formData.brand.trim() || null,
+      model: formData.model.trim() || null,
+      purchase_date: formData.purchase_date || null,
+      purchase_price: formData.purchase_price ? Number(formData.purchase_price) : null,
+      status: formData.status,
+      location: formData.location.trim() || null,
+      assigned_to: formData.assigned_to.trim() || null,
+      notes: formData.notes.trim() || null,
+      photo_url: photoUrl,
+      qr_code_data: qrCodeData ? `ASSET|${formData.asset_code}|${formData.name.trim()}` : null,
+      qr_code_url: qrCodeData || null,
+      updated_at: new Date().toISOString(),
+    }
+
+    const result = asset
+      ? await supabase.from("multimedia_assets").update(payload).eq("id", asset.id)
+      : await supabase.from("multimedia_assets").insert(payload)
+
+    if (result.error) {
+      setError(`No fue posible guardar el activo: ${result.error.message}`)
+      setLoading(false)
+      return
+    }
+
+    toast({ title: asset ? "Activo actualizado" : "Activo registrado", description: `${formData.name.trim()} quedó guardado en inventario.` })
+    setLoading(false)
+    onSuccess()
   }
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <Card className="w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between p-6 border-b border-border sticky top-0 bg-card">
-          <h2 className="text-xl font-bold">{asset ? "Edit Asset" : "Add New Asset"}</h2>
-          <Button variant="ghost" size="sm" onClick={onClose} className="h-8 w-8 p-0">
-            <X className="h-4 w-4" />
-          </Button>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+      <Card className="max-h-[92vh] w-full max-w-3xl overflow-y-auto">
+        <div className="sticky top-0 z-10 flex items-start justify-between border-b bg-card p-5">
+          <div><h2 className="text-xl font-semibold">{asset ? "Editar activo" : "Registrar activo"}</h2><p className="mt-1 text-sm text-muted-foreground">Inventario interno de Fundo Corcovado.</p></div>
+          <Button type="button" variant="ghost" size="icon" onClick={onClose} aria-label="Cerrar"><X className="h-4 w-4" /></Button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-6">
-          {/* Photo Upload */}
-          <div>
-            <label className="block text-sm font-medium mb-2">Photo</label>
-            <div className="flex gap-4">
-              {photoPreview && (
-                <img
-                  src={photoPreview || "/placeholder.svg"}
-                  alt="Preview"
-                  className="w-24 h-24 rounded-lg object-cover border border-border"
-                />
-              )}
-              <div className="flex-1">
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/*"
-                  onChange={handlePhotoUpload}
-                  className="hidden"
-                />
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => fileInputRef.current?.click()}
-                  className="w-full gap-2"
-                  disabled={loading}
-                >
-                  <Upload className="h-4 w-4" />
-                  {loading ? "Uploading..." : "Upload Photo"}
-                </Button>
-              </div>
-            </div>
+        <form onSubmit={handleSubmit} className="space-y-5 p-5">
+          {error && <div className="flex gap-2 rounded-lg border border-destructive/40 bg-destructive/5 p-3 text-sm text-destructive"><AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />{error}</div>}
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label="Código" required><Input value={formData.asset_code} disabled={!asset} onChange={(event) => updateField("asset_code", event.target.value)} /></Field>
+            <Field label="Nombre" required><Input value={formData.name} onChange={(event) => updateField("name", event.target.value)} placeholder="Ej. Generador diésel" /></Field>
           </div>
 
-          {/* QR Code */}
-          <div>
-            <label className="block text-sm font-medium mb-2">QR Code</label>
-            <div className="flex gap-4">
-              {qrCodeData && (
-                <img
-                  src={qrCodeData || "/placeholder.svg"}
-                  alt="QR Code"
-                  className="w-24 h-24 border border-border rounded-lg p-2"
-                />
-              )}
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => generateQRCode(formData.asset_code)}
-                className="gap-2 bg-transparent"
-              >
-                <QrCodeIcon className="h-4 w-4" />
-                {qrCodeData ? "Regenerate QR Code" : "Generate QR Code"}
-              </Button>
-            </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label="Categoría" required><CategorySelector categories={categories} value={formData.category_id} onChange={(value) => updateField("category_id", value)} /></Field>
+            <Field label="Centro de costo" required><select value={formData.cost_center_id} onChange={(event) => updateField("cost_center_id", event.target.value)} className="w-full rounded-md border bg-background px-3 py-2 text-sm">{costCenters.map((center) => <option key={center.id} value={center.id}>{center.name}{center.code ? ` (${center.code})` : ""}</option>)}</select></Field>
           </div>
 
-          {/* Asset Code and Name */}
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium mb-1">Asset Code*</label>
-              <Input
-                placeholder="Auto-generated"
-                value={formData.asset_code}
-                onChange={(e) => setFormData({ ...formData, asset_code: e.target.value })}
-                required
-                disabled={!asset}
-              />
-              {!asset && (
-                <p className="text-xs text-muted-foreground mt-1">Auto-generated based on category and cost center</p>
-              )}
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Name*</label>
-              <Input
-                placeholder="Asset name"
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                required
-              />
-            </div>
+          <div className="grid gap-4 sm:grid-cols-3">
+            <Field label="Marca"><Input value={formData.brand} onChange={(event) => updateField("brand", event.target.value)} /></Field>
+            <Field label="Modelo"><Input value={formData.model} onChange={(event) => updateField("model", event.target.value)} /></Field>
+            <Field label="Número de serie"><Input value={formData.serial_number} onChange={(event) => updateField("serial_number", event.target.value)} /></Field>
           </div>
 
-          {/* Category and Cost Center */}
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium mb-1">Category</label>
-              <CategorySelector
-                categories={categories}
-                value={formData.category_id}
-                onChange={(newCategoryId) => {
-                  setFormData((prev) => ({ ...prev, category_id: newCategoryId }))
-                  generateAssetCode()
-                }}
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Cost Center</label>
-              <select
-                value={formData.cost_center_id}
-                onChange={(e) => {
-                  const newCostCenterId = e.target.value
-                  setFormData((prev) => ({ ...prev, cost_center_id: newCostCenterId }))
-                  generateAssetCode()
-                }}
-                className="w-full px-3 py-2 bg-input border border-border rounded-md"
-              >
-                {costCenters.map((cc) => (
-                  <option key={cc.id} value={cc.id}>
-                    {cc.name} ({cc.code})
-                  </option>
-                ))}
-              </select>
-            </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label="Fecha de compra"><Input type="date" value={formData.purchase_date} onChange={(event) => updateField("purchase_date", event.target.value)} /></Field>
+            <Field label="Precio de compra registrado"><Input type="number" min="0" step="1" value={formData.purchase_price} onChange={(event) => updateField("purchase_price", event.target.value)} /></Field>
           </div>
 
-          {/* Brand, Model, Serial */}
-          <div className="grid grid-cols-3 gap-4">
-            <div>
-              <label className="block text-sm font-medium mb-1">Brand</label>
-              <Input
-                value={formData.brand}
-                onChange={(e) => setFormData({ ...formData, brand: e.target.value })}
-                placeholder="e.g., Sony"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Model</label>
-              <Input
-                value={formData.model}
-                onChange={(e) => setFormData({ ...formData, model: e.target.value })}
-                placeholder="e.g., A7R"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Serial Number</label>
-              <Input
-                value={formData.serial_number}
-                onChange={(e) => setFormData({ ...formData, serial_number: e.target.value })}
-                placeholder="SN123456"
-              />
-            </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label="Ubicación"><Input value={formData.location} onChange={(event) => updateField("location", event.target.value)} /></Field>
+            <Field label="Estado"><select value={formData.status} onChange={(event) => updateField("status", event.target.value)} className="w-full rounded-md border bg-background px-3 py-2 text-sm"><option value="active">Activo</option><option value="inactive">Inactivo</option><option value="maintenance">En mantenimiento</option><option value="deprecated">Retirado</option></select></Field>
           </div>
 
-          {/* Purchase Info */}
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium mb-1">Purchase Date</label>
-              <Input
-                type="date"
-                value={formData.purchase_date}
-                onChange={(e) => setFormData({ ...formData, purchase_date: e.target.value })}
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Purchase Price</label>
-              <Input
-                type="number"
-                step="0.01"
-                value={formData.purchase_price}
-                onChange={(e) => setFormData({ ...formData, purchase_price: e.target.value })}
-                placeholder="0.00"
-              />
-            </div>
+          <Field label="Responsable asignado"><Input value={formData.assigned_to} onChange={(event) => updateField("assigned_to", event.target.value)} placeholder="Nombre del responsable" /></Field>
+          <Field label="Descripción"><textarea rows={3} value={formData.description} onChange={(event) => updateField("description", event.target.value)} className="w-full rounded-md border bg-background px-3 py-2 text-sm" /></Field>
+          <Field label="Notas"><textarea rows={2} value={formData.notes} onChange={(event) => updateField("notes", event.target.value)} className="w-full rounded-md border bg-background px-3 py-2 text-sm" /></Field>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label="Fotografía"><div className="flex items-center gap-3">{photoPreview && <img src={photoPreview} alt="Vista previa del activo" className="h-20 w-20 rounded-md border object-cover" />}<input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handlePhotoSelection} /><Button type="button" variant="outline" onClick={() => fileInputRef.current?.click()}><Upload className="mr-2 h-4 w-4" />Seleccionar foto</Button></div></Field>
+            <Field label="Código QR"><div className="flex items-center gap-3">{qrCodeData && <img src={qrCodeData} alt="Código QR del activo" className="h-20 w-20 rounded-md border p-1" />}<Button type="button" variant="outline" onClick={() => void generateQrCode()}><QrCodeIcon className="mr-2 h-4 w-4" />Generar QR</Button></div></Field>
           </div>
 
-          {/* Location and Status */}
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium mb-1">Location</label>
-              <Input
-                value={formData.location}
-                onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                placeholder="e.g., Storage Room 1"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Status</label>
-              <select
-                value={formData.status}
-                onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                className="w-full px-3 py-2 bg-input border border-border rounded-md"
-              >
-                <option value="active">Active</option>
-                <option value="inactive">Inactive</option>
-                <option value="maintenance">Maintenance</option>
-                <option value="deprecated">Deprecated</option>
-              </select>
-            </div>
-          </div>
-
-          {/* Assigned To */}
-          <div>
-            <label className="block text-sm font-medium mb-1">Assigned To</label>
-            <Input
-              value={formData.assigned_to}
-              onChange={(e) => setFormData({ ...formData, assigned_to: e.target.value })}
-              placeholder="Employee name"
-            />
-          </div>
-
-          {/* Description and Notes */}
-          <div>
-            <label className="block text-sm font-medium mb-1">Description</label>
-            <textarea
-              value={formData.description}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              placeholder="Asset description"
-              className="w-full px-3 py-2 bg-input border border-border rounded-md text-sm resize-none"
-              rows={3}
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium mb-1">Notes</label>
-            <textarea
-              value={formData.notes}
-              onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-              placeholder="Additional notes"
-              className="w-full px-3 py-2 bg-input border border-border rounded-md text-sm resize-none"
-              rows={2}
-            />
-          </div>
-
-          {/* Buttons */}
-          <div className="flex gap-3 justify-end pt-4 border-t border-border">
-            <Button type="button" variant="outline" onClick={onClose}>
-              Cancel
-            </Button>
-            <Button type="submit" disabled={loading}>
-              {loading ? "Saving..." : asset ? "Update Asset" : "Add Asset"}
-            </Button>
-          </div>
+          <div className="flex justify-end gap-2 border-t pt-4"><Button type="button" variant="outline" onClick={onClose}>Cancelar</Button><Button type="submit" disabled={loading}>{loading ? "Guardando…" : asset ? "Guardar cambios" : "Registrar activo"}</Button></div>
         </form>
       </Card>
     </div>
   )
+}
+
+function Field({ label, required = false, children }: { label: string; required?: boolean; children: React.ReactNode }) {
+  return <div className="space-y-1.5"><label className="text-sm font-medium">{label}{required ? " *" : ""}</label>{children}</div>
 }
