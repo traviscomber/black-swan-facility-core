@@ -136,16 +136,7 @@ const navigationGroups: NavigationGroup[] = [
       { nameKey: "nav.tasks", href: "/tasks", icon: ClipboardList, tipKey: "nav.tasks_tip" },
       { nameKey: "nav.issues", href: "/issues", icon: AlertCircle, tipKey: "nav.facility_requests_tip" },
       { nameKey: "nav.checklists", href: "/checklists", icon: CheckSquare, tipKey: "nav.checklists_tip" },
-      {
-        nameKey: "nav.map",
-        href: "/map",
-        icon: Map,
-        tipKey: "nav.gis_map_tip",
-        subItems: [
-          { nameKey: "nav.gis_map", href: "/map", icon: "🗺️" },
-          { nameKey: "nav.kmz_viewer", href: "/map/kmz-viewer", icon: "🌍" },
-        ],
-      },
+      { nameKey: "nav.map", href: "/map", icon: Map, tipKey: "nav.gis_map_tip" },
     ],
   },
 ]
@@ -248,7 +239,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                       <Link href={item.href} onClick={onClose} className={cn("group flex min-w-0 flex-1 items-center gap-3 rounded px-3 py-2 text-sm font-medium transition-colors", isActive ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted hover:text-foreground")} title={t(item.tipKey)}><item.icon className="h-5 w-5 flex-shrink-0" /><span className="flex-1 truncate">{t(item.nameKey)}</span>{isActive && <span className="h-2 w-2 rounded-full bg-current" />}</Link>
                       {hasSubItems && <button onClick={() => toggleSetValue(setExpandedItems, expandedItems, item.nameKey)} className="rounded p-2 hover:bg-muted" aria-label={`Toggle ${t(item.nameKey)}`}><ChevronDown className={cn("h-4 w-4 transition-transform", isExpanded ? "rotate-0" : "-rotate-90")} /></button>}
                     </div>
-                    {hasSubItems && isExpanded && <div className="ml-4 mt-1 space-y-0.5 border-l-2 border-border pl-2">{item.subItems?.map((subItem) => <Link key={subItem.href} href={subItem.href} onClick={onClose} className={cn("flex items-center gap-2 rounded px-2 py-1 text-xs font-medium", pathname === subItem.href ? "bg-primary/15 text-primary" : "text-muted-foreground hover:bg-muted hover:text-foreground")}><span>{subItem.icon}</span><span>{t(subItem.nameKey)}</span></Link>)}</div>}
+                    {hasSubItems && isExpanded && <div className="ml-4 mt-1 space-y-0.5 border-l-2 border-border pl-2">{item.subItems?.map((subItem) => <Link key={subItem.href} href={subItem.href} onClick={onClose} className={cn("flex items-center gap-2 rounded px-3 py-1.5 text-xs transition-colors", pathname === subItem.href ? "bg-primary/10 font-medium text-primary" : "text-muted-foreground hover:bg-muted hover:text-foreground")}><span>{subItem.icon}</span><span className="truncate">{t(subItem.nameKey)}</span></Link>)}</div>}
                   </div>
                 })}
               </div>}
@@ -256,11 +247,10 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
           ))}
         </nav>
 
-        <div className="space-y-3 border-t border-secondary bg-secondary/20 p-4">
-          {userEmail && <div className="flex items-center gap-2 rounded-lg border bg-background/70 px-2 py-2"><div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">{userInitials}</div><div className="min-w-0 flex-1"><p className="truncate text-xs font-semibold">{userEmail}</p><p className="text-xs text-muted-foreground">{role || "usuario"}</p></div><button onClick={handleLogout} className="rounded-md p-1.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive" title="Cerrar sesión"><LogOut className="h-4 w-4" /></button></div>}
+        <div className="space-y-3 border-t border-secondary p-3">
           <LanguageSwitcher />
-          <button onClick={handleOpenSearch} className="flex w-full items-start gap-2 text-left hover:opacity-80"><HelpCircle className="mt-0.5 h-5 w-5 flex-shrink-0 text-primary" /><div><p className="text-sm font-semibold">Need Help?</p><p className="mt-1 text-xs text-muted-foreground">Press ⌘K to search</p></div></button>
-          <div className="border-t pt-2"><p className="text-xs text-muted-foreground">BFCS v1.0</p></div>
+          <button onClick={handleOpenSearch} className="flex w-full items-center gap-3 rounded px-3 py-2 text-sm text-muted-foreground hover:bg-muted hover:text-foreground"><HelpCircle className="h-5 w-5" /><span>Buscar</span><span className="ml-auto text-xs">⌘K</span></button>
+          <div className="flex items-center gap-3 rounded bg-muted/40 px-3 py-2"><span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">{userInitials}</span><div className="min-w-0 flex-1"><p className="truncate text-xs font-medium">{userEmail || "Usuario"}</p><p className="text-[11px] text-muted-foreground">{role || "usuario"}</p></div><button onClick={handleLogout} className="rounded p-1.5 hover:bg-muted" title="Cerrar sesión"><LogOut className="h-4 w-4" /></button></div>
         </div>
       </div>
     </>
