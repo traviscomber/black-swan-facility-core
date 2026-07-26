@@ -10,7 +10,6 @@ import { PageHeader } from "@/components/page-header"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Switch } from "@/components/ui/switch"
 import { createClient } from "@/lib/supabase/client"
 
 type InfrastructureItem = {
@@ -62,17 +61,14 @@ type RuntimeMap = {
   addControl: (control: unknown, position?: string) => void
   addSource: (id: string, source: Record<string, unknown>) => void
   addLayer: (layer: Record<string, unknown>) => void
-  getSource: (id: string) => unknown
   getLayer: (id: string) => unknown
   setLayoutProperty: (id: string, property: string, value: unknown) => void
   fitBounds: (bounds: [[number, number], [number, number]], options?: Record<string, unknown>) => void
   remove: () => void
-  resize: () => void
 }
 
 type RuntimeMapEvent = {
   features?: Array<{ geometry?: { coordinates?: [number, number] }; properties?: Record<string, unknown> }>
-  lngLat?: { lng: number; lat: number }
 }
 
 const MAPLIBRE_VERSION = "6.0.0"
@@ -263,11 +259,9 @@ export default function MapLabPage() {
 
   return (
     <AppLayout>
-      <PageHeader
-        title="Prueba de mapa MapLibre"
-        description="Comparación experimental con render WebGL y mapa satelital. El mapa operativo Leaflet continúa intacto."
-        actions={<Button asChild variant="outline"><Link href="/map"><ArrowLeft className="mr-2 h-4 w-4" />Volver al mapa estable</Link></Button>}
-      />
+      <PageHeader title="Prueba de mapa MapLibre" description="Comparación experimental con render WebGL y mapa satelital. El mapa operativo Leaflet continúa intacto.">
+        <Button asChild variant="outline"><Link href="/map"><ArrowLeft className="mr-2 h-4 w-4" />Volver al mapa estable</Link></Button>
+      </PageHeader>
 
       <div className="space-y-5 p-4 sm:p-8">
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -291,12 +285,13 @@ export default function MapLabPage() {
             <Card>
               <CardHeader><CardTitle className="text-base">Capas KMZ</CardTitle><CardDescription>Visibilidad local para comparar nitidez y rendimiento. No modifica Supabase.</CardDescription></CardHeader>
               <CardContent className="space-y-3">
-                {overlays.length === 0 ? <p className="text-sm text-muted-foreground">No hay capas registradas.</p> : overlays.map((overlay) => (
-                  <div key={overlay.id} className="flex items-center justify-between gap-3 rounded-md border p-3">
+                {overlays.length === 0 ? <p className="text-sm text-muted-foreground">No hay capas registradas.</p> : overlays.map((overlay) => {
+                  const visible = visibleOverlays.has(overlay.id)
+                  return <button key={overlay.id} type="button" onClick={() => toggleOverlay(overlay.id)} className="flex w-full items-center justify-between gap-3 rounded-md border p-3 text-left hover:bg-muted/40">
                     <div className="min-w-0"><p className="truncate text-sm font-medium">{overlay.name}</p><p className="text-xs text-muted-foreground">{featureCounts[overlay.id] == null ? "Procesando…" : `${featureCounts[overlay.id].toLocaleString("es-CL")} elementos`}</p></div>
-                    <Switch checked={visibleOverlays.has(overlay.id)} onCheckedChange={() => toggleOverlay(overlay.id)} aria-label={`Mostrar ${overlay.name}`} />
-                  </div>
-                ))}
+                    <Badge variant={visible ? "default" : "outline"}>{visible ? "Visible" : "Oculta"}</Badge>
+                  </button>
+                })}
               </CardContent>
             </Card>
 
