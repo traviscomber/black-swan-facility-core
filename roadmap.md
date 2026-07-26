@@ -17,8 +17,8 @@ Cerrar las brechas críticas de seguridad, permisos, trazabilidad y confiabilida
 - [x] Documentar dependencias de hospitalidad y finanzas.
 - [x] Cerrar ejecución anónima de RPC críticos.
 - [x] Endurecer primera fase RLS en datos personales y financieros.
-- [ ] Hacer confiables e inmutables las bitácoras.
-- [ ] Alinear permisos reales con `admin`, `approver` y usuarios autenticados.
+- [x] Volver append-only las siete bitácoras operativas amplias.
+- [ ] Completar cobertura de acciones críticas y permisos por módulo.
 - [ ] Validar flujos completos por rol y dispositivo.
 
 ## Estado actualizado
@@ -30,13 +30,15 @@ Cerrar las brechas críticas de seguridad, permisos, trazabilidad y confiabilida
 - `execute_bulk_update` y `restore_bulk_operation_state` exigen rol `admin` dentro de la función.
 - Ocho tablas sensibles ya no usan políticas `ALL`: `guests`, `reservations`, `invoices`, `invoice_payments`, `payments`, `leads`, `messages` y `budgets`.
 - Estas ocho tablas no conservan privilegios para `anon`; `DELETE` queda limitado a `admin`.
-- Las tablas con política `ALL` amplia bajaron de 75 a 67: 57 dirigidas a `PUBLIC` y 10 a `authenticated`.
+- Siete bitácoras operativas ya no permiten acceso anónimo ni `UPDATE`, `DELETE` o `TRUNCATE` autenticado.
+- Las tablas con política `ALL` amplia bajaron de 75 a 60: 52 dirigidas a `PUBLIC` y 8 a `authenticated`.
+- `ai_operation_logs` conserva 8 registros; las otras seis bitácoras revisadas permanecen sin registros.
 - Existen cinco reservas `TEST_` en producción. No deben eliminarse sin autorización específica sobre esos registros.
 
 ## Prioridades
 
 1. Auditar operaciones destructivas restantes.
-2. Hacer confiables e inmutables las bitácoras.
+2. Conectar y verificar registro de acciones críticas reales.
 3. Continuar RLS en operaciones, GIS, energía, IA y módulos auxiliares.
 4. Alinear permisos reales con `admin`, `approver` y usuarios autenticados.
 5. Validar flujos completos por rol y dispositivo.
@@ -91,18 +93,20 @@ Cerrar las brechas críticas de seguridad, permisos, trazabilidad y confiabilida
 
 ### Entregables
 
-- [ ] Revisar `approver_audit_log`, `procurement_audit_log`, `audit_actions` e historiales operativos.
-- [ ] Impedir `UPDATE`, `DELETE` y `TRUNCATE` donde las bitácoras deban ser inmutables.
-- [ ] Definir inserción controlada desde funciones, triggers o rutas autorizadas.
+- [x] Revisar `audit_actions` y seis historiales operativos amplios.
+- [x] Impedir `UPDATE`, `DELETE` y `TRUNCATE` en las siete bitácoras revisadas.
+- [x] Retirar acceso anónimo y conservar solo `SELECT` + `INSERT` autenticado.
+- [ ] Revisar en detalle `approver_audit_log` y `procurement_audit_log`.
+- [ ] Restringir inserción a funciones, triggers o rutas autorizadas donde exista un escritor identificado.
 - [ ] Registrar borrados masivos, cambios de estado, aprobaciones, permisos, KMZ y modificaciones financieras.
 - [ ] Implementar matriz final de permisos en UI, middleware, API y Supabase.
-- [ ] Añadir estados claros de acceso denegado y trazabilidad visible.
+- [x] Actualizar Administración con estado verificable de bitácoras append-only.
 
 ### Criterio de cierre
 
-- Toda acción crítica deja rastro verificable.
-- Las bitácoras no pueden ser alteradas por usuarios operativos.
-- La UI coincide con los permisos reales del servidor y Supabase.
+- [ ] Toda acción crítica deja rastro verificable.
+- [x] Las siete bitácoras operativas revisadas no pueden ser alteradas ni borradas por usuarios operativos.
+- [ ] La UI coincide con los permisos reales del servidor y Supabase en todos los módulos.
 
 ---
 
