@@ -6,9 +6,8 @@ import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 
 const remainingAreas = [
-  { name: "Bitácoras y auditoría", risk: "Crítico", examples: "activity_logs, asset_logs, task_status_history, ai_events" },
   { name: "Operaciones", risk: "Alto", examples: "activities, checklists, incidents, maintenance_tasks, task_assignments" },
-  { name: "GIS e infraestructura", risk: "Alto", examples: "operation_kmz_files, ports_boats" },
+  { name: "GIS e infraestructura", risk: "Alto", examples: "ports_boats y tablas auxiliares de infraestructura" },
   { name: "Finanzas y energía", risk: "Alto", examples: "utilities, vehicles y tablas auxiliares pendientes" },
   { name: "IA y soberanía", risk: "Medio", examples: "ai_agents, ai_context, ai_sessions, sovereignty_layers" },
   { name: "Catálogos y módulos auxiliares", risk: "Revisión", examples: "multimedia, activos, catálogos y tablas de soporte" },
@@ -28,8 +27,8 @@ const phaseOneTables = [
 const phases = [
   { step: "1", title: "RPC y funciones privilegiadas", status: "Completado", detail: "Los 13 SECURITY DEFINER fueron inventariados. Ninguno conserva EXECUTE para anon o PUBLIC; las operaciones masivas además verifican rol admin dentro del RPC." },
   { step: "2", title: "Datos personales y financieros", status: "En curso", detail: "Ocho tablas sensibles ya usan políticas separadas por operación, sin privilegios anon y con eliminación exclusiva para admin." },
-  { step: "3", title: "Bitácoras inmutables", status: "Pendiente", detail: "Separar lectura e inserción y retirar UPDATE, DELETE y TRUNCATE en auditoría e historiales." },
-  { step: "4", title: "Permisos operativos", status: "Pendiente", detail: "Alinear middleware, API, Supabase y navegación con los roles reales observados en producción." },
+  { step: "3", title: "Bitácoras inmutables", status: "Completado", detail: "Nueve bitácoras operativas y administrativas son append-only, sin acceso anónimo ni capacidad de alterar o borrar eventos existentes." },
+  { step: "4", title: "Permisos operativos", status: "En curso", detail: "GIS y KMZ ya usan políticas separadas, sin acceso anónimo y con eliminación exclusiva para admin. Continúa operaciones, energía, IA y módulos auxiliares." },
   { step: "5", title: "Validación integral", status: "Pendiente", detail: "Probar usuarios autenticados, approver, admin y service_role en rutas críticas, desktop y móvil." },
 ] as const
 
@@ -44,24 +43,24 @@ export default function AdminSecurityPage() {
 
         <div className="grid gap-4 md:grid-cols-3">
           <Card className="border-amber-500/50">
-            <CardHeader><CardTitle className="flex items-center gap-2"><ShieldAlert className="h-5 w-5" />67 tablas</CardTitle><CardDescription>Aún conservan política ALL amplia</CardDescription></CardHeader>
+            <CardHeader><CardTitle className="flex items-center gap-2"><ShieldAlert className="h-5 w-5" />58 tablas</CardTitle><CardDescription>Aún conservan política ALL amplia y sin restricción efectiva</CardDescription></CardHeader>
           </Card>
           <Card className="border-destructive/40">
-            <CardHeader><CardTitle className="flex items-center gap-2"><TriangleAlert className="h-5 w-5" />57 tablas</CardTitle><CardDescription>Política ALL amplia dirigida a PUBLIC</CardDescription></CardHeader>
+            <CardHeader><CardTitle className="flex items-center gap-2"><TriangleAlert className="h-5 w-5" />50 tablas</CardTitle><CardDescription>Política ALL amplia dirigida a PUBLIC</CardDescription></CardHeader>
           </Card>
           <Card>
-            <CardHeader><CardTitle className="flex items-center gap-2"><Database className="h-5 w-5" />10 tablas</CardTitle><CardDescription>Política ALL amplia dirigida a authenticated</CardDescription></CardHeader>
+            <CardHeader><CardTitle className="flex items-center gap-2"><Database className="h-5 w-5" />8 tablas</CardTitle><CardDescription>Política ALL amplia dirigida a authenticated</CardDescription></CardHeader>
           </Card>
         </div>
 
         <Card className="border-emerald-500/40">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2"><CheckCircle2 className="h-5 w-5" />Contención crítica completada</CardTitle>
-            <CardDescription>Funciones SECURITY DEFINER y primera fase de datos sensibles.</CardDescription>
+            <CardTitle className="flex items-center gap-2"><CheckCircle2 className="h-5 w-5" />Contención crítica ampliada</CardTitle>
+            <CardDescription>Funciones privilegiadas, datos sensibles, bitácoras y primera fase GIS.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-2 text-sm">
             <p>Ninguna de las 13 funciones SECURITY DEFINER conserva ejecución para <span className="font-mono">anon</span> o <span className="font-mono">PUBLIC</span>.</p>
-            <p><span className="font-mono">execute_bulk_update</span> y <span className="font-mono">restore_bulk_operation_state</span> exigen rol <span className="font-mono">admin</span> dentro de la función, además de la protección de sus rutas.</p>
+            <p><span className="font-mono">gis_overlays</span> y <span className="font-mono">operation_kmz_files</span> ya no permiten acceso anónimo ni <span className="font-mono">TRUNCATE</span>; la eliminación queda limitada a <span className="font-mono">admin</span>.</p>
             <p className="text-muted-foreground">Las cinco reservas con prefijo TEST_ permanecen intactas.</p>
           </CardContent>
         </Card>
@@ -69,8 +68,8 @@ export default function AdminSecurityPage() {
         <Card className="border-amber-500/50">
           <CardHeader><CardTitle>Interpretación</CardTitle><CardDescription>RLS habilitado sigue sin equivaler a acceso restringido.</CardDescription></CardHeader>
           <CardContent className="space-y-2 text-sm">
-            <p>La primera migración redujo de 75 a 67 las tablas con política ALL amplia. El trabajo continúa sobre bitácoras, operaciones, GIS, energía, IA y módulos auxiliares.</p>
-            <p className="text-muted-foreground">Estado verificado en pg_policies, role_table_grants y pg_proc el 26-07-2026. Las migraciones no modificaron registros operativos.</p>
+            <p>Las políticas ALL amplias sin restricción efectiva bajaron a 58: 50 dirigidas a PUBLIC y 8 a authenticated. El trabajo continúa sobre operaciones, infraestructura, energía, IA y módulos auxiliares.</p>
+            <p className="text-muted-foreground">Estado verificado en pg_policies y role_table_grants el 26-07-2026. Las migraciones no modificaron registros operativos.</p>
           </CardContent>
         </Card>
 
