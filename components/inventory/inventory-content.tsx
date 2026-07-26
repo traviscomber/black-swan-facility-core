@@ -15,14 +15,21 @@ interface Asset {
   id: string
   asset_code: string
   name: string
+  description?: string | null
   category_id?: string | null
   cost_center_id?: string | null
   category?: { name: string; color?: string | null } | null
   cost_center?: { name: string; code?: string | null } | null
+  serial_number?: string | null
+  brand?: string | null
+  model?: string | null
+  purchase_date?: string | null
   status: string
   location?: string | null
   assigned_to?: string | null
+  notes?: string | null
   photo_url?: string | null
+  qr_code_url?: string | null
   purchase_price?: number | null
   created_at: string
 }
@@ -59,8 +66,8 @@ export function InventoryContent() {
     setLoading(true)
     setError(null)
     const { data, error: loadError } = await supabase
-      .from("multimedia_assets")
-      .select(`id, asset_code, name, status, location, assigned_to, photo_url, purchase_price, created_at, category_id, cost_center_id, asset_categories(name, color), cost_centers(name, code)`)
+      .from("assets")
+      .select(`id, asset_code, name, description, status, location, assigned_to, photo_url, qr_code_url, purchase_price, purchase_date, serial_number, brand, model, notes, created_at, category_id, cost_center_id, asset_categories(name, color), cost_centers(name, code)`)
       .order("created_at", { ascending: false })
 
     if (loadError) {
@@ -105,10 +112,10 @@ export function InventoryContent() {
   const handleRetire = async (id: string) => {
     const asset = assets.find((item) => item.id === id)
     if (!asset || asset.status === "deprecated") return
-    if (!window.confirm(`¿Marcar “${asset.name}” (${asset.asset_code}) como retirado? El registro y su historial se conservarán.`)) return
+    if (!window.confirm(`¿Marcar “${asset.name}” (${asset.asset_code}) como retirado? El registro y sus vínculos se conservarán.`)) return
 
     const { error: updateError } = await supabase
-      .from("multimedia_assets")
+      .from("assets")
       .update({ status: "deprecated", updated_at: new Date().toISOString() })
       .eq("id", id)
 
@@ -116,7 +123,7 @@ export function InventoryContent() {
       toast({ title: "No se pudo retirar", description: updateError.message, variant: "destructive" })
       return
     }
-    toast({ title: "Activo retirado", description: `${asset.name} permanece en inventario con estado Retirado.` })
+    toast({ title: "Activo retirado", description: `${asset.name} permanece en el registro canónico con estado Retirado.` })
     await loadAssets()
   }
 
@@ -127,12 +134,12 @@ export function InventoryContent() {
           <div>
             <p className="mb-1 text-xs font-semibold uppercase tracking-[0.16em] text-primary">Inventario · Fundo Corcovado</p>
             <h1 className="text-3xl font-semibold tracking-tight">Activos registrados</h1>
-            <p className="mt-1 max-w-3xl text-sm text-muted-foreground">Registro interno de equipos, herramientas y bienes asociados a centros de costo. Los valores corresponden a precios de compra ingresados, no a valorizaciones contables actuales.</p>
+            <p className="mt-1 max-w-3xl text-sm text-muted-foreground">Registro canónico de activos operativos, equipos, herramientas y bienes asociados a la operación. Los valores corresponden a precios de compra registrados, no a valorizaciones contables actuales.</p>
           </div>
           <Button onClick={() => setShowForm(true)}><Plus className="mr-2 h-4 w-4" />Registrar activo</Button>
         </div>
 
-        {assets.length <= 5 && !loading && !error && (
+        {assets.length <= 6 && !loading && !error && (
           <div className="flex gap-3 rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">
             <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
             <div><p className="font-medium">Cobertura de inventario aún limitada</p><p className="mt-1">El sistema contiene {assets.length} activo{assets.length === 1 ? "" : "s"}. Esta cifra refleja registros cargados, no necesariamente el inventario físico completo del fundo.</p></div>
