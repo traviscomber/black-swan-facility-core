@@ -13,6 +13,7 @@ import {
   type TimelineRowProps,
 } from "./timeline-row"
 import type { ReservationResizeEdge } from "@/app/bookings/calendar/use-reservation-resize-state"
+import { useCalendarAutoscroll } from "@/app/bookings/calendar/use-calendar-autoscroll"
 
 // ---------------------------------------------------------------------------
 // Props
@@ -111,7 +112,9 @@ export function TimelineGrid({
   onOpenReservation,
   onOpenBlock,
 }: TimelineGridProps) {
-  const totalWidth = LABEL_WIDTH + timelineWidth
+  const totalWidth  = LABEL_WIDTH + timelineWidth
+  const isInteracting = !!draggingEventId || isResizing
+  const scrollRef   = useCalendarAutoscroll({ active: isInteracting })
 
   // Shared props forwarded to every TimelineRow (excludes per-bed fields)
   const sharedRowProps: Omit<TimelineRowProps, "bed" | "bedEvents"> = {
@@ -148,7 +151,7 @@ export function TimelineGrid({
 
   return (
     <CardContent className="p-0">
-      <div className="overflow-auto">
+      <div ref={scrollRef} className="overflow-auto">
         <div style={{ minWidth: totalWidth }}>
 
           {/* Sticky date header */}

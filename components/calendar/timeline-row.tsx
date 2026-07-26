@@ -3,6 +3,7 @@
 import { isSameDay, parseISO } from "date-fns"
 import { CheckSquare, Square } from "lucide-react"
 import type { ReservationResizeEdge } from "@/app/bookings/calendar/use-reservation-resize-state"
+import { ReservationPreview, type PreviewConflict } from "@/components/calendar/reservation-preview"
 
 // ---------------------------------------------------------------------------
 // Shared constants (kept in sync with calendar/page.tsx)
@@ -235,25 +236,17 @@ export function TimelineRow({
             <div key={`${event.event_type}-${event.event_id}-${bed.id}`}>
               {/* Resize preview pastilla */}
               {previewGeometry && (
-                <div
-                  className={`pointer-events-none absolute top-2 z-20 h-[52px] rounded-md border-2 border-dashed shadow-sm transition-all duration-150 ${
-                    hasConflict
-                      ? "border-red-200 bg-red-600/75"
-                      : "border-white/90 bg-emerald-500/65"
-                  }`}
-                  style={{ left: previewGeometry.left, width: previewGeometry.width }}
-                >
-                  <div className="truncate px-3 pt-1 text-xs font-semibold text-white">
-                    {hasConflict ? "No disponible" : "Disponible"} · {resizeState!.previewStart} → {resizeState!.previewEnd}
-                  </div>
-                  <div className="truncate px-3 text-[10px] text-white/90">
-                    {hasConflict
-                      ? resizeConflict?.event_type === "block"
-                        ? "Conflicto con bloqueo"
-                        : "Conflicto con otra reserva"
-                      : "Suelta para confirmar"}
-                  </div>
-                </div>
+                <ReservationPreview
+                  left={previewGeometry.left}
+                  width={previewGeometry.width}
+                  intent="resize"
+                  conflict={
+                    !hasConflict
+                      ? "none"
+                      : (resizeConflict?.event_type === "block" ? "block" : "reservation") satisfies PreviewConflict
+                  }
+                  label={`${resizeState!.previewStart} → ${resizeState!.previewEnd}`}
+                />
               )}
 
               {/* Reservation / Block button */}

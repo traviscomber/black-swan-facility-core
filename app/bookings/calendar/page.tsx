@@ -17,6 +17,7 @@ import { type ReservationResizeEdge, useReservationResizeState } from "./use-res
 import { useFlipAnimation } from "./use-flip-animation"
 import { useCalendarInteraction } from "./use-calendar-interaction"
 import { TimelineGrid } from "@/components/calendar/timeline-grid"
+import { normalizedStatus, STATUS_LABELS, BLOCK_LABELS } from "@/components/calendar/timeline-row"
 
 interface Location { id: string; name: string }
 interface Bed { id: string; bed_number: string; bed_type: string; room: { id: string; room_number: string; room_type?: string; location_id: string; location_ref?: { id: string; name: string } } }
@@ -28,9 +29,6 @@ interface BulkConflict { reservation_id: string; reason: string }
 
 const DAY_WIDTH = 96
 const LABEL_WIDTH = 272
-const STATUS_LABELS: Record<string, string> = { pending: "Pendiente", confirmed: "Confirmada", checked_in: "Check-in", "checked-in": "Check-in", checked_out: "Check-out", "checked-out": "Check-out", cancelled: "Cancelada" }
-const BLOCK_LABELS: Record<string, string> = { maintenance: "Mantenimiento", owner_use: "Uso propietario", out_of_service: "Fuera de servicio", other: "Bloqueada" }
-function normalizedStatus(value: string) { return value.replaceAll("-", "_") }
 function formatClp(value: number) { return new Intl.NumberFormat("es-CL", { style: "currency", currency: "CLP", maximumFractionDigits: 0 }).format(value) }
 function intervalsOverlap(startA: string, endA: string, startB: string, endB: string) { return parseISO(startA) < parseISO(endB) && parseISO(endA) > parseISO(startB) }
 
@@ -227,8 +225,6 @@ export default function BookingsCalendarPage() {
     setEvents((current) => current.map((event) => event.event_type === "reservation" && event.event_id === pendingResize.reservationId ? { ...event, starts_on: result.check_in, ends_on: result.check_out } : event))
     toast.success(`Reserva actualizada: ${result.check_in} → ${result.check_out}`); clearResize(); await loadData()
   }
-  // Move is now handled by useCalendarInteraction (beginMove / updateMove / commitMove)
-
   async function openReservation(event: CalendarEvent) { setError(null); const { data, error: detailError } = await supabase.from("reservations").select("id, bed_id, guest_name, guest_email, guest_phone, check_in, check_out, status, num_guests, total_amount, special_requests").eq("id", event.event_id).single(); if (detailError) { setError(detailError.message); return }; setSelectedReservation(data as Reservation) }
   async function openBlock(event: CalendarEvent) { setError(null); const { data, error: detailError } = await supabase.from("room_blocks").select("id, room_id, start_date, end_date, block_type, reason, notes, status").eq("id", event.event_id).single(); if (detailError) { setError(detailError.message); return }; setSelectedBlock(data as RoomBlock) }
   async function updateReservationStatus(reservation: Reservation, nextStatus: string) { setUpdatingStatus(reservation.id); setError(null); const { error: updateError } = await supabase.from("reservations").update({ status: nextStatus }).eq("id", reservation.id); if (updateError) setError(updateError.message); else { setSelectedReservation({ ...reservation, status: nextStatus }); await loadData() }; setUpdatingStatus(null) }
