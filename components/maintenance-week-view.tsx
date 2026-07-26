@@ -1,20 +1,27 @@
-'use client'
+"use client"
 
-import { useState } from 'react'
-import { useLanguage } from '@/lib/hooks/use-language'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { ChevronLeft, ChevronRight } from 'lucide-react'
-import { format, addDays, startOfWeek } from 'date-fns'
+import Link from "next/link"
+import { useState } from "react"
+import { ChevronLeft, ChevronRight, ClipboardPlus } from "lucide-react"
+import { format, addDays, startOfWeek } from "date-fns"
+import { es } from "date-fns/locale"
+import { Card, CardContent, CardHeader } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
+import { buildOperationalTaskHref } from "@/lib/operational-task-links"
 
 interface WorkOrder {
   id: string
   title: string
-  status: string
-  priority: string
-  assigned_to?: string
-  date_objective: string
+  description?: string | null
+  status?: string | null
+  estado_extendido?: string | null
+  priority?: string | null
+  prioridad?: string | null
+  assigned_to?: string | null
+  next_run?: string | null
+  fecha_objetivo?: string | null
+  assets?: { name?: string | null } | null
 }
 
 interface MaintenanceWeekViewProps {
@@ -22,103 +29,60 @@ interface MaintenanceWeekViewProps {
   onTaskClick?: (task: WorkOrder) => void
 }
 
-const getStatusColor = (status: string) => {
-  const colors: Record<string, string> = {
-    draft: 'bg-gray-100 text-gray-800',
-    scheduled: 'bg-blue-100 text-blue-800',
-    assigned: 'bg-purple-100 text-purple-800',
-    in_progress: 'bg-yellow-100 text-yellow-800',
-    blocked: 'bg-red-100 text-red-800',
-    completed: 'bg-green-100 text-green-800',
-    verified: 'bg-emerald-100 text-emerald-800',
-    cancelled: 'bg-gray-200 text-gray-600',
-  }
-  return colors[status] || 'bg-gray-100 text-gray-800'
-}
-
-const getPriorityColor = (priority: string) => {
-  const colors: Record<string, string> = {
-    low: 'text-green-600',
-    medium: 'text-yellow-600',
-    high: 'text-orange-600',
-    critical: 'text-red-600',
-  }
-  return colors[priority] || 'text-gray-600'
-}
+const statusLabels: Record<string, string> = { draft: "Borrador", scheduled: "Programada", assigned: "Asignada", in_progress: "En ejecución", blocked: "Bloqueada", completed: "Completada", verified: "Verificada", cancelled: "Cancelada" }
+const priorityMap: Record<string, "baja" | "media" | "alta" | "urgente"> = { low: "baja", medium: "media", high: "alta", critical: "urgente", baja: "baja", media: "media", alta: "alta", urgente: "urgente" }
 
 export function MaintenanceWeekView({ tasks, onTaskClick }: MaintenanceWeekViewProps) {
-  const { t } = useLanguage()
   const [currentDate, setCurrentDate] = useState(new Date())
-  
-  const weekStart = startOfWeek(currentDate)
-  const weekDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i))
-  
-  const getTasksForDate = (date: Date) => {
-    const dateStr = format(date, 'yyyy-MM-dd')
-    return tasks.filter(task => task.date_objective?.startsWith(dateStr))
+  const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 })
+  const weekDays = Array.from({ length: 7 }, (_, index) => addDays(weekStart, index))
+
+  function taskDate(task: WorkOrder) {
+    return task.fecha_objetivo ?? task.next_run ?? null
   }
 
-  const goToPreviousWeek = () => setCurrentDate(addDays(currentDate, -7))
-  const goToNextWeek = () => setCurrentDate(addDays(currentDate, 7))
+  function getTasksForDate(date: Date) {
+    const dateStr = format(date, "yyyy-MM-dd")
+    return tasks.filter((task) => taskDate(task)?.startsWith(dateStr))
+  }
 
   return (
     <div className="space-y-4">
-      {/* Week Navigation */}
       <div className="flex items-center justify-between">
-        <Button variant="outline" size="sm" onClick={goToPreviousWeek}>
-          <ChevronLeft className="h-4 w-4" />
-        </Button>
-        <div className="text-sm font-semibold">
-          {format(weekStart, 'MMM d')} - {format(addDays(weekStart, 6), 'MMM d, yyyy')}
-        </div>
-        <Button variant="outline" size="sm" onClick={goToNextWeek}>
-          <ChevronRight className="h-4 w-4" />
-        </Button>
+        <Button variant="outline" size="sm" onClick={() => setCurrentDate(addDays(currentDate, -7))}><ChevronLeft className="h-4 w-4" /></Button>
+        <div className="text-sm font-semibold">{format(weekStart, "d MMM", { locale: es })} – {format(addDays(weekStart, 6), "d MMM yyyy", { locale: es })}</div>
+        <Button variant="outline" size="sm" onClick={() => setCurrentDate(addDays(currentDate, 7))}><ChevronRight className="h-4 w-4" /></Button>
       </div>
 
-      {/* Week Grid */}
-      <div className="grid grid-cols-7 gap-2">
+      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-7">
         {weekDays.map((date) => {
           const dayTasks = getTasksForDate(date)
-          const isToday = format(date, 'yyyy-MM-dd') === format(new Date(), 'yyyy-MM-dd')
-
-          return (
-            <Card key={format(date, 'yyyy-MM-dd')} className={isToday ? 'border-2 border-blue-500' : ''}>
-              <CardHeader className="pb-2">
-                <div className="text-xs font-semibold text-gray-500">
-                  {format(date, 'EEE')}
+          const isToday = format(date, "yyyy-MM-dd") === format(new Date(), "yyyy-MM-dd")
+          return <Card key={format(date, "yyyy-MM-dd")} className={isToday ? "border-primary" : ""}>
+            <CardHeader className="pb-2"><div className="text-xs font-semibold uppercase text-muted-foreground">{format(date, "EEE", { locale: es })}</div><div className="text-lg font-bold">{format(date, "d")}</div></CardHeader>
+            <CardContent className="space-y-2">
+              {dayTasks.length === 0 ? <div className="py-3 text-xs text-muted-foreground">Sin trabajos</div> : dayTasks.map((task) => {
+                const status = task.estado_extendido ?? task.status ?? "draft"
+                const priority = task.prioridad ?? task.priority ?? "medium"
+                const taskHref = buildOperationalTaskHref({
+                  area: "mantenimiento",
+                  title: task.title,
+                  description: task.description || `Ejecutar trabajo de mantenimiento${task.assets?.name ? ` sobre ${task.assets.name}` : ""} y registrar resultado.`,
+                  category: "Mantenimiento",
+                  priority: priorityMap[priority] || "media",
+                  dueDate: taskDate(task) ?? undefined,
+                  sourceType: "maintenance_task",
+                  sourceId: task.id,
+                  sourceLabel: task.title,
+                  sourcePath: "/maintenance",
+                })
+                return <div key={task.id} className="rounded-md border bg-muted/20 p-2">
+                  <button type="button" onClick={() => onTaskClick?.(task)} className="w-full text-left"><div className="truncate text-xs font-medium">{task.title}</div><div className="mt-1 flex flex-wrap gap-1"><Badge variant="secondary" className="text-[10px]">{statusLabels[status] || status}</Badge><Badge variant="outline" className="text-[10px]">{priorityMap[priority] || priority}</Badge></div></button>
+                  <Button asChild variant="ghost" size="sm" className="mt-2 h-7 w-full px-2 text-xs"><Link href={taskHref}><ClipboardPlus className="mr-1 h-3.5 w-3.5" />Crear tarea operativa</Link></Button>
                 </div>
-                <div className={`text-lg font-bold ${isToday ? 'text-blue-600' : ''}`}>
-                  {format(date, 'd')}
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-1">
-                {dayTasks.length === 0 ? (
-                  <div className="text-xs text-gray-400">{t('maintenance.no_tasks_today')}</div>
-                ) : (
-                  dayTasks.map((task) => (
-                    <div
-                      key={task.id}
-                      onClick={() => onTaskClick?.(task)}
-                      className="p-2 bg-gray-50 rounded cursor-pointer hover:bg-gray-100 transition"
-                    >
-                      <div className="text-xs font-medium truncate">{task.title}</div>
-                      <div className="flex gap-1 mt-1">
-                        <Badge variant="secondary" className={`text-xs ${getStatusColor(task.status)}`}>
-                          {task.status}
-                        </Badge>
-                        {task.priority && (
-                          <span className={`text-xs font-semibold ${getPriorityColor(task.priority)}`}>
-                            {task.priority}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  ))
-                )}
-              </CardContent>
-            </Card>
-          )
+              })}
+            </CardContent>
+          </Card>
         })}
       </div>
     </div>
