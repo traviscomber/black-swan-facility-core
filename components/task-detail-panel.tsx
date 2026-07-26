@@ -21,6 +21,9 @@ type Task = {
   status: TaskStatus
   due_date?: string | null
   location_name?: string | null
+  location_id?: string | null
+  latitude?: number | null
+  longitude?: number | null
   created_at: string
   operational_area?: OperationalArea | null
   task_category?: string | null
@@ -58,10 +61,10 @@ export function TaskDetailPanel({ task, onUpdate, onClose, onEdit }: { task: Tas
       p_priority: task.priority,
       p_status: status,
       p_due_date: task.due_date ?? null,
-      p_location_id: null,
+      p_location_id: task.location_id ?? null,
       p_location_name: task.location_name ?? null,
-      p_latitude: null,
-      p_longitude: null,
+      p_latitude: task.latitude ?? null,
+      p_longitude: task.longitude ?? null,
       p_operational_area: task.operational_area ?? null,
       p_task_category: task.task_category ?? null,
       p_estimated_minutes: task.estimated_minutes ?? null,
