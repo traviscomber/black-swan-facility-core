@@ -1,5 +1,5 @@
 import Link from "next/link"
-import { ArrowLeft, FileClock, ShieldAlert } from "lucide-react"
+import { ArrowLeft, FileClock, ShieldAlert, TriangleAlert } from "lucide-react"
 import { AppLayout } from "@/components/app-layout"
 import { PageHeader } from "@/components/page-header"
 import { Badge } from "@/components/ui/badge"
@@ -11,16 +11,20 @@ const sources = [
     table: "approver_audit_log",
     title: "Aprobaciones de compras",
     description: "Acciones ejecutadas por aprobadores sobre solicitudes de compra.",
+    access: "Lectura limitada al aprobador asociado.",
   },
   {
     table: "procurement_audit_log",
     title: "Flujo de abastecimiento",
     description: "Cambios y acciones asociados al proceso de compras y sus entidades.",
+    access: "Lectura para usuarios autenticados; escritura para admin y approver.",
   },
   {
     table: "audit_actions",
     title: "Acciones de hospitalidad",
     description: "Eventos registrados por automatizaciones vinculadas a reservas y leads.",
+    access: "Lectura y escritura permitidas actualmente a cualquier usuario autenticado.",
+    accessWarning: true,
   },
 ] as const
 
@@ -41,7 +45,7 @@ export default async function AdminAuditPage() {
     <AppLayout>
       <PageHeader
         title="Auditoría administrativa"
-        description="Estado verificable de las fuentes de trazabilidad disponibles en producción."
+        description="Estado verificable de las fuentes de trazabilidad y sus controles de acceso en producción."
       />
       <div className="space-y-6 p-4 md:p-8">
         <Link href="/admin" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
@@ -72,11 +76,22 @@ export default async function AdminAuditPage() {
           </Card>
         </div>
 
+        <Card className="border-amber-500/50">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2"><TriangleAlert className="h-5 w-5" />Brecha de permisos pendiente</CardTitle>
+            <CardDescription>Revisión de políticas RLS realizada el 26-07-2026.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-2 text-sm">
+            <p><span className="font-mono">audit_actions</span> permite actualmente seleccionar, insertar, actualizar y eliminar registros a cualquier usuario autenticado.</p>
+            <p className="text-muted-foreground">La ruta administrativa está protegida, pero la política de base de datos es más amplia. Reducirla requiere una migración explícitamente autorizada y una revisión previa de los flujos que escriben eventos.</p>
+          </CardContent>
+        </Card>
+
         <section className="space-y-3">
           <h2 className="text-lg font-semibold">Fuentes configuradas</h2>
           <div className="grid gap-4 lg:grid-cols-3">
             {sourceCounts.map((source) => (
-              <Card key={source.table}>
+              <Card key={source.table} className={source.accessWarning ? "border-amber-500/50" : undefined}>
                 <CardHeader>
                   <CardTitle className="text-base">{source.title}</CardTitle>
                   <CardDescription>{source.description}</CardDescription>
@@ -84,7 +99,8 @@ export default async function AdminAuditPage() {
                 <CardContent className="space-y-3">
                   <p className="text-2xl font-semibold">{source.count.toLocaleString("es-CL")}</p>
                   <p className="font-mono text-xs text-muted-foreground">{source.table}</p>
-                  {source.error ? <p className="text-xs text-destructive">No fue posible consultar esta fuente: {source.error}</p> : <Badge variant="outline">Consulta verificada</Badge>}
+                  <p className="text-xs text-muted-foreground">{source.access}</p>
+                  {source.error ? <p className="text-xs text-destructive">No fue posible consultar esta fuente: {source.error}</p> : <Badge variant={source.accessWarning ? "outline" : "secondary"}>{source.accessWarning ? "Permiso amplio" : "Consulta verificada"}</Badge>}
                 </CardContent>
               </Card>
             ))}
@@ -92,9 +108,7 @@ export default async function AdminAuditPage() {
         </section>
 
         <Card>
-          <CardHeader>
-            <CardTitle>Alcance actual</CardTitle>
-          </CardHeader>
+          <CardHeader><CardTitle>Alcance actual</CardTitle></CardHeader>
           <CardContent className="space-y-2 text-sm text-muted-foreground">
             <p>La vista no expone nombres, correos, teléfonos ni identificadores de usuarios.</p>
             <p>No crea eventos, no modifica permisos y no altera registros operativos.</p>
