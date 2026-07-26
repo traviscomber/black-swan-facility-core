@@ -37,15 +37,14 @@ export interface TimelineGridProps {
   onSelectAll: () => void
   onClearSelection: () => void
 
-  // Drag & Drop — page owns dropTargetBedId state
+  // Move interaction (pointer capture — PR 2)
   draggingEventId: string | null
   dropTargetBedId: string | null
   movingReservationId: string | null
-  onBedDragEnter: (bedId: string) => void
-  onBedDragLeave: () => void
-  onDropOnBed: (bed: Bed) => void
-  onEventDragStart: (event: CalendarEvent, transfer: DataTransfer) => void
-  onEventDragEnd: () => void
+  onEventPointerDown: (event: CalendarEvent, pe: React.PointerEvent<HTMLButtonElement>) => void
+  onEventPointerMove: (event: CalendarEvent, pe: React.PointerEvent<HTMLButtonElement>) => void
+  onEventPointerUp: (event: CalendarEvent, pe: React.PointerEvent<HTMLButtonElement>) => void
+  onEventPointerCancel: () => void
 
   // Resize
   resizeState: ResizeState | null
@@ -92,11 +91,10 @@ export function TimelineGrid({
   draggingEventId,
   dropTargetBedId,
   movingReservationId,
-  onBedDragEnter,
-  onBedDragLeave,
-  onDropOnBed,
-  onEventDragStart,
-  onEventDragEnd,
+  onEventPointerDown,
+  onEventPointerMove,
+  onEventPointerUp,
+  onEventPointerCancel,
   resizeState,
   resizingReservationId,
   confirmingReservationId,
@@ -115,10 +113,8 @@ export function TimelineGrid({
 }: TimelineGridProps) {
   const totalWidth = LABEL_WIDTH + timelineWidth
 
-  // Shared props for every TimelineRow (everything except per-bed fields)
-  const sharedRowProps: Omit<TimelineRowProps,
-    "bed" | "bedEvents" | "onDragOver" | "onDragEnter" | "onDragLeave" | "onDrop"
-  > = {
+  // Shared props forwarded to every TimelineRow (excludes per-bed fields)
+  const sharedRowProps: Omit<TimelineRowProps, "bed" | "bedEvents"> = {
     dates,
     timelineWidth,
     isTouchDevice,
@@ -129,8 +125,10 @@ export function TimelineGrid({
     draggingEventId,
     dropTargetBedId,
     movingReservationId,
-    onEventDragStart,
-    onEventDragEnd,
+    onEventPointerDown,
+    onEventPointerMove,
+    onEventPointerUp,
+    onEventPointerCancel,
     resizeState,
     resizingReservationId,
     confirmingReservationId,
@@ -181,7 +179,9 @@ export function TimelineGrid({
               {dates.map((date) => (
                 <div
                   key={date.toISOString()}
-                  className={`flex flex-col items-center justify-center border-r text-center ${isSameDay(date, new Date()) ? "bg-amber-100" : ""}`}
+                  className={`flex flex-col items-center justify-center border-r text-center ${
+                    isSameDay(date, new Date()) ? "bg-amber-100" : ""
+                  }`}
                   style={{ height: 58 }}
                 >
                   <div className="text-xs text-muted-foreground">{format(date, "EEE")}</div>
@@ -202,16 +202,6 @@ export function TimelineGrid({
                 key={bed.id}
                 bed={bed}
                 bedEvents={eventsByBed.get(bed.id) ?? []}
-                onDragOver={(e) => {
-                  if (!draggingEventId) return
-                  e.preventDefault()
-                  e.dataTransfer.dropEffect = "move"
-                }}
-                onDragEnter={() => draggingEventId && onBedDragEnter(bed.id)}
-                onDragLeave={(e) => {
-                  if (!e.currentTarget.contains(e.relatedTarget as Node | null)) onBedDragLeave()
-                }}
-                onDrop={(e) => { e.preventDefault(); onDropOnBed(bed) }}
                 {...sharedRowProps}
               />
             ))

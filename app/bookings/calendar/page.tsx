@@ -15,6 +15,7 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { type ReservationResizeEdge, useReservationResizeState } from "./use-reservation-resize-state"
 import { useFlipAnimation } from "./use-flip-animation"
+import { useCalendarInteraction } from "./use-calendar-interaction"
 import { TimelineGrid } from "@/components/calendar/timeline-grid"
 
 interface Location { id: string; name: string }
@@ -51,15 +52,18 @@ export default function BookingsCalendarPage() {
   const [selectedReservation, setSelectedReservation] = useState<Reservation | null>(null)
   const [selectedBlock, setSelectedBlock] = useState<RoomBlock | null>(null)
   const [updatingStatus, setUpdatingStatus] = useState<string | null>(null)
-  const [draggingEventId, setDraggingEventId] = useState<string | null>(null)
-  const [dropTargetBedId, setDropTargetBedId] = useState<string | null>(null)
-  const [movingReservationId, setMovingReservationId] = useState<string | null>(null)
   const { resizeState, resizingReservationId, confirmingReservationId, isResizing, beginResize, updatePreview, markConfirming, clearResize } = useReservationResizeState()
   const { captureRect, flipTo } = useFlipAnimation()
   // blockRefs holds a ref to each rendered reservation button, keyed by event_id
   const blockRefs = useRef<Map<string, HTMLButtonElement>>(new Map())
   // pendingFlips: ids that need flipTo called after the next layout paint
   const pendingFlipIds = useRef<string[]>([])
+  // Ref so useCalendarInteraction always reads the latest isBulkMode without
+  // being re-created every time selectedIds changes
+  const isBulkModeRef = useRef(false)
+  // Stable ref to loadData so useCalendarInteraction can call it without
+  // being re-created when loadData's useCallback deps change
+  const loadDataRef = useRef<() => Promise<void>>(async () => { /* populated after loadData is declared */ })
 
   // After every render, flush pending FLIP animations
   useLayoutEffect(() => {
@@ -107,6 +111,30 @@ export default function BookingsCalendarPage() {
     setLoading(false)
   }, [endDate, startDate, supabase])
 
+  // Keep the stable ref current so useCalendarInteraction can always call the latest loadData
+  loadDataRef.current = loadData
+
+  const {
+    draggingEventId,
+    dropTargetBedId,
+    movingReservationId,
+    beginMove,
+    updateMove,
+    commitMove,
+    cancelMove,
+  } = useCalendarInteraction({
+    supabase,
+    events,
+    setEvents,
+    isResizing,
+    confirmingReservationId,
+    isBulkModeRef,
+    captureRect,
+    pendingFlipIds,
+    blockRefs,
+    onMoveComplete: () => loadDataRef.current(),
+  })
+
   useEffect(() => { loadData() }, [loadData])
   useEffect(() => {
     const channel = supabase.channel("bookings-calendar-v6").on("postgres_changes", { event: "*", schema: "public", table: "reservations" }, loadData).on("postgres_changes", { event: "*", schema: "public", table: "room_blocks" }, loadData).on("postgres_changes", { event: "*", schema: "public", table: "beds" }, loadData).on("postgres_changes", { event: "*", schema: "public", table: "rooms" }, loadData).subscribe()
@@ -141,6 +169,7 @@ export default function BookingsCalendarPage() {
   const selectedEvents = useMemo(() => visibleReservationEvents.filter((e) => selectedIds.has(e.event_id)), [visibleReservationEvents, selectedIds])
   const conflictIds = useMemo(() => new Set(bulkConflicts.map((c) => c.reservation_id)), [bulkConflicts])
   const isBulkMode = selectedIds.size > 0
+  isBulkModeRef.current = isBulkMode
 
   function toggleSelect(eventId: string, shiftKey: boolean) {
     setSelectedIds((prev) => {
@@ -198,30 +227,7 @@ export default function BookingsCalendarPage() {
     setEvents((current) => current.map((event) => event.event_type === "reservation" && event.event_id === pendingResize.reservationId ? { ...event, starts_on: result.check_in, ends_on: result.check_out } : event))
     toast.success(`Reserva actualizada: ${result.check_in} → ${result.check_out}`); clearResize(); await loadData()
   }
-  function beginReservationDrag(event: CalendarEvent, transfer: DataTransfer) { if (isResizing || confirmingReservationId || isBulkMode) return; transfer.effectAllowed = "move"; transfer.setData("text/plain", event.event_id); setDraggingEventId(event.event_id) }
-  function finishReservationDrag() { setDraggingEventId(null); setDropTargetBedId(null) }
-
-  async function moveReservationToBed(targetBed: Bed) {
-    const draggedEvent = events.find((event) => event.event_id === draggingEventId && event.event_type === "reservation")
-    if (!draggedEvent || draggedEvent.bed_id === targetBed.id || movingReservationId) { finishReservationDrag(); return }
-    setMovingReservationId(draggedEvent.event_id); setError(null)
-    const { data: available, error: availabilityError } = await supabase.rpc("is_booking_inventory_available", { p_bed_id: targetBed.id, p_room_id: targetBed.room.id, p_location_id: targetBed.room.location_id, p_check_in: draggedEvent.starts_on, p_check_out: draggedEvent.ends_on, p_exclude_reservation_id: draggedEvent.event_id })
-    if (availabilityError) { setError(availabilityError.message); toast.error("No fue posible validar la disponibilidad"); setMovingReservationId(null); finishReservationDrag(); return }
-    if (!available) { toast.error("La cama seleccionada no está disponible para esas fechas"); setMovingReservationId(null); finishReservationDrag(); return }
-    const previousEvents = events
-    // FLIP: capture position before optimistic move
-    captureRect(draggedEvent.event_id, blockRefs.current.get(draggedEvent.event_id) ?? null)
-    pendingFlipIds.current.push(draggedEvent.event_id)
-    setEvents((current) => current.map((event) => event.event_id === draggedEvent.event_id && event.event_type === "reservation" ? { ...event, bed_id: targetBed.id, room_id: targetBed.room.id, location_id: targetBed.room.location_id } : event))
-    const { error: updateError } = await supabase.from("reservations").update({ bed_id: targetBed.id, room_id: targetBed.room.id, location_id: targetBed.room.location_id, booking_type: "BED" }).eq("id", draggedEvent.event_id)
-    if (updateError) {
-      // FLIP: capture rollback position and animate back to original
-      captureRect(draggedEvent.event_id, blockRefs.current.get(draggedEvent.event_id) ?? null)
-      pendingFlipIds.current.push(draggedEvent.event_id)
-      setEvents(previousEvents); setError(updateError.message); toast.error("El movimiento fue rechazado y se restauró la reserva")
-    } else { toast.success(`Reserva movida a Hab. ${targetBed.room.room_number} · ${targetBed.bed_number}`); await loadData() }
-    setMovingReservationId(null); finishReservationDrag()
-  }
+  // Move is now handled by useCalendarInteraction (beginMove / updateMove / commitMove)
 
   async function openReservation(event: CalendarEvent) { setError(null); const { data, error: detailError } = await supabase.from("reservations").select("id, bed_id, guest_name, guest_email, guest_phone, check_in, check_out, status, num_guests, total_amount, special_requests").eq("id", event.event_id).single(); if (detailError) { setError(detailError.message); return }; setSelectedReservation(data as Reservation) }
   async function openBlock(event: CalendarEvent) { setError(null); const { data, error: detailError } = await supabase.from("room_blocks").select("id, room_id, start_date, end_date, block_type, reason, notes, status").eq("id", event.event_id).single(); if (detailError) { setError(detailError.message); return }; setSelectedBlock(data as RoomBlock) }
@@ -376,11 +382,10 @@ export default function BookingsCalendarPage() {
         draggingEventId={draggingEventId}
         dropTargetBedId={dropTargetBedId}
         movingReservationId={movingReservationId}
-        onBedDragEnter={(bedId) => setDropTargetBedId(bedId)}
-        onBedDragLeave={() => setDropTargetBedId(null)}
-        onDropOnBed={(bed) => void moveReservationToBed(bed)}
-        onEventDragStart={beginReservationDrag}
-        onEventDragEnd={finishReservationDrag}
+        onEventPointerDown={(event, pe) => beginMove(event, pe)}
+        onEventPointerMove={(event, pe) => updateMove(pe)}
+        onEventPointerUp={(event, pe) => void commitMove(pe, visibleBeds)}
+        onEventPointerCancel={cancelMove}
         resizeState={resizeState}
         resizingReservationId={resizingReservationId}
         confirmingReservationId={confirmingReservationId}

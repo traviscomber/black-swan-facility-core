@@ -104,16 +104,14 @@ export interface TimelineRowProps {
   isBulkMode: boolean
   onToggleSelect: (eventId: string, shiftKey: boolean) => void
 
-  // Drag & Drop (HTML DnD — will be replaced in PR 2)
+  // Move interaction (pointer capture — replaces HTML DnD from PR 2)
   draggingEventId: string | null
   dropTargetBedId: string | null
   movingReservationId: string | null
-  onDragOver: (event: React.DragEvent<HTMLDivElement>) => void
-  onDragEnter: () => void
-  onDragLeave: (event: React.DragEvent<HTMLDivElement>) => void
-  onDrop: (event: React.DragEvent<HTMLDivElement>) => void
-  onEventDragStart: (event: CalendarEvent, transfer: DataTransfer) => void
-  onEventDragEnd: () => void
+  onEventPointerDown: (event: CalendarEvent, pointerEvent: React.PointerEvent<HTMLButtonElement>) => void
+  onEventPointerMove: (event: CalendarEvent, pointerEvent: React.PointerEvent<HTMLButtonElement>) => void
+  onEventPointerUp: (event: CalendarEvent, pointerEvent: React.PointerEvent<HTMLButtonElement>) => void
+  onEventPointerCancel: () => void
 
   // Resize
   resizeState: ResizeState | null
@@ -157,12 +155,10 @@ export function TimelineRow({
   draggingEventId,
   dropTargetBedId,
   movingReservationId,
-  onDragOver,
-  onDragEnter,
-  onDragLeave,
-  onDrop,
-  onEventDragStart,
-  onEventDragEnd,
+  onEventPointerDown,
+  onEventPointerMove,
+  onEventPointerUp,
+  onEventPointerCancel,
   resizeState,
   resizingReservationId,
   confirmingReservationId,
@@ -185,10 +181,7 @@ export function TimelineRow({
     <div
       className={`flex border-b transition ${isDropTarget ? "bg-emerald-500/10 ring-1 ring-inset ring-emerald-500" : "hover:bg-muted/20"}`}
       style={{ height: ROW_HEIGHT }}
-      onDragOver={onDragOver}
-      onDragEnter={onDragEnter}
-      onDragLeave={onDragLeave}
-      onDrop={onDrop}
+      data-bed-id={bed.id}
     >
       {/* Label */}
       <div
@@ -267,9 +260,20 @@ export function TimelineRow({
               <button
                 type="button"
                 ref={(el) => blockRefCallback(event.event_id, el)}
-                draggable={!isBlock && !movingReservationId && !isResizing && !confirmingReservationId && !isBulkMode}
-                onDragStart={(e) => !isBlock && onEventDragStart(event, e.dataTransfer)}
-                onDragEnd={onEventDragEnd}
+                onPointerDown={(e) => {
+                  if (!isBlock && !movingReservationId && !isResizing && !confirmingReservationId && !isBulkMode) {
+                    onEventPointerDown(event, e)
+                  }
+                }}
+                onPointerMove={(e) => {
+                  if (!isBlock) onEventPointerMove(event, e)
+                }}
+                onPointerUp={(e) => {
+                  if (!isBlock) onEventPointerUp(event, e)
+                }}
+                onPointerCancel={() => {
+                  if (!isBlock) onEventPointerCancel()
+                }}
                 onClick={(e) => {
                   e.stopPropagation()
                   if (draggingEventId || isResizing || confirmingReservationId) return
