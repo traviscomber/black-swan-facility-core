@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { AlertTriangle, Box, Building2, FileClock, List, ShieldCheck, UserCog, Users, Wrench } from "lucide-react"
+import { AlertTriangle, Box, Building2, Check, FileClock, List, ShieldCheck, UserCog, Users, Wrench, X } from "lucide-react"
 import { useLanguage } from "@/lib/hooks/use-language"
 import { PageHeader } from "@/components/page-header"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -56,15 +56,25 @@ const copy = {
     noPolicies: "sin políticas",
     secureStatus: "Todas las tablas públicas tienen RLS habilitado y al menos una política activa.",
     access: "Acceso interno",
-    accessDescription: "Roles almacenados en app_metadata y usados para controlar funciones administrativas y de aprobación.",
+    accessDescription: "Roles almacenados en app_metadata y aplicados por middleware.",
     admins: "Administradores",
     approvers: "Aprobadores",
     totalInternal: "Cuentas internas con rol",
+    permissions: "Matriz de permisos",
+    role: "Rol",
+    operations: "Operación general",
+    procurement: "Compras y aprobaciones",
+    administration: "Administración",
+    adminRole: "Admin",
+    approverRole: "Approver",
+    authenticatedRole: "Autenticado sin rol",
+    requestsOnly: "Solo solicitudes",
     audit: "Trazabilidad administrativa",
     auditDescription: "Registros disponibles en approver_audit_log, procurement_audit_log y audit_actions.",
     auditRecords: "registros de auditoría",
-    auditEmpty: "No hay eventos registrados actualmente. Las acciones futuras deben generar trazabilidad antes de considerar este control operativo.",
+    auditEmpty: "No hay eventos registrados actualmente. La trazabilidad todavía no puede considerarse operativa.",
     auditActive: "Hay eventos registrados en las tablas de auditoría.",
+    viewAudit: "Revisar auditoría",
     noDataChanges: "Esta revisión no modificó registros operativos ni permisos.",
   },
   en: {
@@ -91,18 +101,32 @@ const copy = {
     noPolicies: "without policies",
     secureStatus: "Every public table has RLS enabled and at least one active policy.",
     access: "Internal access",
-    accessDescription: "Roles stored in app_metadata and used to control administrative and approval functions.",
+    accessDescription: "Roles stored in app_metadata and enforced by middleware.",
     admins: "Administrators",
     approvers: "Approvers",
     totalInternal: "Internal accounts with a role",
+    permissions: "Permission matrix",
+    role: "Role",
+    operations: "General operations",
+    procurement: "Procurement and approvals",
+    administration: "Administration",
+    adminRole: "Admin",
+    approverRole: "Approver",
+    authenticatedRole: "Authenticated without role",
+    requestsOnly: "Requests only",
     audit: "Administrative traceability",
     auditDescription: "Records available in approver_audit_log, procurement_audit_log and audit_actions.",
     auditRecords: "audit records",
-    auditEmpty: "No events are currently recorded. Future actions must create traceability before this control can be considered operational.",
+    auditEmpty: "No events are currently recorded. Traceability cannot yet be considered operational.",
     auditActive: "Audit events are present in the audit tables.",
+    viewAudit: "Review audit",
     noDataChanges: "This review did not modify operational records or permissions.",
   },
 } as const
+
+function Permission({ allowed, label }: { allowed: boolean; label?: string }) {
+  return <span className="inline-flex items-center gap-1 text-xs">{allowed ? <Check className="h-3.5 w-3.5" /> : <X className="h-3.5 w-3.5 text-muted-foreground" />}{label}</span>
+}
 
 export function AdminOverview({ counts, controls }: AdminOverviewProps) {
   const { language } = useLanguage()
@@ -129,86 +153,36 @@ export function AdminOverview({ counts, controls }: AdminOverviewProps) {
           <h2 className="mb-4 text-lg font-semibold">{text.overview}</h2>
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
             {metrics.map(([label, value, detail, Icon]) => (
-              <Card key={label}>
-                <CardHeader className="flex flex-row items-center justify-between pb-2">
-                  <CardTitle className="text-sm font-medium">{label}</CardTitle>
-                  <Icon className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-semibold">{value}</div>
-                  {detail && <p className="mt-1 text-xs text-muted-foreground">{detail}</p>}
-                </CardContent>
-              </Card>
+              <Card key={label}><CardHeader className="flex flex-row items-center justify-between pb-2"><CardTitle className="text-sm font-medium">{label}</CardTitle><Icon className="h-4 w-4 text-muted-foreground" /></CardHeader><CardContent><div className="text-2xl font-semibold">{value}</div>{detail && <p className="mt-1 text-xs text-muted-foreground">{detail}</p>}</CardContent></Card>
             ))}
           </div>
         </section>
 
         <div className="grid gap-4 xl:grid-cols-3">
-          <Card className="border-border">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2"><ShieldCheck className="h-5 w-5" />{text.security}</CardTitle>
-              <CardDescription>{text.securityDescription}</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex flex-wrap gap-2">
-                <Badge>{text.verified} {controls.verifiedOn}</Badge>
-                <Badge variant="outline">{controls.publicTables} {text.publicTables}</Badge>
-                <Badge variant="outline">{controls.rlsEnabled} {text.rlsEnabled}</Badge>
-                <Badge variant="outline">{controls.rlsDisabled} {text.rlsDisabled}</Badge>
-                <Badge variant="outline">{controls.tablesWithoutPolicies} {text.noPolicies}</Badge>
-              </div>
-              <p className="text-sm">{text.secureStatus}</p>
-            </CardContent>
-          </Card>
+          <Card className="border-border"><CardHeader><CardTitle className="flex items-center gap-2"><ShieldCheck className="h-5 w-5" />{text.security}</CardTitle><CardDescription>{text.securityDescription}</CardDescription></CardHeader><CardContent className="space-y-4"><div className="flex flex-wrap gap-2"><Badge>{text.verified} {controls.verifiedOn}</Badge><Badge variant="outline">{controls.publicTables} {text.publicTables}</Badge><Badge variant="outline">{controls.rlsEnabled} {text.rlsEnabled}</Badge><Badge variant="outline">{controls.rlsDisabled} {text.rlsDisabled}</Badge><Badge variant="outline">{controls.tablesWithoutPolicies} {text.noPolicies}</Badge></div><p className="text-sm">{text.secureStatus}</p></CardContent></Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2"><UserCog className="h-5 w-5" />{text.access}</CardTitle>
-              <CardDescription>{text.accessDescription}</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="grid grid-cols-2 gap-3">
-                <div className="rounded-md border p-3"><p className="text-xs text-muted-foreground">{text.admins}</p><p className="text-2xl font-semibold">{controls.adminUsers}</p></div>
-                <div className="rounded-md border p-3"><p className="text-xs text-muted-foreground">{text.approvers}</p><p className="text-2xl font-semibold">{controls.approverUsers}</p></div>
-              </div>
-              <p className="text-sm text-muted-foreground">{totalInternalUsers} {text.totalInternal.toLocaleLowerCase()}</p>
-            </CardContent>
-          </Card>
+          <Card><CardHeader><CardTitle className="flex items-center gap-2"><UserCog className="h-5 w-5" />{text.access}</CardTitle><CardDescription>{text.accessDescription}</CardDescription></CardHeader><CardContent className="space-y-3"><div className="grid grid-cols-2 gap-3"><div className="rounded-md border p-3"><p className="text-xs text-muted-foreground">{text.admins}</p><p className="text-2xl font-semibold">{controls.adminUsers}</p></div><div className="rounded-md border p-3"><p className="text-xs text-muted-foreground">{text.approvers}</p><p className="text-2xl font-semibold">{controls.approverUsers}</p></div></div><p className="text-sm text-muted-foreground">{totalInternalUsers} {text.totalInternal.toLocaleLowerCase()}</p></CardContent></Card>
 
-          <Card className={controls.auditRecords === 0 ? "border-amber-500/50" : undefined}>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2"><FileClock className="h-5 w-5" />{text.audit}</CardTitle>
-              <CardDescription>{text.auditDescription}</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="text-2xl font-semibold">{controls.auditRecords}</div>
-              <p className="text-xs text-muted-foreground">{text.auditRecords}</p>
-              <p className="text-sm">{controls.auditRecords === 0 ? text.auditEmpty : text.auditActive}</p>
-            </CardContent>
-          </Card>
+          <Card className={controls.auditRecords === 0 ? "border-amber-500/50" : undefined}><CardHeader><CardTitle className="flex items-center gap-2"><FileClock className="h-5 w-5" />{text.audit}</CardTitle><CardDescription>{text.auditDescription}</CardDescription></CardHeader><CardContent className="space-y-3"><div className="text-2xl font-semibold">{controls.auditRecords}</div><p className="text-xs text-muted-foreground">{text.auditRecords}</p><p className="text-sm">{controls.auditRecords === 0 ? text.auditEmpty : text.auditActive}</p><Link href="/admin/audit" className="inline-flex text-sm font-medium underline-offset-4 hover:underline">{text.viewAudit} →</Link></CardContent></Card>
         </div>
+
+        <Card>
+          <CardHeader><CardTitle>{text.permissions}</CardTitle><CardDescription>{text.accessDescription}</CardDescription></CardHeader>
+          <CardContent className="overflow-x-auto">
+            <table className="w-full min-w-[640px] text-sm">
+              <thead><tr className="border-b text-left"><th className="p-3 font-medium">{text.role}</th><th className="p-3 font-medium">{text.operations}</th><th className="p-3 font-medium">{text.procurement}</th><th className="p-3 font-medium">{text.administration}</th></tr></thead>
+              <tbody>
+                <tr className="border-b"><td className="p-3 font-medium">{text.adminRole}</td><td className="p-3"><Permission allowed /></td><td className="p-3"><Permission allowed /></td><td className="p-3"><Permission allowed /></td></tr>
+                <tr className="border-b"><td className="p-3 font-medium">{text.approverRole}</td><td className="p-3"><Permission allowed /></td><td className="p-3"><Permission allowed /></td><td className="p-3"><Permission allowed={false} /></td></tr>
+                <tr><td className="p-3 font-medium">{text.authenticatedRole}</td><td className="p-3"><Permission allowed /></td><td className="p-3"><Permission allowed label={text.requestsOnly} /></td><td className="p-3"><Permission allowed={false} /></td></tr>
+              </tbody>
+            </table>
+          </CardContent>
+        </Card>
 
         <p className="text-xs text-muted-foreground">{text.noDataChanges}</p>
 
-        <section>
-          <h2 className="mb-4 text-lg font-semibold">{text.catalogs}</h2>
-          <div className="grid gap-4 md:grid-cols-3">
-            {catalogs.map(([label, value, href, Icon]) => (
-              <Link key={href} href={href}>
-                <Card className="h-full transition-colors hover:border-foreground/30">
-                  <CardHeader className="flex flex-row items-center justify-between pb-2">
-                    <CardTitle className="text-sm font-medium">{label}</CardTitle>
-                    <Icon className="h-4 w-4 text-muted-foreground" />
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-semibold">{value}</div>
-                    <p className="mt-2 text-sm text-muted-foreground">{text.manage} →</p>
-                  </CardContent>
-                </Card>
-              </Link>
-            ))}
-          </div>
-        </section>
+        <section><h2 className="mb-4 text-lg font-semibold">{text.catalogs}</h2><div className="grid gap-4 md:grid-cols-3">{catalogs.map(([label, value, href, Icon]) => <Link key={href} href={href}><Card className="h-full transition-colors hover:border-foreground/30"><CardHeader className="flex flex-row items-center justify-between pb-2"><CardTitle className="text-sm font-medium">{label}</CardTitle><Icon className="h-4 w-4 text-muted-foreground" /></CardHeader><CardContent><div className="text-2xl font-semibold">{value}</div><p className="mt-2 text-sm text-muted-foreground">{text.manage} →</p></CardContent></Card></Link>)}</div></section>
       </div>
     </>
   )
