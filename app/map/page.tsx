@@ -10,15 +10,52 @@ import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { createClient } from "@/lib/supabase/client"
 
-type InfrastructureItem = { id: string; name: string; category: string | null; description: string | null; latitude: number | null; longitude: number | null; status: string | null }
-type InfrastructureConnection = { id: string; from_infrastructure_id: string; to_infrastructure_id: string; connection_type: string | null }
+type InfrastructureItem = {
+  id: string
+  name: string
+  category: string | null
+  description: string | null
+  latitude: number | null
+  longitude: number | null
+  status: string | null
+}
+
+type InfrastructureConnection = {
+  id: string
+  from_infrastructure_id: string
+  to_infrastructure_id: string
+  connection_type: string | null
+}
+
 type OverlayMetadata = Record<string, unknown> & { display_color?: string }
-type GisOverlay = { id: string; name: string; file_url: string; file_type: string | null; is_visible: boolean | null; opacity: number | string | null; metadata: OverlayMetadata | null }
+
+type GisOverlay = {
+  id: string
+  name: string
+  file_url: string
+  file_type: string | null
+  is_visible: boolean | null
+  opacity: number | string | null
+  metadata: OverlayMetadata | null
+}
+
 type GeoJsonProperties = Record<string, string | number | boolean | null | undefined>
 type GeoJsonFeature = { type: "Feature"; geometry?: { type?: string; coordinates?: unknown }; properties?: GeoJsonProperties | null }
 type GeoJsonFeatureCollection = { type: "FeatureCollection"; features: GeoJsonFeature[] }
-type RuntimeMapLibre = { Map: new (options: Record<string, unknown>) => RuntimeMap; NavigationControl: new (options?: Record<string, unknown>) => unknown; FullscreenControl: new () => unknown; Popup: new (options?: Record<string, unknown>) => RuntimePopup }
-type RuntimePopup = { setLngLat: (coordinates: [number, number]) => RuntimePopup; setHTML: (html: string) => RuntimePopup; addTo: (map: RuntimeMap) => RuntimePopup }
+
+type RuntimeMapLibre = {
+  Map: new (options: Record<string, unknown>) => RuntimeMap
+  NavigationControl: new (options?: Record<string, unknown>) => unknown
+  FullscreenControl: new () => unknown
+  Popup: new (options?: Record<string, unknown>) => RuntimePopup
+}
+
+type RuntimePopup = {
+  setLngLat: (coordinates: [number, number]) => RuntimePopup
+  setHTML: (html: string) => RuntimePopup
+  addTo: (map: RuntimeMap) => RuntimePopup
+}
+
 type RuntimeMap = {
   on: (event: string, layerOrHandler: string | ((event?: RuntimeMapEvent) => void), handler?: (event: RuntimeMapEvent) => void) => void
   addControl: (control: unknown, position?: string) => void
@@ -27,14 +64,12 @@ type RuntimeMap = {
   getLayer: (id: string) => unknown
   setLayoutProperty: (id: string, property: string, value: unknown) => void
   setPaintProperty: (id: string, property: string, value: unknown) => void
-  setFilter: (id: string, filter: unknown) => void
   fitBounds: (bounds: [[number, number], [number, number]], options?: Record<string, unknown>) => void
   flyTo: (options: Record<string, unknown>) => void
   remove: () => void
 }
-type RuntimeMapEvent = { features?: Array<{ geometry?: { coordinates?: [number, number] }; properties?: Record<string, unknown> }> }
 
-type ThemeGroup = { id: string; label: string; pointCategories: string[]; overlayIds: string[] }
+type RuntimeMapEvent = { features?: Array<{ geometry?: { coordinates?: [number, number] }; properties?: Record<string, unknown> }> }
 
 const MAPLIBRE_VERSION = "6.0.0"
 const MAPLIBRE_MODULE = `https://unpkg.com/maplibre-gl@${MAPLIBRE_VERSION}/dist/maplibre-gl.mjs`
@@ -51,7 +86,6 @@ export default function MapPage() {
   const [connections, setConnections] = useState<InfrastructureConnection[]>([])
   const [overlays, setOverlays] = useState<GisOverlay[]>([])
   const [visibleOverlays, setVisibleOverlays] = useState<Set<string>>(new Set())
-  const [visibleCategories, setVisibleCategories] = useState<Set<string>>(new Set())
   const [featureCounts, setFeatureCounts] = useState<Record<string, number>>({})
   const [overlayColors, setOverlayColors] = useState<Record<string, string>>({})
   const [savingColors, setSavingColors] = useState<Set<string>>(new Set())
@@ -64,18 +98,24 @@ export default function MapPage() {
 
   const categories = useMemo(() => Array.from(new Set(infrastructure.map((item) => normalizeCategory(item.category)))).sort(compareCategories), [infrastructure])
   const statuses = useMemo(() => Array.from(new Set(infrastructure.map((item) => item.status ?? "unknown"))).sort(), [infrastructure])
-  const themeGroups = useMemo(() => buildThemeGroups(categories, overlays), [categories, overlays])
   const filteredPoints = useMemo(() => {
     const query = searchTerm.trim().toLocaleLowerCase("es")
-    return infrastructure.filter((item) => {
-      const category = normalizeCategory(item.category)
-      const matchesSearch = !query || [item.name, item.description, categoryLabel(category), statusLabel(item.status ?? "unknown")].some((value) => value?.toLocaleLowerCase("es").includes(query))
-      return matchesSearch && (categoryFilter === "all" || category === categoryFilter) && (statusFilter === "all" || (item.status ?? "unknown") === statusFilter)
-    }).sort((a, b) => a.name.localeCompare(b.name, "es", { numeric: true }))
+    return infrastructure
+      .filter((item) => {
+        const category = normalizeCategory(item.category)
+        const matchesSearch = !query || [item.name, item.description, categoryLabel(category), statusLabel(item.status ?? "unknown")].some((value) => value?.toLocaleLowerCase("es").includes(query))
+        return matchesSearch && (categoryFilter === "all" || category === categoryFilter) && (statusFilter === "all" || (item.status ?? "unknown") === statusFilter)
+      })
+      .sort((a, b) => a.name.localeCompare(b.name, "es", { numeric: true }))
   }, [infrastructure, searchTerm, categoryFilter, statusFilter])
   const groupedPoints = useMemo(() => {
     const groups = new Map<string, InfrastructureItem[]>()
-    filteredPoints.forEach((point) => groups.set(normalizeCategory(point.category), [...(groups.get(normalizeCategory(point.category)) ?? []), point]))
+    filteredPoints.forEach((point) => {
+      const category = normalizeCategory(point.category)
+      const existing = groups.get(category) ?? []
+      existing.push(point)
+      groups.set(category, existing)
+    })
     return Array.from(groups.entries()).sort(([a], [b]) => compareCategories(a, b))
   }, [filteredPoints])
 
@@ -109,7 +149,6 @@ export default function MapPage() {
         setInfrastructure(infrastructureRows)
         setConnections(connectionRows)
         setOverlays(overlayRows)
-        setVisibleCategories(new Set(infrastructureRows.map((item) => normalizeCategory(item.category))))
         setVisibleOverlays(new Set(overlayRows.filter((layer) => layer.is_visible !== false).map((layer) => layer.id)))
 
         const dynamicImport = new Function("moduleUrl", "return import(moduleUrl)") as (moduleUrl: string) => Promise<RuntimeMapLibre>
@@ -124,14 +163,22 @@ export default function MapPage() {
           pitch: 0,
           maxZoom: 19,
           attributionControl: true,
-          style: { version: 8, sources: { satellite: { type: "raster", tiles: ["https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"], tileSize: 256, maxzoom: 19, attribution: "Imagery © Esri and contributors" } }, layers: [{ id: "satellite", type: "raster", source: "satellite" }] },
+          style: {
+            version: 8,
+            sources: { satellite: { type: "raster", tiles: ["https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"], tileSize: 256, maxzoom: 19, attribution: "Imagery © Esri and contributors" } },
+            layers: [{ id: "satellite", type: "raster", source: "satellite" }],
+          },
         })
         mapRef.current = map
         map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), "top-right")
         map.addControl(new maplibregl.FullscreenControl(), "top-right")
 
         map.on("load", async () => {
-          const pointFeatures = infrastructureRows.filter(hasCoordinates).map((item) => ({ type: "Feature", geometry: { type: "Point", coordinates: [Number(item.longitude), Number(item.latitude)] }, properties: { id: item.id, name: item.name, category: normalizeCategory(item.category), status: item.status ?? "Sin estado" } }))
+          const pointFeatures = infrastructureRows.filter(hasCoordinates).map((item) => ({
+            type: "Feature",
+            geometry: { type: "Point", coordinates: [Number(item.longitude), Number(item.latitude)] },
+            properties: { id: item.id, name: item.name, category: normalizeCategory(item.category), status: item.status ?? "Sin estado" },
+          }))
           map.addSource("infrastructure", { type: "geojson", data: { type: "FeatureCollection", features: pointFeatures } })
           map.addLayer({ id: "infrastructure-points", type: "circle", source: "infrastructure", paint: { "circle-radius": ["interpolate", ["linear"], ["zoom"], 10, 4, 16, 9], "circle-color": "#0f766e", "circle-stroke-color": "#ffffff", "circle-stroke-width": 1.5, "circle-opacity": 0.95 } })
 
@@ -163,7 +210,9 @@ export default function MapPage() {
               if (cancelled) return
               setFeatureCounts((current) => ({ ...current, [overlay.id]: geojson.features.length }))
               map.addSource(`overlay-${overlay.id}`, { type: "geojson", data: geojson })
-              const displayColor = (validHexColor(overlay.metadata?.display_color) ? overlay.metadata.display_color : null) ?? findNativeColor(geojson) ?? FALLBACK_COLORS[index % FALLBACK_COLORS.length]
+              const fallbackColor = FALLBACK_COLORS[index % FALLBACK_COLORS.length]
+              const savedColor = validHexColor(overlay.metadata?.display_color) ? overlay.metadata.display_color : null
+              const displayColor = savedColor ?? findNativeColor(geojson) ?? fallbackColor
               setOverlayColors((current) => ({ ...current, [overlay.id]: displayColor }))
               const opacity = Math.max(0.15, Math.min(1, Number(overlay.opacity ?? 0.75)))
               map.addLayer({ id: `overlay-fill-${overlay.id}`, type: "fill", source: `overlay-${overlay.id}`, filter: ["==", ["geometry-type"], "Polygon"], paint: { "fill-color": displayColor, "fill-opacity": ["*", opacity, ["coalesce", ["to-number", ["get", "fill-opacity"]], 0.32]] } })
@@ -195,31 +244,6 @@ export default function MapPage() {
     const coordinates: [number, number] = [Number(point.longitude), Number(point.latitude)]
     mapRef.current.flyTo({ center: coordinates, zoom: 17, speed: 1.2, essential: true })
     maplibreRef.current && new maplibreRef.current.Popup({ closeButton: true, maxWidth: "320px" }).setLngLat(coordinates).setHTML(pointPopupHtml({ name: point.name, category: normalizeCategory(point.category), status: point.status ?? "Sin estado" })).addTo(mapRef.current)
-  }
-
-  const toggleTheme = (group: ThemeGroup) => {
-    const allVisible = group.pointCategories.every((category) => visibleCategories.has(category)) && group.overlayIds.every((id) => visibleOverlays.has(id))
-    const nextVisible = !allVisible
-    setVisibleCategories((current) => {
-      const next = new Set(current)
-      group.pointCategories.forEach((category) => nextVisible ? next.add(category) : next.delete(category))
-      if (mapRef.current?.getLayer("infrastructure-points")) {
-        const visible = Array.from(next)
-        mapRef.current.setFilter("infrastructure-points", visible.length ? ["in", ["get", "category"], ["literal", visible]] : ["==", ["get", "category"], "__none__"])
-      }
-      return next
-    })
-    setVisibleOverlays((current) => {
-      const next = new Set(current)
-      group.overlayIds.forEach((id) => {
-        nextVisible ? next.add(id) : next.delete(id)
-        for (const layerType of ["fill", "line", "point"]) {
-          const layerId = `overlay-${layerType}-${id}`
-          if (mapRef.current?.getLayer(layerId)) mapRef.current.setLayoutProperty(layerId, "visibility", nextVisible ? "visible" : "none")
-        }
-      })
-      return next
-    })
   }
 
   const toggleOverlay = (id: string) => {
@@ -260,32 +284,30 @@ export default function MapPage() {
         </div>
         {error && <Card className="border-destructive/50"><CardContent className="p-4 text-sm text-destructive">{error}</CardContent></Card>}
 
-        <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_390px]">
+        <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_380px]">
           <Card className="overflow-hidden"><CardContent className="relative p-0"><div ref={mapContainerRef} className="h-[72vh] min-h-[560px] w-full bg-muted" />{loading && <div className="absolute inset-0 flex items-center justify-center gap-2 bg-background/70 text-sm text-muted-foreground"><Loader2 className="h-5 w-5 animate-spin" />Cargando mapa operativo…</div>}</CardContent></Card>
 
           <div className="space-y-5">
             <Card>
-              <CardHeader><CardTitle className="text-base">Capas por tema</CardTitle><CardDescription>Cada tema reúne sus puntos GIS y los KMZ relacionados. Puede activar el grupo completo o ajustar cada KMZ.</CardDescription></CardHeader>
-              <CardContent className="space-y-4">
-                {themeGroups.map((group) => {
-                  const groupVisible = group.pointCategories.every((category) => visibleCategories.has(category)) && group.overlayIds.every((id) => visibleOverlays.has(id))
-                  const groupOverlays = overlays.filter((overlay) => group.overlayIds.includes(overlay.id))
-                  const pointCount = infrastructure.filter((point) => group.pointCategories.includes(normalizeCategory(point.category))).length
-                  return <section key={group.id} className="space-y-3 rounded-md border p-3">
-                    <button type="button" onClick={() => toggleTheme(group)} className="flex w-full items-center justify-between gap-3 text-left"><div><p className="text-sm font-medium">{group.label}</p><p className="text-xs text-muted-foreground">{pointCount} puntos · {groupOverlays.length} KMZ</p></div><Badge variant={groupVisible ? "default" : "outline"}>{groupVisible ? "Visible" : "Oculto"}</Badge></button>
-                    {groupOverlays.map((overlay) => { const visible = visibleOverlays.has(overlay.id); const saving = savingColors.has(overlay.id); return <div key={overlay.id} className="space-y-2 border-t pt-3"><div className="flex items-center justify-between gap-3"><button type="button" onClick={() => toggleOverlay(overlay.id)} className="min-w-0 text-left"><p className="truncate text-sm">{overlay.name}</p><p className="text-xs text-muted-foreground">{featureCounts[overlay.id] == null ? "Procesando…" : `${featureCounts[overlay.id].toLocaleString("es-CL")} elementos`}</p></button><Badge variant={visible ? "default" : "outline"}>{visible ? "Visible" : "Oculta"}</Badge></div><div className="flex items-center justify-between gap-3"><span className="text-xs text-muted-foreground">Color KMZ</span><div className="flex items-center gap-2">{saving && <Loader2 className="h-3.5 w-3.5 animate-spin" />}<input type="color" value={overlayColors[overlay.id] ?? "#64748b"} onChange={(event) => void changeOverlayColor(overlay, event.target.value)} className="h-8 w-12 cursor-pointer rounded border bg-transparent p-1" /><span className="w-16 font-mono text-xs text-muted-foreground">{overlayColors[overlay.id] ?? "#64748b"}</span></div></div></div> })}
-                  </section>
-                })}
+              <CardHeader><CardTitle className="text-base">Puntos GIS por grupo</CardTitle><CardDescription>Los puntos están ordenados por categoría operativa. Seleccione uno para centrar el mapa.</CardDescription></CardHeader>
+              <CardContent className="space-y-3">
+                <div className="relative"><Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" /><input value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} placeholder="Buscar por nombre o descripción" className="h-9 w-full rounded-md border bg-background pl-9 pr-3 text-sm" /></div>
+                <div className="grid grid-cols-2 gap-2">
+                  <select value={categoryFilter} onChange={(event) => setCategoryFilter(event.target.value)} className="h-9 rounded-md border bg-background px-2 text-sm"><option value="all">Todos los grupos</option>{categories.map((category) => <option key={category} value={category}>{categoryLabel(category)}</option>)}</select>
+                  <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)} className="h-9 rounded-md border bg-background px-2 text-sm"><option value="all">Todos los estados</option>{statuses.map((status) => <option key={status} value={status}>{statusLabel(status)}</option>)}</select>
+                </div>
+                <p className="text-xs text-muted-foreground">{filteredPoints.length.toLocaleString("es-CL")} de {infrastructure.length.toLocaleString("es-CL")} puntos</p>
+                <div className="max-h-[390px] space-y-4 overflow-y-auto pr-1">
+                  {groupedPoints.map(([category, points]) => <section key={category} className="space-y-2"><div className="sticky top-0 z-10 flex items-center justify-between border-b bg-card py-1.5"><p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{categoryLabel(category)}</p><Badge variant="outline">{points.length}</Badge></div>{points.map((point) => <button key={point.id} type="button" onClick={() => focusPoint(point)} className={`flex w-full items-start justify-between gap-3 rounded-md border p-3 text-left transition-colors hover:bg-muted/50 ${selectedPointId === point.id ? "border-primary bg-muted/60" : ""}`}><div className="min-w-0"><p className="truncate text-sm font-medium">{point.name}</p><p className="mt-1 text-xs text-muted-foreground">{statusLabel(point.status ?? "unknown")}</p></div><LocateFixed className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" /></button>)}</section>)}
+                  {filteredPoints.length === 0 && <p className="py-6 text-center text-sm text-muted-foreground">No hay puntos para estos filtros.</p>}
+                </div>
               </CardContent>
             </Card>
 
             <Card>
-              <CardHeader><CardTitle className="text-base">Lista de puntos GIS</CardTitle><CardDescription>Busque un punto y selecciónelo para centrar el mapa.</CardDescription></CardHeader>
+              <CardHeader><CardTitle className="text-base">Capas KMZ</CardTitle><CardDescription>Cambie el color y active u oculte cada capa.</CardDescription></CardHeader>
               <CardContent className="space-y-3">
-                <div className="relative"><Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" /><input value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} placeholder="Buscar por nombre o descripción" className="h-9 w-full rounded-md border bg-background pl-9 pr-3 text-sm" /></div>
-                <div className="grid grid-cols-2 gap-2"><select value={categoryFilter} onChange={(event) => setCategoryFilter(event.target.value)} className="h-9 rounded-md border bg-background px-2 text-sm"><option value="all">Todos los grupos</option>{categories.map((category) => <option key={category} value={category}>{categoryLabel(category)}</option>)}</select><select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)} className="h-9 rounded-md border bg-background px-2 text-sm"><option value="all">Todos los estados</option>{statuses.map((status) => <option key={status} value={status}>{statusLabel(status)}</option>)}</select></div>
-                <p className="text-xs text-muted-foreground">{filteredPoints.length.toLocaleString("es-CL")} de {infrastructure.length.toLocaleString("es-CL")} puntos</p>
-                <div className="max-h-[390px] space-y-4 overflow-y-auto pr-1">{groupedPoints.map(([category, points]) => <section key={category} className="space-y-2"><div className="sticky top-0 z-10 flex items-center justify-between border-b bg-card py-1.5"><p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{categoryLabel(category)}</p><Badge variant="outline">{points.length}</Badge></div>{points.map((point) => <button key={point.id} type="button" onClick={() => focusPoint(point)} className={`flex w-full items-start justify-between gap-3 rounded-md border p-3 text-left transition-colors hover:bg-muted/50 ${selectedPointId === point.id ? "border-primary bg-muted/60" : ""}`}><div className="min-w-0"><p className="truncate text-sm font-medium">{point.name}</p><p className="mt-1 text-xs text-muted-foreground">{statusLabel(point.status ?? "unknown")}</p></div><LocateFixed className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" /></button>)}</section>)}{filteredPoints.length === 0 && <p className="py-6 text-center text-sm text-muted-foreground">No hay puntos para estos filtros.</p>}</div>
+                {overlays.map((overlay) => { const visible = visibleOverlays.has(overlay.id); const saving = savingColors.has(overlay.id); return <div key={overlay.id} className="space-y-3 rounded-md border p-3"><div className="flex items-center justify-between gap-3"><div className="min-w-0"><p className="truncate text-sm font-medium">{overlay.name}</p><p className="text-xs text-muted-foreground">{featureCounts[overlay.id] == null ? "Procesando…" : `${featureCounts[overlay.id].toLocaleString("es-CL")} elementos`}</p></div><button type="button" onClick={() => toggleOverlay(overlay.id)}><Badge variant={visible ? "default" : "outline"}>{visible ? "Visible" : "Oculta"}</Badge></button></div><div className="flex items-center justify-between gap-3"><span className="text-xs text-muted-foreground">Color de capa</span><div className="flex items-center gap-2">{saving && <Loader2 className="h-3.5 w-3.5 animate-spin" />}<input type="color" value={overlayColors[overlay.id] ?? "#64748b"} onChange={(event) => void changeOverlayColor(overlay, event.target.value)} className="h-8 w-12 cursor-pointer rounded border bg-transparent p-1" /><span className="w-16 font-mono text-xs text-muted-foreground">{overlayColors[overlay.id] ?? "#64748b"}</span></div></div></div> })}
               </CardContent>
             </Card>
           </div>
@@ -295,25 +317,9 @@ export default function MapPage() {
   )
 }
 
-function buildThemeGroups(categories: string[], overlays: GisOverlay[]): ThemeGroup[] {
-  const waterOverlayIds = overlays.filter((overlay) => normalizeText(overlay.name).includes("agua")).map((overlay) => overlay.id)
-  const territoryOverlayIds = overlays.filter((overlay) => !waterOverlayIds.includes(overlay.id)).map((overlay) => overlay.id)
-  const groups: ThemeGroup[] = [
-    { id: "water", label: "Agua", pointCategories: categories.filter((category) => category === "water"), overlayIds: waterOverlayIds },
-    { id: "internet", label: "Internet", pointCategories: categories.filter((category) => category === "internet"), overlayIds: [] },
-    { id: "electricity", label: "Electricidad", pointCategories: categories.filter((category) => category === "electricity"), overlayIds: [] },
-    { id: "ports", label: "Puertos", pointCategories: categories.filter((category) => category === "ports"), overlayIds: [] },
-    { id: "cattle", label: "Ganadería", pointCategories: categories.filter((category) => category === "cattle"), overlayIds: [] },
-    { id: "food_storage", label: "Almacenamiento de alimentos", pointCategories: categories.filter((category) => category === "food_storage"), overlayIds: [] },
-    { id: "territory", label: "Territorio y planificación", pointCategories: categories.filter((category) => category === "uncategorized"), overlayIds: territoryOverlayIds },
-  ]
-  return groups.filter((group) => group.pointCategories.length > 0 || group.overlayIds.length > 0)
-}
-
 function Metric({ icon: Icon, label, value }: { icon: typeof MapPin; label: string; value: string }) { return <Card><CardContent className="flex items-center gap-3 p-4"><Icon className="h-5 w-5 text-muted-foreground" /><div><p className="text-xs text-muted-foreground">{label}</p><p className="font-semibold">{value}</p></div></CardContent></Card> }
 function hasCoordinates(item: InfrastructureItem) { return Number.isFinite(item.latitude) && Number.isFinite(item.longitude) }
 function normalizeCategory(value: string | null) { return (value ?? "uncategorized").trim().toLocaleLowerCase("en") }
-function normalizeText(value: string) { return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("es") }
 function compareCategories(a: string, b: string) { const aIndex = CATEGORY_ORDER.indexOf(a); const bIndex = CATEGORY_ORDER.indexOf(b); if (aIndex === -1 && bIndex === -1) return a.localeCompare(b, "es"); if (aIndex === -1) return 1; if (bIndex === -1) return -1; return aIndex - bIndex }
 function categoryLabel(value: string) { return ({ internet: "Internet", water: "Agua", electricity: "Electricidad", ports: "Puertos", cattle: "Ganadería", food_storage: "Almacenamiento de alimentos", uncategorized: "Sin categoría" } as Record<string, string>)[value] ?? value }
 function statusLabel(value: string) { return ({ active: "Activo", operational: "Operativo", planned: "Planificado", unknown: "Sin estado" } as Record<string, string>)[value] ?? value }
