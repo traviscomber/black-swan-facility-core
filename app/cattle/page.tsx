@@ -1,308 +1,183 @@
 "use client"
 
 import Link from "next/link"
-import { useCallback, useEffect, useMemo, useState } from "react"
-import { AlertTriangle, Brain, Edit2, Plus, RefreshCw, Trash2, X } from "lucide-react"
+import { useEffect, useMemo, useState } from "react"
+import { Activity, AlertTriangle, Beef, CalendarDays, MapPinned, RefreshCw, Stethoscope } from "lucide-react"
 import { AppLayout } from "@/components/app-layout"
 import { PageHeader } from "@/components/page-header"
-import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { createBrowserClient } from "@/lib/supabase/client"
 
-interface CattleArea {
+type Animal = {
   id: string
-  name: string
-  description: string | null
-  status: string
-  priority: string
-  specifications: {
-    hectares?: number
-    capacity?: number
-    grass_type?: string
-    breeding_type?: string
-    business_unit?: string
-  } | null
+  animal_id: string
+  name: string | null
+  breed: string | null
+  gender: string | null
+  birth_date: string | null
+  acquisition_date: string | null
+  status: string | null
   notes: string | null
 }
 
-interface CattleAreaFormData {
+type BiometricRecord = {
+  id: string
+  animal_id: string
+  test_date: string
+  bhb: number | null
+  total_protein: number | null
+  calcium: number | null
+  magnesium: number | null
+  clinical_signs: string | null
+  lab_notes: string | null
+}
+
+type CattleArea = {
+  id: string
   name: string
-  description: string
-  status: string
-  priority: string
-  business_unit: string
-  hectares: number
-  capacity: number
-  grass_type: string
-  breeding_type: string
-  notes: string
+  status: string | null
+  specifications: {
+    hectares?: number
+    capacity?: number
+    business_unit?: string
+  } | null
 }
 
-const EMPTY_FORM: CattleAreaFormData = {
-  name: "",
-  description: "",
-  status: "active",
-  priority: "medium",
-  business_unit: "Fattening",
-  hectares: 0,
-  capacity: 0,
-  grass_type: "",
-  breeding_type: "",
-  notes: "",
+const statusLabels: Record<string, string> = {
+  active: "Activo",
+  inactive: "Inactivo",
+  sold: "Vendido",
+  deceased: "Fallecido",
 }
 
-const STATUS_LABELS: Record<string, string> = {
-  active: "Activa",
-  inactive: "Inactiva",
-  planned: "Planificada",
-}
-
-const PRIORITY_LABELS: Record<string, string> = {
-  high: "Alta",
-  medium: "Media",
-  low: "Baja",
-}
-
-const BUSINESS_LABELS: Record<string, string> = {
-  Fattening: "Engorda",
-  Breeding: "Crianza",
+function hasClinicalObservation(record?: BiometricRecord) {
+  const text = `${record?.clinical_signs ?? ""} ${record?.lab_notes ?? ""}`.trim()
+  return Boolean(text && !/normal|sin hallazgos/i.test(text))
 }
 
 export default function CattlePage() {
   const supabase = useMemo(() => createBrowserClient(), [])
+  const [animals, setAnimals] = useState<Animal[]>([])
+  const [biometrics, setBiometrics] = useState<BiometricRecord[]>([])
   const [areas, setAreas] = useState<CattleArea[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [showForm, setShowForm] = useState(false)
-  const [saving, setSaving] = useState(false)
-  const [editingId, setEditingId] = useState<string | null>(null)
-  const [formData, setFormData] = useState<CattleAreaFormData>(EMPTY_FORM)
 
-  const loadCattleAreas = useCallback(async () => {
+  async function loadData() {
     setLoading(true)
     setError(null)
-    const { data, error: loadError } = await supabase
-      .from("infrastructure_plans")
-      .select("id, name, description, status, priority, specifications, notes")
-      .eq("category", "Cattle")
-      .order("name")
 
-    if (loadError) {
-      setError(loadError.message)
-      setAreas([])
-    } else {
-      setAreas((data ?? []) as CattleArea[])
+    const [animalResult, biometricResult, areaResult] = await Promise.all([
+      supabase.from("cattle_animals").select("id, animal_id, name, breed, gender, birth_date, acquisition_date, status, notes").order("animal_id"),
+      supabase.from("cattle_biometric_records").select("id, animal_id, test_date, bhb, total_protein, calcium, magnesium, clinical_signs, lab_notes").order("test_date", { ascending: false }),
+      supabase.from("infrastructure_plans").select("id, name, status, specifications").eq("category", "Cattle").order("name"),
+    ])
+
+    const firstError = animalResult.error ?? biometricResult.error ?? areaResult.error
+    if (firstError) setError(firstError.message)
+    else {
+      setAnimals((animalResult.data ?? []) as Animal[])
+      setBiometrics((biometricResult.data ?? []) as BiometricRecord[])
+      setAreas((areaResult.data ?? []) as CattleArea[])
     }
     setLoading(false)
-  }, [supabase])
+  }
 
-  useEffect(() => {
-    loadCattleAreas()
-  }, [loadCattleAreas])
+  useEffect(() => { void loadData() }, [])
 
+  const latestByAnimal = useMemo(() => {
+    const records = new Map<string, BiometricRecord>()
+    for (const record of biometrics) if (!records.has(record.animal_id)) records.set(record.animal_id, record)
+    return records
+  }, [biometrics])
+
+  const activeAnimals = animals.filter((animal) => animal.status === "active")
+  const observedAnimals = animals.filter((animal) => hasClinicalObservation(latestByAnimal.get(animal.id)))
+  const latestTestDate = biometrics[0]?.test_date ?? null
   const totalHectares = areas.reduce((sum, area) => sum + Number(area.specifications?.hectares ?? 0), 0)
-  const totalCapacity = areas.reduce((sum, area) => sum + Number(area.specifications?.capacity ?? 0), 0)
-  const fatteningAreas = areas.filter((area) => area.specifications?.business_unit === "Fattening")
-  const breedingAreas = areas.filter((area) => area.specifications?.business_unit === "Breeding")
-  const recordsToValidate = areas.filter((area) => /2024|facility|pasture/i.test(`${area.name} ${area.description ?? ""} ${area.notes ?? ""}`)).length
-
-  const openNew = () => {
-    setEditingId(null)
-    setFormData(EMPTY_FORM)
-    setShowForm(true)
-  }
-
-  const openEdit = (area: CattleArea) => {
-    setEditingId(area.id)
-    setFormData({
-      name: area.name,
-      description: area.description ?? "",
-      status: area.status,
-      priority: area.priority,
-      business_unit: area.specifications?.business_unit ?? "Fattening",
-      hectares: Number(area.specifications?.hectares ?? 0),
-      capacity: Number(area.specifications?.capacity ?? 0),
-      grass_type: area.specifications?.grass_type ?? "",
-      breeding_type: area.specifications?.breeding_type ?? "",
-      notes: area.notes ?? "",
-    })
-    setShowForm(true)
-  }
-
-  const saveArea = async () => {
-    if (!formData.name.trim()) {
-      setError("Ingresa el nombre del potrero o área ganadera.")
-      return
-    }
-
-    setSaving(true)
-    setError(null)
-    const payload = {
-      name: formData.name.trim(),
-      description: formData.description.trim(),
-      status: formData.status,
-      priority: formData.priority,
-      category: "Cattle",
-      specifications: {
-        hectares: formData.hectares,
-        capacity: formData.capacity,
-        grass_type: formData.grass_type.trim(),
-        breeding_type: formData.breeding_type.trim(),
-        business_unit: formData.business_unit,
-      },
-      notes: formData.notes.trim(),
-    }
-
-    const result = editingId
-      ? await supabase.from("infrastructure_plans").update(payload).eq("id", editingId)
-      : await supabase.from("infrastructure_plans").insert(payload)
-
-    if (result.error) {
-      setError(result.error.message)
-    } else {
-      setShowForm(false)
-      await loadCattleAreas()
-    }
-    setSaving(false)
-  }
-
-  const deleteArea = async (area: CattleArea) => {
-    if (!window.confirm(`¿Eliminar el registro “${area.name}”? Esta acción no se puede deshacer.`)) return
-    setError(null)
-    const { error: deleteError } = await supabase.from("infrastructure_plans").delete().eq("id", area.id)
-    if (deleteError) setError(deleteError.message)
-    else await loadCattleAreas()
-  }
+  const declaredCapacity = areas.reduce((sum, area) => sum + Number(area.specifications?.capacity ?? 0), 0)
 
   return (
     <AppLayout>
       <PageHeader
-        title="Ganadería · Fundo Corcovado"
-        description="Planificación y control de potreros destinados a crianza y engorda en la operación de Valdivia."
-        actions={
-          <Button onClick={openNew}>
-            <Plus className="mr-2 h-4 w-4" />
-            Registrar área
-          </Button>
-        }
+        title="Ganadería"
+        description="Registro del plantel, seguimiento biométrico y contexto de potreros del Fundo Corcovado."
+        actions={<Button variant="outline" onClick={() => void loadData()} disabled={loading}><RefreshCw className={`mr-2 h-4 w-4 ${loading ? "animate-spin" : ""}`} />Actualizar</Button>}
       />
 
-      <div className="space-y-6 p-4 md:p-8">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Contexto operativo</CardTitle>
-            <CardDescription>
-              Esta sección consolida superficie, capacidad estimada, tipo de explotación, pradera y estado de cada área ganadera del Fundo Corcovado.
-            </CardDescription>
-          </CardHeader>
-        </Card>
-
-        {recordsToValidate > 0 && (
-          <div className="flex gap-3 rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">
-            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-            <div>
-              <p className="font-medium">Hay {recordsToValidate} registros con referencias históricas o nombres genéricos.</p>
-              <p className="mt-1">Los datos se mantienen sin cambios, pero deben validarse en terreno antes de utilizarlos para decisiones de carga animal o inversión.</p>
-            </div>
-          </div>
-        )}
-
-        {error && (
-          <div className="flex items-center justify-between gap-4 rounded-lg border border-destructive/40 bg-destructive/5 p-4 text-sm text-destructive">
-            <span>No fue posible completar la operación: {error}</span>
-            <Button variant="outline" size="sm" onClick={loadCattleAreas}>
-              <RefreshCw className="mr-2 h-4 w-4" />Reintentar
-            </Button>
-          </div>
-        )}
+      <div className="space-y-6 p-4 sm:p-8">
+        {error && <Card className="border-destructive/50"><CardContent className="p-4 text-sm text-destructive">No fue posible cargar Ganadería: {error}</CardContent></Card>}
 
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          <Metric title="Superficie registrada" value={`${totalHectares.toLocaleString("es-CL")} ha`} detail="Suma declarada en los registros" />
-          <Metric title="Capacidad estimada" value={totalCapacity.toLocaleString("es-CL")} detail="Cabezas declaradas, no inventario real" />
-          <Metric title="Áreas de engorda" value={String(fatteningAreas.length)} detail="Potreros clasificados para engorda" />
-          <Metric title="Áreas de crianza" value={String(breedingAreas.length)} detail="Potreros clasificados para crianza" />
+          <Metric icon={Beef} label="Animales registrados" value={animals.length} detail={`${activeAnimals.length} activos`} />
+          <Metric icon={Stethoscope} label="Con observación clínica" value={observedAnimals.length} detail="Según el último registro disponible" warning={observedAnimals.length > 0} />
+          <Metric icon={CalendarDays} label="Último muestreo" value={latestTestDate ? new Date(`${latestTestDate}T12:00:00`).toLocaleDateString("es-CL") : "Sin fecha"} detail={`${biometrics.length} registros biométricos`} />
+          <Metric icon={MapPinned} label="Áreas ganaderas" value={areas.length} detail={`${totalHectares.toLocaleString("es-CL")} ha declaradas`} />
         </div>
 
-        {loading ? (
-          <Card><CardContent className="py-12 text-center text-sm text-muted-foreground">Cargando información ganadera…</CardContent></Card>
-        ) : areas.length === 0 ? (
-          <Card><CardContent className="py-12 text-center"><p className="font-medium">No hay áreas ganaderas registradas.</p><p className="mt-1 text-sm text-muted-foreground">Registra el primer potrero o unidad de manejo del Fundo Corcovado.</p></CardContent></Card>
-        ) : (
-          <div className="space-y-8">
-            <AreaGroup title="Engorda" description="Áreas destinadas al crecimiento y terminación del ganado." areas={fatteningAreas} onEdit={openEdit} onDelete={deleteArea} />
-            <AreaGroup title="Crianza" description="Áreas destinadas a vientres, reproducción y desarrollo de animales jóvenes." areas={breedingAreas} onEdit={openEdit} onDelete={deleteArea} />
-          </div>
+        {observedAnimals.length > 0 && (
+          <Card className="border-amber-300">
+            <CardContent className="flex gap-3 p-4">
+              <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
+              <div>
+                <p className="font-medium">Hay {observedAnimals.length} animales con observaciones en su último registro.</p>
+                <p className="mt-1 text-sm text-muted-foreground">Las notas de laboratorio son antecedentes registrados, no diagnósticos automáticos. Deben revisarse con el responsable veterinario.</p>
+              </div>
+            </CardContent>
+          </Card>
         )}
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Plantel y último control</CardTitle>
+            <CardDescription>Identificación individual y resultado biométrico más reciente disponible.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {loading ? <p className="py-12 text-center text-sm text-muted-foreground">Cargando plantel…</p> : animals.length === 0 ? <p className="py-12 text-center text-sm text-muted-foreground">No hay animales registrados.</p> : (
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[760px] text-sm">
+                  <thead><tr className="border-b text-left text-xs text-muted-foreground"><th className="pb-3 pr-4 font-medium">Animal</th><th className="pb-3 pr-4 font-medium">Estado</th><th className="pb-3 pr-4 font-medium">Control</th><th className="pb-3 pr-4 font-medium">BHB</th><th className="pb-3 pr-4 font-medium">Proteína total</th><th className="pb-3 pr-4 font-medium">Magnesio</th><th className="pb-3 font-medium">Observación</th></tr></thead>
+                  <tbody>{animals.map((animal) => {
+                    const record = latestByAnimal.get(animal.id)
+                    const observed = hasClinicalObservation(record)
+                    return <tr key={animal.id} className="border-b last:border-0">
+                      <td className="py-4 pr-4"><p className="font-medium">{animal.name || `Animal ${animal.animal_id}`}</p><p className="text-xs text-muted-foreground">ID {animal.animal_id} · {animal.breed || "Raza no registrada"}</p></td>
+                      <td className="py-4 pr-4"><Badge variant="outline">{statusLabels[animal.status ?? ""] ?? animal.status ?? "Sin estado"}</Badge></td>
+                      <td className="py-4 pr-4">{record?.test_date ? new Date(`${record.test_date}T12:00:00`).toLocaleDateString("es-CL") : "Sin control"}</td>
+                      <td className="py-4 pr-4">{record?.bhb ?? "—"}</td>
+                      <td className="py-4 pr-4">{record?.total_protein ?? "—"}</td>
+                      <td className="py-4 pr-4">{record?.magnesium ?? "—"}</td>
+                      <td className="max-w-[280px] py-4"><span className={observed ? "font-medium text-amber-800" : "text-muted-foreground"}>{record?.clinical_signs || record?.lab_notes || "Sin observación registrada"}</span></td>
+                    </tr>
+                  })}</tbody>
+                </table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
         <div className="grid gap-4 lg:grid-cols-2">
           <Card>
-            <CardHeader>
-              <div className="flex items-center gap-2"><Brain className="h-5 w-5" /><CardTitle className="text-base">Asistente ganadero</CardTitle></div>
-              <CardDescription>Consulta análisis y recomendaciones basadas en los registros disponibles. Las respuestas deben validarse con el responsable técnico.</CardDescription>
-            </CardHeader>
-            <CardContent><Button asChild variant="outline"><Link href="/cattle/expert-agent">Abrir asistente</Link></Button></CardContent>
-          </Card>
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Planificación económica</CardTitle>
-              <CardDescription>Consulta costos, supuestos y proyecciones de la unidad ganadera del Fundo Corcovado.</CardDescription>
-            </CardHeader>
-            <CardContent className="flex flex-wrap gap-2">
-              <Button asChild variant="outline"><Link href="/cattle/pricing-costs">Costos y precios</Link></Button>
-              <Button asChild variant="outline"><Link href="/cattle/business-plan">Plan de negocio</Link></Button>
+            <CardHeader><CardTitle className="flex items-center gap-2 text-base"><MapPinned className="h-5 w-5" />Potreros y capacidad declarada</CardTitle><CardDescription>Contexto territorial; no equivale al inventario animal actual.</CardDescription></CardHeader>
+            <CardContent className="space-y-3">
+              {areas.map((area) => <div key={area.id} className="flex items-center justify-between gap-4 rounded-md border p-3"><div><p className="font-medium">{area.name}</p><p className="text-xs text-muted-foreground">{Number(area.specifications?.hectares ?? 0).toLocaleString("es-CL")} ha · capacidad {Number(area.specifications?.capacity ?? 0).toLocaleString("es-CL")}</p></div><Badge variant="outline">{area.specifications?.business_unit === "Breeding" ? "Crianza" : area.specifications?.business_unit === "Fattening" ? "Engorda" : "Sin unidad"}</Badge></div>)}
+              {areas.length === 0 && <p className="text-sm text-muted-foreground">No hay áreas ganaderas registradas.</p>}
+              <p className="text-xs text-muted-foreground">Capacidad total declarada: {declaredCapacity.toLocaleString("es-CL")} cabezas. Este valor requiere validación en terreno.</p>
             </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader><CardTitle className="flex items-center gap-2 text-base"><Activity className="h-5 w-5" />Herramientas de análisis</CardTitle><CardDescription>Información complementaria basada en los registros disponibles.</CardDescription></CardHeader>
+            <CardContent className="flex flex-wrap gap-2"><Button asChild variant="outline"><Link href="/cattle/expert-agent">Asistente ganadero</Link></Button><Button asChild variant="outline"><Link href="/cattle/pricing-costs">Costos y precios</Link></Button><Button asChild variant="outline"><Link href="/cattle/business-plan">Plan de negocio</Link></Button></CardContent>
           </Card>
         </div>
       </div>
-
-      {showForm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <Card className="max-h-[92vh] w-full max-w-2xl overflow-y-auto">
-            <CardHeader className="flex flex-row items-center justify-between">
-              <div><CardTitle>{editingId ? "Editar área ganadera" : "Registrar área ganadera"}</CardTitle><CardDescription>Usa nombres reconocibles en terreno y datos verificados.</CardDescription></div>
-              <Button variant="ghost" size="icon" onClick={() => setShowForm(false)} aria-label="Cerrar"><X className="h-5 w-5" /></Button>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <Field label="Nombre del potrero o área" required><input className="field" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} placeholder="Ej.: Potrero Norte" /></Field>
-              <Field label="Descripción"><input className="field" value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} placeholder="Ubicación y función operativa" /></Field>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <Field label="Unidad de manejo"><select className="field" value={formData.business_unit} onChange={(e) => setFormData({ ...formData, business_unit: e.target.value })}><option value="Fattening">Engorda</option><option value="Breeding">Crianza</option></select></Field>
-                <Field label="Estado"><select className="field" value={formData.status} onChange={(e) => setFormData({ ...formData, status: e.target.value })}><option value="active">Activa</option><option value="inactive">Inactiva</option><option value="planned">Planificada</option></select></Field>
-                <Field label="Superficie (ha)"><input className="field" type="number" min="0" step="0.1" value={formData.hectares} onChange={(e) => setFormData({ ...formData, hectares: Number(e.target.value) || 0 })} /></Field>
-                <Field label="Capacidad estimada (cabezas)"><input className="field" type="number" min="0" value={formData.capacity} onChange={(e) => setFormData({ ...formData, capacity: Number(e.target.value) || 0 })} /></Field>
-                <Field label="Tipo de pradera"><input className="field" value={formData.grass_type} onChange={(e) => setFormData({ ...formData, grass_type: e.target.value })} placeholder="Ej.: ballica perenne" /></Field>
-                <Field label="Tipo de ganado o sistema"><input className="field" value={formData.breeding_type} onChange={(e) => setFormData({ ...formData, breeding_type: e.target.value })} placeholder="Ej.: ganado de carne" /></Field>
-                <Field label="Prioridad"><select className="field" value={formData.priority} onChange={(e) => setFormData({ ...formData, priority: e.target.value })}><option value="low">Baja</option><option value="medium">Media</option><option value="high">Alta</option></select></Field>
-              </div>
-              <Field label="Notas"><textarea className="field min-h-24" value={formData.notes} onChange={(e) => setFormData({ ...formData, notes: e.target.value })} placeholder="Agua, drenaje, cercos, rotación o validaciones pendientes" /></Field>
-              <div className="flex justify-end gap-2 border-t pt-4"><Button variant="outline" onClick={() => setShowForm(false)}>Cancelar</Button><Button onClick={saveArea} disabled={saving}>{saving ? "Guardando…" : "Guardar"}</Button></div>
-            </CardContent>
-          </Card>
-        </div>
-      )}
-
-      <style jsx global>{`
-        .field { width: 100%; border: 1px solid hsl(var(--border)); border-radius: 0.375rem; background: hsl(var(--background)); padding: 0.5rem 0.75rem; font-size: 0.875rem; }
-        .field:focus { outline: 2px solid hsl(var(--ring)); outline-offset: 2px; }
-      `}</style>
     </AppLayout>
   )
 }
 
-function Metric({ title, value, detail }: { title: string; value: string; detail: string }) {
-  return <Card><CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">{title}</CardTitle></CardHeader><CardContent><div className="text-2xl font-semibold">{value}</div><p className="mt-1 text-xs text-muted-foreground">{detail}</p></CardContent></Card>
-}
-
-function AreaGroup({ title, description, areas, onEdit, onDelete }: { title: string; description: string; areas: CattleArea[]; onEdit: (area: CattleArea) => void; onDelete: (area: CattleArea) => void }) {
-  if (!areas.length) return null
-  return <section><div className="mb-4"><div className="flex items-center gap-2"><h2 className="text-lg font-semibold">{title}</h2><Badge variant="outline">{areas.length} áreas</Badge></div><p className="mt-1 text-sm text-muted-foreground">{description}</p></div><div className="grid gap-4 lg:grid-cols-2">{areas.map((area) => <Card key={area.id}><CardHeader><div className="flex items-start justify-between gap-3"><div><CardTitle className="text-base">{area.name}</CardTitle><CardDescription className="mt-1">{area.description || "Sin descripción operativa"}</CardDescription></div><Badge variant="outline">{STATUS_LABELS[area.status] ?? area.status}</Badge></div></CardHeader><CardContent className="space-y-4"><div className="grid grid-cols-2 gap-4"><Data label="Superficie" value={`${Number(area.specifications?.hectares ?? 0).toLocaleString("es-CL")} ha`} /><Data label="Capacidad estimada" value={`${Number(area.specifications?.capacity ?? 0).toLocaleString("es-CL")} cabezas`} /></div>{area.specifications?.grass_type && <Data label="Pradera" value={area.specifications.grass_type} />}{area.specifications?.breeding_type && <Data label="Sistema o ganado" value={area.specifications.breeding_type.replaceAll("_", " ")} />}<Data label="Notas" value={area.notes || "Sin notas"} /><Badge variant="outline">Prioridad {PRIORITY_LABELS[area.priority] ?? area.priority}</Badge><div className="flex gap-2 border-t pt-4"><Button variant="outline" size="sm" onClick={() => onEdit(area)}><Edit2 className="mr-2 h-4 w-4" />Editar</Button><Button variant="outline" size="sm" onClick={() => onDelete(area)} className="text-destructive"><Trash2 className="mr-2 h-4 w-4" />Eliminar</Button></div></CardContent></Card>)}</div></section>
-}
-
-function Data({ label, value }: { label: string; value: string }) {
-  return <div><p className="text-xs font-medium text-muted-foreground">{label}</p><p className="mt-1 text-sm capitalize">{value}</p></div>
-}
-
-function Field({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
-  return <label className="block"><span className="mb-1 block text-sm font-medium">{label}{required ? " *" : ""}</span>{children}</label>
+function Metric({ icon: Icon, label, value, detail, warning = false }: { icon: typeof Beef; label: string; value: string | number; detail: string; warning?: boolean }) {
+  return <Card className={warning ? "border-amber-300" : undefined}><CardContent className="flex items-start justify-between gap-4 p-4"><div><p className="text-xs text-muted-foreground">{label}</p><p className="mt-1 text-2xl font-semibold">{typeof value === "number" ? value.toLocaleString("es-CL") : value}</p><p className="mt-1 text-xs text-muted-foreground">{detail}</p></div><Icon className="h-5 w-5 text-muted-foreground" /></CardContent></Card>
 }
