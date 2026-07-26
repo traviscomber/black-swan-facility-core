@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 
 const remainingAreas = [
-  { name: "Últimos accesos amplios", risk: "Alto", examples: "bulk_operations, reviews y volunteers" },
+  { name: "Últimos accesos amplios", risk: "Alto", examples: "reviews y volunteers" },
 ] as const
 
 const phaseOneTables = [
@@ -24,7 +24,7 @@ const phases = [
   { step: "1", title: "RPC y funciones privilegiadas", status: "Completado", detail: "Los 13 SECURITY DEFINER fueron inventariados. Ninguno conserva EXECUTE para anon o PUBLIC; las operaciones masivas además verifican rol admin dentro del RPC." },
   { step: "2", title: "Datos personales y financieros", status: "En curso", detail: "Datos personales, facturación, presupuestos, centros de costo y catálogos financieros ya usan políticas separadas y acceso operativo autenticado." },
   { step: "3", title: "Bitácoras inmutables", status: "Completado", detail: "Nueve bitácoras operativas y administrativas son append-only, sin acceso anónimo ni capacidad de alterar o borrar eventos existentes." },
-  { step: "4", title: "Permisos operativos", status: "En curso", detail: "GIS, operaciones, infraestructura, energía, IA, hospitalidad, finanzas e incidencias ya usan políticas separadas, sin acceso anónimo, sin TRUNCATE y con DELETE exclusivo para admin." },
+  { step: "4", title: "Permisos operativos", status: "En curso", detail: "El módulo bed-booking aplica validación previa de conflictos, ejecución atómica por RPC, historial administrativo y deshacer controlado; la tabla bulk_operations queda solo lectura para admin." },
   { step: "5", title: "Validación integral", status: "Pendiente", detail: "Probar usuarios autenticados, approver, admin y service_role en rutas críticas, desktop y móvil." },
 ] as const
 
@@ -39,34 +39,34 @@ export default function AdminSecurityPage() {
 
         <div className="grid gap-4 md:grid-cols-3">
           <Card className="border-amber-500/50">
-            <CardHeader><CardTitle className="flex items-center gap-2"><ShieldAlert className="h-5 w-5" />3 tablas</CardTitle><CardDescription>Aún conservan política ALL amplia y sin restricción efectiva</CardDescription></CardHeader>
+            <CardHeader><CardTitle className="flex items-center gap-2"><ShieldAlert className="h-5 w-5" />2 tablas</CardTitle><CardDescription>Aún conservan política ALL amplia y sin restricción efectiva</CardDescription></CardHeader>
           </Card>
           <Card className="border-destructive/40">
             <CardHeader><CardTitle className="flex items-center gap-2"><TriangleAlert className="h-5 w-5" />2 tablas</CardTitle><CardDescription>Política ALL amplia dirigida a PUBLIC</CardDescription></CardHeader>
           </Card>
           <Card>
-            <CardHeader><CardTitle className="flex items-center gap-2"><Database className="h-5 w-5" />1 tabla</CardTitle><CardDescription>Política ALL amplia dirigida a authenticated</CardDescription></CardHeader>
+            <CardHeader><CardTitle className="flex items-center gap-2"><Database className="h-5 w-5" />0 tablas</CardTitle><CardDescription>Política ALL amplia dirigida a authenticated</CardDescription></CardHeader>
           </Card>
         </div>
 
         <Card className="border-emerald-500/40">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2"><CheckCircle2 className="h-5 w-5" />Finanzas, incidencias y operaciones protegidas</CardTitle>
-            <CardDescription>Presupuestos, costos, plantillas, clasificaciones de incidencias y resúmenes operativos.</CardDescription>
+            <CardTitle className="flex items-center gap-2"><CheckCircle2 className="h-5 w-5" />Operaciones masivas de reservas protegidas</CardTitle>
+            <CardDescription>Lógica alineada con el módulo bed-booking: prevalidación, ejecución atómica, historial y deshacer.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-2 text-sm">
-            <p>Doce tablas de costos, presupuestos, facturación auxiliar, incidencias y operaciones ya no permiten acceso anónimo ni <span className="font-mono">TRUNCATE</span>.</p>
-            <p>Usuarios autenticados conservan lectura, creación y actualización. La eliminación queda limitada a <span className="font-mono">admin</span>.</p>
-            <p>Se preservaron 26 categorías presupuestarias, 7 divisiones, 4 centros de costo, 10 categorías de incidencia, 8 etiquetas y 20 tipos de incidencia. Costos reales, plantillas, asignaciones y resúmenes operativos permanecen sin registros.</p>
-            <p>La interfaz mantiene terminología chilena y montos financieros interpretados en CLP cuando corresponda.</p>
-            <p className="text-muted-foreground">Las cinco reservas con prefijo TEST_ permanecen intactas.</p>
+            <p><span className="font-mono">bulk_operations</span> ya no permite acceso anónimo, escritura directa ni <span className="font-mono">TRUNCATE</span>. Solo administradores pueden consultar sus 3 registros históricos.</p>
+            <p>Las rutas de ejecución, comprobación de conflictos, historial y deshacer validan sesión, rol administrador, UUID, fechas, estados y correspondencia entre reservas seleccionadas y actualizaciones.</p>
+            <p>La escritura continúa exclusivamente a través de <span className="font-mono">execute_bulk_update</span> y la restauración mediante <span className="font-mono">restore_bulk_operation_state</span>, ambos con validación administrativa interna.</p>
+            <p>La lógica conserva el modelo operacional de BedBooking: detectar conflictos antes de confirmar, ejecutar todo o nada y ofrecer una ventana de reversión trazable.</p>
+            <p className="text-muted-foreground">No se modificaron reservas ni registros históricos. Las cinco reservas con prefijo TEST_ permanecen intactas.</p>
           </CardContent>
         </Card>
 
         <Card className="border-amber-500/50">
           <CardHeader><CardTitle>Interpretación</CardTitle><CardDescription>RLS habilitado sigue sin equivaler a acceso restringido.</CardDescription></CardHeader>
           <CardContent className="space-y-2 text-sm">
-            <p>Las políticas ALL amplias sin restricción efectiva bajaron a 3. Solo quedan <span className="font-mono">bulk_operations</span>, <span className="font-mono">reviews</span> y <span className="font-mono">volunteers</span>.</p>
+            <p>Las políticas ALL amplias sin restricción efectiva bajaron a 2. Solo quedan <span className="font-mono">reviews</span> y <span className="font-mono">volunteers</span>.</p>
             <p className="text-muted-foreground">Estado verificado en pg_policies y privilegios de tabla el 26-07-2026. Las migraciones no modificaron registros operativos.</p>
           </CardContent>
         </Card>
