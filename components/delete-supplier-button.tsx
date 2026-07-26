@@ -21,13 +21,10 @@ export function DeleteSupplierButton({ supplierId, supplierName, onDeleted }: De
     setLoading(true)
     setError(null)
     const supabase = createBrowserClient()
-    const { error: updateError } = await supabase.from("suppliers").update({
-      is_active: false,
-      approval_status: "rejected",
-      approved_at: null,
-      approved_by: null,
-      updated_at: new Date().toISOString(),
-    }).eq("id", supplierId)
+    const { error: updateError } = await supabase.rpc("set_supplier_approval", {
+      supplier_id: supplierId,
+      next_status: "rejected",
+    })
 
     if (updateError) {
       setError(updateError.message)
