@@ -20,6 +20,7 @@ Cerrar brechas críticas de seguridad, permisos, trazabilidad y confiabilidad op
 - [x] Refactorizar facturas con logo Black Swan, CLP, fechas chilenas, impresión A4 y creación desde reservas.
 - [x] Incorporar prevalidación de facturación de solo lectura.
 - [x] Llevar políticas RLS `ALL` amplias sin restricción efectiva a cero.
+- [x] Ampliar tareas operativas para trabajadores y voluntarios en todas las áreas de Black Swan.
 - [ ] Completar cobertura de acciones críticas y permisos por módulo.
 - [ ] Validar flujos completos por rol y dispositivo.
 
@@ -43,17 +44,27 @@ Cerrar brechas críticas de seguridad, permisos, trazabilidad y confiabilidad op
 - Ambas tablas conservan lectura, creación y actualización para usuarios autenticados; la eliminación exige `admin`.
 - Conteo verificado de políticas `ALL` amplias sin restricción efectiva: **0**.
 - No se modificaron filas de producción durante el endurecimiento de `reviews` y `volunteers`.
+- El módulo `/tasks` ahora admite responsables de dos tipos: trabajadores y voluntarios, sin duplicar sistemas de seguimiento.
+- `task_assignments` acepta exactamente un `employee_id` o un `volunteer_id` por asignación y conserva integridad referencial.
+- `tasks` incorpora área operativa, categoría, duración estimada, indicador de manejo animal e instrucciones de seguridad.
+- Se agregaron plantillas para ganadería y animales, hospitalidad, housekeeping, mantenimiento, huerto y viñedo, infraestructura, logística, seguridad y administración.
+- Las tareas de creación y edición usan RPC atómicos con validación interna de sesión y rol `admin` o `approver`, siguiendo el patrón bed-booking de operación todo-o-nada.
+- La UI diferencia trabajadores y voluntarios, muestra área, categoría, duración y advertencias de seguridad, y conserva ubicación al cambiar de estado.
+- Producción mantiene 20 trabajadores, 1 voluntario, 0 tareas y 0 asignaciones. No se crearon tareas ni se modificaron personas durante este bloque.
 
 ## Prioridades
 
-1. Auditar operaciones destructivas restantes en pagos, presupuestos, inventario y compras.
-2. Conectar y verificar registro de acciones críticas reales: anulaciones, pagos, cambios financieros, permisos y borrados.
-3. Completar matriz de permisos para `admin`, `approver` y usuario autenticado en UI, API y Supabase.
-4. Validar por rol los módulos críticos en desktop y móvil.
-5. Validar visualmente impresión/PDF con una factura controlada fuera de producción o con autorización explícita sobre una reserva `TEST_`.
-6. Revisar exposición de datos personales en respuestas API y logs.
-7. Confirmar consistencia Chile: CLP, `es-CL`, zona local, textos tributarios y contexto Valdivia.
-8. Eliminar datos de prueba únicamente con autorización específica.
+1. Probar creación, edición y cambio de estado de tareas con un trabajador y un voluntario mediante datos controlados.
+2. Conectar tareas con hospitalidad, housekeeping, mantenimiento, ganadería e incidencias para crear seguimiento desde cada módulo sin duplicar datos.
+3. Añadir evidencia de ejecución, comentarios y notificaciones WhatsApp a responsables.
+4. Auditar operaciones destructivas restantes en pagos, presupuestos, inventario y compras.
+5. Conectar y verificar registro de acciones críticas reales: anulaciones, pagos, cambios financieros, permisos y borrados.
+6. Completar matriz de permisos para `admin`, `approver` y usuario autenticado en UI, API y Supabase.
+7. Validar por rol los módulos críticos en desktop y móvil.
+8. Validar visualmente impresión/PDF con una factura controlada fuera de producción o con autorización explícita sobre una reserva `TEST_`.
+9. Revisar exposición de datos personales en respuestas API y logs.
+10. Confirmar consistencia Chile: CLP, `es-CL`, zona local, textos tributarios y contexto Valdivia.
+11. Eliminar datos de prueba únicamente con autorización específica.
 
 ## Semana 1 — Contención crítica
 
@@ -96,6 +107,10 @@ Cerrar brechas críticas de seguridad, permisos, trazabilidad y confiabilidad op
 
 - [x] Revisar historiales y volver append-only nueve bitácoras.
 - [x] Retirar acceso anónimo a bitácoras y RPC escritores identificados.
+- [x] Permitir asignación de tareas a trabajadores y voluntarios con creación y edición atómicas.
+- [x] Añadir catálogo operacional de tareas para todas las áreas principales de Fundo Corcovado.
+- [ ] Conectar creación de tareas desde hospitalidad, housekeeping, mantenimiento, ganadería e incidencias.
+- [ ] Añadir evidencia, comentarios y notificaciones de tareas.
 - [ ] Restringir inserción de `approver_audit_log` cuando exista un escritor real identificado.
 - [ ] Registrar borrados masivos, cambios de estado, aprobaciones, permisos, KMZ y modificaciones financieras.
 - [ ] Implementar matriz final de permisos en UI, middleware, API y Supabase.
