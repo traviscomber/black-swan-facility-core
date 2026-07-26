@@ -81,6 +81,12 @@ export default function BookingsCalendarPage() {
   const [undoExpiry, setUndoExpiry] = useState<Date | null>(null)
   const undoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [undoSecondsLeft, setUndoSecondsLeft] = useState(0)
+  const [isTouchDevice, setIsTouchDevice] = useState(false)
+
+  // Detect touch capability on mount
+  useEffect(() => {
+    setIsTouchDevice(() => window.matchMedia("(hover: none)").matches || "ontouchstart" in window)
+  }, [])
 
   const endDate = useMemo(() => addDays(startDate, rangeDays), [startDate, rangeDays])
   const dates = useMemo(() => Array.from({ length: rangeDays }, (_, index) => addDays(startDate, index)), [rangeDays, startDate])
