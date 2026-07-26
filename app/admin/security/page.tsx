@@ -6,7 +6,6 @@ import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 
 const remainingAreas = [
-  { name: "Hospitalidad y configuración", risk: "Alto", examples: "beds, rooms, pricing_rules, extras y booking_settings" },
   { name: "Finanzas y operaciones auxiliares", risk: "Alto", examples: "costos, presupuestos, incidencias, operaciones y resúmenes" },
 ] as const
 
@@ -25,7 +24,7 @@ const phases = [
   { step: "1", title: "RPC y funciones privilegiadas", status: "Completado", detail: "Los 13 SECURITY DEFINER fueron inventariados. Ninguno conserva EXECUTE para anon o PUBLIC; las operaciones masivas además verifican rol admin dentro del RPC." },
   { step: "2", title: "Datos personales y financieros", status: "En curso", detail: "Ocho tablas sensibles ya usan políticas separadas por operación, sin privilegios anon y con eliminación exclusiva para admin." },
   { step: "3", title: "Bitácoras inmutables", status: "Completado", detail: "Nueve bitácoras operativas y administrativas son append-only, sin acceso anónimo ni capacidad de alterar o borrar eventos existentes." },
-  { step: "4", title: "Permisos operativos", status: "En curso", detail: "GIS, operaciones, infraestructura, energía, IA y seis tablas de catálogos y soporte ya usan políticas separadas, sin acceso anónimo, sin TRUNCATE y con DELETE exclusivo para admin." },
+  { step: "4", title: "Permisos operativos", status: "En curso", detail: "GIS, operaciones, infraestructura, energía, IA, catálogos y seis tablas de hospitalidad y configuración ya usan políticas separadas, sin acceso anónimo, sin TRUNCATE y con DELETE exclusivo para admin." },
   { step: "5", title: "Validación integral", status: "Pendiente", detail: "Probar usuarios autenticados, approver, admin y service_role en rutas críticas, desktop y móvil." },
 ] as const
 
@@ -40,25 +39,25 @@ export default function AdminSecurityPage() {
 
         <div className="grid gap-4 md:grid-cols-3">
           <Card className="border-amber-500/50">
-            <CardHeader><CardTitle className="flex items-center gap-2"><ShieldAlert className="h-5 w-5" />21 tablas</CardTitle><CardDescription>Aún conservan política ALL amplia y sin restricción efectiva</CardDescription></CardHeader>
+            <CardHeader><CardTitle className="flex items-center gap-2"><ShieldAlert className="h-5 w-5" />15 tablas</CardTitle><CardDescription>Aún conservan política ALL amplia y sin restricción efectiva</CardDescription></CardHeader>
           </Card>
           <Card className="border-destructive/40">
             <CardHeader><CardTitle className="flex items-center gap-2"><TriangleAlert className="h-5 w-5" />14 tablas</CardTitle><CardDescription>Política ALL amplia dirigida a PUBLIC</CardDescription></CardHeader>
           </Card>
           <Card>
-            <CardHeader><CardTitle className="flex items-center gap-2"><Database className="h-5 w-5" />7 tablas</CardTitle><CardDescription>Política ALL amplia dirigida a authenticated</CardDescription></CardHeader>
+            <CardHeader><CardTitle className="flex items-center gap-2"><Database className="h-5 w-5" />1 tabla</CardTitle><CardDescription>Política ALL amplia dirigida a authenticated</CardDescription></CardHeader>
           </Card>
         </div>
 
         <Card className="border-emerald-500/40">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2"><CheckCircle2 className="h-5 w-5" />Catálogos y soporte protegidos</CardTitle>
-            <CardDescription>Activos, multimedia, ubicaciones, cocinas, servicios y equipamiento de viñedo.</CardDescription>
+            <CardTitle className="flex items-center gap-2"><CheckCircle2 className="h-5 w-5" />Hospitalidad y configuración protegidas</CardTitle>
+            <CardDescription>Camas, habitaciones, ajustes de reserva, tarifas y extras.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-2 text-sm">
-            <p><span className="font-mono">asset_categories</span>, <span className="font-mono">multimedia_assets</span>, <span className="font-mono">locations</span>, <span className="font-mono">kitchens</span>, <span className="font-mono">utilities</span> y <span className="font-mono">vineyard_equipment</span> ya no permiten acceso anónimo ni <span className="font-mono">TRUNCATE</span>.</p>
+            <p><span className="font-mono">beds</span>, <span className="font-mono">rooms</span>, <span className="font-mono">booking_settings</span>, <span className="font-mono">pricing_rules</span>, <span className="font-mono">booking_extras</span> y <span className="font-mono">reservation_extras</span> ya no permiten acceso anónimo ni <span className="font-mono">TRUNCATE</span>.</p>
             <p>Usuarios autenticados conservan lectura, creación y actualización. La eliminación queda limitada a <span className="font-mono">admin</span>.</p>
-            <p>Se preservaron 12 categorías de activo, 1 recurso multimedia, 14 ubicaciones, 2 cocinas y 3 servicios. Equipamiento de viñedo permanece sin registros.</p>
+            <p>Se preservaron 20 camas, 9 habitaciones y 1 configuración de reservas. Reglas de precio y extras permanecen sin registros.</p>
             <p className="text-muted-foreground">Las cinco reservas con prefijo TEST_ permanecen intactas.</p>
           </CardContent>
         </Card>
@@ -66,7 +65,7 @@ export default function AdminSecurityPage() {
         <Card className="border-amber-500/50">
           <CardHeader><CardTitle>Interpretación</CardTitle><CardDescription>RLS habilitado sigue sin equivaler a acceso restringido.</CardDescription></CardHeader>
           <CardContent className="space-y-2 text-sm">
-            <p>Las políticas ALL amplias sin restricción efectiva bajaron a 21. El trabajo continúa sobre hospitalidad, configuración, costos, incidencias y operaciones auxiliares.</p>
+            <p>Las políticas ALL amplias sin restricción efectiva bajaron a 15. El trabajo continúa sobre costos, presupuestos, incidencias, operaciones y resúmenes auxiliares.</p>
             <p className="text-muted-foreground">Estado verificado en pg_policies y privilegios de tabla el 26-07-2026. Las migraciones no modificaron registros operativos.</p>
           </CardContent>
         </Card>
