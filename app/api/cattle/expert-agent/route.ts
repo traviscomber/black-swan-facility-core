@@ -4,242 +4,151 @@ import { createClient } from "@/lib/supabase/server"
 
 export const maxDuration = 30
 
-// Tools for cattle management expert
 const cattleTools = {
-  getProfitabilityAnalysis: tool({
-    description: "Analyze profitability for Crianza (Breeding) or Engorda (Fattening) business units",
+  getBusinessPlanSummary: tool({
+    description: "Obtiene un resumen del plan económico ganadero registrado. Los valores son proyecciones, no resultados contables confirmados.",
     inputSchema: z.object({
-      businessUnit: z.enum(["Crianza", "Engorda", "Both"]).describe("Which business unit to analyze"),
+      businessUnit: z.enum(["Crianza", "Engorda", "Todas"]).default("Todas"),
     }),
-    async *execute({ businessUnit }) {
-      yield { state: "loading" as const }
-
-      // Get cattle business plan data
+    async execute({ businessUnit }) {
       const supabase = await createClient()
       let query = supabase
         .from("cattle_business_plan")
-        .select("*")
+        .select("month, year, business_unit, inventory_count, purchase_amount, sales_amount, operational_cost, profit_loss")
         .order("year", { ascending: true })
         .order("month", { ascending: true })
 
-      if (businessUnit !== "Both") {
-        query = query.eq("business_unit", businessUnit)
-      }
+      if (businessUnit !== "Todas") query = query.eq("business_unit", businessUnit)
 
-      const { data } = await query
+      const { data, error } = await query
+      if (error) return { error: error.message }
 
-      if (!data) {
-        yield {
-          state: "ready" as const,
-          analysis: "No data available",
-        }
-        return
-      }
+      const rows = data ?? []
+      const totalSales = rows.reduce((sum, row) => sum + Number(row.sales_amount ?? 0), 0)
+      const totalPurchases = rows.reduce((sum, row) => sum + Number(row.purchase_amount ?? 0), 0)
+      const totalOperationalCost = rows.reduce((sum, row) => sum + Number(row.operational_cost ?? 0), 0)
+      const projectedResult = rows.reduce((sum, row) => sum + Number(row.profit_loss ?? 0), 0)
+      const units = [...new Set(rows.map((row) => row.business_unit).filter(Boolean))]
 
-      // Calculate profitability metrics
-      const totalRevenue = data.reduce((sum, row) => sum + (row.sales_amount || 0), 0)
-      const totalCosts = data.reduce((sum, row) => sum + (row.operational_cost || 0), 0)
-      const totalProfit = totalRevenue - totalCosts
-      const marginPercentage = totalRevenue > 0 ? (totalProfit / totalRevenue) * 100 : 0
-
-      yield {
-        state: "ready" as const,
-        analysis: {
-          businessUnit,
-          totalRevenue: `$${totalRevenue.toLocaleString()}`,
-          totalCosts: `$${totalCosts.toLocaleString()}`,
-          totalProfit: `$${totalProfit.toLocaleString()}`,
-          marginPercentage: `${marginPercentage.toFixed(2)}%`,
-          monthsAnalyzed: data.length,
-        },
+      return {
+        source: "cattle_business_plan",
+        dataType: "proyección registrada",
+        businessUnit,
+        units,
+        records: rows.length,
+        period: rows.length ? { from: Math.min(...rows.map((row) => row.year)), to: Math.max(...rows.map((row) => row.year)) } : null,
+        totalsClp: { sales: totalSales, purchases: totalPurchases, operationalCost: totalOperationalCost, projectedResult },
       }
     },
   }),
 
-  getBreakEvenAnalysis: tool({
-    description: "Calculate break-even timeline for the cattle business",
+  getHerdHealthContext: tool({
+    description: "Obtiene el contexto registrado del plantel y sus controles biométricos. No genera diagnósticos veterinarios.",
     inputSchema: z.object({}),
-    async *execute() {
-      yield { state: "loading" as const }
-
+    async execute() {
       const supabase = await createClient()
-      const { data } = await supabase
-        .from("cattle_business_plan")
-        .select("*")
-        .order("year", { ascending: true })
-        .order("month", { ascending: true })
+      const [animalsResult, recordsResult, alertsResult, treatmentsResult] = await Promise.all([
+        supabase.from("cattle_animals").select("id, animal_id, name, breed, gender, status"),
+        supabase
+          .from("cattle_biometric_records")
+          .select("animal_id, test_date, bhb, total_protein, calcium, magnesium, clinical_signs, lab_notes")
+          .order("test_date", { ascending: false }),
+        supabase.from("cattle_health_alerts").select("*").order("created_at", { ascending: false }),
+        supabase.from("cattle_treatment_plans").select("*").order("created_at", { ascending: false }),
+      ])
 
-      if (!data) {
-        yield { state: "ready" as const, timeline: "No data available" }
-        return
-      }
+      const error = animalsResult.error ?? recordsResult.error ?? alertsResult.error ?? treatmentsResult.error
+      if (error) return { error: error.message }
 
-      // Find break-even point (cumulative profit becomes positive)
-      let cumulativeProfit = 0
-      let breakEvenMonth = null
-      let breakEvenYear = null
+      const animals = animalsResult.data ?? []
+      const records = recordsResult.data ?? []
+      const latestDate = records[0]?.test_date ?? null
+      const latestRecords = latestDate ? records.filter((record) => record.test_date === latestDate) : []
+      const observations = latestRecords
+        .filter((record) => Boolean(record.clinical_signs || record.lab_notes))
+        .map((record) => ({
+          animalId: record.animal_id,
+          testDate: record.test_date,
+          clinicalSigns: record.clinical_signs,
+          laboratoryNotes: record.lab_notes,
+          values: {
+            bhb: record.bhb,
+            totalProtein: record.total_protein,
+            calcium: record.calcium,
+            magnesium: record.magnesium,
+          },
+        }))
 
-      for (const record of data) {
-        const monthProfit = (record.sales_amount || 0) - (record.operational_cost || 0)
-        cumulativeProfit += monthProfit
-
-        if (cumulativeProfit >= 0 && !breakEvenMonth) {
-          breakEvenMonth = record.month
-          breakEvenYear = record.year
-          break
-        }
-      }
-
-      yield {
-        state: "ready" as const,
-        timeline: {
-          breakEvenMonth,
-          breakEvenYear,
-          message: breakEvenMonth
-            ? `Break-even achieved in ${breakEvenMonth} ${breakEvenYear}`
-            : "Break-even not reached in current projections",
-          currentCumulativeProfit: `$${cumulativeProfit.toLocaleString()}`,
-        },
+      return {
+        source: ["cattle_animals", "cattle_biometric_records", "cattle_health_alerts", "cattle_treatment_plans"],
+        animalsRegistered: animals.length,
+        activeAnimals: animals.filter((animal) => animal.status === "active").length,
+        latestTestDate: latestDate,
+        latestTestRecords: latestRecords.length,
+        recordedObservations: observations,
+        openAlerts: (alertsResult.data ?? []).length,
+        treatmentPlans: (treatmentsResult.data ?? []).length,
+        veterinaryNotice: "Las observaciones son registros existentes y deben ser interpretadas por un profesional veterinario.",
       }
     },
   }),
 
-  getCostOptimizationTips: tool({
-    description: "Get recommendations for optimizing operational costs in cattle farming",
+  getPricesAndCosts: tool({
+    description: "Consulta precios y costos ganaderos registrados para apoyar análisis, sin asumir que están vigentes o validados.",
     inputSchema: z.object({
-      businessUnit: z.enum(["Crianza", "Engorda"]).describe("Business unit to optimize"),
+      businessUnit: z.enum(["Crianza", "Engorda", "Todas"]).default("Todas"),
     }),
-    async *execute({ businessUnit }) {
-      yield { state: "loading" as const }
-
+    async execute({ businessUnit }) {
       const supabase = await createClient()
+      const category = businessUnit === "Crianza" ? "Breeding" : businessUnit === "Engorda" ? "Fattening" : null
 
-      // Get operational costs
-      const { data: costs } = await supabase
-        .from("cattle_operational_costs")
-        .select("*")
-        .eq("business_unit", businessUnit === "Crianza" ? "Crianza" : null)
-
-      // Get pricing data for context
-      const { data: pricing } = await supabase
+      let pricingQuery = supabase
         .from("cattle_pricing")
-        .select("*")
-        .eq("category", businessUnit === "Crianza" ? "Breeding" : "Fattening")
+        .select("animal_type, price_pesos, unit, category, description, quantity_standard, updated_at")
+        .eq("is_active", true)
+        .order("animal_type")
+      let costQuery = supabase
+        .from("cattle_operational_costs")
+        .select("cost_type, amount_pesos, unit, description, business_unit, is_fixed, updated_at")
+        .order("cost_type")
 
-      yield {
-        state: "ready" as const,
-        recommendations: {
-          unit: businessUnit,
-          tips: [
-            businessUnit === "Crianza"
-              ? "Optimize pasture rotation to maximize grazing efficiency and reduce supplemental feeding costs"
-              : "Implement precision feeding programs to reduce feed waste and improve feed conversion rates",
-            "Monitor animal health regularly to prevent costly disease outbreaks",
-            "Consider genetic improvement through selective breeding to enhance meat quality and growth rates",
-            businessUnit === "Crianza"
-              ? "Establish breeding records to identify best-performing animals and reduce poor-performing ones"
-              : "Optimize fattening duration to balance market timing with weight gain economics",
-            "Reduce operational costs through bulk purchasing of feed and veterinary supplies",
-          ],
-          currentCosts: costs?.length || 0,
-          availablePricing: pricing?.length || 0,
-        },
-      }
-    },
-  }),
+      if (category) pricingQuery = pricingQuery.eq("category", category)
+      if (businessUnit !== "Todas") costQuery = costQuery.eq("business_unit", businessUnit)
 
-  getAnimalHealthAdvisor: tool({
-    description: "Get health management advice for cattle operations",
-    inputSchema: z.object({
-      concern: z.string().describe("Health concern or question about animals"),
-    }),
-    async *execute({ concern }) {
-      yield { state: "loading" as const }
+      const [pricingResult, costResult] = await Promise.all([pricingQuery, costQuery])
+      const error = pricingResult.error ?? costResult.error
+      if (error) return { error: error.message }
 
-      // Provide AI-powered health advice based on concern
-      yield {
-        state: "ready" as const,
-        advice: {
-          concern,
-          recommendations: [
-            "Implement regular health monitoring and record-keeping system",
-            "Vaccinate animals according to recommended schedules",
-            "Maintain proper nutrition and water quality",
-            "Implement biosecurity measures to prevent disease spread",
-            "Consult with veterinarian for specific health issues",
-            "Monitor for signs of stress or environmental issues",
-          ],
-          mortalityRate: "0.95% (based on your plan)",
-          actionItems: "Review your health management protocols quarterly and adjust based on performance metrics",
-        },
-      }
-    },
-  }),
-
-  getBreedingStrategy: tool({
-    description: "Get breeding recommendations for your cattle operation",
-    inputSchema: z.object({
-      timeframe: z.enum(["short-term", "medium-term", "long-term"]).describe("Planning timeframe"),
-    }),
-    async *execute({ timeframe }) {
-      yield { state: "loading" as const }
-
-      const supabase = await createClient()
-      const { data: pricing } = await supabase.from("cattle_pricing").select("*").eq("category", "Breeding")
-
-      yield {
-        state: "ready" as const,
-        strategy: {
-          timeframe,
-          recommendations: {
-            "short-term":
-              "Focus on maximizing current breeding efficiency and conception rates. Ensure proper nutrition for pregnant animals.",
-            "medium-term":
-              "Begin selective breeding for desired traits (growth, meat quality). Gradually improve genetics.",
-            "long-term":
-              "Establish closed herd breeding program. Build bloodlines for superior traits and market value.",
-          }[timeframe],
-          currentBreedingCapacity: "500 animals (Año 4 milestone)",
-          breedTypes: pricing?.map((p) => p.animal_type) || [],
-          nextSteps: [
-            "Assess current genetic quality of breeding stock",
-            "Define breeding goals aligned with market demands",
-            "Implement AI (Artificial Insemination) if viable",
-            "Maintain detailed breeding records",
-            "Plan for genetic testing/evaluation",
-          ],
-        },
+      return {
+        source: ["cattle_pricing", "cattle_operational_costs"],
+        businessUnit,
+        prices: pricingResult.data ?? [],
+        costs: costResult.data ?? [],
+        validationNotice: "Los precios y costos son registros internos. Verificar fecha, unidad y vigencia antes de tomar decisiones.",
       }
     },
   }),
 }
 
-export type CattleExpertMessage = UIMessage<never, any, InferUITools<typeof cattleTools>>
+export type CattleExpertMessage = UIMessage<never, never, InferUITools<typeof cattleTools>>
 
 export async function POST(req: Request) {
   const body = await req.json()
-
-  const messages = await validateUIMessages<CattleExpertMessage>({
-    messages: body.messages,
-    tools: cattleTools,
-  })
+  const messages = await validateUIMessages<CattleExpertMessage>({ messages: body.messages, tools: cattleTools })
 
   const result = streamText({
     model: "openai/gpt-4o-mini",
-    system: `You are an expert Cattle Management advisor for Black Swan Facility. You have access to real-time data about the cattle business plan including:
-    
-    - 8-year business projections (2024-2031)
-    - Two business units: Crianza (Breeding) and Engorda (Fattening)
-    - Current pricing and operational costs
-    - Key milestones: 500 animals in Año 4 Marzo, $140M profit target by Año 8 Diciembre
-    
-    Use the available tools to provide data-driven advice on:
-    1. Profitability analysis and cost optimization
-    2. Break-even timelines and financial projections
-    3. Animal health and breeding strategies
-    4. Operational improvements and risk management
-    
-    Always provide specific, actionable recommendations based on actual business data. Be professional but conversational.`,
+    system: `Eres el asistente interno de apoyo para la operación ganadera de Fundo Corcovado, Valdivia.
+
+Reglas obligatorias:
+- Responde en español claro y operativo.
+- Usa las herramientas antes de afirmar cifras, fechas, inventarios, precios, costos o resultados.
+- No inventes datos ni repitas metas históricas como hechos actuales.
+- Diferencia siempre entre datos operativos, registros clínicos y proyecciones económicas.
+- Expresa montos en pesos chilenos (CLP) cuando la fuente sea price_pesos, amount_pesos o el plan económico.
+- No diagnostiques enfermedades ni prescribas tratamientos. Resume los registros y recomienda validación veterinaria cuando corresponda.
+- Señala explícitamente datos incompletos, antiguos, inconsistentes o que requieren validación.
+- Mantén las recomendaciones proporcionales a una operación pequeña y evita procesos empresariales innecesarios.`,
     messages: convertToModelMessages(messages),
     tools: cattleTools,
   })
