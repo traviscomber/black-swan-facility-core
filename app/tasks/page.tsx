@@ -1,268 +1,146 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Plus, Calendar, Users, CheckCircle2, Clock, AlertCircle } from "lucide-react"
-import { createBrowserClient } from "@/lib/supabase/client"
-import { AddTaskDialog } from "@/components/add-task-dialog"
-import { TaskDetailPanel } from "@/components/task-detail-panel"
-import { EditTaskDialog } from "@/components/edit-task-dialog"
-import { useLanguage } from "@/lib/hooks/use-language"
-import { format, isToday, isThisWeek } from "date-fns"
+import { useEffect, useMemo, useState } from "react"
+import { AlertTriangle, Calendar, CheckCircle2, Clock, MapPin, Plus, Users } from "lucide-react"
+import { format, isPast, isThisWeek, isToday, parseISO } from "date-fns"
 import { es } from "date-fns/locale"
 import { AppLayout } from "@/components/app-layout"
+import { AddTaskDialog } from "@/components/add-task-dialog"
+import { EditTaskDialog } from "@/components/edit-task-dialog"
+import { TaskDetailPanel } from "@/components/task-detail-panel"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { createBrowserClient } from "@/lib/supabase/client"
 
-interface Task {
+type TaskStatus = "nueva" | "en_progreso" | "completada" | "cancelada"
+type TaskPriority = "baja" | "media" | "alta" | "urgente"
+
+type Task = {
   id: string
   title: string
-  description: string
-  priority: "baja" | "media" | "alta" | "urgente"
-  status: "nueva" | "en_progreso" | "completada" | "cancelada"
-  due_date: string
-  location_name: string
-  latitude: number
-  longitude: number
+  description?: string | null
+  priority: TaskPriority
+  status: TaskStatus
+  due_date?: string | null
+  location_name?: string | null
+  latitude?: number | null
+  longitude?: number | null
   created_at: string
-  task_assignments: {
+  completed_at?: string | null
+  task_assignments: Array<{
     employee_id: string
-    employees: {
-      id: string
-      name: string
-      email: string
-    }
-  }[]
+    employees?: { id: string; name: string; email?: string | null } | null
+  }>
 }
 
-const priorityColors = {
-  baja: "bg-gray-100 text-gray-800",
-  media: "bg-yellow-100 text-yellow-800",
-  alta: "bg-orange-100 text-orange-800",
-  urgente: "bg-red-100 text-red-800",
+const priorityLabels: Record<TaskPriority, string> = { baja: "Baja", media: "Media", alta: "Alta", urgente: "Urgente" }
+const statusLabels: Record<TaskStatus, string> = { nueva: "Pendiente", en_progreso: "En curso", completada: "Completada", cancelada: "Cancelada" }
+const priorityClasses: Record<TaskPriority, string> = {
+  baja: "border-muted-foreground/20 bg-muted text-muted-foreground",
+  media: "border-amber-300 bg-amber-50 text-amber-800",
+  alta: "border-orange-300 bg-orange-50 text-orange-800",
+  urgente: "border-destructive/30 bg-destructive/5 text-destructive",
 }
 
 export default function TasksPage() {
-  const { t } = useLanguage()
+  const supabase = useMemo(() => createBrowserClient(), [])
   const [tasks, setTasks] = useState<Task[]>([])
   const [selectedTask, setSelectedTask] = useState<Task | null>(null)
+  const [taskToEdit, setTaskToEdit] = useState<Task | null>(null)
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
-  const [taskToEdit, setTaskToEdit] = useState<Task | null>(null)
-  const [activeTab, setActiveTab] = useState("nuevas")
+  const [activeTab, setActiveTab] = useState("pendientes")
   const [isLoading, setIsLoading] = useState(true)
-  const supabase = createBrowserClient()
-
-  const priorityLabels = {
-    baja: t("tasks.low"),
-    media: t("tasks.medium"),
-    alta: t("tasks.high"),
-    urgente: t("tasks.urgent"),
-  }
-
-  const statusLabels = {
-    nueva: t("tasks.new"),
-    en_progreso: t("tasks.in_progress"),
-    completada: t("tasks.completed"),
-    cancelada: t("tasks.cancelled"),
-  }
-
-  useEffect(() => {
-    fetchTasks()
-  }, [])
+  const [error, setError] = useState<string | null>(null)
 
   async function fetchTasks() {
     setIsLoading(true)
-    const { data, error } = await supabase
+    setError(null)
+    const { data, error: fetchError } = await supabase
       .from("tasks")
-      .select(`
-        *,
-        task_assignments(
-          employee_id,
-          employees(id, name, email)
-        )
-      `)
+      .select("*, task_assignments(employee_id, employees(id, name, email))")
+      .order("due_date", { ascending: true, nullsFirst: false })
       .order("created_at", { ascending: false })
 
-    if (error) {
-      console.error("[v0] Error fetching tasks:", error)
-    } else {
-      setTasks(data || [])
-      console.log("[v0] Loaded tasks:", data?.length)
+    if (fetchError) setError(fetchError.message)
+    else {
+      const nextTasks = (data ?? []) as Task[]
+      setTasks(nextTasks)
+      setSelectedTask((current) => current ? nextTasks.find((task) => task.id === current.id) ?? null : null)
     }
     setIsLoading(false)
   }
 
+  useEffect(() => { void fetchTasks() }, [])
+
+  const openTasks = tasks.filter((task) => task.status === "nueva" || task.status === "en_progreso")
+  const overdue = openTasks.filter((task) => task.due_date && isPast(parseISO(task.due_date)) && !isToday(parseISO(task.due_date))).length
   const stats = {
-    nuevasHoy: tasks.filter((t) => isToday(new Date(t.created_at)) && t.status === "nueva").length,
-    pendientes: tasks.filter((t) => t.status === "nueva" || t.status === "en_progreso").length,
-    completadasSemana: tasks.filter(
-      (t) => t.status === "completada" && t.completed_at && isThisWeek(new Date(t.completed_at)),
-    ).length,
-    totalUsuarios: new Set(tasks.flatMap((t) => t.task_assignments.map((a) => a.employee_id))).size,
+    pendientes: openTasks.length,
+    hoy: openTasks.filter((task) => task.due_date && isToday(parseISO(task.due_date))).length,
+    completadasSemana: tasks.filter((task) => task.status === "completada" && task.completed_at && isThisWeek(parseISO(task.completed_at), { weekStartsOn: 1 })).length,
+    responsables: new Set(openTasks.flatMap((task) => task.task_assignments.map((assignment) => assignment.employee_id))).size,
   }
 
   const filteredTasks = tasks.filter((task) => {
-    if (activeTab === "nuevas") return task.status === "nueva"
-    if (activeTab === "en_progreso") return task.status === "en_progreso"
+    if (activeTab === "pendientes") return task.status === "nueva" || task.status === "en_progreso"
     if (activeTab === "completadas") return task.status === "completada"
+    if (activeTab === "canceladas") return task.status === "cancelada"
     return true
   })
 
   return (
     <AppLayout>
-      <div className="flex h-full bg-background">
-        {/* Left Panel - Task List */}
-        <div className="w-1/3 border-r flex flex-col">
-          <div className="p-6 border-b">
-            <div className="flex items-center justify-between mb-6">
-              <div>
-                <h1 className="text-2xl font-bold">{t("tasks.title")}</h1>
-                <p className="text-sm text-muted-foreground">Task coordination system</p>
-              </div>
-            </div>
-
-            {/* Stats Cards */}
-            <div className="grid grid-cols-2 gap-3 mb-4">
-              <Card>
-                <CardContent className="p-3">
-                  <div className="flex items-center gap-2">
-                    <Clock className="h-4 w-4 text-blue-600" />
-                    <div>
-                      <p className="text-xs text-muted-foreground">{t("tasks.new")} Today</p>
-                      <p className="text-2xl font-bold">{stats.nuevasHoy}</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="p-3">
-                  <div className="flex items-center gap-2">
-                    <AlertCircle className="h-4 w-4 text-orange-600" />
-                    <div>
-                      <p className="text-xs text-muted-foreground">Pending</p>
-                      <p className="text-2xl font-bold">{stats.pendientes}</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="p-3">
-                  <div className="flex items-center gap-2">
-                    <CheckCircle2 className="h-4 w-4 text-green-600" />
-                    <div>
-                      <p className="text-xs text-muted-foreground">{t("tasks.completed")} (Week)</p>
-                      <p className="text-2xl font-bold">{stats.completadasSemana}</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="p-3">
-                  <div className="flex items-center gap-2">
-                    <Users className="h-4 w-4 text-purple-600" />
-                    <div>
-                      <p className="text-xs text-muted-foreground">Users</p>
-                      <p className="text-2xl font-bold">{stats.totalUsuarios}</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-
-            <Button onClick={() => setIsAddDialogOpen(true)} className="w-full">
-              <Plus className="h-4 w-4 mr-2" />
-              {t("tasks.add_task")}
-            </Button>
-          </div>
-
-          {/* Tabs */}
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
-            <TabsList className="mx-6 mt-4">
-              <TabsTrigger value="nuevas">{t("tasks.new")}</TabsTrigger>
-              <TabsTrigger value="en_progreso">{t("tasks.in_progress")}</TabsTrigger>
-              <TabsTrigger value="completadas">{t("tasks.completed")}</TabsTrigger>
-              <TabsTrigger value="todas">All</TabsTrigger>
-            </TabsList>
-
-            <div className="flex-1 overflow-auto p-6">
-              {isLoading ? (
-                <p className="text-center text-muted-foreground">Loading tasks...</p>
-              ) : filteredTasks.length === 0 ? (
-                <p className="text-center text-muted-foreground">No tasks</p>
-              ) : (
-                <div className="space-y-3">
-                  {filteredTasks.map((task) => (
-                    <Card
-                      key={task.id}
-                      className={`cursor-pointer hover:shadow-md transition-shadow ${
-                        selectedTask?.id === task.id ? "ring-2 ring-primary" : ""
-                      }`}
-                      onClick={() => setSelectedTask(task)}
-                    >
-                      <CardContent className="p-4">
-                        <div className="flex items-start justify-between mb-2">
-                          <h3 className="font-semibold text-sm">{task.title}</h3>
-                          <Badge className={priorityColors[task.priority]}>{priorityLabels[task.priority]}</Badge>
-                        </div>
-                        {task.location_name && (
-                          <p className="text-xs text-muted-foreground mb-2">{task.location_name}</p>
-                        )}
-                        {task.due_date && (
-                          <div className="flex items-center gap-1 text-xs text-muted-foreground mb-2">
-                            <Calendar className="h-3 w-3" />
-                            {format(new Date(task.due_date), "d 'de' MMMM, yyyy", { locale: es })}
-                          </div>
-                        )}
-                        {task.task_assignments.length > 0 && (
-                          <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                            <Users className="h-3 w-3" />
-                            {task.task_assignments.length} assigned
-                          </div>
-                        )}
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              )}
-            </div>
-          </Tabs>
+      <div className="space-y-6 p-4 sm:p-8">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div><h1 className="text-2xl font-bold text-accent sm:text-3xl">Tareas operativas</h1><p className="mt-1 text-sm text-muted-foreground">Coordinación simple de trabajos, responsables, lugar y fecha objetivo.</p></div>
+          <Button onClick={() => setIsAddDialogOpen(true)}><Plus className="mr-2 h-4 w-4" />Nueva tarea</Button>
         </div>
 
-        {/* Right Panel - Task Details */}
-        <div className="flex-1">
-          {selectedTask ? (
-            <TaskDetailPanel
-              task={selectedTask}
-              onUpdate={fetchTasks}
-              onClose={() => setSelectedTask(null)}
-              onEdit={(task) => {
-                setTaskToEdit(task)
-                setIsEditDialogOpen(true)
-              }}
-            />
-          ) : (
-            <div className="h-full flex items-center justify-center text-muted-foreground">
-              Select a task to view details
-            </div>
-          )}
+        {error && <Card className="border-destructive/50"><CardContent className="p-4 text-sm text-destructive">No fue posible cargar las tareas: {error}</CardContent></Card>}
+        {overdue > 0 && !error && <Card className="border-amber-300"><CardContent className="flex gap-3 p-4"><AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" /><div><p className="font-medium">Hay {overdue} tarea{overdue === 1 ? "" : "s"} vencida{overdue === 1 ? "" : "s"}</p><p className="mt-1 text-sm text-muted-foreground">Los registros antiguos o de prueba deben revisarse, completarse o cancelarse; no se eliminaron automáticamente.</p></div></CardContent></Card>}
+
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <Metric icon={Clock} label="Pendientes" value={stats.pendientes} />
+          <Metric icon={Calendar} label="Con fecha para hoy" value={stats.hoy} />
+          <Metric icon={CheckCircle2} label="Completadas esta semana" value={stats.completadasSemana} />
+          <Metric icon={Users} label="Responsables en tareas abiertas" value={stats.responsables} />
         </div>
 
-        <AddTaskDialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen} onTaskCreated={fetchTasks} />
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
+          <TabsList className="grid h-auto w-full grid-cols-2 sm:w-fit sm:grid-cols-4">
+            <TabsTrigger value="pendientes">Pendientes</TabsTrigger><TabsTrigger value="completadas">Completadas</TabsTrigger><TabsTrigger value="canceladas">Canceladas</TabsTrigger><TabsTrigger value="todas">Todas</TabsTrigger>
+          </TabsList>
+        </Tabs>
 
-        {taskToEdit && (
-          <EditTaskDialog
-            open={isEditDialogOpen}
-            onOpenChange={setIsEditDialogOpen}
-            onTaskUpdated={() => {
-              fetchTasks()
-              setTaskToEdit(null)
-            }}
-            task={taskToEdit}
-          />
-        )}
+        <div className="grid gap-6 lg:grid-cols-[minmax(0,420px)_minmax(0,1fr)]">
+          <Card>
+            <CardHeader><CardTitle className="text-base">Lista de trabajo</CardTitle><p className="text-sm text-muted-foreground">Una tarea puede tener uno o más responsables. No representa control de asistencia ni turnos.</p></CardHeader>
+            <CardContent>
+              {isLoading ? <p className="py-10 text-center text-sm text-muted-foreground">Cargando tareas…</p> : filteredTasks.length === 0 ? <div className="py-10 text-center"><p className="font-medium">No hay tareas en esta vista.</p><p className="mt-1 text-sm text-muted-foreground">Registra solo trabajos que necesiten responsable o seguimiento.</p></div> : <div className="space-y-3">{filteredTasks.map((task) => {
+                const due = task.due_date ? parseISO(task.due_date) : null
+                const isOverdue = due && isPast(due) && !isToday(due) && task.status !== "completada" && task.status !== "cancelada"
+                const names = task.task_assignments.map((assignment) => assignment.employees?.name).filter(Boolean) as string[]
+                return <button key={task.id} type="button" onClick={() => setSelectedTask(task)} className={`w-full rounded-lg border p-4 text-left transition-colors hover:bg-muted/50 ${selectedTask?.id === task.id ? "border-primary bg-primary/5" : ""}`}>
+                  <div className="flex items-start justify-between gap-3"><div className="min-w-0"><h2 className="font-semibold">{task.title}</h2><p className="mt-1 text-xs text-muted-foreground">{statusLabels[task.status]}</p></div><Badge variant="outline" className={priorityClasses[task.priority]}>{priorityLabels[task.priority]}</Badge></div>
+                  <div className="mt-3 space-y-1.5 text-xs text-muted-foreground">{task.location_name && <p className="flex items-center gap-1.5"><MapPin className="h-3.5 w-3.5" />{task.location_name}</p>}{due && <p className={`flex items-center gap-1.5 ${isOverdue ? "font-medium text-destructive" : ""}`}><Calendar className="h-3.5 w-3.5" />{isOverdue ? "Vencida · " : ""}{format(due, "d 'de' MMMM 'de' yyyy", { locale: es })}</p>}<p className="flex items-center gap-1.5"><Users className="h-3.5 w-3.5" />{names.length ? names.join(", ") : "Sin responsable"}</p></div>
+                </button>
+              })}</div>}
+            </CardContent>
+          </Card>
+
+          <Card className="min-h-[360px] overflow-hidden">{selectedTask ? <TaskDetailPanel task={selectedTask} onUpdate={() => void fetchTasks()} onClose={() => setSelectedTask(null)} onEdit={(task) => { setTaskToEdit(task as Task); setIsEditDialogOpen(true) }} /> : <div className="flex min-h-[360px] items-center justify-center p-8 text-center text-sm text-muted-foreground">Selecciona una tarea para revisar su detalle y actualizar el estado.</div>}</Card>
+        </div>
+
+        <AddTaskDialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen} onTaskCreated={() => void fetchTasks()} />
+        {taskToEdit && <EditTaskDialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen} onTaskUpdated={() => { void fetchTasks(); setTaskToEdit(null) }} task={taskToEdit} />}
       </div>
     </AppLayout>
   )
+}
+
+function Metric({ icon: Icon, label, value }: { icon: typeof Clock; label: string; value: number }) {
+  return <Card><CardContent className="flex items-center justify-between p-4"><div><p className="text-xs text-muted-foreground">{label}</p><p className="mt-1 text-2xl font-semibold">{value.toLocaleString("es-CL")}</p></div><Icon className="h-5 w-5 text-muted-foreground" /></CardContent></Card>
 }
