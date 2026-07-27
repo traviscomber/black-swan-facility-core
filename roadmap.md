@@ -21,6 +21,7 @@ Cerrar brechas críticas de seguridad, permisos, trazabilidad y confiabilidad op
 - [x] Conectar tareas con hospitalidad, housekeeping, mantenimiento, ganadería e incidencias.
 - [x] Añadir evidencia, comentarios y envío manual por WhatsApp Web.
 - [x] Mostrar estado, responsables y acceso directo de la tarea vinculada en los módulos de origen.
+- [x] Preparar una interfaz desacoplada de notificaciones para WhatsApp Web y futura GreenAPI.
 - [ ] Completar cobertura de acciones críticas y permisos por módulo.
 - [ ] Validar flujos completos por rol y dispositivo.
 
@@ -44,13 +45,15 @@ Cerrar brechas críticas de seguridad, permisos, trazabilidad y confiabilidad op
 - `/tasks` abre automáticamente el detalle solicitado y selecciona la pestaña correspondiente a su estado.
 - `task_evidence` usa almacenamiento privado y URL firmada temporal; imágenes y PDF hasta 10 MB.
 - `task_comments` registra autor y fecha; WhatsApp Web abre mensajes precompletados y no envía automáticamente.
-- GreenAPI queda reservado para una fase posterior con credenciales y reglas aprobadas.
+- `lib/notifications/task-notification.ts` centraliza normalización de teléfonos chilenos, construcción de mensajes y selección de proveedor.
+- El proveedor activo sigue siendo `whatsapp_web`, en modo manual y con confirmación humana.
+- `greenapi` está modelado como proveedor futuro, pero falla de forma explícita mientras no existan credenciales, endpoint y reglas aprobadas; no se introdujeron secretos ni envíos automáticos.
 - Producción mantiene 20 trabajadores, 1 voluntario, 0 tareas, 0 asignaciones, 0 comentarios y 0 evidencias. No se modificaron filas operativas en este bloque.
 
 ## Prioridades
 
-1. Probar creación, edición, evidencia, comentarios y cambios de estado con datos controlados.
-2. Preparar una interfaz de notificaciones desacoplada para GreenAPI sin cambiar el flujo de tareas.
+1. Conectar el botón actual de WhatsApp a la abstracción común y añadir pruebas unitarias del mensaje y normalización chilena.
+2. Probar creación, edición, evidencia, comentarios y cambios de estado con datos controlados.
 3. Auditar operaciones destructivas restantes en pagos, presupuestos, inventario y compras.
 4. Registrar acciones críticas reales: anulaciones, pagos, cambios financieros, permisos y borrados.
 5. Completar matriz de permisos para `admin`, `approver` y usuario autenticado.
@@ -88,6 +91,7 @@ Cerrar brechas críticas de seguridad, permisos, trazabilidad y confiabilidad op
 - [x] Conectar tareas desde hospitalidad, housekeeping, mantenimiento, ganadería e incidencias.
 - [x] Añadir evidencia, comentarios y WhatsApp Web.
 - [x] Mostrar progreso y responsables de tareas en los módulos de origen.
+- [x] Preparar interfaz de proveedor para GreenAPI sin activar envío automático.
 - [ ] Integrar GreenAPI cuando existan credenciales y reglas aprobadas.
 - [ ] Registrar acciones críticas y completar matriz final de permisos.
 
