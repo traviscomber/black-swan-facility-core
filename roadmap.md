@@ -24,14 +24,15 @@ Cerrar brechas críticas de seguridad, permisos, trazabilidad y confiabilidad op
 - [x] Preparar una interfaz desacoplada de notificaciones para WhatsApp Web y futura GreenAPI.
 - [x] Conectar la UI de tareas a la interfaz común y ejecutar pruebas automáticas antes de cada build.
 - [x] Ejecutar una prueba transaccional controlada del flujo completo de tareas sin persistir datos.
+- [x] Auditar y endurecer operaciones destructivas en pagos, presupuestos, inventario y compras.
 - [ ] Completar cobertura de acciones críticas y permisos por módulo.
 - [ ] Validar flujos completos por rol y dispositivo.
 
 ## Estado verificado
 
-- Los 13 RPC `SECURITY DEFINER` inventariados no conservan `EXECUTE` para `anon` o `PUBLIC`.
+- Los RPC `SECURITY DEFINER` críticos inventariados no conservan `EXECUTE` para `anon` o `PUBLIC`.
 - `execute_bulk_update` y `restore_bulk_operation_state` verifican rol `admin` dentro del RPC.
-- Las tablas sensibles revisadas usan políticas separadas por operación; `DELETE` queda limitado a `admin`.
+- Las tablas sensibles revisadas usan políticas separadas por operación; `DELETE` queda limitado a `admin` cuando corresponde.
 - Nueve bitácoras son append-only.
 - `bulk_operations` conserva 3 registros históricos y solo se modifica mediante RPC controlado.
 - Facturación exige sesión, valida UUID, fechas, estados y montos CLP; creación/edición requiere `admin` o `approver` y eliminación requiere `admin`.
@@ -58,20 +59,23 @@ Cerrar brechas críticas de seguridad, permisos, trazabilidad y confiabilidad op
 - La prueba verificó 2 asignaciones, 1 comentario, 1 evidencia, 2 cambios de estado y `completed_at` registrado.
 - El `ROLLBACK` eliminó completamente el escenario temporal: producción volvió a 0 tareas, 0 asignaciones, 0 comentarios y 0 evidencias.
 - No se cargó ningún archivo real al bucket y no se enviaron mensajes de WhatsApp.
+- La migración `harden_finance_inventory_procurement_permissions` eliminó privilegios de tabla para `anon` en inventario, solicitudes, órdenes de compra y proveedores.
+- Pagos, pagos de factura, presupuestos, categorías y divisiones presupuestarias solo pueden crearse o actualizarse por `admin` o `approver`; la eliminación permanece limitada a `admin`.
+- `inventory_movements` quedó como bitácora append-only: usuarios autenticados pueden leer y registrar movimientos propios, pero no actualizar ni eliminar entradas.
+- Órdenes de compra y proveedores permiten creación/edición a `admin` y `approver`; la eliminación queda limitada a `admin`.
+- Los conteos se preservaron sin cambios: 25 presupuestos, 26 categorías, 7 divisiones, 6 movimientos de inventario, 18 proveedores, 0 pagos y 0 órdenes de compra.
 - Producción mantiene 20 trabajadores y 1 voluntario. No se modificaron reservas ni las cinco reservas `TEST_`.
 
 ## Prioridades
 
-1. Ejecutar validación visual del flujo de tareas en desktop y móvil con sesión real, sin persistir datos no autorizados.
-2. Auditar operaciones destructivas restantes en pagos, presupuestos, inventario y compras.
-3. Registrar acciones críticas reales: anulaciones, pagos, cambios financieros, permisos y borrados.
-4. Completar matriz de permisos para `admin`, `approver` y usuario autenticado.
-5. Validar módulos críticos por rol en desktop y móvil.
-6. Validar visualmente impresión/PDF con una factura controlada y autorización explícita.
-7. Revisar exposición de datos personales en respuestas API y logs.
-8. Confirmar consistencia Chile: CLP, `es-CL`, zona local y terminología tributaria.
-9. Integrar GreenAPI únicamente cuando existan credenciales, endpoint, plantillas, consentimiento y reglas de reintento aprobadas.
-10. Eliminar datos de prueba únicamente con autorización específica.
+1. Registrar acciones críticas reales: anulaciones, pagos, cambios financieros, permisos y borrados.
+2. Completar matriz de permisos para `admin`, `approver` y usuario autenticado.
+3. Ejecutar validación visual de flujos críticos en desktop y móvil con sesión real.
+4. Validar visualmente impresión/PDF con una factura controlada y autorización explícita.
+5. Revisar exposición de datos personales en respuestas API y logs.
+6. Confirmar consistencia Chile: CLP, `es-CL`, zona local y terminología tributaria.
+7. Integrar GreenAPI únicamente cuando existan credenciales, endpoint, plantillas, consentimiento y reglas de reintento aprobadas.
+8. Eliminar datos de prueba únicamente con autorización específica.
 
 ## Semana 1 — Contención crítica
 
@@ -79,7 +83,7 @@ Cerrar brechas críticas de seguridad, permisos, trazabilidad y confiabilidad op
 - [x] Cerrar ejecución anónima de RPC críticos.
 - [x] Proteger rutas administrativas en servidor.
 - [x] Endurecer operaciones masivas de reservas y facturas.
-- [ ] Completar auditoría destructiva en pagos, presupuestos, inventario y compras.
+- [x] Completar auditoría destructiva en pagos, presupuestos, inventario y compras.
 - [ ] Completar matriz inicial de permisos por módulo y acción.
 
 ## Semana 2 — Datos personales y financieros
