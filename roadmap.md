@@ -22,6 +22,7 @@ Cerrar brechas críticas de seguridad, permisos, trazabilidad y confiabilidad op
 - [x] Llevar políticas RLS `ALL` amplias sin restricción efectiva a cero.
 - [x] Ampliar tareas operativas para trabajadores y voluntarios en todas las áreas de Black Swan.
 - [x] Conectar tareas con hospitalidad, housekeeping, mantenimiento, ganadería e incidencias.
+- [x] Añadir evidencia, comentarios y envío manual por WhatsApp Web en tareas.
 - [ ] Completar cobertura de acciones críticas y permisos por módulo.
 - [ ] Validar flujos completos por rol y dispositivo.
 
@@ -54,13 +55,19 @@ Cerrar brechas críticas de seguridad, permisos, trazabilidad y confiabilidad op
 - Mantenimiento permite crear una tarea operacional desde cada trabajo programado.
 - Incidencias permiten crear una tarea precompletada y el RPC enlaza el registro con `issue_task_assignments` dentro de la misma transacción.
 - Concierge incorpora una vista interna de solicitudes de hospitalidad y permite derivarlas a tareas sin reemplazar el formulario público de huéspedes.
-- Producción mantiene 20 trabajadores, 1 voluntario, 0 tareas, 0 asignaciones, 0 solicitudes de hospitalidad, 0 housekeeping, 0 mantenimiento y 4 incidencias. No se crearon ni modificaron filas operativas durante este bloque.
+- `task_evidence` registra archivos, descripción, autor y fecha; los archivos se almacenan en el bucket privado `task-evidence` y se abren mediante URL firmada temporal.
+- La carga admite imágenes y PDF de hasta 10 MB. La eliminación de registros y archivos queda limitada a `admin`; lectura y carga requieren rol interno autorizado.
+- `task_comments` registra novedades, bloqueos y resultados con autor y fecha en formato `es-CL` y zona `America/Santiago`.
+- El detalle de tarea muestra el origen, responsables, teléfonos, evidencia, comentarios y estado en una sola vista.
+- El botón de WhatsApp abre `wa.me`/WhatsApp Web con un mensaje precompletado para cada responsable que tenga teléfono registrado.
+- GreenAPI no está integrado todavía: queda reservado para envío automático posterior. El flujo actual no envía mensajes sin intervención humana.
+- Producción mantiene 20 trabajadores, 1 voluntario, 0 tareas, 0 asignaciones, 0 comentarios y 0 evidencias. No se crearon ni modificaron filas operativas durante este bloque.
 
 ## Prioridades
 
-1. Probar creación, edición y cambio de estado con un trabajador y un voluntario mediante datos controlados.
-2. Añadir evidencia de ejecución, comentarios y notificaciones WhatsApp a responsables.
-3. Mostrar en cada módulo el estado de la tarea vinculada y permitir volver al registro de origen desde el detalle.
+1. Probar creación, edición, evidencia, comentarios y cambio de estado con un trabajador y un voluntario mediante datos controlados.
+2. Mostrar en cada módulo el estado de la tarea vinculada y permitir volver al registro de origen desde el detalle.
+3. Preparar una interfaz de notificaciones desacoplada para integrar GreenAPI posteriormente sin cambiar el flujo de tareas.
 4. Auditar operaciones destructivas restantes en pagos, presupuestos, inventario y compras.
 5. Conectar y verificar registro de acciones críticas reales: anulaciones, pagos, cambios financieros, permisos y borrados.
 6. Completar matriz de permisos para `admin`, `approver` y usuario autenticado en UI, API y Supabase.
@@ -114,7 +121,8 @@ Cerrar brechas críticas de seguridad, permisos, trazabilidad y confiabilidad op
 - [x] Permitir asignación de tareas a trabajadores y voluntarios con creación y edición atómicas.
 - [x] Añadir catálogo operacional de tareas para todas las áreas principales de Fundo Corcovado.
 - [x] Conectar creación de tareas desde hospitalidad, housekeeping, mantenimiento, ganadería e incidencias.
-- [ ] Añadir evidencia, comentarios y notificaciones de tareas.
+- [x] Añadir evidencia, comentarios y envío manual por WhatsApp Web en tareas.
+- [ ] Integrar GreenAPI para envío automático cuando se disponga de credenciales y reglas operativas aprobadas.
 - [ ] Restringir inserción de `approver_audit_log` cuando exista un escritor real identificado.
 - [ ] Registrar borrados masivos, cambios de estado, aprobaciones, permisos, KMZ y modificaciones financieras.
 - [ ] Implementar matriz final de permisos en UI, middleware, API y Supabase.
