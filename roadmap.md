@@ -22,6 +22,7 @@ Cerrar brechas críticas de seguridad, permisos, trazabilidad y confiabilidad op
 - [x] Añadir evidencia, comentarios y envío manual por WhatsApp Web.
 - [x] Mostrar estado, responsables y acceso directo de la tarea vinculada en los módulos de origen.
 - [x] Preparar una interfaz desacoplada de notificaciones para WhatsApp Web y futura GreenAPI.
+- [x] Conectar la UI de tareas a la interfaz común y ejecutar pruebas automáticas antes de cada build.
 - [ ] Completar cobertura de acciones críticas y permisos por módulo.
 - [ ] Validar flujos completos por rol y dispositivo.
 
@@ -46,21 +47,25 @@ Cerrar brechas críticas de seguridad, permisos, trazabilidad y confiabilidad op
 - `task_evidence` usa almacenamiento privado y URL firmada temporal; imágenes y PDF hasta 10 MB.
 - `task_comments` registra autor y fecha; WhatsApp Web abre mensajes precompletados y no envía automáticamente.
 - `lib/notifications/task-notification.ts` centraliza normalización de teléfonos chilenos, construcción de mensajes y selección de proveedor.
+- El botón de WhatsApp en el detalle de tareas ya usa `prepareTaskNotification(...)`; no mantiene una implementación paralela.
+- El enlace incluye el identificador de tarea en `/tasks?selected=<id>` para abrir el seguimiento correcto.
 - El proveedor activo sigue siendo `whatsapp_web`, en modo manual y con confirmación humana.
 - `greenapi` está modelado como proveedor futuro, pero falla de forma explícita mientras no existan credenciales, endpoint y reglas aprobadas; no se introdujeron secretos ni envíos automáticos.
+- `tests/task-notification.test.ts` cubre normalización chilena, mensaje `es-CL`, URL de WhatsApp, capacidades declaradas y bloqueo de GreenAPI.
+- `npm run test:notifications` se ejecuta como `prebuild`; Vercel verificó 5 pruebas aprobadas, 0 fallidas, antes de completar el build.
 - Producción mantiene 20 trabajadores, 1 voluntario, 0 tareas, 0 asignaciones, 0 comentarios y 0 evidencias. No se modificaron filas operativas en este bloque.
 
 ## Prioridades
 
-1. Conectar el botón actual de WhatsApp a la abstracción común y añadir pruebas unitarias del mensaje y normalización chilena.
-2. Probar creación, edición, evidencia, comentarios y cambios de estado con datos controlados.
-3. Auditar operaciones destructivas restantes en pagos, presupuestos, inventario y compras.
-4. Registrar acciones críticas reales: anulaciones, pagos, cambios financieros, permisos y borrados.
-5. Completar matriz de permisos para `admin`, `approver` y usuario autenticado.
-6. Validar módulos críticos por rol en desktop y móvil.
-7. Validar visualmente impresión/PDF con una factura controlada y autorización explícita.
-8. Revisar exposición de datos personales en respuestas API y logs.
-9. Confirmar consistencia Chile: CLP, `es-CL`, zona local y terminología tributaria.
+1. Probar creación, edición, evidencia, comentarios y cambios de estado con datos controlados.
+2. Auditar operaciones destructivas restantes en pagos, presupuestos, inventario y compras.
+3. Registrar acciones críticas reales: anulaciones, pagos, cambios financieros, permisos y borrados.
+4. Completar matriz de permisos para `admin`, `approver` y usuario autenticado.
+5. Validar módulos críticos por rol en desktop y móvil.
+6. Validar visualmente impresión/PDF con una factura controlada y autorización explícita.
+7. Revisar exposición de datos personales en respuestas API y logs.
+8. Confirmar consistencia Chile: CLP, `es-CL`, zona local y terminología tributaria.
+9. Integrar GreenAPI únicamente cuando existan credenciales, endpoint, plantillas, consentimiento y reglas de reintento aprobadas.
 10. Eliminar datos de prueba únicamente con autorización específica.
 
 ## Semana 1 — Contención crítica
@@ -92,6 +97,7 @@ Cerrar brechas críticas de seguridad, permisos, trazabilidad y confiabilidad op
 - [x] Añadir evidencia, comentarios y WhatsApp Web.
 - [x] Mostrar progreso y responsables de tareas en los módulos de origen.
 - [x] Preparar interfaz de proveedor para GreenAPI sin activar envío automático.
+- [x] Centralizar el botón de WhatsApp y cubrir el flujo con pruebas ejecutadas en `prebuild`.
 - [ ] Integrar GreenAPI cuando existan credenciales y reglas aprobadas.
 - [ ] Registrar acciones críticas y completar matriz final de permisos.
 
@@ -112,6 +118,7 @@ Cerrar brechas críticas de seguridad, permisos, trazabilidad y confiabilidad op
 - [x] 0 tablas con políticas `ALL` amplias sin restricción efectiva.
 - [x] 100% de rutas administrativas protegidas en servidor.
 - [x] 0 modificaciones de datos de producción no autorizadas.
+- [x] Pruebas de notificaciones ejecutadas automáticamente antes del build.
 - [ ] 100% de operaciones críticas con registro de auditoría.
 - [ ] 100% de flujos críticos verificados por rol y dispositivo.
 - [ ] 100% de pantallas financieras críticas verificadas para Chile.
