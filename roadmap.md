@@ -25,6 +25,7 @@ Cerrar brechas críticas de seguridad, permisos, trazabilidad y confiabilidad op
 - [x] Conectar la UI de tareas a la interfaz común y ejecutar pruebas automáticas antes de cada build.
 - [x] Ejecutar una prueba transaccional controlada del flujo completo de tareas sin persistir datos.
 - [x] Auditar y endurecer operaciones destructivas en pagos, presupuestos, inventario y compras.
+- [x] Registrar automáticamente acciones críticas financieras, operativas, de permisos y borrado.
 - [ ] Completar cobertura de acciones críticas y permisos por módulo.
 - [ ] Validar flujos completos por rol y dispositivo.
 
@@ -63,13 +64,18 @@ Cerrar brechas críticas de seguridad, permisos, trazabilidad y confiabilidad op
 - Pagos, pagos de factura, presupuestos, categorías y divisiones presupuestarias solo pueden crearse o actualizarse por `admin` o `approver`; la eliminación permanece limitada a `admin`.
 - `inventory_movements` quedó como bitácora append-only: usuarios autenticados pueden leer y registrar movimientos propios, pero no actualizar ni eliminar entradas.
 - Órdenes de compra y proveedores permiten creación/edición a `admin` y `approver`; la eliminación queda limitada a `admin`.
+- La migración `add_critical_action_audit_log` creó una bitácora privada y append-only para registrar `INSERT`, `UPDATE` y `DELETE` críticos.
+- La auditoría cubre pagos, pagos de factura, facturas, presupuestos, categorías, divisiones, movimientos de inventario, órdenes de compra, proveedores, reservas y cambios en aprobadores de compras.
+- Cada registro conserva entidad, identificador, categoría, acción, usuario, correo, rol, estado anterior, estado nuevo, campos modificados y fecha.
+- Solo `admin` y `approver` pueden consultar la bitácora; no existe acceso de escritura desde el cliente ni privilegio para `anon`.
+- Una prueba transaccional validó `INSERT`, `UPDATE` y `DELETE` de un pago temporal, incluyendo detección de los campos `payment_status` y `paid_at`; el `ROLLBACK` dejó 0 registros de prueba y 0 filas de auditoría.
 - Los conteos se preservaron sin cambios: 25 presupuestos, 26 categorías, 7 divisiones, 6 movimientos de inventario, 18 proveedores, 0 pagos y 0 órdenes de compra.
 - Producción mantiene 20 trabajadores y 1 voluntario. No se modificaron reservas ni las cinco reservas `TEST_`.
 
 ## Prioridades
 
-1. Registrar acciones críticas reales: anulaciones, pagos, cambios financieros, permisos y borrados.
-2. Completar matriz de permisos para `admin`, `approver` y usuario autenticado.
+1. Completar matriz de permisos para `admin`, `approver` y usuario autenticado.
+2. Añadir pruebas negativas por rol para operaciones financieras y administrativas.
 3. Ejecutar validación visual de flujos críticos en desktop y móvil con sesión real.
 4. Validar visualmente impresión/PDF con una factura controlada y autorización explícita.
 5. Revisar exposición de datos personales en respuestas API y logs.
@@ -108,8 +114,9 @@ Cerrar brechas críticas de seguridad, permisos, trazabilidad y confiabilidad op
 - [x] Preparar interfaz de proveedor para GreenAPI sin activar envío automático.
 - [x] Centralizar el botón de WhatsApp y cubrir el flujo con pruebas ejecutadas en `prebuild`.
 - [x] Validar transaccionalmente creación, asignaciones, comentarios, evidencia y cambios de estado.
+- [x] Registrar automáticamente acciones críticas financieras, operativas, de permisos y borrado.
 - [ ] Integrar GreenAPI cuando existan credenciales y reglas aprobadas.
-- [ ] Registrar acciones críticas y completar matriz final de permisos.
+- [ ] Completar matriz final de permisos.
 
 ## Semana 4 — Validación integral y cierre
 
@@ -130,6 +137,7 @@ Cerrar brechas críticas de seguridad, permisos, trazabilidad y confiabilidad op
 - [x] 0 modificaciones de datos de producción no autorizadas.
 - [x] Pruebas de notificaciones ejecutadas automáticamente antes del build.
 - [x] Flujo transaccional de tareas validado de extremo a extremo sin dejar datos temporales.
+- [x] Acciones críticas financieras, operativas, de permisos y borrado cubiertas por auditoría automática.
 - [ ] 100% de operaciones críticas con registro de auditoría.
 - [ ] 100% de flujos críticos verificados por rol y dispositivo.
 - [ ] 100% de pantallas financieras críticas verificadas para Chile.
