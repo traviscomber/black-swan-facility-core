@@ -14,6 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { createBrowserClient } from "@/lib/supabase/client"
 import { useToast } from "@/hooks/use-toast"
 import { operationalAreaLabels, type OperationalArea } from "@/lib/operational-task-templates"
+import { getTaskNotificationCapabilities, prepareTaskNotification } from "@/lib/notifications/task-notification"
 
 type TaskStatus = "nueva" | "en_progreso" | "completada" | "cancelada"
 type Task = {
@@ -64,16 +65,11 @@ type TaskEvidence = {
 
 const statusLabels: Record<TaskStatus, string> = { nueva: "Pendiente", en_progreso: "En curso", completada: "Completada", cancelada: "Cancelada" }
 const priorityLabels = { baja: "Baja", media: "Media", alta: "Alta", urgente: "Urgente" }
+const notificationCapabilities = getTaskNotificationCapabilities()
 
 function formatTimestamp(value: string | null) {
   if (!value) return "Fecha no disponible"
   return new Intl.DateTimeFormat("es-CL", { dateStyle: "medium", timeStyle: "short", timeZone: "America/Santiago" }).format(new Date(value))
-}
-
-function whatsappNumber(value: string) {
-  const digits = value.replace(/\D/g, "").replace(/^0+/, "")
-  if (digits.startsWith("56")) return digits
-  return digits.length >= 8 ? `56${digits}` : digits
 }
 
 function safeFileName(value: string) {
@@ -211,11 +207,19 @@ export function TaskDetailPanel({ task, onUpdate, onClose, onEdit }: { task: Tas
     setUploading(false)
   }
 
-  function whatsappHref(phone: string) {
-    const number = whatsappNumber(phone)
-    const due = task.due_date ? format(parseISO(task.due_date), "d 'de' MMMM", { locale: es }) : "sin fecha definida"
-    const message = [`Black Swan · Nueva tarea operativa`, `*${task.title}*`, `Estado: ${statusLabels[task.status]}`, `Prioridad: ${priorityLabels[task.priority]}`, `Fecha objetivo: ${due}`, task.location_name ? `Lugar: ${task.location_name}` : null, task.description ? `Indicaciones: ${task.description}` : null, `${window.location.origin}/tasks`].filter(Boolean).join("\n")
-    return `https://wa.me/${number}?text=${encodeURIComponent(message)}`
+  function taskNotificationHref(recipientName: string, phone: string) {
+    return prepareTaskNotification({
+      recipientName,
+      recipientPhone: phone,
+      taskId: task.id,
+      title: task.title,
+      description: task.description,
+      status: task.status,
+      priority: task.priority,
+      dueDate: task.due_date,
+      locationName: task.location_name,
+      taskUrl: `${window.location.origin}/tasks?selected=${task.id}`,
+    }).href
   }
 
   return <div className="space-y-5 p-5 sm:p-6">
@@ -227,7 +231,7 @@ export function TaskDetailPanel({ task, onUpdate, onClose, onEdit }: { task: Tas
     <Card><CardHeader><CardTitle className="text-base">Información</CardTitle></CardHeader><CardContent className="space-y-3 text-sm">{task.description && <p className="text-muted-foreground">{task.description}</p>}{task.due_date && <p className="flex items-center gap-2"><Calendar className="h-4 w-4 text-muted-foreground" />{format(parseISO(task.due_date), "d 'de' MMMM 'de' yyyy", { locale: es })}</p>}{task.location_name && <p className="flex items-center gap-2"><MapPin className="h-4 w-4 text-muted-foreground" />{task.location_name}</p>}{task.estimated_minutes && <p className="flex items-center gap-2"><Clock className="h-4 w-4 text-muted-foreground" />Duración estimada: {task.estimated_minutes} minutos</p>}</CardContent></Card>
     {(task.animal_handling || task.safety_notes) && <Card className="border-amber-400/50"><CardHeader><CardTitle className="flex items-center gap-2 text-base"><AlertTriangle className="h-4 w-4" />Seguridad</CardTitle></CardHeader><CardContent className="text-sm text-muted-foreground">{task.safety_notes || "Esta tarea requiere manejo o cercanía con animales y debe realizarse bajo instrucciones del responsable del área."}</CardContent></Card>}
 
-    <Card><CardHeader><CardTitle className="flex items-center gap-2 text-base"><Users className="h-4 w-4" />Responsables y WhatsApp</CardTitle></CardHeader><CardContent>{task.task_assignments.length === 0 ? <p className="text-sm text-muted-foreground">Sin responsables asignados.</p> : <ul className="space-y-3">{task.task_assignments.map((assignment, index) => { const person = assignment.employees ?? assignment.volunteers; const kind = assignment.volunteer_id ? "Voluntario" : "Trabajador"; return <li key={assignment.employee_id ?? assignment.volunteer_id ?? index} className="flex flex-col gap-2 rounded-md border p-3 sm:flex-row sm:items-center sm:justify-between"><div className="min-w-0 text-sm"><p className="font-medium">{person?.name ?? "Persona no disponible"}</p><p className="truncate text-xs text-muted-foreground">{kind}{person?.phone ? ` · ${person.phone}` : " · Sin teléfono registrado"}</p></div>{person?.phone && <Button asChild variant="outline" size="sm"><a href={whatsappHref(person.phone)} target="_blank" rel="noreferrer"><MessageCircle className="mr-2 h-4 w-4" />Enviar por WhatsApp</a></Button>}</li> })}</ul>}<p className="mt-3 text-xs text-muted-foreground">El envío actual abre WhatsApp Web con el mensaje preparado. GreenAPI queda reservado para automatización posterior.</p></CardContent></Card>
+    <Card><CardHeader><CardTitle className="flex items-center gap-2 text-base"><Users className="h-4 w-4" />Responsables y WhatsApp</CardTitle></CardHeader><CardContent>{task.task_assignments.length === 0 ? <p className="text-sm text-muted-foreground">Sin responsables asignados.</p> : <ul className="space-y-3">{task.task_assignments.map((assignment, index) => { const person = assignment.employees ?? assignment.volunteers; const kind = assignment.volunteer_id ? "Voluntario" : "Trabajador"; return <li key={assignment.employee_id ?? assignment.volunteer_id ?? index} className="flex flex-col gap-2 rounded-md border p-3 sm:flex-row sm:items-center sm:justify-between"><div className="min-w-0 text-sm"><p className="font-medium">{person?.name ?? "Persona no disponible"}</p><p className="truncate text-xs text-muted-foreground">{kind}{person?.phone ? ` · ${person.phone}` : " · Sin teléfono registrado"}</p></div>{person?.phone && <Button asChild variant="outline" size="sm"><a href={taskNotificationHref(person.name, person.phone)} target="_blank" rel="noreferrer"><MessageCircle className="mr-2 h-4 w-4" />Enviar por WhatsApp</a></Button>}</li> })}</ul>}<p className="mt-3 text-xs text-muted-foreground">Proveedor activo: WhatsApp Web, con confirmación manual. {notificationCapabilities.futureProvider === "greenapi" ? "GreenAPI podrá incorporarse después sin cambiar esta pantalla." : null}</p></CardContent></Card>
 
     <Card><CardHeader><CardTitle className="flex items-center gap-2 text-base"><Camera className="h-4 w-4" />Evidencia de ejecución</CardTitle></CardHeader><CardContent className="space-y-4"><div className="grid gap-3 sm:grid-cols-[1fr_auto]"><Input value={caption} onChange={(event) => setCaption(event.target.value)} placeholder="Descripción opcional de la evidencia" /><label className="inline-flex cursor-pointer items-center justify-center rounded-md border bg-background px-4 py-2 text-sm font-medium hover:bg-muted"><input type="file" accept="image/*,application/pdf" className="sr-only" onChange={uploadEvidence} disabled={uploading} />{uploading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}Adjuntar</label></div><p className="text-xs text-muted-foreground">Imágenes o PDF, máximo 10 MB. Los archivos se guardan en un contenedor privado.</p>{loadingActivity ? <Loader2 className="h-5 w-5 animate-spin" /> : evidence.length === 0 ? <p className="text-sm text-muted-foreground">Aún no hay evidencia adjunta.</p> : <div className="grid gap-3 sm:grid-cols-2">{evidence.map((item) => <a key={item.id} href={item.signed_url || "#"} target="_blank" rel="noreferrer" className="rounded-md border p-3 hover:bg-muted/40"><div className="flex items-start gap-3">{item.mime_type?.startsWith("image/") ? <Camera className="mt-0.5 h-4 w-4" /> : <FileText className="mt-0.5 h-4 w-4" />}<div className="min-w-0"><p className="truncate text-sm font-medium">{item.file_name}</p>{item.caption && <p className="mt-1 text-xs text-muted-foreground">{item.caption}</p>}<p className="mt-1 text-xs text-muted-foreground">{formatTimestamp(item.created_at)}{item.uploader_email ? ` · ${item.uploader_email}` : ""}</p></div></div></a>)}</div>}</CardContent></Card>
 
