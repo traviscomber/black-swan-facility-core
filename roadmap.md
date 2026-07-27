@@ -1,7 +1,6 @@
 # Roadmap de estabilización — 30 días
 
 Fecha de inicio: 26-07-2026  
-Horizonte máximo: 30 días  
 Sistema: Black Swan Facility Core — Fundo Corcovado, Valdivia, Chile
 
 ## Objetivo
@@ -15,123 +14,82 @@ Cerrar brechas críticas de seguridad, permisos, trazabilidad y confiabilidad op
 - [x] Inventariar y cerrar ejecución anónima de RPC críticos.
 - [x] Endurecer RLS en datos personales, financieros y operativos.
 - [x] Volver append-only nueve bitácoras operativas y administrativas.
-- [x] Endurecer GIS, KMZ, infraestructura, energía, combustibles, IA, catálogos y hospitalidad.
-- [x] Alinear operaciones masivas con el patrón bed-booking: prevalidación, atomicidad, historial y deshacer.
-- [x] Refactorizar facturas con logo Black Swan, CLP, fechas chilenas, impresión A4 y creación desde reservas.
-- [x] Incorporar prevalidación de facturación de solo lectura.
+- [x] Alinear operaciones masivas con prevalidación, atomicidad, historial y deshacer.
+- [x] Refactorizar facturas para Black Swan y Chile, con impresión A4 y prevalidación.
 - [x] Llevar políticas RLS `ALL` amplias sin restricción efectiva a cero.
-- [x] Ampliar tareas operativas para trabajadores y voluntarios en todas las áreas de Black Swan.
+- [x] Ampliar tareas para trabajadores y voluntarios en todas las áreas.
 - [x] Conectar tareas con hospitalidad, housekeeping, mantenimiento, ganadería e incidencias.
-- [x] Añadir evidencia, comentarios y envío manual por WhatsApp Web en tareas.
+- [x] Añadir evidencia, comentarios y envío manual por WhatsApp Web.
+- [x] Mostrar estado, responsables y acceso directo de la tarea vinculada en los módulos de origen.
 - [ ] Completar cobertura de acciones críticas y permisos por módulo.
 - [ ] Validar flujos completos por rol y dispositivo.
 
 ## Estado verificado
 
-- Los 13 RPC `SECURITY DEFINER` fueron inventariados; ninguno conserva `EXECUTE` para `anon` o `PUBLIC`.
+- Los 13 RPC `SECURITY DEFINER` inventariados no conservan `EXECUTE` para `anon` o `PUBLIC`.
 - `execute_bulk_update` y `restore_bulk_operation_state` verifican rol `admin` dentro del RPC.
-- Las tablas sensibles y operativas revisadas usan políticas separadas por operación y no permiten `TRUNCATE` a usuarios autenticados.
-- `DELETE` queda limitado a `admin` en los módulos endurecidos.
-- Nueve bitácoras son append-only y no permiten alteración o borrado por usuarios operativos.
-- `bulk_operations` conserva 3 registros históricos y solo puede escribirse o restaurarse mediante RPC controlado.
-- El módulo de facturas exige sesión, valida UUID, fechas, estados y montos CLP, y limita creación/edición a `admin` y `approver`; eliminación solo para `admin` y bloqueada cuando existen pagos.
-- El editor de facturas usa `/blackswan-logo.png`, identifica Black Swan y Fundo Corcovado, muestra CLP sin decimales y fechas chilenas, y genera salida A4 limpia para impresión/PDF.
-- `GET /api/bookings/invoices/preview` valida reserva, huésped, habitación, extras, fechas, duplicados e importes antes de habilitar creación.
-- La tabla `invoices` permanece con 0 registros. No se crearon ni alteraron facturas durante el refactor.
-- Producción contiene 7 reservas confirmadas; 5 tienen prefijo `TEST_`. Ninguna fue modificada.
-- Una reserva histórica no TEST presenta salida anterior a entrada y queda bloqueada por la prevalidación.
-- `reviews` permanece con 0 registros y `volunteers` conserva 1 registro.
-- `reviews` y `volunteers` ya no permiten acceso `anon`, `TRUNCATE` ni políticas `ALL` amplias.
-- Conteo verificado de políticas `ALL` amplias sin restricción efectiva: **0**.
-- El módulo `/tasks` admite responsables trabajadores y voluntarios sin duplicar sistemas de seguimiento.
-- `task_assignments` acepta exactamente un `employee_id` o un `volunteer_id` por asignación y conserva integridad referencial.
-- `tasks` incorpora área, categoría, duración, manejo animal, seguridad y referencia al módulo de origen.
-- Se agregaron plantillas para ganadería, hospitalidad, housekeeping, mantenimiento, huerto, viñedo, infraestructura, logística, seguridad y administración.
-- Las tareas de creación y edición usan RPC atómicos con validación interna de sesión y rol `admin` o `approver`.
-- Cada tarea derivada puede guardar `source_type`, `source_id`, `source_label` y `source_path`; un índice impide más de una tarea abierta para el mismo registro de origen.
-- `/tasks` abre el formulario precompletado desde el módulo de origen y muestra la referencia en su listado.
-- Ganadería permite crear tareas por área o potrero registrado.
-- Housekeeping permite derivar sus registros a tareas operativas asignables.
-- Mantenimiento permite crear una tarea operacional desde cada trabajo programado.
-- Incidencias permiten crear una tarea precompletada y el RPC enlaza el registro con `issue_task_assignments` dentro de la misma transacción.
-- Concierge incorpora una vista interna de solicitudes de hospitalidad y permite derivarlas a tareas sin reemplazar el formulario público de huéspedes.
-- `task_evidence` registra archivos, descripción, autor y fecha; los archivos se almacenan en el bucket privado `task-evidence` y se abren mediante URL firmada temporal.
-- La carga admite imágenes y PDF de hasta 10 MB. La eliminación de registros y archivos queda limitada a `admin`; lectura y carga requieren rol interno autorizado.
-- `task_comments` registra novedades, bloqueos y resultados con autor y fecha en formato `es-CL` y zona `America/Santiago`.
-- El detalle de tarea muestra el origen, responsables, teléfonos, evidencia, comentarios y estado en una sola vista.
-- El botón de WhatsApp abre `wa.me`/WhatsApp Web con un mensaje precompletado para cada responsable que tenga teléfono registrado.
-- GreenAPI no está integrado todavía: queda reservado para envío automático posterior. El flujo actual no envía mensajes sin intervención humana.
-- Producción mantiene 20 trabajadores, 1 voluntario, 0 tareas, 0 asignaciones, 0 comentarios y 0 evidencias. No se crearon ni modificaron filas operativas durante este bloque.
+- Las tablas sensibles revisadas usan políticas separadas por operación; `DELETE` queda limitado a `admin`.
+- Nueve bitácoras son append-only.
+- `bulk_operations` conserva 3 registros históricos y solo se modifica mediante RPC controlado.
+- Facturación exige sesión, valida UUID, fechas, estados y montos CLP; creación/edición requiere `admin` o `approver` y eliminación requiere `admin`.
+- El editor de facturas usa el logo Black Swan, CLP sin decimales, fechas chilenas y salida A4 limpia.
+- Producción conserva 7 reservas confirmadas; 5 tienen prefijo `TEST_`. Ninguna fue modificada.
+- `reviews` permanece con 0 registros; `volunteers` conserva 1 registro.
+- Conteo de políticas `ALL` amplias sin restricción efectiva: **0**.
+- `/tasks` admite trabajadores y voluntarios, área, categoría, duración, manejo animal, seguridad y referencia de origen.
+- Las tareas se crean y editan mediante RPC atómicos con validación interna de rol.
+- El índice de origen impide más de una tarea abierta para el mismo registro.
+- Hospitalidad, housekeeping, mantenimiento, ganadería e incidencias pueden crear tareas precompletadas.
+- Los módulos de origen muestran estado de la tarea vinculada, responsables y acceso directo a `/tasks?selected=<id>`.
+- `/tasks` abre automáticamente el detalle solicitado y selecciona la pestaña correspondiente a su estado.
+- `task_evidence` usa almacenamiento privado y URL firmada temporal; imágenes y PDF hasta 10 MB.
+- `task_comments` registra autor y fecha; WhatsApp Web abre mensajes precompletados y no envía automáticamente.
+- GreenAPI queda reservado para una fase posterior con credenciales y reglas aprobadas.
+- Producción mantiene 20 trabajadores, 1 voluntario, 0 tareas, 0 asignaciones, 0 comentarios y 0 evidencias. No se modificaron filas operativas en este bloque.
 
 ## Prioridades
 
-1. Probar creación, edición, evidencia, comentarios y cambio de estado con un trabajador y un voluntario mediante datos controlados.
-2. Mostrar en cada módulo el estado de la tarea vinculada y permitir volver al registro de origen desde el detalle.
-3. Preparar una interfaz de notificaciones desacoplada para integrar GreenAPI posteriormente sin cambiar el flujo de tareas.
-4. Auditar operaciones destructivas restantes en pagos, presupuestos, inventario y compras.
-5. Conectar y verificar registro de acciones críticas reales: anulaciones, pagos, cambios financieros, permisos y borrados.
-6. Completar matriz de permisos para `admin`, `approver` y usuario autenticado en UI, API y Supabase.
-7. Validar por rol los módulos críticos en desktop y móvil.
-8. Validar visualmente impresión/PDF con una factura controlada fuera de producción o con autorización explícita sobre una reserva `TEST_`.
-9. Revisar exposición de datos personales en respuestas API y logs.
-10. Confirmar consistencia Chile: CLP, `es-CL`, zona local, textos tributarios y contexto Valdivia.
-11. Eliminar datos de prueba únicamente con autorización específica.
+1. Probar creación, edición, evidencia, comentarios y cambios de estado con datos controlados.
+2. Preparar una interfaz de notificaciones desacoplada para GreenAPI sin cambiar el flujo de tareas.
+3. Auditar operaciones destructivas restantes en pagos, presupuestos, inventario y compras.
+4. Registrar acciones críticas reales: anulaciones, pagos, cambios financieros, permisos y borrados.
+5. Completar matriz de permisos para `admin`, `approver` y usuario autenticado.
+6. Validar módulos críticos por rol en desktop y móvil.
+7. Validar visualmente impresión/PDF con una factura controlada y autorización explícita.
+8. Revisar exposición de datos personales en respuestas API y logs.
+9. Confirmar consistencia Chile: CLP, `es-CL`, zona local y terminología tributaria.
+10. Eliminar datos de prueba únicamente con autorización específica.
 
 ## Semana 1 — Contención crítica
 
-- [x] Verificar deployments anteriores en `READY`.
+- [x] Verificar deployments en `READY`.
 - [x] Cerrar ejecución anónima de RPC críticos.
 - [x] Proteger rutas administrativas en servidor.
-- [x] Endurecer operaciones masivas de reservas.
-- [x] Endurecer consulta, creación, edición y eliminación de facturas.
-- [ ] Completar auditoría de operaciones destructivas en pagos, presupuestos, inventario y compras.
+- [x] Endurecer operaciones masivas de reservas y facturas.
+- [ ] Completar auditoría destructiva en pagos, presupuestos, inventario y compras.
 - [ ] Completar matriz inicial de permisos por módulo y acción.
-
-### Criterio de cierre
-
-- [x] Ningún RPC crítico ejecutable por `anon` o `PUBLIC`.
-- [ ] Ninguna operación destructiva masiva accesible fuera de `admin`.
-- [x] Deployments funcionales verificados en `READY`.
 
 ## Semana 2 — Datos personales y financieros
 
-- [x] Endurecer RLS en `guests`, `reservations`, `invoices`, `invoice_payments`, `payments`, `leads`, `messages` y `budgets`.
+- [x] Endurecer RLS en huéspedes, reservas, facturas, pagos, leads, mensajes y presupuestos.
 - [x] Separar lectura, creación, actualización y eliminación.
-- [x] Eliminar privilegios `anon` en tablas sensibles revisadas.
-- [x] Limitar `DELETE` a `admin`.
-- [x] Refactorizar facturación para Chile y Black Swan.
-- [x] Implementar impresión/PDF A4.
-- [x] Implementar prevalidación de facturación.
-- [x] Endurecer `reviews` y `volunteers` y llevar políticas `ALL` amplias a cero.
-- [ ] Validar visualmente impresión/PDF con una factura controlada.
+- [x] Eliminar acceso anónimo y limitar eliminación a `admin`.
+- [x] Implementar facturación chilena, impresión A4 y prevalidación.
+- [x] Endurecer `reviews` y `volunteers`.
+- [ ] Validar impresión/PDF con una factura controlada.
 - [ ] Añadir pruebas negativas por rol.
-- [ ] Revisar exposición de datos personales en API y logs.
-
-### Criterio de cierre
-
-- [x] Acceso anónimo eliminado en datos sensibles revisados.
-- [x] Escritura separada por operación; eliminación limitada a `admin`.
-- [x] Cero políticas `ALL` amplias sin restricción efectiva.
-- [ ] Reservas y facturación verificadas con pruebas controladas.
+- [ ] Revisar exposición de datos personales.
 
 ## Semana 3 — Auditoría, roles y trazabilidad
 
-- [x] Revisar historiales y volver append-only nueve bitácoras.
-- [x] Retirar acceso anónimo a bitácoras y RPC escritores identificados.
-- [x] Permitir asignación de tareas a trabajadores y voluntarios con creación y edición atómicas.
-- [x] Añadir catálogo operacional de tareas para todas las áreas principales de Fundo Corcovado.
-- [x] Conectar creación de tareas desde hospitalidad, housekeeping, mantenimiento, ganadería e incidencias.
-- [x] Añadir evidencia, comentarios y envío manual por WhatsApp Web en tareas.
-- [ ] Integrar GreenAPI para envío automático cuando se disponga de credenciales y reglas operativas aprobadas.
-- [ ] Restringir inserción de `approver_audit_log` cuando exista un escritor real identificado.
-- [ ] Registrar borrados masivos, cambios de estado, aprobaciones, permisos, KMZ y modificaciones financieras.
-- [ ] Implementar matriz final de permisos en UI, middleware, API y Supabase.
-
-### Criterio de cierre
-
-- [ ] Toda acción crítica deja rastro verificable.
-- [x] Las nueve bitácoras revisadas no pueden ser alteradas ni borradas por usuarios operativos.
-- [ ] La UI coincide con los permisos reales del servidor y Supabase en todos los módulos.
+- [x] Volver append-only nueve bitácoras.
+- [x] Permitir tareas para trabajadores y voluntarios con creación y edición atómicas.
+- [x] Añadir catálogo operacional para todas las áreas principales.
+- [x] Conectar tareas desde hospitalidad, housekeeping, mantenimiento, ganadería e incidencias.
+- [x] Añadir evidencia, comentarios y WhatsApp Web.
+- [x] Mostrar progreso y responsables de tareas en los módulos de origen.
+- [ ] Integrar GreenAPI cuando existan credenciales y reglas aprobadas.
+- [ ] Registrar acciones críticas y completar matriz final de permisos.
 
 ## Semana 4 — Validación integral y cierre
 
@@ -140,7 +98,7 @@ Cerrar brechas críticas de seguridad, permisos, trazabilidad y confiabilidad op
 - [ ] Revisar errores de runtime y logs de Vercel de los últimos siete días.
 - [ ] Corregir regresiones de permisos, carga, estados vacíos y formularios.
 - [ ] Confirmar que no quedan mocks, métricas inventadas ni textos desactualizados.
-- [ ] Confirmar formato `es-CL`, CLP, fechas locales y terminología chilena en pantallas críticas.
+- [ ] Confirmar formato `es-CL`, CLP y fechas locales.
 - [ ] Documentar permisos, migraciones, rollback, rutas críticas y soporte.
 - [ ] Decidir específicamente si se eliminan las cinco reservas `TEST_`.
 
@@ -149,19 +107,18 @@ Cerrar brechas críticas de seguridad, permisos, trazabilidad y confiabilidad op
 - [x] 0 RPC críticos ejecutables por `anon` o `PUBLIC`.
 - [x] 0 tablas con políticas `ALL` amplias sin restricción efectiva.
 - [x] 100% de rutas administrativas protegidas en servidor.
+- [x] 0 modificaciones de datos de producción no autorizadas.
 - [ ] 100% de operaciones críticas con registro de auditoría.
 - [ ] 100% de flujos críticos verificados por rol y dispositivo.
-- [x] 0 modificaciones de datos de producción no autorizadas.
-- [ ] 100% de pantallas financieras críticas verificadas para Chile, CLP y `es-CL`.
+- [ ] 100% de pantallas financieras críticas verificadas para Chile.
 
 ## Regla de ejecución
 
 1. Inspección de código y esquema real.
-2. Comparación con el patrón bed-booking equivalente antes de refactorizar.
+2. Comparación con el patrón bed-booking equivalente.
 3. Cambio pequeño y trazable.
 4. DDL únicamente mediante migración.
 5. Commit directo a `main`.
-6. Verificación del deployment correspondiente.
+6. Verificación del deployment.
 7. Actualización inmediata de este roadmap en commit separado.
 8. Registro de impacto, datos preservados y riesgo residual.
-9. Verificación explícita de contexto chileno en cambios financieros, fechas, impuestos y moneda.
