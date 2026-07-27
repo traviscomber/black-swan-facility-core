@@ -29,6 +29,8 @@ La ejecución pendiente queda formalizada como objetivo de trabajo autónomo en 
 - [x] Auditar y endurecer operaciones destructivas en pagos, presupuestos, inventario y compras.
 - [x] Registrar automáticamente acciones críticas financieras, operativas, de permisos y borrado.
 - [x] Formalizar el trabajo pendiente como objetivo autónomo con límites y criterios de cierre.
+- [x] Completar matriz inicial de permisos por módulo y acción.
+- [x] Corregir las primeras brechas críticas de permisos en bloqueos, tablets, facturas y comentarios.
 - [ ] Completar cobertura de acciones críticas y permisos por módulo.
 - [ ] Validar flujos completos por rol y dispositivo.
 
@@ -70,22 +72,29 @@ La ejecución pendiente queda formalizada como objetivo de trabajo autónomo en 
 - La migración `add_critical_action_audit_log` creó una bitácora privada y append-only para registrar `INSERT`, `UPDATE` y `DELETE` críticos.
 - La auditoría cubre pagos, pagos de factura, facturas, presupuestos, categorías, divisiones, movimientos de inventario, órdenes de compra, proveedores, reservas y cambios en aprobadores de compras.
 - Cada registro conserva entidad, identificador, categoría, acción, usuario, correo, rol, estado anterior, estado nuevo, campos modificados y fecha.
-- Solo `admin` y `approver` pueden consultar la bitácora; no existe acceso de escritura desde el cliente ni privilegio para `anon`.
+- Solo `admin` puede consultar actualmente `critical_action_audit_log`; la matriz dejó documentada la discrepancia respecto del acceso esperado para `approver`.
 - Una prueba transaccional validó `INSERT`, `UPDATE` y `DELETE` de un pago temporal, incluyendo detección de los campos `payment_status` y `paid_at`; el `ROLLBACK` dejó 0 registros de prueba y 0 filas de auditoría.
 - `AUTONOMOUS_WORK_OBJECTIVE.md` define misión, orden de trabajo, límites obligatorios y criterios de cierre para completar este roadmap.
+- `docs/PERMISSION_MATRIX.md` documenta los permisos reales de los módulos críticos para `authenticated`, `approver` y `admin`.
+- La migración `harden_room_blocks_tablets_invoices_comments` restringió `room_blocks DELETE` a `admin`.
+- `tablet_devices` dejó de tener políticas asignadas a `public`; lectura exige sesión y actualización exige `admin` o `approver`.
+- Las escrituras de `invoices` ahora exigen `admin` o `approver`; la eliminación continúa limitada a `admin`.
+- `task_comments` quedó append-only desde la API: lectura e inserción disponibles, sin actualización ni eliminación.
+- La verificación posterior confirmó las políticas esperadas y privilegios de comentarios, con 0 filas en `room_blocks`, `invoices`, `task_comments` y `tablet_devices`; no hubo modificación de datos.
 - Los conteos se preservaron sin cambios: 25 presupuestos, 26 categorías, 7 divisiones, 6 movimientos de inventario, 18 proveedores, 0 pagos y 0 órdenes de compra.
 - Producción mantiene 20 trabajadores y 1 voluntario. No se modificaron reservas ni las cinco reservas `TEST_`.
 
 ## Prioridades
 
-1. Completar matriz de permisos para `admin`, `approver` y usuario autenticado.
-2. Añadir pruebas negativas por rol para operaciones financieras y administrativas.
-3. Ejecutar validación visual de flujos críticos en desktop y móvil con sesión real.
-4. Validar visualmente impresión/PDF con una factura controlada y autorización explícita.
-5. Revisar exposición de datos personales en respuestas API y logs.
-6. Confirmar consistencia Chile: CLP, `es-CL`, zona local y terminología tributaria.
-7. Integrar GreenAPI únicamente cuando existan credenciales, endpoint, plantillas, consentimiento y reglas de reintento aprobadas.
-8. Eliminar datos de prueba únicamente con autorización específica.
+1. Añadir pruebas negativas por rol para operaciones financieras y administrativas.
+2. Separar políticas `ALL` en `tasks` y `employees`, dejando eliminación solo para `admin`.
+3. Revisar exposición de datos personales en huéspedes, voluntarios, leads y mensajes.
+4. Ejecutar validación visual de flujos críticos en desktop y móvil con sesión real.
+5. Validar visualmente impresión/PDF con una factura controlada y autorización explícita.
+6. Revisar errores de runtime y logs de Vercel de los últimos siete días.
+7. Confirmar consistencia Chile: CLP, `es-CL`, zona local y terminología tributaria.
+8. Integrar GreenAPI únicamente cuando existan credenciales, endpoint, plantillas, consentimiento y reglas de reintento aprobadas.
+9. Eliminar datos de prueba únicamente con autorización específica.
 
 ## Semana 1 — Contención crítica
 
@@ -94,7 +103,7 @@ La ejecución pendiente queda formalizada como objetivo de trabajo autónomo en 
 - [x] Proteger rutas administrativas en servidor.
 - [x] Endurecer operaciones masivas de reservas y facturas.
 - [x] Completar auditoría destructiva en pagos, presupuestos, inventario y compras.
-- [ ] Completar matriz inicial de permisos por módulo y acción.
+- [x] Completar matriz inicial de permisos por módulo y acción.
 
 ## Semana 2 — Datos personales y financieros
 
