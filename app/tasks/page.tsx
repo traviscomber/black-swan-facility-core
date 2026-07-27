@@ -22,8 +22,8 @@ type TaskPriority = "baja" | "media" | "alta" | "urgente"
 type TaskAssignment = {
   employee_id?: string | null
   volunteer_id?: string | null
-  employees?: { id: string; name: string; email?: string | null } | null
-  volunteers?: { id: string; name: string; email?: string | null; volunteer_role?: string | null } | null
+  employees?: { id: string; name: string; email?: string | null; phone?: string | null } | null
+  volunteers?: { id: string; name: string; email?: string | null; phone?: string | null; volunteer_role?: string | null } | null
 }
 
 export type OperationalTask = {
@@ -103,7 +103,7 @@ export default function TasksPage() {
     setError(null)
     const { data, error: fetchError } = await supabase
       .from("tasks")
-      .select("*, task_assignments(employee_id, volunteer_id, employees(id, name, email), volunteers(id, name, email, volunteer_role))")
+      .select("*, task_assignments(employee_id, volunteer_id, employees(id, name, email, phone), volunteers(id, name, email, phone, volunteer_role))")
       .order("due_date", { ascending: true, nullsFirst: false })
       .order("created_at", { ascending: false })
 
@@ -154,35 +154,15 @@ export default function TasksPage() {
   return (
     <AppLayout>
       <div className="space-y-6 p-4 sm:p-8">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-          <div><h1 className="text-2xl font-bold text-accent sm:text-3xl">Tareas operativas</h1><p className="mt-1 text-sm text-muted-foreground">Trabajo coordinado para trabajadores y voluntarios en ganadería, hospitalidad y todas las áreas de Fundo Corcovado.</p></div>
-          <Button onClick={openBlankTask}><Plus className="mr-2 h-4 w-4" />Nueva tarea</Button>
-        </div>
-
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between"><div><h1 className="text-2xl font-bold text-accent sm:text-3xl">Tareas operativas</h1><p className="mt-1 text-sm text-muted-foreground">Trabajo coordinado para trabajadores y voluntarios en ganadería, hospitalidad y todas las áreas de Fundo Corcovado.</p></div><Button onClick={openBlankTask}><Plus className="mr-2 h-4 w-4" />Nueva tarea</Button></div>
         {error && <Card className="border-destructive/50"><CardContent className="p-4 text-sm text-destructive">No fue posible cargar las tareas: {error}</CardContent></Card>}
         {overdue > 0 && !error && <Card className="border-amber-300"><CardContent className="flex gap-3 p-4"><AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" /><div><p className="font-medium">Hay {overdue} tarea{overdue === 1 ? "" : "s"} vencida{overdue === 1 ? "" : "s"}</p><p className="mt-1 text-sm text-muted-foreground">Revisar, completar o cancelar conservando el historial. No se eliminan automáticamente.</p></div></CardContent></Card>}
-
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4"><Metric icon={Clock} label="Pendientes" value={stats.pendientes} /><Metric icon={Calendar} label="Con fecha para hoy" value={stats.hoy} /><Metric icon={CheckCircle2} label="Completadas esta semana" value={stats.completadasSemana} /><Metric icon={Users} label="Responsables en tareas abiertas" value={stats.responsables} /></div>
-
         <Tabs value={activeTab} onValueChange={setActiveTab}><TabsList className="grid h-auto w-full grid-cols-2 sm:w-fit sm:grid-cols-4"><TabsTrigger value="pendientes">Pendientes</TabsTrigger><TabsTrigger value="completadas">Completadas</TabsTrigger><TabsTrigger value="canceladas">Canceladas</TabsTrigger><TabsTrigger value="todas">Todas</TabsTrigger></TabsList></Tabs>
-
         <div className="grid gap-6 lg:grid-cols-[minmax(0,440px)_minmax(0,1fr)]">
-          <Card><CardHeader><CardTitle className="text-base">Lista de trabajo</CardTitle><p className="text-sm text-muted-foreground">Cada tarea puede combinar trabajadores y voluntarios, con área, seguridad, lugar, origen y fecha objetivo.</p></CardHeader><CardContent>
-            {isLoading ? <p className="py-10 text-center text-sm text-muted-foreground">Cargando tareas…</p> : filteredTasks.length === 0 ? <div className="py-10 text-center"><p className="font-medium">No hay tareas en esta vista.</p><p className="mt-1 text-sm text-muted-foreground">Usa una plantilla de Black Swan o crea un trabajo desde un módulo operativo.</p></div> : <div className="space-y-3">{filteredTasks.map((task) => {
-              const due = task.due_date ? parseISO(task.due_date) : null
-              const isOverdue = due && isPast(due) && !isToday(due) && task.status !== "completada" && task.status !== "cancelada"
-              const names = task.task_assignments.map((assignment) => assignment.employees?.name ?? assignment.volunteers?.name).filter(Boolean) as string[]
-              return <button key={task.id} type="button" onClick={() => setSelectedTask(task)} className={`w-full rounded-lg border p-4 text-left transition-colors hover:bg-muted/50 ${selectedTask?.id === task.id ? "border-primary bg-primary/5" : ""}`}>
-                <div className="flex items-start justify-between gap-3"><div className="min-w-0"><h2 className="font-semibold">{task.title}</h2><p className="mt-1 text-xs text-muted-foreground">{statusLabels[task.status]}</p></div><Badge variant="outline" className={priorityClasses[task.priority]}>{priorityLabels[task.priority]}</Badge></div>
-                <div className="mt-2 flex flex-wrap gap-2">{task.operational_area && <Badge variant="secondary">{operationalAreaLabels[task.operational_area]}</Badge>}{task.task_category && <Badge variant="outline">{task.task_category}</Badge>}{task.animal_handling && <Badge variant="outline" className="border-amber-400 text-amber-700">Manejo animal</Badge>}{task.source_label && <Badge variant="outline"><Link2 className="mr-1 h-3 w-3" />{task.source_label}</Badge>}</div>
-                <div className="mt-3 space-y-1.5 text-xs text-muted-foreground">{task.location_name && <p className="flex items-center gap-1.5"><MapPin className="h-3.5 w-3.5" />{task.location_name}</p>}{due && <p className={`flex items-center gap-1.5 ${isOverdue ? "font-medium text-destructive" : ""}`}><Calendar className="h-3.5 w-3.5" />{isOverdue ? "Vencida · " : ""}{format(due, "d 'de' MMMM 'de' yyyy", { locale: es })}</p>}<p className="flex items-center gap-1.5"><Users className="h-3.5 w-3.5" />{names.length ? names.join(", ") : "Sin responsable"}</p></div>
-              </button>
-            })}</div>}
-          </CardContent></Card>
-
+          <Card><CardHeader><CardTitle className="text-base">Lista de trabajo</CardTitle><p className="text-sm text-muted-foreground">Cada tarea puede combinar trabajadores y voluntarios, con área, seguridad, lugar, origen y fecha objetivo.</p></CardHeader><CardContent>{isLoading ? <p className="py-10 text-center text-sm text-muted-foreground">Cargando tareas…</p> : filteredTasks.length === 0 ? <div className="py-10 text-center"><p className="font-medium">No hay tareas en esta vista.</p><p className="mt-1 text-sm text-muted-foreground">Usa una plantilla de Black Swan o crea un trabajo desde un módulo operativo.</p></div> : <div className="space-y-3">{filteredTasks.map((task) => { const due = task.due_date ? parseISO(task.due_date) : null; const isOverdue = due && isPast(due) && !isToday(due) && task.status !== "completada" && task.status !== "cancelada"; const names = task.task_assignments.map((assignment) => assignment.employees?.name ?? assignment.volunteers?.name).filter(Boolean) as string[]; return <button key={task.id} type="button" onClick={() => setSelectedTask(task)} className={`w-full rounded-lg border p-4 text-left transition-colors hover:bg-muted/50 ${selectedTask?.id === task.id ? "border-primary bg-primary/5" : ""}`}><div className="flex items-start justify-between gap-3"><div className="min-w-0"><h2 className="font-semibold">{task.title}</h2><p className="mt-1 text-xs text-muted-foreground">{statusLabels[task.status]}</p></div><Badge variant="outline" className={priorityClasses[task.priority]}>{priorityLabels[task.priority]}</Badge></div><div className="mt-2 flex flex-wrap gap-2">{task.operational_area && <Badge variant="secondary">{operationalAreaLabels[task.operational_area]}</Badge>}{task.task_category && <Badge variant="outline">{task.task_category}</Badge>}{task.animal_handling && <Badge variant="outline" className="border-amber-400 text-amber-700">Manejo animal</Badge>}{task.source_label && <Badge variant="outline"><Link2 className="mr-1 h-3 w-3" />{task.source_label}</Badge>}</div><div className="mt-3 space-y-1.5 text-xs text-muted-foreground">{task.location_name && <p className="flex items-center gap-1.5"><MapPin className="h-3.5 w-3.5" />{task.location_name}</p>}{due && <p className={`flex items-center gap-1.5 ${isOverdue ? "font-medium text-destructive" : ""}`}><Calendar className="h-3.5 w-3.5" />{isOverdue ? "Vencida · " : ""}{format(due, "d 'de' MMMM 'de' yyyy", { locale: es })}</p>}<p className="flex items-center gap-1.5"><Users className="h-3.5 w-3.5" />{names.length ? names.join(", ") : "Sin responsable"}</p></div></button>})}</div>}</CardContent></Card>
           <Card className="min-h-[360px] overflow-hidden">{selectedTask ? <TaskDetailPanel task={selectedTask} onUpdate={() => void fetchTasks()} onClose={() => setSelectedTask(null)} onEdit={(task) => { setTaskToEdit(task); setIsEditDialogOpen(true) }} /> : <div className="flex min-h-[360px] items-center justify-center p-8 text-center text-sm text-muted-foreground">Selecciona una tarea para revisar su detalle, responsables, origen y seguridad.</div>}</Card>
         </div>
-
         <AddTaskDialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen} onTaskCreated={handleTaskCreated} prefill={taskPrefill} />
         {taskToEdit && <EditTaskDialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen} onTaskUpdated={() => { void fetchTasks(); setTaskToEdit(null) }} task={taskToEdit} />}
       </div>
