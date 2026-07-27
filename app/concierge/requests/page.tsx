@@ -8,6 +8,7 @@ import { PageHeader } from "@/components/page-header"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { LinkedOperationalTask } from "@/components/linked-operational-task"
 import { createBrowserClient } from "@/lib/supabase/client"
 import { buildOperationalTaskHref } from "@/lib/operational-task-links"
 
@@ -71,7 +72,7 @@ export default function HospitalityRequestsOperationsPage() {
             sourceLabel: `${request.guest_name} · ${request.request_type}`,
             sourcePath: "/concierge/requests",
           })
-          return <Card key={request.id}><CardHeader className="pb-3"><div className="flex items-start justify-between gap-3"><div><CardTitle className="text-base">{request.request_type}</CardTitle><p className="mt-1 text-sm text-muted-foreground">{request.guest_name} · {location}</p></div><Badge variant="outline">{statusLabels[request.status || "pending"] || request.status || "Pendiente"}</Badge></div></CardHeader><CardContent className="space-y-4">{request.description && <p className="text-sm leading-6">{request.description}</p>}<div className="flex flex-wrap gap-2"><Badge variant="secondary">{request.category}</Badge><Badge variant="outline">Prioridad {priorityMap[(request.priority || "medium").toLowerCase()] || "media"}</Badge></div><Button asChild className="w-full"><Link href={taskHref}><ClipboardPlus className="mr-2 h-4 w-4" />Crear tarea operativa</Link></Button></CardContent></Card>
+          return <Card key={request.id}><CardHeader className="pb-3"><div className="flex items-start justify-between gap-3"><div><CardTitle className="text-base">{request.request_type}</CardTitle><p className="mt-1 text-sm text-muted-foreground">{request.guest_name} · {location}</p></div><Badge variant="outline">{statusLabels[request.status || "pending"] || request.status || "Pendiente"}</Badge></div></CardHeader><CardContent className="space-y-4">{request.description && <p className="text-sm leading-6">{request.description}</p>}<div className="flex flex-wrap gap-2"><Badge variant="secondary">{request.category}</Badge><Badge variant="outline">Prioridad {priorityMap[(request.priority || "medium").toLowerCase()] || "media"}</Badge></div><LinkedOperationalTask sourceType="hospitality_request" sourceId={request.id} /><Button asChild className="w-full"><Link href={taskHref}><ClipboardPlus className="mr-2 h-4 w-4" />Crear tarea operativa</Link></Button></CardContent></Card>
         })}</div>}
       </div>
     </AppLayout>
