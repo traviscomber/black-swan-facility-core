@@ -7,6 +7,8 @@ Sistema: Black Swan Facility Core — Fundo Corcovado, Valdivia, Chile
 
 Cerrar brechas críticas de seguridad, permisos, trazabilidad y confiabilidad operativa sin interrumpir reservas, finanzas, mantenimiento, compras, mapas ni la operación diaria. Mantener terminología chilena, fechas `es-CL`, zona `America/Santiago` y CLP cuando corresponda.
 
+La ejecución pendiente queda formalizada como objetivo de trabajo autónomo en `AUTONOMOUS_WORK_OBJECTIVE.md`. Se debe continuar sin solicitar confirmación entre bloques seguros, reversibles y sin modificación de datos reales. Cualquier paso que requiera persistir datos, enviar comunicaciones, eliminar registros o producir cambios operacionales irreversibles exige autorización específica.
+
 ## Estado de ejecución
 
 - [x] Retirar endpoint de seed de reservas en producción.
@@ -26,6 +28,7 @@ Cerrar brechas críticas de seguridad, permisos, trazabilidad y confiabilidad op
 - [x] Ejecutar una prueba transaccional controlada del flujo completo de tareas sin persistir datos.
 - [x] Auditar y endurecer operaciones destructivas en pagos, presupuestos, inventario y compras.
 - [x] Registrar automáticamente acciones críticas financieras, operativas, de permisos y borrado.
+- [x] Formalizar el trabajo pendiente como objetivo autónomo con límites y criterios de cierre.
 - [ ] Completar cobertura de acciones críticas y permisos por módulo.
 - [ ] Validar flujos completos por rol y dispositivo.
 
@@ -69,6 +72,7 @@ Cerrar brechas críticas de seguridad, permisos, trazabilidad y confiabilidad op
 - Cada registro conserva entidad, identificador, categoría, acción, usuario, correo, rol, estado anterior, estado nuevo, campos modificados y fecha.
 - Solo `admin` y `approver` pueden consultar la bitácora; no existe acceso de escritura desde el cliente ni privilegio para `anon`.
 - Una prueba transaccional validó `INSERT`, `UPDATE` y `DELETE` de un pago temporal, incluyendo detección de los campos `payment_status` y `paid_at`; el `ROLLBACK` dejó 0 registros de prueba y 0 filas de auditoría.
+- `AUTONOMOUS_WORK_OBJECTIVE.md` define misión, orden de trabajo, límites obligatorios y criterios de cierre para completar este roadmap.
 - Los conteos se preservaron sin cambios: 25 presupuestos, 26 categorías, 7 divisiones, 6 movimientos de inventario, 18 proveedores, 0 pagos y 0 órdenes de compra.
 - Producción mantiene 20 trabajadores y 1 voluntario. No se modificaron reservas ni las cinco reservas `TEST_`.
 
