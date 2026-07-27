@@ -23,6 +23,7 @@ Cerrar brechas críticas de seguridad, permisos, trazabilidad y confiabilidad op
 - [x] Mostrar estado, responsables y acceso directo de la tarea vinculada en los módulos de origen.
 - [x] Preparar una interfaz desacoplada de notificaciones para WhatsApp Web y futura GreenAPI.
 - [x] Conectar la UI de tareas a la interfaz común y ejecutar pruebas automáticas antes de cada build.
+- [x] Ejecutar una prueba transaccional controlada del flujo completo de tareas sin persistir datos.
 - [ ] Completar cobertura de acciones críticas y permisos por módulo.
 - [ ] Validar flujos completos por rol y dispositivo.
 
@@ -53,11 +54,15 @@ Cerrar brechas críticas de seguridad, permisos, trazabilidad y confiabilidad op
 - `greenapi` está modelado como proveedor futuro, pero falla de forma explícita mientras no existan credenciales, endpoint y reglas aprobadas; no se introdujeron secretos ni envíos automáticos.
 - `tests/task-notification.test.ts` cubre normalización chilena, mensaje `es-CL`, URL de WhatsApp, capacidades declaradas y bloqueo de GreenAPI.
 - `npm run test:notifications` se ejecuta como `prebuild`; Vercel verificó 5 pruebas aprobadas, 0 fallidas, antes de completar el build.
-- Producción mantiene 20 trabajadores, 1 voluntario, 0 tareas, 0 asignaciones, 0 comentarios y 0 evidencias. No se modificaron filas operativas en este bloque.
+- Se ejecutó una prueba dentro de `BEGIN/ROLLBACK` con rol `admin`: creación de tarea, asignación a 1 trabajador y 1 voluntario, comentario, registro de evidencia, cambio a `en_progreso` y finalización en `completada`.
+- La prueba verificó 2 asignaciones, 1 comentario, 1 evidencia, 2 cambios de estado y `completed_at` registrado.
+- El `ROLLBACK` eliminó completamente el escenario temporal: producción volvió a 0 tareas, 0 asignaciones, 0 comentarios y 0 evidencias.
+- No se cargó ningún archivo real al bucket y no se enviaron mensajes de WhatsApp.
+- Producción mantiene 20 trabajadores y 1 voluntario. No se modificaron reservas ni las cinco reservas `TEST_`.
 
 ## Prioridades
 
-1. Probar creación, edición, evidencia, comentarios y cambios de estado con datos controlados.
+1. Ejecutar validación visual del flujo de tareas en desktop y móvil con sesión real, sin persistir datos no autorizados.
 2. Auditar operaciones destructivas restantes en pagos, presupuestos, inventario y compras.
 3. Registrar acciones críticas reales: anulaciones, pagos, cambios financieros, permisos y borrados.
 4. Completar matriz de permisos para `admin`, `approver` y usuario autenticado.
@@ -98,6 +103,7 @@ Cerrar brechas críticas de seguridad, permisos, trazabilidad y confiabilidad op
 - [x] Mostrar progreso y responsables de tareas en los módulos de origen.
 - [x] Preparar interfaz de proveedor para GreenAPI sin activar envío automático.
 - [x] Centralizar el botón de WhatsApp y cubrir el flujo con pruebas ejecutadas en `prebuild`.
+- [x] Validar transaccionalmente creación, asignaciones, comentarios, evidencia y cambios de estado.
 - [ ] Integrar GreenAPI cuando existan credenciales y reglas aprobadas.
 - [ ] Registrar acciones críticas y completar matriz final de permisos.
 
@@ -119,6 +125,7 @@ Cerrar brechas críticas de seguridad, permisos, trazabilidad y confiabilidad op
 - [x] 100% de rutas administrativas protegidas en servidor.
 - [x] 0 modificaciones de datos de producción no autorizadas.
 - [x] Pruebas de notificaciones ejecutadas automáticamente antes del build.
+- [x] Flujo transaccional de tareas validado de extremo a extremo sin dejar datos temporales.
 - [ ] 100% de operaciones críticas con registro de auditoría.
 - [ ] 100% de flujos críticos verificados por rol y dispositivo.
 - [ ] 100% de pantallas financieras críticas verificadas para Chile.
