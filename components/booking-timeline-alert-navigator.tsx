@@ -13,7 +13,7 @@ export type BookingTimelineFocusDetail = {
 export const BOOKING_TIMELINE_FOCUS_EVENT = "booking:timeline-focus"
 
 const RETRY_DELAY_MS = 200
-const MAX_RETRIES = 20
+const MAX_RETRIES = 24
 
 function setControlledValue(element: HTMLInputElement | HTMLSelectElement, value: string) {
   const prototype = element instanceof HTMLInputElement ? HTMLInputElement.prototype : HTMLSelectElement.prototype
@@ -35,8 +35,7 @@ function weekDistance(targetDate: string) {
   const target = new Date(`${targetDate}T12:00:00`)
   const today = new Date()
   today.setHours(12, 0, 0, 0)
-  const distance = (target.getTime() - today.getTime()) / 604800000
-  return distance < 0 ? Math.floor(distance) : Math.floor(distance)
+  return Math.floor((target.getTime() - today.getTime()) / 604800000)
 }
 
 function navigateToDate(date: string | null | undefined) {
@@ -75,6 +74,21 @@ function retryUntilFound(
   window.setTimeout(() => retryUntilFound(find, onFound, attempt + 1), RETRY_DELAY_MS)
 }
 
+function findRoomButton(roomNumber: string | null | undefined) {
+  if (!roomNumber) return undefined
+  return findVisibleButton((button) => button.dataset.roomNumber === roomNumber)
+    ?? findVisibleButton((button) => button.textContent?.includes(roomNumber) ?? false)
+}
+
+function findReservationButton(detail: BookingTimelineFocusDetail) {
+  if (detail.reservationId) {
+    const byId = findVisibleButton((button) => button.dataset.reservationId === detail.reservationId)
+    if (byId) return byId
+  }
+  if (!detail.guestName) return undefined
+  return findVisibleButton((button) => button.textContent?.includes(detail.guestName ?? "") ?? false)
+}
+
 function focusTimeline(detail: BookingTimelineFocusDetail) {
   window.scrollTo({ top: 0, behavior: "smooth" })
   navigateToDate(detail.date)
@@ -94,14 +108,16 @@ function focusTimeline(detail: BookingTimelineFocusDetail) {
 
     if (detail.roomNumber) {
       retryUntilFound(
-        () => findVisibleButton((button) => button.textContent?.includes(detail.roomNumber ?? "") ?? false),
-        (roomButton) => roomButton.click(),
+        () => findRoomButton(detail.roomNumber),
+        (roomButton) => {
+          if (roomButton.getAttribute("aria-expanded") !== "true") roomButton.click()
+        },
       )
     }
 
-    if (detail.guestName) {
+    if (detail.reservationId || detail.guestName) {
       retryUntilFound(
-        () => findVisibleButton((button) => button.textContent?.includes(detail.guestName ?? "") ?? false),
+        () => findReservationButton(detail),
         (reservationButton) => {
           reservationButton.click()
           reservationButton.scrollIntoView({ behavior: "smooth", block: "center", inline: "center" })
