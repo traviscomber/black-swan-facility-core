@@ -2,10 +2,11 @@
 
 import dynamic from "next/dynamic"
 import { useEffect, useMemo, useState } from "react"
-import { BedDouble, ChevronDown, CircleDollarSign, ClipboardList, Loader2, UserRound } from "lucide-react"
+import { BedDouble, ChevronDown, CircleDollarSign, ClipboardList, Loader2, RefreshCw, UserRound } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { BOOKING_REALTIME_EVENT, type BookingRealtimeDetail } from "@/components/booking-realtime-pulse"
 import { BOOKING_TIMELINE_FOCUS_EVENT, type BookingTimelineFocusDetail } from "@/components/booking-timeline-alert-navigator"
 
 const LoadingBlock = () => (
@@ -39,45 +40,85 @@ const sections: Array<{ key: WorkspaceSection; label: string; description: strin
   { key: "finance", label: "Servicios y cuenta", description: "Consumos, folio, pagos y cierre", icon: CircleDollarSign },
 ]
 
+function sectionForTable(table: string): WorkspaceSection {
+  if (["housekeeping", "hospitality_requests", "incidents", "messages", "booking_shift_handovers"].includes(table)) return "operations"
+  if (["reservation_extras", "reservation_payments", "reservation_adjustments"].includes(table)) return "finance"
+  return "stay"
+}
+
 export function BookingOperationsWorkspace() {
   const [active, setActive] = useState<WorkspaceSection | null>(null)
   const [focus, setFocus] = useState<BookingTimelineFocusDetail | null>(null)
+  const [refreshVersion, setRefreshVersion] = useState(0)
+  const [pendingSections, setPendingSections] = useState<WorkspaceSection[]>([])
+  const [lastRealtime, setLastRealtime] = useState<BookingRealtimeDetail | null>(null)
 
   useEffect(() => {
     const listener = (event: Event) => {
       const detail = (event as CustomEvent<BookingTimelineFocusDetail>).detail
       setFocus(detail)
-      if (!active) setActive("stay")
+      setActive((current) => current ?? "stay")
     }
     window.addEventListener(BOOKING_TIMELINE_FOCUS_EVENT, listener)
     return () => window.removeEventListener(BOOKING_TIMELINE_FOCUS_EVENT, listener)
-  }, [active])
+  }, [])
+
+  useEffect(() => {
+    const listener = (event: Event) => {
+      const detail = (event as CustomEvent<BookingRealtimeDetail>).detail
+      const affected = sectionForTable(detail.table)
+      setLastRealtime(detail)
+      setPendingSections((current) => current.includes(affected) ? current : [...current, affected])
+      setActive((current) => {
+        if (current === affected) {
+          setRefreshVersion((version) => version + 1)
+          setPendingSections((sectionsState) => sectionsState.filter((section) => section !== affected))
+        }
+        return current
+      })
+    }
+    window.addEventListener(BOOKING_REALTIME_EVENT, listener)
+    return () => window.removeEventListener(BOOKING_REALTIME_EVENT, listener)
+  }, [])
 
   const contextLabel = useMemo(() => {
     if (!focus) return "Sin reserva seleccionada"
     return [focus.guestName, focus.roomNumber ? `Hab. ${focus.roomNumber}` : null, focus.date].filter(Boolean).join(" · ")
   }, [focus])
 
+  function openSection(section: WorkspaceSection) {
+    const next = active === section ? null : section
+    setActive(next)
+    if (next) {
+      setPendingSections((current) => current.filter((item) => item !== next))
+      setRefreshVersion((version) => version + 1)
+    }
+  }
+
   return (
-    <Card className="mx-4 mb-4">
+    <Card className="mx-2 mb-4 sm:mx-4">
       <CardHeader className="pb-3">
-        <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <CardTitle className="flex items-center gap-2 text-base"><BedDouble className="h-4 w-4" /> Inspector operacional</CardTitle>
-            <p className="mt-1 text-sm text-muted-foreground">Abre solo el dominio necesario. Los módulos cerrados no consultan datos ni mantienen suscripciones.</p>
+            <p className="mt-1 text-sm text-muted-foreground">Abre solo el dominio necesario. Los cambios operativos actualizan automáticamente la sección activa.</p>
           </div>
-          <Badge variant={focus?.reservationId ? "default" : "outline"}>{contextLabel}</Badge>
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge variant={focus?.reservationId ? "default" : "outline"}>{contextLabel}</Badge>
+            {lastRealtime && <Badge variant="secondary" className="gap-1"><RefreshCw className="h-3 w-3" /> {lastRealtime.table}</Badge>}
+          </div>
         </div>
       </CardHeader>
-      <CardContent className="space-y-3">
-        <div className="grid gap-2 md:grid-cols-3">
+      <CardContent className="space-y-3 px-3 sm:px-6">
+        <div className="sticky top-2 z-20 grid gap-2 rounded-lg bg-background/95 py-2 backdrop-blur md:static md:grid-cols-3 md:bg-transparent md:py-0">
           {sections.map((section) => {
             const Icon = section.icon
             const selected = active === section.key
+            const pending = pendingSections.includes(section.key)
             return (
-              <Button key={section.key} variant={selected ? "default" : "outline"} className="h-auto justify-between py-3 text-left" onClick={() => setActive(selected ? null : section.key)}>
-                <span className="flex items-start gap-2"><Icon className="mt-0.5 h-4 w-4" /><span><span className="block font-medium">{section.label}</span><span className="block text-xs opacity-75">{section.description}</span></span></span>
-                <ChevronDown className={`h-4 w-4 transition-transform ${selected ? "rotate-180" : ""}`} />
+              <Button key={section.key} variant={selected ? "default" : "outline"} className="h-auto min-h-14 justify-between py-3 text-left" onClick={() => openSection(section.key)}>
+                <span className="flex items-start gap-2"><Icon className="mt-0.5 h-4 w-4 shrink-0" /><span><span className="flex items-center gap-2 font-medium">{section.label}{pending && <span className="h-2 w-2 rounded-full bg-current" aria-label="Cambios pendientes" />}</span><span className="hidden text-xs opacity-75 sm:block">{section.description}</span></span></span>
+                <ChevronDown className={`h-4 w-4 shrink-0 transition-transform ${selected ? "rotate-180" : ""}`} />
               </Button>
             )
           })}
@@ -85,9 +126,11 @@ export function BookingOperationsWorkspace() {
 
         {active === null && <div className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">Selecciona un dominio para operar la estadía. El calendario permanece como vista principal.</div>}
 
-        {active === "stay" && <div className="space-y-4"><BookingPrearrivalControl /><GuidedCheckInPanel /><BookingGuestProfile /><BookingStayTimeline /><BookingArrivalQueue /><BookingRoomStatusControl /><BookingReassignmentControl /><BookingExceptionsControl /></div>}
-        {active === "operations" && <div className="space-y-4"><BookingHousekeepingControl /><BookingHospitalityControl /><BookingMaintenanceOperations /><BookingCoordinationCenter /></div>}
-        {active === "finance" && <div className="space-y-4"><BookingFinancialOperations /><BookingServicesControl /><BookingFolioControl /><BookingInvoiceCloseControl /></div>}
+        <div key={`${active ?? "closed"}-${refreshVersion}`}>
+          {active === "stay" && <div className="space-y-4"><BookingPrearrivalControl /><GuidedCheckInPanel /><BookingGuestProfile /><BookingStayTimeline /><BookingArrivalQueue /><BookingRoomStatusControl /><BookingReassignmentControl /><BookingExceptionsControl /></div>}
+          {active === "operations" && <div className="space-y-4"><BookingHousekeepingControl /><BookingHospitalityControl /><BookingMaintenanceOperations /><BookingCoordinationCenter /></div>}
+          {active === "finance" && <div className="space-y-4"><BookingFinancialOperations /><BookingServicesControl /><BookingFolioControl /><BookingInvoiceCloseControl /></div>}
+        </div>
       </CardContent>
     </Card>
   )
