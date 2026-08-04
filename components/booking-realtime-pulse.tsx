@@ -14,7 +14,8 @@ export type BookingRealtimeDetail = {
 const TABLES = [
   "reservations",
   "rooms",
-  "housekeeping",
+  "room_blocks",
+  "housekeeping_tasks",
   "hospitality_requests",
   "incidents",
   "reservation_extras",
