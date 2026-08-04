@@ -17,6 +17,7 @@ import { BookingReassignmentControl } from "@/components/booking-reassignment-co
 import { BookingRoomStatusControl } from "@/components/booking-room-status-control"
 import { BookingServicesControl } from "@/components/booking-services-control"
 import { BookingStayTimeline } from "@/components/booking-stay-timeline"
+import { BookingSystemHealth } from "@/components/booking-system-health"
 import { BookingTimelineAlertNavigator } from "@/components/booking-timeline-alert-navigator"
 import { BookingTimelineDomIdentity } from "@/components/booking-timeline-dom-identity"
 import { GuidedCheckInPanel } from "@/components/guided-check-in-panel"
@@ -27,6 +28,7 @@ export default function BookingsPage() {
       <BookingTimelineDomIdentity />
       <BookingTimelineAlertNavigator />
       <BookingOperationsBar />
+      <BookingSystemHealth />
       <BookingOperationsTimelinePage />
       <BookingPrearrivalControl />
       <GuidedCheckInPanel />
