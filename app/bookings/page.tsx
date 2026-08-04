@@ -3,12 +3,14 @@
 import BookingOperationsTimelinePage from "./operations/page"
 import { BookingArrivalQueue } from "@/components/booking-arrival-queue"
 import { BookingPrearrivalControl } from "@/components/booking-prearrival-control"
+import { GuidedCheckInPanel } from "@/components/guided-check-in-panel"
 
 export default function BookingsPage() {
   return (
     <>
       <BookingOperationsTimelinePage />
       <BookingPrearrivalControl />
+      <GuidedCheckInPanel />
       <BookingArrivalQueue />
     </>
   )
