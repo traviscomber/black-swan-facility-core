@@ -12,6 +12,9 @@ export type BookingTimelineFocusDetail = {
 
 export const BOOKING_TIMELINE_FOCUS_EVENT = "booking:timeline-focus"
 
+const RETRY_DELAY_MS = 200
+const MAX_RETRIES = 20
+
 function setControlledValue(element: HTMLInputElement | HTMLSelectElement, value: string) {
   const prototype = element instanceof HTMLInputElement ? HTMLInputElement.prototype : HTMLSelectElement.prototype
   const descriptor = Object.getOwnPropertyDescriptor(prototype, "value")
@@ -32,7 +35,8 @@ function weekDistance(targetDate: string) {
   const target = new Date(`${targetDate}T12:00:00`)
   const today = new Date()
   today.setHours(12, 0, 0, 0)
-  return Math.trunc((target.getTime() - today.getTime()) / 604800000)
+  const distance = (target.getTime() - today.getTime()) / 604800000
+  return distance < 0 ? Math.floor(distance) : Math.floor(distance)
 }
 
 function navigateToDate(date: string | null | undefined) {
@@ -53,6 +57,24 @@ function navigateToDate(date: string | null | undefined) {
   for (let index = 0; index < Math.abs(weeks); index += 1) direction.click()
 }
 
+function findVisibleButton(predicate: (button: HTMLButtonElement) => boolean) {
+  return visibleButtons().find(predicate)
+}
+
+function retryUntilFound(
+  find: () => HTMLButtonElement | undefined,
+  onFound: (button: HTMLButtonElement) => void,
+  attempt = 0,
+) {
+  const button = find()
+  if (button) {
+    onFound(button)
+    return
+  }
+  if (attempt >= MAX_RETRIES) return
+  window.setTimeout(() => retryUntilFound(find, onFound, attempt + 1), RETRY_DELAY_MS)
+}
+
 function focusTimeline(detail: BookingTimelineFocusDetail) {
   window.scrollTo({ top: 0, behavior: "smooth" })
   navigateToDate(detail.date)
@@ -70,21 +92,23 @@ function focusTimeline(detail: BookingTimelineFocusDetail) {
     const searchValue = detail.roomNumber ?? detail.guestName ?? ""
     if (searchInput && searchValue) setControlledValue(searchInput, searchValue)
 
-    window.setTimeout(() => {
-      if (detail.roomNumber) {
-        const roomButton = visibleButtons().find((button) => button.textContent?.includes(detail.roomNumber ?? ""))
-        roomButton?.click()
-      }
+    if (detail.roomNumber) {
+      retryUntilFound(
+        () => findVisibleButton((button) => button.textContent?.includes(detail.roomNumber ?? "") ?? false),
+        (roomButton) => roomButton.click(),
+      )
+    }
 
-      window.setTimeout(() => {
-        if (detail.guestName) {
-          const reservationButton = visibleButtons().find((button) => button.textContent?.includes(detail.guestName ?? ""))
-          reservationButton?.click()
-          reservationButton?.scrollIntoView({ behavior: "smooth", block: "center", inline: "center" })
-        }
-      }, 250)
-    }, 250)
-  }, 250)
+    if (detail.guestName) {
+      retryUntilFound(
+        () => findVisibleButton((button) => button.textContent?.includes(detail.guestName ?? "") ?? false),
+        (reservationButton) => {
+          reservationButton.click()
+          reservationButton.scrollIntoView({ behavior: "smooth", block: "center", inline: "center" })
+        },
+      )
+    }
+  }, RETRY_DELAY_MS)
 }
 
 export function BookingTimelineAlertNavigator() {
