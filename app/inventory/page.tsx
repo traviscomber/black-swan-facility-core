@@ -2,11 +2,15 @@
 
 import { Suspense } from "react"
 import { InventoryContent } from "@/components/inventory/inventory-content"
+import { InventoryHealthPanel } from "@/components/inventory/inventory-health-panel"
 
 export default function InventoryPage() {
   return (
-    <Suspense fallback={<div className="p-8 text-center text-muted-foreground">Loading inventory...</div>}>
-      <InventoryContent />
-    </Suspense>
+    <>
+      <InventoryHealthPanel />
+      <Suspense fallback={<div className="p-8 text-center text-muted-foreground">Cargando inventario...</div>}>
+        <InventoryContent />
+      </Suspense>
+    </>
   )
 }
