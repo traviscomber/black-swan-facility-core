@@ -5,6 +5,7 @@ import { addDays, differenceInCalendarDays, format, parseISO, startOfDay } from 
 import {
   BedDouble,
   CalendarDays,
+  CheckCircle2,
   ChevronLeft,
   ChevronRight,
   CircleDollarSign,
@@ -56,7 +57,19 @@ type Reservation = {
 }
 type RoomBlock = { id: string; room_id: string; start_date: string; end_date: string; block_type: string; reason: string; status: string }
 type HousekeepingTask = { id: string; room_id: string; task_type: string; status: string; priority: string | null; notes: string | null }
-type HospitalityRequest = { id: string; room_id: string | null; guest_name: string | null; request_type: string; status: string; priority: string | null; description: string }
+type HospitalityRequest = {
+  id: string
+  reservation_id: string | null
+  room_id: string | null
+  tablet_device_id: string | null
+  guest_name: string | null
+  request_type: string
+  category: string
+  status: string
+  priority: string | null
+  description: string | null
+  created_at: string | null
+}
 
 type SelectedReservation = Reservation & { bed?: Bed }
 
@@ -80,6 +93,15 @@ const RESERVATION_STYLES: Record<string, string> = {
   "checked-out": "border-slate-300 bg-slate-100 text-slate-700",
 }
 
+const HOSPITALITY_STATUS_LABELS: Record<string, string> = {
+  pending: "Pendiente",
+  assigned: "Asignada",
+  in_progress: "En curso",
+  completed: "Completada",
+  resolved: "Resuelta",
+  cancelled: "Cancelada",
+}
+
 function iso(date: Date) {
   return format(date, "yyyy-MM-dd")
 }
@@ -90,6 +112,10 @@ function formatClp(value: number) {
 
 function overlap(startA: string, endA: string, startB: Date, endB: Date) {
   return parseISO(startA) < endB && parseISO(endA) > startB
+}
+
+function normalizeName(value: string | null | undefined) {
+  return (value ?? "").trim().toLocaleLowerCase("es-CL")
 }
 
 export default function BookingOperationsTimelinePage() {
@@ -135,7 +161,10 @@ export default function BookingOperationsTimelinePage() {
         .lt("start_date", iso(endDate))
         .gt("end_date", iso(startDate)),
       supabase.from("housekeeping_tasks").select("id, room_id, task_type, status, priority, notes").not("status", "in", "(completed,cancelled)"),
-      supabase.from("hospitality_requests").select("id, room_id, guest_name, request_type, status, priority, description").not("status", "in", "(completed,resolved,cancelled)"),
+      supabase
+        .from("hospitality_requests")
+        .select("id, reservation_id, room_id, tablet_device_id, guest_name, request_type, category, status, priority, description, created_at")
+        .not("status", "in", "(completed,resolved,cancelled)"),
     ])
 
     const firstError = bedsResult.error || reservationsResult.error || blocksResult.error || housekeepingResult.error || hospitalityResult.error
@@ -201,6 +230,20 @@ export default function BookingOperationsTimelinePage() {
     blocks.forEach((block) => map.set(block.room_id, [...(map.get(block.room_id) ?? []), block]))
     return map
   }, [blocks])
+
+  const hospitalityForReservation = useCallback((reservation: Reservation) => {
+    return hospitality.filter((request) => {
+      if (request.reservation_id) return request.reservation_id === reservation.id
+      return Boolean(
+        request.room_id &&
+        reservation.room_id &&
+        request.room_id === reservation.room_id &&
+        normalizeName(request.guest_name) === normalizeName(reservation.guest_name),
+      )
+    })
+  }, [hospitality])
+
+  const selectedHospitality = useMemo(() => selected ? hospitalityForReservation(selected) : [], [hospitalityForReservation, selected])
 
   const metrics = useMemo(() => {
     const today = iso(new Date())
@@ -273,6 +316,7 @@ export default function BookingOperationsTimelinePage() {
     if (!selected) return
     setSavingAction(true)
     const { error: insertError } = await supabase.from("hospitality_requests").insert({
+      reservation_id: selected.id,
       room_id: selected.bed?.room_id ?? selected.room_id,
       location_id: selected.bed?.room.location_id ?? selected.location_id,
       guest_name: selected.guest_name,
@@ -287,6 +331,19 @@ export default function BookingOperationsTimelinePage() {
     if (insertError) toast.error(insertError.message)
     else {
       toast.success("Solicitud de hospitalidad creada")
+      await loadData()
+    }
+    setSavingAction(false)
+  }
+
+  async function updateHospitalityStatus(requestId: string, status: "in_progress" | "completed") {
+    setSavingAction(true)
+    const updates: { status: string; completed_at?: string } = { status }
+    if (status === "completed") updates.completed_at = new Date().toISOString()
+    const { error: updateError } = await supabase.from("hospitality_requests").update(updates).eq("id", requestId)
+    if (updateError) toast.error(updateError.message)
+    else {
+      toast.success(status === "completed" ? "Solicitud completada" : "Solicitud puesta en curso")
       await loadData()
     }
     setSavingAction(false)
@@ -374,7 +431,8 @@ export default function BookingOperationsTimelinePage() {
                       {bedReservations.map((reservation) => {
                         const geometry = reservationGeometry(reservation)
                         const statusClass = RESERVATION_STYLES[reservation.status] ?? "border-violet-300 bg-violet-100 text-violet-950"
-                        return <button key={reservation.id} type="button" onClick={() => setSelected({ ...reservation, bed })} className={`absolute bottom-2 z-20 flex h-10 items-center justify-between gap-2 overflow-hidden rounded-md border px-3 text-left text-xs shadow-sm transition hover:-translate-y-0.5 hover:shadow ${statusClass}`} style={geometry}><span className="min-w-0 truncate font-semibold">{reservation.guest_name}</span><span className="shrink-0 opacity-70">{reservation.num_guests ?? 1}p</span></button>
+                        const requestCount = hospitalityForReservation(reservation).length
+                        return <button key={reservation.id} type="button" onClick={() => setSelected({ ...reservation, bed })} className={`absolute bottom-2 z-20 flex h-10 items-center justify-between gap-2 overflow-hidden rounded-md border px-3 text-left text-xs shadow-sm transition hover:-translate-y-0.5 hover:shadow ${statusClass}`} style={geometry}><span className="min-w-0 truncate font-semibold">{reservation.guest_name}</span><span className="flex shrink-0 items-center gap-1 opacity-80">{requestCount > 0 && <span className="flex items-center gap-0.5 rounded bg-black/10 px-1.5 py-0.5" title={`${requestCount} solicitudes abiertas`}><ConciergeBell className="h-3 w-3" />{requestCount}</span>}<span>{reservation.num_guests ?? 1}p</span></span></button>
                       })}
                     </div>
                   </div>
@@ -393,9 +451,13 @@ export default function BookingOperationsTimelinePage() {
           <aside className="relative z-10 flex h-full w-full max-w-xl flex-col border-l bg-background shadow-2xl">
             <div className="flex items-start justify-between border-b p-5"><div><p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">Operación de estadía</p><h2 className="mt-1 text-xl font-semibold">{selected.guest_name}</h2><p className="mt-1 text-sm text-muted-foreground">{selected.bed?.room.location?.name} · {selected.bed?.room.room_number} · Cama {selected.bed?.bed_number}</p></div><Button variant="ghost" size="icon" onClick={() => setSelected(null)}><X className="h-4 w-4" /></Button></div>
             <div className="flex-1 space-y-6 overflow-y-auto p-5">
-              <div className="flex flex-wrap gap-2"><Badge>{RESERVATION_LABELS[selected.status] ?? selected.status}</Badge><Badge variant="outline">Pago: {selected.payment_status ?? "sin registrar"}</Badge><Badge variant="outline">Origen: {selected.source ?? "interno"}</Badge></div>
+              <div className="flex flex-wrap gap-2"><Badge>{RESERVATION_LABELS[selected.status] ?? selected.status}</Badge><Badge variant="outline">Pago: {selected.payment_status ?? "sin registrar"}</Badge><Badge variant="outline">Origen: {selected.source ?? "interno"}</Badge>{selectedHospitality.length > 0 && <Badge variant="secondary" className="gap-1"><ConciergeBell className="h-3 w-3" />{selectedHospitality.length} solicitudes abiertas</Badge>}</div>
               <div className="grid gap-3 sm:grid-cols-2"><Info label="Check-in" value={selected.check_in} /><Info label="Check-out" value={selected.check_out} /><Info label="Huéspedes" value={String(selected.num_guests ?? 1)} /><Info label="Monto" value={formatClp(Number(selected.total_amount ?? 0))} /></div>
               {selected.special_requests && <Info label="Solicitudes especiales" value={selected.special_requests} />}
+
+              <ActionSection title="Solicitudes activas de Hospitality" icon={<ConciergeBell className="h-4 w-4" />}>
+                {selectedHospitality.length === 0 ? <p className="col-span-full rounded-lg border border-dashed p-4 text-sm text-muted-foreground">No hay solicitudes abiertas asociadas a esta reserva.</p> : selectedHospitality.map((request) => <div key={request.id} className="col-span-full rounded-lg border p-4"><div className="flex items-start justify-between gap-3"><div><p className="font-medium">{request.request_type}</p><p className="mt-1 text-xs text-muted-foreground">{request.category} · {request.tablet_device_id ? "Tablet de huésped" : "Registro interno"}{request.created_at ? ` · ${new Date(request.created_at).toLocaleString("es-CL")}` : ""}</p></div><Badge variant="outline">{HOSPITALITY_STATUS_LABELS[request.status] ?? request.status}</Badge></div>{request.description && <p className="mt-3 text-sm leading-6">{request.description}</p>}<div className="mt-3 flex flex-wrap gap-2">{request.status === "pending" && <Button size="sm" variant="outline" onClick={() => void updateHospitalityStatus(request.id, "in_progress")} disabled={savingAction}>Poner en curso</Button>}<Button size="sm" onClick={() => void updateHospitalityStatus(request.id, "completed")} disabled={savingAction}><CheckCircle2 className="mr-2 h-4 w-4" />Completar</Button></div></div>)}
+              </ActionSection>
 
               <ActionSection title="Reserva y estadía" icon={<CalendarDays className="h-4 w-4" />}>
                 {selected.status === "pending" && <ActionButton icon={<CalendarDays />} label="Confirmar reserva" onClick={() => void setReservationStatus("confirmed")} disabled={savingAction} />}
