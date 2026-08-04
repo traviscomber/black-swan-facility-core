@@ -14,6 +14,10 @@ import {
 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import {
+  BOOKING_TIMELINE_FOCUS_EVENT,
+  type BookingTimelineFocusDetail,
+} from "@/components/booking-timeline-alert-navigator"
 import { createClient } from "@/lib/supabase/client"
 
 type MetricKey =
@@ -27,12 +31,40 @@ type MetricKey =
 
 type Metrics = Record<MetricKey, number>
 
-type DetailItem = {
+type DetailItem = BookingTimelineFocusDetail & {
   id: string
   title: string
   subtitle: string
   status: string | null
-  target: string | null
+  externalTarget?: string | null
+}
+
+type ReservationRow = {
+  id: string
+  guest_name: string
+  check_in: string
+  check_out: string
+  status: string
+  arrival_status: string | null
+  payment_status: string | null
+  room: { room_number: string; location: { name: string } | null } | null
+}
+
+type RoomRow = {
+  id: string
+  room_number: string
+  room_type: string | null
+  operational_status: string
+  location: { name: string } | null
+}
+
+type HousekeepingRow = {
+  id: string
+  task_type: string
+  status: string
+  due_at: string | null
+  reservation: { id: string; guest_name: string; check_in: string } | null
+  room: { room_number: string; location: { name: string } | null } | null
 }
 
 const EMPTY_METRICS: Metrics = {
@@ -105,7 +137,7 @@ export function BookingOperationsBar() {
       if (metric === "arrivalsToday" || metric === "departuresToday" || metric === "waitingForRoom" || metric === "pendingPayments") {
         let query = supabase
           .from("reservations")
-          .select("id, guest_name, check_in, check_out, status, arrival_status, payment_status, total_amount, room:rooms(room_number, location:locations(name))")
+          .select("id, guest_name, check_in, check_out, status, arrival_status, payment_status, room:rooms(room_number, location:locations(name))")
           .order("check_in")
 
         if (metric === "arrivalsToday") query = query.eq("check_in", today)
@@ -115,12 +147,16 @@ export function BookingOperationsBar() {
 
         const { data, error } = await query
         if (error) throw error
-        setDetailItems((data ?? []).map((row: any) => ({
+        setDetailItems(((data ?? []) as unknown as ReservationRow[]).map((row) => ({
           id: row.id,
           title: row.guest_name,
           subtitle: `${row.room?.location?.name ?? "Sin propiedad"} · ${row.room?.room_number ?? "Sin habitación"} · ${row.check_in} → ${row.check_out}`,
           status: metric === "pendingPayments" ? row.payment_status : row.arrival_status ?? row.status,
-          target: `/bookings?reservation=${row.id}`,
+          reservationId: row.id,
+          guestName: row.guest_name,
+          roomNumber: row.room?.room_number ?? null,
+          locationName: row.room?.location?.name ?? null,
+          date: metric === "departuresToday" ? row.check_out : row.check_in,
         })))
       }
 
@@ -131,29 +167,35 @@ export function BookingOperationsBar() {
           .not("operational_status", "in", "(ready,inspected,occupied)")
           .order("room_number")
         if (error) throw error
-        setDetailItems((data ?? []).map((row: any) => ({
+        setDetailItems(((data ?? []) as unknown as RoomRow[]).map((row) => ({
           id: row.id,
           title: `Habitación ${row.room_number}`,
-          subtitle: `${row.location?.name ?? "Sin propiedad"} · ${row.room_type}`,
+          subtitle: `${row.location?.name ?? "Sin propiedad"} · ${row.room_type ?? "Sin tipo"}`,
           status: row.operational_status,
-          target: "/bookings#room-status",
+          roomNumber: row.room_number,
+          locationName: row.location?.name ?? null,
+          date: today,
         })))
       }
 
       if (metric === "overdueHousekeeping") {
         const { data, error } = await supabase
           .from("housekeeping_tasks")
-          .select("id, task_type, status, due_at, reservation:reservations(guest_name), room:rooms(room_number, location:locations(name))")
+          .select("id, task_type, status, due_at, reservation:reservations(id, guest_name, check_in), room:rooms(room_number, location:locations(name))")
           .not("status", "in", "(completed,cancelled,rejected)")
           .lt("due_at", new Date().toISOString())
           .order("due_at")
         if (error) throw error
-        setDetailItems((data ?? []).map((row: any) => ({
+        setDetailItems(((data ?? []) as unknown as HousekeepingRow[]).map((row) => ({
           id: row.id,
           title: `${row.task_type} · Habitación ${row.room?.room_number ?? "—"}`,
           subtitle: `${row.room?.location?.name ?? "Sin propiedad"} · ${row.reservation?.guest_name ?? "Sin huésped"} · venció ${row.due_at ? new Date(row.due_at).toLocaleString("es-CL") : "sin hora"}`,
           status: row.status,
-          target: "/bookings#housekeeping",
+          reservationId: row.reservation?.id ?? null,
+          guestName: row.reservation?.guest_name ?? null,
+          roomNumber: row.room?.room_number ?? null,
+          locationName: row.room?.location?.name ?? null,
+          date: row.reservation?.check_in ?? today,
         })))
       }
 
@@ -170,13 +212,31 @@ export function BookingOperationsBar() {
           title: row.title ?? "Incidencia crítica",
           subtitle: row.description ?? "Sin descripción",
           status: row.priority ?? row.status,
-          target: "/maintenance/issues",
+          externalTarget: "/maintenance/issues",
         })))
       }
     } finally {
       setDetailLoading(false)
     }
   }, [supabase])
+
+  const openDetail = useCallback((item: DetailItem) => {
+    if (item.externalTarget) {
+      window.location.assign(item.externalTarget)
+      return
+    }
+
+    setActiveMetric(null)
+    window.dispatchEvent(new CustomEvent<BookingTimelineFocusDetail>(BOOKING_TIMELINE_FOCUS_EVENT, {
+      detail: {
+        date: item.date,
+        guestName: item.guestName,
+        locationName: item.locationName,
+        reservationId: item.reservationId,
+        roomNumber: item.roomNumber,
+      },
+    }))
+  }, [])
 
   useEffect(() => {
     void loadMetrics()
@@ -207,7 +267,7 @@ export function BookingOperationsBar() {
       <section className="sticky top-0 z-30 border-b bg-background/95 px-4 py-3 backdrop-blur supports-[backdrop-filter]:bg-background/80">
         <div className="mx-auto flex max-w-[1800px] items-center gap-3 overflow-x-auto">
           <div className="mr-1 min-w-fit">
-            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">A6 · Alertas accionables</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">A7 · Navegación operacional</p>
             <p className="text-xs text-muted-foreground">{updatedAt ? `Actualizado ${updatedAt.toLocaleTimeString("es-CL", { hour: "2-digit", minute: "2-digit" })}` : "Cargando métricas"}</p>
           </div>
 
@@ -238,9 +298,9 @@ export function BookingOperationsBar() {
           <aside className="relative z-10 flex h-full w-full max-w-xl flex-col border-l bg-background shadow-2xl">
             <div className="flex items-start justify-between border-b p-5">
               <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">A6 · Atención requerida</p>
+                <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">A7 · Atención requerida</p>
                 <h2 className="mt-1 text-xl font-semibold">{activeLabel}</h2>
-                <p className="mt-1 text-sm text-muted-foreground">Registros reales vinculados a esta métrica.</p>
+                <p className="mt-1 text-sm text-muted-foreground">Selecciona un registro para centrarlo en el timeline.</p>
               </div>
               <Button variant="ghost" size="icon" onClick={() => setActiveMetric(null)}><X className="h-4 w-4" /></Button>
             </div>
@@ -261,7 +321,9 @@ export function BookingOperationsBar() {
                         </div>
                         {item.status && <Badge variant="outline">{item.status}</Badge>}
                       </div>
-                      {item.target && <Button asChild variant="outline" size="sm" className="mt-4"><a href={item.target}>Abrir flujo</a></Button>}
+                      <Button type="button" variant="outline" size="sm" className="mt-4" onClick={() => openDetail(item)}>
+                        {item.externalTarget ? "Abrir flujo" : "Centrar en calendario"}
+                      </Button>
                     </div>
                   ))}
                 </div>
