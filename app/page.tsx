@@ -90,9 +90,16 @@ export default function OperationsDashboard() {
     const userResult = await supabase.auth.getUser()
     setUserEmail(userResult.data.user?.email ?? null)
 
+    const today = new Intl.DateTimeFormat("en-CA", {
+      timeZone: "America/Santiago",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).format(new Date())
+
     const metricQueries: Array<[MetricKey, PromiseLike<CountResult>]> = [
       ["locations", supabase.from("locations").select("id", { count: "exact", head: true }).eq("is_active", true)],
-      ["reservations", supabase.from("reservations").select("id", { count: "exact", head: true }).in("status", ["pending", "confirmed", "checked_in", "checked-in"])],
+      ["reservations", supabase.from("reservations").select("id", { count: "exact", head: true }).in("status", ["pending", "confirmed", "checked_in", "checked-in"]).gt("check_out", today)],
       ["maintenance", supabase.from("maintenance_tasks").select("id", { count: "exact", head: true }).not("status", "in", "(completed,cancelled)")],
       ["issues", supabase.from("issues").select("id", { count: "exact", head: true }).not("status", "in", "(resolved,closed,cancelled)")],
       ["procurement", supabase.from("procurement_requests").select("id", { count: "exact", head: true }).in("status", ["pending", "submitted", "under_review"])],
@@ -159,7 +166,7 @@ export default function OperationsDashboard() {
         <section>
           <div className="mb-4"><h2 className="text-lg font-semibold">Situación operativa</h2><p className="mt-1 text-sm text-muted-foreground">Registros abiertos o activos que requieren seguimiento.</p></div>
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            <MetricCard title="Reservas abiertas" value={metrics.reservations} detail="Pendientes, confirmadas o con check-in" loading={loading} href="/bookings" />
+            <MetricCard title="Reservas vigentes o próximas" value={metrics.reservations} detail="Pendientes o confirmadas con salida posterior a hoy" loading={loading} href="/bookings" />
             <MetricCard title="Incidencias abiertas" value={metrics.issues} detail="Pendientes de resolución o cierre" loading={loading} href="/issues" alert={metrics.issues > 0} />
             <MetricCard title="Mantenimientos abiertos" value={metrics.maintenance} detail="Trabajos no completados ni cancelados" loading={loading} href="/maintenance" />
             <MetricCard title="Proveedores por aprobar" value={metrics.suppliers} detail="Candidatos pendientes de revisión" loading={loading} href="/suppliers" alert={metrics.suppliers > 0} />
