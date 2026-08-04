@@ -2,6 +2,7 @@
 
 import BookingOperationsTimelinePage from "./operations/page"
 import { BookingArrivalQueue } from "@/components/booking-arrival-queue"
+import { BookingFolioControl } from "@/components/booking-folio-control"
 import { BookingHousekeepingControl } from "@/components/booking-housekeeping-control"
 import { BookingPrearrivalControl } from "@/components/booking-prearrival-control"
 import { BookingRoomStatusControl } from "@/components/booking-room-status-control"
@@ -17,6 +18,7 @@ export default function BookingsPage() {
       <GuidedCheckInPanel />
       <BookingHousekeepingControl />
       <BookingServicesControl />
+      <BookingFolioControl />
       <BookingStayTimeline />
       <BookingArrivalQueue />
       <BookingRoomStatusControl />
