@@ -1,20 +1,43 @@
 "use client"
 
 import type React from "react"
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { useSearchParams } from "next/navigation"
-import { createBrowserClient } from "@/lib/supabase/client"
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Phone, Mail, Send, CheckCircle, Lock, LogOut } from "lucide-react"
+import { createBrowserClient } from "@/lib/supabase/client"
+import { CheckCircle, Lock, LogOut, Mail, Phone, Send } from "lucide-react"
 
-// Translations
 const translations = {
   en: {
+    title: "Hospitality Requests",
+    subtitle: "What do you need today?",
+    submitTitle: "Submit Your Request",
+    submitDescription: "Select a category and enter your name",
+    question: "What do you need?",
+    name: "Your name",
+    namePlaceholder: "Enter your name",
+    send: "Submit request",
+    sending: "Sending...",
+    submitted: "Request submitted",
+    submittedDetail: "Your request was registered for the hospitality team.",
+    location: "You're in",
+    roomPending: "Location request",
+    immediate: "Need immediate assistance?",
+    whatsapp: "Contact Hospitality on WhatsApp",
+    configTitle: "Tablet configuration",
+    configDescription: "An authorized internal session is required to change the assigned location.",
+    signInRequired: "Sign in through the internal system and return to this tablet to configure it.",
+    close: "Close",
+    exitAdmin: "Exit configuration",
+    assignTo: "Assign this tablet to",
+    current: "Current",
+    invalid: "Select a category and enter your name.",
+    failed: "The request could not be registered. Please try again.",
     blankets: "Extra Blankets",
     towels: "Towels",
     cleaning: "Room Cleaning",
@@ -25,27 +48,44 @@ const translations = {
     other: "Other Request",
   },
   es: {
-    blankets: "Mantas Adicionales",
+    title: "Solicitudes de hospitalidad",
+    subtitle: "¿Qué necesitas hoy?",
+    submitTitle: "Enviar solicitud",
+    submitDescription: "Selecciona una categoría e ingresa tu nombre",
+    question: "¿Qué necesitas?",
+    name: "Tu nombre",
+    namePlaceholder: "Ingresa tu nombre",
+    send: "Enviar solicitud",
+    sending: "Enviando...",
+    submitted: "Solicitud registrada",
+    submittedDetail: "La solicitud fue enviada al equipo de hospitalidad.",
+    location: "Estás en",
+    roomPending: "Solicitud general de la propiedad",
+    immediate: "¿Necesitas asistencia inmediata?",
+    whatsapp: "Contactar a Hospitalidad por WhatsApp",
+    configTitle: "Configuración de tablet",
+    configDescription: "Se requiere una sesión interna autorizada para cambiar la ubicación asignada.",
+    signInRequired: "Inicia sesión en el sistema interno y vuelve a esta tablet para configurarla.",
+    close: "Cerrar",
+    exitAdmin: "Salir de configuración",
+    assignTo: "Asignar esta tablet a",
+    current: "Actual",
+    invalid: "Selecciona una categoría e ingresa tu nombre.",
+    failed: "No fue posible registrar la solicitud. Intenta nuevamente.",
+    blankets: "Mantas adicionales",
     towels: "Toallas",
-    cleaning: "Limpieza de Habitación",
-    maintenance: "Problema de Mantenimiento",
-    amenities: "Servicios",
-    activities: "Información de Actividades",
-    food: "Comida/Bebida",
-    other: "Otra Solicitud",
+    cleaning: "Limpieza de habitación",
+    maintenance: "Problema de mantenimiento",
+    amenities: "Amenities",
+    activities: "Información de actividades",
+    food: "Comida o bebida",
+    other: "Otra solicitud",
   },
-}
+} as const
 
-interface Location {
-  id: string
-  name: string
-  is_active: boolean
-}
-
-interface Room {
-  id: string
-  room_number: string
-}
+type Language = keyof typeof translations
+type Location = { id: string; name: string; is_active: boolean }
+type Room = { id: string; room_number: string; location_id?: string }
 
 const REQUEST_CATEGORIES = [
   { id: "blankets", labelKey: "blankets", icon: "🛏️" },
@@ -56,17 +96,14 @@ const REQUEST_CATEGORIES = [
   { id: "activities", labelKey: "activities", icon: "🎯" },
   { id: "food", labelKey: "food", icon: "🍽️" },
   { id: "other", labelKey: "other", icon: "📝" },
-]
+] as const
 
-const ADMIN_PASSWORD = "Globaln2025"
-
-const generateDeviceId = () => {
-  let deviceId = localStorage.getItem("tablet_device_id")
-  if (!deviceId) {
-    deviceId = `TABLET-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
-    localStorage.setItem("tablet_device_id", deviceId)
-  }
-  return deviceId
+function getDeviceId() {
+  const existing = localStorage.getItem("tablet_device_id")
+  if (existing) return existing
+  const created = `TABLET-${Date.now()}-${crypto.randomUUID()}`
+  localStorage.setItem("tablet_device_id", created)
+  return created
 }
 
 export function GuestRequestForm() {
@@ -74,240 +111,157 @@ export function GuestRequestForm() {
   const roomId = searchParams.get("room_id")
   const locationId = searchParams.get("location_id")
   const roomNumber = searchParams.get("room_number")
+  const reservationId = searchParams.get("reservation_id")
+  const supabase = useMemo(() => createBrowserClient(), [])
 
-  const [language, setLanguage] = useState<"en" | "es">("es")
+  const [language, setLanguage] = useState<Language>("es")
+  const [locations, setLocations] = useState<Location[]>([])
+  const [assignedLocation, setAssignedLocation] = useState<Location | null>(null)
+  const [room, setRoom] = useState<Room | null>(null)
+  const [deviceId, setDeviceId] = useState("")
+  const [loading, setLoading] = useState(true)
+  const [submitting, setSubmitting] = useState(false)
+  const [submitted, setSubmitted] = useState(false)
+  const [selectedCategory, setSelectedCategory] = useState<(typeof REQUEST_CATEGORIES)[number]["id"] | "">("")
+  const [guestName, setGuestName] = useState("")
+  const [error, setError] = useState<string | null>(null)
+  const [showAdminPanel, setShowAdminPanel] = useState(false)
+  const [isAdminMode, setIsAdminMode] = useState(false)
+  const [hasInternalSession, setHasInternalSession] = useState(false)
   const t = translations[language]
 
-  const [assignedLocation, setAssignedLocation] = useState<Location | null>(null)
-  const [locations, setLocations] = useState<Location[]>([])
-  const [isAdminMode, setIsAdminMode] = useState(false)
-  const [adminPassword, setAdminPassword] = useState("")
-  const [showAdminPanel, setShowAdminPanel] = useState(false)
-  const [adminError, setAdminError] = useState("")
-
-  const [room, setRoom] = useState<Room | null>(null)
-  const [location, setLocation] = useState<Location | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [submitted, setSubmitted] = useState(false)
-  const [selectedCategory, setSelectedCategory] = useState("")
-  const [guestName, setGuestName] = useState("")
-  const [submitting, setSubmitting] = useState(false)
-  const [deviceId] = useState(() => generateDeviceId())
-
-  const supabase = createBrowserClient()
-
   useEffect(() => {
-    loadInitialData()
-    // Get language from localStorage or document lang attribute
-    const savedLanguage = localStorage.getItem("language") as "en" | "es" | null
-    if (savedLanguage) {
-      setLanguage(savedLanguage)
-    }
-  }, [])
+    const savedLanguage = localStorage.getItem("language") as Language | null
+    if (savedLanguage === "es" || savedLanguage === "en") setLanguage(savedLanguage)
+    setDeviceId(getDeviceId())
 
-  async function loadInitialData() {
-    try {
-      // Load all locations
-      const { data: locationsData } = await supabase.from("locations").select("*").eq("is_active", true)
+    async function load() {
+      try {
+        const params = new URLSearchParams()
+        if (roomId) params.set("room_id", roomId)
+        if (locationId) params.set("location_id", locationId)
+        const response = await fetch(`/api/guest-requests?${params.toString()}`, { cache: "no-store" })
+        const payload = await response.json()
+        if (!response.ok) throw new Error(payload.error || "Configuration error")
 
-      setLocations(locationsData || [])
+        const loadedLocations = (payload.locations ?? []) as Location[]
+        setLocations(loadedLocations)
+        setRoom((payload.room ?? null) as Room | null)
 
-      // Check localStorage for assigned location, default to "Prairie House 2"
-      const savedLocationId = localStorage.getItem("tablet_assigned_location_id")
-      if (savedLocationId && locationsData) {
-        const saved = locationsData.find((l: Location) => l.id === savedLocationId)
-        if (saved) {
-          setAssignedLocation(saved)
-        } else {
-          // Default to Prairie House 2
-          const defaultLocation = locationsData.find((l: Location) => l.name === "Prairie House 2")
-          setAssignedLocation(defaultLocation || locationsData[0])
-        }
-      } else {
-        // Default to Prairie House 2
-        const defaultLocation = locationsData?.find((l: Location) => l.name === "Prairie House 2")
-        setAssignedLocation(defaultLocation || locationsData?.[0])
+        const selectedId = locationId || localStorage.getItem("tablet_assigned_location_id")
+        const selected = loadedLocations.find((item) => item.id === selectedId) ?? loadedLocations[0] ?? null
+        setAssignedLocation(selected)
+
+        const { data } = await supabase.auth.getUser()
+        setHasInternalSession(Boolean(data.user))
+      } catch (loadError) {
+        console.error(loadError)
+        setError(language === "es" ? "No fue posible cargar la configuración de la tablet." : "Tablet configuration could not be loaded.")
+      } finally {
+        setLoading(false)
       }
-
-      // If specific room/location provided via URL params, use those
-      if (roomId && locationId) {
-        const { data: roomData } = await supabase.from("rooms").select("*").eq("id", roomId).single()
-        const { data: locationData } = await supabase.from("locations").select("*").eq("id", locationId).single()
-
-        setRoom(roomData)
-        setLocation(locationData)
-      }
-    } catch (error) {
-      console.error("Error loading initial data:", error)
-    } finally {
-      setLoading(false)
     }
+
+    void load()
+  }, [language, locationId, roomId, supabase])
+
+  function changeLanguage(next: Language) {
+    setLanguage(next)
+    localStorage.setItem("language", next)
   }
 
-  function handleAdminLogin() {
-    setAdminError("")
-    if (adminPassword === ADMIN_PASSWORD) {
-      setIsAdminMode(true)
-      setShowAdminPanel(false)
-      setAdminPassword("")
-    } else {
-      setAdminError("Incorrect password")
-      setAdminPassword("")
-    }
+  function openConfiguration() {
+    setShowAdminPanel(true)
+    setIsAdminMode(hasInternalSession)
   }
 
-  function handleLocationChange(locationId: string) {
-    const selected = locations.find((l) => l.id === locationId)
-    if (selected) {
-      setAssignedLocation(selected)
-      localStorage.setItem("tablet_assigned_location_id", locationId)
-    }
+  function handleLocationChange(nextLocationId: string) {
+    const selected = locations.find((item) => item.id === nextLocationId)
+    if (!selected || !hasInternalSession) return
+    setAssignedLocation(selected)
+    localStorage.setItem("tablet_assigned_location_id", selected.id)
   }
 
-  function handleAdminLogout() {
-    setIsAdminMode(false)
-    setShowAdminPanel(false)
-    setAdminPassword("")
-    setAdminError("")
-  }
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
-
-    if (!selectedCategory || !guestName) {
-      alert("Please select a category and enter your name")
+  async function handleSubmit(event: React.FormEvent) {
+    event.preventDefault()
+    if (!selectedCategory || guestName.trim().length < 2 || !assignedLocation || !deviceId) {
+      setError(t.invalid)
       return
     }
 
     setSubmitting(true)
+    setError(null)
+    const category = REQUEST_CATEGORIES.find((item) => item.id === selectedCategory)
+    const requestLabel = category ? t[category.labelKey] : selectedCategory
 
     try {
-      const locationForRequest = location || assignedLocation
-
-      const categoryLabel = REQUEST_CATEGORIES.find((c) => c.id === selectedCategory)?.labelKey 
-        ? t[REQUEST_CATEGORIES.find((c) => c.id === selectedCategory)!.labelKey as keyof typeof t]
-        : selectedCategory
-
-      const { error: insertError } = await supabase.from("issues").insert({
-        title: categoryLabel, // Save category label as title
-        asset_id: null,
-        reported_by: null,
-        description: `[HOSPITALITY REQUEST]\n\n👤 Guest: ${guestName}\n🛏️ Room: ${roomNumber || room?.room_number}\n📍 Location: ${locationForRequest?.name}\n📋 Request Type: ${categoryLabel}\n📱 Tablet ID: ${deviceId}`,
-        status: "open",
-        photo_url: null,
+      const response = await fetch("/api/guest-requests", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          guestName: guestName.trim(),
+          category: selectedCategory,
+          requestLabel,
+          locationId: assignedLocation.id,
+          roomId: room?.id ?? roomId ?? null,
+          reservationId,
+          roomNumber: roomNumber ?? room?.room_number ?? null,
+          deviceId,
+          language,
+        }),
       })
+      const payload = await response.json()
+      if (!response.ok) throw new Error(payload.error || t.failed)
 
-      if (insertError) throw insertError
-
-      try {
-        await supabase
-          .from("tablet_devices")
-          .upsert({
-            device_id: deviceId,
-            device_name: `${locationForRequest?.name} Tablet`,
-            location_id: locationForRequest?.id,
-            last_active_at: new Date().toISOString(),
-            is_active: true,
-          })
-          .eq("device_id", deviceId)
-      } catch (error) {
-        console.error("Error updating tablet registry:", error)
-      }
-
-      const whatsappResponse = await fetch("/api/send-whatsapp", {
+      void fetch("/api/send-whatsapp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           to: "+56979752758",
-          message: `🏨 *New Hospitality Request*\n\n👤 Guest: ${guestName}\n🛏️ Room: ${roomNumber || room?.room_number}\n📍 Location: ${locationForRequest?.name}\n📋 Request: ${categoryLabel}\n📱 Tablet: ${deviceId}\n\nPlease confirm when handled.`,
+          message: `Nueva solicitud de hospitalidad: ${requestLabel}. Huésped: ${guestName.trim()}. Ubicación: ${assignedLocation.name}. Habitación: ${roomNumber || room?.room_number || "sin habitación"}. Solicitud: ${payload.requestId}.`,
         }),
       })
 
-      if (!whatsappResponse.ok) {
-        console.error("WhatsApp notification failed, but request saved to database")
-      }
-
       setSubmitted(true)
-
-      setTimeout(() => {
+      window.setTimeout(() => {
         setSubmitted(false)
         setSelectedCategory("")
         setGuestName("")
-      }, 3000)
-    } catch (error) {
-      console.error("Error submitting request:", error)
-      alert("Error submitting request. Please try again.")
+      }, 3500)
+    } catch (submitError) {
+      setError(submitError instanceof Error ? submitError.message : t.failed)
     } finally {
       setSubmitting(false)
     }
   }
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-slate-900 to-slate-800">
-        <div className="text-white text-lg">Loading...</div>
-      </div>
-    )
-  }
+  if (loading) return <ScreenMessage text={language === "es" ? "Cargando…" : "Loading…"} />
 
   if (submitted) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 p-4">
-        <Card className="w-full max-w-md text-center bg-card border-accent/20">
-          <CardContent className="pt-12 pb-12">
-            <CheckCircle className="h-16 w-16 mx-auto mb-4 text-accent" />
-            <h2 className="text-2xl font-bold mb-2 text-white">Request Submitted!</h2>
-            <p className="text-muted-foreground mb-6">
-              Thank you! Your request has been sent to our hospitality team. We'll get to you shortly.
-            </p>
-            <p className="text-sm text-muted-foreground">Redirecting in a few seconds...</p>
+      <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-slate-900 to-slate-800 p-4">
+        <Card className="w-full max-w-md border-accent/20 bg-card text-center">
+          <CardContent className="py-12">
+            <CheckCircle className="mx-auto mb-4 h-16 w-16 text-accent" />
+            <h2 className="text-2xl font-bold text-white">{t.submitted}</h2>
+            <p className="mt-2 text-muted-foreground">{t.submittedDetail}</p>
           </CardContent>
         </Card>
       </div>
     )
   }
 
-  if (showAdminPanel && !isAdminMode) {
+  if (showAdminPanel) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 p-4">
-        <Card className="w-full max-w-md bg-card border-accent/20">
+      <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-slate-900 to-slate-800 p-4">
+        <Card className="w-full max-w-md border-accent/20 bg-card">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Lock className="h-5 w-5 text-accent" />
-              Admin Access
-            </CardTitle>
-            <CardDescription>Enter password to configure tablet assignment</CardDescription>
+            <CardTitle className="flex items-center gap-2"><Lock className="h-5 w-5 text-accent" />{t.configTitle}</CardTitle>
+            <CardDescription>{t.configDescription}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="password">Admin Password</Label>
-              <Input
-                id="password"
-                type="password"
-                value={adminPassword}
-                onChange={(e) => setAdminPassword(e.target.value)}
-                onKeyPress={(e) => e.key === "Enter" && handleAdminLogin()}
-                placeholder="Enter password"
-                className="bg-input"
-              />
-              {adminError && <p className="text-sm text-red-500">{adminError}</p>}
-            </div>
-            <div className="flex gap-2">
-              <Button onClick={handleAdminLogin} className="flex-1 bg-primary hover:bg-primary/90 text-white">
-                Unlock
-              </Button>
-              <Button
-                onClick={() => {
-                  setShowAdminPanel(false)
-                  setAdminPassword("")
-                  setAdminError("")
-                }}
-                variant="outline"
-                className="flex-1"
-              >
-                Cancel
-              </Button>
-            </div>
+            {!isAdminMode ? <p className="text-sm text-muted-foreground">{t.signInRequired}</p> : <div className="space-y-2"><Label>{t.assignTo}</Label><Select value={assignedLocation?.id ?? ""} onValueChange={handleLocationChange}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{locations.map((item) => <SelectItem key={item.id} value={item.id}>{item.name}</SelectItem>)}</SelectContent></Select><p className="text-xs text-muted-foreground">{t.current}: <span className="font-medium text-accent">{assignedLocation?.name}</span></p></div>}
+            <Button variant="outline" className="w-full" onClick={() => { setShowAdminPanel(false); setIsAdminMode(false) }}>{isAdminMode ? t.exitAdmin : t.close}</Button>
           </CardContent>
         </Card>
       </div>
@@ -316,161 +270,32 @@ export function GuestRequestForm() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 p-4 md:p-8">
-      <div className="max-w-2xl mx-auto">
-        {/* Admin Controls */}
-        {isAdminMode && (
-          <div className="mb-6 bg-accent/10 border border-accent rounded-lg p-4 space-y-3">
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="font-semibold text-white flex items-center gap-2">
-                <Lock className="h-4 w-4 text-accent" />
-                Admin Mode: Tablet Configuration
-              </h3>
-              <Button onClick={handleAdminLogout} variant="outline" size="sm" className="gap-2 bg-transparent">
-                <LogOut className="h-4 w-4" />
-                Exit Admin
-              </Button>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="location-select" className="text-white">
-                Assign This Tablet To:
-              </Label>
-              <Select value={assignedLocation?.id || ""} onValueChange={handleLocationChange}>
-                <SelectTrigger className="bg-input">
-                  <SelectValue placeholder="Select facility..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {locations.map((loc) => (
-                    <SelectItem key={loc.id} value={loc.id}>
-                      {loc.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <p className="text-xs text-muted-foreground">
-                Current: <span className="font-semibold text-accent">{assignedLocation?.name}</span>
-              </p>
-            </div>
-          </div>
-        )}
-
-        {/* Header */}
-        <div className="mb-8 flex items-center justify-between">
-          <div>
-            <h1 className="text-4xl font-bold text-white mb-2">Hospitality Requests</h1>
-            <p className="text-muted-foreground text-lg">What do you need today?</p>
-          </div>
-          <button
-            onClick={() => setShowAdminPanel(true)}
-            className="text-xs text-muted-foreground hover:text-accent transition-colors opacity-50 hover:opacity-100"
-            title="Admin settings"
-          >
-            ⚙️
-          </button>
+      <div className="mx-auto max-w-2xl">
+        <div className="mb-8 flex items-start justify-between gap-4">
+          <div><h1 className="text-3xl font-bold text-white md:text-4xl">{t.title}</h1><p className="mt-2 text-lg text-muted-foreground">{t.subtitle}</p></div>
+          <div className="flex items-center gap-2"><Button variant="ghost" size="sm" onClick={() => changeLanguage(language === "es" ? "en" : "es")}>{language === "es" ? "EN" : "ES"}</Button><button onClick={openConfiguration} className="text-muted-foreground opacity-60 transition-opacity hover:opacity-100" title={t.configTitle}>⚙️</button></div>
         </div>
 
-        {/* Room Information */}
-        {(location || assignedLocation) && (
-          <Card className="mb-6 bg-card border-accent/20">
-            <CardContent className="pt-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">You're in</p>
-                  <p className="text-lg font-semibold text-white">
-                    {roomNumber || room?.room_number || "Room TBD"} • {(location || assignedLocation)?.name}
-                  </p>
-                </div>
-                <Badge variant="outline" className="text-accent border-accent">
-                  Online
-                </Badge>
-              </div>
-            </CardContent>
-          </Card>
-        )}
+        {(assignedLocation || room) && <Card className="mb-6 border-accent/20 bg-card"><CardContent className="flex items-center justify-between pt-4"><div><p className="text-sm text-muted-foreground">{t.location}</p><p className="text-lg font-semibold text-white">{roomNumber || room?.room_number || t.roomPending} · {assignedLocation?.name}</p></div><Badge variant="outline" className="border-accent text-accent">Online</Badge></CardContent></Card>}
 
-        {/* Main Request Form */}
-        <Card className="bg-card border-border">
-          <CardHeader>
-            <CardTitle>Submit Your Request</CardTitle>
-            <CardDescription>Select a category and your name</CardDescription>
-          </CardHeader>
-
+        <Card className="border-border bg-card">
+          <CardHeader><CardTitle>{t.submitTitle}</CardTitle><CardDescription>{t.submitDescription}</CardDescription></CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-6">
-              {/* Category Selection */}
-              <div className="space-y-3">
-                <Label className="text-base font-semibold">What do you need?</Label>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                  {REQUEST_CATEGORIES.map((category) => (
-                    <button
-                      key={category.id}
-                      type="button"
-                      onClick={() => setSelectedCategory(category.id)}
-                      className={`p-4 rounded-lg border-2 transition-all flex flex-col items-center gap-2 ${
-                        selectedCategory === category.id
-                          ? "border-accent bg-accent/10"
-                          : "border-border hover:border-accent/50"
-                      }`}
-                    >
-                      <span className="text-2xl">{category.icon}</span>
-                      <span className="text-sm font-medium text-center text-white line-clamp-2">{t[category.labelKey as keyof typeof t]}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="name">Your Name *</Label>
-                <Input
-                  id="name"
-                  value={guestName}
-                  onChange={(e) => setGuestName(e.target.value)}
-                  placeholder="Enter your name"
-                  required
-                  className="bg-input text-white placeholder:text-muted-foreground"
-                />
-              </div>
-
-              {/* Submit Button */}
-              <Button
-                type="submit"
-                disabled={submitting || !selectedCategory || !guestName}
-                className="w-full h-12 text-base font-semibold gap-2 bg-primary hover:bg-primary/90 text-white"
-              >
-                <Send className="h-5 w-5" />
-                {submitting ? "Sending..." : "Submit Request"}
-              </Button>
-
-              <Button
-                type="button"
-                onClick={() => {
-                  window.open(
-                    `https://wa.me/56979752758?text=Hello,%20I%20need%20hospitality%20assistance%20from%20${roomNumber || "my room"}`,
-                    "_blank",
-                  )
-                }}
-                className="w-full h-12 text-base font-semibold gap-2 bg-green-600 hover:bg-green-700 text-white"
-              >
-                <Phone className="h-5 w-5" />
-                Contact Hospitality on WhatsApp
-              </Button>
-
-              {/* Contact Info */}
-              <div className="bg-secondary/50 rounded-lg p-4 space-y-2 text-sm border border-border">
-                <p className="text-muted-foreground font-semibold">Need immediate assistance?</p>
-                <div className="flex items-center gap-2 text-white">
-                  <Phone className="h-4 w-4 text-accent" />
-                  <span>+56 9 7975 2758 (WhatsApp)</span>
-                </div>
-                <div className="flex items-center gap-2 text-white">
-                  <Mail className="h-4 w-4 text-accent" />
-                  <span>antonia@blackswn.org</span>
-                </div>
-              </div>
+              {error && <div className="rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">{error}</div>}
+              <div className="space-y-3"><Label className="text-base font-semibold">{t.question}</Label><div className="grid grid-cols-2 gap-3 md:grid-cols-4">{REQUEST_CATEGORIES.map((category) => <button key={category.id} type="button" onClick={() => setSelectedCategory(category.id)} className={`flex flex-col items-center gap-2 rounded-lg border-2 p-4 transition-all ${selectedCategory === category.id ? "border-accent bg-accent/10" : "border-border hover:border-accent/50"}`}><span className="text-2xl">{category.icon}</span><span className="line-clamp-2 text-center text-sm font-medium text-white">{t[category.labelKey]}</span></button>)}</div></div>
+              <div className="space-y-2"><Label htmlFor="guest-name">{t.name} *</Label><Input id="guest-name" value={guestName} onChange={(event) => setGuestName(event.target.value)} placeholder={t.namePlaceholder} required className="bg-input text-white" /></div>
+              <Button type="submit" disabled={submitting || !selectedCategory || guestName.trim().length < 2 || !assignedLocation} className="h-12 w-full gap-2 text-base font-semibold"><Send className="h-5 w-5" />{submitting ? t.sending : t.send}</Button>
+              <Button type="button" onClick={() => window.open(`https://wa.me/56979752758?text=${encodeURIComponent(`Hola, necesito asistencia de hospitalidad desde ${roomNumber || room?.room_number || assignedLocation?.name || "mi ubicación"}`)}`, "_blank")} className="h-12 w-full gap-2 bg-green-600 text-base font-semibold text-white hover:bg-green-700"><Phone className="h-5 w-5" />{t.whatsapp}</Button>
+              <div className="space-y-2 rounded-lg border border-border bg-secondary/50 p-4 text-sm"><p className="font-semibold text-muted-foreground">{t.immediate}</p><div className="flex items-center gap-2 text-white"><Phone className="h-4 w-4 text-accent" /><span>+56 9 7975 2758</span></div><div className="flex items-center gap-2 text-white"><Mail className="h-4 w-4 text-accent" /><span>antonia@blackswn.org</span></div></div>
             </form>
           </CardContent>
         </Card>
       </div>
     </div>
   )
+}
+
+function ScreenMessage({ text }: { text: string }) {
+  return <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-slate-900 to-slate-800 text-lg text-white">{text}</div>
 }
