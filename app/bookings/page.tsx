@@ -11,11 +11,13 @@ import { BookingRoomStatusControl } from "@/components/booking-room-status-contr
 import { BookingServicesControl } from "@/components/booking-services-control"
 import { BookingStayTimeline } from "@/components/booking-stay-timeline"
 import { BookingTimelineAlertNavigator } from "@/components/booking-timeline-alert-navigator"
+import { BookingTimelineDomIdentity } from "@/components/booking-timeline-dom-identity"
 import { GuidedCheckInPanel } from "@/components/guided-check-in-panel"
 
 export default function BookingsPage() {
   return (
     <>
+      <BookingTimelineDomIdentity />
       <BookingTimelineAlertNavigator />
       <BookingOperationsBar />
       <BookingOperationsTimelinePage />
