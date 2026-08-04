@@ -9,7 +9,7 @@ import {
   CircleDollarSign,
   ClockAlert,
   RefreshCw,
-  UserRoundClock,
+  UserRoundCheck,
   X,
 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
@@ -254,7 +254,7 @@ export function BookingOperationsBar() {
     { key: "arrivalsToday" as const, label: "Llegadas hoy", value: metrics.arrivalsToday, icon: CalendarArrowDown, alert: false },
     { key: "departuresToday" as const, label: "Salidas hoy", value: metrics.departuresToday, icon: CalendarArrowUp, alert: false },
     { key: "roomsNotReady" as const, label: "Habitaciones no listas", value: metrics.roomsNotReady, icon: BedDouble, alert: metrics.roomsNotReady > 0 },
-    { key: "waitingForRoom" as const, label: "Huéspedes esperando", value: metrics.waitingForRoom, icon: UserRoundClock, alert: metrics.waitingForRoom > 0 },
+    { key: "waitingForRoom" as const, label: "Huéspedes esperando", value: metrics.waitingForRoom, icon: UserRoundCheck, alert: metrics.waitingForRoom > 0 },
     { key: "overdueHousekeeping" as const, label: "Housekeeping vencido", value: metrics.overdueHousekeeping, icon: ClockAlert, alert: metrics.overdueHousekeeping > 0 },
     { key: "criticalIssues" as const, label: "Incidencias críticas", value: metrics.criticalIssues, icon: AlertTriangle, alert: metrics.criticalIssues > 0 },
     { key: "pendingPayments" as const, label: "Pagos pendientes", value: metrics.pendingPayments, icon: CircleDollarSign, alert: metrics.pendingPayments > 0 },
