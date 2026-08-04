@@ -13,6 +13,7 @@ import {
   DoorOpen,
   LogIn,
   LogOut,
+  PlayCircle,
   Plus,
   RefreshCw,
   Search,
@@ -56,7 +57,17 @@ type Reservation = {
   source: string | null
 }
 type RoomBlock = { id: string; room_id: string; start_date: string; end_date: string; block_type: string; reason: string; status: string }
-type HousekeepingTask = { id: string; room_id: string; task_type: string; status: string; priority: string | null; notes: string | null }
+type HousekeepingTask = {
+  id: string
+  reservation_id: string | null
+  room_id: string | null
+  task_type: string
+  status: string
+  priority: string | null
+  notes: string | null
+  completed_at: string | null
+  created_at: string | null
+}
 type HospitalityRequest = {
   id: string
   reservation_id: string | null
@@ -100,6 +111,22 @@ const HOSPITALITY_STATUS_LABELS: Record<string, string> = {
   completed: "Completada",
   resolved: "Resuelta",
   cancelled: "Cancelada",
+}
+
+const HOUSEKEEPING_STATUS_LABELS: Record<string, string> = {
+  pending: "Pendiente",
+  assigned: "Asignada",
+  in_progress: "En curso",
+  completed: "Completada",
+  cancelled: "Cancelada",
+}
+
+const HOUSEKEEPING_TYPE_LABELS: Record<string, string> = {
+  turnover: "Limpieza de salida",
+  room_preparation: "Preparación de habitación",
+  inspection: "Inspección operativa",
+  cleaning: "Limpieza",
+  deep_cleaning: "Limpieza profunda",
 }
 
 function iso(date: Date) {
@@ -160,7 +187,10 @@ export default function BookingOperationsTimelinePage() {
         .eq("status", "active")
         .lt("start_date", iso(endDate))
         .gt("end_date", iso(startDate)),
-      supabase.from("housekeeping_tasks").select("id, room_id, task_type, status, priority, notes").not("status", "in", "(completed,cancelled)"),
+      supabase
+        .from("housekeeping_tasks")
+        .select("id, reservation_id, room_id, task_type, status, priority, notes, completed_at, created_at")
+        .not("status", "in", "(completed,cancelled)"),
       supabase
         .from("hospitality_requests")
         .select("id, reservation_id, room_id, tablet_device_id, guest_name, request_type, category, status, priority, description, created_at")
@@ -243,7 +273,15 @@ export default function BookingOperationsTimelinePage() {
     })
   }, [hospitality])
 
+  const housekeepingForReservation = useCallback((reservation: Reservation) => {
+    return housekeeping.filter((task) => {
+      if (task.reservation_id) return task.reservation_id === reservation.id
+      return Boolean(task.room_id && reservation.room_id && task.room_id === reservation.room_id)
+    })
+  }, [housekeeping])
+
   const selectedHospitality = useMemo(() => selected ? hospitalityForReservation(selected) : [], [hospitalityForReservation, selected])
+  const selectedHousekeeping = useMemo(() => selected ? housekeepingForReservation(selected) : [], [housekeepingForReservation, selected])
 
   const metrics = useMemo(() => {
     const today = iso(new Date())
@@ -295,10 +333,13 @@ export default function BookingOperationsTimelinePage() {
   }
 
   async function createHousekeepingTask(taskType: string, notes: string) {
-    if (!selected?.bed?.room_id) return
+    if (!selected) return
+    const roomId = selected.bed?.room_id ?? selected.room_id
+    if (!roomId) return
     setSavingAction(true)
     const { error: insertError } = await supabase.from("housekeeping_tasks").insert({
-      room_id: selected.bed.room_id,
+      reservation_id: selected.id,
+      room_id: roomId,
       task_type: taskType,
       status: "pending",
       priority: taskType === "turnover" ? "high" : "medium",
@@ -307,6 +348,19 @@ export default function BookingOperationsTimelinePage() {
     if (insertError) toast.error(insertError.message)
     else {
       toast.success("Tarea de housekeeping creada")
+      await loadData()
+    }
+    setSavingAction(false)
+  }
+
+  async function updateHousekeepingStatus(taskId: string, status: "in_progress" | "completed") {
+    setSavingAction(true)
+    const updates: { status: string; completed_at?: string } = { status }
+    if (status === "completed") updates.completed_at = new Date().toISOString()
+    const { error: updateError } = await supabase.from("housekeeping_tasks").update(updates).eq("id", taskId)
+    if (updateError) toast.error(updateError.message)
+    else {
+      toast.success(status === "completed" ? "Tarea de housekeeping completada" : "Tarea de housekeeping iniciada")
       await loadData()
     }
     setSavingAction(false)
@@ -432,7 +486,8 @@ export default function BookingOperationsTimelinePage() {
                         const geometry = reservationGeometry(reservation)
                         const statusClass = RESERVATION_STYLES[reservation.status] ?? "border-violet-300 bg-violet-100 text-violet-950"
                         const requestCount = hospitalityForReservation(reservation).length
-                        return <button key={reservation.id} type="button" onClick={() => setSelected({ ...reservation, bed })} className={`absolute bottom-2 z-20 flex h-10 items-center justify-between gap-2 overflow-hidden rounded-md border px-3 text-left text-xs shadow-sm transition hover:-translate-y-0.5 hover:shadow ${statusClass}`} style={geometry}><span className="min-w-0 truncate font-semibold">{reservation.guest_name}</span><span className="flex shrink-0 items-center gap-1 opacity-80">{requestCount > 0 && <span className="flex items-center gap-0.5 rounded bg-black/10 px-1.5 py-0.5" title={`${requestCount} solicitudes abiertas`}><ConciergeBell className="h-3 w-3" />{requestCount}</span>}<span>{reservation.num_guests ?? 1}p</span></span></button>
+                        const housekeepingCount = housekeepingForReservation(reservation).length
+                        return <button key={reservation.id} type="button" onClick={() => setSelected({ ...reservation, bed })} className={`absolute bottom-2 z-20 flex h-10 items-center justify-between gap-2 overflow-hidden rounded-md border px-3 text-left text-xs shadow-sm transition hover:-translate-y-0.5 hover:shadow ${statusClass}`} style={geometry}><span className="min-w-0 truncate font-semibold">{reservation.guest_name}</span><span className="flex shrink-0 items-center gap-1 opacity-80">{housekeepingCount > 0 && <span className="flex items-center gap-0.5 rounded bg-black/10 px-1.5 py-0.5" title={`${housekeepingCount} tareas de housekeeping abiertas`}><Sparkles className="h-3 w-3" />{housekeepingCount}</span>}{requestCount > 0 && <span className="flex items-center gap-0.5 rounded bg-black/10 px-1.5 py-0.5" title={`${requestCount} solicitudes abiertas`}><ConciergeBell className="h-3 w-3" />{requestCount}</span>}<span>{reservation.num_guests ?? 1}p</span></span></button>
                       })}
                     </div>
                   </div>
@@ -451,9 +506,13 @@ export default function BookingOperationsTimelinePage() {
           <aside className="relative z-10 flex h-full w-full max-w-xl flex-col border-l bg-background shadow-2xl">
             <div className="flex items-start justify-between border-b p-5"><div><p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">Operación de estadía</p><h2 className="mt-1 text-xl font-semibold">{selected.guest_name}</h2><p className="mt-1 text-sm text-muted-foreground">{selected.bed?.room.location?.name} · {selected.bed?.room.room_number} · Cama {selected.bed?.bed_number}</p></div><Button variant="ghost" size="icon" onClick={() => setSelected(null)}><X className="h-4 w-4" /></Button></div>
             <div className="flex-1 space-y-6 overflow-y-auto p-5">
-              <div className="flex flex-wrap gap-2"><Badge>{RESERVATION_LABELS[selected.status] ?? selected.status}</Badge><Badge variant="outline">Pago: {selected.payment_status ?? "sin registrar"}</Badge><Badge variant="outline">Origen: {selected.source ?? "interno"}</Badge>{selectedHospitality.length > 0 && <Badge variant="secondary" className="gap-1"><ConciergeBell className="h-3 w-3" />{selectedHospitality.length} solicitudes abiertas</Badge>}</div>
+              <div className="flex flex-wrap gap-2"><Badge>{RESERVATION_LABELS[selected.status] ?? selected.status}</Badge><Badge variant="outline">Pago: {selected.payment_status ?? "sin registrar"}</Badge><Badge variant="outline">Origen: {selected.source ?? "interno"}</Badge>{selectedHousekeeping.length > 0 && <Badge variant="secondary" className="gap-1"><Sparkles className="h-3 w-3" />{selectedHousekeeping.length} housekeeping</Badge>}{selectedHospitality.length > 0 && <Badge variant="secondary" className="gap-1"><ConciergeBell className="h-3 w-3" />{selectedHospitality.length} solicitudes abiertas</Badge>}</div>
               <div className="grid gap-3 sm:grid-cols-2"><Info label="Check-in" value={selected.check_in} /><Info label="Check-out" value={selected.check_out} /><Info label="Huéspedes" value={String(selected.num_guests ?? 1)} /><Info label="Monto" value={formatClp(Number(selected.total_amount ?? 0))} /></div>
               {selected.special_requests && <Info label="Solicitudes especiales" value={selected.special_requests} />}
+
+              <ActionSection title="Housekeeping activo" icon={<Sparkles className="h-4 w-4" />}>
+                {selectedHousekeeping.length === 0 ? <p className="col-span-full rounded-lg border border-dashed p-4 text-sm text-muted-foreground">No hay tareas abiertas de housekeeping asociadas a esta reserva.</p> : selectedHousekeeping.map((task) => <div key={task.id} className="col-span-full rounded-lg border p-4"><div className="flex items-start justify-between gap-3"><div><p className="font-medium">{HOUSEKEEPING_TYPE_LABELS[task.task_type] ?? task.task_type}</p><p className="mt-1 text-xs text-muted-foreground">Prioridad {task.priority ?? "media"}{task.created_at ? ` · ${new Date(task.created_at).toLocaleString("es-CL")}` : ""}{task.reservation_id ? " · Vinculada a la reserva" : " · Tarea histórica por habitación"}</p></div><Badge variant="outline">{HOUSEKEEPING_STATUS_LABELS[task.status] ?? task.status}</Badge></div>{task.notes && <p className="mt-3 text-sm leading-6">{task.notes}</p>}<div className="mt-3 flex flex-wrap gap-2">{task.status === "pending" && <Button size="sm" variant="outline" onClick={() => void updateHousekeepingStatus(task.id, "in_progress")} disabled={savingAction}><PlayCircle className="mr-2 h-4 w-4" />Iniciar</Button>}<Button size="sm" onClick={() => void updateHousekeepingStatus(task.id, "completed")} disabled={savingAction}><CheckCircle2 className="mr-2 h-4 w-4" />Completar</Button></div></div>)}
+              </ActionSection>
 
               <ActionSection title="Solicitudes activas de Hospitality" icon={<ConciergeBell className="h-4 w-4" />}>
                 {selectedHospitality.length === 0 ? <p className="col-span-full rounded-lg border border-dashed p-4 text-sm text-muted-foreground">No hay solicitudes abiertas asociadas a esta reserva.</p> : selectedHospitality.map((request) => <div key={request.id} className="col-span-full rounded-lg border p-4"><div className="flex items-start justify-between gap-3"><div><p className="font-medium">{request.request_type}</p><p className="mt-1 text-xs text-muted-foreground">{request.category} · {request.tablet_device_id ? "Tablet de huésped" : "Registro interno"}{request.created_at ? ` · ${new Date(request.created_at).toLocaleString("es-CL")}` : ""}</p></div><Badge variant="outline">{HOSPITALITY_STATUS_LABELS[request.status] ?? request.status}</Badge></div>{request.description && <p className="mt-3 text-sm leading-6">{request.description}</p>}<div className="mt-3 flex flex-wrap gap-2">{request.status === "pending" && <Button size="sm" variant="outline" onClick={() => void updateHospitalityStatus(request.id, "in_progress")} disabled={savingAction}>Poner en curso</Button>}<Button size="sm" onClick={() => void updateHospitalityStatus(request.id, "completed")} disabled={savingAction}><CheckCircle2 className="mr-2 h-4 w-4" />Completar</Button></div></div>)}
@@ -467,7 +526,7 @@ export default function BookingOperationsTimelinePage() {
                 <ActionButton icon={<CircleDollarSign />} label="Marcar pago pendiente" onClick={() => void markPayment("pending")} disabled={savingAction} />
               </ActionSection>
 
-              <ActionSection title="Housekeeping" icon={<Sparkles className="h-4 w-4" />}>
+              <ActionSection title="Crear tarea de Housekeeping" icon={<Sparkles className="h-4 w-4" />}>
                 <ActionButton icon={<Sparkles />} label="Generar limpieza de salida" onClick={() => void createHousekeepingTask("turnover", `Limpieza posterior al check-out de ${selected.guest_name}, reserva ${selected.id}.`)} disabled={savingAction} />
                 <ActionButton icon={<DoorOpen />} label="Solicitar preparación de habitación" onClick={() => void createHousekeepingTask("room_preparation", `Preparar habitación para la llegada de ${selected.guest_name}, reserva ${selected.id}.`)} disabled={savingAction} />
                 <ActionButton icon={<Wrench />} label="Reportar revisión técnica" onClick={() => void createHousekeepingTask("inspection", `Revisión operativa asociada a la reserva ${selected.id}.`)} disabled={savingAction} />
