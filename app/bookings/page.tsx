@@ -8,6 +8,7 @@ import { BookingFolioControl } from "@/components/booking-folio-control"
 import { BookingHospitalityControl } from "@/components/booking-hospitality-control"
 import { BookingHousekeepingControl } from "@/components/booking-housekeeping-control"
 import { BookingInvoiceCloseControl } from "@/components/booking-invoice-close-control"
+import { BookingMaintenanceOperations } from "@/components/booking-maintenance-operations"
 import { BookingOperationsBar } from "@/components/booking-operations-bar"
 import { BookingPrearrivalControl } from "@/components/booking-prearrival-control"
 import { BookingReassignmentControl } from "@/components/booking-reassignment-control"
@@ -29,6 +30,7 @@ export default function BookingsPage() {
       <GuidedCheckInPanel />
       <BookingHousekeepingControl />
       <BookingHospitalityControl />
+      <BookingMaintenanceOperations />
       <BookingFinancialOperations />
       <BookingServicesControl />
       <BookingFolioControl />
