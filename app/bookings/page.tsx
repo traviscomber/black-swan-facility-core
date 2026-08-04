@@ -2,6 +2,7 @@
 
 import BookingOperationsTimelinePage from "./operations/page"
 import { BookingArrivalQueue } from "@/components/booking-arrival-queue"
+import { BookingCoordinationCenter } from "@/components/booking-coordination-center"
 import { BookingExceptionsControl } from "@/components/booking-exceptions-control"
 import { BookingFinancialOperations } from "@/components/booking-financial-operations"
 import { BookingFolioControl } from "@/components/booking-folio-control"
@@ -33,6 +34,7 @@ export default function BookingsPage() {
       <BookingHousekeepingControl />
       <BookingHospitalityControl />
       <BookingMaintenanceOperations />
+      <BookingCoordinationCenter />
       <BookingFinancialOperations />
       <BookingServicesControl />
       <BookingFolioControl />
