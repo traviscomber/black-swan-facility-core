@@ -8,12 +8,12 @@ import { ReservationLogisticsEditor } from "@/components/reservation-logistics-e
 
 export default function BookingsPage() {
   return (
-    <>
+    <div className="booking-workspace">
       <BookingRealtimePulse />
       <BookingTimelineDomIdentity />
       <BookingTimelineAlertNavigator />
       <ReservationLogisticsEditor />
       <BookingOperationsTimelinePage />
-    </>
+    </div>
   )
 }
