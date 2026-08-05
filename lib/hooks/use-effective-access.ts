@@ -23,19 +23,29 @@ const EMPTY_ACCESS: EffectiveAccess = {
   location_ids: [],
 }
 
+function stringArray(value: unknown) {
+  return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : []
+}
+
 function normalizeAccess(value: unknown): EffectiveAccess {
   const row = Array.isArray(value) ? value[0] : value
   if (!row || typeof row !== "object") return EMPTY_ACCESS
   const record = row as Record<string, unknown>
 
+  const userId = record.user_id ?? record.userId
+  const isAdmin = record.is_admin ?? record.isAdmin
+  const hasExplicitScopes = record.has_explicit_scopes ?? record.hasExplicitScopes
+  const actions = record.allowed_actions ?? record.actions
+  const locations = record.location_ids ?? record.locations
+
   return {
-    user_id: typeof record.user_id === "string" ? record.user_id : null,
+    user_id: typeof userId === "string" ? userId : null,
     role: typeof record.role === "string" ? record.role : "none",
-    is_admin: record.is_admin === true,
-    has_explicit_scopes: record.has_explicit_scopes === true,
-    allowed_actions: Array.isArray(record.allowed_actions) ? record.allowed_actions.filter((item): item is string => typeof item === "string") : [],
-    departments: Array.isArray(record.departments) ? record.departments.filter((item): item is string => typeof item === "string").map((item) => item.toLowerCase()) : [],
-    location_ids: Array.isArray(record.location_ids) ? record.location_ids.filter((item): item is string => typeof item === "string") : [],
+    is_admin: isAdmin === true,
+    has_explicit_scopes: hasExplicitScopes === true,
+    allowed_actions: stringArray(actions),
+    departments: stringArray(record.departments).map((item) => item.toLowerCase()),
+    location_ids: stringArray(locations),
   }
 }
 
