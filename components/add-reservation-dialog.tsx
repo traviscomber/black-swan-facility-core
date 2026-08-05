@@ -5,6 +5,7 @@ import { ReservationConfirmationModal } from "@/components/reservation-confirmat
 import { AvailabilityCalendarPicker } from "@/components/availability-calendar-picker"
 import { useState, useEffect } from "react"
 import { createBrowserClient } from "@/lib/supabase/client"
+import { useEffectiveAccess } from "@/lib/hooks/use-effective-access"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -75,6 +76,8 @@ export function AddReservationDialog({
   preselectedCheckOut,
   preselectedLocation,
 }: AddReservationDialogProps) {
+  const { loading: accessLoading, can, canAccessDepartment } = useEffectiveAccess()
+  const canCreateReservation = can("booking.modify") && canAccessDepartment("booking")
   const [beds, setBeds] = useState<Bed[]>([])
   const [guests, setGuests] = useState<Guest[]>([])
   const [locations, setLocations] = useState<Location[]>([])
@@ -101,10 +104,10 @@ export function AddReservationDialog({
   const supabase = createBrowserClient()
 
   useEffect(() => {
-    if (open) {
+    if (open && canCreateReservation) {
       loadData()
     }
-  }, [open])
+  }, [open, canCreateReservation])
 
   async function loadData() {
     const [bedsResult, guestsResult, locationsResult] = await Promise.all([
@@ -187,6 +190,10 @@ export function AddReservationDialog({
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
+    if (!canCreateReservation) {
+      alert("No tienes permiso para crear reservas en este alcance.")
+      return
+    }
 
     const checkIn = new Date(formData.check_in)
     const checkOut = new Date(formData.check_out)
@@ -212,10 +219,13 @@ export function AddReservationDialog({
   }
 
   async function confirmAndCreateReservation() {
+    if (!canCreateReservation) {
+      alert("No tienes permiso para crear reservas en este alcance.")
+      setShowConfirmation(false)
+      return
+    }
     setLoading(true)
     try {
-
-      // Call atomic API endpoint that handles reservation + conflict check + invoice in one transaction
       const response = await fetch("/api/bookings/reservations", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -236,7 +246,6 @@ export function AddReservationDialog({
       const result = await response.json()
 
       if (!response.ok) {
-        // Handle specific error cases
         if (response.status === 409) {
           alert(
             result.error ||
@@ -313,6 +322,11 @@ export function AddReservationDialog({
             <DialogTitle>New Bed Reservation</DialogTitle>
           </DialogHeader>
 
+          {!accessLoading && !canCreateReservation ? (
+            <div className="rounded-md border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">
+              No tienes permiso para crear reservas en este departamento o ubicación.
+            </div>
+          ) : (
           <form onSubmit={handleSubmit} className="space-y-4">
             {capacityWarning && (
               <div className="rounded-md bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 p-3">
@@ -377,43 +391,22 @@ export function AddReservationDialog({
 
               <div className="space-y-2">
                 <Label htmlFor="guest_name">Guest Name *</Label>
-                <Input
-                  id="guest_name"
-                  value={formData.guest_name}
-                  onChange={(e) => setFormData({ ...formData, guest_name: e.target.value })}
-                  required
-                />
+                <Input id="guest_name" value={formData.guest_name} onChange={(e) => setFormData({ ...formData, guest_name: e.target.value })} required />
               </div>
 
               <div className="space-y-2">
                 <Label htmlFor="guest_email">Email</Label>
-                <Input
-                  id="guest_email"
-                  type="email"
-                  value={formData.guest_email}
-                  onChange={(e) => setFormData({ ...formData, guest_email: e.target.value })}
-                />
+                <Input id="guest_email" type="email" value={formData.guest_email} onChange={(e) => setFormData({ ...formData, guest_email: e.target.value })} />
               </div>
 
               <div className="space-y-2">
                 <Label htmlFor="guest_phone">Phone</Label>
-                <Input
-                  id="guest_phone"
-                  value={formData.guest_phone}
-                  onChange={(e) => setFormData({ ...formData, guest_phone: e.target.value })}
-                />
+                <Input id="guest_phone" value={formData.guest_phone} onChange={(e) => setFormData({ ...formData, guest_phone: e.target.value })} />
               </div>
 
               <div className="space-y-2">
                 <Label htmlFor="num_guests">Number of Guests</Label>
-                <Input
-                  id="num_guests"
-                  type="number"
-                  min="1"
-                  value={formData.num_guests}
-                  onChange={(e) => setFormData({ ...formData, num_guests: Number.parseInt(e.target.value) })}
-                  required
-                />
+                <Input id="num_guests" type="number" min="1" value={formData.num_guests} onChange={(e) => setFormData({ ...formData, num_guests: Number.parseInt(e.target.value) })} required />
                 <p className="text-xs text-muted-foreground">You can add more guests than room capacity if needed</p>
               </div>
 
@@ -422,43 +415,24 @@ export function AddReservationDialog({
                   <Label>Select Dates *</Label>
                   <AvailabilityCalendarPicker
                     bedId={formData.bed_id}
-                    onDateRangeSelect={(checkIn, checkOut) => {
-                      setFormData({
-                        ...formData,
-                        check_in: checkIn,
-                        check_out: checkOut,
-                      })
-                    }}
+                    onDateRangeSelect={(checkIn, checkOut) => setFormData({ ...formData, check_in: checkIn, check_out: checkOut })}
                     currentCheckIn={formData.check_in}
                     currentCheckOut={formData.check_out}
                   />
                 </div>
               )}
 
-              {!formData.bed_id && (
-                <div className="sm:col-span-2 text-sm text-muted-foreground italic">
-                  Select a bed above to view availability and pick dates
-                </div>
-              )}
+              {!formData.bed_id && <div className="sm:col-span-2 text-sm text-muted-foreground italic">Select a bed above to view availability and pick dates</div>}
 
               <div className="space-y-2">
                 <Label htmlFor="total_amount">Total Amount</Label>
-                <Input
-                  id="total_amount"
-                  type="number"
-                  step="0.01"
-                  value={formData.total_amount}
-                  onChange={(e) => setFormData({ ...formData, total_amount: Number.parseFloat(e.target.value) })}
-                  required
-                />
+                <Input id="total_amount" type="number" step="0.01" value={formData.total_amount} onChange={(e) => setFormData({ ...formData, total_amount: Number.parseFloat(e.target.value) })} required />
               </div>
 
               <div className="space-y-2">
                 <Label htmlFor="status">Status</Label>
                 <Select value={formData.status} onValueChange={(value) => setFormData({ ...formData, status: value })}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="confirmed">Confirmed</SelectItem>
                     <SelectItem value="pending">Pending</SelectItem>
@@ -472,28 +446,22 @@ export function AddReservationDialog({
 
             <div className="space-y-2">
               <Label htmlFor="special_requests">Special Requests</Label>
-              <Textarea
-                id="special_requests"
-                value={formData.special_requests || ""}
-                onChange={(e) => setFormData({ ...formData, special_requests: e.target.value })}
-                rows={3}
-              />
+              <Textarea id="special_requests" value={formData.special_requests || ""} onChange={(e) => setFormData({ ...formData, special_requests: e.target.value })} rows={3} />
             </div>
 
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-                Cancel
-              </Button>
-              <Button type="submit" disabled={loading}>
+              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+              <Button type="submit" disabled={loading || accessLoading || !canCreateReservation}>
                 {loading ? "Creating..." : "Create Reservation"}
               </Button>
             </DialogFooter>
           </form>
+          )}
         </DialogContent>
       </Dialog>
 
       <ReservationConfirmationModal
-        open={showConfirmation}
+        open={showConfirmation && canCreateReservation}
         onOpenChange={setShowConfirmation}
         onConfirm={confirmAndCreateReservation}
         reservationDetails={confirmationData}
