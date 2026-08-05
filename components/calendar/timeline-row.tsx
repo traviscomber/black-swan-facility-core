@@ -7,7 +7,7 @@ import type { ReservationResizeEdge } from "@/app/bookings/calendar/use-reservat
 import { ReservationPreview, type PreviewConflict } from "@/components/calendar/reservation-preview"
 import { CreationSelection, type CreationRange } from "@/components/calendar/creation-selection"
 import { ReservationOperationIndicators } from "@/components/calendar/reservation-operation-indicators"
-import { ReservationOperationalLanes } from "@/components/calendar/reservation-operational-lanes"
+import { ReservationOperationalLanes, type CalendarLayerKey } from "@/components/calendar/reservation-operational-lanes"
 
 export const DAY_WIDTH = 96
 export const LABEL_WIDTH = 272
@@ -75,6 +75,7 @@ export interface TimelineRowProps {
   timelineWidth: number
   isTouchDevice: boolean
   bedEvents: CalendarEvent[]
+  activeLayers: Set<CalendarLayerKey>
   selectedIds: Set<string>
   conflictIds: Set<string>
   isBulkMode: boolean
@@ -111,7 +112,7 @@ export interface TimelineRowProps {
 
 export function TimelineRow(props: TimelineRowProps) {
   const {
-    bed, dates, timelineWidth, isTouchDevice, bedEvents, selectedIds, conflictIds, isBulkMode, onToggleSelect,
+    bed, dates, timelineWidth, isTouchDevice, bedEvents, activeLayers, selectedIds, conflictIds, isBulkMode, onToggleSelect,
     draggingEventId, dropTargetBedId, movingReservationId, moveConflict, draggingEvent, onEventPointerDown,
     onEventPointerMove, onEventPointerUp, onEventPointerCancel, resizeState, resizingReservationId,
     confirmingReservationId, isResizing, resizeConflict, onBeginResize, onMoveResize, onFinishResize,
@@ -180,7 +181,7 @@ export function TimelineRow(props: TimelineRowProps) {
         </div>
       </div>
 
-      {expandedReservation && <ReservationOperationalLanes reservation={expandedReservation} timelineWidth={timelineWidth} geometryForDates={geometryForDates} />}
+      {expandedReservation && <ReservationOperationalLanes reservation={expandedReservation} timelineWidth={timelineWidth} geometryForDates={geometryForDates} activeLayers={activeLayers} />}
     </div>
   )
 }
