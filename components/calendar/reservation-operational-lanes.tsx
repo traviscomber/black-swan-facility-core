@@ -2,11 +2,11 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { format, parseISO } from "date-fns"
-import { BedDouble, CircleDollarSign, ConciergeBell, LogIn, LogOut, Sparkles, TriangleAlert } from "lucide-react"
+import { BedDouble, CalendarDays, CircleDollarSign, ConciergeBell, LogIn, LogOut, Sparkles, TriangleAlert, Wrench } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import type { CalendarEvent } from "@/components/calendar/timeline-row"
 
-export type CalendarLayerKey = "milestones" | "housekeeping" | "hospitality" | "services" | "payments" | "issues"
+export type CalendarLayerKey = "milestones" | "housekeeping" | "hospitality" | "services" | "activities" | "payments" | "maintenance" | "issues"
 
 type LaneItem = {
   id: string
@@ -57,11 +57,13 @@ export function ReservationOperationalLanes({
 
   const load = useCallback(async () => {
     setLoading(true)
-    const [housekeepingResult, hospitalityResult, extrasResult, paymentsResult, issuesResult] = await Promise.all([
+    const [housekeepingResult, hospitalityResult, extrasResult, activitiesResult, paymentsResult, maintenanceResult, issuesResult] = await Promise.all([
       supabase.from("housekeeping_tasks").select("id, task_type, status, priority, scheduled_for, due_at, service_date, created_at").eq("reservation_id", reservation.event_id),
       supabase.from("hospitality_requests").select("id, request_type, description, status, priority, promised_at, due_at, created_at").eq("reservation_id", reservation.event_id),
       supabase.from("reservation_extras").select("id, name, service_status, scheduled_start, scheduled_end, created_at").eq("reservation_id", reservation.event_id),
+      supabase.from("reservation_activity_bookings").select("id, status, transport_required, activity:activities(title,start_date,end_date)").eq("reservation_id", reservation.event_id),
       supabase.from("payments").select("id, amount, payment_status, paid_at, created_at").eq("reservation_id", reservation.event_id).is("reversed_at", null),
+      supabase.from("maintenance_tasks").select("id, title, status, prioridad, bloqueado, scheduled_start, scheduled_end, fecha_objetivo, created_at").eq("reservation_id", reservation.event_id),
       supabase.from("issues").select("id, title, description, status, priority, severity, created_at, resolved_at").eq("related_item_type", "reservation").eq("related_item_id", reservation.event_id),
     ])
 
@@ -79,9 +81,20 @@ export function ReservationOperationalLanes({
       const end = dateOnly(item.scheduled_end, nextDay(start))
       return { id: item.id, label: item.name || "Servicio", status: item.service_status || "pending", startsOn: start, endsOn: end <= start ? nextDay(start) : end }
     })
+    const activities: LaneItem[] = ((activitiesResult.data ?? []) as Array<Record<string, any>>).map((item) => {
+      const activity = Array.isArray(item.activity) ? item.activity[0] : item.activity
+      const start = dateOnly(activity?.start_date, reservation.starts_on)
+      const end = dateOnly(activity?.end_date, nextDay(start))
+      return { id: item.id, label: `${activity?.title || "Actividad"}${item.transport_required ? " · transporte" : ""}`, status: item.status || "confirmed", startsOn: start, endsOn: end <= start ? nextDay(start) : nextDay(end), critical: item.status === "no_show" }
+    })
     const payments: LaneItem[] = (paymentsResult.data ?? []).map((item) => {
       const start = dateOnly(item.paid_at ?? item.created_at, reservation.starts_on)
       return { id: item.id, label: `$${Number(item.amount ?? 0).toLocaleString("es-CL")}`, status: item.payment_status || "pending", startsOn: start, endsOn: nextDay(start), critical: openStatus(item.payment_status) }
+    })
+    const maintenance: LaneItem[] = (maintenanceResult.data ?? []).map((item) => {
+      const start = dateOnly(item.scheduled_start ?? item.fecha_objetivo ?? item.created_at, reservation.starts_on)
+      const end = dateOnly(item.scheduled_end, nextDay(start))
+      return { id: item.id, label: item.title || "Mantenimiento", status: item.status || "pending", startsOn: start, endsOn: end <= start ? nextDay(start) : end, critical: Boolean(item.bloqueado) || (openStatus(item.status) && ["critical", "urgent", "high"].includes((item.prioridad ?? "").toLowerCase())) }
     })
     const issues: LaneItem[] = (issuesResult.data ?? []).map((item) => {
       const start = dateOnly(item.created_at, reservation.starts_on)
@@ -99,7 +112,9 @@ export function ReservationOperationalLanes({
       { key: "housekeeping", label: "Housekeeping", Icon: BedDouble, className: "bg-amber-500 text-white", items: housekeeping },
       { key: "hospitality", label: "Hospitality", Icon: ConciergeBell, className: "bg-sky-600 text-white", items: hospitality },
       { key: "services", label: "Servicios", Icon: Sparkles, className: "bg-violet-600 text-white", items: services },
+      { key: "activities", label: "Actividades", Icon: CalendarDays, className: "bg-cyan-700 text-white", items: activities },
       { key: "payments", label: "Pagos", Icon: CircleDollarSign, className: "bg-orange-500 text-white", items: payments },
+      { key: "maintenance", label: "Mantenimiento", Icon: Wrench, className: "bg-zinc-700 text-white", items: maintenance },
       { key: "issues", label: "Incidencias", Icon: TriangleAlert, className: "bg-red-600 text-white", items: issues },
     ])
     setLoading(false)
