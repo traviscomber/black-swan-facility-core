@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { format, isSameDay } from "date-fns"
-import { BedDouble, CheckSquare, CircleDollarSign, ConciergeBell, Flag, Sparkles, Square, TriangleAlert } from "lucide-react"
+import { BedDouble, CalendarDays, CheckSquare, CircleDollarSign, ConciergeBell, Flag, Sparkles, Square, TriangleAlert, Wrench } from "lucide-react"
 import { CardContent } from "@/components/ui/card"
 import {
   TimelineRow,
@@ -68,7 +68,9 @@ const LAYERS: Array<{ key: CalendarLayerKey; label: string; Icon: typeof BedDoub
   { key: "housekeeping", label: "Housekeeping", Icon: BedDouble },
   { key: "hospitality", label: "Hospitality", Icon: ConciergeBell },
   { key: "services", label: "Servicios", Icon: Sparkles },
+  { key: "activities", label: "Actividades", Icon: CalendarDays },
   { key: "payments", label: "Pagos", Icon: CircleDollarSign },
+  { key: "maintenance", label: "Mantenimiento", Icon: Wrench },
   { key: "issues", label: "Incidencias", Icon: TriangleAlert },
 ]
 
