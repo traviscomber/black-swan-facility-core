@@ -32,14 +32,7 @@ export async function GET(_request: Request, context: RouteContext) {
     return NextResponse.json({ error: "Reserva no encontrada" }, { status: 404 })
   }
 
-  const [
-    hospitalityResult,
-    housekeepingResult,
-    extrasResult,
-    guestRequestsResult,
-    issuesResult,
-    catalogResult,
-  ] = await Promise.all([
+  const [hospitalityResult, housekeepingResult, extrasResult, guestRequestsResult, issuesResult, catalogResult] = await Promise.all([
     supabase
       .from("hospitality_requests")
       .select("id, request_type, category, description, status, priority, tablet_device_id, created_at, completed_at")
@@ -73,13 +66,7 @@ export async function GET(_request: Request, context: RouteContext) {
       .order("name"),
   ])
 
-  const firstError =
-    hospitalityResult.error ||
-    housekeepingResult.error ||
-    extrasResult.error ||
-    guestRequestsResult.error ||
-    issuesResult.error ||
-    catalogResult.error
+  const firstError = hospitalityResult.error || housekeepingResult.error || extrasResult.error || guestRequestsResult.error || issuesResult.error || catalogResult.error
 
   if (firstError) {
     return NextResponse.json({ error: firstError.message }, { status: 500 })
@@ -90,27 +77,26 @@ export async function GET(_request: Request, context: RouteContext) {
   const extras = extrasResult.data ?? []
   const guestRequests = guestRequestsResult.data ?? []
   const issues = issuesResult.data ?? []
-
+  const catalog = catalogResult.data ?? []
   const openStatuses = new Set(["pending", "assigned", "in_progress", "open"])
-  const extrasTotal = extras.reduce((sum, item) => sum + Number(item.total_amount ?? 0), 0)
+  const extrasAmount = extras.reduce((sum, item) => sum + Number(item.total_amount ?? 0), 0)
 
   return NextResponse.json({
     reservation,
     summary: {
-      hospitalityOpen: hospitality.filter((item) => openStatuses.has(item.status ?? "pending")).length,
-      housekeepingOpen: housekeeping.filter((item) => openStatuses.has(item.status ?? "pending")).length,
-      guestRequestsOpen: guestRequests.filter((item) => openStatuses.has(item.status ?? "pending")).length,
-      issuesOpen: issues.filter((item) => openStatuses.has(item.status ?? "open")).length,
+      openHospitality: hospitality.filter((item) => openStatuses.has(item.status ?? "pending")).length,
+      openHousekeeping: housekeeping.filter((item) => openStatuses.has(item.status ?? "pending")).length,
+      openGuestRequests: guestRequests.filter((item) => openStatuses.has(item.status ?? "pending")).length,
+      openIssues: issues.filter((item) => openStatuses.has(item.status ?? "open")).length,
       extrasCount: extras.length,
-      extrasTotal,
-      operationalItems:
-        hospitality.length + housekeeping.length + guestRequests.length + issues.length + extras.length,
+      extrasAmount,
+      totalOperations: hospitality.length + housekeeping.length + guestRequests.length + issues.length + extras.length,
     },
     hospitality,
     housekeeping,
     extras,
     guestRequests,
     issues,
-    availableExtras: catalogResult.data ?? [],
+    catalog,
   })
 }
