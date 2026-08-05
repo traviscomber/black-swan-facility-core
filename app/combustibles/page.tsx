@@ -31,9 +31,14 @@ type Vehicle = { id: string; name: string | null; code: string | null; vehicle_t
 export default async function CombustiblesPage() {
   const supabase = await createClient()
 
-  const [fuelResponse, employeesResponse, anomaliesResponse, vehiclesResponse] = await Promise.all([
+  const [fuelResponse, verifiedFuelResponse, employeesResponse, anomaliesResponse, vehiclesResponse] = await Promise.all([
     supabase
       .from('fuel_consumption')
+      .select('id, date_recorded, liters, cost_pesos, fuel_type, vehicle_id, submitted_by, is_verified, source, location, odometer_reading')
+      .order('date_recorded', { ascending: false })
+      .limit(1000),
+    supabase
+      .from('verified_fuel_consumption')
       .select('id, date_recorded, liters, cost_pesos, fuel_type, vehicle_id, submitted_by, is_verified, source, location, odometer_reading')
       .order('date_recorded', { ascending: false })
       .limit(1000),
@@ -43,13 +48,15 @@ export default async function CombustiblesPage() {
   ])
 
   const fuelRecords = (fuelResponse.data ?? []) as FuelRecord[]
+  const verifiedFuelRecords = (verifiedFuelResponse.data ?? []) as FuelRecord[]
   const employees = (employeesResponse.data ?? []) as Employee[]
   const employeeMap = new Map(employees.map((employee) => [employee.id, employee.name]))
-  const enrichedFuelRecords = fuelRecords.map((record) => ({
+  const enrichRecords = (records: FuelRecord[]) => records.map((record) => ({
     ...record,
     employee_name: record.submitted_by ? employeeMap.get(record.submitted_by) ?? 'No identificado' : 'No informado',
   }))
 
+  const enrichedVerifiedFuelRecords = enrichRecords(verifiedFuelRecords)
   const pendingVerification = fuelRecords.filter((record) => !record.is_verified).length
   const incompleteRecords = fuelRecords.filter((record) => !record.location || record.odometer_reading == null).length
 
@@ -68,7 +75,7 @@ export default async function CombustiblesPage() {
               <div>
                 <p className="font-medium">Los consumos cargados todavía requieren validación operativa.</p>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  {pendingVerification.toLocaleString('es-CL')} registros están pendientes de verificación y {incompleteRecords.toLocaleString('es-CL')} no incluyen ubicación u odómetro. Litros y costos se presentan como valores registrados, no como consumo confirmado.
+                  {pendingVerification.toLocaleString('es-CL')} registros están pendientes de verificación y {incompleteRecords.toLocaleString('es-CL')} no incluyen ubicación u odómetro. Estos registros se conservan para revisión, pero no se incluyen en KPI, costos ni análisis operacionales.
                 </p>
               </div>
             </CardContent>
@@ -79,19 +86,28 @@ export default async function CombustiblesPage() {
           <Card className="border-destructive/50"><CardContent className="p-4 text-sm text-destructive">No fue posible cargar los registros de combustible: {fuelResponse.error.message}</CardContent></Card>
         )}
 
+        {verifiedFuelResponse.error && (
+          <Card className="border-destructive/50"><CardContent className="p-4 text-sm text-destructive">No fue posible cargar los consumos verificados: {verifiedFuelResponse.error.message}</CardContent></Card>
+        )}
+
         <Tabs defaultValue="summary" className="w-full">
           <TabsList className="grid h-auto w-full grid-cols-3">
             <TabsTrigger value="summary" className="flex min-h-10 items-center gap-2"><BarChart3 className="h-4 w-4" /><span>Resumen</span></TabsTrigger>
-            <TabsTrigger value="analytics" className="flex min-h-10 items-center gap-2"><ListChecks className="h-4 w-4" /><span>Detalle</span></TabsTrigger>
+            <TabsTrigger value="analytics" className="flex min-h-10 items-center gap-2"><ListChecks className="h-4 w-4" /><span>Análisis</span></TabsTrigger>
             <TabsTrigger value="upload" className="flex min-h-10 items-center gap-2"><FileUp className="h-4 w-4" /><span>Importar</span></TabsTrigger>
           </TabsList>
 
           <div className="mt-6">
             <TabsContent value="summary">
-              <MonthlySummaryTab records={enrichedFuelRecords} summary={[]} anomalies={anomaliesResponse.data ?? []} />
+              <MonthlySummaryTab
+                records={enrichedVerifiedFuelRecords}
+                summary={[]}
+                anomalies={anomaliesResponse.data ?? []}
+                pendingCount={pendingVerification}
+              />
             </TabsContent>
             <TabsContent value="analytics">
-              <FuelAnalyticsTab records={enrichedFuelRecords} vehicles={(vehiclesResponse.data ?? []) as Vehicle[]} />
+              <FuelAnalyticsTab records={enrichedVerifiedFuelRecords} vehicles={(vehiclesResponse.data ?? []) as Vehicle[]} />
             </TabsContent>
             <TabsContent value="upload">
               <FuelUploadComponent />
