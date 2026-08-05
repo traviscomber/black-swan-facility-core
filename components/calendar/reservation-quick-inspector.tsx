@@ -26,6 +26,19 @@ interface InspectorData {
   maintenance: number
 }
 
+interface OperationalException {
+  domain: string
+  source_id: string
+  title: string
+  status: string
+  priority: string
+  due_at: string | null
+  exception_state: "open" | "overdue" | "resolved"
+  blocks_check_in: boolean
+  blocks_check_out: boolean
+  detail: string | null
+}
+
 const emptyData: InspectorData = {
   guestName: "Reserva",
   guestEmail: null,
@@ -59,6 +72,14 @@ function statusLabel(value: string | null | undefined) {
   return "Pendiente"
 }
 
+function domainLabel(domain: string) {
+  if (domain === "housekeeping") return "Housekeeping"
+  if (domain === "hospitality") return "Hospitality"
+  if (domain === "maintenance") return "Mantenimiento"
+  if (domain === "issue") return "Incidencia"
+  return domain
+}
+
 export function ReservationQuickInspector({
   reservation,
   open,
@@ -72,6 +93,7 @@ export function ReservationQuickInspector({
 }) {
   const supabase = useMemo(() => createClient(), [])
   const [data, setData] = useState<InspectorData>(emptyData)
+  const [exceptions, setExceptions] = useState<OperationalException[]>([])
   const [loading, setLoading] = useState(false)
   const [updating, setUpdating] = useState(false)
   const [currentStatus, setCurrentStatus] = useState("pending")
@@ -79,7 +101,7 @@ export function ReservationQuickInspector({
   const load = useCallback(async () => {
     if (!reservation) return
     setLoading(true)
-    const [reservationResult, housekeeping, hospitality, services, activities, issues, maintenance] = await Promise.all([
+    const [reservationResult, housekeeping, hospitality, services, activities, issues, maintenance, exceptionResult] = await Promise.all([
       supabase.from("reservations").select("guest_name, guest_email, guest_phone, num_guests, payment_status, total_amount, status, room:rooms(room_number)").eq("id", reservation.event_id).maybeSingle(),
       supabase.from("housekeeping_tasks").select("id", { count: "exact", head: true }).eq("reservation_id", reservation.event_id).not("status", "in", "(completed,cancelled)"),
       supabase.from("hospitality_requests").select("id", { count: "exact", head: true }).eq("reservation_id", reservation.event_id).not("status", "in", "(completed,closed,cancelled)"),
@@ -87,6 +109,7 @@ export function ReservationQuickInspector({
       supabase.from("reservation_activity_bookings").select("id", { count: "exact", head: true }).eq("reservation_id", reservation.event_id).not("status", "in", "(completed,cancelled)"),
       supabase.from("issues").select("id", { count: "exact", head: true }).eq("related_item_type", "reservation").eq("related_item_id", reservation.event_id).not("status", "in", "(resolved,closed,cancelled)"),
       supabase.from("maintenance_tasks").select("id", { count: "exact", head: true }).eq("reservation_id", reservation.event_id).not("status", "in", "(completed,cancelled)"),
+      supabase.from("reservation_operational_exceptions").select("domain, source_id, title, status, priority, due_at, exception_state, blocks_check_in, blocks_check_out, detail").eq("reservation_id", reservation.event_id),
     ])
     const row = reservationResult.data as any
     const room = Array.isArray(row?.room) ? row.room[0] : row?.room
@@ -106,6 +129,12 @@ export function ReservationQuickInspector({
       issues: issues.count ?? 0,
       maintenance: maintenance.count ?? 0,
     })
+    const ordered = ((exceptionResult.data ?? []) as OperationalException[]).sort((a, b) => {
+      if (a.blocks_check_in !== b.blocks_check_in) return a.blocks_check_in ? -1 : 1
+      if (a.exception_state !== b.exception_state) return a.exception_state === "overdue" ? -1 : 1
+      return String(a.due_at ?? "").localeCompare(String(b.due_at ?? ""))
+    })
+    setExceptions(ordered)
     setLoading(false)
   }, [reservation, supabase])
 
@@ -136,7 +165,8 @@ export function ReservationQuickInspector({
     { label: "Mantenimiento", value: data.maintenance, Icon: Wrench },
   ]
 
-  const hasOperationalRisk = data.issues > 0 || data.maintenance > 0
+  const blockingExceptions = exceptions.filter((item) => item.blocks_check_in)
+  const overdueExceptions = exceptions.filter((item) => item.exception_state === "overdue")
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -173,11 +203,37 @@ export function ReservationQuickInspector({
               </div>
             </section>
 
-            {hasOperationalRisk && currentStatus === "confirmed" && (
-              <div className="rounded-md border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-700">
-                Hay incidencias o mantenimiento abiertos. La protección de check-in validará además limpieza, inspección y estado de habitación antes de permitir la llegada.
+            <section>
+              <div className="mb-2 flex items-center justify-between gap-2">
+                <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Excepciones operacionales</h3>
+                <div className="flex gap-1">
+                  {blockingExceptions.length > 0 && <Badge variant="destructive">{blockingExceptions.length} bloquea check-in</Badge>}
+                  {overdueExceptions.length > 0 && <Badge variant="outline">{overdueExceptions.length} vencida{overdueExceptions.length === 1 ? "" : "s"}</Badge>}
+                </div>
               </div>
-            )}
+              {exceptions.length === 0 ? (
+                <div className="rounded-md border border-emerald-500/25 bg-emerald-500/10 p-3 text-xs text-emerald-700">Sin excepciones operacionales abiertas.</div>
+              ) : (
+                <div className="space-y-2">
+                  {exceptions.slice(0, 8).map((item) => (
+                    <div key={`${item.domain}-${item.source_id}`} className={`rounded-md border p-3 text-xs ${item.blocks_check_in ? "border-red-500/30 bg-red-500/10" : item.exception_state === "overdue" ? "border-amber-500/30 bg-amber-500/10" : "bg-muted/20"}`}>
+                      <div className="flex items-start gap-2">
+                        <TriangleAlert className={`mt-0.5 h-3.5 w-3.5 shrink-0 ${item.blocks_check_in ? "text-red-600" : item.exception_state === "overdue" ? "text-amber-600" : "text-muted-foreground"}`} />
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center justify-between gap-2"><strong className="truncate">{item.title}</strong><span className="shrink-0 text-[10px] uppercase text-muted-foreground">{domainLabel(item.domain)}</span></div>
+                          <div className="mt-1 text-muted-foreground">{item.detail || `Estado: ${item.status}`}</div>
+                          <div className="mt-1 flex flex-wrap gap-2 text-[10px]">
+                            {item.blocks_check_in && <span className="font-semibold text-red-700">Bloquea check-in</span>}
+                            {item.exception_state === "overdue" && <span className="font-semibold text-amber-700">Vencida</span>}
+                            {item.due_at && <span>Objetivo: {format(parseISO(item.due_at), "dd MMM HH:mm")}</span>}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </section>
 
             {(data.guestEmail || data.guestPhone) && (
               <section className="rounded-lg border p-4 text-sm">
@@ -195,7 +251,7 @@ export function ReservationQuickInspector({
                 <ExternalLink className="mr-2 h-4 w-4" />Abrir ficha completa
               </Button>
             </section>
-            <div className="flex items-center justify-center gap-1 text-[11px] text-muted-foreground"><CircleDollarSign className="h-3 w-3" />Los valores, estados y conteos provienen de datos operacionales reales.</div>
+            <div className="flex items-center justify-center gap-1 text-[11px] text-muted-foreground"><CircleDollarSign className="h-3 w-3" />Los valores, estados y excepciones provienen de datos operacionales reales.</div>
           </div>
         )}
       </SheetContent>
