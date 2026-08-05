@@ -1,26 +1,16 @@
 "use client"
 
 import type React from "react"
+import { AccessGate } from "@/components/access/access-gate"
 
-export default function InventoryLayout({
-  children,
-}: {
-  children: React.ReactNode
-}) {
-  const inventoryItems = [
-    { name: "All Assets", href: "/inventory", icon: "📦" },
-    { name: "By Category", href: "/inventory/by-category", icon: "🏷️" },
-    { name: "By Cost Center", href: "/inventory/by-cost-center", icon: "💼" },
-    { name: "Categories", href: "/inventory/categories", icon: "🔧" },
-    { name: "Cost Centers", href: "/inventory/cost-centers", icon: "🏢" },
-  ]
-
+export default function InventoryLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="min-h-screen bg-background">
-      <div className="flex h-screen overflow-hidden">
-        {/* Main content */}
-        <main className="flex-1 overflow-auto">{children}</main>
+    <AccessGate action="inventory.process" department="inventory">
+      <div className="min-h-screen bg-background">
+        <div className="flex h-screen overflow-hidden">
+          <main className="flex-1 overflow-auto">{children}</main>
+        </div>
       </div>
-    </div>
+    </AccessGate>
   )
 }
