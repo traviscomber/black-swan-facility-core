@@ -17,16 +17,16 @@ export default function BookingsPage() {
       <BookingRealtimePulse />
       <BookingTimelineDomIdentity />
       <BookingTimelineAlertNavigator />
+      <BookingOperationsTimelinePage />
+      <ReservationLogisticsEditor />
       <BookingOperationsBar />
       <BookingSystemHealth />
-      <ReservationLogisticsEditor />
       <div className="border-b border-border/30 bg-background px-4 py-6 sm:px-6 lg:px-8">
         <LogisticsGroupControl days={30} />
       </div>
       <div className="border-b border-border/30 bg-background px-4 py-6 sm:px-6 lg:px-8">
-        <OperationalCalendar days={30} title="Calendario completo de próximas acciones" />
+        <OperationalCalendar days={30} title="Acciones operativas vinculadas al calendario" />
       </div>
-      <BookingOperationsTimelinePage />
       <BookingOperationsWorkspace />
     </>
   )
