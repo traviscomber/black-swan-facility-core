@@ -3,106 +3,74 @@
 
 @custom-variant dark (&:is(.dark *));
 
-:root {
-  /* BSFC — Blackswan Facility Core */
-  --background: #0b0c0c;
-  --foreground: #f3f1ed;
-  --card: #121313;
-  --card-foreground: #f3f1ed;
-  --popover: #151616;
-  --popover-foreground: #f3f1ed;
-  --primary: #8a7965;
-  --primary-foreground: #0b0c0c;
-  --secondary: #1b1d1d;
-  --secondary-foreground: #e8e4de;
-  --muted: #1a1c1c;
-  --muted-foreground: #aaa59d;
-  --accent: #25221e;
-  --accent-foreground: #f1ece5;
-  --destructive: #c65d57;
-  --destructive-foreground: #ffffff;
-  --border: #292b2a;
-  --input: #202222;
-  --ring: #9a8872;
-  --chart-1: #8a7965;
-  --chart-2: #727875;
-  --chart-3: #a2a69f;
-  --chart-4: #5d625f;
-  --chart-5: #b0a18e;
-  --radius: 0.625rem;
-
-  --font-size-xs: 0.75rem;
-  --font-size-sm: 0.875rem;
-  --font-size-base: 1rem;
-  --font-size-lg: 1.125rem;
-  --font-size-xl: 1.25rem;
-  --font-size-2xl: 1.5rem;
-  --font-size-3xl: 1.875rem;
-  --font-size-4xl: 2.25rem;
-
-  --line-height-tight: 1.15;
-  --line-height-snug: 1.35;
-  --line-height-normal: 1.5;
-  --line-height-relaxed: 1.65;
-
-  --space-0: 0;
-  --space-1: 0.25rem;
-  --space-2: 0.5rem;
-  --space-3: 0.75rem;
-  --space-4: 1rem;
-  --space-5: 1.25rem;
-  --space-6: 1.5rem;
-  --space-8: 2rem;
-  --space-10: 2.5rem;
-  --space-12: 3rem;
-  --space-16: 4rem;
-
-  --sidebar: #0d0e0e;
-  --sidebar-foreground: #dedad4;
-  --sidebar-primary: #8a7965;
-  --sidebar-primary-foreground: #0b0c0c;
-  --sidebar-accent: #1b1c1c;
-  --sidebar-accent-foreground: #f3f1ed;
-  --sidebar-border: #242625;
-  --sidebar-ring: #9a8872;
-}
-
+:root,
 .dark {
-  --background: #0b0c0c;
-  --foreground: #f3f1ed;
-  --card: #121313;
-  --card-foreground: #f3f1ed;
-  --popover: #151616;
-  --popover-foreground: #f3f1ed;
-  --primary: #8a7965;
-  --primary-foreground: #0b0c0c;
-  --secondary: #1b1d1d;
-  --secondary-foreground: #e8e4de;
-  --muted: #1a1c1c;
-  --muted-foreground: #aaa59d;
-  --accent: #25221e;
-  --accent-foreground: #f1ece5;
-  --destructive: #c65d57;
-  --destructive-foreground: #ffffff;
-  --border: #292b2a;
-  --input: #202222;
-  --ring: #9a8872;
-  --chart-1: #8a7965;
-  --chart-2: #727875;
-  --chart-3: #a2a69f;
-  --chart-4: #5d625f;
-  --chart-5: #b0a18e;
-  --sidebar: #0d0e0e;
-  --sidebar-foreground: #dedad4;
-  --sidebar-primary: #8a7965;
-  --sidebar-primary-foreground: #0b0c0c;
-  --sidebar-accent: #1b1c1c;
-  --sidebar-accent-foreground: #f3f1ed;
-  --sidebar-border: #242625;
-  --sidebar-ring: #9a8872;
+  --bs-bg-primary: #171512;
+  --bs-bg-secondary: #211e1a;
+  --bs-surface-primary: #2b2722;
+  --bs-surface-secondary: #39342d;
+  --bs-surface-elevated: #514a40;
+  --bs-surface-hover: #5d554a;
+  --bs-surface-active: #675e52;
+  --bs-text-primary: #e7e1d8;
+  --bs-text-secondary: #b9b0a4;
+  --bs-text-muted: #847c72;
+  --bs-text-disabled: #625c54;
+  --bs-divider-subtle: rgba(231, 225, 216, 0.08);
+  --bs-overlay: rgba(23, 21, 18, 0.82);
+  --bs-warm-yellow: #fdd32c;
+  --bs-warm-orange: #ffa114;
+  --bs-warm-muted-orange: #d66942;
+  --bs-warm-bright-orange: #f65a2a;
+  --bs-warm-fire: #ec2b02;
+  --bs-warm-princess: #fdd7d4;
+  --bs-warm-pig: #e47fad;
+  --bs-cool-pope: #834693;
+  --bs-cool-sage: #8bcba8;
+  --bs-cool-basil: #366f45;
+  --bs-cool-sky: #36b6f8;
+  --bs-cool-river: #4679ae;
+  --bs-cool-klein: #062ea5;
+  --bs-font-heading: "Everett", "Helvetica Neue", Arial, sans-serif;
+  --bs-font-body: var(--font-montserrat), Montserrat, Arial, sans-serif;
+
+  --background: var(--bs-bg-primary);
+  --foreground: var(--bs-text-primary);
+  --card: var(--bs-surface-primary);
+  --card-foreground: var(--bs-text-primary);
+  --popover: var(--bs-surface-elevated);
+  --popover-foreground: var(--bs-text-primary);
+  --primary: var(--bs-cool-sage);
+  --primary-foreground: var(--bs-bg-primary);
+  --secondary: var(--bs-surface-secondary);
+  --secondary-foreground: var(--bs-text-primary);
+  --muted: var(--bs-surface-secondary);
+  --muted-foreground: var(--bs-text-secondary);
+  --accent: var(--bs-surface-elevated);
+  --accent-foreground: var(--bs-text-primary);
+  --destructive: var(--bs-warm-fire);
+  --destructive-foreground: var(--bs-text-primary);
+  --border: var(--bs-divider-subtle);
+  --input: var(--bs-surface-secondary);
+  --ring: var(--bs-cool-sky);
+  --chart-1: var(--bs-cool-sage);
+  --chart-2: var(--bs-cool-river);
+  --chart-3: var(--bs-warm-yellow);
+  --chart-4: var(--bs-warm-muted-orange);
+  --chart-5: var(--bs-cool-pope);
+  --radius: 0px;
+  --sidebar: var(--bs-bg-secondary);
+  --sidebar-foreground: var(--bs-text-primary);
+  --sidebar-primary: var(--bs-cool-sage);
+  --sidebar-primary-foreground: var(--bs-bg-primary);
+  --sidebar-accent: var(--bs-surface-elevated);
+  --sidebar-accent-foreground: var(--bs-text-primary);
+  --sidebar-border: var(--bs-divider-subtle);
+  --sidebar-ring: var(--bs-cool-sky);
 }
 
 @theme inline {
+  --font-sans: var(--bs-font-body);
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -127,10 +95,10 @@
   --color-chart-3: var(--chart-3);
   --color-chart-4: var(--chart-4);
   --color-chart-5: var(--chart-5);
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
+  --radius-sm: 0px;
+  --radius-md: 0px;
+  --radius-lg: 0px;
+  --radius-xl: 0px;
   --color-sidebar: var(--sidebar);
   --color-sidebar-foreground: var(--sidebar-foreground);
   --color-sidebar-primary: var(--sidebar-primary);
@@ -143,18 +111,23 @@
 
 @layer base {
   * {
-    @apply border-border outline-ring/50;
+    box-sizing: border-box;
+    border-color: var(--bs-divider-subtle);
   }
 
   html {
-    background: var(--background);
+    background: var(--bs-bg-primary);
   }
 
   body {
-    @apply bg-background font-sans text-foreground antialiased;
-    font-size: var(--font-size-base);
-    line-height: var(--line-height-normal);
-    letter-spacing: -0.012em;
+    margin: 0;
+    background: var(--bs-bg-primary);
+    color: var(--bs-text-primary);
+    font-family: var(--bs-font-body);
+    font-size: 14px;
+    font-weight: 400;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
   }
 
@@ -164,177 +137,84 @@
   h4,
   h5,
   h6 {
-    @apply text-foreground;
+    margin: 0;
+    color: var(--bs-text-primary);
+    font-family: var(--bs-font-heading);
+    font-weight: 400 !important;
+    letter-spacing: -0.015em;
     text-wrap: balance;
   }
 
-  h1 {
-    @apply font-semibold;
-    font-size: var(--font-size-4xl);
-    line-height: var(--line-height-tight);
-    letter-spacing: -0.035em;
-  }
+  h1 { font-size: clamp(30px, 3vw, 40px); line-height: 1.08; }
+  h2 { font-size: clamp(24px, 2.2vw, 30px); line-height: 1.15; }
+  h3 { font-size: 20px; line-height: 1.25; }
+  h4 { font-size: 16px; line-height: 1.3; }
+  h5,
+  h6 { font-size: 14px; line-height: 1.35; }
 
-  h2 {
-    @apply font-semibold;
-    font-size: var(--font-size-3xl);
-    line-height: var(--line-height-tight);
-    letter-spacing: -0.03em;
-  }
-
-  h3 {
-    @apply font-semibold;
-    font-size: var(--font-size-2xl);
-    line-height: var(--line-height-snug);
-    letter-spacing: -0.022em;
-  }
-
-  h4 {
-    @apply font-medium;
-    font-size: var(--font-size-xl);
-    line-height: var(--line-height-snug);
-  }
-
-  h5 {
-    @apply font-medium;
-    font-size: var(--font-size-lg);
-    line-height: var(--line-height-normal);
-  }
-
-  h6 {
-    @apply font-medium;
-    font-size: var(--font-size-base);
-    line-height: var(--line-height-normal);
-  }
-
-  p {
-    line-height: var(--line-height-relaxed);
-  }
-
-  small {
-    @apply text-muted-foreground;
-    font-size: var(--font-size-sm);
-  }
-
-  a,
   button,
   input,
-  textarea,
-  select {
-    -webkit-tap-highlight-color: transparent;
+  select,
+  textarea {
+    font: inherit;
+  }
+
+  button,
+  [data-slot="card"],
+  [data-slot="input"],
+  [data-slot="textarea"],
+  [data-slot="select-trigger"],
+  [data-slot="dialog-content"],
+  [data-slot="dropdown-menu-content"],
+  [data-slot="badge"],
+  [role="tab"],
+  [role="tooltip"] {
+    border-radius: 0 !important;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--bs-cool-sky);
+    outline-offset: 2px;
   }
 
   ::selection {
-    background-color: #8a7965;
-    color: #0b0c0c;
-  }
-
-  ::-moz-selection {
-    background-color: #8a7965;
-    color: #0b0c0c;
+    background: var(--bs-cool-sage);
+    color: var(--bs-bg-primary);
   }
 
   .leaflet-container,
   .leaflet-tile-container {
-    @apply bg-white;
+    background: #d7d2c8;
   }
 
-  .leaflet-container {
-    z-index: 0;
-  }
+  .leaflet-container { z-index: 0; }
+  .leaflet-control-attribution { font-size: 12px; }
+  .kmz-point-icon { background: transparent !important; border: 0 !important; pointer-events: auto !important; }
+  main.map-page { margin: 0; padding: 0; }
+}
 
-  .leaflet-control-attribution {
-    @apply text-xs;
-  }
+@layer utilities {
+  .bs-heading { font-family: var(--bs-font-heading); font-weight: 400; }
+  .bs-panel { background: var(--bs-surface-primary); border: 0; border-radius: 0; box-shadow: none; }
+  .bs-panel-secondary { background: var(--bs-surface-secondary); border: 0; border-radius: 0; box-shadow: none; }
+  .bs-divider { border-color: var(--bs-divider-subtle); }
+  .bs-text-secondary { color: var(--bs-text-secondary); }
+  .bs-text-muted { color: var(--bs-text-muted); }
+}
 
-  .kmz-point-icon {
-    background: transparent !important;
-    border: none !important;
-    pointer-events: auto !important;
-  }
-
-  main.map-page {
-    @apply m-0 space-y-0 p-0;
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
 }
 
 @media print {
-  @page {
-    size: A4 portrait;
-    margin: 12mm;
-  }
-
+  @page { size: A4 portrait; margin: 12mm; }
   html,
-  body {
-    background: #ffffff !important;
-    color: #111111 !important;
-    height: auto !important;
-    overflow: visible !important;
-  }
-
-  body * {
-    visibility: hidden !important;
-  }
-
-  [role="dialog"]:has(img[src="/blackswan-logo.png"]),
-  [role="dialog"]:has(img[src="/blackswan-logo.png"]) * {
-    visibility: visible !important;
-  }
-
-  [role="dialog"]:has(img[src="/blackswan-logo.png"]) {
-    position: absolute !important;
-    inset: 0 !important;
-    display: block !important;
-    width: 100% !important;
-    max-width: none !important;
-    max-height: none !important;
-    overflow: visible !important;
-    transform: none !important;
-    border: 0 !important;
-    border-radius: 0 !important;
-    background: #ffffff !important;
-    color: #111111 !important;
-    box-shadow: none !important;
-  }
-
-  [role="dialog"]:has(img[src="/blackswan-logo.png"]) header {
-    position: static !important;
-    background: #ffffff !important;
-    color: #111111 !important;
-    backdrop-filter: none !important;
-  }
-
-  [role="dialog"]:has(img[src="/blackswan-logo.png"]) footer,
-  [role="dialog"]:has(img[src="/blackswan-logo.png"]) button {
-    display: none !important;
-  }
-
-  [role="dialog"]:has(img[src="/blackswan-logo.png"]) section,
-  [role="dialog"]:has(img[src="/blackswan-logo.png"]) table,
-  [role="dialog"]:has(img[src="/blackswan-logo.png"]) tr {
-    break-inside: avoid;
-  }
-
-  [role="dialog"]:has(img[src="/blackswan-logo.png"]) input,
-  [role="dialog"]:has(img[src="/blackswan-logo.png"]) textarea,
-  [role="dialog"]:has(img[src="/blackswan-logo.png"]) select {
-    appearance: none !important;
-    border: 0 !important;
-    background: transparent !important;
-    color: #111111 !important;
-    box-shadow: none !important;
-    padding-left: 0 !important;
-    padding-right: 0 !important;
-    resize: none !important;
-  }
-
-  [role="dialog"]:has(img[src="/blackswan-logo.png"]) .text-muted-foreground {
-    color: #555555 !important;
-  }
-
-  [role="dialog"]:has(img[src="/blackswan-logo.png"]) .bg-muted\/20,
-  [role="dialog"]:has(img[src="/blackswan-logo.png"]) .bg-background,
-  [role="dialog"]:has(img[src="/blackswan-logo.png"]) .bg-background\/95 {
-    background: #ffffff !important;
-  }
+  body { background: #ffffff !important; color: #111111 !important; }
 }
