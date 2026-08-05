@@ -53,7 +53,7 @@ export default async function SopLibraryPage() {
     <AppLayout>
       <PageHeader
         title="Procedimientos operacionales"
-        description="Biblioteca simple de SOP para los procesos que ya existen en el portal. Cada procedimiento puede vincularse con tareas y documentos operacionales."
+        description="Biblioteca compacta de SOP maestros para los procesos actuales del portal. Los procedimientos genéricos permanecen en borrador hasta su revisión operativa."
         actions={
           <Button asChild>
             <Link href="/sop/new">
@@ -65,7 +65,7 @@ export default async function SopLibraryPage() {
       />
 
       <div className="mx-auto w-full max-w-[1440px] space-y-8 px-4 py-6 md:px-8 md:py-8">
-        <section className="grid gap-3 sm:grid-cols-3">
+        <section className="grid gap-3 sm:grid-cols-3" aria-label="Resumen de procedimientos">
           <div className="bg-card p-5">
             <p className="text-xs text-muted-foreground">Procedimientos registrados</p>
             <p className="bs-heading mt-2 text-2xl text-foreground">{procedures.length}</p>
@@ -75,7 +75,7 @@ export default async function SopLibraryPage() {
             <p className="bs-heading mt-2 text-2xl text-[#8bcba8]">{activeCount}</p>
           </div>
           <div className="bg-card p-5">
-            <p className="text-xs text-muted-foreground">Borradores</p>
+            <p className="text-xs text-muted-foreground">Borradores por validar</p>
             <p className="bs-heading mt-2 text-2xl text-[#fdd32c]">{draftCount}</p>
           </div>
         </section>
@@ -96,33 +96,33 @@ export default async function SopLibraryPage() {
               <BookOpen className="h-7 w-7 text-[#8bcba8]" />
               <h2 className="mt-5 text-2xl">La biblioteca SOP todavía está vacía</h2>
               <p className="mt-3 text-sm leading-6 text-muted-foreground">
-                Cree el primer procedimiento real del equipo. No se han cargado plantillas ficticias ni procesos genéricos.
+                Cree un procedimiento maestro o aplique la migración de biblioteca base para cargar los borradores genéricos agrupados.
               </p>
               <Button asChild className="mt-6">
                 <Link href="/sop/new">
                   <Plus className="h-4 w-4" />
-                  Crear primer procedimiento
+                  Crear procedimiento
                 </Link>
               </Button>
             </div>
           </section>
         ) : (
-          <section className="bg-card">
-            <div className="grid grid-cols-[minmax(120px,0.7fr)_minmax(240px,2fr)_minmax(140px,1fr)_minmax(120px,0.8fr)_minmax(100px,0.7fr)] gap-4 bg-secondary px-5 py-3 text-xs font-medium text-muted-foreground">
+          <section className="bg-card" aria-label="Biblioteca SOP">
+            <div className="hidden grid-cols-[minmax(120px,0.7fr)_minmax(240px,2fr)_minmax(140px,1fr)_minmax(120px,0.8fr)_minmax(100px,0.7fr)] gap-4 bg-secondary px-5 py-3 text-xs font-medium text-muted-foreground md:grid">
               <span>Código</span>
               <span>Procedimiento</span>
               <span>Área</span>
               <span>Estado</span>
               <span>Duración</span>
             </div>
-            <div>
+            <div className="divide-y divide-[var(--bs-divider-subtle)]">
               {procedures.map((procedure) => {
                 const latestVersion = [...(procedure.sop_versions ?? [])].sort((a, b) => b.version_number - a.version_number)[0]
                 return (
                   <Link
                     key={procedure.id}
                     href={`/sop/${procedure.id}`}
-                    className="grid grid-cols-[minmax(120px,0.7fr)_minmax(240px,2fr)_minmax(140px,1fr)_minmax(120px,0.8fr)_minmax(100px,0.7fr)] gap-4 px-5 py-4 text-sm transition-colors hover:bg-[#5d554a] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-ring"
+                    className="grid gap-3 px-5 py-4 text-sm transition-colors hover:bg-[#5d554a] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-ring md:grid-cols-[minmax(120px,0.7fr)_minmax(240px,2fr)_minmax(140px,1fr)_minmax(120px,0.8fr)_minmax(100px,0.7fr)] md:gap-4"
                   >
                     <span className="font-medium text-foreground">{procedure.code}</span>
                     <span>
