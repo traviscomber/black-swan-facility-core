@@ -1,8 +1,8 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { format, isSameDay } from "date-fns"
-import { BedDouble, CalendarDays, CheckSquare, CircleDollarSign, ConciergeBell, Flag, Sparkles, Square, TriangleAlert, Wrench } from "lucide-react"
+import { BedDouble, Building2, CheckSquare, ChevronDown, ChevronRight, CircleDollarSign, ConciergeBell, DoorOpen, Flag, Rows3, Sparkles, Square, TriangleAlert, Wrench } from "lucide-react"
 import { CardContent } from "@/components/ui/card"
 import {
   TimelineRow,
@@ -68,11 +68,17 @@ const LAYERS: Array<{ key: CalendarLayerKey; label: string; Icon: typeof BedDoub
   { key: "housekeeping", label: "Housekeeping", Icon: BedDouble },
   { key: "hospitality", label: "Hospitality", Icon: ConciergeBell },
   { key: "services", label: "Servicios", Icon: Sparkles },
-  { key: "activities", label: "Actividades", Icon: CalendarDays },
+  { key: "activities", label: "Actividades", Icon: Rows3 },
   { key: "payments", label: "Pagos", Icon: CircleDollarSign },
-  { key: "maintenance", label: "Mantenimiento", Icon: Wrench },
   { key: "issues", label: "Incidencias", Icon: TriangleAlert },
+  { key: "maintenance", label: "Mantenimiento", Icon: Wrench },
 ]
+
+type InventoryGroup = {
+  locationId: string
+  locationName: string
+  rooms: Array<{ roomId: string; roomNumber: string; beds: Bed[] }>
+}
 
 export function TimelineGrid({
   dates,
@@ -122,6 +128,33 @@ export function TimelineGrid({
   const isInteracting = Boolean(draggingEventId) || isResizing
   const scrollRef = useCalendarAutoscroll({ active: isInteracting })
   const [activeLayers, setActiveLayers] = useState<Set<CalendarLayerKey>>(() => new Set(LAYERS.map((layer) => layer.key)))
+  const [collapsedLocations, setCollapsedLocations] = useState<Set<string>>(new Set())
+  const [collapsedRooms, setCollapsedRooms] = useState<Set<string>>(new Set())
+  const [showSummary, setShowSummary] = useState(true)
+
+  const inventoryGroups = useMemo<InventoryGroup[]>(() => {
+    const locations = new Map<string, InventoryGroup>()
+    for (const bed of visibleBeds) {
+      const locationId = bed.room.location_ref?.id ?? bed.room.location_id ?? "unassigned"
+      const locationName = bed.room.location_ref?.name ?? "Sin propiedad"
+      const location = locations.get(locationId) ?? { locationId, locationName, rooms: [] }
+      let room = location.rooms.find((item) => item.roomId === bed.room.id)
+      if (!room) {
+        room = { roomId: bed.room.id, roomNumber: bed.room.room_number, beds: [] }
+        location.rooms.push(room)
+      }
+      room.beds.push(bed)
+      locations.set(locationId, location)
+    }
+    return Array.from(locations.values())
+      .sort((a, b) => a.locationName.localeCompare(b.locationName))
+      .map((location) => ({
+        ...location,
+        rooms: location.rooms
+          .sort((a, b) => a.roomNumber.localeCompare(b.roomNumber, undefined, { numeric: true }))
+          .map((room) => ({ ...room, beds: room.beds.sort((a, b) => a.bed_number.localeCompare(b.bed_number, undefined, { numeric: true })) })),
+      }))
+  }, [visibleBeds])
 
   useEffect(() => {
     if (!scrollRef.current || dates.length === 0) return
@@ -140,6 +173,15 @@ export function TimelineGrid({
 
   function toggleAllLayers() {
     setActiveLayers((current) => current.size === LAYERS.length ? new Set() : new Set(LAYERS.map((layer) => layer.key)))
+  }
+
+  function toggleSet(id: string, setter: React.Dispatch<React.SetStateAction<Set<string>>>) {
+    setter((current) => {
+      const next = new Set(current)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
   }
 
   const sharedRowProps: Omit<TimelineRowProps, "bed" | "bedEvents"> = {
@@ -192,7 +234,9 @@ export function TimelineGrid({
             <Icon className="h-3.5 w-3.5" />{label}
           </button>
         ))}
-        <span className="ml-auto text-[10px] text-muted-foreground">Las capas controlan las sublíneas al expandir una reserva.</span>
+        <button type="button" onClick={() => setShowSummary((current) => !current)} className={`ml-auto inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs transition ${showSummary ? "border-primary/40 bg-primary/10 text-primary" : "bg-background text-muted-foreground hover:bg-muted"}`}>
+          <Rows3 className="h-3.5 w-3.5" />Resumen diario
+        </button>
       </div>
 
       <div ref={scrollRef} className="overflow-auto">
@@ -222,10 +266,41 @@ export function TimelineGrid({
           ) : visibleBeds.length === 0 ? (
             <div className="p-12 text-center text-muted-foreground">No hay camas para los filtros seleccionados.</div>
           ) : (
-            visibleBeds.map((bed) => <TimelineRow key={bed.id} bed={bed} bedEvents={eventsByBed.get(bed.id) ?? []} {...sharedRowProps} />)
+            inventoryGroups.map((location) => {
+              const locationCollapsed = collapsedLocations.has(location.locationId)
+              const bedCount = location.rooms.reduce((sum, room) => sum + room.beds.length, 0)
+              return (
+                <div key={location.locationId}>
+                  <button type="button" onClick={() => toggleSet(location.locationId, setCollapsedLocations)} className="sticky left-0 z-20 flex h-9 w-full items-center border-b bg-muted/70 text-left text-xs font-semibold backdrop-blur">
+                    <span className="sticky left-0 flex h-full items-center gap-2 border-r px-3" style={{ width: LABEL_WIDTH }}>
+                      {locationCollapsed ? <ChevronRight className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+                      <Building2 className="h-3.5 w-3.5" />
+                      <span className="truncate">{location.locationName}</span>
+                      <span className="ml-auto rounded bg-background/80 px-1.5 py-0.5 text-[10px] text-muted-foreground">{location.rooms.length} hab. · {bedCount} camas</span>
+                    </span>
+                  </button>
+                  {!locationCollapsed && location.rooms.map((room) => {
+                    const roomCollapsed = collapsedRooms.has(room.roomId)
+                    return (
+                      <div key={room.roomId}>
+                        <button type="button" onClick={() => toggleSet(room.roomId, setCollapsedRooms)} className="sticky left-0 z-20 flex h-8 w-full items-center border-b bg-background/95 text-left text-[11px] font-medium">
+                          <span className="sticky left-0 flex h-full items-center gap-2 border-r pl-6 pr-3" style={{ width: LABEL_WIDTH }}>
+                            {roomCollapsed ? <ChevronRight className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                            <DoorOpen className="h-3.5 w-3.5" />
+                            <span>Hab. {room.roomNumber}</span>
+                            <span className="ml-auto text-[10px] text-muted-foreground">{room.beds.length} cama{room.beds.length === 1 ? "" : "s"}</span>
+                          </span>
+                        </button>
+                        {!roomCollapsed && room.beds.map((bed) => <TimelineRow key={bed.id} bed={bed} bedEvents={eventsByBed.get(bed.id) ?? []} {...sharedRowProps} />)}
+                      </div>
+                    )
+                  })}
+                </div>
+              )
+            })
           )}
 
-          <CalendarDailyOperationsSummary dates={dates} reservations={visibleReservationEvents} timelineWidth={timelineWidth} />
+          {showSummary && <CalendarDailyOperationsSummary dates={dates} reservations={visibleReservationEvents} timelineWidth={timelineWidth} />}
         </div>
       </div>
     </CardContent>
