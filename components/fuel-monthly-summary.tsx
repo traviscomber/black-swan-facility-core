@@ -3,7 +3,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { AlertTriangle, CheckCircle2 } from 'lucide-react'
+import { AlertTriangle, CheckCircle2, ShieldCheck } from 'lucide-react'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { useLanguage } from '@/lib/hooks/use-language'
 
@@ -11,17 +11,20 @@ interface MonthlySummaryTabProps {
   records: any[]
   summary: any[]
   anomalies: any[]
+  pendingCount?: number
 }
 
 const copy = {
   es: {
-    totalRecords: 'Registros cargados',
-    totalLiters: 'Litros registrados',
-    totalSpend: 'Gasto registrado',
+    verifiedOnly: 'KPI calculados solo con registros verificados.',
+    pendingExcluded: (count: number) => `${count.toLocaleString('es-CL')} registros pendientes fueron excluidos de litros, costos y promedios.`,
+    totalRecords: 'Registros verificados',
+    totalLiters: 'Litros verificados',
+    totalSpend: 'Gasto verificado',
     anomalies: 'Anomalías detectadas',
     critical: 'de severidad alta',
-    alert: (count: number) => `Se detectaron ${count} anomalías de severidad alta. Deben revisarse antes de tratarlas como consumo confirmado.`,
-    monthly: 'Resumen mensual calculado',
+    alert: (count: number) => `Se detectaron ${count} anomalías de severidad alta. Deben revisarse antes de confirmar nuevos consumos.`,
+    monthly: 'Resumen mensual verificado',
     month: 'Mes',
     records: 'Registros',
     liters: 'Litros',
@@ -36,16 +39,18 @@ const copy = {
     yes: 'Sí',
     no: 'No',
     unknown: 'Desconocido',
-    noData: 'No existen registros de combustible para resumir.',
+    noData: 'Todavía no existen consumos verificados para calcular indicadores operacionales.',
   },
   en: {
-    totalRecords: 'Loaded records',
-    totalLiters: 'Recorded liters',
-    totalSpend: 'Recorded spend',
+    verifiedOnly: 'KPIs are calculated only from verified records.',
+    pendingExcluded: (count: number) => `${count.toLocaleString('en-US')} pending records were excluded from liters, costs, and averages.`,
+    totalRecords: 'Verified records',
+    totalLiters: 'Verified liters',
+    totalSpend: 'Verified spend',
     anomalies: 'Detected anomalies',
     critical: 'high-severity',
-    alert: (count: number) => `${count} high-severity anomalies were detected. They must be reviewed before being treated as confirmed consumption.`,
-    monthly: 'Calculated monthly summary',
+    alert: (count: number) => `${count} high-severity anomalies were detected. They must be reviewed before confirming new consumption.`,
+    monthly: 'Verified monthly summary',
     month: 'Month',
     records: 'Records',
     liters: 'Liters',
@@ -60,7 +65,7 @@ const copy = {
     yes: 'Yes',
     no: 'No',
     unknown: 'Unknown',
-    noData: 'There are no fuel records to summarize.',
+    noData: 'There are no verified fuel records available for operational KPIs yet.',
   },
 } as const
 
@@ -69,7 +74,7 @@ const severityLabels = {
   en: { high: 'High', medium: 'Medium', low: 'Low' },
 } as const
 
-export function MonthlySummaryTab({ records, anomalies }: MonthlySummaryTabProps) {
+export function MonthlySummaryTab({ records, anomalies, pendingCount = 0 }: MonthlySummaryTabProps) {
   const { language } = useLanguage()
   const lang = language === 'es' ? 'es' : 'en'
   const text = copy[lang]
@@ -100,6 +105,13 @@ export function MonthlySummaryTab({ records, anomalies }: MonthlySummaryTabProps
 
   return (
     <div className="space-y-6">
+      <Alert>
+        <ShieldCheck className="h-4 w-4" />
+        <AlertDescription>
+          {text.verifiedOnly} {pendingCount > 0 ? text.pendingExcluded(pendingCount) : ''}
+        </AlertDescription>
+      </Alert>
+
       <div className="grid gap-4 md:grid-cols-4">
         <Metric title={text.totalRecords} value={records.length.toLocaleString(locale)} />
         <Metric title={text.totalLiters} value={`${totalLiters.toLocaleString(locale, { maximumFractionDigits: 1 })} L`} />
