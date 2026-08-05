@@ -6,6 +6,8 @@ import { BedDouble, CircleDollarSign, ConciergeBell, LogIn, LogOut, Sparkles, Tr
 import { createClient } from "@/lib/supabase/client"
 import type { CalendarEvent } from "@/components/calendar/timeline-row"
 
+export type CalendarLayerKey = "milestones" | "housekeeping" | "hospitality" | "services" | "payments" | "issues"
+
 type LaneItem = {
   id: string
   label: string
@@ -16,7 +18,7 @@ type LaneItem = {
 }
 
 type Lane = {
-  key: string
+  key: CalendarLayerKey
   label: string
   Icon: typeof BedDouble
   className: string
@@ -42,10 +44,12 @@ export function ReservationOperationalLanes({
   reservation,
   timelineWidth,
   geometryForDates,
+  activeLayers,
 }: {
   reservation: CalendarEvent
   timelineWidth: number
   geometryForDates: (startsOn: string, endsOn: string) => { left: number; width: number }
+  activeLayers: Set<CalendarLayerKey>
 }) {
   const supabase = useMemo(() => createClient(), [])
   const [lanes, setLanes] = useState<Lane[]>([])
@@ -103,9 +107,11 @@ export function ReservationOperationalLanes({
 
   useEffect(() => { void load() }, [load])
 
+  const visibleLanes = lanes.filter((lane) => activeLayers.has(lane.key))
+
   return (
     <div className="border-t bg-muted/10">
-      {loading ? <div className="px-3 py-3 text-xs text-muted-foreground">Cargando operación relacionada…</div> : lanes.map(({ key, label, Icon, className, items }) => (
+      {loading ? <div className="px-3 py-3 text-xs text-muted-foreground">Cargando operación relacionada…</div> : visibleLanes.length === 0 ? <div className="px-3 py-3 text-xs text-muted-foreground">Activa al menos una capa operacional.</div> : visibleLanes.map(({ key, label, Icon, className, items }) => (
         <div key={key} className="flex min-h-8 border-b last:border-b-0">
           <div className="sticky left-0 z-20 flex w-[272px] shrink-0 items-center gap-2 border-r bg-background px-4 text-[11px] font-medium text-muted-foreground">
             <Icon className="h-3.5 w-3.5" />
