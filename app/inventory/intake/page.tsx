@@ -1,0 +1,58 @@
+"use client"
+
+import { useCallback, useEffect, useMemo, useState } from "react"
+import Link from "next/link"
+import { ArrowLeft, Boxes, RefreshCw } from "lucide-react"
+import { AppLayout } from "@/components/app-layout"
+import { PageHeader } from "@/components/page-header"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { createBrowserClient } from "@/lib/supabase/client"
+import { useToast } from "@/hooks/use-toast"
+
+type Intake = { id:string; receipt_item_id:string; intake_type:"asset"|"consumable"; status:string; reconciliation_status:string; created_at:string; notes:string|null }
+type ReceiptItem = { id:string; request_id:string; received_quantity:number; condition:string; discrepancy_reason:string|null; receipt_id:string }
+type Request = { id:string; title:string; category:string; unit:string; quantity:number }
+type Receipt = { id:string; receipt_number:string|null; purchase_order_id:string }
+type Order = { id:string; order_number:string|null }
+type Option = { id:string; name:string; code?:string|null; warehouse_id?:string; warehouses?:{name:string}|null }
+
+export default function InventoryIntakePage(){
+ const supabase=useMemo(()=>createBrowserClient(),[]); const {toast}=useToast()
+ const [intakes,setIntakes]=useState<Intake[]>([]); const [items,setItems]=useState<Record<string,ReceiptItem>>({}); const [requests,setRequests]=useState<Record<string,Request>>({}); const [receipts,setReceipts]=useState<Record<string,Receipt>>({}); const [orders,setOrders]=useState<Record<string,Order>>({})
+ const [locations,setLocations]=useState<Option[]>([]); const [categories,setCategories]=useState<Option[]>([]); const [costCenters,setCostCenters]=useState<Option[]>([])
+ const [selected,setSelected]=useState(""); const [locationId,setLocationId]=useState(""); const [categoryId,setCategoryId]=useState(""); const [costCenterId,setCostCenterId]=useState(""); const [assetClass,setAssetClass]=useState("equipment"); const [minimumStock,setMinimumStock]=useState("0"); const [notes,setNotes]=useState(""); const [loading,setLoading]=useState(true); const [processing,setProcessing]=useState(false); const [error,setError]=useState<string|null>(null)
+ const load=useCallback(async()=>{setLoading(true);setError(null);const [a,b,c,d,e,f,g,h]=await Promise.all([
+  supabase.from("procurement_inventory_intake").select("id,receipt_item_id,intake_type,status,reconciliation_status,created_at,notes").order("created_at",{ascending:false}),
+  supabase.from("procurement_receipt_items").select("id,request_id,received_quantity,condition,discrepancy_reason,receipt_id"),
+  supabase.from("procurement_requests").select("id,title,category,unit,quantity"),
+  supabase.from("procurement_receipts").select("id,receipt_number,purchase_order_id"),
+  supabase.from("procurement_purchase_orders").select("id,order_number"),
+  supabase.from("warehouse_locations").select("id,name,code,warehouse_id,warehouses(name)").eq("is_active",true).order("name"),
+  supabase.from("asset_categories").select("id,name,code").eq("is_active",true).order("name"),
+  supabase.from("cost_centers").select("id,name,code").eq("is_active",true).order("name")])
+  const err=[a,b,c,d,e,f,g,h].find(x=>x.error)?.error;if(err){setError(err.message);setLoading(false);return}
+  setIntakes((a.data??[]) as Intake[]);setItems(Object.fromEntries(((b.data??[]) as ReceiptItem[]).map(x=>[x.id,x])));setRequests(Object.fromEntries(((c.data??[]) as Request[]).map(x=>[x.id,x])));setReceipts(Object.fromEntries(((d.data??[]) as Receipt[]).map(x=>[x.id,x])));setOrders(Object.fromEntries(((e.data??[]) as Order[]).map(x=>[x.id,x])));setLocations((f.data??[]) as Option[]);setCategories((g.data??[]) as Option[]);setCostCenters((h.data??[]) as Option[]);setLoading(false)},[supabase])
+ useEffect(()=>{void load()},[load]); const current=intakes.find(x=>x.id===selected); const pending=intakes.filter(x=>x.status==="pending")
+ async function process(){if(!current||!locationId)return; if(current.intake_type==="asset"&&(!categoryId||!costCenterId))return;setProcessing(true);const {data,error:rpcError}=await supabase.rpc("process_procurement_inventory_intake",{p_intake_id:current.id,p_warehouse_location_id:locationId,p_asset_category_id:current.intake_type==="asset"?categoryId:null,p_cost_center_id:costCenterId||null,p_asset_class:assetClass,p_minimum_stock:Number(minimumStock||0),p_notes:notes.trim()||null});setProcessing(false);if(rpcError){toast({title:"No fue posible procesar el ingreso",description:rpcError.message,variant:"destructive"});return}toast({title:"Ingreso procesado",description:data?.type==="asset"?`${data.created} activo(s) creados.`:`Stock actualizado en ${data.quantity_added}.`});setSelected("");setLocationId("");setCategoryId("");setCostCenterId("");setNotes("");await load()}
+ function label(intake:Intake){const item=items[intake.receipt_item_id];const request=item?requests[item.request_id]:null;const receipt=item?receipts[item.receipt_id]:null;const order=receipt?orders[receipt.purchase_order_id]:null;return `${order?.order_number??"OC"} · ${request?.title??"Ítem recibido"} · ${item?.received_quantity??0} ${request?.unit??""}`}
+ return <AppLayout><PageHeader title="Ingreso a Inventario" description="Clasificación y conciliación de recepciones de compras." actions={<Button variant="outline" asChild><Link href="/inventory"><ArrowLeft className="mr-2 h-4 w-4"/>Inventario</Link></Button>}/><div className="space-y-6 p-4 sm:p-8">
+  <div className="grid gap-4 sm:grid-cols-3"><Metric title="Pendientes" value={pending.length}/><Metric title="Procesados" value={intakes.filter(x=>x.status==="processed").length}/><Metric title="Con excepción" value={intakes.filter(x=>x.reconciliation_status==="exception").length} alert={intakes.some(x=>x.reconciliation_status==="exception")}/></div>
+  {error&&<Card className="border-destructive/60"><CardContent className="flex items-center justify-between p-4"><p className="text-sm text-destructive">{error}</p><Button variant="outline" size="sm" onClick={()=>void load()}><RefreshCw className="mr-2 h-4 w-4"/>Reintentar</Button></CardContent></Card>}
+  <Card><CardHeader><CardTitle>Cola pendiente</CardTitle><CardDescription>Los activos requieren categoría, centro de costo y ubicación. Los consumibles requieren ubicación y permiten definir stock mínimo.</CardDescription></CardHeader><CardContent className="space-y-4">
+   {loading?<p className="py-8 text-center text-muted-foreground">Cargando cola…</p>:pending.length===0?<div className="py-10 text-center"><Boxes className="mx-auto mb-3 h-7 w-7 text-muted-foreground"/><p className="font-medium">No hay recepciones pendientes de ingreso.</p><p className="mt-1 text-sm text-muted-foreground">Aparecerán aquí después de registrar una recepción con ingreso a inventario.</p></div>:<>
+    <Select value={selected} onValueChange={setSelected}><SelectTrigger><SelectValue placeholder="Seleccionar recepción"/></SelectTrigger><SelectContent>{pending.map(x=><SelectItem key={x.id} value={x.id}>{label(x)}</SelectItem>)}</SelectContent></Select>
+    {current&&<div className="grid gap-4 md:grid-cols-2"><Field label="Ubicación"><Select value={locationId} onValueChange={setLocationId}><SelectTrigger><SelectValue placeholder="Seleccionar ubicación"/></SelectTrigger><SelectContent>{locations.map(x=><SelectItem key={x.id} value={x.id}>{x.warehouses?.name??"Bodega"} · {x.name}</SelectItem>)}</SelectContent></Select></Field>
+     <Field label="Centro de costo"><Select value={costCenterId} onValueChange={setCostCenterId}><SelectTrigger><SelectValue placeholder="Seleccionar centro"/></SelectTrigger><SelectContent>{costCenters.map(x=><SelectItem key={x.id} value={x.id}>{x.name}{x.code?` (${x.code})`:""}</SelectItem>)}</SelectContent></Select></Field>
+     {current.intake_type==="asset"?<><Field label="Categoría de activo"><Select value={categoryId} onValueChange={setCategoryId}><SelectTrigger><SelectValue placeholder="Seleccionar categoría"/></SelectTrigger><SelectContent>{categories.map(x=><SelectItem key={x.id} value={x.id}>{x.name}</SelectItem>)}</SelectContent></Select></Field><Field label="Clase"><Select value={assetClass} onValueChange={setAssetClass}><SelectTrigger><SelectValue/></SelectTrigger><SelectContent><SelectItem value="equipment">Equipo</SelectItem><SelectItem value="tool">Herramienta</SelectItem><SelectItem value="vehicle">Vehículo o maquinaria</SelectItem><SelectItem value="infrastructure">Infraestructura</SelectItem><SelectItem value="other">Otro</SelectItem></SelectContent></Select></Field></>:<Field label="Stock mínimo"><Input type="number" min="0" value={minimumStock} onChange={e=>setMinimumStock(e.target.value)}/></Field>}
+     <div className="md:col-span-2"><label className="text-sm font-medium">Notas de ingreso</label><textarea className="mt-1 min-h-20 w-full rounded-md border bg-background px-3 py-2 text-sm" value={notes} onChange={e=>setNotes(e.target.value)}/></div><div className="md:col-span-2 flex justify-end"><Button onClick={()=>void process()} disabled={processing||!locationId||(current.intake_type==="asset"&&(!categoryId||!costCenterId))}>{processing?"Procesando…":"Procesar ingreso"}</Button></div></div>}
+   </>}
+  </CardContent></Card>
+  <Card><CardHeader><CardTitle>Conciliación reciente</CardTitle></CardHeader><CardContent className="space-y-2">{intakes.slice(0,12).map(x=><div key={x.id} className="flex flex-col gap-2 rounded-lg border p-3 sm:flex-row sm:items-center sm:justify-between"><div><p className="text-sm font-medium">{label(x)}</p><p className="text-xs text-muted-foreground">{new Date(x.created_at).toLocaleString("es-CL")}</p></div><div className="flex gap-2"><Badge variant="outline">{x.intake_type==="asset"?"Activo":"Consumible"}</Badge><Badge variant="outline">{x.status}</Badge><Badge variant="outline">{x.reconciliation_status}</Badge></div></div>)}</CardContent></Card>
+ </div></AppLayout>
+}
+function Field({label,children}:{label:string;children:React.ReactNode}){return <div><label className="text-sm font-medium">{label}</label><div className="mt-1">{children}</div></div>}
+function Metric({title,value,alert=false}:{title:string;value:number;alert?:boolean}){return <Card className={alert?"border-amber-300":undefined}><CardHeader className="pb-2"><CardTitle className="text-sm text-muted-foreground">{title}</CardTitle></CardHeader><CardContent className="text-3xl font-semibold">{value.toLocaleString("es-CL")}</CardContent></Card>}
