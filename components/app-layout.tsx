@@ -33,16 +33,17 @@ export function AppLayout({ children }: AppLayoutProps) {
 
   const isOpen = sidebarOpen
   const onClose = () => setSidebarOpen(false)
+  const sidebarSurface = "[&>div]:!border-sidebar-border [&>div]:!bg-sidebar"
 
   return (
     <div className="flex h-screen w-full bg-background">
-      <div className="brand-sidebar-shell hidden flex-shrink-0 lg:sticky lg:top-0 lg:z-40 lg:flex lg:h-screen lg:w-64 lg:flex-col">
+      <div className={`brand-sidebar-shell hidden flex-shrink-0 lg:sticky lg:top-0 lg:z-40 lg:flex lg:h-screen lg:w-64 lg:flex-col ${sidebarSurface}`}>
         <Sidebar isOpen={true} onClose={() => {}} />
       </div>
 
       {isOpen && <div className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm lg:hidden" onClick={onClose} />}
       {isOpen && (
-        <div className="brand-sidebar-shell fixed inset-y-0 left-0 z-50 w-64 lg:hidden">
+        <div className={`brand-sidebar-shell fixed inset-y-0 left-0 z-50 w-64 lg:hidden ${sidebarSurface}`}>
           <Sidebar isOpen={isOpen} onClose={onClose} />
         </div>
       )}
