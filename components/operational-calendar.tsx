@@ -12,9 +12,12 @@ import {
   CheckCircle2,
   ClipboardCheck,
   ConciergeBell,
+  MapPin,
   PackageCheck,
   RefreshCw,
   Repeat2,
+  Ship,
+  Truck,
   Wrench,
 } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
@@ -61,14 +64,21 @@ type OperationalCalendarProps = {
 }
 
 const typeLabels: Record<string, string> = {
-  arrival: "Llegada",
-  departure: "Salida",
+  arrival: "Reserva",
+  departure: "Reserva",
   housekeeping: "Housekeeping",
   hospitality: "Hospitalidad",
   maintenance: "Mantenimiento",
   procurement: "Compras",
   activity: "Actividad",
   service: "Servicio",
+  transport_coordination: "Coordinación",
+  departure_coordination: "Coordinación",
+  external_arrival: "Arribo externo",
+  external_departure: "Salida externa",
+  road_transfer: "Traslado terrestre",
+  boat_transfer: "Bote",
+  property_arrival: "Llegada al Fundo",
 }
 
 const typeIcons: Record<string, typeof CalendarDays> = {
@@ -80,15 +90,22 @@ const typeIcons: Record<string, typeof CalendarDays> = {
   procurement: PackageCheck,
   activity: CalendarDays,
   service: CheckCircle2,
+  transport_coordination: ClipboardCheck,
+  departure_coordination: ClipboardCheck,
+  external_arrival: MapPin,
+  external_departure: MapPin,
+  road_transfer: Truck,
+  boat_transfer: Ship,
+  property_arrival: BedDouble,
 }
 
 const readinessLabels: Record<string, string> = {
   ready: "Lista para ejecutar",
-  needs_owner: "Falta responsable",
+  needs_owner: "Falta recurso o responsable",
   pending_confirmation: "Pendiente de confirmar",
   estimated: "Fecha estimada",
   blocking: "Bloquea operación",
-  needs_review: "Requiere revisión",
+  needs_review: "Requiere definición",
   draft: "Borrador",
 }
 
@@ -129,8 +146,9 @@ export function OperationalCalendar({ days = 14, compact = false, title = "Próx
       p_end_date: format(endDate, "yyyy-MM-dd"),
     }
 
-    const [calendarResult, turnaroundResult] = await Promise.all([
+    const [calendarResult, logisticsResult, turnaroundResult] = await Promise.all([
       supabase.rpc("get_operational_calendar", params),
+      supabase.rpc("get_reservation_logistics_calendar", params),
       supabase.rpc("get_booking_turnaround_windows", params),
     ])
 
@@ -138,8 +156,23 @@ export function OperationalCalendar({ days = 14, compact = false, title = "Próx
       setError(calendarResult.error.message)
       setItems([])
     } else {
-      setItems(Array.isArray(calendarResult.data) ? (calendarResult.data as CalendarItem[]) : [])
-      setError(turnaroundResult.error ? `No se pudieron calcular las transiciones: ${turnaroundResult.error.message}` : null)
+      const operationalItems = Array.isArray(calendarResult.data) ? (calendarResult.data as CalendarItem[]) : []
+      const logisticsItems = !logisticsResult.error && Array.isArray(logisticsResult.data)
+        ? (logisticsResult.data as CalendarItem[])
+        : []
+
+      setItems(
+        [...operationalItems, ...logisticsItems].sort((a, b) =>
+          a.startsAt.localeCompare(b.startsAt) || a.type.localeCompare(b.type),
+        ),
+      )
+
+      const secondaryErrors = [
+        logisticsResult.error ? `logística: ${logisticsResult.error.message}` : null,
+        turnaroundResult.error ? `transiciones: ${turnaroundResult.error.message}` : null,
+      ].filter(Boolean)
+
+      setError(secondaryErrors.length > 0 ? `Carga parcial del calendario (${secondaryErrors.join("; ")}).` : null)
     }
 
     setTurnarounds(
@@ -176,7 +209,7 @@ export function OperationalCalendar({ days = 14, compact = false, title = "Próx
           <p className="text-xs font-medium uppercase tracking-[0.16em] text-primary">Calendario operacional</p>
           <h2 className="mt-1 text-xl font-normal">{title}</h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            Desde hoy hasta {format(endDate, "d 'de' MMMM", { locale: es })}. Reservas, trabajo y transiciones en una sola secuencia.
+            Desde hoy hasta {format(endDate, "d 'de' MMMM", { locale: es })}. Reservas, logística, recursos y trabajo en una sola secuencia.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -284,7 +317,9 @@ export function OperationalCalendar({ days = 14, compact = false, title = "Próx
                             <p className="truncate text-sm font-medium">{item.title}</p>
                           </div>
                           <p className="mt-1 truncate text-xs text-muted-foreground">
-                            {format(parseISO(item.startsAt), "HH:mm")}{item.subtitle ? ` · ${item.subtitle}` : ""}
+                            {format(parseISO(item.startsAt), "HH:mm")}
+                            {item.endsAt ? `–${format(parseISO(item.endsAt), "HH:mm")}` : ""}
+                            {item.subtitle ? ` · ${item.subtitle}` : ""}
                           </p>
                         </div>
                         <div className="flex items-center gap-2">
