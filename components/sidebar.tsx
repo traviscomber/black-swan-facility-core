@@ -36,9 +36,8 @@ import { usePathname, useRouter } from "next/navigation"
 import { cn } from "@/lib/utils"
 import { LanguageSwitcher } from "@/components/language-switcher"
 import { useLanguage } from "@/lib/hooks/use-language"
+import { useEffectiveAccess } from "@/lib/hooks/use-effective-access"
 import { createClient } from "@/lib/supabase/client"
-
-type AppRole = "admin" | "approver" | "operator" | "viewer" | null
 
 type NavigationItem = {
   nameKey: string
@@ -46,7 +45,8 @@ type NavigationItem = {
   icon: ElementType
   tipKey: string
   adminOnly?: boolean
-  procurementOnly?: boolean
+  action?: string
+  department?: string
   subItems?: Array<{ nameKey: string; href: string; icon: string }>
 }
 
@@ -62,10 +62,10 @@ const navigationGroups: NavigationGroup[] = [
     descKey: "nav.admin_general_desc",
     items: [
       { nameKey: "nav.dashboard", href: "/", icon: LayoutDashboard, tipKey: "nav.dashboard_tip" },
-      { nameKey: "nav.budgets", href: "/budgets", icon: DollarSign, tipKey: "nav.budgets_tip" },
-      { nameKey: "nav.people_operations", href: "/employees", icon: Users, tipKey: "nav.employees_tip" },
-      { nameKey: "nav.energy_management", href: "/energy", icon: Zap, tipKey: "nav.management_tip" },
-      { nameKey: "nav.ai_ops", href: "/ai-ops", icon: Bot, tipKey: "nav.ai_ops_tip" },
+      { nameKey: "nav.budgets", href: "/budgets", icon: DollarSign, tipKey: "nav.budgets_tip", action: "payments.record", department: "finance" },
+      { nameKey: "nav.people_operations", href: "/employees", icon: Users, tipKey: "nav.employees_tip", department: "administration" },
+      { nameKey: "nav.energy_management", href: "/energy", icon: Zap, tipKey: "nav.management_tip", department: "maintenance" },
+      { nameKey: "nav.ai_ops", href: "/ai-ops", icon: Bot, tipKey: "nav.ai_ops_tip", adminOnly: true },
       { nameKey: "nav.admin", href: "/admin", icon: Settings, tipKey: "nav.admin_tip", adminOnly: true },
     ],
   },
@@ -73,11 +73,11 @@ const navigationGroups: NavigationGroup[] = [
     labelKey: "nav.hospitality",
     descKey: "nav.hospitality_desc",
     items: [
-      { nameKey: "nav.bookings", href: "/bookings", icon: Calendar, tipKey: "nav.bookings_tip" },
-      { nameKey: "nav.invoices", href: "/bookings/invoices", icon: Receipt, tipKey: "nav.invoices_tip" },
-      { nameKey: "nav.concierge", href: "/concierge", icon: MessageSquare, tipKey: "nav.concierge_tip" },
-      { nameKey: "nav.guest_requests", href: "/guest-requests", icon: Tablet, tipKey: "nav.guest_requests_tip" },
-      { nameKey: "nav.sovereignty_dashboard", href: "/sovereignty", icon: Crown, tipKey: "nav.sovereignty_dashboard_tip" },
+      { nameKey: "nav.bookings", href: "/bookings", icon: Calendar, tipKey: "nav.bookings_tip", action: "booking.modify", department: "booking" },
+      { nameKey: "nav.invoices", href: "/bookings/invoices", icon: Receipt, tipKey: "nav.invoices_tip", action: "payments.record", department: "finance" },
+      { nameKey: "nav.concierge", href: "/concierge", icon: MessageSquare, tipKey: "nav.concierge_tip", action: "hospitality.operate", department: "hospitality" },
+      { nameKey: "nav.guest_requests", href: "/guest-requests", icon: Tablet, tipKey: "nav.guest_requests_tip", action: "hospitality.operate", department: "hospitality" },
+      { nameKey: "nav.sovereignty_dashboard", href: "/sovereignty", icon: Crown, tipKey: "nav.sovereignty_dashboard_tip", adminOnly: true },
     ],
   },
   {
@@ -89,6 +89,7 @@ const navigationGroups: NavigationGroup[] = [
         href: "/orchard",
         icon: Leaf,
         tipKey: "nav.orchard_dashboard_tip",
+        department: "orchard",
         subItems: [
           { nameKey: "nav.orchard_overview", href: "/orchard", icon: "🌳" },
           { nameKey: "nav.orchard_crops", href: "/orchard/crops", icon: "🌱" },
@@ -104,6 +105,7 @@ const navigationGroups: NavigationGroup[] = [
         href: "/vineyard",
         icon: Grape,
         tipKey: "nav.vineyard_dashboard_tip",
+        department: "vineyard",
         subItems: [
           { nameKey: "nav.vineyard_overview", href: "/vineyard", icon: "🍇" },
           { nameKey: "nav.vineyard_photos", href: "/vineyard/photos", icon: "📸" },
@@ -117,25 +119,26 @@ const navigationGroups: NavigationGroup[] = [
         href: "/cattle",
         icon: Beef,
         tipKey: "nav.dashboard_tip",
+        department: "cattle",
         subItems: [
           { nameKey: "nav.cattle_overview", href: "/cattle", icon: "🐄" },
           { nameKey: "nav.cattle_health", href: "/cattle-health", icon: "❤️" },
         ],
       },
-      { nameKey: "nav.combustibles", href: "/combustibles", icon: Fuel, tipKey: "nav.combustibles_tip" },
+      { nameKey: "nav.combustibles", href: "/combustibles", icon: Fuel, tipKey: "nav.combustibles_tip", action: "fuel.review", department: "fuel" },
     ],
   },
   {
     labelKey: "nav.infrastructure",
     descKey: "nav.infrastructure_desc",
     items: [
-      { nameKey: "nav.property_management", href: "/property-management", icon: Building, tipKey: "nav.property_management_desc" },
-      { nameKey: "nav.inventory", href: "/inventory", icon: Package, tipKey: "nav.inventory_tip" },
-      { nameKey: "nav.procurement", href: "/procurement", icon: TrendingUp, tipKey: "nav.procurement_tip", procurementOnly: true },
-      { nameKey: "nav.maintenance", href: "/maintenance", icon: Wrench, tipKey: "nav.maintenance_tip" },
-      { nameKey: "nav.tasks", href: "/tasks", icon: ClipboardList, tipKey: "nav.tasks_tip" },
-      { nameKey: "nav.issues", href: "/issues", icon: AlertCircle, tipKey: "nav.facility_requests_tip" },
-      { nameKey: "nav.checklists", href: "/checklists", icon: CheckSquare, tipKey: "nav.checklists_tip" },
+      { nameKey: "nav.property_management", href: "/property-management", icon: Building, tipKey: "nav.property_management_desc", department: "maintenance" },
+      { nameKey: "nav.inventory", href: "/inventory", icon: Package, tipKey: "nav.inventory_tip", action: "inventory.process", department: "inventory" },
+      { nameKey: "nav.procurement", href: "/procurement", icon: TrendingUp, tipKey: "nav.procurement_tip", action: "procurement.operate", department: "procurement" },
+      { nameKey: "nav.maintenance", href: "/maintenance", icon: Wrench, tipKey: "nav.maintenance_tip", action: "maintenance.operate", department: "maintenance" },
+      { nameKey: "nav.tasks", href: "/tasks", icon: ClipboardList, tipKey: "nav.tasks_tip", department: "operations" },
+      { nameKey: "nav.issues", href: "/issues", icon: AlertCircle, tipKey: "nav.facility_requests_tip", action: "maintenance.operate", department: "maintenance" },
+      { nameKey: "nav.checklists", href: "/checklists", icon: CheckSquare, tipKey: "nav.checklists_tip", department: "operations" },
       { nameKey: "nav.map", href: "/map", icon: Map, tipKey: "nav.gis_map_tip" },
     ],
   },
@@ -150,33 +153,41 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const pathname = usePathname()
   const { t } = useLanguage()
   const router = useRouter()
-  const supabase = createClient()
+  const supabase = useMemo(() => createClient(), [])
+  const { access, loading, error, can, canAccessDepartment } = useEffectiveAccess()
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set())
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set())
   const [userEmail, setUserEmail] = useState<string | null>(null)
   const [userInitials, setUserInitials] = useState("?")
-  const [role, setRole] = useState<AppRole>(null)
 
   useEffect(() => {
     void supabase.auth.getUser().then(({ data: { user } }) => {
       if (!user) return
-      setRole((user.app_metadata?.procurement_role as AppRole) || null)
       if (user.email) {
         setUserEmail(user.email)
         const parts = user.user_metadata?.full_name?.split(" ") ?? user.email.split("@")[0].split(".")
         setUserInitials(parts.slice(0, 2).map((part: string) => part[0]?.toUpperCase()).join(""))
       }
     })
-  }, [])
+  }, [supabase])
 
-  const visibleGroups = useMemo(() => navigationGroups.map((group) => ({
-    ...group,
-    items: group.items.filter((item) => {
-      if (item.adminOnly) return role === "admin"
-      if (item.procurementOnly) return role === "admin" || role === "approver"
-      return true
-    }),
-  })), [role])
+  useEffect(() => {
+    if (!loading && (error || access.role === "none")) {
+      void supabase.auth.signOut().finally(() => router.replace("/auth/login?reason=access"))
+    }
+  }, [access.role, error, loading, router, supabase])
+
+  const visibleGroups = useMemo(() => navigationGroups
+    .map((group) => ({
+      ...group,
+      items: group.items.filter((item) => {
+        if (item.adminOnly && !access.is_admin) return false
+        if (item.action && !can(item.action)) return false
+        if (item.department && !canAccessDepartment(item.department)) return false
+        return true
+      }),
+    }))
+    .filter((group) => group.items.length > 0), [access.is_admin, can, canAccessDepartment])
 
   useEffect(() => {
     const initialExpanded = new Set<string>()
@@ -223,7 +234,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
         </div>
 
         <nav className="min-h-0 flex-1 space-y-3 overflow-y-auto px-3 py-4">
-          {visibleGroups.map((group) => (
+          {loading ? <p className="px-3 text-xs text-muted-foreground">Cargando acceso…</p> : visibleGroups.map((group) => (
             <div key={group.labelKey} className="min-w-0 space-y-1">
               <div className="flex items-start justify-between gap-1 px-2">
                 <div className="min-w-0 flex-1"><h3 className="truncate text-xs font-bold uppercase tracking-wider text-foreground" title={t(group.labelKey)}>{t(group.labelKey)}</h3><p className="mt-1 hidden text-xs leading-tight text-muted-foreground sm:block">{t(group.descKey)}</p></div>
@@ -250,7 +261,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
         <div className="space-y-3 border-t border-secondary p-3">
           <LanguageSwitcher />
           <button onClick={handleOpenSearch} className="flex w-full items-center gap-3 rounded px-3 py-2 text-sm text-muted-foreground hover:bg-muted hover:text-foreground"><HelpCircle className="h-5 w-5" /><span>Buscar</span><span className="ml-auto text-xs">⌘K</span></button>
-          <div className="flex items-center gap-3 rounded bg-muted/40 px-3 py-2"><span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">{userInitials}</span><div className="min-w-0 flex-1"><p className="truncate text-xs font-medium">{userEmail || "Usuario"}</p><p className="text-[11px] text-muted-foreground">{role || "usuario"}</p></div><button onClick={handleLogout} className="rounded p-1.5 hover:bg-muted" title="Cerrar sesión"><LogOut className="h-4 w-4" /></button></div>
+          <div className="flex items-center gap-3 rounded bg-muted/40 px-3 py-2"><span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">{userInitials}</span><div className="min-w-0 flex-1"><p className="truncate text-xs font-medium">{userEmail || "Usuario"}</p><p className="text-[11px] text-muted-foreground">{access.role || "usuario"}</p></div><button onClick={handleLogout} className="rounded p-1.5 hover:bg-muted" title="Cerrar sesión"><LogOut className="h-4 w-4" /></button></div>
         </div>
       </div>
     </>
