@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react"
 import { format, isSameDay } from "date-fns"
-import { BedDouble, Building2, CheckSquare, ChevronDown, ChevronRight, CircleDollarSign, ConciergeBell, DoorOpen, Flag, Rows3, Sparkles, Square, TriangleAlert, Wrench } from "lucide-react"
+import { BedDouble, Building2, CheckSquare, ChevronDown, ChevronRight, CircleDollarSign, ConciergeBell, DoorOpen, Flag, Layers3, Rows3, Sparkles, Square, TriangleAlert, Wrench } from "lucide-react"
 import { CardContent } from "@/components/ui/card"
 import {
   TimelineRow,
@@ -74,6 +74,14 @@ const LAYERS: Array<{ key: CalendarLayerKey; label: string; Icon: typeof BedDoub
   { key: "maintenance", label: "Mantenimiento", Icon: Wrench },
 ]
 
+const STATUS_LEGEND = [
+  { label: "Pendiente", className: "bg-amber-400" },
+  { label: "Confirmada", className: "bg-blue-600" },
+  { label: "Hospedado", className: "bg-emerald-600" },
+  { label: "Finalizada", className: "bg-slate-500" },
+  { label: "Bloqueo", className: "bg-zinc-800" },
+]
+
 type InventoryGroup = {
   locationId: string
   locationName: string
@@ -131,6 +139,7 @@ export function TimelineGrid({
   const [collapsedLocations, setCollapsedLocations] = useState<Set<string>>(new Set())
   const [collapsedRooms, setCollapsedRooms] = useState<Set<string>>(new Set())
   const [showSummary, setShowSummary] = useState(true)
+  const [showLayers, setShowLayers] = useState(false)
 
   const inventoryGroups = useMemo<InventoryGroup[]>(() => {
     const locations = new Map<string, InventoryGroup>()
@@ -225,70 +234,83 @@ export function TimelineGrid({
 
   return (
     <CardContent className="p-0">
-      <div className="flex flex-wrap items-center gap-1.5 border-b bg-muted/20 px-3 py-2">
-        <button type="button" onClick={toggleAllLayers} className={`rounded-md border px-2.5 py-1 text-xs font-medium transition ${activeLayers.size === LAYERS.length ? "border-primary bg-primary text-primary-foreground" : "bg-background hover:bg-muted"}`}>
-          Todo
-        </button>
-        {LAYERS.map(({ key, label, Icon }) => (
-          <button key={key} type="button" onClick={() => toggleLayer(key)} className={`inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs transition ${activeLayers.has(key) ? "border-primary/40 bg-primary/10 text-primary" : "bg-background text-muted-foreground hover:bg-muted"}`}>
-            <Icon className="h-3.5 w-3.5" />{label}
+      <div className="border-b bg-background">
+        <div className="flex min-h-10 flex-wrap items-center gap-2 px-3 py-1.5">
+          <button type="button" onClick={() => setShowLayers((current) => !current)} className={`inline-flex items-center gap-1 rounded-[3px] border px-2 py-1 text-[11px] font-medium transition ${showLayers ? "border-primary bg-primary text-primary-foreground" : "bg-background hover:bg-muted"}`}>
+            <Layers3 className="h-3.5 w-3.5" />Capas
           </button>
-        ))}
-        <button type="button" onClick={() => setShowSummary((current) => !current)} className={`ml-auto inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs transition ${showSummary ? "border-primary/40 bg-primary/10 text-primary" : "bg-background text-muted-foreground hover:bg-muted"}`}>
-          <Rows3 className="h-3.5 w-3.5" />Resumen diario
-        </button>
+          <button type="button" onClick={() => setShowSummary((current) => !current)} className={`inline-flex items-center gap-1 rounded-[3px] border px-2 py-1 text-[11px] transition ${showSummary ? "border-primary/40 bg-primary/10 text-primary" : "bg-background text-muted-foreground hover:bg-muted"}`}>
+            <Rows3 className="h-3.5 w-3.5" />Resumen
+          </button>
+          <div className="hidden items-center gap-3 border-l pl-3 xl:flex">
+            {STATUS_LEGEND.map((item) => <span key={item.label} className="inline-flex items-center gap-1 text-[10px] text-muted-foreground"><span className={`h-2.5 w-2.5 rounded-[2px] ${item.className}`} />{item.label}</span>)}
+          </div>
+          <span className="ml-auto text-[10px] text-muted-foreground">Arrastra para mover · ajusta extremos para cambiar fechas · expande para ver operación</span>
+        </div>
+        {showLayers && <div className="flex flex-wrap items-center gap-1 border-t bg-muted/20 px-3 py-1.5">
+          <button type="button" onClick={toggleAllLayers} className={`rounded-[3px] border px-2 py-1 text-[11px] font-medium transition ${activeLayers.size === LAYERS.length ? "border-primary bg-primary text-primary-foreground" : "bg-background hover:bg-muted"}`}>Todo</button>
+          {LAYERS.map(({ key, label, Icon }) => (
+            <button key={key} type="button" onClick={() => toggleLayer(key)} className={`inline-flex items-center gap-1 rounded-[3px] border px-2 py-1 text-[11px] transition ${activeLayers.has(key) ? "border-primary/40 bg-primary/10 text-primary" : "bg-background text-muted-foreground hover:bg-muted"}`}>
+              <Icon className="h-3.5 w-3.5" />{label}
+            </button>
+          ))}
+        </div>}
       </div>
 
       <div ref={scrollRef} className="overflow-auto">
         <div style={{ minWidth: totalWidth }}>
-          <div className="sticky top-0 z-30 flex border-b bg-background">
-            <div className="sticky left-0 z-40 flex shrink-0 items-center gap-2 border-r bg-background px-4 font-medium" style={{ width: LABEL_WIDTH, height: 46 }}>
+          <div className="sticky top-0 z-30 flex border-b bg-background shadow-sm">
+            <div className="sticky left-0 z-40 flex shrink-0 items-center gap-2 border-r bg-background px-3 text-xs font-semibold" style={{ width: LABEL_WIDTH, height: 42 }}>
               {visibleReservationEvents.length > 0 && (
                 <button type="button" onClick={isBulkMode ? onClearSelection : onSelectAll} className="shrink-0 text-muted-foreground transition hover:text-foreground" aria-label={isBulkMode ? "Deseleccionar todo" : "Seleccionar todo"}>
                   {isBulkMode ? <CheckSquare className="h-4 w-4 text-primary" /> : <Square className="h-4 w-4" />}
                 </button>
               )}
-              <span>Propiedad / habitación / cama</span>
+              <span>Habitaciones</span>
             </div>
 
             <div className="grid" style={{ width: timelineWidth, gridTemplateColumns: `repeat(${rangeDays}, ${DAY_WIDTH}px)` }}>
-              {dates.map((date) => (
-                <div key={date.toISOString()} className={`flex flex-col items-center justify-center border-r text-center ${isSameDay(date, new Date()) ? "border-x border-amber-400 bg-amber-50" : ""}`} style={{ height: 46 }}>
-                  <div className="text-[10px] uppercase text-muted-foreground">{format(date, "EEE")}</div>
-                  <div className="text-sm font-semibold">{format(date, "dd MMM")}</div>
+              {dates.map((date, index) => {
+                const weekend = date.getDay() === 0 || date.getDay() === 6
+                const monthBoundary = index === 0 || date.getDate() === 1
+                const today = isSameDay(date, new Date())
+                return <div key={date.toISOString()} className={`relative flex flex-col items-center justify-center border-r text-center ${weekend ? "bg-muted/35" : ""} ${today ? "border-x border-amber-400 bg-amber-50" : ""} ${monthBoundary ? "border-l-2 border-l-foreground/20" : ""}`} style={{ height: 42 }}>
+                  {monthBoundary && <span className="absolute left-1 top-0 text-[8px] font-semibold uppercase tracking-wide text-muted-foreground">{format(date, "MMM")}</span>}
+                  <div className="text-[9px] uppercase text-muted-foreground">{format(date, "EEE")}</div>
+                  <div className="text-sm font-semibold leading-none">{format(date, "dd")}</div>
                 </div>
-              ))}
+              })}
             </div>
           </div>
 
           {loading ? (
-            <div className="p-12 text-center text-muted-foreground">Cargando Availability Engine…</div>
+            <div className="p-12 text-center text-muted-foreground">Cargando disponibilidad…</div>
           ) : visibleBeds.length === 0 ? (
-            <div className="p-12 text-center text-muted-foreground">No hay camas para los filtros seleccionados.</div>
+            <div className="p-12 text-center text-muted-foreground">No hay habitaciones para los filtros seleccionados.</div>
           ) : (
             inventoryGroups.map((location) => {
               const locationCollapsed = collapsedLocations.has(location.locationId)
               const bedCount = location.rooms.reduce((sum, room) => sum + room.beds.length, 0)
               return (
                 <div key={location.locationId}>
-                  <button type="button" onClick={() => toggleSet(location.locationId, setCollapsedLocations)} className="sticky left-0 z-20 flex h-9 w-full items-center border-b bg-muted/70 text-left text-xs font-semibold backdrop-blur">
+                  <button type="button" onClick={() => toggleSet(location.locationId, setCollapsedLocations)} className="sticky left-0 z-20 flex h-8 w-full items-center border-b bg-muted/70 text-left text-[11px] font-semibold backdrop-blur">
                     <span className="sticky left-0 flex h-full items-center gap-2 border-r px-3" style={{ width: LABEL_WIDTH }}>
                       {locationCollapsed ? <ChevronRight className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
                       <Building2 className="h-3.5 w-3.5" />
                       <span className="truncate">{location.locationName}</span>
-                      <span className="ml-auto rounded bg-background/80 px-1.5 py-0.5 text-[10px] text-muted-foreground">{location.rooms.length} hab. · {bedCount} camas</span>
+                      <span className="ml-auto text-[9px] font-normal text-muted-foreground">{location.rooms.length} hab. · {bedCount} camas</span>
                     </span>
                   </button>
                   {!locationCollapsed && location.rooms.map((room) => {
                     const roomCollapsed = collapsedRooms.has(room.roomId)
                     return (
                       <div key={room.roomId}>
-                        <button type="button" onClick={() => toggleSet(room.roomId, setCollapsedRooms)} className="sticky left-0 z-20 flex h-8 w-full items-center border-b bg-background/95 text-left text-[11px] font-medium">
+                        <button type="button" onClick={() => toggleSet(room.roomId, setCollapsedRooms)} className="sticky left-0 z-20 flex h-7 w-full items-center border-b bg-background/95 text-left text-[11px] font-medium">
                           <span className="sticky left-0 flex h-full items-center gap-2 border-r pl-6 pr-3" style={{ width: LABEL_WIDTH }}>
                             {roomCollapsed ? <ChevronRight className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
                             <DoorOpen className="h-3.5 w-3.5" />
                             <span>Hab. {room.roomNumber}</span>
-                            <span className="ml-auto text-[10px] text-muted-foreground">{room.beds.length} cama{room.beds.length === 1 ? "" : "s"}</span>
+                            <span className="ml-auto text-[9px] text-muted-foreground">{room.beds.length}</span>
                           </span>
                         </button>
                         {!roomCollapsed && room.beds.map((bed) => <TimelineRow key={bed.id} bed={bed} bedEvents={eventsByBed.get(bed.id) ?? []} {...sharedRowProps} />)}
