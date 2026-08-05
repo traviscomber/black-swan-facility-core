@@ -4,7 +4,19 @@ import Link from "next/link"
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { addDays, format, isSameDay, parseISO, startOfDay } from "date-fns"
 import { es } from "date-fns/locale"
-import { AlertTriangle, ArrowRight, BedDouble, CalendarDays, CheckCircle2, ClipboardCheck, ConciergeBell, PackageCheck, RefreshCw, Wrench } from "lucide-react"
+import {
+  AlertTriangle,
+  ArrowRight,
+  BedDouble,
+  CalendarDays,
+  CheckCircle2,
+  ClipboardCheck,
+  ConciergeBell,
+  PackageCheck,
+  RefreshCw,
+  Repeat2,
+  Wrench,
+} from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -23,6 +35,23 @@ type CalendarItem = {
   readiness: string
   href: string
   metadata: Record<string, unknown>
+}
+
+type TurnaroundWindow = {
+  reservationId: string
+  previousReservationId: string
+  roomId: string
+  locationId: string | null
+  roomLabel: string
+  previousGuestName: string
+  nextGuestName: string
+  previousReleaseAt: string
+  nextArrivalAt: string
+  preparationStartAt: string
+  inspectionStartAt: string
+  windowMinutes: number
+  operationalMinutes: number
+  status: "planned" | "insufficient" | "overlap"
 }
 
 type OperationalCalendarProps = {
@@ -70,9 +99,24 @@ function readinessVariant(readiness: string): "default" | "secondary" | "outline
   return "outline"
 }
 
+function formatDuration(totalMinutes: number) {
+  const hours = Math.floor(totalMinutes / 60)
+  const minutes = totalMinutes % 60
+  if (hours === 0) return `${minutes} min`
+  if (minutes === 0) return `${hours} h`
+  return `${hours} h ${minutes} min`
+}
+
+function turnaroundLabel(status: TurnaroundWindow["status"]) {
+  if (status === "overlap") return "Solapamiento"
+  if (status === "insufficient") return "Ventana insuficiente"
+  return "Transición planificada"
+}
+
 export function OperationalCalendar({ days = 14, compact = false, title = "Próximas acciones" }: OperationalCalendarProps) {
   const supabase = useMemo(() => createClient(), [])
   const [items, setItems] = useState<CalendarItem[]>([])
+  const [turnarounds, setTurnarounds] = useState<TurnaroundWindow[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const startDate = useMemo(() => startOfDay(new Date()), [])
@@ -80,21 +124,35 @@ export function OperationalCalendar({ days = 14, compact = false, title = "Próx
 
   const load = useCallback(async () => {
     setLoading(true)
-    const { data, error: rpcError } = await supabase.rpc("get_operational_calendar", {
+    const params = {
       p_start_date: format(startDate, "yyyy-MM-dd"),
       p_end_date: format(endDate, "yyyy-MM-dd"),
-    })
-    if (rpcError) {
-      setError(rpcError.message)
+    }
+
+    const [calendarResult, turnaroundResult] = await Promise.all([
+      supabase.rpc("get_operational_calendar", params),
+      supabase.rpc("get_booking_turnaround_windows", params),
+    ])
+
+    if (calendarResult.error) {
+      setError(calendarResult.error.message)
       setItems([])
     } else {
-      setError(null)
-      setItems(Array.isArray(data) ? (data as CalendarItem[]) : [])
+      setItems(Array.isArray(calendarResult.data) ? (calendarResult.data as CalendarItem[]) : [])
+      setError(turnaroundResult.error ? `No se pudieron calcular las transiciones: ${turnaroundResult.error.message}` : null)
     }
+
+    setTurnarounds(
+      !turnaroundResult.error && Array.isArray(turnaroundResult.data)
+        ? (turnaroundResult.data as TurnaroundWindow[])
+        : [],
+    )
     setLoading(false)
   }, [endDate, startDate, supabase])
 
-  useEffect(() => { void load() }, [load])
+  useEffect(() => {
+    void load()
+  }, [load])
 
   const grouped = useMemo(() => {
     const groups = new Map<string, CalendarItem[]>()
@@ -107,39 +165,104 @@ export function OperationalCalendar({ days = 14, compact = false, title = "Próx
 
   const readyCount = items.filter((item) => item.readiness === "ready").length
   const attentionCount = items.length - readyCount
+  const conflictCount = turnarounds.filter((window) => window.status !== "planned").length
   const visibleGroups = compact ? grouped.slice(0, 5) : grouped
+  const visibleTurnarounds = compact ? turnarounds.slice(0, 3) : turnarounds
 
   return (
-    <section className="space-y-4">
-      <div className="flex flex-wrap items-end justify-between gap-3">
+    <section className="space-y-6">
+      <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">Calendario operacional</p>
-          <h2 className="mt-1 text-xl font-semibold">{title}</h2>
+          <p className="text-xs font-medium uppercase tracking-[0.16em] text-primary">Calendario operacional</p>
+          <h2 className="mt-1 text-xl font-normal">{title}</h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            Desde hoy hasta {format(endDate, "d 'de' MMMM", { locale: es })}. Reservas y trabajo asociado en una sola secuencia.
+            Desde hoy hasta {format(endDate, "d 'de' MMMM", { locale: es })}. Reservas, trabajo y transiciones en una sola secuencia.
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          {!loading && <><Badge variant="outline">{readyCount} listas</Badge><Badge variant={attentionCount > 0 ? "secondary" : "outline"}>{attentionCount} requieren atención</Badge></>}
-          <Button variant="outline" size="sm" onClick={() => void load()} disabled={loading}>
-            <RefreshCw className={`mr-2 h-4 w-4 ${loading ? "animate-spin" : ""}`} />Actualizar
+        <div className="flex flex-wrap items-center gap-2">
+          {!loading && (
+            <>
+              <Badge variant="outline">{readyCount} listas</Badge>
+              <Badge variant={attentionCount > 0 ? "secondary" : "outline"}>{attentionCount} requieren atención</Badge>
+              {conflictCount > 0 && <Badge variant="destructive">{conflictCount} conflictos</Badge>}
+            </>
+          )}
+          <Button variant="secondary" size="sm" onClick={() => void load()} disabled={loading}>
+            <RefreshCw className={`mr-2 h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+            Actualizar
           </Button>
         </div>
       </div>
 
-      {error && <div className="flex items-center gap-2 rounded-md border border-destructive/40 bg-destructive/5 p-3 text-sm text-destructive"><AlertTriangle className="h-4 w-4" />No se pudo cargar el calendario operacional: {error}</div>}
+      {error && (
+        <div className="flex items-center gap-2 bg-destructive/10 p-3 text-sm text-destructive">
+          <AlertTriangle className="h-4 w-4" />
+          {error}
+        </div>
+      )}
 
-      {loading ? <p className="py-8 text-center text-sm text-muted-foreground">Cargando próximas acciones…</p> : visibleGroups.length === 0 ? (
-        <p className="rounded-md border border-dashed p-8 text-center text-sm text-muted-foreground">No hay acciones programadas dentro de este período.</p>
+      {!loading && visibleTurnarounds.length > 0 && (
+        <div className="space-y-3 bg-card p-5">
+          <div>
+            <p className="text-xs font-medium uppercase tracking-[0.14em] text-primary">Entre reservas</p>
+            <h3 className="mt-1 text-base font-normal">Ventanas de trabajo por habitación</h3>
+            <p className="mt-1 text-xs text-muted-foreground">
+              El tiempo comienza cuando sale el booking anterior y termina antes de la inspección final del siguiente.
+            </p>
+          </div>
+
+          <div className="grid gap-2">
+            {visibleTurnarounds.map((window) => {
+              const conflict = window.status !== "planned"
+              return (
+                <Link
+                  key={`${window.previousReservationId}-${window.reservationId}`}
+                  href={`/bookings?reservation=${window.reservationId}`}
+                  className="group grid gap-3 bg-secondary p-4 transition-colors hover:bg-accent sm:grid-cols-[34px_1fr_auto] sm:items-center"
+                >
+                  <div className="flex h-8 w-8 items-center justify-center bg-muted">
+                    <Repeat2 className={`h-4 w-4 ${conflict ? "text-destructive" : "text-primary"}`} />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="text-xs text-muted-foreground">{window.roomLabel}</span>
+                      <span className="text-sm font-medium">
+                        {window.previousGuestName} → {window.nextGuestName}
+                      </span>
+                    </div>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Liberación {format(parseISO(window.previousReleaseAt), "d MMM HH:mm", { locale: es })} · llegada {format(parseISO(window.nextArrivalAt), "d MMM HH:mm", { locale: es })}
+                    </p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Ventana total: {formatDuration(window.windowMinutes)} · trabajo útil antes de inspección: {formatDuration(window.operationalMinutes)}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Badge variant={conflict ? "destructive" : "default"}>{turnaroundLabel(window.status)}</Badge>
+                    <ArrowRight className="h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
+                  </div>
+                </Link>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      {loading ? (
+        <p className="py-8 text-center text-sm text-muted-foreground">Cargando próximas acciones…</p>
+      ) : visibleGroups.length === 0 ? (
+        <p className="bg-card p-8 text-center text-sm text-muted-foreground">No hay acciones programadas dentro de este período.</p>
       ) : (
-        <div className="divide-y border-y">
+        <div className="divide-y divide-border/30">
           {visibleGroups.map(([date, dateItems]) => {
             const parsedDate = parseISO(date)
             const today = isSameDay(parsedDate, new Date())
             return (
               <div key={date} className="grid gap-3 py-4 lg:grid-cols-[150px_1fr]">
                 <div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">{today ? "Hoy" : format(parsedDate, "EEEE", { locale: es })}</p>
+                  <p className="text-xs font-medium uppercase tracking-[0.14em] text-primary">
+                    {today ? "Hoy" : format(parsedDate, "EEEE", { locale: es })}
+                  </p>
                   <p className="mt-1 text-sm font-medium">{format(parsedDate, "d MMM yyyy", { locale: es })}</p>
                   <p className="mt-1 text-xs text-muted-foreground">{dateItems.length} acciones</p>
                 </div>
@@ -147,8 +270,14 @@ export function OperationalCalendar({ days = 14, compact = false, title = "Próx
                   {dateItems.map((item) => {
                     const Icon = typeIcons[item.type] ?? CalendarDays
                     return (
-                      <Link key={`${item.type}-${item.id}-${item.startsAt}`} href={item.href} className="group grid gap-3 rounded-md border bg-card p-3 transition-colors hover:bg-muted/40 sm:grid-cols-[34px_1fr_auto] sm:items-center">
-                        <div className="flex h-8 w-8 items-center justify-center rounded-md bg-muted"><Icon className="h-4 w-4 text-primary" /></div>
+                      <Link
+                        key={`${item.type}-${item.id}-${item.startsAt}`}
+                        href={item.href}
+                        className="group grid gap-3 bg-card p-3 transition-colors hover:bg-muted sm:grid-cols-[34px_1fr_auto] sm:items-center"
+                      >
+                        <div className="flex h-8 w-8 items-center justify-center bg-muted">
+                          <Icon className="h-4 w-4 text-primary" />
+                        </div>
                         <div className="min-w-0">
                           <div className="flex flex-wrap items-center gap-2">
                             <Badge variant="outline">{typeLabels[item.type] ?? item.type}</Badge>
@@ -159,7 +288,9 @@ export function OperationalCalendar({ days = 14, compact = false, title = "Próx
                           </p>
                         </div>
                         <div className="flex items-center gap-2">
-                          <Badge variant={readinessVariant(item.readiness)}>{readinessLabels[item.readiness] ?? item.readiness}</Badge>
+                          <Badge variant={readinessVariant(item.readiness)}>
+                            {readinessLabels[item.readiness] ?? item.readiness}
+                          </Badge>
                           <ArrowRight className="h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
                         </div>
                       </Link>
@@ -172,8 +303,12 @@ export function OperationalCalendar({ days = 14, compact = false, title = "Próx
         </div>
       )}
 
-      {compact && grouped.length > visibleGroups.length && (
-        <Button asChild variant="outline" className="w-full"><Link href="/bookings">Ver calendario operacional completo <ArrowRight className="ml-2 h-4 w-4" /></Link></Button>
+      {compact && (grouped.length > visibleGroups.length || turnarounds.length > visibleTurnarounds.length) && (
+        <Button asChild variant="secondary" className="w-full">
+          <Link href="/bookings">
+            Ver calendario operacional completo <ArrowRight className="ml-2 h-4 w-4" />
+          </Link>
+        </Button>
       )}
     </section>
   )
