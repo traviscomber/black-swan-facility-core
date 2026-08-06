@@ -33,8 +33,10 @@ export function useBookingCalendarContext({
   blocks,
   transport,
 }: UseBookingCalendarContextInput) {
-  const supabaseTransport = useMemo(() => createSupabaseTransport(), [])
-  const activeTransport = transport ?? supabaseTransport
+  const activeTransport = useMemo(
+    () => transport ?? createSupabaseTransport(),
+    [transport],
+  )
   const scrollRef = useRef<HTMLDivElement | null>(null)
   const rowRefs = useRef(new Map<string, HTMLDivElement>())
   const [context, setContext] = useState<CalendarContext>({
