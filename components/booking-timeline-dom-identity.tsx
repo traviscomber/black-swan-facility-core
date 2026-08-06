@@ -1,7 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useMemo } from "react"
-import { addDays, differenceInCalendarDays, parseISO } from "date-fns"
+import { addDays, differenceInCalendarDays, format, parseISO } from "date-fns"
 import { createClient } from "@/lib/supabase/client"
 
 type RoomIdentity = {
@@ -269,5 +269,5 @@ export function BookingTimelineDomIdentity() {
 }
 
 function visibleEndValue(value: Date) {
-  return value.toISOString().slice(0, 10)
+  return format(value, "yyyy-MM-dd")
 }
