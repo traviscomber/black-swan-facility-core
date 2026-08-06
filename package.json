@@ -5,14 +5,14 @@
   "type": "module",
   "packageManager": "pnpm@10.28.0",
   "scripts": {
-    "prebuild": "node --experimental-strip-types --test tests/task-notification.test.ts && node --experimental-strip-types --test tests/booking-rules.test.ts && node --experimental-strip-types --test tests/booking-drag.test.ts",
+    "prebuild": "node --experimental-strip-types --test tests/task-notification.test.ts && node --experimental-strip-types --test tests/booking-rules.test.ts && node --experimental-strip-types --test tests/booking-drag.test.ts && node --experimental-strip-types --test tests/booking-source-policy.test.ts",
     "build": "NODE_OPTIONS=--import=./scripts/suppress-known-build-warning.mjs next build",
     "dev": "next dev",
     "lint": "eslint .",
     "start": "next start",
     "test:notifications": "node --experimental-strip-types --test tests/task-notification.test.ts",
-    "test:booking": "node --experimental-strip-types --test tests/booking-rules.test.ts",
-    "test:drag": "node --experimental-strip-types --test tests/booking-drag.test.ts"
+    "test:booking": "node --experimental-strip-types --test tests/booking-rules.test.ts && node --experimental-strip-types --test tests/booking-drag.test.ts && node --experimental-strip-types --test tests/booking-source-policy.test.ts",
+    "test:e2e:booking": "node scripts/run-booking-calendar-e2e.mjs"
   },
   "pnpm": {
     "onlyBuiltDependencies": [
@@ -85,6 +85,7 @@
     "sonner": "^1.7.4",
     "tailwind-merge": "^3.3.1",
     "tailwindcss-animate": "^1.0.7",
+    "tw-animate-css": "1.3.3",
     "vaul": "^1.1.2",
     "xlsx": "0.18.5",
     "zod": "3.25.76"
@@ -99,7 +100,6 @@
     "playwright": "^1.61.1",
     "postcss": "^8.5",
     "tailwindcss": "^4.1.9",
-    "tw-animate-css": "1.3.3",
     "typescript": "^5"
   }
 }
