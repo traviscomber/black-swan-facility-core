@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/client"
 type RoomIdentity = {
   id: string
   room_number: string
+  operational_status: string
   location: { name: string } | null
 }
 
@@ -21,6 +22,8 @@ type ReservationIdentity = {
   room_id: string | null
   guest_name: string
   check_in: string
+  check_out: string
+  status: string
 }
 
 type IdentityIndex = {
@@ -57,6 +60,13 @@ function leftPosition(button: HTMLButtonElement) {
   return Number.parseFloat(button.style.left || "0")
 }
 
+function bedRows(container: Element) {
+  return Array.from(container.querySelectorAll<HTMLElement>("div.flex.border-b")).filter((row) => {
+    const label = row.querySelector<HTMLElement>(":scope > div:first-child p.font-medium")?.textContent ?? ""
+    return /^Cama\s+/i.test(label)
+  })
+}
+
 export function BookingTimelineDomIdentity() {
   const supabase = useMemo(() => createClient(), [])
 
@@ -77,33 +87,54 @@ export function BookingTimelineDomIdentity() {
 
       header.dataset.roomId = room.id
       header.dataset.roomNumber = room.room_number
+      header.dataset.roomStatus = room.operational_status
 
-      const reservationButtons = Array.from(container.querySelectorAll<HTMLButtonElement>("button.absolute.bottom-2.z-20"))
-      const grouped = new Map<string, HTMLButtonElement[]>()
-
-      reservationButtons.forEach((button) => {
-        const row = button.parentElement?.parentElement
-        const bedLabel = row?.querySelector<HTMLElement>(":scope > div:first-child p.font-medium")?.textContent ?? ""
+      bedRows(container).forEach((row) => {
+        const bedLabel = row.querySelector<HTMLElement>(":scope > div:first-child p.font-medium")?.textContent ?? ""
         const bedNumber = bedLabel.replace(/^Cama\s+/i, "").trim()
-        const guestName = guestNameFromReservationButton(button)
-        const key = `${room.id}|${bedNumber}|${normalize(guestName)}`
-        grouped.set(key, [...(grouped.get(key) ?? []), button])
-      })
-
-      grouped.forEach((buttons, key) => {
-        const [, bedNumber, normalizedGuest] = key.split("|")
         const bed = index.beds.find((item) => item.room_id === room.id && item.bed_number === bedNumber)
-        if (!bed) return
-        const reservations = index.reservations
-          .filter((item) => item.bed_id === bed.id && normalize(item.guest_name) === normalizedGuest)
-          .sort((a, b) => a.check_in.localeCompare(b.check_in))
-        buttons.sort((a, b) => leftPosition(a) - leftPosition(b))
-        buttons.forEach((button, position) => {
-          const reservation = reservations[position]
-          if (!reservation) return
-          button.dataset.reservationId = reservation.id
-          button.dataset.roomId = room.id
-          button.dataset.bedId = bed.id
+        const timeline = row.children.item(1) as HTMLElement | null
+        if (!bed || !timeline) return
+
+        row.dataset.bookingBedRow = "true"
+        row.dataset.bedId = bed.id
+        row.dataset.bedNumber = bed.bed_number
+        row.dataset.roomId = room.id
+        row.dataset.roomNumber = room.room_number
+        row.dataset.roomStatus = room.operational_status
+        row.dataset.locationName = room.location?.name ?? locationName
+
+        timeline.dataset.bookingTimelineRow = "true"
+        timeline.dataset.bedId = bed.id
+        timeline.dataset.roomId = room.id
+
+        const reservationButtons = Array.from(timeline.querySelectorAll<HTMLButtonElement>("button.absolute.bottom-2.z-20"))
+        const grouped = new Map<string, HTMLButtonElement[]>()
+
+        reservationButtons.forEach((button) => {
+          const guestName = guestNameFromReservationButton(button)
+          const key = normalize(guestName)
+          grouped.set(key, [...(grouped.get(key) ?? []), button])
+        })
+
+        grouped.forEach((buttons, normalizedGuest) => {
+          const reservations = index.reservations
+            .filter((item) => item.bed_id === bed.id && normalize(item.guest_name) === normalizedGuest)
+            .sort((a, b) => a.check_in.localeCompare(b.check_in))
+          buttons.sort((a, b) => leftPosition(a) - leftPosition(b))
+
+          buttons.forEach((button, position) => {
+            const reservation = reservations[position]
+            if (!reservation) return
+            button.dataset.bookingReservation = "true"
+            button.dataset.reservationId = reservation.id
+            button.dataset.roomId = room.id
+            button.dataset.bedId = bed.id
+            button.dataset.guestName = reservation.guest_name
+            button.dataset.checkIn = reservation.check_in
+            button.dataset.checkOut = reservation.check_out
+            button.dataset.reservationStatus = reservation.status
+          })
         })
       })
     })
@@ -121,9 +152,9 @@ export function BookingTimelineDomIdentity() {
 
     const load = async () => {
       const [roomsResult, bedsResult, reservationsResult] = await Promise.all([
-        supabase.from("rooms").select("id, room_number, location:locations(name)"),
+        supabase.from("rooms").select("id, room_number, operational_status, location:locations(name)"),
         supabase.from("beds").select("id, room_id, bed_number"),
-        supabase.from("reservations").select("id, bed_id, room_id, guest_name, check_in").not("status", "in", "(cancelled,canceled,void,voided)"),
+        supabase.from("reservations").select("id, bed_id, room_id, guest_name, check_in, check_out, status").not("status", "in", "(cancelled,canceled,void,voided)"),
       ])
       if (disposed || roomsResult.error || bedsResult.error || reservationsResult.error) return
       index = {
@@ -138,10 +169,17 @@ export function BookingTimelineDomIdentity() {
     const observer = new MutationObserver(scheduleAnnotation)
     observer.observe(document.body, { childList: true, subtree: true })
 
+    const channel = supabase
+      .channel("booking-timeline-dom-identity")
+      .on("postgres_changes", { event: "*", schema: "public", table: "reservations" }, () => void load())
+      .on("postgres_changes", { event: "*", schema: "public", table: "rooms" }, () => void load())
+      .subscribe()
+
     return () => {
       disposed = true
       observer.disconnect()
       if (timer !== null) window.clearTimeout(timer)
+      void supabase.removeChannel(channel)
     }
   }, [annotate, supabase])
 
