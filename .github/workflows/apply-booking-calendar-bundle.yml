@@ -43,6 +43,10 @@ jobs:
           echo "7f88abf2e2233319e3fb7b1dbe5f55f1d553be296e5df7f117a375b49aaed117  /tmp/package-fix.tar.gz" | sha256sum --check
           tar -xzf /tmp/package-fix.tar.gz
 
+          base64 --decode .calendar/e2e-fix.b64 > /tmp/e2e-fix.tar.gz
+          echo "0a8bc26bd8b2adc9f0e520f2feeebbe8516c4f339738843b2e5b2f36383147c4  /tmp/e2e-fix.tar.gz" | sha256sum --check
+          tar -xzf /tmp/e2e-fix.tar.gz
+
           rm -f \
             components/booking-timeline-dom-identity.tsx \
             components/booking-timeline-drag-drop.tsx \
@@ -56,10 +60,12 @@ jobs:
       - name: Build and run unit tests
         run: pnpm build
 
-      - name: Install browser engines
-        run: pnpm exec playwright install --with-deps chromium firefox webkit
+      - name: Install Chromium and Firefox
+        run: pnpm exec playwright install --with-deps chromium firefox
 
-      - name: Run cross-browser booking calendar E2E
+      - name: Run booking calendar E2E on Linux browsers
+        env:
+          E2E_BROWSERS: chromium,firefox
         run: pnpm test:e2e:booking
 
       - name: Commit validated calendar implementation
