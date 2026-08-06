@@ -4,7 +4,8 @@ on:
   push:
     branches: [main]
     paths:
-      - ".calendar/chunk-*"
+      - ".calendar/**"
+      - ".github/workflows/apply-booking-calendar-bundle.yml"
 
 permissions:
   contents: write
@@ -37,6 +38,11 @@ jobs:
           base64 --decode /tmp/calendar-bundle.b64 > /tmp/calendar-bundle.tar.gz
           echo "9ef5e28fc6c9f98b15132681aa0c6a953c374ab57da6f1e31c9058aa74fa9bce  /tmp/calendar-bundle.tar.gz" | sha256sum --check
           tar -xzf /tmp/calendar-bundle.tar.gz
+
+          base64 --decode .calendar/package-fix.b64 > /tmp/package-fix.tar.gz
+          echo "7f88abf2e2233319e3fb7b1dbe5f55f1d553be296e5df7f117a375b49aaed117  /tmp/package-fix.tar.gz" | sha256sum --check
+          tar -xzf /tmp/package-fix.tar.gz
+
           rm -f \
             components/booking-timeline-dom-identity.tsx \
             components/booking-timeline-drag-drop.tsx \
