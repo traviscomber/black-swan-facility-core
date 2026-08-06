@@ -50,8 +50,8 @@ jobs:
           rm -rf .calendar
           rm -f .github/workflows/apply-booking-calendar-bundle.yml
 
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+      - name: Install dependencies and refresh lockfile
+        run: pnpm install --no-frozen-lockfile
 
       - name: Build and run unit tests
         run: pnpm build
