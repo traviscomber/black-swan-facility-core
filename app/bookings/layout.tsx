@@ -53,6 +53,10 @@ export default function BookingsLayout({ children }: { children: React.ReactNode
 
   const activeTab = [...visibleTabs].sort((a, b) => b.route.length - a.route.length).find((tab) => pathname === tab.route || (tab.route !== "/bookings" && pathname?.startsWith(tab.route)))?.value ?? "calendar"
 
+  // The harness page is server-gated by E2E_CALENDAR_HARNESS and must render
+  // without authentication, navigation, or access-provider side effects.
+  if (pathname === "/bookings/e2e-harness") return <>{children}</>
+
   return (
     <AccessGate action="booking.modify" department="booking">
       <div className="flex min-h-screen flex-col bg-background">
