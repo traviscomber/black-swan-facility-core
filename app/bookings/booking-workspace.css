@@ -1,0 +1,41 @@
+/* Persistent detail treatment for the canonical operational timeline. */
+.booking-workspace .fixed.inset-0.z-50.flex.justify-end {
+  pointer-events: none;
+  background: transparent !important;
+}
+
+.booking-workspace .fixed.inset-0.z-50.flex.justify-end > button.absolute.inset-0 {
+  display: none !important;
+}
+
+.booking-workspace .fixed.inset-0.z-50.flex.justify-end > aside {
+  pointer-events: auto;
+  width: min(430px, 100vw) !important;
+  max-width: 430px !important;
+  background: var(--bs-surface-primary) !important;
+  border-left: 1px solid var(--bs-divider-subtle) !important;
+  box-shadow: -18px 0 48px rgba(0, 0, 0, 0.2) !important;
+}
+
+@media (min-width: 1200px) {
+  .booking-workspace:has(.fixed.inset-0.z-50.flex.justify-end > aside) [data-slot="page-header"],
+  .booking-workspace:has(.fixed.inset-0.z-50.flex.justify-end > aside) [data-slot="page-header"] + div {
+    margin-right: 430px;
+  }
+
+  .booking-workspace:has(.fixed.inset-0.z-50.flex.justify-end > aside) [data-slot="page-header"] + div {
+    transition: margin-right 160ms ease;
+  }
+}
+
+@media (max-width: 1199px) {
+  .booking-workspace .fixed.inset-0.z-50.flex.justify-end > button.absolute.inset-0 {
+    display: block !important;
+    pointer-events: auto;
+    background: rgba(23, 21, 18, 0.58) !important;
+  }
+
+  .booking-workspace .fixed.inset-0.z-50.flex.justify-end > aside {
+    box-shadow: -18px 0 48px rgba(0, 0, 0, 0.42) !important;
+  }
+}
