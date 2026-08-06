@@ -24,6 +24,8 @@ export type {
   BookingCalendarTransport,
 } from "@/components/booking-calendar-model"
 
+export const BOOKING_COMMAND_SELECTION_EVENT = "black-swan:booking-selected"
+
 export function BookingCalendarTimeline({
   hierarchy,
   reservations,
@@ -44,6 +46,14 @@ export function BookingCalendarTimeline({
   transport,
 }: BookingCalendarTimelineProps) {
   const calendarContext = useBookingCalendarContext({ hierarchy, reservations, blocks, transport })
+
+  const openReservation = useCallback((reservation: BookingCalendarReservation) => {
+    window.dispatchEvent(new CustomEvent(BOOKING_COMMAND_SELECTION_EVENT, {
+      detail: { reservationId: reservation.id },
+    }))
+    onOpenReservation(reservation)
+  }, [onOpenReservation])
+
   const interactions = useBookingCalendarInteractions({
     activeTransport: calendarContext.activeTransport,
     loadContext: calendarContext.loadContext,
@@ -60,7 +70,7 @@ export function BookingCalendarTimeline({
     pendingIds: calendarContext.pendingIds,
     bedAtPoint: calendarContext.bedAtPoint,
     validateProposal: calendarContext.validateProposal,
-    onOpenReservation,
+    onOpenReservation: openReservation,
     onOpenNewReservation,
   })
 
