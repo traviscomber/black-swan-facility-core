@@ -20,6 +20,11 @@ type ApprovalRequest = {
   created_at: string
 }
 
+type ApprovalDecisionResult = {
+  status?: string
+  execution_error?: string | null
+}
+
 const priorityLabel: Record<ApprovalRequest["priority"], string> = {
   low: "Baja",
   normal: "Normal",
@@ -60,7 +65,7 @@ export function OperationalApprovalQueue() {
 
   async function decide(id: string, decision: "approved" | "rejected") {
     setSavingId(id)
-    const { error } = await supabase.rpc("decide_operational_approval", {
+    const { data, error } = await supabase.rpc("decide_operational_approval", {
       p_request_id: id,
       p_decision: decision,
       p_notes: null,
@@ -69,7 +74,12 @@ export function OperationalApprovalQueue() {
     if (error) {
       toast.error(error.message)
     } else {
-      toast.success(decision === "approved" ? "Acción aprobada y ejecutada" : "Acción rechazada")
+      const result = (Array.isArray(data) ? data[0] : data) as ApprovalDecisionResult | null
+      if (result?.execution_error) {
+        toast.error(`No fue posible ejecutar el cambio: ${result.execution_error}`)
+      } else {
+        toast.success(decision === "approved" ? "Acción aprobada y ejecutada" : "Acción rechazada")
+      }
     }
 
     setSavingId(null)
