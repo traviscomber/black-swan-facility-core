@@ -5,13 +5,14 @@
   "type": "module",
   "packageManager": "pnpm@10.28.0",
   "scripts": {
-    "prebuild": "node --experimental-strip-types --test tests/task-notification.test.ts && node --experimental-strip-types --test tests/booking-rules.test.ts",
+    "prebuild": "node --experimental-strip-types --test tests/task-notification.test.ts && node --experimental-strip-types --test tests/booking-rules.test.ts && node --experimental-strip-types --test tests/booking-drag.test.ts",
     "build": "NODE_OPTIONS=--import=./scripts/suppress-known-build-warning.mjs next build",
     "dev": "next dev",
     "lint": "eslint .",
     "start": "next start",
     "test:notifications": "node --experimental-strip-types --test tests/task-notification.test.ts",
-    "test:booking": "node --experimental-strip-types --test tests/booking-rules.test.ts"
+    "test:booking": "node --experimental-strip-types --test tests/booking-rules.test.ts",
+    "test:drag": "node --experimental-strip-types --test tests/booking-drag.test.ts"
   },
   "pnpm": {
     "onlyBuiltDependencies": [
