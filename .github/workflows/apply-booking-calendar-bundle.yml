@@ -44,7 +44,7 @@ jobs:
           tar -xzf /tmp/package-fix.tar.gz
 
           base64 --decode .calendar/e2e-fix.b64 > /tmp/e2e-fix.tar.gz
-          echo "0a8bc26bd8b2adc9f0e520f2feeebbe8516c4f339738843b2e5b2f36383147c4  /tmp/e2e-fix.tar.gz" | sha256sum --check
+          echo "6cdca9db7c7034f9153ec95dc33111928471406fb472b0965dc2c1b0286c1938  /tmp/e2e-fix.tar.gz" | sha256sum --check
           tar -xzf /tmp/e2e-fix.tar.gz
 
           rm -f \
