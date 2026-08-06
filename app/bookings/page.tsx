@@ -8,6 +8,7 @@ import { BookingTimelineDomIdentity } from "@/components/booking-timeline-dom-id
 import { ReservationLogisticsEditor } from "@/components/reservation-logistics-editor"
 import { DailyOperationsPanel } from "@/components/daily-operations-panel"
 import { HospitalityCommandCenter } from "@/components/hospitality-command-center"
+import { OperationalApprovalQueue } from "@/components/operational-approval-queue"
 
 export default function BookingsPage() {
   return (
@@ -17,6 +18,7 @@ export default function BookingsPage() {
       <BookingTimelineAlertNavigator />
       <ReservationLogisticsEditor />
       <BookingOperationsTimelinePage />
+      <OperationalApprovalQueue />
       <HospitalityCommandCenter />
       <DailyOperationsPanel />
     </div>
