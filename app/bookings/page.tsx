@@ -6,6 +6,7 @@ import { BookingRealtimePulse } from "@/components/booking-realtime-pulse"
 import { BookingTimelineAlertNavigator } from "@/components/booking-timeline-alert-navigator"
 import { BookingTimelineDomIdentity } from "@/components/booking-timeline-dom-identity"
 import { BookingTimelineDragDrop } from "@/components/booking-timeline-drag-drop"
+import { BookingTimelineRangeCreate } from "@/components/booking-timeline-range-create"
 import { ReservationLogisticsEditor } from "@/components/reservation-logistics-editor"
 import { DailyOperationsPanel } from "@/components/daily-operations-panel"
 import { HospitalityCommandCenter } from "@/components/hospitality-command-center"
@@ -17,6 +18,7 @@ export default function BookingsPage() {
       <BookingRealtimePulse />
       <BookingTimelineDomIdentity />
       <BookingTimelineDragDrop />
+      <BookingTimelineRangeCreate />
       <BookingTimelineAlertNavigator />
       <ReservationLogisticsEditor />
       <BookingOperationsTimelinePage />
