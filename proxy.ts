@@ -9,6 +9,11 @@ function isPublicRequest(pathname: string) {
   return PUBLIC_API_PREFIXES.some((prefix) => pathname.startsWith(prefix))
 }
 
+function isCalendarE2EHarness(pathname: string) {
+  return process.env.E2E_CALENDAR_HARNESS === "1"
+    && pathname === "/bookings/e2e-harness"
+}
+
 function isApiRequest(pathname: string) {
   return pathname.startsWith("/api/")
 }
@@ -24,7 +29,9 @@ function isAdminPath(pathname: string) {
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
 
-  if (isPublicRequest(pathname)) return NextResponse.next()
+  if (isPublicRequest(pathname) || isCalendarE2EHarness(pathname)) {
+    return NextResponse.next()
+  }
 
   let response = NextResponse.next({ request: { headers: request.headers } })
 
