@@ -4,9 +4,15 @@ import process from "node:process"
 const host = "127.0.0.1"
 const port = 3100
 const baseURL = `http://${host}:${port}`
+const serverEnvironment = {
+  ...process.env,
+  E2E_CALENDAR_HARNESS: "1",
+  NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL ?? "http://127.0.0.1:54321",
+  NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "e2e-anon-key",
+}
 
 const server = spawn("pnpm", ["dev", "--hostname", host, "--port", String(port)], {
-  env: { ...process.env, E2E_CALENDAR_HARNESS: "1" },
+  env: serverEnvironment,
   stdio: "inherit",
   detached: process.platform !== "win32",
 })
@@ -14,15 +20,18 @@ const server = spawn("pnpm", ["dev", "--hostname", host, "--port", String(port)]
 async function waitForServer() {
   const deadline = Date.now() + 90_000
   while (Date.now() < deadline) {
+    if (server.exitCode !== null) {
+      throw new Error(`E2E development server exited with code ${server.exitCode}`)
+    }
     try {
       const response = await fetch(`${baseURL}/bookings/e2e-harness`, { redirect: "manual" })
-      if (response.status < 500) return
+      if (response.status === 200) return
     } catch {
       // Development server is still starting.
     }
     await new Promise((resolve) => setTimeout(resolve, 750))
   }
-  throw new Error("E2E development server did not start within 90 seconds")
+  throw new Error("E2E development server did not expose the calendar harness within 90 seconds")
 }
 
 function stopServer() {
