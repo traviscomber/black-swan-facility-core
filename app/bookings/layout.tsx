@@ -4,7 +4,7 @@ import type React from "react"
 import type { ElementType } from "react"
 import { useMemo } from "react"
 import { usePathname, useRouter } from "next/navigation"
-import { Activity, Calculator, CalendarDays, CalendarOff, CreditCard, FileText, Home, MapPin, PackagePlus, Percent, ReceiptText, ShieldCheck, Sparkles, TrendingUp, Users } from "lucide-react"
+import { Activity, Calculator, CalendarDays, CalendarOff, CreditCard, FileText, FolderLock, Home, MapPin, PackagePlus, Percent, ReceiptText, ShieldCheck, Sparkles, TrendingUp, Users } from "lucide-react"
 import { AccessGate } from "@/components/access/access-gate"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useEffectiveAccess } from "@/lib/hooks/use-effective-access"
@@ -18,6 +18,7 @@ type BookingTab = {
   action?: string
   department?: string
   adminOnly?: boolean
+  roles?: string[]
 }
 
 export default function BookingsLayout({ children }: { children: React.ReactNode }) {
@@ -35,6 +36,7 @@ export default function BookingsLayout({ children }: { children: React.ReactNode
     { value: "rates", route: "/bookings/rates", label: "Tarifas", icon: Percent, action: "booking.modify", department: "booking" },
     { value: "extras", route: "/bookings/extras", label: "Extras", icon: PackagePlus, action: "services.operate", department: "services" },
     { value: "charges", route: "/bookings/charges", label: "Cargos", icon: ReceiptText, action: "payments.record", department: "finance" },
+    { value: "documents", route: "/bookings/documents", label: "Documentos", icon: FolderLock, action: "booking.modify", department: "booking", roles: ["approver"] },
     { value: "audit", route: "/bookings/audit", label: "Auditoría", icon: ShieldCheck, adminOnly: true },
     { value: "guests", route: "/bookings/guests", label: t("bookings.guests"), icon: Users, action: "booking.modify", department: "booking" },
     { value: "payments", route: "/bookings/payments", label: "Pagos", icon: CreditCard, action: "payments.record", department: "finance" },
@@ -46,6 +48,7 @@ export default function BookingsLayout({ children }: { children: React.ReactNode
 
   const visibleTabs = tabs.filter((tab) => {
     if (tab.adminOnly) return access.is_admin
+    if (tab.roles && !access.is_admin && !tab.roles.includes(access.role)) return false
     if (tab.action && !can(tab.action)) return false
     if (tab.department && !canAccessDepartment(tab.department)) return false
     return true
