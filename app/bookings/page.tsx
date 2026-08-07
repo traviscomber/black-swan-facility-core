@@ -8,12 +8,10 @@ import { ReservationLogisticsEditor } from "@/components/reservation-logistics-e
 import { DailyOperationsPanel } from "@/components/daily-operations-panel"
 import { HospitalityCommandCenter } from "@/components/hospitality-command-center"
 import { OperationalApprovalQueue } from "@/components/operational-approval-queue"
-import { BookingsLegacyLocalizationBridge } from "@/components/bookings-legacy-localization-bridge"
 
 export default function BookingsPage() {
   return (
-    <div className="booking-workspace">
-      <BookingsLegacyLocalizationBridge />
+    <>
       <BookingRealtimePulse />
       <BookingTimelineAlertNavigator />
       <ReservationLogisticsEditor />
@@ -21,6 +19,6 @@ export default function BookingsPage() {
       <OperationalApprovalQueue />
       <HospitalityCommandCenter />
       <DailyOperationsPanel />
-    </div>
+    </>
   )
 }
