@@ -15,9 +15,23 @@ const reservationBId = "00000000-0000-0000-0000-000000000402"
 const bedBId = "00000000-0000-0000-0000-000000000302"
 const emptyBedId = "00000000-0000-0000-0000-000000000303"
 
+async function waitForHydration(page: Page) {
+  const hydration = page.getByTestId("e2e-hydrated")
+  await hydration.waitFor({ state: "visible" })
+  await page.waitForFunction(
+    () => document.querySelector('[data-testid="e2e-hydrated"]')?.textContent === "ready",
+  )
+  await page.getByTestId("booking-calendar-root").waitFor({ state: "visible" })
+}
+
 async function openHarness(page: Page) {
   await page.goto(`${baseURL}/bookings/e2e-harness`)
-  await page.getByTestId("booking-calendar-root").waitFor({ state: "visible" })
+  await waitForHydration(page)
+}
+
+async function reloadHarness(page: Page) {
+  await page.reload()
+  await waitForHydration(page)
 }
 
 async function visibleBox(page: Page, selector: string) {
@@ -71,8 +85,7 @@ function registerDesktopSuite(name: string, browserType: BrowserType) {
       await undoButton.click()
       await waitForAction(page, "undone:")
 
-      await page.reload()
-      await page.getByTestId("booking-calendar-root").waitFor({ state: "visible" })
+      await reloadHarness(page)
       const reservationA = page.getByTestId(`booking-reservation-${reservationAId}`)
       await reservationA.waitFor({ state: "visible" })
       await reservationA.scrollIntoViewIfNeeded()
@@ -82,8 +95,7 @@ function registerDesktopSuite(name: string, browserType: BrowserType) {
       await page.keyboard.press("Enter")
       await waitForAction(page, "changed:")
 
-      await page.reload()
-      await page.getByTestId("booking-calendar-root").waitFor({ state: "visible" })
+      await reloadHarness(page)
       const aSelector = `[data-testid="booking-reservation-${reservationAId}"]`
       const bSelector = `[data-testid="booking-reservation-${reservationBId}"]`
       const aBox = await visibleBox(page, aSelector)
@@ -105,8 +117,7 @@ function registerDesktopSuite(name: string, browserType: BrowserType) {
         bedBId,
       )
 
-      await page.reload()
-      await page.getByTestId("booking-calendar-root").waitFor({ state: "visible" })
+      await reloadHarness(page)
       const startSelector = `[data-testid="booking-cell-${emptyBedId}-2026-08-10"]`
       const endSelector = `[data-testid="booking-cell-${emptyBedId}-2026-08-12"]`
       const startBox = await visibleBox(page, startSelector)
