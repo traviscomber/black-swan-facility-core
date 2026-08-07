@@ -46,6 +46,9 @@ type BookingCalendarRoomGroupProps = {
   onCellPointerDown: (event: React.PointerEvent<HTMLButtonElement>, bed: BookingCalendarBed, index: number) => void
   onCellClick: (bed: BookingCalendarBed, date: Date) => void
   onReservationPointerDown: (event: React.PointerEvent<HTMLButtonElement>, reservation: BookingCalendarReservation, bed: BookingCalendarBed) => void
+  onReservationPointerMove: (event: React.PointerEvent<HTMLButtonElement>) => void
+  onReservationPointerUp: (event: React.PointerEvent<HTMLButtonElement>) => void
+  onReservationPointerCancel: (event: React.PointerEvent<HTMLButtonElement>) => void
   onReservationKeyDown: (event: React.KeyboardEvent<HTMLButtonElement>, reservation: BookingCalendarReservation, bed: BookingCalendarBed) => void
   onReservationClick: (reservation: BookingCalendarReservation, bed: BookingCalendarBed) => void
   housekeepingForReservation: (reservation: BookingCalendarReservation) => BookingCalendarHousekeeping[]
@@ -75,6 +78,9 @@ export function BookingCalendarRoomGroup({
   onCellPointerDown,
   onCellClick,
   onReservationPointerDown,
+  onReservationPointerMove,
+  onReservationPointerUp,
+  onReservationPointerCancel,
   onReservationKeyDown,
   onReservationClick,
   housekeepingForReservation,
@@ -225,6 +231,9 @@ export function BookingCalendarRoomGroup({
                   pending={pendingIds.has(reservation.id)}
                   keyboardReservationId={keyboardReservationId}
                   onPointerDown={onReservationPointerDown}
+                  onPointerMove={onReservationPointerMove}
+                  onPointerUp={onReservationPointerUp}
+                  onPointerCancel={onReservationPointerCancel}
                   onKeyDown={onReservationKeyDown}
                   onClick={onReservationClick}
                 />
