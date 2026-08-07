@@ -3,6 +3,7 @@
 import type React from "react"
 import type { RefObject } from "react"
 import { format } from "date-fns"
+import { de, enUS, es } from "date-fns/locale"
 import { Badge } from "@/components/ui/badge"
 import { Card } from "@/components/ui/card"
 import { BookingCalendarInteractionFeedback } from "@/components/booking-calendar-interaction-feedback"
@@ -18,6 +19,8 @@ import {
   type Feedback,
   type Validation,
 } from "@/components/booking-calendar-model"
+import { useLanguage } from "@/lib/hooks/use-language"
+import { translateBookingOperationsValue } from "@/lib/translations/booking-operations"
 
 type CreateState = { bedId: string; first: number; last: number; state: "valid" | "invalid" }
 type DragVisual = { reservationId: string; transform: string; width: number }
@@ -90,6 +93,10 @@ export function BookingCalendarGrid({
   hospitalityForReservation,
   geometry,
 }: BookingCalendarGridProps) {
+  const { language } = useLanguage()
+  const tr = (value: string) => translateBookingOperationsValue(value, language)
+  const dateLocale = language === "de" ? de : language === "es" ? es : enUS
+
   return (
     <>
       <Card
@@ -106,7 +113,7 @@ export function BookingCalendarGrid({
                 className="sticky left-0 z-40 flex h-16 shrink-0 items-center border-r bg-background px-4 font-medium"
                 style={{ width: labelWidth }}
               >
-                Propiedad / habitación / cama
+                {tr("Propiedad / habitación / cama")}
               </div>
               <div className="flex">
                 {dates.map((date) => {
@@ -117,9 +124,9 @@ export function BookingCalendarGrid({
                       className={`flex h-16 shrink-0 flex-col items-center justify-center border-r text-xs ${today ? "bg-primary/10" : ""}`}
                       style={{ width: dayWidth }}
                     >
-                      <span className="font-medium">{format(date, "EEE")}</span>
+                      <span className="font-medium">{format(date, "EEE", { locale: dateLocale })}</span>
                       <span className={today ? "font-semibold text-primary" : "text-muted-foreground"}>
-                        {format(date, "dd MMM")}
+                        {format(date, "dd MMM", { locale: dateLocale })}
                       </span>
                     </div>
                   )
@@ -128,10 +135,10 @@ export function BookingCalendarGrid({
             </div>
 
             {loading ? (
-              <div className="p-12 text-center text-sm text-muted-foreground">Cargando operación…</div>
+              <div className="p-12 text-center text-sm text-muted-foreground">{tr("Cargando operación…")}</div>
             ) : hierarchy.length === 0 ? (
               <div className="p-12 text-center text-sm text-muted-foreground">
-                No hay habitaciones para los filtros seleccionados.
+                {tr("No hay habitaciones para los filtros seleccionados.")}
               </div>
             ) : hierarchy.map((locationGroup) => (
               <div key={locationGroup.location.id} data-booking-location-id={locationGroup.location.id}>
@@ -140,7 +147,7 @@ export function BookingCalendarGrid({
                   style={{ width: labelWidth + dates.length * dayWidth }}
                 >
                   {locationGroup.location.name}
-                  <Badge variant="outline" className="ml-2">{locationGroup.rooms.length} habitaciones</Badge>
+                  <Badge variant="outline" className="ml-2">{tr(`${locationGroup.rooms.length} habitaciones`)}</Badge>
                 </div>
                 {locationGroup.rooms.map((roomGroup) => (
                   <BookingCalendarRoomGroup
