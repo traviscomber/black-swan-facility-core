@@ -41,9 +41,12 @@ import { createClient } from "@/lib/supabase/client"
 
 type NavigationItem = {
   nameKey: string
+  name?: string
   href: string
   icon: ElementType
   tipKey: string
+  tip?: string
+  badge?: "finance_pending"
   adminOnly?: boolean
   action?: string
   department?: string
@@ -52,7 +55,9 @@ type NavigationItem = {
 
 type NavigationGroup = {
   labelKey: string
+  label?: string
   descKey: string
+  desc?: string
   items: NavigationItem[]
 }
 
@@ -62,11 +67,22 @@ const navigationGroups: NavigationGroup[] = [
     descKey: "nav.admin_general_desc",
     items: [
       { nameKey: "nav.dashboard", href: "/", icon: LayoutDashboard, tipKey: "nav.dashboard_tip" },
-      { nameKey: "nav.budgets", href: "/budgets", icon: DollarSign, tipKey: "nav.budgets_tip", action: "payments.record", department: "finance" },
       { nameKey: "nav.people_operations", href: "/employees", icon: Users, tipKey: "nav.employees_tip", department: "administration" },
       { nameKey: "nav.energy_management", href: "/energy", icon: Zap, tipKey: "nav.management_tip", department: "maintenance" },
       { nameKey: "nav.ai_ops", href: "/ai-ops", icon: Bot, tipKey: "nav.ai_ops_tip", adminOnly: true },
       { nameKey: "nav.admin", href: "/admin", icon: Settings, tipKey: "nav.admin_tip", adminOnly: true },
+    ],
+  },
+  {
+    labelKey: "finance",
+    label: "Finanzas",
+    descKey: "finance_desc",
+    desc: "Budget, documentos, aprobaciones y conciliación",
+    items: [
+      { nameKey: "finance_budget", name: "Budget", href: "/budgets", icon: DollarSign, tipKey: "finance_budget_tip", tip: "Budget & P&L canónico", action: "payments.record", department: "finance" },
+      { nameKey: "finance_approvals", name: "Aprobaciones", href: "/budgets/approvals", icon: CheckSquare, tipKey: "finance_approvals_tip", tip: "Decisiones financieras pendientes", badge: "finance_pending", action: "payments.record", department: "finance" },
+      { nameKey: "finance_documents", name: "Facturas / documentos", href: "/budgets/documents", icon: Receipt, tipKey: "finance_documents_tip", tip: "Documentos financieros y su clasificación", action: "payments.record", department: "finance" },
+      { nameKey: "finance_reconciliation", name: "Conciliación", href: "/budgets/reconciliation", icon: TrendingUp, tipKey: "finance_reconciliation_tip", tip: "Cruce de ejecución real contra Budget", action: "payments.record", department: "finance" },
     ],
   },
   {
@@ -159,6 +175,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set())
   const [userEmail, setUserEmail] = useState<string | null>(null)
   const [userInitials, setUserInitials] = useState("?")
+  const [financePendingCount, setFinancePendingCount] = useState(0)
 
   useEffect(() => {
     void supabase.auth.getUser().then(({ data: { user } }) => {
@@ -170,6 +187,34 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
       }
     })
   }, [supabase])
+
+  useEffect(() => {
+    if (!canAccessDepartment("finance")) {
+      setFinancePendingCount(0)
+      return
+    }
+
+    let cancelled = false
+    const loadFinancePendingCount = async () => {
+      const [readyResult, mappingResult, reviewResult] = await Promise.all([
+        supabase.from("finance_documents").select("id", { count: "exact", head: true }).eq("approval_status", "ready"),
+        supabase.from("finance_documents").select("id", { count: "exact", head: true }).eq("approval_status", "pending_mapping"),
+        supabase.rpc("can_finance_review_ambiguous"),
+      ])
+      if (cancelled) return
+      const ready = readyResult.count ?? 0
+      const mapping = reviewResult.data ? (mappingResult.count ?? 0) : 0
+      setFinancePendingCount(ready + mapping)
+    }
+
+    void loadFinancePendingCount()
+    const handler = () => void loadFinancePendingCount()
+    window.addEventListener("finance-workbook-imported", handler)
+    return () => {
+      cancelled = true
+      window.removeEventListener("finance-workbook-imported", handler)
+    }
+  }, [canAccessDepartment, supabase])
 
   useEffect(() => {
     if (!loading && (error || access.role === "none")) {
@@ -234,28 +279,34 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
         </div>
 
         <nav className="min-h-0 flex-1 space-y-3 overflow-y-auto px-3 py-4">
-          {loading ? <p className="px-3 text-xs text-muted-foreground">Cargando acceso…</p> : visibleGroups.map((group) => (
+          {loading ? <p className="px-3 text-xs text-muted-foreground">Cargando acceso…</p> : visibleGroups.map((group) => {
+            const groupLabel = group.label ?? t(group.labelKey)
+            const groupDesc = group.desc ?? t(group.descKey)
+            return (
             <div key={group.labelKey} className="min-w-0 space-y-1">
               <div className="flex items-start justify-between gap-1 px-2">
-                <div className="min-w-0 flex-1"><h3 className="truncate text-xs font-bold uppercase tracking-wider text-foreground" title={t(group.labelKey)}>{t(group.labelKey)}</h3><p className="mt-1 hidden text-xs leading-tight text-muted-foreground sm:block">{t(group.descKey)}</p></div>
-                <button onClick={() => toggleSetValue(setExpandedGroups, expandedGroups, group.labelKey)} className="rounded p-1 hover:bg-muted" aria-label={`Toggle ${t(group.labelKey)}`}><ChevronDown className={cn("h-4 w-4 transition-transform", expandedGroups.has(group.labelKey) ? "rotate-0" : "-rotate-90")} /></button>
+                <div className="min-w-0 flex-1"><h3 className="truncate text-xs font-bold uppercase tracking-wider text-foreground" title={groupLabel}>{groupLabel}</h3><p className="mt-1 hidden text-xs leading-tight text-muted-foreground sm:block">{groupDesc}</p></div>
+                <button onClick={() => toggleSetValue(setExpandedGroups, expandedGroups, group.labelKey)} className="rounded p-1 hover:bg-muted" aria-label={`Toggle ${groupLabel}`}><ChevronDown className={cn("h-4 w-4 transition-transform", expandedGroups.has(group.labelKey) ? "rotate-0" : "-rotate-90")} /></button>
               </div>
               {expandedGroups.has(group.labelKey) && <div className="space-y-0.5">
                 {group.items.map((item) => {
                   const isActive = pathname === item.href || (item.href !== "/" && pathname?.startsWith(item.href))
                   const hasSubItems = Boolean(item.subItems?.length)
                   const isExpanded = expandedItems.has(item.nameKey)
+                  const itemName = item.name ?? t(item.nameKey)
+                  const itemTip = item.tip ?? t(item.tipKey)
+                  const badgeValue = item.badge === "finance_pending" ? financePendingCount : 0
                   return <div key={item.nameKey} className="min-w-0">
                     <div className="flex min-w-0 items-center">
-                      <Link href={item.href} onClick={onClose} className={cn("group flex min-w-0 flex-1 items-center gap-3 rounded px-3 py-2 text-sm font-medium transition-colors", isActive ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted hover:text-foreground")} title={t(item.tipKey)}><item.icon className="h-5 w-5 flex-shrink-0" /><span className="flex-1 truncate">{t(item.nameKey)}</span>{isActive && <span className="h-2 w-2 rounded-full bg-current" />}</Link>
-                      {hasSubItems && <button onClick={() => toggleSetValue(setExpandedItems, expandedItems, item.nameKey)} className="rounded p-2 hover:bg-muted" aria-label={`Toggle ${t(item.nameKey)}`}><ChevronDown className={cn("h-4 w-4 transition-transform", isExpanded ? "rotate-0" : "-rotate-90")} /></button>}
+                      <Link href={item.href} onClick={onClose} className={cn("group flex min-w-0 flex-1 items-center gap-3 rounded px-3 py-2 text-sm font-medium transition-colors", isActive ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted hover:text-foreground")} title={itemTip}><item.icon className="h-5 w-5 flex-shrink-0" /><span className="flex-1 truncate">{itemName}</span>{badgeValue > 0 && <span className="min-w-6 bg-[var(--bs-warm-yellow)] px-1.5 py-0.5 text-center text-[11px] font-semibold text-[var(--bs-bg-primary)]">{badgeValue > 99 ? "99+" : badgeValue}</span>}{isActive && <span className="h-2 w-2 rounded-full bg-current" />}</Link>
+                      {hasSubItems && <button onClick={() => toggleSetValue(setExpandedItems, expandedItems, item.nameKey)} className="rounded p-2 hover:bg-muted" aria-label={`Toggle ${itemName}`}><ChevronDown className={cn("h-4 w-4 transition-transform", isExpanded ? "rotate-0" : "-rotate-90")} /></button>}
                     </div>
                     {hasSubItems && isExpanded && <div className="ml-4 mt-1 space-y-0.5 border-l-2 border-border pl-2">{item.subItems?.map((subItem) => <Link key={subItem.href} href={subItem.href} onClick={onClose} className={cn("flex items-center gap-2 rounded px-3 py-1.5 text-xs transition-colors", pathname === subItem.href ? "bg-primary/10 font-medium text-primary" : "text-muted-foreground hover:bg-muted hover:text-foreground")}><span>{subItem.icon}</span><span className="truncate">{t(subItem.nameKey)}</span></Link>)}</div>}
                   </div>
                 })}
               </div>}
             </div>
-          ))}
+          )})}
         </nav>
 
         <div className="space-y-3 border-t border-secondary p-3">
