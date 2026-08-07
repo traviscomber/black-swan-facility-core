@@ -38,6 +38,10 @@ const exact: Record<Exclude<Language, "es">, Record<string, string>> = {
     "Los valores, estados y excepciones provienen de datos operacionales reales.": "Values, statuses and exceptions come from real operational data.",
     "Cargando reserva…": "Loading reservation…",
     "Hab.": "Room",
+    "Resumen diario": "Daily summary",
+    "Ocupadas": "Occupied",
+    "Llegadas": "Arrivals",
+    "Salidas": "Departures",
   },
   de: {
     "Hitos": "Meilensteine",
@@ -76,6 +80,10 @@ const exact: Record<Exclude<Language, "es">, Record<string, string>> = {
     "Los valores, estados y excepciones provienen de datos operacionales reales.": "Werte, Status und Ausnahmen stammen aus realen Betriebsdaten.",
     "Cargando reserva…": "Reservierung wird geladen…",
     "Hab.": "Zi.",
+    "Resumen diario": "Tagesübersicht",
+    "Ocupadas": "Belegt",
+    "Llegadas": "Anreisen",
+    "Salidas": "Abreisen",
   },
 }
 
