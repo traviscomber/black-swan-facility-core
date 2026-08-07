@@ -29,11 +29,6 @@ async function openHarness(page: Page) {
   await waitForHydration(page)
 }
 
-async function reloadHarness(page: Page) {
-  await page.reload()
-  await waitForHydration(page)
-}
-
 async function visibleBox(page: Page, selector: string) {
   const locator = page.locator(selector)
   await locator.waitFor({ state: "visible" })
@@ -62,21 +57,29 @@ async function waitForAction(page: Page, prefix: string) {
       return element?.textContent?.startsWith(expectedPrefix) ?? false
     },
     { testId: "e2e-last-action", expectedPrefix: prefix },
+    { timeout: 12_000 },
   )
   const value = await action.innerText()
   assert.ok(value.startsWith(prefix), `Expected action ${prefix}, received ${value}`)
   return value
 }
 
+async function withBrowser(browserType: BrowserType, fn: (page: Page) => Promise<void>) {
+  const browser = await browserType.launch()
+  try {
+    const page = await browser.newPage({ viewport: { width: 1500, height: 900 } })
+    await openHarness(page)
+    await fn(page)
+  } finally {
+    await browser.close()
+  }
+}
+
 function registerDesktopSuite(name: string, browserType: BrowserType) {
   if (!requestedBrowsers.has(name)) return
 
-  test(`${name}: movimiento, teclado, swap, creación y undo`, async () => {
-    const browser = await browserType.launch()
-    try {
-      const page = await browser.newPage({ viewport: { width: 1500, height: 900 } })
-      await openHarness(page)
-
+  test(`${name}: pointer move and undo`, async () => {
+    await withBrowser(browserType, async (page) => {
       await dragBy(page, `[data-testid="booking-reservation-${reservationAId}"]`, 92, 0)
       await waitForAction(page, "changed:")
 
@@ -84,8 +87,11 @@ function registerDesktopSuite(name: string, browserType: BrowserType) {
       await undoButton.waitFor({ state: "visible" })
       await undoButton.click()
       await waitForAction(page, "undone:")
+    })
+  })
 
-      await reloadHarness(page)
+  test(`${name}: keyboard move`, async () => {
+    await withBrowser(browserType, async (page) => {
       const reservationA = page.getByTestId(`booking-reservation-${reservationAId}`)
       await reservationA.waitFor({ state: "visible" })
       await reservationA.scrollIntoViewIfNeeded()
@@ -94,8 +100,11 @@ function registerDesktopSuite(name: string, browserType: BrowserType) {
       await page.keyboard.press("ArrowRight")
       await page.keyboard.press("Enter")
       await waitForAction(page, "changed:")
+    })
+  })
 
-      await reloadHarness(page)
+  test(`${name}: vertical swap`, async () => {
+    await withBrowser(browserType, async (page) => {
       const aSelector = `[data-testid="booking-reservation-${reservationAId}"]`
       const bSelector = `[data-testid="booking-reservation-${reservationBId}"]`
       const aBox = await visibleBox(page, aSelector)
@@ -116,8 +125,11 @@ function registerDesktopSuite(name: string, browserType: BrowserType) {
         await page.getByTestId(`booking-reservation-${reservationAId}`).getAttribute("data-booking-bed-id"),
         bedBId,
       )
+    })
+  })
 
-      await reloadHarness(page)
+  test(`${name}: drag creation`, async () => {
+    await withBrowser(browserType, async (page) => {
       const startSelector = `[data-testid="booking-cell-${emptyBedId}-2026-08-10"]`
       const endSelector = `[data-testid="booking-cell-${emptyBedId}-2026-08-12"]`
       const startBox = await visibleBox(page, startSelector)
@@ -132,9 +144,7 @@ function registerDesktopSuite(name: string, browserType: BrowserType) {
         await waitForAction(page, "create:"),
         `create:${emptyBedId}:2026-08-10:2026-08-13`,
       )
-    } finally {
-      await browser.close()
-    }
+    })
   })
 }
 
