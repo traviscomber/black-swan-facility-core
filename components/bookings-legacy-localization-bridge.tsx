@@ -35,20 +35,33 @@ export function BookingsLegacyLocalizationBridge() {
   const { language } = useLanguage()
 
   useEffect(() => {
-    const root = document.querySelector<HTMLElement>(".booking-workspace")
-    if (!root) return
+    const workspace = document.querySelector<HTMLElement>(".booking-workspace")
+    if (!workspace) return
 
-    const run = () => translateTree(root, language)
-    run()
-    const observer = new MutationObserver(run)
-    observer.observe(root, {
+    const translateWorkspace = () => translateTree(workspace, language)
+    translateWorkspace()
+    const workspaceObserver = new MutationObserver(translateWorkspace)
+    workspaceObserver.observe(workspace, {
       childList: true,
       subtree: true,
       characterData: true,
       attributes: true,
       attributeFilter: ["placeholder", "aria-label", "title"],
     })
-    return () => observer.disconnect()
+
+    const translateToasts = () => {
+      for (const toast of Array.from(document.querySelectorAll<HTMLElement>("[data-sonner-toast]"))) {
+        translateTree(toast, language)
+      }
+    }
+    translateToasts()
+    const toastObserver = new MutationObserver(translateToasts)
+    toastObserver.observe(document.body, { childList: true, subtree: true })
+
+    return () => {
+      workspaceObserver.disconnect()
+      toastObserver.disconnect()
+    }
   }, [language])
 
   return null
