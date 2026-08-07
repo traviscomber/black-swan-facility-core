@@ -2,6 +2,7 @@
 
 import { AppLayout } from '@/components/app-layout'
 import { FinanceApprovalQueue } from '@/components/finance-approval-queue'
+import { RaimundoFinanceImport } from '@/components/raimundo-finance-import'
 import { PageHeader } from '@/components/page-header'
 
 export default function BudgetApprovalsPage() {
@@ -11,6 +12,7 @@ export default function BudgetApprovalsPage() {
         title="Aprobación financiera"
         description="Facturas y gastos clasificados contra centros de costo y Budget canónico."
       />
+      <RaimundoFinanceImport />
       <FinanceApprovalQueue />
     </AppLayout>
   )
