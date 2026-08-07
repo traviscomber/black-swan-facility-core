@@ -128,6 +128,9 @@ export function BookingCalendarTimeline({
       onCellPointerDown={interactions.onCellPointerDown}
       onCellClick={interactions.onCellClick}
       onReservationPointerDown={interactions.onReservationPointerDown}
+      onReservationPointerMove={interactions.onReservationPointerMove}
+      onReservationPointerUp={interactions.onReservationPointerUp}
+      onReservationPointerCancel={interactions.onReservationPointerCancel}
       onReservationKeyDown={interactions.onReservationKeyDown}
       onReservationClick={interactions.onReservationClick}
       housekeepingForReservation={housekeepingForReservation}
