@@ -1,10 +1,11 @@
 'use client'
 
 import { createContext, useContext } from 'react'
+import type { Language } from './hooks/use-language'
 
 export interface LanguageContextType {
-  language: 'en' | 'es'
-  setLanguage: (lang: 'en' | 'es') => void
+  language: Language
+  setLanguage: (lang: Language) => void
   t: (key: string) => string
 }
 
