@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { ArrowRight, CheckCircle2 } from 'lucide-react'
+import { CheckCircle2, Search } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { createClient } from '@/lib/supabase/client'
@@ -28,6 +28,8 @@ export function FinanceCenterMapping() {
   const [categories, setCategories] = useState<Category[]>([])
   const [busy, setBusy] = useState<string | null>(null)
   const [draft, setDraft] = useState<Record<string, { division: string; category: string }>>({})
+  const [query, setQuery] = useState('')
+  const [showMapped, setShowMapped] = useState(false)
 
   const load = useCallback(async () => {
     const [centerResult, divisionResult, categoryResult] = await Promise.all([
@@ -70,7 +72,7 @@ export function FinanceCenterMapping() {
     if (error) toast.error(error.message)
     else {
       const result = data as { documents_updated?: number; rules_promoted?: number } | null
-      toast.success(`Mapeo guardado · ${result?.documents_updated ?? 0} documentos · ${result?.rules_promoted ?? 0} reglas promovidas.`)
+      toast.success(`Mapeo guardado · ${result?.documents_updated ?? 0} documentos actualizados.`)
       window.dispatchEvent(new Event('finance-workbook-imported'))
       await load()
     }
@@ -78,35 +80,63 @@ export function FinanceCenterMapping() {
   }
 
   const pending = centers.filter((row) => row.mapping_status !== 'mapped' || !row.category_id)
+  const mapped = centers.length - pending.length
+  const progress = centers.length ? Math.round((mapped / centers.length) * 100) : 100
+  const normalizedQuery = query.trim().toLocaleLowerCase('es')
+  const visibleRows = centers.filter((row) => {
+    const isMapped = row.mapping_status === 'mapped' && Boolean(row.category_id)
+    if (!showMapped && isMapped) return false
+    if (!normalizedQuery) return true
+    return `${row.historical_label} ${row.division_name ?? ''} ${row.category_name ?? ''}`.toLocaleLowerCase('es').includes(normalizedQuery)
+  })
+
   if (!centers.length) return null
 
   return (
-    <section className="mx-4 mt-4 bg-[var(--bs-surface-primary)] p-5 md:mx-8">
-      <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
-        <div>
-          <p className="text-xs uppercase tracking-[0.14em] text-[var(--bs-warm-yellow)]">Puente hacia Budget</p>
-          <h2 className="mt-2 text-lg font-normal text-[var(--bs-text-primary)]">Mapear centros históricos con documentos abiertos</h2>
-          <p className="mt-2 max-w-3xl text-sm leading-6 text-[var(--bs-text-secondary)]">El prefijo del centro permite recuperar el P&L cuando es inequívoco. La categoría Budget se confirma aquí antes de habilitar la aprobación y promover la regla recurrente.</p>
+    <section className="mx-4 mt-4 bg-[var(--bs-surface-primary)] md:mx-8">
+      <div className="p-5 md:p-6">
+        <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
+          <div className="max-w-3xl">
+            <p className="text-xs uppercase tracking-[0.14em] text-[var(--bs-warm-yellow)]">Paso 1 · Clasificar</p>
+            <h2 className="mt-2 text-xl font-normal text-[var(--bs-text-primary)]">Confirmar dónde cae cada centro histórico</h2>
+            <p className="mt-2 text-sm leading-6 text-[var(--bs-text-secondary)]">El P&L se completa automáticamente cuando el prefijo es inequívoco. Solo falta confirmar la categoría Budget. Hasta entonces ningún documento puede aprobarse ni afectar el Budget.</p>
+          </div>
+          <div className="min-w-56 text-right">
+            <p className="text-xs text-[var(--bs-text-muted)]">{mapped} de {centers.length} centros listos</p>
+            <div className="mt-2 h-2 bg-[var(--bs-surface-secondary)]"><div className="h-full bg-[var(--bs-cool-sage)] transition-all" style={{ width: `${progress}%` }} /></div>
+          </div>
         </div>
-        <p className="text-xs text-[var(--bs-text-muted)]">Pendientes · {pending.length}</p>
+
+        <div className="mt-5 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <div className="relative w-full max-w-md">
+            <Search className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-[var(--bs-text-muted)]" />
+            <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar centro histórico" className="h-10 w-full bg-[var(--bs-surface-secondary)] pl-10 pr-3 text-sm text-[var(--bs-text-primary)] outline-none placeholder:text-[var(--bs-text-muted)]" />
+          </div>
+          <button type="button" onClick={() => setShowMapped((value) => !value)} className="text-xs text-[var(--bs-text-secondary)] hover:text-[var(--bs-text-primary)]">{showMapped ? 'Ocultar mapeados' : `Ver mapeados (${mapped})`}</button>
+        </div>
       </div>
 
-      <div className="mt-5 overflow-x-auto">
+      <div className="overflow-x-auto border-t border-[var(--bs-divider-subtle)]">
         <table className="w-full min-w-[980px] text-sm">
-          <thead className="text-left text-xs uppercase tracking-[0.1em] text-[var(--bs-text-muted)]"><tr><th className="py-3 pr-4 font-normal">Centro histórico</th><th className="py-3 pr-4 font-normal">Docs / reglas</th><th className="py-3 pr-4 font-normal">Centro P&L</th><th className="py-3 pr-4 font-normal">Categoría Budget</th><th className="py-3 text-right font-normal">Estado</th></tr></thead>
+          <thead className="text-left text-xs uppercase tracking-[0.1em] text-[var(--bs-text-muted)]">
+            <tr><th className="px-5 py-3 font-normal">Centro histórico</th><th className="px-5 py-3 font-normal">Uso</th><th className="px-5 py-3 font-normal">P&L</th><th className="px-5 py-3 font-normal">Categoría Budget</th><th className="px-5 py-3 text-right font-normal">Acción</th></tr>
+          </thead>
           <tbody>
-            {centers.map((row) => {
+            {visibleRows.map((row) => {
               const choice = draft[row.id] ?? { division: row.division_id ?? '', category: row.category_id ?? '' }
               const availableCategories = categories.filter((category) => category.division_id === choice.division)
-              const mapped = row.mapping_status === 'mapped' && Boolean(row.category_id)
-              return <tr key={row.id} className="border-t border-[var(--bs-divider-subtle)]">
-                <td className="py-4 pr-4"><p className="text-[var(--bs-text-primary)]">{row.historical_label}</p><p className="mt-1 text-xs text-[var(--bs-text-muted)]">Frecuencia histórica {row.header_frequency}</p></td>
-                <td className="py-4 pr-4 text-[var(--bs-text-secondary)]">{row.open_document_count} / {row.historical_rule_count}</td>
-                <td className="py-4 pr-4"><select value={choice.division} onChange={(e) => setDraft((current) => ({ ...current, [row.id]: { division: e.target.value, category: '' } }))} className="h-10 min-w-48 bg-[var(--bs-surface-secondary)] px-3 text-sm text-[var(--bs-text-primary)]"><option value="">Seleccionar</option>{divisions.map((division) => <option key={division.id} value={division.id}>{division.name}</option>)}</select></td>
-                <td className="py-4 pr-4"><select value={choice.category} disabled={!choice.division} onChange={(e) => setDraft((current) => ({ ...current, [row.id]: { ...choice, category: e.target.value } }))} className="h-10 min-w-64 bg-[var(--bs-surface-secondary)] px-3 text-sm text-[var(--bs-text-primary)] disabled:opacity-40"><option value="">Seleccionar categoría</option>{availableCategories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}</select></td>
-                <td className="py-4 text-right">{mapped ? <span className="inline-flex items-center gap-2 text-xs text-[var(--bs-cool-sage)]"><CheckCircle2 className="h-4 w-4" />Mapeado</span> : <Button size="sm" onClick={() => void save(row)} disabled={busy === row.id || !choice.division || !choice.category}>Confirmar<ArrowRight className="ml-2 h-4 w-4" /></Button>}</td>
-              </tr>
+              const isMapped = row.mapping_status === 'mapped' && Boolean(row.category_id)
+              return (
+                <tr key={row.id} className="border-t border-[var(--bs-divider-subtle)] align-middle">
+                  <td className="px-5 py-4"><p className="text-[var(--bs-text-primary)]">{row.historical_label}</p><p className="mt-1 text-xs text-[var(--bs-text-muted)]">{row.header_frequency} apariciones históricas</p></td>
+                  <td className="px-5 py-4"><p className="text-[var(--bs-text-primary)]">{row.open_document_count} doc{row.open_document_count === 1 ? '' : 's'} abierto{row.open_document_count === 1 ? '' : 's'}</p>{row.historical_rule_count > 0 && <p className="mt-1 text-xs text-[var(--bs-text-muted)]">{row.historical_rule_count} regla{row.historical_rule_count === 1 ? '' : 's'} recurrente{row.historical_rule_count === 1 ? '' : 's'}</p>}</td>
+                  <td className="px-5 py-4"><select value={choice.division} onChange={(event) => setDraft((current) => ({ ...current, [row.id]: { division: event.target.value, category: '' } }))} className="h-10 min-w-48 bg-[var(--bs-surface-secondary)] px-3 text-sm text-[var(--bs-text-primary)]"><option value="">Seleccionar P&L</option>{divisions.map((division) => <option key={division.id} value={division.id}>{division.name}</option>)}</select></td>
+                  <td className="px-5 py-4"><select value={choice.category} disabled={!choice.division} onChange={(event) => setDraft((current) => ({ ...current, [row.id]: { ...choice, category: event.target.value } }))} className="h-10 min-w-64 bg-[var(--bs-surface-secondary)] px-3 text-sm text-[var(--bs-text-primary)] disabled:opacity-40"><option value="">Seleccionar categoría</option>{availableCategories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}</select></td>
+                  <td className="px-5 py-4 text-right">{isMapped ? <span className="inline-flex items-center gap-2 text-xs text-[var(--bs-cool-sage)]"><CheckCircle2 className="h-4 w-4" />Listo</span> : <Button size="sm" onClick={() => void save(row)} disabled={busy === row.id || !choice.division || !choice.category}>{busy === row.id ? 'Guardando…' : 'Confirmar'}</Button>}</td>
+                </tr>
+              )
             })}
+            {!visibleRows.length && <tr><td colSpan={5} className="px-5 py-10 text-center text-[var(--bs-text-muted)]">No hay centros pendientes con ese filtro.</td></tr>}
           </tbody>
         </table>
       </div>
