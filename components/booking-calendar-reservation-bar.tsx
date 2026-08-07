@@ -8,11 +8,11 @@ import {
   futureEditable,
   iso,
   roomReady,
-  sourceDescription,
   type BookingCalendarBed,
   type BookingCalendarReservation,
 } from "@/components/booking-calendar-model"
 import { useLanguage } from "@/lib/hooks/use-language"
+import { bookingSourceDescription } from "@/lib/translations/booking-calendar-interactions"
 
 type Geometry = { left: number; width: number }
 type DragVisual = { reservationId: string; transform: string; width: number }
@@ -58,7 +58,7 @@ export function BookingCalendarReservationBar({
   const visual = dragVisual?.reservationId === reservation.id ? dragVisual : null
   const policy = bookingSourcePolicy(reservation.source)
   const disabled = pending || policy === "external-read-only" || !futureEditable(reservation)
-  const sourceLabel = sourceDescription(reservation.source, policy)
+  const sourceLabel = bookingSourceDescription(reservation.source, policy, language)
   const ariaLabel = language === "de"
     ? `${reservation.guest_name}. ${reservation.check_in} bis ${reservation.check_out}. Quelle ${sourceLabel}.`
     : language === "en"
