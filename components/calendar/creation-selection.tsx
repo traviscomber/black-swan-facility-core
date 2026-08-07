@@ -2,8 +2,9 @@
 
 import { useCallback, useState } from "react"
 import { addDays, format } from "date-fns"
-import { DAY_WIDTH, LABEL_WIDTH, ROW_HEIGHT } from "./timeline-row"
+import { DAY_WIDTH, ROW_HEIGHT } from "./timeline-row"
 import { ReservationPreview } from "./reservation-preview"
+import { useLanguage } from "@/lib/hooks/use-language"
 
 export interface CreationRange {
   bedId: string
@@ -23,11 +24,6 @@ export interface CreationSelectionProps {
   onCreationCommit: (range: CreationRange) => void
 }
 
-/**
- * CreationSelection
- * Renders an overlay on a timeline row that detects horizontal drag to create a new reservation.
- * Shows a ghost pastilla while dragging, commits on pointer up.
- */
 export function CreationSelection({
   bedId,
   dates,
@@ -37,11 +33,25 @@ export function CreationSelection({
   onCreationAbort,
   onCreationCommit,
 }: CreationSelectionProps) {
+  const { language } = useLanguage()
+  const previewLabel = language === "de"
+    ? "Neu: Ziehen, um Reservierung anzulegen"
+    : language === "en"
+      ? "New: Drag to create reservation"
+      : "Nuevo: Arrastra para crear reserva"
   const [dragState, setDragState] = useState<{
     startX: number
     startIndex: number
     currentIndex: number
   } | null>(null)
+
+  const toRange = useCallback((startIdx: number, endIdx: number): CreationRange => ({
+    bedId,
+    startIndex: startIdx,
+    endIndex: endIdx,
+    startDate: format(dates[startIdx], "yyyy-MM-dd"),
+    endDate: format(addDays(dates[endIdx], 1), "yyyy-MM-dd"),
+  }), [bedId, dates])
 
   const handlePointerDown = useCallback(
     (e: React.PointerEvent<HTMLDivElement>) => {
@@ -49,31 +59,15 @@ export function CreationSelection({
       e.preventDefault()
       e.stopPropagation()
 
-      // Calculate which day index the pointer started on
-      const rect = (e.currentTarget as HTMLDivElement).getBoundingClientRect()
-      const relativeX = e.clientX - rect.left
-      const dayIndex = Math.floor(relativeX / DAY_WIDTH)
-
+      const rect = e.currentTarget.getBoundingClientRect()
+      const dayIndex = Math.floor((e.clientX - rect.left) / DAY_WIDTH)
       if (dayIndex < 0 || dayIndex >= dates.length) return
 
-      setDragState({
-        startX: e.clientX,
-        startIndex: dayIndex,
-        currentIndex: dayIndex,
-      })
-
-      onCreationStart({
-        bedId,
-        startIndex: dayIndex,
-        endIndex: dayIndex,
-        startDate: format(dates[dayIndex], "yyyy-MM-dd"),
-        endDate: format(addDays(dates[dayIndex], 1), "yyyy-MM-dd"),
-      })
-
-      // Attach pointer capture to this element
-      ;(e.currentTarget as HTMLDivElement).setPointerCapture(e.pointerId)
+      setDragState({ startX: e.clientX, startIndex: dayIndex, currentIndex: dayIndex })
+      onCreationStart(toRange(dayIndex, dayIndex))
+      e.currentTarget.setPointerCapture(e.pointerId)
     },
-    [bedId, dates, isActive, onCreationStart],
+    [dates.length, isActive, onCreationStart, toRange],
   )
 
   const handlePointerMove = useCallback(
@@ -82,32 +76,16 @@ export function CreationSelection({
       e.preventDefault()
       e.stopPropagation()
 
-      const rect = (e.currentTarget as HTMLDivElement).getBoundingClientRect()
-      const relativeX = e.clientX - rect.left
-      const dayIndex = Math.max(
-        0,
-        Math.min(dates.length - 1, Math.floor(relativeX / DAY_WIDTH)),
-      )
+      const rect = e.currentTarget.getBoundingClientRect()
+      const dayIndex = Math.max(0, Math.min(dates.length - 1, Math.floor((e.clientX - rect.left) / DAY_WIDTH)))
+      const [startIdx, endIdx] = dayIndex >= dragState.startIndex
+        ? [dragState.startIndex, dayIndex]
+        : [dayIndex, dragState.startIndex]
 
-      // Update range: ensure startIndex <= endIndex
-      const [startIdx, endIdx] =
-        dayIndex >= dragState.startIndex
-          ? [dragState.startIndex, dayIndex]
-          : [dayIndex, dragState.startIndex]
-
-      setDragState((prev) =>
-        prev ? { ...prev, currentIndex: dayIndex } : null,
-      )
-
-      onCreationStart({
-        bedId,
-        startIndex: startIdx,
-        endIndex: endIdx,
-        startDate: format(dates[startIdx], "yyyy-MM-dd"),
-        endDate: format(addDays(dates[endIdx + 1], 1), "yyyy-MM-dd"),
-      })
+      setDragState((prev) => prev ? { ...prev, currentIndex: dayIndex } : null)
+      onCreationStart(toRange(startIdx, endIdx))
     },
-    [bedId, dates, dragState, onCreationStart],
+    [dates.length, dragState, onCreationStart, toRange],
   )
 
   const handlePointerUp = useCallback(
@@ -116,31 +94,18 @@ export function CreationSelection({
       e.preventDefault()
       e.stopPropagation()
 
-      const rect = (e.currentTarget as HTMLDivElement).getBoundingClientRect()
-      const relativeX = e.clientX - rect.left
-      const dayIndex = Math.max(
-        0,
-        Math.min(dates.length - 1, Math.floor(relativeX / DAY_WIDTH)),
-      )
+      const rect = e.currentTarget.getBoundingClientRect()
+      const dayIndex = Math.max(0, Math.min(dates.length - 1, Math.floor((e.clientX - rect.left) / DAY_WIDTH)))
+      const [startIdx, endIdx] = dayIndex >= dragState.startIndex
+        ? [dragState.startIndex, dayIndex]
+        : [dayIndex, dragState.startIndex]
 
-      const [startIdx, endIdx] =
-        dayIndex >= dragState.startIndex
-          ? [dragState.startIndex, dayIndex]
-          : [dayIndex, dragState.startIndex]
-
-      const createdRange: CreationRange = {
-        bedId,
-        startIndex: startIdx,
-        endIndex: endIdx,
-        startDate: format(dates[startIdx], "yyyy-MM-dd"),
-        endDate: format(addDays(dates[endIdx + 1], 1), "yyyy-MM-dd"),
-      }
-
+      const createdRange = toRange(startIdx, endIdx)
       setDragState(null)
-      ;(e.currentTarget as HTMLDivElement).releasePointerCapture(e.pointerId)
+      if (e.currentTarget.hasPointerCapture(e.pointerId)) e.currentTarget.releasePointerCapture(e.pointerId)
       onCreationCommit(createdRange)
     },
-    [bedId, dates, dragState, onCreationCommit],
+    [dates.length, dragState, onCreationCommit, toRange],
   )
 
   const handlePointerCancel = useCallback(
@@ -149,20 +114,17 @@ export function CreationSelection({
       e.preventDefault()
       e.stopPropagation()
       setDragState(null)
-      ;(e.currentTarget as HTMLDivElement).releasePointerCapture(e.pointerId)
+      if (e.currentTarget.hasPointerCapture(e.pointerId)) e.currentTarget.releasePointerCapture(e.pointerId)
       onCreationAbort()
     },
     [dragState, onCreationAbort],
   )
 
-  // Calculate preview geometry if dragging
   let previewGeometry: { left: number; width: number } | null = null
   if (dragState) {
-    const [startIdx, endIdx] =
-      dragState.currentIndex >= dragState.startIndex
-        ? [dragState.startIndex, dragState.currentIndex]
-        : [dragState.currentIndex, dragState.startIndex]
-
+    const [startIdx, endIdx] = dragState.currentIndex >= dragState.startIndex
+      ? [dragState.startIndex, dragState.currentIndex]
+      : [dragState.currentIndex, dragState.startIndex]
     previewGeometry = {
       left: startIdx * DAY_WIDTH,
       width: (endIdx - startIdx + 1) * DAY_WIDTH,
@@ -171,29 +133,22 @@ export function CreationSelection({
 
   return (
     <>
-      {/* Invisible overlay that covers the entire timeline cell for the row */}
       <div
         className="absolute inset-0 cursor-crosshair"
-        style={{
-          left: 0,
-          top: 0,
-          width: timelineWidth,
-          height: ROW_HEIGHT,
-        }}
+        style={{ left: 0, top: 0, width: timelineWidth, height: ROW_HEIGHT }}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
         onPointerCancel={handlePointerCancel}
       />
 
-      {/* Ghost pastilla during creation drag */}
       {previewGeometry && (
         <ReservationPreview
           left={previewGeometry.left}
           width={previewGeometry.width}
           intent="create"
           conflict="none"
-          label={`Nuevo: Arrastra para crear`}
+          label={previewLabel}
         />
       )}
     </>
