@@ -3,6 +3,7 @@
 import { useEffect } from "react"
 import { useLanguage, type Language } from "@/lib/hooks/use-language"
 import { translateBookingOperationsValue } from "@/lib/translations/booking-operations"
+import { translateBookingOperationsFinal } from "@/lib/translations/booking-operations-final"
 import { translateLegacyCalendarValue } from "@/lib/translations/bookings-calendar-legacy"
 import { translateLegacyCalendarGridValue } from "@/lib/translations/bookings-calendar-grid-legacy"
 import { translateDeepCalendarValue } from "@/lib/translations/bookings-calendar-deep-legacy"
@@ -18,7 +19,8 @@ function localizeLegacyHref(value: string, locale: Language) {
 
 function translateValue(value: string, locale: Language) {
   const operations = translateBookingOperationsValue(value, locale)
-  const calendar = translateLegacyCalendarValue(operations, locale)
+  const operationsFinal = translateBookingOperationsFinal(operations, locale)
+  const calendar = translateLegacyCalendarValue(operationsFinal, locale)
   const grid = translateLegacyCalendarGridValue(calendar, locale)
   return translateDeepCalendarValue(grid, locale)
 }
