@@ -90,6 +90,12 @@ export function BookingCalendarRoomGroup({
   const readinessClass = ROOM_STATUS_CLASSES[roomGroup.room.operational_status]
     ?? "border-border bg-muted text-muted-foreground"
 
+  const bedCountLabel = language === "de"
+    ? `${roomGroup.beds.length} ${roomGroup.beds.length === 1 ? "Bett" : "Betten"}`
+    : language === "en"
+      ? `${roomGroup.beds.length} ${roomGroup.beds.length === 1 ? "bed" : "beds"}`
+      : `${roomGroup.beds.length} ${roomGroup.beds.length === 1 ? "cama" : "camas"}`
+
   const createReservationLabel = (bedNumber: string, date: Date) => {
     if (language === "de") return `Reservierung in ${roomGroup.room.room_number}, Bett ${bedNumber}, am ${iso(date)} erstellen`
     if (language === "en") return `Create reservation in ${roomGroup.room.room_number}, bed ${bedNumber}, on ${iso(date)}`
@@ -119,7 +125,7 @@ export function BookingCalendarRoomGroup({
             <div className="min-w-0">
               <p className="truncate text-sm font-semibold">{roomGroup.room.room_number}</p>
               <p className="truncate text-xs text-muted-foreground">
-                {roomGroup.room.room_type ?? tr("Sin tipo")} · {tr(`${roomGroup.beds.length} ${roomGroup.beds.length === 1 ? "cama" : "camas"}`)}
+                {roomGroup.room.room_type ?? tr("Sin tipo")} · {bedCountLabel}
               </p>
             </div>
           </div>
