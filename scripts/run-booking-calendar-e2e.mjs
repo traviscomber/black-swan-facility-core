@@ -4,7 +4,6 @@ import process from "node:process"
 const host = "127.0.0.1"
 const port = 3100
 const baseURL = `http://${host}:${port}`
-const localizedBaseURL = `${baseURL}/es`
 const harnessPath = "/bookings/e2e-harness"
 const serverEnvironment = {
   ...process.env,
@@ -26,7 +25,7 @@ async function waitForServer() {
       throw new Error(`E2E development server exited with code ${server.exitCode}`)
     }
     try {
-      const response = await fetch(`${localizedBaseURL}${harnessPath}`, { redirect: "manual" })
+      const response = await fetch(`${baseURL}${harnessPath}`, { redirect: "manual" })
       if (response.status === 200) return
     } catch {
       // Development server is still starting.
@@ -52,7 +51,7 @@ try {
     "node",
     ["--experimental-strip-types", "--test", "tests/e2e/booking-calendar.e2e.ts"],
     {
-      env: { ...process.env, E2E_BASE_URL: localizedBaseURL },
+      env: { ...process.env, E2E_BASE_URL: baseURL },
       stdio: "inherit",
     },
   )
