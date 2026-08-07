@@ -7,10 +7,11 @@ import { Button } from '@/components/ui/button'
 import { createClient } from '@/lib/supabase/client'
 
 type AliasStatus = 'proposed' | 'approved' | 'rejected'
+type AliasKind = 'format_normalization' | 'manual_candidate'
 type AliasRow = {
   id: string
   status: AliasStatus
-  proposal_kind: 'format_normalization' | 'manual_candidate'
+  proposal_kind: AliasKind
   confidence: number | string
   proposal_reason: string
   review_note: string | null
@@ -29,6 +30,10 @@ type AliasRow = {
   canonical_category_name: string | null
 }
 
+function kindLabel(kind: AliasKind) {
+  return kind === 'format_normalization' ? 'Formato idéntico' : 'Candidato semántico'
+}
+
 export function FinanceHistoricalAliasReview() {
   const supabase = useMemo(() => createClient(), [])
   const [rows, setRows] = useState<AliasRow[]>([])
@@ -41,7 +46,7 @@ export function FinanceHistoricalAliasReview() {
   const load = useCallback(async () => {
     setLoading(true)
     const [aliasResult, permissionResult] = await Promise.all([
-      supabase.from('finance_historical_alias_queue').select('*').order('status').order('source_label'),
+      supabase.from('finance_historical_alias_queue').select('*').order('status').order('proposal_kind').order('source_label'),
       supabase.rpc('can_finance_review_ambiguous'),
     ])
     if (aliasResult.error || permissionResult.error) {
@@ -66,8 +71,8 @@ export function FinanceHistoricalAliasReview() {
     const { data, error } = await supabase.rpc('refresh_finance_historical_alias_proposals')
     if (error) toast.error(error.message)
     else {
-      const result = data as { inserted?: number } | null
-      toast.success(`${result?.inserted ?? 0} nueva${result?.inserted === 1 ? '' : 's'} sugerencia${result?.inserted === 1 ? '' : 's'} detectada${result?.inserted === 1 ? '' : 's'}.`)
+      const result = data as { inserted?: number; format_inserted?: number; manual_inserted?: number } | null
+      toast.success(`${result?.inserted ?? 0} nuevas sugerencias · ${result?.format_inserted ?? 0} de formato · ${result?.manual_inserted ?? 0} para revisar.`)
       await load()
     }
     setBusy(null)
@@ -95,10 +100,14 @@ export function FinanceHistoricalAliasReview() {
     setBusy(null)
   }
 
-  const counts = useMemo(() => rows.reduce<Record<AliasStatus, number>>((acc, row) => {
+  const counts = useMemo(() => rows.reduce<{ proposed: number; approved: number; rejected: number; format: number; manual: number }>((acc, row) => {
     acc[row.status] += 1
+    if (row.status === 'proposed') {
+      if (row.proposal_kind === 'format_normalization') acc.format += 1
+      else acc.manual += 1
+    }
     return acc
-  }, { proposed: 0, approved: 0, rejected: 0 }), [rows])
+  }, { proposed: 0, approved: 0, rejected: 0, format: 0, manual: 0 }), [rows])
 
   const normalizedQuery = query.trim().toLocaleLowerCase('es')
   const visibleRows = rows.filter((row) => {
@@ -119,11 +128,11 @@ export function FinanceHistoricalAliasReview() {
             <p className="text-xs uppercase tracking-[0.14em] text-[var(--bs-cool-sky)]">Normalización histórica</p>
             <h2 className="mt-2 font-normal text-[var(--bs-text-primary)]">Alias propuestos sin modificar la fuente</h2>
             <p className="mt-2 text-sm leading-6 text-[var(--bs-text-secondary)]">
-              El sistema solo sugiere equivalencias determinísticas de formato. La etiqueta original permanece intacta. Aceptar un alias crea una referencia canónica para futuras clasificaciones; no fusiona ni borra registros históricos.
+              Las diferencias puramente formales se detectan de forma determinística. Las variantes de palabras, abreviaturas o nombres históricos se muestran como candidatos y siempre requieren decisión de Raimundo. Ninguna etiqueta original se renombra, borra o fusiona automáticamente.
             </p>
           </div>
           <div className="text-right text-xs text-[var(--bs-text-secondary)]">
-            <p><span className="text-[var(--bs-warm-yellow)]">{counts.proposed}</span> pendientes · <span className="text-[var(--bs-cool-sage)]">{counts.approved}</span> aprobados · {counts.rejected} descartados</p>
+            <p><span className="text-[var(--bs-warm-yellow)]">{counts.proposed}</span> pendientes · {counts.format} formato · {counts.manual} revisión · <span className="text-[var(--bs-cool-sage)]">{counts.approved}</span> aprobados</p>
             {canReview && <Button className="mt-3" variant="outline" onClick={() => void refreshProposals()} disabled={busy === 'refresh'}><RefreshCw className={`mr-2 h-4 w-4 ${busy === 'refresh' ? 'animate-spin' : ''}`} />Buscar nuevas variantes</Button>}
           </div>
         </div>
@@ -148,7 +157,7 @@ export function FinanceHistoricalAliasReview() {
             {visibleRows.map((row, index) => <tr key={row.id} className={`${index % 2 ? 'bg-[var(--bs-surface-secondary)]/40' : 'bg-[var(--bs-surface-primary)]'} align-top`}>
               <td className="px-5 py-4"><p className="text-[var(--bs-text-primary)]">{row.source_label}</p><p className="mt-1 text-xs text-[var(--bs-text-muted)]">{row.source_frequency} apariciones · {row.source_mapping_status}</p>{row.source_operational_label && <p className="mt-2 text-xs text-[var(--bs-text-secondary)]">Detalle: {row.source_operational_label}</p>}</td>
               <td className="px-5 py-4"><p className="text-[var(--bs-text-primary)]">{row.canonical_label}</p><p className="mt-1 text-xs text-[var(--bs-text-muted)]">{row.canonical_division_name ?? 'P&L pendiente'}{row.canonical_category_name ? ` · ${row.canonical_category_name}` : ''}</p>{row.canonical_operational_label && <p className="mt-2 text-xs text-[var(--bs-text-secondary)]">Detalle: {row.canonical_operational_label}</p>}</td>
-              <td className="px-5 py-4"><p className="max-w-80 text-xs leading-5 text-[var(--bs-text-secondary)]">{row.proposal_reason}</p><p className="mt-2 text-xs text-[var(--bs-cool-sage)]">Confianza determinística {Math.round(Number(row.confidence) * 100)}%</p></td>
+              <td className="px-5 py-4"><p className={row.proposal_kind === 'format_normalization' ? 'text-xs text-[var(--bs-cool-sage)]' : 'text-xs text-[var(--bs-warm-yellow)]'}>{kindLabel(row.proposal_kind)} · {Math.round(Number(row.confidence) * 100)}%</p><p className="mt-2 max-w-80 text-xs leading-5 text-[var(--bs-text-secondary)]">{row.proposal_reason}</p></td>
               <td className="px-5 py-4"><span className={row.status === 'proposed' ? 'text-[var(--bs-warm-yellow)]' : row.status === 'approved' ? 'text-[var(--bs-cool-sage)]' : 'text-[var(--bs-text-muted)]'}>{row.status === 'proposed' ? 'Pendiente de Raimundo' : row.status === 'approved' ? 'Alias aprobado' : 'Descartado'}</span>{row.review_note && <p className="mt-2 max-w-64 text-xs text-[var(--bs-text-secondary)]">{row.review_note}</p>}</td>
               <td className="px-5 py-4 text-right">{row.status === 'proposed' ? <div className="flex justify-end gap-2"><Button size="sm" onClick={() => void review(row, 'approved')} disabled={!canReview || busy === row.id}><Check className="mr-2 h-4 w-4" />Aceptar alias</Button><Button size="sm" variant="outline" onClick={() => void review(row, 'rejected')} disabled={!canReview || busy === row.id}><X className="mr-2 h-4 w-4" />Descartar</Button></div> : <span className="text-xs text-[var(--bs-text-muted)]">Sin cambios a la etiqueta original</span>}</td>
             </tr>)}
