@@ -4,6 +4,15 @@ import { useEffect } from "react"
 import { useLanguage, type Language } from "@/lib/hooks/use-language"
 import { translateBookingOperationsValue } from "@/lib/translations/booking-operations"
 
+const ROUTE_LOCALES = new Set(["en", "es", "de"])
+
+function localizeLegacyHref(value: string, locale: Language) {
+  if (!value.startsWith("/bookings")) return value
+  const firstSegment = value.split("/").filter(Boolean)[0]
+  if (ROUTE_LOCALES.has(firstSegment)) return value
+  return `/${locale}${value}`
+}
+
 function translateTree(root: HTMLElement, locale: Language) {
   const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT)
   const textNodes: Text[] = []
@@ -29,6 +38,13 @@ function translateTree(root: HTMLElement, locale: Language) {
       if (translated !== value) element.setAttribute(attribute, translated)
     }
   }
+
+  for (const anchor of Array.from(root.querySelectorAll<HTMLAnchorElement>("a[href]"))) {
+    const href = anchor.getAttribute("href")
+    if (!href) continue
+    const localized = localizeLegacyHref(href, locale)
+    if (localized !== href) anchor.setAttribute("href", localized)
+  }
 }
 
 export function BookingsLegacyLocalizationBridge() {
@@ -46,7 +62,7 @@ export function BookingsLegacyLocalizationBridge() {
       subtree: true,
       characterData: true,
       attributes: true,
-      attributeFilter: ["placeholder", "aria-label", "title"],
+      attributeFilter: ["placeholder", "aria-label", "title", "href"],
     })
 
     const translateToasts = () => {
