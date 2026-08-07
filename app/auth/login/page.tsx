@@ -108,7 +108,7 @@ export default function LoginPage() {
           <form onSubmit={handleLogin} className="space-y-5">
             <div className="space-y-2">
               <label htmlFor="email" className="block text-[13px] font-medium text-[var(--bs-text-primary)]">
-                Email
+                {copy.email}
               </label>
               <Input
                 id="email"
