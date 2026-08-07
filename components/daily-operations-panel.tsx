@@ -21,6 +21,17 @@ const CATEGORY_LABELS: Record<DailyItem["category"], string> = {
   operations: "Operación",
 }
 
+function chileOperatingDate() {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Santiago",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date())
+  const value = (type: Intl.DateTimeFormatPartTypes) => parts.find((part) => part.type === type)?.value ?? ""
+  return `${value("year")}-${value("month")}-${value("day")}`
+}
+
 export function DailyOperationsPanel() {
   const supabase = useMemo(() => createClient(), [])
   const [open, setOpen] = useState(false)
@@ -32,24 +43,33 @@ export function DailyOperationsPanel() {
     setLoading(true)
     setError(null)
 
-    const today = new Date().toISOString().slice(0, 10)
+    const today = chileOperatingDate()
+    const [year, month, day] = today.split("-").map(Number)
+    const nextDate = new Date(Date.UTC(year, month - 1, day + 1))
+    const nextDay = nextDate.toISOString().slice(0, 10)
+    const chileOffset = "-04:00"
+    const hospitalityStart = `${today}T00:00:00${chileOffset}`
+    const hospitalityEnd = `${nextDay}T00:00:00${chileOffset}`
+
     const [housekeepingResult, hospitalityResult, tasksResult] = await Promise.all([
       supabase
         .from("housekeeping_tasks")
         .select("id, task_type, status, priority, notes, service_date")
         .not("status", "in", "(completed,cancelled)")
-        .or(`service_date.eq.${today},service_date.is.null`)
+        .eq("service_date", today)
         .limit(20),
       supabase
         .from("hospitality_requests")
-        .select("id, request_type, status, priority, description, guest_name")
+        .select("id, request_type, status, priority, description, guest_name, due_at")
         .not("status", "in", "(completed,resolved,cancelled)")
+        .gte("due_at", hospitalityStart)
+        .lt("due_at", hospitalityEnd)
         .limit(20),
       supabase
         .from("tasks")
         .select("id, title, status, priority, location_name, due_date")
         .not("status", "in", "(completed,cancelled)")
-        .or(`due_date.eq.${today},due_date.is.null`)
+        .eq("due_date", today)
         .limit(20),
     ])
 
@@ -112,7 +132,7 @@ export function DailyOperationsPanel() {
           <ClipboardList className="h-4 w-4 shrink-0 text-primary" />
           <div className="min-w-0">
             <p className="truncate text-sm font-medium">Operación del día</p>
-            <p className="text-xs text-muted-foreground">{items.length} acciones abiertas</p>
+            <p className="text-xs text-muted-foreground">{items.length} acciones programadas para hoy</p>
           </div>
           <div className="hidden items-center gap-2 md:flex">
             <Badge variant="secondary" className="gap-1"><Sparkles className="h-3 w-3" />{counts.housekeeping}</Badge>
@@ -136,7 +156,7 @@ export function DailyOperationsPanel() {
               <Button size="sm" variant="outline" onClick={() => void loadItems()}>Reintentar</Button>
             </div>
           ) : items.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No hay tareas abiertas para hoy.</p>
+            <p className="text-sm text-muted-foreground">No hay acciones programadas para hoy.</p>
           ) : (
             <div className="grid gap-1 lg:grid-cols-3">
               {items.map((item) => (
