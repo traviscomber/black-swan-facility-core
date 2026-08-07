@@ -28,6 +28,9 @@ type BookingCalendarReservationBarProps = {
   pending: boolean
   keyboardReservationId: string | null
   onPointerDown: (event: React.PointerEvent<HTMLButtonElement>, reservation: BookingCalendarReservation, bed: BookingCalendarBed) => void
+  onPointerMove: (event: React.PointerEvent<HTMLButtonElement>) => void
+  onPointerUp: (event: React.PointerEvent<HTMLButtonElement>) => void
+  onPointerCancel: (event: React.PointerEvent<HTMLButtonElement>) => void
   onKeyDown: (event: React.KeyboardEvent<HTMLButtonElement>, reservation: BookingCalendarReservation, bed: BookingCalendarBed) => void
   onClick: (reservation: BookingCalendarReservation, bed: BookingCalendarBed) => void
 }
@@ -43,6 +46,9 @@ export function BookingCalendarReservationBar({
   pending,
   keyboardReservationId,
   onPointerDown,
+  onPointerMove,
+  onPointerUp,
+  onPointerCancel,
   onKeyDown,
   onClick,
 }: BookingCalendarReservationBarProps) {
@@ -69,6 +75,9 @@ export function BookingCalendarReservationBar({
     <button
       type="button"
       onPointerDown={(event) => onPointerDown(event, reservation, bed)}
+      onPointerMove={onPointerMove}
+      onPointerUp={onPointerUp}
+      onPointerCancel={onPointerCancel}
       onKeyDown={(event) => onKeyDown(event, reservation, bed)}
       onClick={() => onClick(reservation, bed)}
       className={`absolute bottom-2 z-20 flex h-10 items-center justify-between gap-2 overflow-hidden rounded-md border px-3 text-left text-xs shadow-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${disabled ? "cursor-not-allowed opacity-75" : "hover:-translate-y-0.5 hover:shadow"} ${RESERVATION_STYLES[arrivalState] ?? RESERVATION_STYLES[reservation.status] ?? "border-violet-300 bg-violet-100 text-violet-950"}`}
