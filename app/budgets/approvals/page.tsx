@@ -11,11 +11,11 @@ export default function BudgetApprovalsPage() {
     <AppLayout>
       <PageHeader
         title="Aprobación financiera"
-        description="Facturas y gastos clasificados contra centros de costo y Budget canónico."
+        description="Clasifica una vez, aprueba rápido y conserva trazabilidad contra el Budget canónico."
       />
-      <RaimundoFinanceImport />
       <FinanceCenterMapping />
       <FinanceApprovalQueue />
+      <RaimundoFinanceImport />
     </AppLayout>
   )
 }
