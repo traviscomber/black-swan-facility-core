@@ -17,6 +17,8 @@ import {
   type BookingCalendarReservation,
   type Validation,
 } from "@/components/booking-calendar-model"
+import { useLanguage } from "@/lib/hooks/use-language"
+import { translateBookingOperationsValue } from "@/lib/translations/booking-operations"
 
 type CreateState = { bedId: string; first: number; last: number; state: "valid" | "invalid" }
 type DragVisual = { reservationId: string; transform: string; width: number }
@@ -79,12 +81,20 @@ export function BookingCalendarRoomGroup({
   hospitalityForReservation,
   geometry,
 }: BookingCalendarRoomGroupProps) {
+  const { language } = useLanguage()
+  const tr = (value: string) => translateBookingOperationsValue(value, language)
   const multi = roomGroup.beds.length > 1
   const expanded = !multi || expandedRooms.has(roomGroup.room.id)
   const roomHousekeeping = housekeeping.filter((task) => task.room_id === roomGroup.room.id)
   const roomHospitality = hospitality.filter((request) => request.room_id === roomGroup.room.id)
   const readinessClass = ROOM_STATUS_CLASSES[roomGroup.room.operational_status]
     ?? "border-border bg-muted text-muted-foreground"
+
+  const createReservationLabel = (bedNumber: string, date: Date) => {
+    if (language === "de") return `Reservierung in ${roomGroup.room.room_number}, Bett ${bedNumber}, am ${iso(date)} erstellen`
+    if (language === "en") return `Create reservation in ${roomGroup.room.room_number}, bed ${bedNumber}, on ${iso(date)}`
+    return `Crear reserva en ${roomGroup.room.room_number}, cama ${bedNumber}, el ${iso(date)}`
+  }
 
   return (
     <div data-booking-room-id={roomGroup.room.id}>
@@ -109,13 +119,13 @@ export function BookingCalendarRoomGroup({
             <div className="min-w-0">
               <p className="truncate text-sm font-semibold">{roomGroup.room.room_number}</p>
               <p className="truncate text-xs text-muted-foreground">
-                {roomGroup.room.room_type ?? "Sin tipo"} · {roomGroup.beds.length} {roomGroup.beds.length === 1 ? "cama" : "camas"}
+                {roomGroup.room.room_type ?? tr("Sin tipo")} · {tr(`${roomGroup.beds.length} ${roomGroup.beds.length === 1 ? "cama" : "camas"}`)}
               </p>
             </div>
           </div>
           <div className="flex max-w-[145px] flex-wrap justify-end gap-1">
             <Badge variant="outline" className={`text-[10px] ${readinessClass}`}>
-              {ROOM_STATUS_LABELS[roomGroup.room.operational_status] ?? roomGroup.room.operational_status}
+              {tr(ROOM_STATUS_LABELS[roomGroup.room.operational_status] ?? roomGroup.room.operational_status)}
             </Badge>
             {roomHousekeeping.length > 0 && (
               <Badge variant="secondary" className="gap-1"><Sparkles className="h-3 w-3" />{roomHousekeeping.length}</Badge>
@@ -135,7 +145,7 @@ export function BookingCalendarRoomGroup({
               className="absolute top-4 z-10 h-7 rounded border border-slate-400 bg-slate-200 px-2 text-xs leading-6 text-slate-800"
               style={geometry(block.start_date, block.end_date)}
             >
-              <span className="block truncate">Bloqueo · {block.reason}</span>
+              <span className="block truncate">{tr("Bloqueo")} · {block.reason}</span>
             </div>
           ))}
         </div>
@@ -163,8 +173,8 @@ export function BookingCalendarRoomGroup({
               style={{ width: labelWidth }}
             >
               <div>
-                <p className="text-sm font-medium">Cama {bed.bed_number}</p>
-                <p className="text-xs text-muted-foreground">{bed.bed_type ?? "Sin tipo"}</p>
+                <p className="text-sm font-medium">{tr(`Cama ${bed.bed_number}`)}</p>
+                <p className="text-xs text-muted-foreground">{bed.bed_type ?? tr("Sin tipo")}</p>
               </div>
             </div>
             <div
@@ -187,7 +197,7 @@ export function BookingCalendarRoomGroup({
                       onClick={() => onCellClick(bed, date)}
                       className={`h-full shrink-0 border-r hover:bg-muted/60 ${iso(date) === iso(new Date()) ? "bg-primary/5" : ""}`}
                       style={{ width: dayWidth }}
-                      aria-label={`Crear reserva en ${roomGroup.room.room_number}, cama ${bed.bed_number}, el ${iso(date)}`}
+                      aria-label={createReservationLabel(bed.bed_number, date)}
                       data-booking-date={iso(date)}
                       data-booking-create-state={selectedForCreate ? createState.state : undefined}
                       data-testid={`booking-cell-${bed.id}-${iso(date)}`}
