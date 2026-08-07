@@ -9,6 +9,7 @@ import { createClient } from '@/lib/supabase/client'
 type CenterRow = {
   id: string
   historical_label: string
+  operational_label: string | null
   header_frequency: number
   division_id: string | null
   division_name: string | null
@@ -125,8 +126,8 @@ export function FinanceCenterMapping() {
     })
     if (error) toast.error(error.message)
     else {
-      const result = data as { documents_updated?: number; rules_promoted?: number } | null
-      toast.success(`Decisión guardada · ${result?.documents_updated ?? 0} documentos listos · ${result?.rules_promoted ?? 0} reglas actualizadas.`)
+      const result = data as { documents_updated?: number; rules_promoted?: number; operational_label?: string | null } | null
+      toast.success(`Decisión guardada · ${result?.documents_updated ?? 0} documentos listos · ${result?.rules_promoted ?? 0} reglas actualizadas${result?.operational_label ? ` · detalle: ${result.operational_label}` : ''}.`)
       window.dispatchEvent(new Event('finance-workbook-imported'))
       await load()
     }
@@ -142,7 +143,7 @@ export function FinanceCenterMapping() {
     if (!showMapped && isMapped) return false
     if (!normalizedQuery) return true
     const evidence = (documentsByCenter.get(row.historical_label) ?? []).map((item) => `${item.supplier_name} ${item.document_number}`).join(' ')
-    return `${row.historical_label} ${row.division_name ?? ''} ${row.category_name ?? ''} ${evidence}`.toLocaleLowerCase('es').includes(normalizedQuery)
+    return `${row.historical_label} ${row.operational_label ?? ''} ${row.division_name ?? ''} ${row.category_name ?? ''} ${evidence}`.toLocaleLowerCase('es').includes(normalizedQuery)
   })
 
   if (!centers.length) return null
@@ -154,7 +155,7 @@ export function FinanceCenterMapping() {
           <div className="max-w-3xl">
             <p className="text-xs uppercase tracking-[0.14em] text-[var(--bs-warm-yellow)]">Paso 1 · Revisión de Raimundo</p>
             <h2 className="mt-2 text-xl font-normal text-[var(--bs-text-primary)]">Resolver únicamente las clasificaciones que el histórico no puede cerrar</h2>
-            <p className="mt-2 text-sm leading-6 text-[var(--bs-text-secondary)]">El sistema conserva la evidencia histórica y propone el P&L cuando existe. Raimundo confirma la categoría Budget en los casos ambiguos. Esa decisión deja el documento listo y se reutiliza como regla cuando corresponde.</p>
+            <p className="mt-2 text-sm leading-6 text-[var(--bs-text-secondary)]">Raimundo confirma el P&L y la categoría Budget. El detalle operacional del histórico se conserva aparte —por ejemplo Pairie 3, Club House, un tractor o un vehículo— para no crear líneas nuevas ni modificar el Budget canónico.</p>
           </div>
           <div className="min-w-64">
             <div className="flex items-center justify-end gap-2 text-xs text-[var(--bs-text-secondary)]">
@@ -166,13 +167,13 @@ export function FinanceCenterMapping() {
           </div>
         </div>
         <div className="mt-5 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-          <div className="relative w-full max-w-md"><Search className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-[var(--bs-text-muted)]" /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar centro, proveedor o documento" className="h-10 w-full bg-[var(--bs-surface-secondary)] pl-10 pr-3 text-sm text-[var(--bs-text-primary)] outline-none placeholder:text-[var(--bs-text-muted)] focus-visible:ring-2 focus-visible:ring-[var(--bs-cool-sky)]" /></div>
+          <div className="relative w-full max-w-md"><Search className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-[var(--bs-text-muted)]" /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar detalle, proveedor o documento" className="h-10 w-full bg-[var(--bs-surface-secondary)] pl-10 pr-3 text-sm text-[var(--bs-text-primary)] outline-none placeholder:text-[var(--bs-text-muted)] focus-visible:ring-2 focus-visible:ring-[var(--bs-cool-sky)]" /></div>
           <button type="button" onClick={() => setShowMapped((value) => !value)} className="min-h-10 px-3 text-xs text-[var(--bs-text-secondary)] hover:text-[var(--bs-text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--bs-cool-sky)]">{showMapped ? 'Ocultar resueltos' : `Ver resueltos (${mapped})`}</button>
         </div>
       </div>
       <div className="overflow-x-auto">
         <table className="w-full min-w-[1120px] text-sm">
-          <thead className="bg-[var(--bs-surface-secondary)] text-left text-xs uppercase tracking-[0.1em] text-[var(--bs-text-muted)]"><tr><th className="px-5 py-3 font-normal">Centro histórico</th><th className="px-5 py-3 font-normal">Evidencia activa</th><th className="px-5 py-3 font-normal">P&L</th><th className="px-5 py-3 font-normal">Categoría Budget</th><th className="px-5 py-3 text-right font-normal">Decisión</th></tr></thead>
+          <thead className="bg-[var(--bs-surface-secondary)] text-left text-xs uppercase tracking-[0.1em] text-[var(--bs-text-muted)]"><tr><th className="px-5 py-3 font-normal">Origen / detalle</th><th className="px-5 py-3 font-normal">Evidencia activa</th><th className="px-5 py-3 font-normal">P&L</th><th className="px-5 py-3 font-normal">Categoría Budget</th><th className="px-5 py-3 text-right font-normal">Decisión</th></tr></thead>
           <tbody>
             {visibleRows.map((row, index) => {
               const choice = draft[row.id] ?? { division: row.division_id ?? '', category: row.category_id ?? '' }
@@ -181,7 +182,7 @@ export function FinanceCenterMapping() {
               const evidence = documentsByCenter.get(row.historical_label) ?? []
               const firstEvidence = evidence.slice(0, 3)
               return <tr key={row.id} className={`${index % 2 ? 'bg-[var(--bs-surface-secondary)]/40' : 'bg-[var(--bs-surface-primary)]'} align-top`}>
-                <td className="px-5 py-4"><p className="text-[var(--bs-text-primary)]">{row.historical_label}</p><p className="mt-1 text-xs text-[var(--bs-text-muted)]">{row.header_frequency} apariciones históricas · {row.open_document_count} doc{row.open_document_count === 1 ? '' : 's'} abierto{row.open_document_count === 1 ? '' : 's'}</p>{row.historical_rule_count > 0 && <p className="mt-1 text-xs text-[var(--bs-cool-sage)]">{row.historical_rule_count} regla{row.historical_rule_count === 1 ? '' : 's'} recurrente{row.historical_rule_count === 1 ? '' : 's'}</p>}</td>
+                <td className="px-5 py-4"><p className="text-[var(--bs-text-primary)]">{row.historical_label}</p>{row.operational_label && <p className="mt-2 text-xs text-[var(--bs-warm-yellow)]">Detalle operativo · {row.operational_label}</p>}<p className="mt-1 text-xs text-[var(--bs-text-muted)]">{row.header_frequency} apariciones históricas · {row.open_document_count} doc{row.open_document_count === 1 ? '' : 's'} abierto{row.open_document_count === 1 ? '' : 's'}</p>{row.historical_rule_count > 0 && <p className="mt-1 text-xs text-[var(--bs-cool-sage)]">{row.historical_rule_count} regla{row.historical_rule_count === 1 ? '' : 's'} recurrente{row.historical_rule_count === 1 ? '' : 's'}</p>}</td>
                 <td className="px-5 py-4">
                   <div className="space-y-3">
                     {firstEvidence.map((document) => <div key={document.id}>
