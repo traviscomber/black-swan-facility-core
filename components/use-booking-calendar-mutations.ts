@@ -13,6 +13,8 @@ import {
   type MutationResult,
   type Validation,
 } from "@/components/booking-calendar-model"
+import { useLanguage } from "@/lib/hooks/use-language"
+import { bookingCalendarInteractionCopy, interpolateBookingCopy } from "@/lib/translations/booking-calendar-interactions"
 
 type UseBookingCalendarMutationsInput = {
   activeTransport: BookingCalendarTransport
@@ -27,27 +29,30 @@ export function useBookingCalendarMutations({
   setContext,
   onRefresh,
 }: UseBookingCalendarMutationsInput) {
+  const { language } = useLanguage()
+  const copy = bookingCalendarInteractionCopy[language]
+
   const showUndo = useCallback((result: MutationResult) => {
     if (!result.change_id) return
-    toast.success(result.message ?? "Reserva actualizada", {
+    toast.success(result.message ?? copy.reservationUpdated, {
       duration: 12_000,
       action: {
-        label: "Deshacer",
+        label: copy.undo,
         onClick: () => {
           void (async () => {
             try {
               const undoResult = await activeTransport.undoChange(result.change_id!)
-              toast.success(undoResult.message ?? "Cambio deshecho")
+              toast.success(undoResult.message ?? copy.changeUndone)
               await onRefresh()
               await loadContext()
             } catch (error) {
-              toast.error(error instanceof Error ? error.message : "No fue posible deshacer el cambio")
+              toast.error(error instanceof Error ? error.message : copy.undoFailed)
             }
           })()
         },
       },
     })
-  }, [activeTransport, loadContext, onRefresh])
+  }, [activeTransport, copy.changeUndone, copy.reservationUpdated, copy.undo, copy.undoFailed, loadContext, onRefresh])
 
   const handleMutationResult = useCallback(async (result: MutationResult, reservationId: string) => {
     if (result.result === "queued") {
@@ -55,15 +60,15 @@ export function useBookingCalendarMutations({
         ...current,
         pendingReservationIds: Array.from(new Set([...current.pendingReservationIds, reservationId])),
       }))
-      toast.warning(result.message ?? "Cambio enviado a Santiago para aprobación")
+      toast.warning(result.message ?? copy.sentForApproval)
     } else if (result.result === "applied") {
       showUndo(result)
     } else {
-      toast.info(result.message ?? "La reserva no cambió")
+      toast.info(result.message ?? copy.unchanged)
     }
     await onRefresh()
     await loadContext()
-  }, [loadContext, onRefresh, setContext, showUndo])
+  }, [copy.sentForApproval, copy.unchanged, loadContext, onRefresh, setContext, showUndo])
 
   const applyProposal = useCallback(async (
     reservation: BookingCalendarReservation,
@@ -75,9 +80,10 @@ export function useBookingCalendarMutations({
   ) => {
     try {
       if (validation.intent === "swap" && validation.swapReservation) {
-        const confirmed = window.confirm(
-          `Intercambiar ${reservation.guest_name} con ${validation.swapReservation.guest_name}? Ambas reservas conservarán sus fechas.`,
-        )
+        const confirmed = window.confirm(interpolateBookingCopy(copy.swapConfirm, {
+          a: reservation.guest_name,
+          b: validation.swapReservation.guest_name,
+        }))
         if (!confirmed) return
         const result = await activeTransport.applySwap({
           reservationAId: reservation.id,
@@ -102,9 +108,9 @@ export function useBookingCalendarMutations({
       })
       await handleMutationResult(result, reservation.id)
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "No fue posible actualizar la reserva")
+      toast.error(error instanceof Error ? error.message : copy.updateFailed)
     }
-  }, [activeTransport, handleMutationResult])
+  }, [activeTransport, copy.swapConfirm, copy.updateFailed, handleMutationResult])
 
   return { applyProposal }
 }
