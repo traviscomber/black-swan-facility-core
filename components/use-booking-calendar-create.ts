@@ -8,13 +8,14 @@ import { bookingDragDayDelta, bookingEdgeScrollVelocity, bookingStaysOverlap } f
 import {
   activeInventoryConflict,
   iso,
-  targetLabel,
   type BookingCalendarBed,
   type BookingCalendarBlock,
   type CalendarContext,
   type CreateSession,
   type Feedback,
 } from "@/components/booking-calendar-model"
+import { useLanguage } from "@/lib/hooks/use-language"
+import { bookingCalendarInteractionCopy, bookingTargetLabel } from "@/lib/translations/booking-calendar-interactions"
 
 type CreateState = { bedId: string; first: number; last: number; state: "valid" | "invalid" }
 
@@ -47,6 +48,8 @@ export function useBookingCalendarCreate({
   onOpenNewReservation,
   cancelOther,
 }: UseBookingCalendarCreateInput) {
+  const { language } = useLanguage()
+  const copy = bookingCalendarInteractionCopy[language]
   const createRef = useRef<CreateSession | null>(null)
   const updateCreateRef = useRef<(clientX: number) => void>(() => undefined)
   const autoScrollFrame = useRef<number | null>(null)
@@ -80,19 +83,19 @@ export function useBookingCalendarCreate({
   }, [dates])
 
   const validateCreate = useCallback((bed: BookingCalendarBed, checkIn: string, checkOut: string) => {
-    if (!bed.is_available || unavailableBedIds.has(bed.id)) return { valid: false, message: "La cama está deshabilitada" }
+    if (!bed.is_available || unavailableBedIds.has(bed.id)) return { valid: false, message: copy.bedDisabled }
     if (["out_of_service", "out_of_inventory"].includes(bed.room.operational_status)) {
-      return { valid: false, message: "La habitación no admite nuevas reservas" }
+      return { valid: false, message: copy.roomUnavailable }
     }
     if (context.activeReservations.some((reservation) => activeInventoryConflict(reservation, bed, checkIn, checkOut))) {
-      return { valid: false, message: "El rango cruza una reserva activa" }
+      return { valid: false, message: copy.overlapsReservation }
     }
     if (blocksForValidation.some(
       (block) => block.room_id === bed.room_id
         && bookingStaysOverlap(checkIn, checkOut, block.start_date, block.end_date),
-    )) return { valid: false, message: "El rango cruza un bloqueo operativo" }
-    return { valid: true, message: "Rango disponible para crear una reserva" }
-  }, [blocksForValidation, context.activeReservations, unavailableBedIds])
+    )) return { valid: false, message: copy.overlapsBlock }
+    return { valid: true, message: copy.rangeAvailable }
+  }, [blocksForValidation, context.activeReservations, copy, unavailableBedIds])
 
   const updateCreate = useCallback((clientX: number) => {
     const session = createRef.current
@@ -115,8 +118,8 @@ export function useBookingCalendarCreate({
     session.message = validation.message
     setCreateState({ bedId: session.bed.id, first: range.first, last: range.last, state: validation.valid ? "valid" : "invalid" })
     setFeedback({
-      guestName: "Nueva reserva",
-      targetLabel: targetLabel(session.bed),
+      guestName: copy.newReservation,
+      targetLabel: bookingTargetLabel(session.bed, language),
       checkIn: range.checkIn,
       checkOut: range.checkOut,
       nights: differenceInCalendarDays(parseISO(range.checkOut), parseISO(range.checkIn)),
@@ -125,7 +128,7 @@ export function useBookingCalendarCreate({
       state: validation.valid ? "valid" : "invalid",
       message: validation.message,
     })
-  }, [cancelCreate, dates.length, dayWidth, rangeForCreate, scrollRef, setCreateState, setFeedback, validateCreate])
+  }, [cancelCreate, copy.newReservation, dates.length, dayWidth, language, rangeForCreate, scrollRef, setCreateState, setFeedback, validateCreate])
 
   useEffect(() => { updateCreateRef.current = updateCreate }, [updateCreate])
 
