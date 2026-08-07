@@ -9,13 +9,14 @@ import { type BookingDragMode } from "@/lib/booking-drag"
 import {
   futureEditable,
   iso,
-  targetLabel,
   type BookingCalendarBed,
   type BookingCalendarReservation,
   type Feedback,
   type KeyboardSession,
   type Validation,
 } from "@/components/booking-calendar-model"
+import { useLanguage } from "@/lib/hooks/use-language"
+import { bookingCalendarInteractionCopy, bookingTargetLabel } from "@/lib/translations/booking-calendar-interactions"
 
 type UseBookingCalendarKeyboardInput = {
   bedOrder: BookingCalendarBed[]
@@ -62,6 +63,8 @@ export function useBookingCalendarKeyboard({
   applyProposal,
   onOpenReservation,
 }: UseBookingCalendarKeyboardInput) {
+  const { language } = useLanguage()
+  const copy = bookingCalendarInteractionCopy[language]
   const keyboardRef = useRef<KeyboardSession | null>(null)
 
   const refreshKeyboardFeedback = useCallback((session: KeyboardSession) => {
@@ -69,16 +72,16 @@ export function useBookingCalendarKeyboard({
     setDropTargetBedId(session.targetBed.id)
     setFeedback({
       guestName: session.reservation.guest_name,
-      targetLabel: targetLabel(session.targetBed),
+      targetLabel: bookingTargetLabel(session.targetBed, language),
       checkIn: session.checkIn,
       checkOut: session.checkOut,
       nights: Math.max(0, differenceInCalendarDays(parseISO(session.checkOut), parseISO(session.checkIn))),
       mode: session.validation.intent === "swap" ? "swap" : session.mode,
       valid: session.validation.valid,
       state: session.validation.state,
-      message: `${session.validation.message} Enter confirma; Escape cancela.`,
+      message: `${session.validation.message} ${copy.confirmKeyboard}`,
     })
-  }, [setDropTargetBedId, setFeedback, updateCandidateStates])
+  }, [copy.confirmKeyboard, language, setDropTargetBedId, setFeedback, updateCandidateStates])
 
   const startKeyboardSession = useCallback((
     reservation: BookingCalendarReservation,
@@ -118,8 +121,8 @@ export function useBookingCalendarKeyboard({
     if (!session || session.reservation.id !== reservation.id) {
       if (event.key === "Enter") return void onOpenReservation(reservation, bed)
       if (event.key !== " " && !event.key.startsWith("Arrow")) return
-      if (pending) return void toast.warning("Este cambio ya está pendiente de aprobación")
-      if (policy === "external-read-only") return void toast.warning(bookingSourcePolicyLabel(reservation.source))
+      if (pending) return void toast.warning(copy.pendingApproval)
+      if (policy === "external-read-only") return void toast.warning(bookingSourcePolicyLabel(reservation.source, language))
       if (!futureEditable(reservation)) return
       event.preventDefault()
       session = startKeyboardSession(reservation, bed)
@@ -181,6 +184,8 @@ export function useBookingCalendarKeyboard({
     applyProposal,
     bedOrder,
     cancelKeyboard,
+    copy.pendingApproval,
+    language,
     onOpenReservation,
     pendingIds,
     refreshKeyboardFeedback,
