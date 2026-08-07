@@ -86,7 +86,11 @@ export function FinanceCenterMapping() {
     setCanReview(Boolean(permissionResult.data))
     setDraft((current) => {
       const next = { ...current }
-      for (const row of rows) if (!next[row.id]) next[row.id] = { division: row.division_id ?? '', category: row.category_id ?? '' }
+      for (const row of rows) {
+        const knownDivision = row.division_id ?? ''
+        if (!next[row.id]) next[row.id] = { division: knownDivision, category: row.category_id ?? '' }
+        else if (knownDivision && next[row.id].division !== knownDivision) next[row.id] = { ...next[row.id], division: knownDivision }
+      }
       return next
     })
   }, [supabase])
@@ -116,11 +120,12 @@ export function FinanceCenterMapping() {
       return
     }
     const choice = draft[row.id]
-    if (!choice?.division || !choice.category) return
+    const selectedDivision = row.division_id ?? choice?.division
+    if (!selectedDivision || !choice?.category) return
     setBusy(row.id)
     const { data, error } = await supabase.rpc('map_finance_historical_center', {
       p_center_id: row.id,
-      p_division_id: choice.division,
+      p_division_id: selectedDivision,
       p_category_id: choice.category,
       p_note: 'Clasificación ambigua confirmada por Raimundo desde la bandeja financiera',
     })
@@ -136,15 +141,28 @@ export function FinanceCenterMapping() {
 
   const pending = centers.filter((row) => row.mapping_status !== 'mapped' || !row.category_id)
   const mapped = centers.length - pending.length
+  const pendingWithDivision = pending.filter((row) => Boolean(row.division_id)).length
+  const pendingWithoutDivision = pending.filter((row) => !row.division_id).length
   const progress = centers.length ? Math.round((mapped / centers.length) * 100) : 100
   const normalizedQuery = query.trim().toLocaleLowerCase('es')
-  const visibleRows = centers.filter((row) => {
-    const isMapped = row.mapping_status === 'mapped' && Boolean(row.category_id)
-    if (!showMapped && isMapped) return false
-    if (!normalizedQuery) return true
-    const evidence = (documentsByCenter.get(row.historical_label) ?? []).map((item) => `${item.supplier_name} ${item.document_number}`).join(' ')
-    return `${row.historical_label} ${row.operational_label ?? ''} ${row.division_name ?? ''} ${row.category_name ?? ''} ${evidence}`.toLocaleLowerCase('es').includes(normalizedQuery)
-  })
+  const visibleRows = centers
+    .filter((row) => {
+      const isMapped = row.mapping_status === 'mapped' && Boolean(row.category_id)
+      if (!showMapped && isMapped) return false
+      if (!normalizedQuery) return true
+      const evidence = (documentsByCenter.get(row.historical_label) ?? []).map((item) => `${item.supplier_name} ${item.document_number}`).join(' ')
+      return `${row.historical_label} ${row.operational_label ?? ''} ${row.division_name ?? ''} ${row.category_name ?? ''} ${evidence}`.toLocaleLowerCase('es').includes(normalizedQuery)
+    })
+    .sort((a, b) => {
+      const aMapped = a.mapping_status === 'mapped' && Boolean(a.category_id)
+      const bMapped = b.mapping_status === 'mapped' && Boolean(b.category_id)
+      if (aMapped !== bMapped) return aMapped ? 1 : -1
+      const aKnown = Boolean(a.division_id)
+      const bKnown = Boolean(b.division_id)
+      if (aKnown !== bKnown) return aKnown ? -1 : 1
+      if (a.open_document_count !== b.open_document_count) return b.open_document_count - a.open_document_count
+      return a.historical_label.localeCompare(b.historical_label, 'es')
+    })
 
   if (!centers.length) return null
 
@@ -155,7 +173,7 @@ export function FinanceCenterMapping() {
           <div className="max-w-3xl">
             <p className="text-xs uppercase tracking-[0.14em] text-[var(--bs-warm-yellow)]">Paso 1 · Revisión de Raimundo</p>
             <h2 className="mt-2 text-xl font-normal text-[var(--bs-text-primary)]">Resolver únicamente las clasificaciones que el histórico no puede cerrar</h2>
-            <p className="mt-2 text-sm leading-6 text-[var(--bs-text-secondary)]">Raimundo confirma el P&L y la categoría Budget. El detalle operacional del histórico se conserva aparte —por ejemplo Pairie 3, Club House, un tractor o un vehículo— para no crear líneas nuevas ni modificar el Budget canónico.</p>
+            <p className="mt-2 text-sm leading-6 text-[var(--bs-text-secondary)]">Primero aparecen los casos donde el P&L ya está identificado y Raimundo solo debe elegir la categoría Budget. Los casos sin P&L siguen siendo revisión completa. El detalle operacional histórico se conserva sin crear nuevas líneas.</p>
           </div>
           <div className="min-w-64">
             <div className="flex items-center justify-end gap-2 text-xs text-[var(--bs-text-secondary)]">
@@ -166,7 +184,11 @@ export function FinanceCenterMapping() {
             <div className="mt-2 h-2 bg-[var(--bs-surface-secondary)]"><div className="h-full bg-[var(--bs-cool-sage)] transition-all" style={{ width: `${progress}%` }} /></div>
           </div>
         </div>
-        <div className="mt-5 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        <div className="mt-5 grid gap-2 sm:grid-cols-2 xl:max-w-xl">
+          <div className="bg-[var(--bs-surface-secondary)] px-3 py-2"><p className="text-[11px] uppercase tracking-[0.1em] text-[var(--bs-text-muted)]">Solo falta categoría</p><p className="mt-1 text-lg text-[var(--bs-text-primary)]">{pendingWithDivision}</p></div>
+          <div className="bg-[var(--bs-surface-secondary)] px-3 py-2"><p className="text-[11px] uppercase tracking-[0.1em] text-[var(--bs-text-muted)]">Falta P&L + categoría</p><p className="mt-1 text-lg text-[var(--bs-warm-yellow)]">{pendingWithoutDivision}</p></div>
+        </div>
+        <div className="mt-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div className="relative w-full max-w-md"><Search className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-[var(--bs-text-muted)]" /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar detalle, proveedor o documento" className="h-10 w-full bg-[var(--bs-surface-secondary)] pl-10 pr-3 text-sm text-[var(--bs-text-primary)] outline-none placeholder:text-[var(--bs-text-muted)] focus-visible:ring-2 focus-visible:ring-[var(--bs-cool-sky)]" /></div>
           <button type="button" onClick={() => setShowMapped((value) => !value)} className="min-h-10 px-3 text-xs text-[var(--bs-text-secondary)] hover:text-[var(--bs-text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--bs-cool-sky)]">{showMapped ? 'Ocultar resueltos' : `Ver resueltos (${mapped})`}</button>
         </div>
@@ -177,24 +199,18 @@ export function FinanceCenterMapping() {
           <tbody>
             {visibleRows.map((row, index) => {
               const choice = draft[row.id] ?? { division: row.division_id ?? '', category: row.category_id ?? '' }
-              const availableCategories = categories.filter((category) => category.division_id === choice.division)
+              const selectedDivision = row.division_id ?? choice.division
+              const availableCategories = categories.filter((category) => category.division_id === selectedDivision)
               const isMapped = row.mapping_status === 'mapped' && Boolean(row.category_id)
+              const hasKnownDivision = Boolean(row.division_id) && !isMapped
               const evidence = documentsByCenter.get(row.historical_label) ?? []
               const firstEvidence = evidence.slice(0, 3)
               return <tr key={row.id} className={`${index % 2 ? 'bg-[var(--bs-surface-secondary)]/40' : 'bg-[var(--bs-surface-primary)]'} align-top`}>
-                <td className="px-5 py-4"><p className="text-[var(--bs-text-primary)]">{row.historical_label}</p>{row.operational_label && <p className="mt-2 text-xs text-[var(--bs-warm-yellow)]">Detalle operativo · {row.operational_label}</p>}<p className="mt-1 text-xs text-[var(--bs-text-muted)]">{row.header_frequency} apariciones históricas · {row.open_document_count} doc{row.open_document_count === 1 ? '' : 's'} abierto{row.open_document_count === 1 ? '' : 's'}</p>{row.historical_rule_count > 0 && <p className="mt-1 text-xs text-[var(--bs-cool-sage)]">{row.historical_rule_count} regla{row.historical_rule_count === 1 ? '' : 's'} recurrente{row.historical_rule_count === 1 ? '' : 's'}</p>}</td>
-                <td className="px-5 py-4">
-                  <div className="space-y-3">
-                    {firstEvidence.map((document) => <div key={document.id}>
-                      <div className="flex items-start justify-between gap-4"><div><p className="max-w-64 text-xs text-[var(--bs-text-primary)]">{document.supplier_name}</p><p className="mt-1 text-[11px] text-[var(--bs-text-muted)]">{document.document_number} · {document.classification_status === 'ready' ? 'historial consistente' : document.classification_status === 'exception' ? 'excepción' : 'revisión manual'}</p></div><p className="shrink-0 text-xs text-[var(--bs-text-primary)]">{formatMoney(document.total_amount, document.currency)}</p></div>
-                      {document.classification_reason && <p className="mt-1 max-w-80 text-[11px] leading-4 text-[var(--bs-text-secondary)]">{document.classification_reason}</p>}
-                    </div>)}
-                    {evidence.length > 3 && <p className="text-[11px] text-[var(--bs-text-muted)]">+{evidence.length - 3} documentos adicionales</p>}
-                  </div>
-                </td>
-                <td className="px-5 py-4"><select value={choice.division} disabled={isMapped || !canReview} onChange={(event) => setDraft((current) => ({ ...current, [row.id]: { division: event.target.value, category: '' } }))} className="h-10 min-w-48 bg-[var(--bs-surface-secondary)] px-3 text-sm text-[var(--bs-text-primary)] disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--bs-cool-sky)]"><option value="">Seleccionar P&L</option>{divisions.map((division) => <option key={division.id} value={division.id}>{division.name}</option>)}</select></td>
-                <td className="px-5 py-4"><select value={choice.category} disabled={isMapped || !canReview || !choice.division} onChange={(event) => setDraft((current) => ({ ...current, [row.id]: { ...choice, category: event.target.value } }))} className="h-10 min-w-64 bg-[var(--bs-surface-secondary)] px-3 text-sm text-[var(--bs-text-primary)] disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--bs-cool-sky)]"><option value="">Seleccionar categoría de costo</option>{availableCategories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}</select></td>
-                <td className="px-5 py-4 text-right">{isMapped ? <span className="inline-flex min-h-10 items-center gap-2 text-xs text-[var(--bs-cool-sage)]"><CheckCircle2 className="h-4 w-4" />Resuelto</span> : <Button size="sm" onClick={() => void save(row)} disabled={!canReview || busy === row.id || !choice.division || !choice.category}>{busy === row.id ? 'Guardando…' : 'Confirmar clasificación'}</Button>}</td>
+                <td className="px-5 py-4"><p className="text-[var(--bs-text-primary)]">{row.historical_label}</p>{row.operational_label && <p className="mt-2 text-xs text-[var(--bs-warm-yellow)]">Detalle operativo · {row.operational_label}</p>}<p className={`mt-2 text-xs ${hasKnownDivision ? 'text-[var(--bs-cool-sage)]' : isMapped ? 'text-[var(--bs-text-muted)]' : 'text-[var(--bs-warm-yellow)]'}`}>{isMapped ? 'Clasificación resuelta' : hasKnownDivision ? 'Solo falta categoría Budget' : 'Raimundo debe definir P&L + categoría'}</p><p className="mt-1 text-xs text-[var(--bs-text-muted)]">{row.header_frequency} apariciones históricas · {row.open_document_count} doc{row.open_document_count === 1 ? '' : 's'} abierto{row.open_document_count === 1 ? '' : 's'}</p>{row.historical_rule_count > 0 && <p className="mt-1 text-xs text-[var(--bs-cool-sage)]">{row.historical_rule_count} regla{row.historical_rule_count === 1 ? '' : 's'} recurrente{row.historical_rule_count === 1 ? '' : 's'}</p>}</td>
+                <td className="px-5 py-4"><div className="space-y-3">{firstEvidence.map((document) => <div key={document.id}><div className="flex items-start justify-between gap-4"><div><p className="max-w-64 text-xs text-[var(--bs-text-primary)]">{document.supplier_name}</p><p className="mt-1 text-[11px] text-[var(--bs-text-muted)]">{document.document_number} · {document.classification_status === 'ready' ? 'historial consistente' : document.classification_status === 'exception' ? 'excepción' : 'revisión manual'}</p></div><p className="shrink-0 text-xs text-[var(--bs-text-primary)]">{formatMoney(document.total_amount, document.currency)}</p></div>{document.classification_reason && <p className="mt-1 max-w-80 text-[11px] leading-4 text-[var(--bs-text-secondary)]">{document.classification_reason}</p>}</div>)}{evidence.length > 3 && <p className="text-[11px] text-[var(--bs-text-muted)]">+{evidence.length - 3} documentos adicionales</p>}</div></td>
+                <td className="px-5 py-4">{hasKnownDivision ? <div className="min-w-48 bg-[var(--bs-surface-secondary)] px-3 py-2"><p className="text-sm text-[var(--bs-text-primary)]">{row.division_name}</p><p className="mt-1 text-[11px] text-[var(--bs-cool-sage)]">P&L ya identificado</p></div> : <select value={choice.division} disabled={isMapped || !canReview} onChange={(event) => setDraft((current) => ({ ...current, [row.id]: { division: event.target.value, category: '' } }))} className="h-10 min-w-48 bg-[var(--bs-surface-secondary)] px-3 text-sm text-[var(--bs-text-primary)] disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--bs-cool-sky)]"><option value="">Seleccionar P&L</option>{divisions.map((division) => <option key={division.id} value={division.id}>{division.name}</option>)}</select>}</td>
+                <td className="px-5 py-4"><select value={choice.category} disabled={isMapped || !canReview || !selectedDivision} onChange={(event) => setDraft((current) => ({ ...current, [row.id]: { division: selectedDivision, category: event.target.value } }))} className="h-10 min-w-64 bg-[var(--bs-surface-secondary)] px-3 text-sm text-[var(--bs-text-primary)] disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--bs-cool-sky)]"><option value="">Seleccionar categoría de costo</option>{availableCategories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}</select></td>
+                <td className="px-5 py-4 text-right">{isMapped ? <span className="inline-flex min-h-10 items-center gap-2 text-xs text-[var(--bs-cool-sage)]"><CheckCircle2 className="h-4 w-4" />Resuelto</span> : <Button size="sm" onClick={() => void save(row)} disabled={!canReview || busy === row.id || !selectedDivision || !choice.category}>{busy === row.id ? 'Guardando…' : hasKnownDivision ? 'Confirmar categoría' : 'Confirmar clasificación'}</Button>}</td>
               </tr>
             })}
             {!visibleRows.length && <tr><td colSpan={5} className="px-5 py-10 text-center text-[var(--bs-text-muted)]">No hay centros pendientes con ese filtro.</td></tr>}
