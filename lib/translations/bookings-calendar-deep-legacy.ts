@@ -26,8 +26,6 @@ const exact: Record<Exclude<Language, "es">, Record<string, string>> = {
     "Operación relacionada": "Related operations",
     "Excepciones operacionales": "Operational exceptions",
     "Sin excepciones operacionales abiertas.": "No open operational exceptions.",
-    "Mantenimiento": "Maintenance",
-    "Incidencia": "Issue",
     "Estado": "Status",
     "Bloquea check-in": "Blocks check-in",
     "Vencida": "Overdue",
