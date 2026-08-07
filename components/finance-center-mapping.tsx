@@ -19,12 +19,27 @@ type CenterRow = {
   open_document_count: number
   historical_rule_count: number
 }
-type Division = { id: string; name: string; source_key: string | null; is_aggregate: boolean }
-type Category = { id: string; division_id: string; name: string; source_key: string | null; category_role: string | null }
+
+type Division = {
+  id: string
+  name: string
+  source_key: string | null
+  is_aggregate: boolean
+}
+
+type Category = {
+  id: string
+  division_id: string
+  name: string
+  source_key: string | null
+  category_role: string | null
+}
+
 type PendingDocument = {
   id: string
   supplier_name: string
   document_number: string
+  description: string | null
   total_amount: number | string
   currency: string
   classification_status: string
@@ -36,7 +51,9 @@ type PendingDocument = {
   amount_in_range: boolean | null
   source_payload: { historical_cost_center?: string } | null
 }
+
 type CategoryGuidance = { sourceKey: string; reason: string }
+type DivisionGuidance = { sourceKey: string; reason: string }
 
 function n(value: unknown) {
   const parsed = Number(value ?? 0)
@@ -67,6 +84,20 @@ function normalizeEvidence(value: string | null | undefined) {
 function categoryGuidance(row: CenterRow): CategoryGuidance | null {
   const label = normalizeEvidence(row.operational_label || row.historical_label)
 
+  if (/\bSUELDOS?\b/.test(label)) {
+    return {
+      sourceKey: 'hr',
+      reason: 'La etiqueta histórica identifica explícitamente remuneraciones o sueldos.',
+    }
+  }
+
+  if (/\b(BENCINAS?|PETROLEO|DIESEL|COMBUSTIBLE)\b/.test(label)) {
+    return {
+      sourceKey: 'vehicles-machines-fuel',
+      reason: 'La etiqueta histórica identifica explícitamente combustible.',
+    }
+  }
+
   if (/\bMANT\b.*\bREP\b/.test(label) && /\b(CONSTRUCCIONES?|PAIRIE|CASA|HOUSE|BUILDING|EDIFICIO|INSTALACION)\b/.test(label)) {
     return {
       sourceKey: 'buildings',
@@ -77,11 +108,32 @@ function categoryGuidance(row: CenterRow): CategoryGuidance | null {
   if (/\b(FERTILIZERS?|FERTILIZANTES?|FARMACIA|HERRAMIENTAS?|UTILES|INSUMOS?|CONSUMIBLES?)\b/.test(label)) {
     return {
       sourceKey: 'variable-consumables-tools',
-      reason: 'El detalle histórico corresponde semánticamente a insumos, consumibles o herramientas del P&L.',
+      reason: 'El detalle histórico corresponde explícitamente a insumos, consumibles o herramientas.',
     }
   }
 
   return null
+}
+
+function divisionGuidance(row: CenterRow, evidence: PendingDocument[]): DivisionGuidance | null {
+  const combined = normalizeEvidence([
+    row.historical_label,
+    row.operational_label,
+    ...evidence.map((document) => document.description),
+  ].filter(Boolean).join(' '))
+
+  if (/\bEXIST\b.*\bANIMALES\b/.test(combined) && /\b(TERNERAS?|BOVINOS?|GANADO|VACAS?|NOVILLOS?)\b/.test(combined)) {
+    return {
+      sourceKey: 'farming-cattle',
+      reason: 'La factura describe explícitamente animales bovinos; la orientación de P&L es Cattle.',
+    }
+  }
+
+  return null
+}
+
+function isTechnicalAssistance(row: CenterRow) {
+  return /\bASISTENCIA\s+TECNICA\b/.test(normalizeEvidence(row.operational_label || row.historical_label))
 }
 
 export function FinanceCenterMapping() {
@@ -101,13 +153,15 @@ export function FinanceCenterMapping() {
       supabase.from('finance_center_mapping_queue').select('*').gt('open_document_count', 0).order('open_document_count', { ascending: false }).order('header_frequency', { ascending: false }),
       supabase.from('budget_divisions').select('id,name,source_key,is_aggregate').eq('is_active', true).eq('is_aggregate', false).not('source_key', 'is', null).order('sort_order'),
       supabase.from('budget_categories').select('id,division_id,name,source_key,category_role').eq('is_active', true).not('source_key', 'is', null).eq('category_role', 'cost').order('sort_order'),
-      supabase.from('finance_documents').select('id,supplier_name,document_number,total_amount,currency,classification_status,classification_reason,historical_count,historical_dominance,accepted_min,accepted_max,amount_in_range,source_payload').eq('approval_status', 'pending_mapping'),
+      supabase.from('finance_documents').select('id,supplier_name,document_number,description,total_amount,currency,classification_status,classification_reason,historical_count,historical_dominance,accepted_min,accepted_max,amount_in_range,source_payload').eq('approval_status', 'pending_mapping'),
       supabase.rpc('can_finance_review_ambiguous'),
     ])
+
     if (centerResult.error || divisionResult.error || categoryResult.error || documentResult.error || permissionResult.error) {
       toast.error(centerResult.error?.message || divisionResult.error?.message || categoryResult.error?.message || documentResult.error?.message || permissionResult.error?.message || 'No fue posible cargar la revisión financiera.')
       return
     }
+
     const rows = (centerResult.data ?? []) as CenterRow[]
     setCenters(rows)
     setDivisions((divisionResult.data ?? []) as Division[])
@@ -149,9 +203,11 @@ export function FinanceCenterMapping() {
       toast.error('Los centros ambiguos deben ser confirmados por Raimundo.')
       return
     }
+
     const choice = draft[row.id]
     const selectedDivision = row.division_id ?? choice?.division
     if (!selectedDivision || !choice?.category) return
+
     setBusy(row.id)
     const { data, error } = await supabase.rpc('map_finance_historical_center', {
       p_center_id: row.id,
@@ -159,6 +215,7 @@ export function FinanceCenterMapping() {
       p_category_id: choice.category,
       p_note: 'Clasificación ambigua confirmada por Raimundo desde la bandeja financiera',
     })
+
     if (error) toast.error(error.message)
     else {
       const result = data as { documents_updated?: number; rules_promoted?: number; operational_label?: string | null } | null
@@ -173,24 +230,38 @@ export function FinanceCenterMapping() {
   const mapped = centers.length - pending.length
   const pendingWithDivision = pending.filter((row) => Boolean(row.division_id)).length
   const pendingWithoutDivision = pending.filter((row) => !row.division_id).length
-  const guidedPending = pending.filter((row) => Boolean(row.division_id) && Boolean(categoryGuidance(row))).length
+  const guidedPending = pending.filter((row) => {
+    const evidence = documentsByCenter.get(row.historical_label) ?? []
+    return Boolean(categoryGuidance(row) || divisionGuidance(row, evidence))
+  }).length
   const progress = centers.length ? Math.round((mapped / centers.length) * 100) : 100
   const normalizedQuery = query.trim().toLocaleLowerCase('es')
+
   const visibleRows = centers
     .filter((row) => {
       const isMapped = row.mapping_status === 'mapped' && Boolean(row.category_id)
       if (!showMapped && isMapped) return false
       if (!normalizedQuery) return true
-      const evidence = (documentsByCenter.get(row.historical_label) ?? []).map((item) => `${item.supplier_name} ${item.document_number}`).join(' ')
+      const evidence = (documentsByCenter.get(row.historical_label) ?? [])
+        .map((item) => `${item.supplier_name} ${item.document_number} ${item.description ?? ''}`)
+        .join(' ')
       return `${row.historical_label} ${row.operational_label ?? ''} ${row.division_name ?? ''} ${row.category_name ?? ''} ${evidence}`.toLocaleLowerCase('es').includes(normalizedQuery)
     })
     .sort((a, b) => {
       const aMapped = a.mapping_status === 'mapped' && Boolean(a.category_id)
       const bMapped = b.mapping_status === 'mapped' && Boolean(b.category_id)
       if (aMapped !== bMapped) return aMapped ? 1 : -1
+
       const aKnown = Boolean(a.division_id)
       const bKnown = Boolean(b.division_id)
       if (aKnown !== bKnown) return aKnown ? -1 : 1
+
+      if (!aKnown && !bKnown) {
+        const aGuided = Boolean(divisionGuidance(a, documentsByCenter.get(a.historical_label) ?? []))
+        const bGuided = Boolean(divisionGuidance(b, documentsByCenter.get(b.historical_label) ?? []))
+        if (aGuided !== bGuided) return aGuided ? -1 : 1
+      }
+
       if (a.open_document_count !== b.open_document_count) return b.open_document_count - a.open_document_count
       return a.historical_label.localeCompare(b.historical_label, 'es')
     })
@@ -204,7 +275,7 @@ export function FinanceCenterMapping() {
           <div className="max-w-3xl">
             <p className="text-xs uppercase tracking-[0.14em] text-[var(--bs-warm-yellow)]">Paso 1 · Revisión de Raimundo</p>
             <h2 className="mt-2 text-xl font-normal text-[var(--bs-text-primary)]">Resolver únicamente las clasificaciones que el histórico no puede cerrar</h2>
-            <p className="mt-2 text-sm leading-6 text-[var(--bs-text-secondary)]">Primero aparecen los casos donde el P&L ya está identificado y Raimundo solo debe elegir la categoría Budget. Cuando el detalle coincide de forma clara con una categoría canónica del mismo P&L, se muestra una orientación semántica. Nunca se preselecciona ni se aprueba automáticamente.</p>
+            <p className="mt-2 text-sm leading-6 text-[var(--bs-text-secondary)]">Las facturas muestran ahora su descripción fuente. Las orientaciones se limitan a términos explícitos —sueldos, combustible, construcciones, insumos o bovinos— y nunca se aplican automáticamente. Asistencia técnica conserva la evidencia, pero no recibe categoría inventada.</p>
           </div>
           <div className="min-w-64">
             <div className="flex items-center justify-end gap-2 text-xs text-[var(--bs-text-secondary)]">
@@ -215,19 +286,24 @@ export function FinanceCenterMapping() {
             <div className="mt-2 h-2 bg-[var(--bs-surface-secondary)]"><div className="h-full bg-[var(--bs-cool-sage)] transition-all" style={{ width: `${progress}%` }} /></div>
           </div>
         </div>
+
         <div className="mt-5 grid gap-2 sm:grid-cols-3 xl:max-w-3xl">
           <div className="bg-[var(--bs-surface-secondary)] px-3 py-2"><p className="text-[11px] uppercase tracking-[0.1em] text-[var(--bs-text-muted)]">Solo falta categoría</p><p className="mt-1 text-lg text-[var(--bs-text-primary)]">{pendingWithDivision}</p></div>
-          <div className="bg-[var(--bs-surface-secondary)] px-3 py-2"><p className="text-[11px] uppercase tracking-[0.1em] text-[var(--bs-text-muted)]">Con orientación segura</p><p className="mt-1 text-lg text-[var(--bs-cool-sage)]">{guidedPending}</p></div>
+          <div className="bg-[var(--bs-surface-secondary)] px-3 py-2"><p className="text-[11px] uppercase tracking-[0.1em] text-[var(--bs-text-muted)]">Con orientación explícita</p><p className="mt-1 text-lg text-[var(--bs-cool-sage)]">{guidedPending}</p></div>
           <div className="bg-[var(--bs-surface-secondary)] px-3 py-2"><p className="text-[11px] uppercase tracking-[0.1em] text-[var(--bs-text-muted)]">Falta P&L + categoría</p><p className="mt-1 text-lg text-[var(--bs-warm-yellow)]">{pendingWithoutDivision}</p></div>
         </div>
+
         <div className="mt-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-          <div className="relative w-full max-w-md"><Search className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-[var(--bs-text-muted)]" /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar detalle, proveedor o documento" className="h-10 w-full bg-[var(--bs-surface-secondary)] pl-10 pr-3 text-sm text-[var(--bs-text-primary)] outline-none placeholder:text-[var(--bs-text-muted)] focus-visible:ring-2 focus-visible:ring-[var(--bs-cool-sky)]" /></div>
+          <div className="relative w-full max-w-md"><Search className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-[var(--bs-text-muted)]" /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar detalle, proveedor, documento o descripción" className="h-10 w-full bg-[var(--bs-surface-secondary)] pl-10 pr-3 text-sm text-[var(--bs-text-primary)] outline-none placeholder:text-[var(--bs-text-muted)] focus-visible:ring-2 focus-visible:ring-[var(--bs-cool-sky)]" /></div>
           <button type="button" onClick={() => setShowMapped((value) => !value)} className="min-h-10 px-3 text-xs text-[var(--bs-text-secondary)] hover:text-[var(--bs-text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--bs-cool-sky)]">{showMapped ? 'Ocultar resueltos' : `Ver resueltos (${mapped})`}</button>
         </div>
       </div>
+
       <div className="overflow-x-auto">
         <table className="w-full min-w-[1120px] text-sm">
-          <thead className="bg-[var(--bs-surface-secondary)] text-left text-xs uppercase tracking-[0.1em] text-[var(--bs-text-muted)]"><tr><th className="px-5 py-3 font-normal">Origen / detalle</th><th className="px-5 py-3 font-normal">Evidencia activa</th><th className="px-5 py-3 font-normal">P&L</th><th className="px-5 py-3 font-normal">Categoría Budget</th><th className="px-5 py-3 text-right font-normal">Decisión</th></tr></thead>
+          <thead className="bg-[var(--bs-surface-secondary)] text-left text-xs uppercase tracking-[0.1em] text-[var(--bs-text-muted)]">
+            <tr><th className="px-5 py-3 font-normal">Origen / detalle</th><th className="px-5 py-3 font-normal">Evidencia activa</th><th className="px-5 py-3 font-normal">P&L</th><th className="px-5 py-3 font-normal">Categoría Budget</th><th className="px-5 py-3 text-right font-normal">Decisión</th></tr>
+          </thead>
           <tbody>
             {visibleRows.map((row, index) => {
               const choice = draft[row.id] ?? { division: row.division_id ?? '', category: row.category_id ?? '' }
@@ -235,20 +311,82 @@ export function FinanceCenterMapping() {
               const availableCategories = categories.filter((category) => category.division_id === selectedDivision)
               const isMapped = row.mapping_status === 'mapped' && Boolean(row.category_id)
               const hasKnownDivision = Boolean(row.division_id) && !isMapped
-              const guidance = hasKnownDivision ? categoryGuidance(row) : null
-              const suggestedCategory = guidance ? availableCategories.find((category) => category.source_key === guidance.sourceKey) : null
               const evidence = documentsByCenter.get(row.historical_label) ?? []
               const firstEvidence = evidence.slice(0, 3)
-              return <tr key={row.id} className={`${index % 2 ? 'bg-[var(--bs-surface-secondary)]/40' : 'bg-[var(--bs-surface-primary)]'} align-top`}>
-                <td className="px-5 py-4"><p className="text-[var(--bs-text-primary)]">{row.historical_label}</p>{row.operational_label && <p className="mt-2 text-xs text-[var(--bs-warm-yellow)]">Detalle operativo · {row.operational_label}</p>}<p className={`mt-2 text-xs ${hasKnownDivision ? 'text-[var(--bs-cool-sage)]' : isMapped ? 'text-[var(--bs-text-muted)]' : 'text-[var(--bs-warm-yellow)]'}`}>{isMapped ? 'Clasificación resuelta' : hasKnownDivision ? 'Solo falta categoría Budget' : 'Raimundo debe definir P&L + categoría'}</p><p className="mt-1 text-xs text-[var(--bs-text-muted)]">{row.header_frequency} apariciones históricas · {row.open_document_count} doc{row.open_document_count === 1 ? '' : 's'} abierto{row.open_document_count === 1 ? '' : 's'}</p>{row.historical_rule_count > 0 && <p className="mt-1 text-xs text-[var(--bs-cool-sage)]">{row.historical_rule_count} regla{row.historical_rule_count === 1 ? '' : 's'} recurrente{row.historical_rule_count === 1 ? '' : 's'}</p>}</td>
-                <td className="px-5 py-4"><div className="space-y-3">{firstEvidence.map((document) => <div key={document.id}><div className="flex items-start justify-between gap-4"><div><p className="max-w-64 text-xs text-[var(--bs-text-primary)]">{document.supplier_name}</p><p className="mt-1 text-[11px] text-[var(--bs-text-muted)]">{document.document_number} · {document.classification_status === 'ready' ? 'historial consistente' : document.classification_status === 'exception' ? 'excepción' : 'revisión manual'}</p></div><p className="shrink-0 text-xs text-[var(--bs-text-primary)]">{formatMoney(document.total_amount, document.currency)}</p></div>{document.classification_reason && <p className="mt-1 max-w-80 text-[11px] leading-4 text-[var(--bs-text-secondary)]">{document.classification_reason}</p>}</div>)}{evidence.length > 3 && <p className="text-[11px] text-[var(--bs-text-muted)]">+{evidence.length - 3} documentos adicionales</p>}</div></td>
-                <td className="px-5 py-4">{hasKnownDivision ? <div className="min-w-48 bg-[var(--bs-surface-secondary)] px-3 py-2"><p className="text-sm text-[var(--bs-text-primary)]">{row.division_name}</p><p className="mt-1 text-[11px] text-[var(--bs-cool-sage)]">P&L ya identificado</p></div> : <select value={choice.division} disabled={isMapped || !canReview} onChange={(event) => setDraft((current) => ({ ...current, [row.id]: { division: event.target.value, category: '' } }))} className="h-10 min-w-48 bg-[var(--bs-surface-secondary)] px-3 text-sm text-[var(--bs-text-primary)] disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--bs-cool-sky)]"><option value="">Seleccionar P&L</option>{divisions.map((division) => <option key={division.id} value={division.id}>{division.name}</option>)}</select>}</td>
-                <td className="px-5 py-4">
-                  <select value={choice.category} disabled={isMapped || !canReview || !selectedDivision} onChange={(event) => setDraft((current) => ({ ...current, [row.id]: { division: selectedDivision, category: event.target.value } }))} className="h-10 min-w-64 bg-[var(--bs-surface-secondary)] px-3 text-sm text-[var(--bs-text-primary)] disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--bs-cool-sky)]"><option value="">Seleccionar categoría de costo</option>{availableCategories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}</select>
-                  {suggestedCategory && guidance && !isMapped && <div className="mt-2 max-w-72 bg-[var(--bs-surface-secondary)] px-3 py-2"><p className="text-[11px] uppercase tracking-[0.08em] text-[var(--bs-cool-sage)]">Orientación semántica · {suggestedCategory.name}</p><p className="mt-1 text-[11px] leading-4 text-[var(--bs-text-secondary)]">{guidance.reason}</p><div className="mt-2 flex items-center justify-between gap-3"><p className="text-[10px] text-[var(--bs-text-muted)]">No se aplica automáticamente.</p>{choice.category !== suggestedCategory.id && <button type="button" disabled={!canReview} onClick={() => setDraft((current) => ({ ...current, [row.id]: { division: selectedDivision, category: suggestedCategory.id } }))} className="text-[11px] text-[var(--bs-cool-sage)] hover:text-[var(--bs-text-primary)] disabled:opacity-50">Usar sugerencia</button>}</div></div>}
-                </td>
-                <td className="px-5 py-4 text-right">{isMapped ? <span className="inline-flex min-h-10 items-center gap-2 text-xs text-[var(--bs-cool-sage)]"><CheckCircle2 className="h-4 w-4" />Resuelto</span> : <Button size="sm" onClick={() => void save(row)} disabled={!canReview || busy === row.id || !selectedDivision || !choice.category}>{busy === row.id ? 'Guardando…' : hasKnownDivision ? 'Confirmar categoría' : 'Confirmar clasificación'}</Button>}</td>
-              </tr>
+              const divisionHint = !row.division_id && !isMapped ? divisionGuidance(row, evidence) : null
+              const suggestedDivision = divisionHint ? divisions.find((division) => division.source_key === divisionHint.sourceKey) : null
+              const guidance = !isMapped ? categoryGuidance(row) : null
+              const suggestedCategory = guidance && selectedDivision ? availableCategories.find((category) => category.source_key === guidance.sourceKey) : null
+
+              return (
+                <tr key={row.id} className={`${index % 2 ? 'bg-[var(--bs-surface-secondary)]/40' : 'bg-[var(--bs-surface-primary)]'} align-top`}>
+                  <td className="px-5 py-4">
+                    <p className="text-[var(--bs-text-primary)]">{row.historical_label}</p>
+                    {row.operational_label && <p className="mt-2 text-xs text-[var(--bs-warm-yellow)]">Detalle operativo · {row.operational_label}</p>}
+                    <p className={`mt-2 text-xs ${hasKnownDivision ? 'text-[var(--bs-cool-sage)]' : isMapped ? 'text-[var(--bs-text-muted)]' : 'text-[var(--bs-warm-yellow)]'}`}>{isMapped ? 'Clasificación resuelta' : hasKnownDivision ? 'Solo falta categoría Budget' : divisionHint ? 'P&L orientado por evidencia explícita' : 'Raimundo debe definir P&L + categoría'}</p>
+                    <p className="mt-1 text-xs text-[var(--bs-text-muted)]">{row.header_frequency} apariciones históricas · {row.open_document_count} doc{row.open_document_count === 1 ? '' : 's'} abierto{row.open_document_count === 1 ? '' : 's'}</p>
+                    {row.historical_rule_count > 0 && <p className="mt-1 text-xs text-[var(--bs-cool-sage)]">{row.historical_rule_count} regla{row.historical_rule_count === 1 ? '' : 's'} recurrente{row.historical_rule_count === 1 ? '' : 's'}</p>}
+                    {isTechnicalAssistance(row) && !isMapped && <p className="mt-2 max-w-72 text-[11px] leading-4 text-[var(--bs-text-secondary)]">Asistencia técnica: la fuente confirma la naturaleza del servicio, pero no determina una categoría Budget canónica. Se mantiene decisión humana.</p>}
+                  </td>
+
+                  <td className="px-5 py-4">
+                    <div className="space-y-3">
+                      {firstEvidence.map((document) => (
+                        <div key={document.id}>
+                          <div className="flex items-start justify-between gap-4">
+                            <div>
+                              <p className="max-w-64 text-xs text-[var(--bs-text-primary)]">{document.supplier_name}</p>
+                              <p className="mt-1 text-[11px] text-[var(--bs-text-muted)]">{document.document_number} · {document.classification_status === 'ready' ? 'historial consistente' : document.classification_status === 'exception' ? 'excepción' : 'revisión manual'}</p>
+                            </div>
+                            <p className="shrink-0 text-xs text-[var(--bs-text-primary)]">{formatMoney(document.total_amount, document.currency)}</p>
+                          </div>
+                          {document.description && <p className="mt-1 max-w-80 text-[11px] leading-4 text-[var(--bs-text-primary)]">{document.description}</p>}
+                          {document.classification_reason && <p className="mt-1 max-w-80 text-[11px] leading-4 text-[var(--bs-text-secondary)]">{document.classification_reason}</p>}
+                        </div>
+                      ))}
+                      {evidence.length > 3 && <p className="text-[11px] text-[var(--bs-text-muted)]">+{evidence.length - 3} documentos adicionales</p>}
+                    </div>
+                  </td>
+
+                  <td className="px-5 py-4">
+                    {hasKnownDivision ? (
+                      <div className="min-w-48 bg-[var(--bs-surface-secondary)] px-3 py-2"><p className="text-sm text-[var(--bs-text-primary)]">{row.division_name}</p><p className="mt-1 text-[11px] text-[var(--bs-cool-sage)]">P&L ya identificado</p></div>
+                    ) : (
+                      <>
+                        <select value={choice.division} disabled={isMapped || !canReview} onChange={(event) => setDraft((current) => ({ ...current, [row.id]: { division: event.target.value, category: '' } }))} className="h-10 min-w-48 bg-[var(--bs-surface-secondary)] px-3 text-sm text-[var(--bs-text-primary)] disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--bs-cool-sky)]">
+                          <option value="">Seleccionar P&L</option>
+                          {divisions.map((division) => <option key={division.id} value={division.id}>{division.name}</option>)}
+                        </select>
+                        {suggestedDivision && divisionHint && !isMapped && (
+                          <div className="mt-2 max-w-72 bg-[var(--bs-surface-secondary)] px-3 py-2">
+                            <p className="text-[11px] uppercase tracking-[0.08em] text-[var(--bs-cool-sage)]">Orientación P&L · {suggestedDivision.name}</p>
+                            <p className="mt-1 text-[11px] leading-4 text-[var(--bs-text-secondary)]">{divisionHint.reason}</p>
+                            <div className="mt-2 flex items-center justify-between gap-3"><p className="text-[10px] text-[var(--bs-text-muted)]">No se aplica automáticamente.</p>{choice.division !== suggestedDivision.id && <button type="button" disabled={!canReview} onClick={() => setDraft((current) => ({ ...current, [row.id]: { division: suggestedDivision.id, category: '' } }))} className="text-[11px] text-[var(--bs-cool-sage)] hover:text-[var(--bs-text-primary)] disabled:opacity-50">Usar P&L sugerido</button>}</div>
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </td>
+
+                  <td className="px-5 py-4">
+                    <select value={choice.category} disabled={isMapped || !canReview || !selectedDivision} onChange={(event) => setDraft((current) => ({ ...current, [row.id]: { division: selectedDivision, category: event.target.value } }))} className="h-10 min-w-64 bg-[var(--bs-surface-secondary)] px-3 text-sm text-[var(--bs-text-primary)] disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--bs-cool-sky)]">
+                      <option value="">Seleccionar categoría de costo</option>
+                      {availableCategories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}
+                    </select>
+                    {guidance && !isMapped && (
+                      <div className="mt-2 max-w-72 bg-[var(--bs-surface-secondary)] px-3 py-2">
+                        <p className="text-[11px] uppercase tracking-[0.08em] text-[var(--bs-cool-sage)]">Orientación de categoría{suggestedCategory ? ` · ${suggestedCategory.name}` : ''}</p>
+                        <p className="mt-1 text-[11px] leading-4 text-[var(--bs-text-secondary)]">{guidance.reason}</p>
+                        <div className="mt-2 flex items-center justify-between gap-3"><p className="text-[10px] text-[var(--bs-text-muted)]">{selectedDivision ? 'Requiere confirmación.' : 'Primero define el P&L.'}</p>{suggestedCategory && choice.category !== suggestedCategory.id && <button type="button" disabled={!canReview} onClick={() => setDraft((current) => ({ ...current, [row.id]: { division: selectedDivision, category: suggestedCategory.id } }))} className="text-[11px] text-[var(--bs-cool-sage)] hover:text-[var(--bs-text-primary)] disabled:opacity-50">Usar sugerencia</button>}</div>
+                      </div>
+                    )}
+                  </td>
+
+                  <td className="px-5 py-4 text-right">
+                    {isMapped ? <span className="inline-flex min-h-10 items-center gap-2 text-xs text-[var(--bs-cool-sage)]"><CheckCircle2 className="h-4 w-4" />Resuelto</span> : <Button size="sm" onClick={() => void save(row)} disabled={!canReview || busy === row.id || !selectedDivision || !choice.category}>{busy === row.id ? 'Guardando…' : hasKnownDivision ? 'Confirmar categoría' : 'Confirmar clasificación'}</Button>}
+                  </td>
+                </tr>
+              )
             })}
             {!visibleRows.length && <tr><td colSpan={5} className="px-5 py-10 text-center text-[var(--bs-text-muted)]">No hay centros pendientes con ese filtro.</td></tr>}
           </tbody>
