@@ -94,21 +94,21 @@ export function BudgetRoleDashboard() {
   useEffect(() => {
     let active = true
     async function load() {
-      const [{ data: authData }, divisionResult, categoryResult, budgetResult, postingResult] = await Promise.all([
+      const [{ data: authData }, divisionResult, categoryResult, budgetResult, approvalResult] = await Promise.all([
         supabase.auth.getUser(),
         supabase.from('budget_divisions').select('id,name,source_key,parent_id,is_aggregate').eq('is_active', true),
         supabase.from('budget_categories').select('id,name,source_key,category_role').eq('is_active', true),
         supabase.from('budgets').select('division_id,category_id,budgeted_amount,actual_amount').eq('year', now.getFullYear()).eq('month', now.getMonth() + 1).eq('source_kind', 'workbook'),
-        supabase.from('financial_postings').select('status'),
+        supabase.from('finance_approval_queue').select('classification_status'),
       ])
       if (!active) return
       setPersona(personaFromEmail(authData.user?.email))
       setDivisions((divisionResult.data ?? []) as Division[])
       setCategories((categoryResult.data ?? []) as Category[])
       setRows((budgetResult.data ?? []) as BudgetRow[])
-      const statuses = (postingResult.data ?? []) as Array<{ status: string | null }>
-      setPending(statuses.filter((item) => item.status === 'draft' || item.status === 'exception').length)
-      setReady(statuses.filter((item) => item.status === 'ready').length)
+      const statuses = (approvalResult.data ?? []) as Array<{ classification_status: string | null }>
+      setPending(statuses.filter((item) => item.classification_status === 'exception' || item.classification_status === 'manual_review').length)
+      setReady(statuses.filter((item) => item.classification_status === 'ready').length)
     }
     void load()
     return () => { active = false }
@@ -161,10 +161,11 @@ export function BudgetRoleDashboard() {
     ? [
         { label: 'Operación Hospitality', href: '/bookings', Icon: Building2 },
         { label: 'Administración del campo', href: '/cattle', Icon: Leaf },
-        { label: 'Aprobaciones', href: '/procurement/approvals', Icon: ClipboardCheck },
+        { label: 'Aprobación financiera', href: '/budgets/approvals', Icon: ClipboardCheck },
       ]
     : persona === 'field_admin'
       ? [
+          { label: 'Aprobación financiera', href: '/budgets/approvals', Icon: ClipboardCheck },
           { label: 'Ganadería', href: '/cattle', Icon: Tractor },
           { label: 'Combustibles', href: '/fuel-consumption', Icon: CircleDollarSign },
           { label: 'Compras del campo', href: '/procurement', Icon: ClipboardCheck },
@@ -177,7 +178,7 @@ export function BudgetRoleDashboard() {
             { label: 'Infrastructure', href: '/infrastructure', Icon: BriefcaseBusiness },
           ]
         : [
-            { label: 'Aprobaciones', href: '/procurement/approvals', Icon: ClipboardCheck },
+            { label: 'Aprobación financiera', href: '/budgets/approvals', Icon: ClipboardCheck },
             { label: 'Procurement', href: '/procurement', Icon: BriefcaseBusiness },
           ]
 
@@ -208,7 +209,7 @@ export function BudgetRoleDashboard() {
           </div>
           <div className="flex flex-wrap gap-2">
             {actions.map(({ label, href, Icon: ActionIcon }) => (
-              <Button key={href} asChild variant="outline">
+              <Button key={`${href}-${label}`} asChild variant="outline">
                 <Link href={href}><ActionIcon className="mr-2 h-4 w-4" />{label}<ArrowRight className="ml-2 h-4 w-4" /></Link>
               </Button>
             ))}
@@ -230,14 +231,14 @@ export function BudgetRoleDashboard() {
               <p className="text-xs uppercase tracking-[0.1em] text-[var(--bs-text-muted)]">Listo para aprobar</p>
               <div className="mt-2 flex items-end justify-between gap-4">
                 <p className="text-xl text-[var(--bs-cool-sage)]">{ready}</p>
-                <Button asChild variant="ghost" size="sm"><Link href="/procurement/approvals">Revisar<ArrowRight className="ml-2 h-4 w-4" /></Link></Button>
+                <Button asChild variant="ghost" size="sm"><Link href="/budgets/approvals">Revisar<ArrowRight className="ml-2 h-4 w-4" /></Link></Button>
               </div>
             </div>
             <div className="bg-[var(--bs-surface-secondary)] p-4">
               <p className="text-xs uppercase tracking-[0.1em] text-[var(--bs-text-muted)]">Excepciones / pendientes</p>
               <div className="mt-2 flex items-end justify-between gap-4">
                 <p className="text-xl text-[var(--bs-warm-orange)]">{pending}</p>
-                <Button asChild variant="ghost" size="sm"><Link href="/budgets">Ver detalle<ArrowRight className="ml-2 h-4 w-4" /></Link></Button>
+                <Button asChild variant="ghost" size="sm"><Link href="/budgets/approvals">Resolver<ArrowRight className="ml-2 h-4 w-4" /></Link></Button>
               </div>
             </div>
           </div>
