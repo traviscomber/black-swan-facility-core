@@ -6,6 +6,7 @@ import { AvailabilityCalendarPicker } from "@/components/availability-calendar-p
 import { useState, useEffect } from "react"
 import { createBrowserClient } from "@/lib/supabase/client"
 import { useEffectiveAccess } from "@/lib/hooks/use-effective-access"
+import { useLanguage } from "@/lib/hooks/use-language"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -13,6 +14,7 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { format } from "date-fns"
+import { addReservationCopy, fillReservationCopy } from "@/lib/translations/add-reservation"
 
 interface Room {
   room_number: string
@@ -76,6 +78,8 @@ export function AddReservationDialog({
   preselectedCheckOut,
   preselectedLocation,
 }: AddReservationDialogProps) {
+  const { language } = useLanguage()
+  const copy = addReservationCopy[language]
   const { loading: accessLoading, can, canAccessDepartment } = useEffectiveAccess()
   const canCreateReservation = can("booking.modify") && canAccessDepartment("booking")
   const [beds, setBeds] = useState<Bed[]>([])
@@ -104,9 +108,7 @@ export function AddReservationDialog({
   const supabase = createBrowserClient()
 
   useEffect(() => {
-    if (open && canCreateReservation) {
-      loadData()
-    }
+    if (open && canCreateReservation) loadData()
   }, [open, canCreateReservation])
 
   async function loadData() {
@@ -116,9 +118,9 @@ export function AddReservationDialog({
         .select(`
           *,
           room:rooms(
-            room_number, 
-            room_type, 
-            rate_per_night, 
+            room_number,
+            room_type,
+            rate_per_night,
             location,
             location_id,
             location_ref:locations!rooms_location_id_fkey(id, name)
@@ -135,10 +137,8 @@ export function AddReservationDialog({
     setLocations(locationsResult.data || [])
 
     if (preselectedLocation && locationsResult.data) {
-      const matchingLocation = locationsResult.data.find((loc: any) => loc.name === preselectedLocation)
-      if (matchingLocation) {
-        setSelectedLocationFilter(preselectedLocation)
-      }
+      const matchingLocation = locationsResult.data.find((loc: Location) => loc.name === preselectedLocation)
+      if (matchingLocation) setSelectedLocationFilter(preselectedLocation)
     }
   }
 
@@ -148,13 +148,7 @@ export function AddReservationDialog({
         const bedLocationName = bed.room?.location_ref?.name || bed.room?.location
         return bed.id === preselectedBed && bedLocationName === preselectedLocation
       })
-
-      if (matchingBed) {
-        setFormData((prev) => ({
-          ...prev,
-          bed_id: preselectedBed,
-        }))
-      }
+      if (matchingBed) setFormData((prev) => ({ ...prev, bed_id: preselectedBed }))
     }
   }, [beds, preselectedBed, preselectedLocation])
 
@@ -163,7 +157,6 @@ export function AddReservationDialog({
       const checkInDate = new Date(preselectedDate)
       const checkOutDate = preselectedCheckOut ?? new Date(checkInDate)
       if (!preselectedCheckOut) checkOutDate.setDate(checkOutDate.getDate() + 1)
-
       setFormData((prev) => ({
         ...prev,
         check_in: format(preselectedDate, "yyyy-MM-dd"),
@@ -178,34 +171,31 @@ export function AddReservationDialog({
       if (selectedBed?.room) {
         const roomCapacity = selectedBed.room.capacity || selectedBed.room.max_guests || 2
         if (formData.num_guests > roomCapacity) {
-          setCapacityWarning(
-            `⚠️ Warning: You're adding ${formData.num_guests} guests to a room with capacity of ${roomCapacity}`,
-          )
-        } else {
-          setCapacityWarning(null)
-        }
+          setCapacityWarning(fillReservationCopy(copy.capacityWarning, {
+            guests: formData.num_guests,
+            capacity: roomCapacity,
+          }))
+        } else setCapacityWarning(null)
       }
     }
-  }, [formData.bed_id, formData.num_guests, beds])
+  }, [beds, copy.capacityWarning, formData.bed_id, formData.num_guests])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!canCreateReservation) {
-      alert("No tienes permiso para crear reservas en este alcance.")
+      alert(copy.noPermissionScope)
       return
     }
 
     const checkIn = new Date(formData.check_in)
     const checkOut = new Date(formData.check_out)
-
     if (checkOut <= checkIn) {
-      alert("Check-out date must be after check-in date")
+      alert(copy.invalidDates)
       return
     }
 
     const selectedBed = beds.find((b) => b.id === formData.bed_id)
     const nights = Math.ceil((checkOut.getTime() - checkIn.getTime()) / (1000 * 60 * 60 * 24))
-
     setConfirmationData({
       guestName: formData.guest_name,
       bedInfo: `${selectedBed?.room?.room_number} - ${selectedBed?.bed_number}`,
@@ -213,14 +203,14 @@ export function AddReservationDialog({
       checkOut: formData.check_out,
       nights,
       totalAmount: formData.total_amount,
-      locationName: selectedLocationFilter === "all" ? "Multiple" : selectedLocationFilter,
+      locationName: selectedLocationFilter === "all" ? copy.multiple : selectedLocationFilter,
     })
     setShowConfirmation(true)
   }
 
   async function confirmAndCreateReservation() {
     if (!canCreateReservation) {
-      alert("No tienes permiso para crear reservas en este alcance.")
+      alert(copy.noPermissionScope)
       setShowConfirmation(false)
       return
     }
@@ -244,22 +234,13 @@ export function AddReservationDialog({
       })
 
       const result = await response.json()
-
       if (!response.ok) {
-        if (response.status === 409) {
-          alert(
-            result.error ||
-              "This bed is no longer available for these dates. It was booked by someone else. Please refresh and try again with a different bed or date."
-          )
-        } else {
-          alert(result.error || "Failed to create reservation")
-        }
+        alert(result.error || (response.status === 409 ? copy.conflict : copy.createFailed))
         setShowConfirmation(false)
         return
       }
-
       if (!result.success) {
-        alert(result.error || "Failed to create reservation")
+        alert(result.error || copy.createFailed)
         setShowConfirmation(false)
         return
       }
@@ -270,8 +251,7 @@ export function AddReservationDialog({
       resetForm()
     } catch (error) {
       console.error("Error creating reservation:", error)
-      const message = error instanceof Error ? error.message : "Error creating reservation"
-      alert(message)
+      alert(error instanceof Error ? error.message : copy.errorCreating)
     } finally {
       setLoading(false)
     }
@@ -306,156 +286,132 @@ export function AddReservationDialog({
     }
   }
 
-  const filteredBeds =
-    selectedLocationFilter === "all"
-      ? beds
-      : beds.filter((bed) => {
-          const locationName = bed.room?.location_ref?.name || bed.room?.location
-          return locationName === selectedLocationFilter
-        })
+  const filteredBeds = selectedLocationFilter === "all"
+    ? beds
+    : beds.filter((bed) => {
+        const locationName = bed.room?.location_ref?.name || bed.room?.location
+        return locationName === selectedLocationFilter
+      })
 
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>New Bed Reservation</DialogTitle>
-          </DialogHeader>
+          <DialogHeader><DialogTitle>{copy.title}</DialogTitle></DialogHeader>
 
           {!accessLoading && !canCreateReservation ? (
             <div className="rounded-md border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">
-              No tienes permiso para crear reservas en este departamento o ubicación.
+              {copy.noPermissionDepartment}
             </div>
           ) : (
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {capacityWarning && (
-              <div className="rounded-md bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 p-3">
-                <p className="text-sm text-yellow-800 dark:text-yellow-200">{capacityWarning}</p>
-                <p className="text-xs text-yellow-700 dark:text-yellow-300 mt-1">
-                  You can proceed, but please ensure the guest is aware of the capacity limits.
-                </p>
-              </div>
-            )}
-
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2 sm:col-span-2">
-                <Label htmlFor="location_filter">Filter by Location</Label>
-                <Select value={selectedLocationFilter} onValueChange={setSelectedLocationFilter}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="All locations" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Locations</SelectItem>
-                    {locations.map((loc) => (
-                      <SelectItem key={loc.id} value={loc.name}>
-                        {loc.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2 sm:col-span-2">
-                <Label htmlFor="bed_id">Bed</Label>
-                <Select value={formData.bed_id} onValueChange={(value) => setFormData({ ...formData, bed_id: value })}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select bed" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {filteredBeds.map((bed) => (
-                      <SelectItem key={bed.id} value={bed.id}>
-                        {bed.room?.room_number} - {bed.bed_number} ({bed.bed_type})
-                        {bed.room?.location_ref?.name && ` • ${bed.room.location_ref.name}`} - $
-                        {bed.room?.rate_per_night || 0}/night
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2 sm:col-span-2">
-                <Label htmlFor="guest_id">Existing Guest (Optional)</Label>
-                <Select value={formData.guest_id} onValueChange={handleGuestSelect}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select guest" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {guests.map((guest) => (
-                      <SelectItem key={guest.id} value={guest.id}>
-                        {guest.name} - {guest.email}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="guest_name">Guest Name *</Label>
-                <Input id="guest_name" value={formData.guest_name} onChange={(e) => setFormData({ ...formData, guest_name: e.target.value })} required />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="guest_email">Email</Label>
-                <Input id="guest_email" type="email" value={formData.guest_email} onChange={(e) => setFormData({ ...formData, guest_email: e.target.value })} />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="guest_phone">Phone</Label>
-                <Input id="guest_phone" value={formData.guest_phone} onChange={(e) => setFormData({ ...formData, guest_phone: e.target.value })} />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="num_guests">Number of Guests</Label>
-                <Input id="num_guests" type="number" min="1" value={formData.num_guests} onChange={(e) => setFormData({ ...formData, num_guests: Number.parseInt(e.target.value) })} required />
-                <p className="text-xs text-muted-foreground">You can add more guests than room capacity if needed</p>
-              </div>
-
-              {formData.bed_id && (
-                <div className="space-y-2 sm:col-span-2">
-                  <Label>Select Dates *</Label>
-                  <AvailabilityCalendarPicker
-                    bedId={formData.bed_id}
-                    onDateRangeSelect={(checkIn, checkOut) => setFormData({ ...formData, check_in: checkIn, check_out: checkOut })}
-                    currentCheckIn={formData.check_in}
-                    currentCheckOut={formData.check_out}
-                  />
+            <form onSubmit={handleSubmit} className="space-y-4">
+              {capacityWarning && (
+                <div className="rounded-md border border-yellow-200 bg-yellow-50 p-3 dark:border-yellow-800 dark:bg-yellow-900/20">
+                  <p className="text-sm text-yellow-800 dark:text-yellow-200">{capacityWarning}</p>
+                  <p className="mt-1 text-xs text-yellow-700 dark:text-yellow-300">{copy.capacityNote}</p>
                 </div>
               )}
 
-              {!formData.bed_id && <div className="sm:col-span-2 text-sm text-muted-foreground italic">Select a bed above to view availability and pick dates</div>}
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2 sm:col-span-2">
+                  <Label htmlFor="location_filter">{copy.filterLocation}</Label>
+                  <Select value={selectedLocationFilter} onValueChange={setSelectedLocationFilter}>
+                    <SelectTrigger><SelectValue placeholder={copy.allLocations} /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">{copy.allLocations}</SelectItem>
+                      {locations.map((loc) => <SelectItem key={loc.id} value={loc.name}>{loc.name}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="total_amount">Total Amount</Label>
-                <Input id="total_amount" type="number" step="0.01" value={formData.total_amount} onChange={(e) => setFormData({ ...formData, total_amount: Number.parseFloat(e.target.value) })} required />
+                <div className="space-y-2 sm:col-span-2">
+                  <Label htmlFor="bed_id">{copy.bed}</Label>
+                  <Select value={formData.bed_id} onValueChange={(value) => setFormData({ ...formData, bed_id: value })}>
+                    <SelectTrigger><SelectValue placeholder={copy.selectBed} /></SelectTrigger>
+                    <SelectContent>
+                      {filteredBeds.map((bed) => (
+                        <SelectItem key={bed.id} value={bed.id}>
+                          {bed.room?.room_number} - {bed.bed_number} ({bed.bed_type})
+                          {bed.room?.location_ref?.name && ` • ${bed.room.location_ref.name}`} - ${bed.room?.rate_per_night || 0}/{copy.perNight}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2 sm:col-span-2">
+                  <Label htmlFor="guest_id">{copy.existingGuest}</Label>
+                  <Select value={formData.guest_id} onValueChange={handleGuestSelect}>
+                    <SelectTrigger><SelectValue placeholder={copy.selectGuest} /></SelectTrigger>
+                    <SelectContent>
+                      {guests.map((guest) => <SelectItem key={guest.id} value={guest.id}>{guest.name} - {guest.email}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="guest_name">{copy.guestName} *</Label>
+                  <Input id="guest_name" value={formData.guest_name} onChange={(e) => setFormData({ ...formData, guest_name: e.target.value })} required />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="guest_email">{copy.email}</Label>
+                  <Input id="guest_email" type="email" value={formData.guest_email} onChange={(e) => setFormData({ ...formData, guest_email: e.target.value })} />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="guest_phone">{copy.phone}</Label>
+                  <Input id="guest_phone" value={formData.guest_phone} onChange={(e) => setFormData({ ...formData, guest_phone: e.target.value })} />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="num_guests">{copy.numberGuests}</Label>
+                  <Input id="num_guests" type="number" min="1" value={formData.num_guests} onChange={(e) => setFormData({ ...formData, num_guests: Number.parseInt(e.target.value) })} required />
+                  <p className="text-xs text-muted-foreground">{copy.capacityHint}</p>
+                </div>
+
+                {formData.bed_id && (
+                  <div className="space-y-2 sm:col-span-2">
+                    <Label>{copy.selectDates} *</Label>
+                    <AvailabilityCalendarPicker
+                      bedId={formData.bed_id}
+                      onDateRangeSelect={(checkIn, checkOut) => setFormData({ ...formData, check_in: checkIn, check_out: checkOut })}
+                      currentCheckIn={formData.check_in}
+                      currentCheckOut={formData.check_out}
+                    />
+                  </div>
+                )}
+
+                {!formData.bed_id && <div className="sm:col-span-2 text-sm italic text-muted-foreground">{copy.selectBedHint}</div>}
+
+                <div className="space-y-2">
+                  <Label htmlFor="total_amount">{copy.totalAmount}</Label>
+                  <Input id="total_amount" type="number" step="0.01" value={formData.total_amount} onChange={(e) => setFormData({ ...formData, total_amount: Number.parseFloat(e.target.value) })} required />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="status">{copy.status}</Label>
+                  <Select value={formData.status} onValueChange={(value) => setFormData({ ...formData, status: value })}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="confirmed">{copy.confirmed}</SelectItem>
+                      <SelectItem value="pending">{copy.pending}</SelectItem>
+                      <SelectItem value="checked_in">{copy.checkedIn}</SelectItem>
+                      <SelectItem value="checked_out">{copy.checkedOut}</SelectItem>
+                      <SelectItem value="cancelled">{copy.cancelled}</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="status">Status</Label>
-                <Select value={formData.status} onValueChange={(value) => setFormData({ ...formData, status: value })}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="confirmed">Confirmed</SelectItem>
-                    <SelectItem value="pending">Pending</SelectItem>
-                    <SelectItem value="checked_in">Checked In</SelectItem>
-                    <SelectItem value="checked_out">Checked Out</SelectItem>
-                    <SelectItem value="cancelled">Cancelled</SelectItem>
-                  </SelectContent>
-                </Select>
+                <Label htmlFor="special_requests">{copy.specialRequests}</Label>
+                <Textarea id="special_requests" value={formData.special_requests || ""} onChange={(e) => setFormData({ ...formData, special_requests: e.target.value })} rows={3} />
               </div>
-            </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="special_requests">Special Requests</Label>
-              <Textarea id="special_requests" value={formData.special_requests || ""} onChange={(e) => setFormData({ ...formData, special_requests: e.target.value })} rows={3} />
-            </div>
-
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-              <Button type="submit" disabled={loading || accessLoading || !canCreateReservation}>
-                {loading ? "Creating..." : "Create Reservation"}
-              </Button>
-            </DialogFooter>
-          </form>
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>{copy.cancel}</Button>
+                <Button type="submit" disabled={loading || accessLoading || !canCreateReservation}>
+                  {loading ? copy.creating : copy.create}
+                </Button>
+              </DialogFooter>
+            </form>
           )}
         </DialogContent>
       </Dialog>
