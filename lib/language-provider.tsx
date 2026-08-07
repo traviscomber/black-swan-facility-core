@@ -4,6 +4,7 @@ import { useEffect, useMemo, type ReactNode } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import { translations } from './language-context'
 import { deTranslations } from './translations/de'
+import { shellTranslations } from './translations/shell'
 import { LanguageContext, type Language } from './hooks/use-language'
 
 const ROUTE_LOCALES = ['en', 'es', 'de'] as const
@@ -49,6 +50,9 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
   }
 
   const t = (key: string): string => {
+    const shellValue = shellTranslations[language][key]
+    if (shellValue) return shellValue
+
     if (language === 'de') {
       return deTranslations[key]
         ?? (translations.en as Record<string, string>)[key]
