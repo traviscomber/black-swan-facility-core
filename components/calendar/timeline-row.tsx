@@ -9,6 +9,7 @@ import { CreationSelection, type CreationRange } from "@/components/calendar/cre
 import { ReservationOperationIndicators } from "@/components/calendar/reservation-operation-indicators"
 import { ReservationOperationalLanes, type CalendarLayerKey } from "@/components/calendar/reservation-operational-lanes"
 import { ReservationQuickInspector } from "@/components/calendar/reservation-quick-inspector"
+import { useLanguage, type Language } from "@/lib/hooks/use-language"
 
 export const DAY_WIDTH = 96
 export const LABEL_WIDTH = 272
@@ -32,6 +33,28 @@ export const STATUS_LABELS: Record<string, string> = {
 export const BLOCK_LABELS: Record<string, string> = {
   maintenance: "Mantenimiento", owner_use: "Uso propietario", out_of_service: "Fuera de servicio", other: "Bloqueada",
 }
+
+const localizedCopy = {
+  en: {
+    statuses: { pending: "Pending", confirmed: "Confirmed", checked_in: "Check-in", checked_out: "Check-out", cancelled: "Cancelled" },
+    blocks: { maintenance: "Maintenance", owner_use: "Owner use", out_of_service: "Out of service", other: "Blocked" },
+    hideOperations: "Hide operations", showOperations: "Show operations", validating: "Validating…", confirming: "Confirming…", resizing: "Adjusting…", checkinToday: "Check-in today", checkoutToday: "Check-out today", unavailable: "Unavailable", moveTo: "Move to",
+  },
+  es: {
+    statuses: { pending: "Pendiente", confirmed: "Confirmada", checked_in: "Check-in", checked_out: "Check-out", cancelled: "Cancelada" },
+    blocks: { maintenance: "Mantenimiento", owner_use: "Uso propietario", out_of_service: "Fuera de servicio", other: "Bloqueada" },
+    hideOperations: "Ocultar operación", showOperations: "Mostrar operación", validating: "Validando…", confirming: "Confirmando…", resizing: "Ajustando…", checkinToday: "Check-in hoy", checkoutToday: "Check-out hoy", unavailable: "No disponible", moveTo: "Mover a",
+  },
+  de: {
+    statuses: { pending: "Ausstehend", confirmed: "Bestätigt", checked_in: "Check-in", checked_out: "Check-out", cancelled: "Storniert" },
+    blocks: { maintenance: "Wartung", owner_use: "Eigentümernutzung", out_of_service: "Außer Betrieb", other: "Gesperrt" },
+    hideOperations: "Betrieb ausblenden", showOperations: "Betrieb anzeigen", validating: "Wird geprüft…", confirming: "Wird bestätigt…", resizing: "Wird angepasst…", checkinToday: "Check-in heute", checkoutToday: "Check-out heute", unavailable: "Nicht verfügbar", moveTo: "Verschieben nach",
+  },
+} satisfies Record<Language, {
+  statuses: Record<string, string>
+  blocks: Record<string, string>
+  hideOperations: string; showOperations: string; validating: string; confirming: string; resizing: string; checkinToday: string; checkoutToday: string; unavailable: string; moveTo: string
+}>
 
 export function normalizedStatus(value: string) { return value.replaceAll("-", "_") }
 
@@ -117,9 +140,11 @@ export function TimelineRow(props: TimelineRowProps) {
     draggingEventId, dropTargetBedId, movingReservationId, moveConflict, draggingEvent, onEventPointerDown,
     onEventPointerMove, onEventPointerUp, onEventPointerCancel, resizeState, resizingReservationId,
     confirmingReservationId, isResizing, resizeConflict, onBeginResize, onMoveResize, onFinishResize,
-    onClearResize, blockRefCallback, eventGeometry, geometryForDates, onRowClick, creatingRange,
+    onClearResize, blockRefCallback, eventGeometry, geometryForDates, onRowClick,
     onCreationStart, onCreationAbort, onCreationCommit, onOpenReservation, onOpenBlock,
   } = props
+  const { language } = useLanguage()
+  const c = localizedCopy[language]
   const [expandedReservationId, setExpandedReservationId] = useState<string | null>(null)
   const [inspectedReservation, setInspectedReservation] = useState<CalendarEvent | null>(null)
   const isDropTarget = dropTargetBedId === bed.id && Boolean(draggingEventId)
@@ -128,9 +153,7 @@ export function TimelineRow(props: TimelineRowProps) {
   return (
     <div className={`border-b transition [content-visibility:auto] [contain-intrinsic-size:44px] ${isDropTarget ? "bg-emerald-500/10 ring-1 ring-inset ring-emerald-500" : "hover:bg-muted/20"}`} data-bed-id={bed.id}>
       <div className="flex" style={{ height: ROW_HEIGHT }}>
-        <div className="sticky left-0 z-20 flex shrink-0 items-center border-r bg-background px-3" style={{ width: LABEL_WIDTH, height: ROW_HEIGHT }}>
-          <div className="min-w-0 flex-1"><div className="flex items-center gap-2"><span className="truncate text-xs font-semibold">{bed.bed_number}</span><span className="truncate text-[10px] text-muted-foreground">{bed.bed_type}</span></div></div>
-        </div>
+        <div className="sticky left-0 z-20 flex shrink-0 items-center border-r bg-background px-3" style={{ width: LABEL_WIDTH, height: ROW_HEIGHT }}><div className="min-w-0 flex-1"><div className="flex items-center gap-2"><span className="truncate text-xs font-semibold">{bed.bed_number}</span><span className="truncate text-[10px] text-muted-foreground">{bed.bed_type}</span></div></div></div>
         <div className="relative cursor-crosshair" style={{ width: timelineWidth, height: ROW_HEIGHT, backgroundImage: `repeating-linear-gradient(to right, transparent 0, transparent ${DAY_WIDTH - 1}px, hsl(var(--border)) ${DAY_WIDTH - 1}px, hsl(var(--border)) ${DAY_WIDTH}px)` }} onClick={(event) => onRowClick(bed, event.clientX, event.currentTarget)}>
           <CreationSelection bedId={bed.id} dates={dates} timelineWidth={timelineWidth} isActive={!draggingEventId && !isResizing && !isBulkMode} onCreationStart={onCreationStart} onCreationAbort={onCreationAbort} onCreationCommit={onCreationCommit} />
           {dates.map((date, index) => isSameDay(date, new Date()) ? <div key={`today-${bed.id}-${index}`} className="pointer-events-none absolute inset-y-0 border-x border-amber-400/70 bg-amber-50/45" style={{ left: index * DAY_WIDTH, width: DAY_WIDTH }} /> : null)}
@@ -145,6 +168,8 @@ export function TimelineRow(props: TimelineRowProps) {
             const isSelected = !isBlock && selectedIds.has(event.event_id)
             const isBulkConflict = conflictIds.has(event.event_id)
             const isExpanded = expandedReservationId === event.event_id
+            const statusKey = normalizedStatus(event.status)
+            const blockKey = event.block_type ?? "other"
             return <div key={`${event.event_type}-${event.event_id}-${bed.id}`}>
               {previewGeometry && <ReservationPreview left={previewGeometry.left} width={previewGeometry.width} intent="resize" conflict={!hasConflict ? "none" : (resizeConflict?.event_type === "block" ? "block" : "reservation") satisfies PreviewConflict} label={`${resizeState!.previewStart} → ${resizeState!.previewEnd}`} />}
               <button type="button" ref={(element) => blockRefCallback(event.event_id, element)}
@@ -154,22 +179,19 @@ export function TimelineRow(props: TimelineRowProps) {
                 onPointerCancel={() => { if (!isBlock) onEventPointerCancel() }}
                 onClick={(clickEvent) => { clickEvent.stopPropagation(); if (draggingEventId || isResizing || confirmingReservationId) return; if (!isBlock && (clickEvent.ctrlKey || clickEvent.metaKey || isBulkMode)) { onToggleSelect(event.event_id, clickEvent.shiftKey); return } if (isBlock) onOpenBlock(event); else setInspectedReservation(event) }}
                 onDoubleClick={(doubleClickEvent) => { doubleClickEvent.stopPropagation(); if (!isBlock) onOpenReservation(event) }}
-                className={`group absolute top-[3px] h-[38px] overflow-hidden rounded-[3px] border px-2 text-left text-[11px] transition-all duration-150 hover:brightness-105 focus:outline-none focus:ring-2 focus:ring-primary ${isBulkConflict ? "ring-2 ring-amber-400" : ""} ${isSelected ? "ring-2 ring-white ring-offset-1 ring-offset-primary brightness-110" : ""} ${isBlock ? "border-zinc-700 bg-zinc-800 text-white" : STATUS_STYLES[normalizedStatus(event.status)] ?? "border-slate-700 bg-slate-600 text-white"} ${isMoving || isConfirmingResize ? "opacity-60" : ""}`} style={{ left: geometry.left, width: geometry.width }}>
+                className={`group absolute top-[3px] h-[38px] overflow-hidden rounded-[3px] border px-2 text-left text-[11px] transition-all duration-150 hover:brightness-105 focus:outline-none focus:ring-2 focus:ring-primary ${isBulkConflict ? "ring-2 ring-amber-400" : ""} ${isSelected ? "ring-2 ring-white ring-offset-1 ring-offset-primary brightness-110" : ""} ${isBlock ? "border-zinc-700 bg-zinc-800 text-white" : STATUS_STYLES[statusKey] ?? "border-slate-700 bg-slate-600 text-white"} ${isMoving || isConfirmingResize ? "opacity-60" : ""}`} style={{ left: geometry.left, width: geometry.width }}>
                 {!isBlock && <span className={`absolute left-1 top-1 z-10 transition ${isSelected ? "opacity-100" : "opacity-0 group-hover:opacity-60"}`} onClick={(clickEvent) => { clickEvent.stopPropagation(); onToggleSelect(event.event_id, false) }}>{isSelected ? <CheckSquare className="h-3 w-3" /> : <Square className="h-3 w-3" />}</span>}
-                {!isBlock && <>
-                  <span aria-hidden="true" className={`absolute inset-y-0 left-0 z-10 cursor-ew-resize opacity-0 transition hover:bg-white/35 group-hover:opacity-100 ${isTouchDevice ? "w-8" : "w-2"}`} onClick={(clickEvent) => { clickEvent.preventDefault(); clickEvent.stopPropagation() }} onPointerDown={(pointerEvent) => onBeginResize(event, "left", pointerEvent)} onPointerMove={onMoveResize} onPointerUp={(pointerEvent) => void onFinishResize(pointerEvent)} onPointerCancel={(pointerEvent) => { pointerEvent.preventDefault(); pointerEvent.stopPropagation(); onClearResize() }} />
-                  <span aria-hidden="true" className={`absolute inset-y-0 right-0 z-10 cursor-ew-resize opacity-0 transition hover:bg-white/35 group-hover:opacity-100 ${isTouchDevice ? "w-8" : "w-2"}`} onClick={(clickEvent) => { clickEvent.preventDefault(); clickEvent.stopPropagation() }} onPointerDown={(pointerEvent) => onBeginResize(event, "right", pointerEvent)} onPointerMove={onMoveResize} onPointerUp={(pointerEvent) => void onFinishResize(pointerEvent)} onPointerCancel={(pointerEvent) => { pointerEvent.preventDefault(); pointerEvent.stopPropagation(); onClearResize() }} />
-                </>}
-                {!isBlock && <span role="button" tabIndex={0} aria-label={isExpanded ? "Ocultar operación" : "Mostrar operación"} className="absolute right-1 top-1 z-30 inline-flex h-4 w-4 items-center justify-center rounded-sm bg-black/20 hover:bg-black/35" onPointerDown={(pointerEvent) => { pointerEvent.preventDefault(); pointerEvent.stopPropagation() }} onClick={(clickEvent) => { clickEvent.preventDefault(); clickEvent.stopPropagation(); setExpandedReservationId((current) => current === event.event_id ? null : event.event_id) }} onKeyDown={(keyEvent) => { if (keyEvent.key === "Enter" || keyEvent.key === " ") { keyEvent.preventDefault(); keyEvent.stopPropagation(); setExpandedReservationId((current) => current === event.event_id ? null : event.event_id) } }}>{isExpanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}</span>}
-                <div className="truncate pr-20 font-semibold leading-4">{isMoving ? "Validando…" : isConfirmingResize ? "Confirmando…" : isEventResizing ? "Ajustando…" : isBlock ? BLOCK_LABELS[event.block_type ?? "other"] ?? "Bloqueada" : event.guest_name ?? event.label}</div>
-                <div className="truncate pr-20 text-[9px] opacity-80">{isBlock ? event.label : STATUS_LABELS[normalizedStatus(event.status)] ?? event.status}</div>
+                {!isBlock && <><span aria-hidden="true" className={`absolute inset-y-0 left-0 z-10 cursor-ew-resize opacity-0 transition hover:bg-white/35 group-hover:opacity-100 ${isTouchDevice ? "w-8" : "w-2"}`} onClick={(clickEvent) => { clickEvent.preventDefault(); clickEvent.stopPropagation() }} onPointerDown={(pointerEvent) => onBeginResize(event, "left", pointerEvent)} onPointerMove={onMoveResize} onPointerUp={(pointerEvent) => void onFinishResize(pointerEvent)} onPointerCancel={(pointerEvent) => { pointerEvent.preventDefault(); pointerEvent.stopPropagation(); onClearResize() }} /><span aria-hidden="true" className={`absolute inset-y-0 right-0 z-10 cursor-ew-resize opacity-0 transition hover:bg-white/35 group-hover:opacity-100 ${isTouchDevice ? "w-8" : "w-2"}`} onClick={(clickEvent) => { clickEvent.preventDefault(); clickEvent.stopPropagation() }} onPointerDown={(pointerEvent) => onBeginResize(event, "right", pointerEvent)} onPointerMove={onMoveResize} onPointerUp={(pointerEvent) => void onFinishResize(pointerEvent)} onPointerCancel={(pointerEvent) => { pointerEvent.preventDefault(); pointerEvent.stopPropagation(); onClearResize() }} /></>}
+                {!isBlock && <span role="button" tabIndex={0} aria-label={isExpanded ? c.hideOperations : c.showOperations} className="absolute right-1 top-1 z-30 inline-flex h-4 w-4 items-center justify-center rounded-sm bg-black/20 hover:bg-black/35" onPointerDown={(pointerEvent) => { pointerEvent.preventDefault(); pointerEvent.stopPropagation() }} onClick={(clickEvent) => { clickEvent.preventDefault(); clickEvent.stopPropagation(); setExpandedReservationId((current) => current === event.event_id ? null : event.event_id) }} onKeyDown={(keyEvent) => { if (keyEvent.key === "Enter" || keyEvent.key === " ") { keyEvent.preventDefault(); keyEvent.stopPropagation(); setExpandedReservationId((current) => current === event.event_id ? null : event.event_id) } }}>{isExpanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}</span>}
+                <div className="truncate pr-20 font-semibold leading-4">{isMoving ? c.validating : isConfirmingResize ? c.confirming : isEventResizing ? c.resizing : isBlock ? c.blocks[blockKey] ?? c.blocks.other : event.guest_name ?? event.label}</div>
+                <div className="truncate pr-20 text-[9px] opacity-80">{isBlock ? event.label : c.statuses[statusKey] ?? event.status}</div>
                 {!isBlock && <ReservationOperationIndicators reservationId={event.event_id} />}
-                {!isBlock && isSameDay(parseISO(event.starts_on), new Date()) && <div className="absolute left-0 top-0 h-full w-1 bg-emerald-300" title="Check-in hoy" />}
-                {!isBlock && isSameDay(parseISO(event.ends_on), new Date()) && <div className="absolute right-0 top-0 h-full w-1 bg-amber-300" title="Check-out hoy" />}
+                {!isBlock && isSameDay(parseISO(event.starts_on), new Date()) && <div className="absolute left-0 top-0 h-full w-1 bg-emerald-300" title={c.checkinToday} />}
+                {!isBlock && isSameDay(parseISO(event.ends_on), new Date()) && <div className="absolute right-0 top-0 h-full w-1 bg-amber-300" title={c.checkoutToday} />}
               </button>
             </div>
           })}
-          {dropTargetBedId === bed.id && draggingEvent && <ReservationPreview left={eventGeometry(draggingEvent).left} width={eventGeometry(draggingEvent).width} intent="move" conflict={moveConflict ? "reservation" : "none"} label={moveConflict ? "No disponible" : `Mover a: ${draggingEvent.starts_on} → ${draggingEvent.ends_on}`} />}
+          {dropTargetBedId === bed.id && draggingEvent && <ReservationPreview left={eventGeometry(draggingEvent).left} width={eventGeometry(draggingEvent).width} intent="move" conflict={moveConflict ? "reservation" : "none"} label={moveConflict ? c.unavailable : `${c.moveTo}: ${draggingEvent.starts_on} → ${draggingEvent.ends_on}`} />}
         </div>
       </div>
       {expandedReservation && <ReservationOperationalLanes reservation={expandedReservation} timelineWidth={timelineWidth} geometryForDates={geometryForDates} activeLayers={activeLayers} />}
