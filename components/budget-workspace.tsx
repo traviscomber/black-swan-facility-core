@@ -18,6 +18,7 @@ import { createClient } from '@/lib/supabase/client'
 import { parseBudgetWorkbook, type BudgetWorkbookPreview } from '@/lib/budget-workbook'
 
 type WorkspaceView = 'overview' | 'import' | 'history'
+type DisplayCurrency = 'EUR' | 'CLP'
 
 type BudgetDivision = {
   id: string
@@ -66,7 +67,17 @@ type ImportRun = {
 }
 
 const MONTHS = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre']
-const money = new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 })
+const eurMoney = new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 })
+const clpMoney = new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 })
+const DISPLAY_RATE_KEY = 'bsfc:budget-display-clp-per-eur'
+
+function formatMoney(value: number, currency: DisplayCurrency, clpPerEur: number | null) {
+  if (currency === 'CLP') {
+    if (!clpPerEur || clpPerEur <= 0) return '—'
+    return clpMoney.format(value * clpPerEur)
+  }
+  return eurMoney.format(value)
+}
 
 function amount(value: number | string | null | undefined) {
   const parsed = typeof value === 'number' ? value : Number(value ?? 0)
@@ -95,6 +106,26 @@ export function BudgetWorkspace() {
   const [parsing, setParsing] = useState(false)
   const [importing, setImporting] = useState(false)
   const [alreadyImported, setAlreadyImported] = useState<ImportRun | null>(null)
+  const [displayCurrency, setDisplayCurrency] = useState<DisplayCurrency>('EUR')
+  const [clpRateText, setClpRateText] = useState('')
+
+  const clpPerEur = useMemo(() => {
+    const parsed = Number(clpRateText.replace(',', '.'))
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : null
+  }, [clpRateText])
+
+  const money = useCallback((value: number) => formatMoney(value, displayCurrency, clpPerEur), [clpPerEur, displayCurrency])
+
+  useEffect(() => {
+    const saved = window.localStorage.getItem(DISPLAY_RATE_KEY)
+    if (saved) setClpRateText(saved)
+  }, [])
+
+  function updateDisplayRate(value: string) {
+    setClpRateText(value)
+    if (value.trim()) window.localStorage.setItem(DISPLAY_RATE_KEY, value)
+    else window.localStorage.removeItem(DISPLAY_RATE_KEY)
+  }
 
   const load = useCallback(async (silent = false) => {
     if (!silent) setLoading(true)
@@ -271,7 +302,8 @@ export function BudgetWorkspace() {
             El equipo puede mantener el formato conocido en Excel o trabajar desde esta interfaz. Cada carga conserva el archivo original, su huella, las celdas de origen y el historial de importación.
           </p>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <Badge variant="secondary">Canónico: EUR</Badge>
           {latestCompletedImport && <Badge variant="secondary">Última carga: {new Date(latestCompletedImport.imported_at ?? latestCompletedImport.created_at).toLocaleString('es-CL')}</Badge>}
           <Button variant="outline" onClick={() => void load(true)} disabled={refreshing}>
             <RefreshCw className={`mr-2 h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />Actualizar
@@ -306,9 +338,43 @@ export function BudgetWorkspace() {
                 {MONTHS.map((label, index) => <option key={label} value={index + 1}>{label}</option>)}
               </select>
             </label>
+            <div className="space-y-2">
+              <p className="text-xs uppercase tracking-[0.12em] text-[var(--bs-text-muted)]">Moneda visual</p>
+              <div className="flex h-10 bg-[var(--bs-surface-secondary)] p-1">
+                {(['EUR', 'CLP'] as const).map((currency) => (
+                  <button
+                    key={currency}
+                    type="button"
+                    aria-pressed={displayCurrency === currency}
+                    onClick={() => setDisplayCurrency(currency)}
+                    className={`min-w-16 px-3 text-xs font-medium ${displayCurrency === currency ? 'bg-[var(--bs-surface-elevated)] text-[var(--bs-text-primary)]' : 'text-[var(--bs-text-muted)] hover:text-[var(--bs-text-secondary)]'}`}
+                  >
+                    {currency}
+                  </button>
+                ))}
+              </div>
+            </div>
+            {displayCurrency === 'CLP' && (
+              <label className="space-y-2 text-xs uppercase tracking-[0.12em] text-[var(--bs-text-muted)]">
+                Tasa de visualización
+                <div className="flex h-10 items-center bg-[var(--bs-surface-secondary)] px-3">
+                  <span className="mr-2 whitespace-nowrap text-[11px] normal-case tracking-normal">1 EUR =</span>
+                  <input
+                    inputMode="decimal"
+                    value={clpRateText}
+                    onChange={(event) => updateDisplayRate(event.target.value)}
+                    placeholder="CLP"
+                    className="w-24 bg-transparent text-sm normal-case tracking-normal text-[var(--bs-text-primary)] outline-none placeholder:text-[var(--bs-text-muted)]"
+                    aria-label="Pesos chilenos por euro para visualización"
+                  />
+                  <span className="ml-2 text-[11px] normal-case tracking-normal">CLP</span>
+                </div>
+              </label>
+            )}
             <div className="ml-auto text-right text-xs text-[var(--bs-text-muted)]">
               <p>Fuente activa</p>
               <p className="mt-1 text-sm text-[var(--bs-text-primary)]">{workbookBudgets.length ? 'Excel maestro importado' : 'Registros manuales existentes'}</p>
+              <p className="mt-1">{displayCurrency === 'EUR' ? 'Valores canónicos' : clpPerEur ? 'Conversión solo visual · no modifica EUR' : 'Ingresa una tasa para visualizar CLP'}</p>
             </div>
           </div>
 
@@ -322,7 +388,7 @@ export function BudgetWorkspace() {
             ].map(([label, value]) => (
               <div key={String(label)} className="bg-[var(--bs-surface-primary)] p-4">
                 <p className="text-xs uppercase tracking-[0.12em] text-[var(--bs-text-muted)]">{label}</p>
-                <p className="mt-3 text-xl text-[var(--bs-text-primary)]">{money.format(Number(value))}</p>
+                <p className="mt-3 text-xl text-[var(--bs-text-primary)]">{money(Number(value))}</p>
               </div>
             ))}
           </div>
@@ -372,9 +438,9 @@ export function BudgetWorkspace() {
                       return (
                         <tr key={row.id} className="bg-[var(--bs-surface-primary)] even:bg-[var(--bs-surface-secondary)]/40">
                           <td className="px-5 py-4 text-[var(--bs-text-primary)]">{category.name}</td>
-                          <td className="px-5 py-4 text-right text-[var(--bs-text-secondary)]">{money.format(plan)}</td>
-                          <td className="px-5 py-4 text-right text-[var(--bs-text-primary)]">{money.format(actual)}</td>
-                          <td className={`px-5 py-4 text-right ${alert ? 'text-[var(--bs-warm-orange)]' : 'text-[var(--bs-cool-sage)]'}`}>{money.format(variance)}</td>
+                          <td className="px-5 py-4 text-right text-[var(--bs-text-secondary)]">{money(plan)}</td>
+                          <td className="px-5 py-4 text-right text-[var(--bs-text-primary)]">{money(actual)}</td>
+                          <td className={`px-5 py-4 text-right ${alert ? 'text-[var(--bs-warm-orange)]' : 'text-[var(--bs-cool-sage)]'}`}>{money(variance)}</td>
                           <td className="px-5 py-4"><span className={alert ? 'text-[var(--bs-warm-orange)]' : 'text-[var(--bs-cool-sage)]'}>{alert ? 'Revisar' : 'En rango'}</span></td>
                         </tr>
                       )
@@ -433,7 +499,7 @@ export function BudgetWorkspace() {
                 <div className="overflow-x-auto">
                   <table className="w-full min-w-[700px] text-sm">
                     <thead className="text-left text-xs uppercase tracking-[0.1em] text-[var(--bs-text-muted)]"><tr><th className="py-3 font-normal">Centro</th><th className="py-3 text-right font-normal">Costo plan anual</th><th className="py-3 text-right font-normal">Costo actual anual</th><th className="py-3 text-right font-normal">P&L plan</th><th className="py-3 text-right font-normal">P&L actual</th></tr></thead>
-                    <tbody>{preview.divisions.map((division) => <tr key={division.key} className="even:bg-[var(--bs-surface-secondary)]/40"><td className="py-3 pr-4 text-[var(--bs-text-primary)]">{division.parentName && <span className="mr-2 text-xs text-[var(--bs-text-muted)]">{division.parentName} /</span>}{division.name}</td><td className="py-3 text-right text-[var(--bs-text-secondary)]">{money.format(division.annualPlanCost)}</td><td className="py-3 text-right text-[var(--bs-text-secondary)]">{money.format(division.annualActualCost)}</td><td className="py-3 text-right text-[var(--bs-text-primary)]">{money.format(division.annualPlanNet)}</td><td className="py-3 text-right text-[var(--bs-text-primary)]">{money.format(division.annualActualNet)}</td></tr>)}</tbody>
+                    <tbody>{preview.divisions.map((division) => <tr key={division.key} className="even:bg-[var(--bs-surface-secondary)]/40"><td className="py-3 pr-4 text-[var(--bs-text-primary)]">{division.parentName && <span className="mr-2 text-xs text-[var(--bs-text-muted)]">{division.parentName} /</span>}{division.name}</td><td className="py-3 text-right text-[var(--bs-text-secondary)]">{money(division.annualPlanCost)}</td><td className="py-3 text-right text-[var(--bs-text-secondary)]">{money(division.annualActualCost)}</td><td className="py-3 text-right text-[var(--bs-text-primary)]">{money(division.annualPlanNet)}</td><td className="py-3 text-right text-[var(--bs-text-primary)]">{money(division.annualActualNet)}</td></tr>)}</tbody>
                   </table>
                 </div>
 
