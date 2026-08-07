@@ -1,5 +1,6 @@
 import type React from "react"
 import type { Metadata, Viewport } from "next"
+import { headers } from "next/headers"
 import { Montserrat } from "next/font/google"
 import { Analytics } from "@vercel/analytics/next"
 import "./globals.css"
@@ -38,9 +39,15 @@ export const viewport: Viewport = {
   themeColor: "#171512",
 }
 
-export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+  const requestHeaders = await headers()
+  const requestedLocale = requestHeaders.get("x-site-locale")
+  const documentLanguage = requestedLocale === "de" || requestedLocale === "en" || requestedLocale === "es"
+    ? requestedLocale
+    : "en"
+
   return (
-    <html lang="es" className="dark" suppressHydrationWarning>
+    <html lang={documentLanguage} className="dark" suppressHydrationWarning>
       <body className={`${montserrat.variable} antialiased`}>
         <ClientProviders>
           {children}
