@@ -1,10 +1,17 @@
 "use client"
 
 import { format, parseISO } from "date-fns"
+import { de, enUS, es } from "date-fns/locale"
 import { AlertTriangle, CalendarPlus2, CheckCircle2, MoveHorizontal } from "lucide-react"
 import type { Feedback } from "@/components/booking-calendar-model"
+import { useLanguage } from "@/lib/hooks/use-language"
+import { bookingCalendarInteractionCopy } from "@/lib/translations/booking-calendar-interactions"
 
 export function BookingCalendarInteractionFeedback({ feedback }: { feedback: Feedback | null }) {
+  const { language } = useLanguage()
+  const copy = bookingCalendarInteractionCopy[language]
+  const dateLocale = language === "de" ? de : language === "es" ? es : enUS
+
   return (
     <>
       <style jsx global>{`
@@ -64,7 +71,7 @@ export function BookingCalendarInteractionFeedback({ feedback }: { feedback: Fee
               </p>
               <p className="mt-1 truncate text-xs text-[var(--text-secondary)]">{feedback.targetLabel}</p>
               <p className="mt-1 text-xs text-[var(--text-muted)]">
-                {format(parseISO(feedback.checkIn), "dd MMM yyyy")} → {format(parseISO(feedback.checkOut), "dd MMM yyyy")} · {feedback.nights} noches
+                {format(parseISO(feedback.checkIn), "dd MMM yyyy", { locale: dateLocale })} → {format(parseISO(feedback.checkOut), "dd MMM yyyy", { locale: dateLocale })} · {feedback.nights} {feedback.nights === 1 ? copy.night : copy.nights}
               </p>
               <p className="mt-2 text-xs">{feedback.message}</p>
             </div>
