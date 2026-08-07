@@ -2,10 +2,11 @@
 
 import { useEffect, useMemo, type ReactNode } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
-import { translations, type Language } from './language-context'
-import { LanguageContext } from './hooks/use-language'
+import { translations } from './language-context'
+import { deTranslations } from './translations/de'
+import { LanguageContext, type Language } from './hooks/use-language'
 
-const ROUTE_LOCALES = ['en', 'es', 'deu'] as const
+const ROUTE_LOCALES = ['en', 'es', 'de'] as const
 
 type RouteLocale = (typeof ROUTE_LOCALES)[number]
 
@@ -33,25 +34,27 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
   const pathname = usePathname() || '/'
   const router = useRouter()
   const routeLocale = useMemo(() => getRouteLocale(pathname), [pathname])
-
-  // German has its own isolated URL space now. Until the German translation
-  // catalogue is added, it intentionally falls back to the canonical English copy.
-  const language: Language = routeLocale === 'es' ? 'es' : 'en'
+  const language: Language = routeLocale
 
   useEffect(() => {
     localStorage.setItem('language', routeLocale)
     document.cookie = `site-locale=${routeLocale}; path=/; samesite=lax`
-    document.documentElement.lang = routeLocale === 'deu' ? 'de' : routeLocale
+    document.documentElement.lang = routeLocale
   }, [routeLocale])
 
   const handleSetLanguage = (lang: Language) => {
-    const targetLocale: RouteLocale = lang
-    localStorage.setItem('language', targetLocale)
-    document.cookie = `site-locale=${targetLocale}; path=/; samesite=lax`
-    router.push(replaceLocalePrefix(pathname, targetLocale))
+    localStorage.setItem('language', lang)
+    document.cookie = `site-locale=${lang}; path=/; samesite=lax`
+    router.push(replaceLocalePrefix(pathname, lang))
   }
 
   const t = (key: string): string => {
+    if (language === 'de') {
+      return deTranslations[key]
+        ?? (translations.en as Record<string, string>)[key]
+        ?? key
+    }
+
     const currentLang = translations[language]
     if (!currentLang) return key
     return (currentLang as Record<string, string>)[key] || key
