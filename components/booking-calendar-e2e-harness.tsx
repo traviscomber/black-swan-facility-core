@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useRef, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { addDays, parseISO } from "date-fns"
 import {
   BookingCalendarTimeline,
@@ -95,6 +95,7 @@ function cloneReservations(value: BookingCalendarReservation[]) {
 }
 
 export function BookingCalendarE2EHarness() {
+  const [hydrated, setHydrated] = useState(false)
   const [reservations, setReservations] = useState(cloneReservations(initialReservations))
   const reservationsRef = useRef(reservations)
   reservationsRef.current = reservations
@@ -110,6 +111,10 @@ export function BookingCalendarE2EHarness() {
       { room: roomB, beds: [beds[1], beds[2]] },
     ],
   }], [])
+
+  useEffect(() => {
+    setHydrated(true)
+  }, [])
 
   const transport = useMemo<BookingCalendarTransport>(() => ({
     async loadContext() {
@@ -193,6 +198,7 @@ export function BookingCalendarE2EHarness() {
   return (
     <main className="min-h-screen bg-background p-4 text-foreground">
       <div className="mb-4 flex flex-wrap gap-4 text-sm">
+        <output data-testid="e2e-hydrated">{hydrated ? "ready" : "booting"}</output>
         <output data-testid="e2e-last-action">{lastAction}</output>
         <output data-testid="e2e-selected">{selected ?? "none"}</output>
       </div>
