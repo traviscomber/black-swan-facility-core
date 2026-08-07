@@ -8,7 +8,6 @@ import { bookingSourcePolicy, bookingSourcePolicyLabel } from "@/lib/booking-sou
 import {
   activeInventoryConflict,
   createSupabaseTransport,
-  defaultValidation,
   futureEditable,
   stableContextReservation,
   type BookingCalendarBed,
@@ -19,6 +18,8 @@ import {
   type CalendarContext,
   type Validation,
 } from "@/components/booking-calendar-model"
+import { useLanguage } from "@/lib/hooks/use-language"
+import { bookingCalendarInteractionCopy, interpolateBookingCopy } from "@/lib/translations/booking-calendar-interactions"
 
 type UseBookingCalendarContextInput = {
   hierarchy: BookingCalendarLocationGroup[]
@@ -33,6 +34,8 @@ export function useBookingCalendarContext({
   blocks,
   transport,
 }: UseBookingCalendarContextInput) {
+  const { language } = useLanguage()
+  const copy = bookingCalendarInteractionCopy[language]
   const activeTransport = useMemo(
     () => transport ?? createSupabaseTransport(),
     [transport],
@@ -71,9 +74,9 @@ export function useBookingCalendarContext({
     try {
       setContext(await activeTransport.loadContext())
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "No fue posible validar el inventario del calendario")
+      toast.error(error instanceof Error ? error.message : copy.inventoryValidationFailed)
     }
-  }, [activeTransport])
+  }, [activeTransport, copy.inventoryValidationFailed])
 
   useEffect(() => { void loadContext() }, [loadContext])
 
@@ -148,19 +151,19 @@ export function useBookingCalendarContext({
     const sourcePolicy = bookingSourcePolicy(reservation.source)
     const intent = mode === "move" ? "move" : "resize"
     if (sourcePolicy === "external-read-only") {
-      return { valid: false, state: "invalid", message: bookingSourcePolicyLabel(reservation.source), intent, swapReservation: null }
+      return { valid: false, state: "invalid", message: bookingSourcePolicyLabel(reservation.source, language), intent, swapReservation: null }
     }
     if (!futureEditable(reservation)) {
-      return { valid: false, state: "invalid", message: "La reserva ya inició o está cerrada y no puede moverse desde el calendario.", intent, swapReservation: null }
+      return { valid: false, state: "invalid", message: copy.reservationNotEditable, intent, swapReservation: null }
     }
     if (checkOut <= checkIn) {
-      return { valid: false, state: "invalid", message: "La salida debe ser posterior a la llegada.", intent, swapReservation: null }
+      return { valid: false, state: "invalid", message: copy.checkoutAfterCheckin, intent, swapReservation: null }
     }
     if (!targetBed.is_available || unavailableBedIds.has(targetBed.id)) {
-      return { valid: false, state: "invalid", message: "La cama está deshabilitada.", intent, swapReservation: null }
+      return { valid: false, state: "invalid", message: copy.bedDisabled, intent, swapReservation: null }
     }
     if (["out_of_service", "out_of_inventory"].includes(targetBed.room.operational_status)) {
-      return { valid: false, state: "invalid", message: "La habitación está fuera de servicio o inventario.", intent, swapReservation: null }
+      return { valid: false, state: "invalid", message: copy.roomUnavailable, intent, swapReservation: null }
     }
 
     const movingContext = stableContextReservation(reservation)
@@ -172,11 +175,11 @@ export function useBookingCalendarContext({
         && bookingStaysOverlap(checkIn, checkOut, block.start_date, block.end_date),
     )
     if (blockConflict) {
-      return { valid: false, state: "invalid", message: "La habitación tiene un bloqueo operativo en esas fechas.", intent, swapReservation: null }
+      return { valid: false, state: "invalid", message: copy.blockConflict, intent, swapReservation: null }
     }
     if (conflicts.length === 0) {
-      const reviewSuffix = sourcePolicy === "review" ? " El origen no está clasificado y se registrará para revisión." : ""
-      return { ...defaultValidation(mode), message: `Destino disponible.${reviewSuffix}` }
+      const reviewSuffix = sourcePolicy === "review" ? copy.sourceReviewSuffix : ""
+      return { valid: true, state: "valid", message: `${copy.destinationAvailable}${reviewSuffix}`, intent, swapReservation: null }
     }
 
     const directBedConflicts = conflicts.filter((item) => item.bed_id === targetBed.id)
@@ -189,13 +192,13 @@ export function useBookingCalendarContext({
       return {
         valid: true,
         state: "warning",
-        message: `Destino ocupado por ${directBedConflicts[0].guest_name}. Al confirmar se propondrá un intercambio controlado.`,
+        message: interpolateBookingCopy(copy.swapOccupied, { guest: directBedConflicts[0].guest_name }),
         intent: "swap",
         swapReservation: directBedConflicts[0],
       }
     }
-    return { valid: false, state: "invalid", message: "Existe otra reserva activa en ese inventario.", intent, swapReservation: null }
-  }, [blocksForValidation, context.activeReservations, reverseSwapValid, unavailableBedIds])
+    return { valid: false, state: "invalid", message: copy.inventoryConflict, intent, swapReservation: null }
+  }, [blocksForValidation, context.activeReservations, copy, language, reverseSwapValid, unavailableBedIds])
 
   return {
     activeTransport,
