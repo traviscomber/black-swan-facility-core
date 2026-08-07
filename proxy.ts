@@ -75,6 +75,14 @@ export async function proxy(request: NextRequest) {
   let rewriteUrl: URL | null = null
 
   if (!apiRequest) {
+    const segments = pathname.split("/").filter(Boolean)
+    if (segments[0] === "deu") {
+      const legacyUrl = request.nextUrl.clone()
+      const rest = segments.slice(1).join("/")
+      legacyUrl.pathname = `/de${rest ? `/${rest}` : ""}`
+      return setLocaleCookie(NextResponse.redirect(legacyUrl), "de")
+    }
+
     const localized = getLocalizedPageRequest(request)
 
     if (!localized) {
