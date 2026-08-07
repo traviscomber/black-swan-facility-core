@@ -14,13 +14,14 @@ import { bookingSourcePolicy, bookingSourcePolicyLabel } from "@/lib/booking-sou
 import {
   defaultValidation,
   futureEditable,
-  targetLabel,
   type BookingCalendarBed,
   type BookingCalendarReservation,
   type DragSession,
   type Feedback,
   type Validation,
 } from "@/components/booking-calendar-model"
+import { useLanguage } from "@/lib/hooks/use-language"
+import { bookingCalendarInteractionCopy, bookingTargetLabel } from "@/lib/translations/booking-calendar-interactions"
 
 type DragVisual = { reservationId: string; transform: string; width: number }
 
@@ -77,6 +78,8 @@ export function useBookingCalendarDrag({
   applyProposal,
   cancelOther,
 }: UseBookingCalendarDragInput) {
+  const { language } = useLanguage()
+  const copy = bookingCalendarInteractionCopy[language]
   const dragRef = useRef<DragSession | null>(null)
   const autoScrollFrame = useRef<number | null>(null)
 
@@ -149,7 +152,7 @@ export function useBookingCalendarDrag({
     setDropTargetBedId(targetBed.id)
     setFeedback({
       guestName: session.reservation.guest_name,
-      targetLabel: targetLabel(targetBed),
+      targetLabel: bookingTargetLabel(targetBed, language),
       checkIn: nextDates.checkIn,
       checkOut: nextDates.checkOut,
       nights: Math.max(0, differenceInCalendarDays(parseISO(nextDates.checkOut), parseISO(nextDates.checkIn))),
@@ -158,7 +161,7 @@ export function useBookingCalendarDrag({
       state: validation.state,
       message: validation.message,
     })
-  }, [activateDrag, bedAtPoint, cancelDrag, dayWidth, rowRefs, scrollRef, setDragVisual, setDropTargetBedId, setFeedback, updateCandidateStates, validateProposal])
+  }, [activateDrag, bedAtPoint, cancelDrag, dayWidth, language, rowRefs, scrollRef, setDragVisual, setDropTargetBedId, setFeedback, updateCandidateStates, validateProposal])
 
   const runAutoScroll = useCallback(() => {
     autoScrollFrame.current = null
@@ -185,8 +188,8 @@ export function useBookingCalendarDrag({
     bed: BookingCalendarBed,
   ) => {
     if (event.button !== 0) return
-    if (pendingIds.has(reservation.id)) return void toast.warning("Este cambio ya está pendiente de aprobación de Santiago")
-    if (bookingSourcePolicy(reservation.source) === "external-read-only") return void toast.warning(bookingSourcePolicyLabel(reservation.source))
+    if (pendingIds.has(reservation.id)) return void toast.warning(copy.pendingSantiago)
+    if (bookingSourcePolicy(reservation.source) === "external-read-only") return void toast.warning(bookingSourcePolicyLabel(reservation.source, language))
     if (!futureEditable(reservation)) return
     cancelOther()
     cancelDrag()
@@ -223,7 +226,7 @@ export function useBookingCalendarDrag({
         navigator.vibrate?.(18)
       }, 340)
     } else capturePointer(event.currentTarget, event.pointerId)
-  }, [activateDrag, cancelDrag, cancelOther, capturePointer, pendingIds, scrollRef, updateDrag])
+  }, [activateDrag, cancelDrag, cancelOther, capturePointer, copy.pendingSantiago, language, pendingIds, scrollRef, updateDrag])
 
   const onPointerMove = useCallback((event: React.PointerEvent) => {
     if (!dragRef.current || dragRef.current.pointerId !== event.pointerId) return false
