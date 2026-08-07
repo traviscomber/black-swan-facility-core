@@ -8,6 +8,7 @@ const LOCALE_HEADER = "x-site-locale"
 
 const PUBLIC_PAGE_PATHS = new Set(["/auth/login"])
 const PUBLIC_API_PREFIXES = ["/api/auth"]
+const CALENDAR_E2E_PATH = "/bookings/e2e-harness"
 
 type RouteLocale = (typeof LOCALES)[number]
 
@@ -21,8 +22,7 @@ function isPublicRequest(pathname: string) {
 }
 
 function isCalendarE2EHarness(pathname: string) {
-  return process.env.E2E_CALENDAR_HARNESS === "1"
-    && pathname === "/bookings/e2e-harness"
+  return process.env.E2E_CALENDAR_HARNESS === "1" && pathname === CALENDAR_E2E_PATH
 }
 
 function isApiRequest(pathname: string) {
@@ -68,6 +68,13 @@ function setLocaleCookie(response: NextResponse, locale: RouteLocale) {
 
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
+
+  // The isolated Playwright harness is intentionally locale/auth neutral and is
+  // exposed only when the dedicated E2E environment flag is present.
+  if (isCalendarE2EHarness(pathname)) {
+    return NextResponse.next()
+  }
+
   const apiRequest = isApiRequest(pathname)
 
   let locale: RouteLocale | null = null
@@ -109,7 +116,7 @@ export async function proxy(request: NextRequest) {
     return locale ? setLocaleCookie(response, locale) : response
   }
 
-  if (isPublicRequest(effectivePathname) || isCalendarE2EHarness(effectivePathname)) {
+  if (isPublicRequest(effectivePathname)) {
     return createPageResponse()
   }
 
