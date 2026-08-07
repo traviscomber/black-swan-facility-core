@@ -41,11 +41,9 @@ import { createClient } from "@/lib/supabase/client"
 
 type NavigationItem = {
   nameKey: string
-  name?: string
   href: string
   icon: ElementType
   tipKey: string
-  tip?: string
   badge?: "finance_pending"
   adminOnly?: boolean
   action?: string
@@ -55,10 +53,20 @@ type NavigationItem = {
 
 type NavigationGroup = {
   labelKey: string
-  label?: string
   descKey: string
-  desc?: string
   items: NavigationItem[]
+}
+
+const ROUTE_LOCALES = new Set(["en", "es", "de"])
+
+function stripLocale(pathname: string) {
+  const segments = pathname.split("/").filter(Boolean)
+  if (segments[0] && ROUTE_LOCALES.has(segments[0])) segments.shift()
+  return segments.length ? `/${segments.join("/")}` : "/"
+}
+
+function localizedHref(locale: string, href: string) {
+  return `/${locale}${href === "/" ? "" : href}`
 }
 
 const navigationGroups: NavigationGroup[] = [
@@ -75,14 +83,12 @@ const navigationGroups: NavigationGroup[] = [
   },
   {
     labelKey: "finance",
-    label: "Finanzas",
     descKey: "finance_desc",
-    desc: "Budget, documentos, aprobaciones y conciliación",
     items: [
-      { nameKey: "finance_budget", name: "Budget", href: "/budgets", icon: DollarSign, tipKey: "finance_budget_tip", tip: "Budget & P&L canónico", action: "payments.record", department: "finance" },
-      { nameKey: "finance_approvals", name: "Aprobaciones", href: "/budgets/approvals", icon: CheckSquare, tipKey: "finance_approvals_tip", tip: "Decisiones financieras pendientes", badge: "finance_pending", action: "payments.record", department: "finance" },
-      { nameKey: "finance_documents", name: "Facturas / documentos", href: "/budgets/documents", icon: Receipt, tipKey: "finance_documents_tip", tip: "Documentos financieros y su clasificación", action: "payments.record", department: "finance" },
-      { nameKey: "finance_reconciliation", name: "Conciliación", href: "/budgets/reconciliation", icon: TrendingUp, tipKey: "finance_reconciliation_tip", tip: "Cruce de ejecución real contra Budget", action: "payments.record", department: "finance" },
+      { nameKey: "finance_budget", href: "/budgets", icon: DollarSign, tipKey: "finance_budget_tip", action: "payments.record", department: "finance" },
+      { nameKey: "finance_approvals", href: "/budgets/approvals", icon: CheckSquare, tipKey: "finance_approvals_tip", badge: "finance_pending", action: "payments.record", department: "finance" },
+      { nameKey: "finance_documents", href: "/budgets/documents", icon: Receipt, tipKey: "finance_documents_tip", action: "payments.record", department: "finance" },
+      { nameKey: "finance_reconciliation", href: "/budgets/reconciliation", icon: TrendingUp, tipKey: "finance_reconciliation_tip", action: "payments.record", department: "finance" },
     ],
   },
   {
@@ -166,8 +172,9 @@ interface SidebarProps {
 }
 
 export function Sidebar({ isOpen, onClose }: SidebarProps) {
-  const pathname = usePathname()
-  const { t } = useLanguage()
+  const pathname = usePathname() || "/"
+  const { t, language } = useLanguage()
+  const internalPathname = useMemo(() => stripLocale(pathname), [pathname])
   const router = useRouter()
   const supabase = useMemo(() => createClient(), [])
   const { access, loading, error, can, canAccessDepartment } = useEffectiveAccess()
@@ -218,9 +225,9 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
 
   useEffect(() => {
     if (!loading && (error || access.role === "none")) {
-      void supabase.auth.signOut().finally(() => router.replace("/auth/login?reason=access"))
+      void supabase.auth.signOut().finally(() => router.replace(localizedHref(language, "/auth/login?reason=access")))
     }
-  }, [access.role, error, loading, router, supabase])
+  }, [access.role, error, language, loading, router, supabase])
 
   const visibleGroups = useMemo(() => navigationGroups
     .map((group) => ({
@@ -237,24 +244,24 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
   useEffect(() => {
     const initialExpanded = new Set<string>()
     visibleGroups.forEach((group) => {
-      if (group.items.some((item) => pathname === item.href || (item.href !== "/" && pathname?.startsWith(item.href)) || item.subItems?.some((subItem) => pathname === subItem.href))) {
+      if (group.items.some((item) => internalPathname === item.href || (item.href !== "/" && internalPathname.startsWith(item.href)) || item.subItems?.some((subItem) => internalPathname === subItem.href))) {
         initialExpanded.add(group.labelKey)
       }
     })
     setExpandedGroups(initialExpanded)
-  }, [pathname, visibleGroups])
+  }, [internalPathname, visibleGroups])
 
   useEffect(() => {
     const initialExpanded = new Set<string>()
     visibleGroups.forEach((group) => group.items.forEach((item) => {
-      if (item.subItems?.some((subItem) => pathname === subItem.href)) initialExpanded.add(item.nameKey)
+      if (item.subItems?.some((subItem) => internalPathname === subItem.href)) initialExpanded.add(item.nameKey)
     }))
     setExpandedItems(initialExpanded)
-  }, [pathname, visibleGroups])
+  }, [internalPathname, visibleGroups])
 
   const handleLogout = async () => {
     await supabase.auth.signOut()
-    router.push("/auth/login")
+    router.push(localizedHref(language, "/auth/login"))
   }
 
   const toggleSetValue = (setter: (value: Set<string>) => void, current: Set<string>, value: string) => {
@@ -271,37 +278,37 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
       {isOpen && <div className="fixed inset-0 z-40 bg-black/20 lg:hidden" onClick={onClose} />}
       <div className={cn("fixed inset-y-0 left-0 z-50 flex h-screen w-64 flex-col overflow-y-auto border-r border-secondary bg-white transition-transform duration-300 lg:relative lg:inset-auto lg:z-auto lg:h-full lg:translate-x-0", isOpen ? "translate-x-0" : "-translate-x-full")}>
         <div className="flex h-16 items-center justify-between border-b border-secondary bg-primary/5 px-4 sm:h-20">
-          <Link href="/" className="flex min-w-0 items-center gap-2 hover:opacity-80">
+          <Link href={localizedHref(language, "/")} className="flex min-w-0 items-center gap-2 hover:opacity-80">
             <img src="/blackswan-logo.png" alt="Blackswan Logo" className="h-12 w-12 flex-shrink-0 object-contain sm:h-14 sm:w-14" />
             <div className="min-w-0"><h1 className="truncate text-sm font-bold uppercase tracking-wider text-accent sm:text-base">BFCS</h1><p className="text-xs text-muted-foreground">Core System</p></div>
           </Link>
-          <button onClick={onClose} className="rounded p-1 hover:bg-secondary lg:hidden" aria-label="Cerrar navegación"><X className="h-5 w-5" /></button>
+          <button onClick={onClose} className="rounded p-1 hover:bg-secondary lg:hidden" aria-label={t("shell.close_navigation")}><X className="h-5 w-5" /></button>
         </div>
 
         <nav className="min-h-0 flex-1 space-y-3 overflow-y-auto px-3 py-4">
-          {loading ? <p className="px-3 text-xs text-muted-foreground">Cargando acceso…</p> : visibleGroups.map((group) => {
-            const groupLabel = group.label ?? t(group.labelKey)
-            const groupDesc = group.desc ?? t(group.descKey)
+          {loading ? <p className="px-3 text-xs text-muted-foreground">{t("shell.loading_access")}</p> : visibleGroups.map((group) => {
+            const groupLabel = t(group.labelKey)
+            const groupDesc = t(group.descKey)
             return (
             <div key={group.labelKey} className="min-w-0 space-y-1">
               <div className="flex items-start justify-between gap-1 px-2">
                 <div className="min-w-0 flex-1"><h3 className="truncate text-xs font-bold uppercase tracking-wider text-foreground" title={groupLabel}>{groupLabel}</h3><p className="mt-1 hidden text-xs leading-tight text-muted-foreground sm:block">{groupDesc}</p></div>
-                <button onClick={() => toggleSetValue(setExpandedGroups, expandedGroups, group.labelKey)} className="rounded p-1 hover:bg-muted" aria-label={`Toggle ${groupLabel}`}><ChevronDown className={cn("h-4 w-4 transition-transform", expandedGroups.has(group.labelKey) ? "rotate-0" : "-rotate-90")} /></button>
+                <button onClick={() => toggleSetValue(setExpandedGroups, expandedGroups, group.labelKey)} className="rounded p-1 hover:bg-muted" aria-label={`${t("shell.toggle")} ${groupLabel}`}><ChevronDown className={cn("h-4 w-4 transition-transform", expandedGroups.has(group.labelKey) ? "rotate-0" : "-rotate-90")} /></button>
               </div>
               {expandedGroups.has(group.labelKey) && <div className="space-y-0.5">
                 {group.items.map((item) => {
-                  const isActive = pathname === item.href || (item.href !== "/" && pathname?.startsWith(item.href))
+                  const isActive = internalPathname === item.href || (item.href !== "/" && internalPathname.startsWith(item.href))
                   const hasSubItems = Boolean(item.subItems?.length)
                   const isExpanded = expandedItems.has(item.nameKey)
-                  const itemName = item.name ?? t(item.nameKey)
-                  const itemTip = item.tip ?? t(item.tipKey)
+                  const itemName = t(item.nameKey)
+                  const itemTip = t(item.tipKey)
                   const badgeValue = item.badge === "finance_pending" ? financePendingCount : 0
                   return <div key={item.nameKey} className="min-w-0">
                     <div className="flex min-w-0 items-center">
-                      <Link href={item.href} onClick={onClose} className={cn("group flex min-w-0 flex-1 items-center gap-3 rounded px-3 py-2 text-sm font-medium transition-colors", isActive ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted hover:text-foreground")} title={itemTip}><item.icon className="h-5 w-5 flex-shrink-0" /><span className="flex-1 truncate">{itemName}</span>{badgeValue > 0 && <span className="min-w-6 bg-[var(--bs-warm-yellow)] px-1.5 py-0.5 text-center text-[11px] font-semibold text-[var(--bs-bg-primary)]">{badgeValue > 99 ? "99+" : badgeValue}</span>}{isActive && <span className="h-2 w-2 rounded-full bg-current" />}</Link>
-                      {hasSubItems && <button onClick={() => toggleSetValue(setExpandedItems, expandedItems, item.nameKey)} className="rounded p-2 hover:bg-muted" aria-label={`Toggle ${itemName}`}><ChevronDown className={cn("h-4 w-4 transition-transform", isExpanded ? "rotate-0" : "-rotate-90")} /></button>}
+                      <Link href={localizedHref(language, item.href)} onClick={onClose} className={cn("group flex min-w-0 flex-1 items-center gap-3 rounded px-3 py-2 text-sm font-medium transition-colors", isActive ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted hover:text-foreground")} title={itemTip}><item.icon className="h-5 w-5 flex-shrink-0" /><span className="flex-1 truncate">{itemName}</span>{badgeValue > 0 && <span className="min-w-6 bg-[var(--bs-warm-yellow)] px-1.5 py-0.5 text-center text-[11px] font-semibold text-[var(--bs-bg-primary)]">{badgeValue > 99 ? "99+" : badgeValue}</span>}{isActive && <span className="h-2 w-2 rounded-full bg-current" />}</Link>
+                      {hasSubItems && <button onClick={() => toggleSetValue(setExpandedItems, expandedItems, item.nameKey)} className="rounded p-2 hover:bg-muted" aria-label={`${t("shell.toggle")} ${itemName}`}><ChevronDown className={cn("h-4 w-4 transition-transform", isExpanded ? "rotate-0" : "-rotate-90")} /></button>}
                     </div>
-                    {hasSubItems && isExpanded && <div className="ml-4 mt-1 space-y-0.5 border-l-2 border-border pl-2">{item.subItems?.map((subItem) => <Link key={subItem.href} href={subItem.href} onClick={onClose} className={cn("flex items-center gap-2 rounded px-3 py-1.5 text-xs transition-colors", pathname === subItem.href ? "bg-primary/10 font-medium text-primary" : "text-muted-foreground hover:bg-muted hover:text-foreground")}><span>{subItem.icon}</span><span className="truncate">{t(subItem.nameKey)}</span></Link>)}</div>}
+                    {hasSubItems && isExpanded && <div className="ml-4 mt-1 space-y-0.5 border-l-2 border-border pl-2">{item.subItems?.map((subItem) => <Link key={subItem.href} href={localizedHref(language, subItem.href)} onClick={onClose} className={cn("flex items-center gap-2 rounded px-3 py-1.5 text-xs transition-colors", internalPathname === subItem.href ? "bg-primary/10 font-medium text-primary" : "text-muted-foreground hover:bg-muted hover:text-foreground")}><span>{subItem.icon}</span><span className="truncate">{t(subItem.nameKey)}</span></Link>)}</div>}
                   </div>
                 })}
               </div>}
@@ -311,8 +318,8 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
 
         <div className="space-y-3 border-t border-secondary p-3">
           <LanguageSwitcher />
-          <button onClick={handleOpenSearch} className="flex w-full items-center gap-3 rounded px-3 py-2 text-sm text-muted-foreground hover:bg-muted hover:text-foreground"><HelpCircle className="h-5 w-5" /><span>Buscar</span><span className="ml-auto text-xs">⌘K</span></button>
-          <div className="flex items-center gap-3 rounded bg-muted/40 px-3 py-2"><span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">{userInitials}</span><div className="min-w-0 flex-1"><p className="truncate text-xs font-medium">{userEmail || "Usuario"}</p><p className="text-[11px] text-muted-foreground">{access.role || "usuario"}</p></div><button onClick={handleLogout} className="rounded p-1.5 hover:bg-muted" title="Cerrar sesión"><LogOut className="h-4 w-4" /></button></div>
+          <button onClick={handleOpenSearch} className="flex w-full items-center gap-3 rounded px-3 py-2 text-sm text-muted-foreground hover:bg-muted hover:text-foreground"><HelpCircle className="h-5 w-5" /><span>{t("shell.search")}</span><span className="ml-auto text-xs">⌘K</span></button>
+          <div className="flex items-center gap-3 rounded bg-muted/40 px-3 py-2"><span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">{userInitials}</span><div className="min-w-0 flex-1"><p className="truncate text-xs font-medium">{userEmail || t("shell.user")}</p><p className="text-[11px] text-muted-foreground">{access.role || "user"}</p></div><button onClick={handleLogout} className="rounded p-1.5 hover:bg-muted" title={t("shell.logout")}><LogOut className="h-4 w-4" /></button></div>
         </div>
       </div>
     </>
