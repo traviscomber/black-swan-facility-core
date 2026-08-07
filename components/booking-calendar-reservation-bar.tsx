@@ -12,6 +12,7 @@ import {
   type BookingCalendarBed,
   type BookingCalendarReservation,
 } from "@/components/booking-calendar-model"
+import { useLanguage } from "@/lib/hooks/use-language"
 
 type Geometry = { left: number; width: number }
 type DragVisual = { reservationId: string; transform: string; width: number }
@@ -45,6 +46,7 @@ export function BookingCalendarReservationBar({
   onKeyDown,
   onClick,
 }: BookingCalendarReservationBarProps) {
+  const { language } = useLanguage()
   const arrivalState = reservation.arrival_status
     && ["waiting_for_room", "ready_for_checkin"].includes(reservation.arrival_status)
     ? reservation.arrival_status
@@ -57,6 +59,11 @@ export function BookingCalendarReservationBar({
   const policy = bookingSourcePolicy(reservation.source)
   const disabled = pending || policy === "external-read-only" || !futureEditable(reservation)
   const sourceLabel = sourceDescription(reservation.source, policy)
+  const ariaLabel = language === "de"
+    ? `${reservation.guest_name}. ${reservation.check_in} bis ${reservation.check_out}. Quelle ${sourceLabel}.`
+    : language === "en"
+      ? `${reservation.guest_name}. ${reservation.check_in} to ${reservation.check_out}. Source ${sourceLabel}.`
+      : `${reservation.guest_name}. ${reservation.check_in} a ${reservation.check_out}. Origen ${sourceLabel}.`
 
   return (
     <button
@@ -71,8 +78,8 @@ export function BookingCalendarReservationBar({
         transform: visual?.transform,
         touchAction: visual ? "none" : "pan-y",
       }}
-      aria-label={`${reservation.guest_name}. ${reservation.check_in} a ${reservation.check_out}. Origen ${sourceLabel}.`}
-      title={policy === "external-read-only" ? bookingSourcePolicyLabel(reservation.source) : undefined}
+      aria-label={ariaLabel}
+      title={policy === "external-read-only" ? bookingSourcePolicyLabel(reservation.source, language) : undefined}
       aria-grabbed={keyboardReservationId === reservation.id || Boolean(visual)}
       aria-disabled={disabled}
       aria-keyshortcuts="Space Enter Escape ArrowLeft ArrowRight ArrowUp ArrowDown Alt+ArrowLeft Alt+ArrowRight Shift+ArrowLeft Shift+ArrowRight"
