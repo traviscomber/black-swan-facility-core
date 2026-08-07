@@ -1,6 +1,7 @@
 'use client'
 
 import { AppLayout } from '@/components/app-layout'
+import { BudgetFinancialMap } from '@/components/budget-financial-map'
 import { BudgetWorkspace } from '@/components/budget-workspace'
 import { PageHeader } from '@/components/page-header'
 
@@ -12,6 +13,7 @@ export default function BudgetsPage() {
         description="Presupuesto operativo, ejecución real e importación controlada del Excel maestro."
       />
       <BudgetWorkspace />
+      <BudgetFinancialMap />
     </AppLayout>
   )
 }
