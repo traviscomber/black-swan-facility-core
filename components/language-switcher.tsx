@@ -12,26 +12,25 @@ export function LanguageSwitcher() {
     setMounted(true)
   }, [])
 
+  const disabledClass = 'flex-1 text-xs'
+
   if (!mounted) {
     return (
-      <div className="flex gap-2 w-full">
-        <Button size="sm" className="flex-1 text-xs" disabled>
-          English
-        </Button>
-        <Button size="sm" className="flex-1 text-xs" disabled>
-          Español
-        </Button>
+      <div className="grid w-full grid-cols-3 gap-2">
+        <Button size="sm" className={disabledClass} disabled>English</Button>
+        <Button size="sm" className={disabledClass} disabled>Español</Button>
+        <Button size="sm" className={disabledClass} disabled>Deutsch</Button>
       </div>
     )
   }
 
   return (
-    <div className="flex gap-2 w-full">
+    <div className="grid w-full grid-cols-3 gap-2">
       <Button
         variant={language === 'en' ? 'default' : 'outline'}
         size="sm"
         onClick={() => setLanguage('en')}
-        className="flex-1 text-xs"
+        className="text-xs"
       >
         English
       </Button>
@@ -39,9 +38,17 @@ export function LanguageSwitcher() {
         variant={language === 'es' ? 'default' : 'outline'}
         size="sm"
         onClick={() => setLanguage('es')}
-        className="flex-1 text-xs"
+        className="text-xs"
       >
         Español
+      </Button>
+      <Button
+        variant={language === 'de' ? 'default' : 'outline'}
+        size="sm"
+        onClick={() => setLanguage('de')}
+        className="text-xs"
+      >
+        Deutsch
       </Button>
     </div>
   )
