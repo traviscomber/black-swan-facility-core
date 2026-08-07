@@ -2,9 +2,9 @@
 
 import { AppLayout } from '@/components/app-layout'
 import { FinanceApprovalQueue } from '@/components/finance-approval-queue'
-import { FinanceCenterMapping } from '@/components/finance-center-mapping'
 import { FinanceHistoricalAliasReview } from '@/components/finance-historical-alias-review'
 import { RaimundoFinanceImport } from '@/components/raimundo-finance-import'
+import { RaimundoReviewInbox } from '@/components/raimundo-review-inbox'
 import { PageHeader } from '@/components/page-header'
 
 export default function BudgetApprovalsPage() {
@@ -12,9 +12,9 @@ export default function BudgetApprovalsPage() {
     <AppLayout>
       <PageHeader
         title="Aprobación financiera"
-        description="Clasifica una vez, aprueba rápido y conserva trazabilidad contra el Budget canónico."
+        description="Revisa un caso por vez, confirma rápido y conserva trazabilidad contra el Budget canónico."
       />
-      <FinanceCenterMapping />
+      <RaimundoReviewInbox />
       <FinanceHistoricalAliasReview />
       <FinanceApprovalQueue />
       <RaimundoFinanceImport />
