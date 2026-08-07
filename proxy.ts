@@ -69,10 +69,16 @@ function setLocaleCookie(response: NextResponse, locale: RouteLocale) {
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
 
-  // The isolated Playwright harness is intentionally locale/auth neutral and is
-  // exposed only when the dedicated E2E environment flag is present.
+  // The isolated Playwright harness is intentionally auth-neutral and only
+  // exists under the dedicated E2E flag. Pin it to Spanish so historical E2E
+  // assertions stay deterministic while production routes remain locale-based.
   if (isCalendarE2EHarness(pathname)) {
-    return NextResponse.next()
+    const requestHeaders = new Headers(request.headers)
+    requestHeaders.set(LOCALE_HEADER, "es")
+    return setLocaleCookie(
+      NextResponse.next({ request: { headers: requestHeaders } }),
+      "es",
+    )
   }
 
   const apiRequest = isApiRequest(pathname)
