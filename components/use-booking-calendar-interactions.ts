@@ -181,6 +181,21 @@ export function useBookingCalendarInteractions({
     })()
   }, [create, drag])
 
+  const onReservationPointerMove = useCallback((event: React.PointerEvent<HTMLButtonElement>) => {
+    if (!drag.onPointerMove(event)) return
+    event.stopPropagation()
+  }, [drag])
+
+  const onReservationPointerUp = useCallback((event: React.PointerEvent<HTMLButtonElement>) => {
+    event.stopPropagation()
+    void drag.finishDrag(event)
+  }, [drag])
+
+  const onReservationPointerCancel = useCallback((event: React.PointerEvent<HTMLButtonElement>) => {
+    event.stopPropagation()
+    drag.cancelDrag()
+  }, [drag])
+
   const onReservationClick = useCallback((reservation: BookingCalendarReservation, bed: BookingCalendarBed) => {
     if (Date.now() < suppressClickUntil.current) return
     onOpenReservation(reservation, bed)
@@ -197,6 +212,9 @@ export function useBookingCalendarInteractions({
     onRootPointerMove,
     onRootPointerUp,
     onReservationPointerDown: drag.onReservationPointerDown,
+    onReservationPointerMove,
+    onReservationPointerUp,
+    onReservationPointerCancel,
     onReservationKeyDown: keyboard.onReservationKeyDown,
     onReservationClick,
     onCellPointerDown: create.onCellPointerDown,
