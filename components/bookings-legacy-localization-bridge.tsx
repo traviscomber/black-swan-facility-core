@@ -3,6 +3,7 @@
 import { useEffect } from "react"
 import { useLanguage, type Language } from "@/lib/hooks/use-language"
 import { translateBookingOperationsValue } from "@/lib/translations/booking-operations"
+import { translateLegacyCalendarValue } from "@/lib/translations/bookings-calendar-legacy"
 
 const ROUTE_LOCALES = new Set(["en", "es", "de"])
 
@@ -11,6 +12,11 @@ function localizeLegacyHref(value: string, locale: Language) {
   const firstSegment = value.split("/").filter(Boolean)[0]
   if (ROUTE_LOCALES.has(firstSegment)) return value
   return `/${locale}${value}`
+}
+
+function translateValue(value: string, locale: Language) {
+  const operations = translateBookingOperationsValue(value, locale)
+  return translateLegacyCalendarValue(operations, locale)
 }
 
 function translateTree(root: HTMLElement, locale: Language) {
@@ -26,7 +32,7 @@ function translateTree(root: HTMLElement, locale: Language) {
     const trailing = raw.match(/\s*$/)?.[0] ?? ""
     const value = raw.trim()
     if (!value) continue
-    const translated = translateBookingOperationsValue(value, locale)
+    const translated = translateValue(value, locale)
     if (translated !== value) node.nodeValue = `${leading}${translated}${trailing}`
   }
 
@@ -34,7 +40,7 @@ function translateTree(root: HTMLElement, locale: Language) {
     for (const attribute of ["placeholder", "aria-label", "title"] as const) {
       const value = element.getAttribute(attribute)
       if (!value) continue
-      const translated = translateBookingOperationsValue(value, locale)
+      const translated = translateValue(value, locale)
       if (translated !== value) element.setAttribute(attribute, translated)
     }
   }
