@@ -5,6 +5,7 @@ import { useLanguage, type Language } from "@/lib/hooks/use-language"
 import { translateBookingOperationsValue } from "@/lib/translations/booking-operations"
 import { translateLegacyCalendarValue } from "@/lib/translations/bookings-calendar-legacy"
 import { translateLegacyCalendarGridValue } from "@/lib/translations/bookings-calendar-grid-legacy"
+import { translateDeepCalendarValue } from "@/lib/translations/bookings-calendar-deep-legacy"
 
 const ROUTE_LOCALES = new Set(["en", "es", "de"])
 
@@ -18,7 +19,8 @@ function localizeLegacyHref(value: string, locale: Language) {
 function translateValue(value: string, locale: Language) {
   const operations = translateBookingOperationsValue(value, locale)
   const calendar = translateLegacyCalendarValue(operations, locale)
-  return translateLegacyCalendarGridValue(calendar, locale)
+  const grid = translateLegacyCalendarGridValue(calendar, locale)
+  return translateDeepCalendarValue(grid, locale)
 }
 
 function translateTree(root: HTMLElement, locale: Language) {
