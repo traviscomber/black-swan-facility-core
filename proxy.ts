@@ -1,7 +1,7 @@
 import { createServerClient } from "@supabase/ssr"
 import { NextResponse, type NextRequest } from "next/server"
 
-const LOCALES = ["en", "es", "deu"] as const
+const LOCALES = ["en", "es", "de"] as const
 const DEFAULT_LOCALE = "en"
 const LOCALE_COOKIE = "site-locale"
 
@@ -67,8 +67,6 @@ function setLocaleCookie(response: NextResponse, locale: RouteLocale) {
 
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
-
-  // API routes remain language-neutral and keep their existing authentication behavior.
   const apiRequest = isApiRequest(pathname)
 
   let locale: RouteLocale | null = null
@@ -80,7 +78,8 @@ export async function proxy(request: NextRequest) {
 
     if (!localized) {
       const savedLocale = request.cookies.get(LOCALE_COOKIE)?.value
-      const targetLocale = isRouteLocale(savedLocale) ? savedLocale : DEFAULT_LOCALE
+      const legacyLocale = savedLocale === "deu" ? "de" : savedLocale
+      const targetLocale = isRouteLocale(legacyLocale) ? legacyLocale : DEFAULT_LOCALE
       return NextResponse.redirect(localizedUrl(request, targetLocale, pathname))
     }
 
