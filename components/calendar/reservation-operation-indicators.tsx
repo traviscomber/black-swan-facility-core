@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { BedDouble, CheckCircle2, CircleDollarSign, ConciergeBell, ShieldAlert, Sparkles } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
+import { useLanguage, type Language } from "@/lib/hooks/use-language"
 
 type OperationSummary = {
   housekeeping: { total: number; open: number; critical: number }
@@ -20,17 +21,73 @@ const EMPTY_SUMMARY: OperationSummary = {
   readiness: { ready: false, reason: null },
 }
 
-const READINESS_LABELS: Record<string, string> = {
-  room_unassigned: "Habitación sin asignar",
-  room_not_ready: "Habitación no lista",
-  preparation_missing: "Preparación no creada",
-  preparation_pending: "Preparación pendiente",
-  inspection_missing: "Inspección no creada",
-  inspection_pending: "Inspección pendiente",
-  inspection_not_approved: "Inspección no aprobada",
-  inspection_not_verified: "Inspección sin verificar",
-  ready: "Habitación lista para check-in",
-}
+const copy = {
+  en: {
+    related: "Related operations",
+    readinessFallback: "Preparation status pending",
+    readiness: {
+      room_unassigned: "Room unassigned",
+      room_not_ready: "Room not ready",
+      preparation_missing: "Preparation not created",
+      preparation_pending: "Preparation pending",
+      inspection_missing: "Inspection not created",
+      inspection_pending: "Inspection pending",
+      inspection_not_approved: "Inspection not approved",
+      inspection_not_verified: "Inspection not verified",
+      ready: "Room ready for check-in",
+    },
+    housekeeping: (count: number) => `${count} pending Housekeeping task${count === 1 ? "" : "s"}`,
+    hospitality: (count: number) => `${count} pending Hospitality request${count === 1 ? "" : "s"}`,
+    services: (count: number) => `${count} pending service${count === 1 ? "" : "s"}`,
+    payments: (confirmed: number, total: number) => `${confirmed} of ${total} payment${total === 1 ? "" : "s"} confirmed`,
+  },
+  es: {
+    related: "Operaciones relacionadas",
+    readinessFallback: "Estado de preparación pendiente",
+    readiness: {
+      room_unassigned: "Habitación sin asignar",
+      room_not_ready: "Habitación no lista",
+      preparation_missing: "Preparación no creada",
+      preparation_pending: "Preparación pendiente",
+      inspection_missing: "Inspección no creada",
+      inspection_pending: "Inspección pendiente",
+      inspection_not_approved: "Inspección no aprobada",
+      inspection_not_verified: "Inspección sin verificar",
+      ready: "Habitación lista para check-in",
+    },
+    housekeeping: (count: number) => `${count} tarea${count === 1 ? "" : "s"} de Housekeeping pendiente${count === 1 ? "" : "s"}`,
+    hospitality: (count: number) => `${count} solicitud${count === 1 ? "" : "es"} de Hospitality pendiente${count === 1 ? "" : "s"}`,
+    services: (count: number) => `${count} servicio${count === 1 ? "" : "s"} pendiente${count === 1 ? "" : "s"}`,
+    payments: (confirmed: number, total: number) => `${confirmed} de ${total} pago${total === 1 ? "" : "s"} confirmado${total === 1 ? "" : "s"}`,
+  },
+  de: {
+    related: "Verknüpfte Vorgänge",
+    readinessFallback: "Vorbereitungsstatus ausstehend",
+    readiness: {
+      room_unassigned: "Zimmer nicht zugewiesen",
+      room_not_ready: "Zimmer nicht bereit",
+      preparation_missing: "Vorbereitung nicht erstellt",
+      preparation_pending: "Vorbereitung ausstehend",
+      inspection_missing: "Prüfung nicht erstellt",
+      inspection_pending: "Prüfung ausstehend",
+      inspection_not_approved: "Prüfung nicht freigegeben",
+      inspection_not_verified: "Prüfung nicht verifiziert",
+      ready: "Zimmer bereit zum Check-in",
+    },
+    housekeeping: (count: number) => `${count} offene Housekeeping-Aufgabe${count === 1 ? "" : "n"}`,
+    hospitality: (count: number) => `${count} offene Hospitality-Anfrage${count === 1 ? "" : "n"}`,
+    services: (count: number) => `${count} offener Service${count === 1 ? "" : "s"}`,
+    payments: (confirmed: number, total: number) => `${confirmed} von ${total} Zahlung${total === 1 ? "" : "en"} bestätigt`,
+  },
+} satisfies Record<Language, {
+  related: string
+  readinessFallback: string
+  readiness: Record<string, string>
+  housekeeping: (count: number) => string
+  hospitality: (count: number) => string
+  services: (count: number) => string
+  payments: (confirmed: number, total: number) => string
+}>
 
 function isOpenStatus(status: string | null | undefined) {
   const value = (status ?? "").toLowerCase()
@@ -45,6 +102,8 @@ function isCritical(priority: string | null | undefined, dueAt?: string | null) 
 
 export function ReservationOperationIndicators({ reservationId }: { reservationId: string }) {
   const supabase = useMemo(() => createClient(), [])
+  const { language } = useLanguage()
+  const c = copy[language]
   const [summary, setSummary] = useState<OperationSummary>(EMPTY_SUMMARY)
 
   const load = useCallback(async () => {
@@ -109,7 +168,7 @@ export function ReservationOperationIndicators({ reservationId }: { reservationI
       key: "readiness",
       Icon: summary.readiness.ready ? CheckCircle2 : ShieldAlert,
       visible: true,
-      label: READINESS_LABELS[readinessReason] ?? "Estado de preparación pendiente",
+      label: c.readiness[readinessReason] ?? c.readinessFallback,
       className: summary.readiness.ready ? "bg-emerald-100 text-emerald-900" : "bg-red-100 text-red-900",
       count: 0,
     },
@@ -117,7 +176,7 @@ export function ReservationOperationIndicators({ reservationId }: { reservationI
       key: "housekeeping",
       Icon: BedDouble,
       visible: summary.housekeeping.total > 0,
-      label: `${summary.housekeeping.open} Housekeeping pendiente${summary.housekeeping.open === 1 ? "" : "s"}`,
+      label: c.housekeeping(summary.housekeeping.open),
       className: summary.housekeeping.critical > 0 ? "bg-red-500 text-white" : summary.housekeeping.open > 0 ? "bg-amber-100 text-amber-900" : "bg-emerald-100 text-emerald-900",
       count: summary.housekeeping.open,
     },
@@ -125,7 +184,7 @@ export function ReservationOperationIndicators({ reservationId }: { reservationI
       key: "hospitality",
       Icon: ConciergeBell,
       visible: summary.hospitality.total > 0,
-      label: `${summary.hospitality.open} solicitud${summary.hospitality.open === 1 ? "" : "es"} de Hospitality pendiente${summary.hospitality.open === 1 ? "" : "s"}`,
+      label: c.hospitality(summary.hospitality.open),
       className: summary.hospitality.critical > 0 ? "bg-red-500 text-white" : summary.hospitality.open > 0 ? "bg-sky-100 text-sky-900" : "bg-emerald-100 text-emerald-900",
       count: summary.hospitality.open,
     },
@@ -133,7 +192,7 @@ export function ReservationOperationIndicators({ reservationId }: { reservationI
       key: "services",
       Icon: Sparkles,
       visible: summary.services.total > 0,
-      label: `${summary.services.open} servicio${summary.services.open === 1 ? "" : "s"} pendiente${summary.services.open === 1 ? "" : "s"}`,
+      label: c.services(summary.services.open),
       className: summary.services.open > 0 ? "bg-violet-100 text-violet-900" : "bg-emerald-100 text-emerald-900",
       count: summary.services.open,
     },
@@ -141,14 +200,14 @@ export function ReservationOperationIndicators({ reservationId }: { reservationI
       key: "payments",
       Icon: CircleDollarSign,
       visible: summary.payments.total > 0,
-      label: `${summary.payments.confirmed} de ${summary.payments.total} pago${summary.payments.total === 1 ? "" : "s"} confirmado${summary.payments.total === 1 ? "" : "s"}`,
+      label: c.payments(summary.payments.confirmed, summary.payments.total),
       className: summary.payments.confirmed < summary.payments.total ? "bg-orange-100 text-orange-900" : "bg-emerald-100 text-emerald-900",
       count: Math.max(0, summary.payments.total - summary.payments.confirmed),
     },
   ]
 
   return (
-    <span className="absolute bottom-1 right-1 z-20 flex items-center gap-1" aria-label="Operaciones relacionadas">
+    <span className="absolute bottom-1 right-1 z-20 flex items-center gap-1" aria-label={c.related}>
       {indicators.filter((indicator) => indicator.visible).map(({ key, Icon, label, className, count }) => (
         <span key={key} title={label} className={`inline-flex h-5 min-w-5 items-center justify-center gap-0.5 rounded-sm px-1 text-[10px] font-bold shadow-sm ${className}`}>
           <Icon className="h-3 w-3" />
