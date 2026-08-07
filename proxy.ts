@@ -4,6 +4,7 @@ import { NextResponse, type NextRequest } from "next/server"
 const LOCALES = ["en", "es", "de"] as const
 const DEFAULT_LOCALE = "en"
 const LOCALE_COOKIE = "site-locale"
+const LOCALE_HEADER = "x-site-locale"
 
 const PUBLIC_PAGE_PATHS = new Set(["/auth/login"])
 const PUBLIC_API_PREFIXES = ["/api/auth"]
@@ -90,9 +91,12 @@ export async function proxy(request: NextRequest) {
   }
 
   const createPageResponse = () => {
+    const requestHeaders = new Headers(request.headers)
+    if (locale) requestHeaders.set(LOCALE_HEADER, locale)
+
     const response = rewriteUrl
-      ? NextResponse.rewrite(rewriteUrl, { request: { headers: request.headers } })
-      : NextResponse.next({ request: { headers: request.headers } })
+      ? NextResponse.rewrite(rewriteUrl, { request: { headers: requestHeaders } })
+      : NextResponse.next({ request: { headers: requestHeaders } })
 
     return locale ? setLocaleCookie(response, locale) : response
   }
