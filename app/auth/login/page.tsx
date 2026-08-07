@@ -6,6 +6,8 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
+import { useLanguage } from '@/lib/hooks/use-language'
+import { authTranslations } from '@/lib/translations/auth'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
@@ -14,6 +16,8 @@ export default function LoginPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const supabase = createClient()
+  const { language } = useLanguage()
+  const copy = authTranslations[language]
 
   const handleLogin = async (event: React.FormEvent) => {
     event.preventDefault()
@@ -28,12 +32,14 @@ export default function LoginPage() {
 
       if (data?.user) {
         const requestedPath = searchParams.get('next')
-        const destination = requestedPath?.startsWith('/') && !requestedPath.startsWith('//') ? requestedPath : '/'
+        const destination = requestedPath?.startsWith('/') && !requestedPath.startsWith('//')
+          ? requestedPath
+          : `/${language}`
         router.refresh()
         router.push(destination)
       }
     } catch (error: unknown) {
-      toast.error(error instanceof Error ? error.message : 'Ocurrió un error')
+      toast.error(error instanceof Error ? error.message : copy.genericError)
     } finally {
       setLoading(false)
     }
@@ -68,10 +74,10 @@ export default function LoginPage() {
             Facility Core
           </p>
           <blockquote className="bs-heading max-w-lg text-[30px] leading-[1.18] text-[var(--bs-text-primary)]">
-            Control operacional con trazabilidad y acceso seguro por usuario.
+            {copy.hero}
           </blockquote>
           <p className="max-w-md text-[13px] leading-6 text-[var(--bs-text-secondary)]">
-            Reservas, recursos, tareas y procedimientos coordinados desde una única operación.
+            {copy.heroBody}
           </p>
         </div>
 
@@ -93,10 +99,10 @@ export default function LoginPage() {
 
           <div className="mb-8 space-y-2">
             <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-[var(--bs-cool-sage)]">
-              Acceso operativo
+              {copy.eyebrow}
             </p>
-            <h1 className="bs-heading text-[30px] leading-tight text-[var(--bs-text-primary)]">Iniciar sesión</h1>
-            <p className="text-[13px] text-[var(--bs-text-secondary)]">Ingresa tus credenciales para acceder.</p>
+            <h1 className="bs-heading text-[30px] leading-tight text-[var(--bs-text-primary)]">{copy.title}</h1>
+            <p className="text-[13px] text-[var(--bs-text-secondary)]">{copy.subtitle}</p>
           </div>
 
           <form onSubmit={handleLogin} className="space-y-5">
@@ -109,7 +115,7 @@ export default function LoginPage() {
                 type="email"
                 value={email}
                 onChange={(event) => setEmail(event.target.value)}
-                placeholder="usuario@dominio.com"
+                placeholder={copy.emailPlaceholder}
                 autoComplete="email"
                 disabled={loading}
                 required
@@ -119,7 +125,7 @@ export default function LoginPage() {
 
             <div className="space-y-2">
               <label htmlFor="password" className="block text-[13px] font-medium text-[var(--bs-text-primary)]">
-                Contraseña
+                {copy.password}
               </label>
               <Input
                 id="password"
@@ -139,14 +145,14 @@ export default function LoginPage() {
               disabled={loading}
               className="h-11 w-full border-0 bg-[var(--bs-cool-sage)] text-[13px] font-medium text-[var(--bs-bg-primary)] hover:bg-[#9bd8b6]"
             >
-              {loading ? 'Ingresando…' : 'Ingresar'}
+              {loading ? copy.submitting : copy.submit}
             </Button>
           </form>
 
           <p className="mt-7 text-center text-xs leading-5 text-[var(--bs-text-muted)]">
-            Acceso restringido a usuarios autorizados.
+            {copy.restricted}
             <br />
-            Contacta al administrador si no tienes acceso.
+            {copy.contact}
           </p>
         </div>
       </section>
