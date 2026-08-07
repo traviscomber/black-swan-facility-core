@@ -35,7 +35,6 @@ jobs:
     container:
       image: mcr.microsoft.com/playwright:v1.61.1-noble
     env:
-      HOME: /root
       PLAYWRIGHT_BROWSERS_PATH: /ms-playwright
     steps:
       - uses: actions/checkout@v4
@@ -49,4 +48,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - name: Verify Playwright runtime
         run: pnpm exec playwright --version
-      - run: pnpm test:e2e:booking
+      - name: Run booking calendar E2E
+        env:
+          HOME: /root
+        run: pnpm test:e2e:booking
