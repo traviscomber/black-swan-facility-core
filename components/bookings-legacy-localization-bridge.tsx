@@ -4,6 +4,7 @@ import { useEffect } from "react"
 import { useLanguage, type Language } from "@/lib/hooks/use-language"
 import { translateBookingOperationsValue } from "@/lib/translations/booking-operations"
 import { translateLegacyCalendarValue } from "@/lib/translations/bookings-calendar-legacy"
+import { translateLegacyCalendarGridValue } from "@/lib/translations/bookings-calendar-grid-legacy"
 
 const ROUTE_LOCALES = new Set(["en", "es", "de"])
 
@@ -16,7 +17,8 @@ function localizeLegacyHref(value: string, locale: Language) {
 
 function translateValue(value: string, locale: Language) {
   const operations = translateBookingOperationsValue(value, locale)
-  return translateLegacyCalendarValue(operations, locale)
+  const calendar = translateLegacyCalendarValue(operations, locale)
+  return translateLegacyCalendarGridValue(calendar, locale)
 }
 
 function translateTree(root: HTMLElement, locale: Language) {
