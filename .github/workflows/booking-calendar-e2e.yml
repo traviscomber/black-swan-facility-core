@@ -49,6 +49,4 @@ jobs:
       - name: Verify Playwright runtime
         run: pnpm exec playwright --version
       - name: Run booking calendar E2E
-        env:
-          HOME: /root
         run: pnpm test:e2e:booking
