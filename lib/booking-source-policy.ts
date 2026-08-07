@@ -1,3 +1,5 @@
+import type { Language } from "@/lib/hooks/use-language"
+
 export type BookingSourcePolicy = "editable" | "review" | "external-read-only"
 
 const EDITABLE_SOURCES = new Set([
@@ -27,8 +29,21 @@ export function bookingSourcePolicy(source: string | null | undefined): BookingS
   return "review"
 }
 
-export function bookingSourcePolicyLabel(source: string | null | undefined) {
+export function bookingSourcePolicyLabel(source: string | null | undefined, language: Language = "es") {
   const policy = bookingSourcePolicy(source)
+
+  if (language === "de") {
+    if (policy === "external-read-only") return "Synchronisierte Reservierung: Zimmer- oder Datumsänderungen müssen im Ursprungskanal vorgenommen werden."
+    if (policy === "review") return "Nicht klassifizierte Quelle: Das System validiert erneut und kann eine Freigabe erfordern."
+    return "Reservierung kann im Kalender bearbeitet werden."
+  }
+
+  if (language === "en") {
+    if (policy === "external-read-only") return "Synced reservation: room or date changes must be made in the source channel."
+    if (policy === "review") return "Unclassified source: the system will validate again and may require approval."
+    return "Reservation can be edited from the calendar."
+  }
+
   if (policy === "external-read-only") {
     return "Reserva sincronizada: los cambios de habitación o fechas deben realizarse en el canal de origen."
   }
