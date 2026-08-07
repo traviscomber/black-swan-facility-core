@@ -6,33 +6,16 @@ import { useMemo } from "react"
 import { usePathname, useRouter } from "next/navigation"
 import { Activity, Calculator, CalendarDays, CalendarOff, CreditCard, FileText, FolderLock, Home, MapPin, PackagePlus, Percent, ReceiptText, ShieldCheck, Sparkles, TrendingUp, Users } from "lucide-react"
 import { AccessGate } from "@/components/access/access-gate"
+import { BookingsLegacyLocalizationBridge } from "@/components/bookings-legacy-localization-bridge"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useEffectiveAccess } from "@/lib/hooks/use-effective-access"
 import { useLanguage } from "@/lib/hooks/use-language"
 import { bookingsTranslations } from "@/lib/translations/bookings"
 
-type BookingTab = {
-  value: string
-  route: string
-  label: string
-  icon: ElementType
-  action?: string
-  department?: string
-  adminOnly?: boolean
-  roles?: string[]
-}
-
+type BookingTab = { value: string; route: string; label: string; icon: ElementType; action?: string; department?: string; adminOnly?: boolean; roles?: string[] }
 const ROUTE_LOCALES = new Set(["en", "es", "de"])
-
-function stripLocale(pathname: string) {
-  const segments = pathname.split("/").filter(Boolean)
-  if (ROUTE_LOCALES.has(segments[0])) segments.shift()
-  return `/${segments.join("/")}` || "/"
-}
-
-function localizeRoute(route: string, language: "en" | "es" | "de") {
-  return `/${language}${route === "/" ? "" : route}`
-}
+function stripLocale(pathname: string) { const segments = pathname.split("/").filter(Boolean); if (ROUTE_LOCALES.has(segments[0])) segments.shift(); return `/${segments.join("/")}` || "/" }
+function localizeRoute(route: string, language: "en" | "es" | "de") { return `/${language}${route === "/" ? "" : route}` }
 
 export default function BookingsLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter()
@@ -69,34 +52,21 @@ export default function BookingsLayout({ children }: { children: React.ReactNode
     return true
   })
 
-  const activeTab = [...visibleTabs]
-    .sort((a, b) => b.route.length - a.route.length)
-    .find((tab) => internalPathname === tab.route || (tab.route !== "/bookings" && internalPathname.startsWith(tab.route)))?.value ?? "calendar"
+  const activeTab = [...visibleTabs].sort((a, b) => b.route.length - a.route.length).find((tab) => internalPathname === tab.route || (tab.route !== "/bookings" && internalPathname.startsWith(tab.route)))?.value ?? "calendar"
 
-  // The harness page is server-gated by E2E_CALENDAR_HARNESS and must render
-  // without authentication, navigation, or access-provider side effects.
   if (internalPathname === "/bookings/e2e-harness") return <>{children}</>
 
-  return (
-    <AccessGate action="booking.modify" department="booking">
-      <div className="flex min-h-screen flex-col bg-background">
-        <div className="sticky top-0 z-40 border-b bg-card/95 px-4 py-3 backdrop-blur md:px-6">
-          <Tabs value={activeTab} onValueChange={(value) => {
-            const route = visibleTabs.find((tab) => tab.value === value)?.route
-            if (route) router.push(localizeRoute(route, language))
-          }}>
-            <TabsList className="h-auto max-w-full justify-start overflow-x-auto p-1">
-              {!loading && visibleTabs.map((tab) => (
-                <TabsTrigger key={tab.value} value={tab.value} className="shrink-0 gap-2">
-                  <tab.icon className="h-4 w-4" />
-                  {tab.label}
-                </TabsTrigger>
-              ))}
-            </TabsList>
-          </Tabs>
-        </div>
-        <div className="flex-1 overflow-hidden">{children}</div>
+  return <AccessGate action="booking.modify" department="booking">
+    <div className="booking-workspace flex min-h-screen flex-col bg-background">
+      <BookingsLegacyLocalizationBridge />
+      <div className="sticky top-0 z-40 border-b bg-card/95 px-4 py-3 backdrop-blur md:px-6">
+        <Tabs value={activeTab} onValueChange={(value) => { const route = visibleTabs.find((tab) => tab.value === value)?.route; if (route) router.push(localizeRoute(route, language)) }}>
+          <TabsList className="h-auto max-w-full justify-start overflow-x-auto p-1">
+            {!loading && visibleTabs.map((tab) => <TabsTrigger key={tab.value} value={tab.value} className="shrink-0 gap-2"><tab.icon className="h-4 w-4" />{tab.label}</TabsTrigger>)}
+          </TabsList>
+        </Tabs>
       </div>
-    </AccessGate>
-  )
+      <div className="flex-1 overflow-hidden">{children}</div>
+    </div>
+  </AccessGate>
 }
