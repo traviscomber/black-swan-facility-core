@@ -1,79 +1,76 @@
 "use client"
 
-// ---------------------------------------------------------------------------
-// ReservationPreview
-// Renders the ghost pastilla shown during resize, move, and new-reservation
-// creation. Extracted from TimelineRow so the styling logic lives in one place.
-// ---------------------------------------------------------------------------
+import { useLanguage, type Language } from "@/lib/hooks/use-language"
 
 export type PreviewIntent = "resize" | "move" | "create"
 export type PreviewConflict = "none" | "reservation" | "block"
 
 export interface ReservationPreviewProps {
-  /** Pixel offset from the left of the timeline cell */
   left: number
-  /** Pixel width of the pastilla */
   width: number
   intent: PreviewIntent
   conflict: PreviewConflict
-  /** Display date range, e.g. "2026-07-25 → 2026-07-28" */
   label: string
-  /** Secondary line shown below the label */
   sublabel?: string
 }
 
-// Colour mapping per intent × conflict
 const BG: Record<PreviewIntent, Record<PreviewConflict, string>> = {
   resize: {
-    none:        "border-white/90  bg-emerald-500/65",
-    reservation: "border-red-200   bg-red-600/75",
-    block:       "border-red-200   bg-red-600/75",
+    none: "border-white/90 bg-emerald-500/65",
+    reservation: "border-red-200 bg-red-600/75",
+    block: "border-red-200 bg-red-600/75",
   },
   move: {
-    none:        "border-white/90  bg-sky-500/65",
-    reservation: "border-red-200   bg-red-600/75",
-    block:       "border-red-200   bg-red-600/75",
+    none: "border-white/90 bg-sky-500/65",
+    reservation: "border-red-200 bg-red-600/75",
+    block: "border-red-200 bg-red-600/75",
   },
   create: {
-    none:        "border-white/90  bg-violet-500/55",
-    reservation: "border-red-200   bg-red-600/75",
-    block:       "border-red-200   bg-red-600/75",
+    none: "border-white/90 bg-violet-500/55",
+    reservation: "border-red-200 bg-red-600/75",
+    block: "border-red-200 bg-red-600/75",
   },
 }
 
-const STATUS_TEXT: Record<PreviewIntent, Record<PreviewConflict, string>> = {
-  resize: {
-    none:        "Disponible",
-    reservation: "No disponible",
-    block:       "No disponible",
+const copy: Record<Language, {
+  status: Record<PreviewIntent, Record<PreviewConflict, string>>
+  hint: Record<PreviewIntent, Record<PreviewConflict, string>>
+}> = {
+  en: {
+    status: {
+      resize: { none: "Available", reservation: "Unavailable", block: "Unavailable" },
+      move: { none: "Move here", reservation: "Unavailable", block: "Unavailable" },
+      create: { none: "New reservation", reservation: "Unavailable", block: "Blocked" },
+    },
+    hint: {
+      resize: { none: "Release to confirm", reservation: "Conflicts with another reservation", block: "Conflicts with a block" },
+      move: { none: "Release to reassign", reservation: "Conflicts with another reservation", block: "Conflicts with a block" },
+      create: { none: "Release to create", reservation: "Conflicts with another reservation", block: "Conflicts with a block" },
+    },
   },
-  move: {
-    none:        "Mover aqui",
-    reservation: "No disponible",
-    block:       "No disponible",
+  es: {
+    status: {
+      resize: { none: "Disponible", reservation: "No disponible", block: "No disponible" },
+      move: { none: "Mover aquí", reservation: "No disponible", block: "No disponible" },
+      create: { none: "Nueva reserva", reservation: "No disponible", block: "Bloqueado" },
+    },
+    hint: {
+      resize: { none: "Suelta para confirmar", reservation: "Conflicto con otra reserva", block: "Conflicto con bloqueo" },
+      move: { none: "Suelta para reasignar", reservation: "Conflicto con otra reserva", block: "Conflicto con bloqueo" },
+      create: { none: "Suelta para crear", reservation: "Conflicto con otra reserva", block: "Conflicto con bloqueo" },
+    },
   },
-  create: {
-    none:        "Nueva reserva",
-    reservation: "No disponible",
-    block:       "Bloqueado",
-  },
-}
-
-const HINT_TEXT: Record<PreviewIntent, Record<PreviewConflict, string>> = {
-  resize: {
-    none:        "Suelta para confirmar",
-    reservation: "Conflicto con otra reserva",
-    block:       "Conflicto con bloqueo",
-  },
-  move: {
-    none:        "Suelta para reasignar",
-    reservation: "Conflicto con otra reserva",
-    block:       "Conflicto con bloqueo",
-  },
-  create: {
-    none:        "Suelta para crear",
-    reservation: "Conflicto con otra reserva",
-    block:       "Conflicto con bloqueo",
+  de: {
+    status: {
+      resize: { none: "Verfügbar", reservation: "Nicht verfügbar", block: "Nicht verfügbar" },
+      move: { none: "Hierher verschieben", reservation: "Nicht verfügbar", block: "Nicht verfügbar" },
+      create: { none: "Neue Reservierung", reservation: "Nicht verfügbar", block: "Gesperrt" },
+    },
+    hint: {
+      resize: { none: "Loslassen zum Bestätigen", reservation: "Konflikt mit einer anderen Reservierung", block: "Konflikt mit einer Sperre" },
+      move: { none: "Loslassen zum Neuzuweisen", reservation: "Konflikt mit einer anderen Reservierung", block: "Konflikt mit einer Sperre" },
+      create: { none: "Loslassen zum Erstellen", reservation: "Konflikt mit einer anderen Reservierung", block: "Konflikt mit einer Sperre" },
+    },
   },
 }
 
@@ -85,9 +82,10 @@ export function ReservationPreview({
   label,
   sublabel,
 }: ReservationPreviewProps) {
-  const colorClass  = BG[intent][conflict]
-  const statusText  = STATUS_TEXT[intent][conflict]
-  const hintText    = sublabel ?? HINT_TEXT[intent][conflict]
+  const { language } = useLanguage()
+  const colorClass = BG[intent][conflict]
+  const statusText = copy[language].status[intent][conflict]
+  const hintText = sublabel ?? copy[language].hint[intent][conflict]
 
   return (
     <div
