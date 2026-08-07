@@ -1,0 +1,9 @@
+import type { Language } from "@/lib/hooks/use-language"
+
+export const auditCopy: Record<Language, Record<string, string>> = {
+  en: { title:"Reservation audit", subtitle:"Consolidated traceability of status changes and operational actions.", refresh:"Refresh", events:"Recorded events", last24:"Last 24 hours", tracked:"Tracked reservations", search:"Search guest, action, actor or reservation", source:"Source", allSources:"All sources", history:"Status history", audit:"Audit actions", loading:"Loading audit...", noEvents:"No events found.", noGuest:"Reservation without guest", actor:"Actor", noActor:"Actor not recorded", reservation:"Reservation" },
+  es: { title:"Auditoría de reservas", subtitle:"Trazabilidad consolidada de estados y acciones operativas.", refresh:"Actualizar", events:"Eventos registrados", last24:"Últimas 24 horas", tracked:"Reservas trazadas", search:"Buscar huésped, acción, actor o reserva", source:"Fuente", allSources:"Todas las fuentes", history:"Historial de estados", audit:"Acciones de auditoría", loading:"Cargando auditoría…", noEvents:"No se encontraron eventos.", noGuest:"Reserva sin huésped", actor:"Actor", noActor:"Actor no registrado", reservation:"Reserva" },
+  de: { title:"Reservierungsprüfung", subtitle:"Konsolidierte Nachverfolgbarkeit von Statusänderungen und operativen Aktionen.", refresh:"Aktualisieren", events:"Erfasste Ereignisse", last24:"Letzte 24 Stunden", tracked:"Nachverfolgte Reservierungen", search:"Nach Gast, Aktion, Bearbeiter oder Reservierung suchen", source:"Quelle", allSources:"Alle Quellen", history:"Statusverlauf", audit:"Audit-Aktionen", loading:"Audit wird geladen...", noEvents:"Keine Ereignisse gefunden.", noGuest:"Reservierung ohne Gast", actor:"Bearbeiter", noActor:"Bearbeiter nicht erfasst", reservation:"Reservierung" },
+}
+
+export const auditLocale: Record<Language, string> = { en: "en-US", es: "es-CL", de: "de-DE" }
