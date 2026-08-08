@@ -1,6 +1,6 @@
 # Blackswan Facility Core — Canonical Roadmap
 
-Last updated: 2026-08-07
+Last updated: 2026-08-08
 
 This file is the canonical execution roadmap for Blackswan Facility Core.
 
@@ -87,6 +87,8 @@ Postgres/Supabase now acts as a deliberate product boundary with canonical owner
 - Stage 2 final hardening contract is versioned in `supabase/migrations/20260808022000_stage2_hardening_contract.sql`;
 - deterministic role checks confirmed admin/approver permissions, operator restrictions and scoped-location allow/deny behavior.
 
+Post-closure P1 fixes do not reopen Stage 2: booking-message creation is now booking-scope aware; operational tasks and child records inherit task scope; supplier approval uses the canonical `procurement.manage` permission and writes an audit event. `anon` executable `SECURITY DEFINER` functions remain at zero after these fixes.
+
 ### Exit gates
 
 - [x] Security invariants.
@@ -172,6 +174,16 @@ Priority scope:
 - mobile/touch and keyboard workflows;
 - role-aware and locale-consistent UX.
 
+Completed in Stage 5 so far:
+
+- primary operations panel routes Housekeeping and Hospitality state changes through canonical RPCs;
+- direct manual editing of reservation `payment_status` was removed; payment status is ledger/folio-derived;
+- legacy unbilled `canonical_event_xls` reservations without financial evidence project `not_required` rather than fake receivables;
+- debt-free reservations can check out without an artificial invoice when no receivable exists;
+- dedicated Housekeeping page uses canonical assignment/start/complete transitions;
+- dedicated Hospitality Requests page uses canonical workflow states, requires assignment before execution/closure and no longer triggers a hardcoded WhatsApp side effect;
+- booking message creation is scope-aware and delivery/inbound state remains controlled by the messaging workflow.
+
 Exit gates:
 
 - [ ] primary shift workflows can be completed without fallback spreadsheets/manual DB work;
@@ -190,6 +202,8 @@ Status: PLANNED
 Objective:
 
 Apply the proven authorization, lifecycle, audit and UI patterns consistently across Maintenance, Inventory, Purchasing, Properties, People, Livestock, Vineyard, Energy, GIS and Administration.
+
+Known model prerequisite carried to Stage 6: geographic scoping for Procurement/Inventory/Fuel requires stable canonical location relationships. Current `warehouses`, procurement delivery location and fuel location models do not all expose a `locations.id` FK, so do not emulate tenant/location isolation from display strings.
 
 Exit gates:
 
