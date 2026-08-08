@@ -1,10 +1,12 @@
 'use client'
 
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { CheckCircle2, FileText, Loader2, UploadCloud, XCircle } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { useLanguage } from '@/lib/hooks/use-language'
+import { createClient } from '@/lib/supabase/client'
+import { SiiPdfMetadataForm } from '@/components/sii-pdf-metadata-form'
 
 type UploadResult = {
   filename: string
@@ -16,10 +18,16 @@ type UploadResult = {
   error?: string
 }
 
+type PendingPdf = {
+  id: string
+  original_filename: string
+  created_at: string
+}
+
 function statusCopy(row: UploadResult) {
   if (row.status === 'ready' || row.status === 'classified') return 'Clasificada · lista para decisión de Raimundo'
   if (row.status === 'pending_mapping' || row.status === 'linked') return 'Recibida · clasificación canónica pendiente'
-  if (row.status === 'needs_metadata') return 'PDF guardado · sube el XML SII para crear y clasificar el documento'
+  if (row.status === 'needs_metadata') return 'PDF guardado · completa los datos fiscales para enviarlo a clasificación'
   if (row.status === 'duplicate') return 'Ya existía · no se creó un segundo documento'
   if (row.status === 'failed') return row.error ?? 'No fue posible procesar el archivo'
   return row.status
@@ -27,10 +35,31 @@ function statusCopy(row: UploadResult) {
 
 export function SiiInvoiceDropzone() {
   const { language } = useLanguage()
+  const supabase = useMemo(() => createClient(), [])
   const inputRef = useRef<HTMLInputElement>(null)
   const [dragging, setDragging] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [results, setResults] = useState<UploadResult[]>([])
+  const [pendingPdfs, setPendingPdfs] = useState<PendingPdf[]>([])
+
+  const loadPending = useCallback(async () => {
+    const { data, error } = await supabase
+      .from('finance_sii_uploads')
+      .select('id,original_filename,created_at')
+      .eq('upload_kind', 'pdf')
+      .eq('status', 'needs_metadata')
+      .is('finance_document_id', null)
+      .order('created_at', { ascending: false })
+      .limit(20)
+    if (!error) setPendingPdfs((data ?? []) as PendingPdf[])
+  }, [supabase])
+
+  useEffect(() => { void loadPending() }, [loadPending])
+  useEffect(() => {
+    const refresh = () => void loadPending()
+    window.addEventListener('finance-sii-uploaded', refresh)
+    return () => window.removeEventListener('finance-sii-uploaded', refresh)
+  }, [loadPending])
 
   const upload = useCallback(async (files: File[]) => {
     if (!files.length || uploading) return
@@ -50,18 +79,21 @@ export function SiiInvoiceDropzone() {
       const next = payload.results ?? []
       setResults(next)
       const created = next.filter((row) => row.document_id && !row.duplicate).length
+      const pending = next.filter((row) => row.status === 'needs_metadata').length
       const failed = next.filter((row) => row.status === 'failed').length
       if (created) toast.success(`${created} documento${created === 1 ? '' : 's'} recibido${created === 1 ? '' : 's'} por Finance.`)
+      if (pending) toast.success(`${pending} PDF${pending === 1 ? '' : 's'} guardado${pending === 1 ? '' : 's'} · completa los datos fiscales abajo.`)
       if (failed) toast.error(failed === 1 ? '1 archivo no pudo procesarse.' : `${failed} archivos no pudieron procesarse.`)
       window.dispatchEvent(new Event('finance-workbook-imported'))
       window.dispatchEvent(new Event('finance-sii-uploaded'))
+      await loadPending()
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'No fue posible subir las facturas.')
     } finally {
       setUploading(false)
       if (inputRef.current) inputRef.current.value = ''
     }
-  }, [uploading])
+  }, [loadPending, uploading])
 
   return (
     <section className="mx-4 mt-4 bg-[var(--bs-surface-primary)] md:mx-8">
@@ -71,7 +103,7 @@ export function SiiInvoiceDropzone() {
             <p className="text-xs uppercase tracking-[0.14em] text-[var(--bs-warm-yellow)]">Entrada SII · Manual</p>
             <h2 className="mt-2 text-xl font-normal text-[var(--bs-text-primary)]">Subir facturas para clasificación y aprobación</h2>
             <p className="mt-2 text-sm leading-6 text-[var(--bs-text-secondary)]">
-              Arrastra XML y PDF del SII. El XML crea el documento fiscal y usa historial aprobado para sugerir clasificación; el PDF queda como respaldo privado. Raimundo conserva la decisión final.
+              Arrastra PDF o XML del SII. El XML extrae los datos fiscales; un PDF solo queda guardado de forma privada y solicita los datos mínimos antes de entrar a clasificación. Raimundo conserva la decisión final.
             </p>
           </div>
           <Button variant="outline" onClick={() => inputRef.current?.click()} disabled={uploading}>
@@ -95,7 +127,7 @@ export function SiiInvoiceDropzone() {
           {uploading ? <Loader2 className="h-7 w-7 animate-spin text-[var(--bs-warm-yellow)]" /> : <UploadCloud className="h-7 w-7 text-[var(--bs-warm-yellow)]" />}
           <p className="mt-3 text-sm text-[var(--bs-text-primary)]">Arrastra aquí las facturas SII</p>
           <p className="mt-1 text-xs text-[var(--bs-text-muted)]">PDF o XML · máximo 15 MB por archivo · hasta 10 por lote</p>
-          <p className="mt-3 max-w-2xl text-xs leading-5 text-[var(--bs-text-secondary)]">Para clasificación automática usa el XML DTE. Si subes solo PDF, se conserva de forma privada pero no se inventan proveedor, folio, fecha ni montos.</p>
+          <p className="mt-3 max-w-2xl text-xs leading-5 text-[var(--bs-text-secondary)]">PDF-only también funciona: el archivo se conserva privado y el sistema pide proveedor, RUT, folio, fecha y total antes de crear el documento canónico.</p>
         </button>
 
         {results.length > 0 && (
@@ -113,15 +145,32 @@ export function SiiInvoiceDropzone() {
                   </div>
                   {row.document_id && (
                     <div className="flex shrink-0 gap-2">
-                      <Button variant="outline" size="sm" asChild>
-                        <a href={`/api/finance/sii-invoices/source?documentId=${encodeURIComponent(row.document_id)}`} target="_blank" rel="noreferrer"><FileText className="mr-2 h-4 w-4" />Ver original</a>
-                      </Button>
+                      <Button variant="outline" size="sm" asChild><a href={`/api/finance/sii-invoices/source?documentId=${encodeURIComponent(row.document_id)}`} target="_blank" rel="noreferrer"><FileText className="mr-2 h-4 w-4" />Ver original</a></Button>
                       <Button size="sm" asChild><a href={`/${language}/budgets/approvals`}>Ir a aprobación</a></Button>
                     </div>
                   )}
                 </div>
               )
             })}
+          </div>
+        )}
+
+        {pendingPdfs.length > 0 && (
+          <div className="mt-6">
+            <p className="text-xs uppercase tracking-[0.12em] text-[var(--bs-warm-yellow)]">PDF pendientes de datos fiscales · {pendingPdfs.length}</p>
+            <div className="mt-3 space-y-3">
+              {pendingPdfs.map((pdf) => (
+                <SiiPdfMetadataForm
+                  key={pdf.id}
+                  uploadId={pdf.id}
+                  filename={pdf.original_filename}
+                  onCompleted={() => {
+                    setPendingPdfs((current) => current.filter((row) => row.id !== pdf.id))
+                    void loadPending()
+                  }}
+                />
+              ))}
+            </div>
           </div>
         )}
       </div>
