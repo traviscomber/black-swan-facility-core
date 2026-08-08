@@ -19,21 +19,24 @@ export async function GET(request: Request) {
   const { data: allowed, error: permissionError } = await supabase.rpc('can_app_action', { p_action_key: 'finance.adjust' })
   if (permissionError || !allowed) return NextResponse.json({ error: 'Finance permission required' }, { status: 403 })
 
-  const documentId = new URL(request.url).searchParams.get('documentId')
-  if (!documentId) return NextResponse.json({ error: 'documentId is required' }, { status: 400 })
+  const params = new URL(request.url).searchParams
+  const documentId = params.get('documentId')
+  const uploadId = params.get('uploadId')
+  if (!documentId && !uploadId) return NextResponse.json({ error: 'documentId or uploadId is required' }, { status: 400 })
 
   const admin = adminClient()
-  const { data: upload, error } = await admin
+  let query = admin
     .from('finance_sii_uploads')
     .select('storage_bucket,storage_path,upload_kind')
-    .eq('finance_document_id', documentId)
     .order('upload_kind', { ascending: true })
     .order('created_at', { ascending: false })
     .limit(1)
-    .maybeSingle()
+
+  query = documentId ? query.eq('finance_document_id', documentId) : query.eq('id', uploadId!)
+  const { data: upload, error } = await query.maybeSingle()
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  if (!upload) return NextResponse.json({ error: 'No source file is linked to this finance document' }, { status: 404 })
+  if (!upload) return NextResponse.json({ error: 'No SII source file was found' }, { status: 404 })
 
   const { data: signed, error: signedError } = await admin.storage.from(upload.storage_bucket).createSignedUrl(upload.storage_path, 300)
   if (signedError || !signed?.signedUrl) return NextResponse.json({ error: signedError?.message ?? 'Could not create source link' }, { status: 500 })
