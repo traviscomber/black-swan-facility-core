@@ -67,6 +67,10 @@ const copy = {
     carry: "Carry forward",
     logistics: "Open logistics",
     addToHandover: "Add to draft",
+    plan: "Plan",
+    confirm: "Confirm",
+    complete: "Complete",
+    cancel: "Cancel",
     noDraft: "Select a draft handover first.",
     noHandovers: "No handovers yet.",
     noItems: "No items in this handover.",
@@ -89,6 +93,10 @@ const copy = {
     carry: "Traspasar",
     logistics: "Logística abierta",
     addToHandover: "Agregar al borrador",
+    plan: "Planificar",
+    confirm: "Confirmar",
+    complete: "Completar",
+    cancel: "Cancelar",
     noDraft: "Selecciona primero una entrega en borrador.",
     noHandovers: "Aún no hay entregas de turno.",
     noItems: "Esta entrega no tiene pendientes.",
@@ -111,6 +119,10 @@ const copy = {
     carry: "Weitergeben",
     logistics: "Offene Logistik",
     addToHandover: "Zum Entwurf hinzufügen",
+    plan: "Planen",
+    confirm: "Bestätigen",
+    complete: "Abschließen",
+    cancel: "Stornieren",
     noDraft: "Zuerst einen Entwurf auswählen.",
     noHandovers: "Noch keine Übergaben vorhanden.",
     noItems: "Diese Übergabe enthält keine offenen Punkte.",
@@ -123,8 +135,8 @@ function todayIso() {
 }
 
 function statusVariant(status: string): "default" | "secondary" | "outline" {
-  if (status === "accepted" || status === "resolved" || status === "closed") return "default"
-  if (status === "submitted" || status === "acknowledged") return "secondary"
+  if (status === "accepted" || status === "resolved" || status === "closed" || status === "completed") return "default"
+  if (status === "submitted" || status === "acknowledged" || status === "confirmed") return "secondary"
   return "outline"
 }
 
@@ -284,6 +296,17 @@ export default function BookingHandoversPage() {
     setSaving(false)
   }
 
+  async function updateLogisticsStatus(logisticsId: string, status: "planned" | "confirmed" | "completed" | "cancelled") {
+    setSaving(true)
+    const { error } = await supabase.rpc("update_reservation_logistics_status", { p_logistics_id: logisticsId, p_status: status })
+    if (error) toast.error(error.message)
+    else {
+      toast.success("Logistics updated")
+      await loadData()
+    }
+    setSaving(false)
+  }
+
   return (
     <div className="min-h-full overflow-y-auto">
       <PageHeader
@@ -379,7 +402,13 @@ export default function BookingHandoversPage() {
               {logistics.length === 0 && <p className="text-sm text-muted-foreground">No open logistics.</p>}
               {logistics.map((entry) => <div key={entry.id} className="flex flex-col gap-3 rounded-lg border p-4 md:flex-row md:items-center md:justify-between">
                 <div><p className="font-medium capitalize">{entry.direction} · {entry.reservation?.guest_name ?? "Guest"}</p><p className="mt-1 text-xs text-muted-foreground">{entry.hub} · {entry.status}{entry.anchor_at ? ` · ${new Date(entry.anchor_at).toLocaleString()}` : ""}</p>{entry.notes && <p className="mt-2 text-sm">{entry.notes}</p>}</div>
-                <Button size="sm" variant="outline" onClick={() => void addLogisticsItem(entry)} disabled={saving || selected?.status !== "draft"}>{t.addToHandover}</Button>
+                <div className="flex flex-wrap gap-2">
+                  {entry.status === "draft" && <Button size="sm" onClick={() => void updateLogisticsStatus(entry.id, "planned")} disabled={saving}>{t.plan}</Button>}
+                  {entry.status === "planned" && <Button size="sm" onClick={() => void updateLogisticsStatus(entry.id, "confirmed")} disabled={saving}>{t.confirm}</Button>}
+                  {entry.status === "confirmed" && <Button size="sm" onClick={() => void updateLogisticsStatus(entry.id, "completed")} disabled={saving}>{t.complete}</Button>}
+                  {["draft", "planned", "confirmed"].includes(entry.status) && <Button size="sm" variant="outline" onClick={() => void updateLogisticsStatus(entry.id, "cancelled")} disabled={saving}>{t.cancel}</Button>}
+                  <Button size="sm" variant="outline" onClick={() => void addLogisticsItem(entry)} disabled={saving || selected?.status !== "draft"}>{t.addToHandover}</Button>
+                </div>
               </div>)}
             </CardContent>
           </Card>
