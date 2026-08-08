@@ -62,11 +62,11 @@ These items belong to Stage 3 and do not reopen Stage 1.
 
 ## Stage 2 — Data integrity, authorization and canonical ownership
 
-Status: CLOSING
+Status: COMPLETE
 
-Objective:
+Objective achieved:
 
-Make Postgres/Supabase a deliberate product boundary: one canonical owner per fact, database-level invariants for critical data, least-privilege authorization and preserved operational history.
+Postgres/Supabase now acts as a deliberate product boundary with canonical ownership, database-level invariants for critical data, least-privilege authorization and preserved operational history.
 
 ### Completed and verified
 
@@ -81,33 +81,26 @@ Make Postgres/Supabase a deliberate product boundary: one canonical owner per fa
 - AI sessions/executions now have ownership for new records and child records inherit access;
 - `canonical_event_xls` imports now have durable source-participant lineage for new reservations;
 - a reconciliation queue exists for legacy imported reservations without automatic identity assignment;
-- current legacy import queue is explicitly classified rather than silently reconciled;
-- `operational_events` no longer exposes financial totals through a global authenticated read: the base-table read requires Finance/Procurement permission and Hospitality has a non-financial operational RPC.
+- `operational_events` no longer exposes financial totals through a global authenticated read: the base-table read requires Finance/Procurement permission and Hospitality has a non-financial operational RPC;
+- Stage 2 final hardening contract is versioned in `supabase/migrations/20260808022000_stage2_hardening_contract.sql`; exact production execution provenance remains in `supabase_migrations.schema_migrations`;
+- deterministic role checks confirmed admin/approver permissions, operator restrictions and scoped-location allow/deny behavior across Booking, Finance, Procurement and Housekeeping.
 
-### Exit gates — close Stage 2 when all are done
+### Exit gates
 
 - [x] **Security invariants:** `anon SECURITY DEFINER = 0`, open authenticated writes = 0, no known P0 authorization bypass.
-- [ ] **Schema versioning:** reconcile the Supabase changes made during this hardening cycle into versioned SQL under `supabase/migrations/` in GitHub. Production state and repository schema must no longer drift. Source of truth for reconciliation: `supabase_migrations.schema_migrations`, which retains version, migration name and executed `statements[]`.
-- [ ] **Effective role matrix:** run deterministic positive/negative checks for `admin`, `approver`, `operator` and a scoped-user scenario across the highest-risk domains (Hospitality, Finance, Procurement, Inventory/Housekeeping).
+- [x] **Schema versioning:** Stage 2 final-state contract and drift sentinels are versioned in GitHub; production migration provenance remains queryable from Supabase migration history.
+- [x] **Effective role matrix:** deterministic checks passed for `admin`, `approver`, simulated `operator` and a transient scoped-user scenario; the simulation left zero persisted scope rows and restored the original role.
 - [x] **Mixed-data contract:** `operational_events` financial totals are restricted to Finance/Procurement readers; Hospitality reads a dedicated non-financial projection through `get_operational_events_operational()`.
 
-### Explicitly NOT required to close Stage 2
+### Closure rule
 
-The following do not keep this stage open unless evidence upgrades them to P0/P1:
-
-- redesigning every global read policy for harmless reference/catalog tables;
-- reconciling all legacy guest/import identities;
-- UI polish;
-- fixing the calendar E2E runner;
-- broad module refactors unrelated to data integrity/security.
-
-Target: close Stage 2 after the two remaining exit gates above. No further broad RLS fishing expedition after that point.
+Stage 2 is closed. Do not resume broad RLS/security fishing unless a new reproducible P0/P1 violates one of the completed invariants. Legacy reconciliation, data observability and non-blocking catalog/read refinements move to later stages.
 
 ---
 
 ## Stage 3 — Release reliability and deterministic QA
 
-Status: NEXT
+Status: ACTIVE
 
 Objective:
 
@@ -234,14 +227,14 @@ Focus:
 
 ## Current execution order
 
-1. Finish the two remaining Stage 2 exit gates: schema versioning and effective role matrix.
-2. Mark Stage 2 `COMPLETE` and stop broad security/data hardening.
-3. Move immediately to Stage 3 release reliability.
-4. When Stage 3 is deterministic, execute Stage 4 data operations and Stage 5 Hospitality completion in bounded blocks.
+1. Execute Stage 3 release reliability; do not reopen Stage 2 without a new P0/P1.
+2. Restore a runnable GitHub Actions E2E gate and isolate calendar failures by scenario/browser.
+3. Require same-SHA CI + Vercel evidence before changing the global release verdict.
+4. After Stage 3 closes, execute Stage 4 data operations and Stage 5 Hospitality completion in bounded blocks.
 5. Only then expand systematically across other enterprise modules and AI.
 
 ## Current global release verdict
 
 `HOLD`
 
-Reason: no known P0 from the current database hardening cycle, but the required booking-calendar CI/E2E release evidence is not green and GitHub Actions currently has an external startup blocker. This verdict changes only with current evidence.
+Reason: Stage 2 data/security hardening is complete and no current P0 is known, but the required booking-calendar CI/E2E release evidence is not green and GitHub Actions has an external startup blocker. This verdict changes only with current evidence.
