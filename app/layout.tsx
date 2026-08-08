@@ -44,6 +44,7 @@ export async function generateMetadata(): Promise<Metadata> {
       apple: "/apple-icon.png",
     },
     robots: { index: false, follow: false },
+    other: { google: "notranslate" },
   }
 }
 
@@ -60,8 +61,8 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
   const documentLanguage = resolveLocale(requestHeaders.get("x-site-locale"))
 
   return (
-    <html lang={documentLanguage} className="dark" suppressHydrationWarning>
-      <body className={`${montserrat.variable} antialiased`}>
+    <html lang={documentLanguage} translate="no" className="dark notranslate" suppressHydrationWarning>
+      <body className={`${montserrat.variable} antialiased notranslate`}>
         <ClientProviders>
           {children}
           <Analytics />
