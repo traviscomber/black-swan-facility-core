@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, type ReactNode } from 'react'
-import { usePathname, useRouter } from 'next/navigation'
+import { usePathname } from 'next/navigation'
 import { translations } from './language-context'
 import { deTranslations } from './translations/de'
 import { shellTranslations } from './translations/shell'
@@ -33,7 +33,6 @@ function replaceLocalePrefix(pathname: string, locale: RouteLocale) {
 
 export function LanguageProvider({ children }: { children: ReactNode }) {
   const pathname = usePathname() || '/'
-  const router = useRouter()
   const routeLocale = useMemo(() => getRouteLocale(pathname), [pathname])
   const language: Language = routeLocale
 
@@ -44,9 +43,14 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
   }, [routeLocale])
 
   const handleSetLanguage = (lang: Language) => {
+    const nextPath = replaceLocalePrefix(pathname, lang)
     localStorage.setItem('language', lang)
     document.cookie = `site-locale=${lang}; path=/; samesite=lax`
-    router.push(replaceLocalePrefix(pathname, lang))
+
+    // Bookings still contains a small legacy DOM-translation bridge for en/de.
+    // A full document navigation guarantees that switching back to Spanish
+    // starts from the canonical Spanish source instead of mutated DOM text.
+    window.location.assign(nextPath)
   }
 
   const t = (key: string): string => {
