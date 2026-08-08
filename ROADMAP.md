@@ -210,14 +210,26 @@ First execution order:
 4. align shared navigation, loading/empty/error states and role visibility using the existing application shell;
 5. stop after each domain reaches its stated exit gate; do not repeat broad security fishing already closed in Stage 2.
 
-Known model prerequisite: geographic scoping for Procurement/Inventory/Fuel requires stable canonical location relationships. Current `warehouses`, procurement delivery location and fuel location models do not all expose a `locations.id` FK, so do not emulate tenant/location isolation from display strings.
+Progress completed:
+
+- `warehouses`, `procurement_requests` and `fuel_consumption` now expose nullable canonical `location_id -> locations.id` relationships without backfilling ambiguous legacy display strings;
+- existing legacy data remains untouched: 3 warehouses, 78 procurement requests and 153 fuel records currently have no canonical location assignment;
+- new authenticated Procurement requests must provide a canonical location inside the requester's operational scope;
+- the Procurement request UI now selects from a scope-filtered canonical location directory and keeps `delivery_location` only as human delivery detail;
+- Procurement purchase orders, receipts and inventory intake now carry `location_id` and automatically inherit it from the originating request chain;
+- new helper/guard functions remain unavailable to `anon`, while authenticated users can read only the scoped Procurement location directory;
+- the current Procurement location migrations and UI deploy cleanly on production Vercel.
+
+Known reconciliation boundary:
+
+- current warehouse names, Procurement delivery text and Fuel location text are not deterministically equivalent to canonical `locations`; no automatic legacy mapping will be performed from display strings alone.
 
 Exit gates:
 
 - [ ] each active module has explicit canonical entities and ownership;
 - [ ] each consequential write has a permission/lifecycle/audit contract;
 - [ ] shared navigation, states and design patterns are consistent;
-- [ ] no module introduces a weaker security pattern than the hardened core.
+- [x] no new Stage 6 location model introduces a weaker security pattern than the hardened core.
 
 ---
 
@@ -259,7 +271,7 @@ Focus:
 
 ## Current execution order
 
-1. Execute Stage 6 domain-by-domain, starting with the location model required by Inventory/Procurement/Fuel.
+1. Continue Stage 6 with Procurement receiving/inventory scope enforcement, then Fuel and warehouse location capture for new writes.
 2. Resume Stage 3 immediately when GitHub Actions can start jobs; require same-SHA CI + Vercel before changing release `HOLD`.
 3. Close Stage 4 only after explicit authorization resolves the 2 deterministic production lineage cases.
 4. Keep Stage 5 closed unless a new reproducible P0/P1 appears in a primary Hospitality workflow.
@@ -269,4 +281,4 @@ Focus:
 
 `HOLD`
 
-Reason: Stage 2 and Stage 5 implementation scope are complete; Stage 4 health is controlled and known legacy identity cases are explicit; production deployment remains healthy. Release evidence is still blocked by GitHub Actions billing/spending and booking-calendar E2E plus current desktop/mobile interaction verification cannot run to completion.
+Reason: Stage 2 and Stage 5 implementation scope are complete; Stage 4 health is controlled and known legacy identity cases are explicit; Stage 6 is actively normalizing cross-domain location ownership without fabricating legacy mappings. Release evidence is still blocked by GitHub Actions billing/spending and booking-calendar E2E plus current desktop/mobile interaction verification cannot run to completion.
