@@ -49,7 +49,7 @@ function xmlValue(xml: string, tag: string) {
 
 function money(value: string | null) {
   if (!value) return null
-  const normalized = value.replace(/\s/g, '').replace(/\./g, '').replace(',', '.')
+  const normalized = value.replace(/\s/g, '').replace(',', '.')
   const parsed = Number(normalized)
   return Number.isFinite(parsed) ? parsed : null
 }
@@ -176,7 +176,6 @@ export async function POST(request: Request) {
       results.push({ filename: file.name, ...result })
     }
 
-    // Link PDF evidence to an XML-created document when both share the same base filename in this batch.
     for (const result of results) {
       if (typeof result.filename !== 'string' || !result.upload_id || result.document_id || result.status === 'failed') continue
       const documentId = documentByBase.get(baseName(result.filename))
