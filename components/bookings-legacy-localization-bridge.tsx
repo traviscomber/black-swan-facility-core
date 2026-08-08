@@ -25,7 +25,24 @@ function translateValue(value: string, locale: Language) {
   return translateDeepCalendarValue(grid, locale)
 }
 
+function localizeLinks(root: HTMLElement, locale: Language) {
+  for (const anchor of Array.from(root.querySelectorAll<HTMLAnchorElement>("a[href]"))) {
+    const href = anchor.getAttribute("href")
+    if (!href) continue
+    const localized = localizeLegacyHref(href, locale)
+    if (localized !== href) anchor.setAttribute("href", localized)
+  }
+}
+
 function translateTree(root: HTMLElement, locale: Language) {
+  // Spanish is the canonical source language for the legacy Bookings surface.
+  // Never mutate Spanish text nodes: doing so makes a previous en/de mutation
+  // impossible to reverse during client-side locale changes.
+  if (locale === "es") {
+    localizeLinks(root, locale)
+    return
+  }
+
   const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT)
   const textNodes: Text[] = []
   while (walker.nextNode()) textNodes.push(walker.currentNode as Text)
@@ -51,12 +68,7 @@ function translateTree(root: HTMLElement, locale: Language) {
     }
   }
 
-  for (const anchor of Array.from(root.querySelectorAll<HTMLAnchorElement>("a[href]"))) {
-    const href = anchor.getAttribute("href")
-    if (!href) continue
-    const localized = localizeLegacyHref(href, locale)
-    if (localized !== href) anchor.setAttribute("href", localized)
-  }
+  localizeLinks(root, locale)
 }
 
 export function BookingsLegacyLocalizationBridge() {
@@ -72,7 +84,7 @@ export function BookingsLegacyLocalizationBridge() {
     workspaceObserver.observe(workspace, {
       childList: true,
       subtree: true,
-      characterData: true,
+      characterData: language !== "es",
       attributes: true,
       attributeFilter: ["placeholder", "aria-label", "title", "href"],
     })
