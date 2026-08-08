@@ -23,7 +23,7 @@ export const bookingsTranslations: Record<Language, Record<string, string>> = {
   es: {
     calendar: "Calendario",
     operations: "Operaciones",
-    housekeeping: "Housekeeping",
+    housekeeping: "Limpieza",
     handovers: "Entregas de turno",
     blocks: "Bloqueos",
     quotes: "Cotizador",
