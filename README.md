@@ -86,7 +86,9 @@ Implemented and verified at database/code level:
 - checkout financial-close validation;
 - debt-free reservations can check out without an artificial final invoice when no receivable exists;
 - automatic checkout/stayover housekeeping lifecycle;
-- operational logistics authorization and scope controls.
+- operational logistics authorization and scope controls;
+- booking-message creation scoped to the reservation location;
+- authenticated users cannot fabricate inbound messages or delivery-state transitions.
 
 The Hospitality Requests UI now uses `update_hospitality_request(...)` rather than directly mutating the table for workflow transitions. Invalid UI-only status values and a previously hardcoded WhatsApp side effect were removed.
 
@@ -112,11 +114,11 @@ Recent hardening work includes:
 - trigger-only functions restricted away from normal authenticated API execution;
 - Hospitality and Finance privileged views restricted to read-only access where appropriate;
 - sensitive guest-profile updates restricted to authorized roles and operational access paths;
-- bulk reservation mutation/restore RPCs verified to require authenticated admin role.
+- bulk reservation mutation/restore RPCs verified to require authenticated admin role;
+- `record_booking_message(...)` now validates Booking scope and restricts authenticated callers to outbound/internal draft or queued messages;
+- inbound communication ingestion and delivery-state changes are reserved for controlled messaging workflows/service operations.
 
-### Pending security migration
-
-Commit `d5ee66e9` adds scope enforcement to `record_booking_message(...)` and prevents normal authenticated users from fabricating inbound or delivery-state communication events. The application commit is deployed and Vercel reports it READY, but **the corresponding Supabase migration has not yet been applied**. Until it is applied, the database still contains the previous function body.
+Migration `20260808050000_scope_booking_message_creation.sql` is versioned in GitHub and has been applied and verified in production Supabase.
 
 ## Database items still under review
 
@@ -126,8 +128,9 @@ The current data/security audit is intentionally not marked complete. Remaining 
 - confirmation of the intended default semantics for `user_operational_scopes` before changing its current allow-when-unassigned behavior;
 - `document_sequences` has RLS enabled with no direct table policies; sequence allocation is intentionally mediated by privileged code and still needs final contract documentation;
 - `btree_gist` remains installed in `public` and should not be moved without dependency analysis;
-- Supabase leaked-password protection remains an external Auth configuration warning;
-- legacy `reservations_dates_valid_check` validation must only be completed after checking existing rows.
+- Supabase leaked-password protection remains an external Auth configuration warning.
+
+The reservation date constraint (`check_out > check_in`) has already been validated in production.
 
 ## QA and release status
 
@@ -195,10 +198,10 @@ Database migrations are versioned under `supabase/migrations/`. A migration bein
 
 ## Immediate next work
 
-1. Apply and verify the pending scoped booking-message migration from `d5ee66e9`.
-2. Continue the authenticated `SECURITY DEFINER` mutation audit, prioritizing cross-scope and privilege-escalation risk.
-3. Resolve the intended provisioning/default behavior of `user_operational_scopes` before tightening its fallback semantics.
-4. Restore GitHub Actions execution/billing and rerun the complete booking-calendar Playwright matrix.
+1. Continue the authenticated `SECURITY DEFINER` mutation audit, prioritizing cross-scope and privilege-escalation risk.
+2. Resolve the intended provisioning/default behavior of `user_operational_scopes` before tightening its fallback semantics.
+3. Restore GitHub Actions execution/billing and rerun the complete booking-calendar Playwright matrix.
+4. Continue Stage 5 Hospitality operational completion while preserving canonical DB workflows.
 5. Only after those gates are verified, reconsider the Qalito release verdict.
 
 ---
