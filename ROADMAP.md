@@ -20,6 +20,8 @@ Release verdicts remain separate from stage completion:
 
 A stage may be completed while the overall product remains `HOLD` for an external or later-stage gate.
 
+If an active stage is blocked exclusively by an external dependency that cannot be resolved from the repository or connected systems, mark it `BLOCKED EXTERNAL` and allow the next independent stage to run in parallel. Do not pretend the blocked stage is complete, and do not change the release verdict until its gates pass.
+
 ---
 
 ## Stage 0 — Baseline product and deployment
@@ -100,31 +102,38 @@ Stage 2 is closed. Do not resume broad RLS/security fishing unless a new reprodu
 
 ## Stage 3 — Release reliability and deterministic QA
 
-Status: ACTIVE
+Status: BLOCKED EXTERNAL
 
 Objective:
 
 Make releases reproducible and make `HOLD/PASS` depend on current automated evidence rather than manual confidence.
 
+Current evidence:
+
+- GitHub Actions refuses to start the calendar job because recent account payments failed or the Actions spending limit must be increased; the job has zero executed steps and no assigned runner;
+- current `main` deployment `baba65cf16569377da2c965309a5ccc2638d46e7` is `READY` in Vercel;
+- no production runtime errors were found in the explicit last-one-hour Vercel query;
+- unauthenticated locale/auth smoke passes for `/en/bookings`, `/es/bookings`, `/de/bookings` and legacy `/deu/bookings`, which normalizes to the German auth flow.
+
 Exit gates:
 
-- [ ] GitHub Actions can start jobs again (external billing/spending blocker cleared).
-- [ ] Booking-calendar E2E passes current `main` for required Chromium/WebKit/Firefox scenarios, including pointer move, keyboard, swap, creation, undo and touch where applicable.
-- [ ] CI failures are separated into product, test, browser and infrastructure causes with artifacts/logs retained.
-- [ ] Vercel production is `READY` for the same tested SHA and has no blocking recent runtime errors.
-- [ ] Critical locale/auth smoke checks pass for `/en`, `/es`, `/de` and `/deu` normalization.
+- [ ] **BLOCKED EXTERNAL:** GitHub Actions can start jobs again after the account billing/spending condition is cleared.
+- [ ] **BLOCKED BY CI:** Booking-calendar E2E passes current `main` for required Chromium/WebKit/Firefox scenarios, including pointer move, keyboard, swap, creation, undo and touch where applicable.
+- [ ] **BLOCKED BY CI:** current-run CI failures can be separated into product, test, browser and infrastructure causes with artifacts/logs retained.
+- [ ] **PARTIAL:** Vercel production is `READY` and recent runtime is clean; same-tested-SHA evidence remains impossible until CI can run.
+- [x] Critical unauthenticated locale/auth smoke passes for `/en`, `/es`, `/de` and `/deu` normalization on the current production deployment.
 
-Stage 3 closes when the release gate can be evaluated deterministically. It does not require every P2/P3 test improvement.
+Stage 3 remains open and the global release verdict remains `HOLD`. Do not modify CI merely to work around account billing. Resume Stage 3 immediately when GitHub Actions can assign a runner again.
 
 ---
 
 ## Stage 4 — Canonical data operations and observability
 
-Status: PLANNED
+Status: ACTIVE IN PARALLEL
 
 Objective:
 
-Turn the hardened schema into an operationally maintainable data system.
+Turn the hardened schema into an operationally maintainable data system while Stage 3 waits on its external CI dependency.
 
 Scope:
 
@@ -136,8 +145,8 @@ Scope:
 
 Exit gates:
 
-- [ ] no unresolved deterministic reconciliation case;
-- [ ] manual-review cases remain explicit and traceable rather than silently guessed;
+- [ ] no unresolved deterministic reconciliation case; production identity links require explicit human authorization and are never inferred silently;
+- [x] manual-review and candidate cases are explicit and traceable in the reconciliation queue rather than silently guessed;
 - [ ] canonical drift checks can run repeatedly and report zero/known exceptions;
 - [ ] data-health outputs respect role/scope boundaries.
 
@@ -227,14 +236,14 @@ Focus:
 
 ## Current execution order
 
-1. Execute Stage 3 release reliability; do not reopen Stage 2 without a new P0/P1.
-2. Restore a runnable GitHub Actions E2E gate and isolate calendar failures by scenario/browser.
-3. Require same-SHA CI + Vercel evidence before changing the global release verdict.
-4. After Stage 3 closes, execute Stage 4 data operations and Stage 5 Hospitality completion in bounded blocks.
+1. Keep Stage 3 `BLOCKED EXTERNAL` until GitHub billing/spending allows a runner to start; do not rewrite CI around that condition.
+2. Execute the independent Stage 4 observability/drift gates in bounded blocks without changing canonical production identities automatically.
+3. Resume Stage 3 immediately when Actions starts jobs and require same-SHA CI + Vercel evidence before changing the release verdict.
+4. After Stage 3 and Stage 4 close, execute Stage 5 Hospitality completion.
 5. Only then expand systematically across other enterprise modules and AI.
 
 ## Current global release verdict
 
 `HOLD`
 
-Reason: Stage 2 data/security hardening is complete and no current P0 is known, but the required booking-calendar CI/E2E release evidence is not green and GitHub Actions has an external startup blocker. This verdict changes only with current evidence.
+Reason: Stage 2 data/security hardening is complete and no current P0 is known, but Stage 3 release evidence is externally blocked by GitHub Actions account billing/spending. Production deployment health and locale/auth smoke are currently verified, but booking-calendar E2E cannot run. This verdict changes only with current evidence.
