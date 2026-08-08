@@ -4,6 +4,7 @@ import { useCallback, useRef, useState } from 'react'
 import { CheckCircle2, FileText, Loader2, UploadCloud, XCircle } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
+import { useLanguage } from '@/lib/hooks/use-language'
 
 type UploadResult = {
   filename: string
@@ -25,6 +26,7 @@ function statusCopy(row: UploadResult) {
 }
 
 export function SiiInvoiceDropzone() {
+  const { language } = useLanguage()
   const inputRef = useRef<HTMLInputElement>(null)
   const [dragging, setDragging] = useState(false)
   const [uploading, setUploading] = useState(false)
@@ -50,7 +52,7 @@ export function SiiInvoiceDropzone() {
       const created = next.filter((row) => row.document_id && !row.duplicate).length
       const failed = next.filter((row) => row.status === 'failed').length
       if (created) toast.success(`${created} documento${created === 1 ? '' : 's'} recibido${created === 1 ? '' : 's'} por Finance.`)
-      if (failed) toast.error(`${failed} archivo${failed === 1 ? '' : 's'} no pudo${failed === 1 ? '' : 'ieron'} procesarse.`)
+      if (failed) toast.error(failed === 1 ? '1 archivo no pudo procesarse.' : `${failed} archivos no pudieron procesarse.`)
       window.dispatchEvent(new Event('finance-workbook-imported'))
       window.dispatchEvent(new Event('finance-sii-uploaded'))
     } catch (error) {
@@ -78,14 +80,7 @@ export function SiiInvoiceDropzone() {
           </Button>
         </div>
 
-        <input
-          ref={inputRef}
-          type="file"
-          multiple
-          accept=".pdf,.xml,application/pdf,application/xml,text/xml"
-          className="hidden"
-          onChange={(event) => void upload(Array.from(event.target.files ?? []))}
-        />
+        <input ref={inputRef} type="file" multiple accept=".pdf,.xml,application/pdf,application/xml,text/xml" className="hidden" onChange={(event) => void upload(Array.from(event.target.files ?? []))} />
 
         <button
           type="button"
@@ -94,11 +89,7 @@ export function SiiInvoiceDropzone() {
           onDragEnter={(event) => { event.preventDefault(); setDragging(true) }}
           onDragOver={(event) => { event.preventDefault(); setDragging(true) }}
           onDragLeave={(event) => { event.preventDefault(); setDragging(false) }}
-          onDrop={(event) => {
-            event.preventDefault()
-            setDragging(false)
-            void upload(Array.from(event.dataTransfer.files))
-          }}
+          onDrop={(event) => { event.preventDefault(); setDragging(false); void upload(Array.from(event.dataTransfer.files)) }}
           className={`mt-5 flex min-h-40 w-full flex-col items-center justify-center px-6 text-center transition-colors ${dragging ? 'bg-[var(--bs-surface-elevated)]' : 'bg-[var(--bs-surface-secondary)] hover:bg-[var(--bs-surface-elevated)]'} disabled:cursor-not-allowed disabled:opacity-60`}
         >
           {uploading ? <Loader2 className="h-7 w-7 animate-spin text-[var(--bs-warm-yellow)]" /> : <UploadCloud className="h-7 w-7 text-[var(--bs-warm-yellow)]" />}
@@ -123,11 +114,9 @@ export function SiiInvoiceDropzone() {
                   {row.document_id && (
                     <div className="flex shrink-0 gap-2">
                       <Button variant="outline" size="sm" asChild>
-                        <a href={`/api/finance/sii-invoices/source?documentId=${encodeURIComponent(row.document_id)}`} target="_blank" rel="noreferrer">
-                          <FileText className="mr-2 h-4 w-4" />Ver original
-                        </a>
+                        <a href={`/api/finance/sii-invoices/source?documentId=${encodeURIComponent(row.document_id)}`} target="_blank" rel="noreferrer"><FileText className="mr-2 h-4 w-4" />Ver original</a>
                       </Button>
-                      <Button size="sm" asChild><a href="/budgets/approvals">Ir a aprobación</a></Button>
+                      <Button size="sm" asChild><a href={`/${language}/budgets/approvals`}>Ir a aprobación</a></Button>
                     </div>
                   )}
                 </div>
