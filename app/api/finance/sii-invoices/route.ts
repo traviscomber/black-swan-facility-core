@@ -24,6 +24,19 @@ type ParsedSiiInvoice = {
   extraction_method: 'sii_xml'
 }
 
+type ManualPdfMetadata = {
+  supplier_name: string
+  supplier_rut: string
+  document_number: string
+  document_date: string
+  due_date?: string | null
+  document_type: 'invoice' | 'credit_note' | 'debit_note' | 'other'
+  net_amount?: number | null
+  tax_amount?: number | null
+  total_amount: number
+  currency: string
+}
+
 function extension(name: string) {
   const value = name.toLowerCase().split('.').pop()
   return value === 'pdf' || value === 'xml' ? value : null
@@ -96,6 +109,40 @@ function adminClient() {
   return createAdminClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } })
 }
 
+function parseManualPdfMetadata(value: unknown): ManualPdfMetadata | null {
+  if (!value || typeof value !== 'object') return null
+  const row = value as Record<string, unknown>
+  const supplierName = typeof row.supplier_name === 'string' ? row.supplier_name.trim() : ''
+  const supplierRut = typeof row.supplier_rut === 'string' ? row.supplier_rut.trim() : ''
+  const documentNumber = typeof row.document_number === 'string' ? row.document_number.trim() : ''
+  const documentDate = typeof row.document_date === 'string' ? row.document_date.trim() : ''
+  const dueDate = typeof row.due_date === 'string' && row.due_date.trim() ? row.due_date.trim() : null
+  const documentType = typeof row.document_type === 'string' ? row.document_type : 'invoice'
+  const currency = typeof row.currency === 'string' ? row.currency.trim().toUpperCase() : 'CLP'
+  const totalAmount = Number(row.total_amount)
+  const netAmount = row.net_amount === '' || row.net_amount == null ? null : Number(row.net_amount)
+  const taxAmount = row.tax_amount === '' || row.tax_amount == null ? null : Number(row.tax_amount)
+
+  if (!supplierName || !supplierRut || !documentNumber || !/^\d{4}-\d{2}-\d{2}$/.test(documentDate)) return null
+  if (!['invoice', 'credit_note', 'debit_note', 'other'].includes(documentType)) return null
+  if (!/^[A-Z]{3}$/.test(currency) || !Number.isFinite(totalAmount) || totalAmount < 0) return null
+  if (netAmount != null && (!Number.isFinite(netAmount) || netAmount < 0)) return null
+  if (taxAmount != null && (!Number.isFinite(taxAmount) || taxAmount < 0)) return null
+
+  return {
+    supplier_name: supplierName,
+    supplier_rut: supplierRut,
+    document_number: documentNumber,
+    document_date: documentDate,
+    due_date: dueDate,
+    document_type: documentType as ManualPdfMetadata['document_type'],
+    net_amount: netAmount,
+    tax_amount: taxAmount,
+    total_amount: totalAmount,
+    currency,
+  }
+}
+
 export async function POST(request: Request) {
   const authorization = await authorizeFinance()
   if ('error' in authorization) return authorization.error
@@ -140,7 +187,7 @@ export async function POST(request: Request) {
         .maybeSingle()
 
       if (existingUpload) {
-        results.push({ filename: file.name, upload_id: existingUpload.id, document_id: existingUpload.finance_document_id, status: 'duplicate', duplicate: true })
+        results.push({ filename: file.name, upload_id: existingUpload.id, document_id: existingUpload.finance_document_id, status: existingUpload.finance_document_id ? 'duplicate' : existingUpload.status, duplicate: Boolean(existingUpload.finance_document_id) })
         if (existingUpload.finance_document_id) documentByBase.set(baseName(file.name), existingUpload.finance_document_id)
         continue
       }
@@ -191,5 +238,42 @@ export async function POST(request: Request) {
   } catch (error) {
     console.error('[finance/sii-invoices] upload failed', error)
     return NextResponse.json({ error: error instanceof Error ? error.message : 'Upload failed' }, { status: 500 })
+  }
+}
+
+export async function PATCH(request: Request) {
+  const authorization = await authorizeFinance()
+  if ('error' in authorization) return authorization.error
+
+  try {
+    const body = await request.json() as { upload_id?: unknown; metadata?: unknown }
+    const uploadId = typeof body.upload_id === 'string' ? body.upload_id.trim() : ''
+    const metadata = parseManualPdfMetadata(body.metadata)
+    if (!uploadId || !metadata) {
+      return NextResponse.json({ error: 'upload_id and valid fiscal metadata are required' }, { status: 400 })
+    }
+
+    const admin = adminClient()
+    const { data: upload, error: uploadError } = await admin
+      .from('finance_sii_uploads')
+      .select('id,upload_kind,status,finance_document_id')
+      .eq('id', uploadId)
+      .maybeSingle()
+
+    if (uploadError) return NextResponse.json({ error: uploadError.message }, { status: 500 })
+    if (!upload) return NextResponse.json({ error: 'SII upload not found' }, { status: 404 })
+    if (upload.upload_kind !== 'pdf') return NextResponse.json({ error: 'Only PDF uploads use manual metadata completion' }, { status: 409 })
+
+    const { data, error } = await admin.rpc('finalize_sii_pdf_upload', {
+      p_upload_id: uploadId,
+      p_actor_id: authorization.user.id,
+      p_metadata: metadata,
+    })
+    if (error) return NextResponse.json({ error: error.message }, { status: 400 })
+
+    return NextResponse.json({ ok: true, result: data })
+  } catch (error) {
+    console.error('[finance/sii-invoices] PDF metadata finalization failed', error)
+    return NextResponse.json({ error: error instanceof Error ? error.message : 'Could not finalize PDF invoice' }, { status: 500 })
   }
 }
