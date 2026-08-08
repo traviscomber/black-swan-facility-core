@@ -4,7 +4,7 @@ import type React from "react"
 import type { ElementType } from "react"
 import { useMemo } from "react"
 import { usePathname, useRouter } from "next/navigation"
-import { Activity, Calculator, CalendarDays, CalendarOff, CreditCard, FileText, FolderLock, Home, MapPin, PackagePlus, Percent, ReceiptText, ShieldCheck, Sparkles, TrendingUp, Users } from "lucide-react"
+import { Activity, Calculator, CalendarDays, CalendarOff, ClipboardList, CreditCard, FileText, FolderLock, Home, MapPin, PackagePlus, Percent, ReceiptText, ShieldCheck, Sparkles, TrendingUp, Users } from "lucide-react"
 import { AccessGate } from "@/components/access/access-gate"
 import { BookingsLegacyLocalizationBridge } from "@/components/bookings-legacy-localization-bridge"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -29,6 +29,7 @@ export default function BookingsLayout({ children }: { children: React.ReactNode
     { value: "calendar", route: "/bookings", label: copy.calendar, icon: CalendarDays, action: "booking.modify", department: "booking" },
     { value: "activities", route: "/bookings/activities", label: copy.operations, icon: Activity, action: "activities.operate", department: "activities" },
     { value: "housekeeping", route: "/bookings/housekeeping", label: copy.housekeeping, icon: Sparkles, action: "housekeeping.operate", department: "housekeeping" },
+    { value: "handovers", route: "/bookings/handovers", label: copy.handovers, icon: ClipboardList, action: "booking.modify", department: "booking" },
     { value: "blocks", route: "/bookings/blocks", label: copy.blocks, icon: CalendarOff, action: "booking.modify", department: "booking" },
     { value: "quotes", route: "/bookings/quotes", label: copy.quotes, icon: Calculator, action: "booking.modify", department: "booking" },
     { value: "rates", route: "/bookings/rates", label: copy.rates, icon: Percent, action: "booking.modify", department: "booking" },
