@@ -10,7 +10,6 @@ import {
   CheckCircle2,
   ChevronLeft,
   ChevronRight,
-  CircleDollarSign,
   ConciergeBell,
   DoorOpen,
   LogIn,
@@ -92,6 +91,7 @@ type HousekeepingTask = {
   id: string
   reservation_id: string | null
   room_id: string | null
+  assigned_to: string | null
   task_type: string
   status: string
   priority: string | null
@@ -104,6 +104,7 @@ type HospitalityRequest = {
   reservation_id: string | null
   room_id: string | null
   tablet_device_id: string | null
+  assigned_to: string | null
   guest_name: string | null
   request_type: string
   category: string
@@ -301,11 +302,11 @@ export default function BookingOperationsTimelinePage() {
         .gt("end_date", iso(startDate)),
       supabase
         .from("housekeeping_tasks")
-        .select("id, reservation_id, room_id, task_type, status, priority, notes, completed_at, created_at")
+        .select("id, reservation_id, room_id, assigned_to, task_type, status, priority, notes, completed_at, created_at")
         .not("status", "in", "(completed,cancelled)"),
       supabase
         .from("hospitality_requests")
-        .select("id, reservation_id, room_id, tablet_device_id, guest_name, request_type, category, status, priority, description, created_at")
+        .select("id, reservation_id, room_id, tablet_device_id, assigned_to, guest_name, request_type, category, status, priority, description, created_at")
         .not("status", "in", "(completed,resolved,cancelled)"),
     ])
 
@@ -553,14 +554,21 @@ export default function BookingOperationsTimelinePage() {
   }
 
   async function updateHousekeepingStatus(taskId: string, status: "in_progress" | "completed") {
+    const task = selectedHousekeeping.find((item) => item.id === taskId)
+    if (!task?.assigned_to) {
+      toast.error("Asigna un responsable antes de iniciar o completar esta tarea de Housekeeping.")
+      return
+    }
+
     setSavingAction(true)
-    const updates: { status: string; completed_at?: string } = { status }
-    if (status === "completed") updates.completed_at = new Date().toISOString()
-    const { error: updateError } = await supabase
-      .from("housekeeping_tasks")
-      .update(updates)
-      .eq("id", taskId)
-    if (updateError) toast.error(updateError.message)
+    const { error: rpcError } = await supabase.rpc("update_housekeeping_task_operation", {
+      p_task_id: taskId,
+      p_action: status === "in_progress" ? "start" : "complete",
+      p_assigned_to: null,
+      p_notes: null,
+      p_quality_score: null,
+    })
+    if (rpcError) toast.error(rpcError.message)
     else {
       toast.success(status === "completed" ? "Tarea completada" : "Tarea iniciada")
       await refreshSelected()
@@ -593,33 +601,33 @@ export default function BookingOperationsTimelinePage() {
   }
 
   async function updateHospitalityStatus(requestId: string, status: "in_progress" | "completed") {
+    const request = selectedHospitality.find((item) => item.id === requestId)
+    if (!request?.assigned_to) {
+      toast.error("Asigna un responsable antes de iniciar o completar esta solicitud de Hospitality.")
+      return
+    }
+
     setSavingAction(true)
-    const updates: { status: string; completed_at?: string } = { status }
-    if (status === "completed") updates.completed_at = new Date().toISOString()
-    const { error: updateError } = await supabase
-      .from("hospitality_requests")
-      .update(updates)
-      .eq("id", requestId)
-    if (updateError) toast.error(updateError.message)
+    const { error: rpcError } = await supabase.rpc("update_hospitality_request", {
+      p_request_id: requestId,
+      p_status: status,
+      p_assigned_to: null,
+      p_priority: null,
+      p_department: null,
+      p_promised_at: null,
+      p_sla_minutes: null,
+      p_notes: null,
+      p_blocked_reason: null,
+      p_escalation_reason: null,
+      p_evidence_url: null,
+      p_completion_notes: status === "completed" ? "Completada desde operación de estadía" : null,
+      p_guest_confirmed: false,
+      p_satisfaction_score: null,
+    })
+    if (rpcError) toast.error(rpcError.message)
     else {
       toast.success(status === "completed" ? "Solicitud completada" : "Solicitud en curso")
       await refreshSelected()
-    }
-    setSavingAction(false)
-  }
-
-  async function markPayment(status: string) {
-    if (!selected) return
-    setSavingAction(true)
-    const { error: updateError } = await supabase
-      .from("reservations")
-      .update({ payment_status: status })
-      .eq("id", selected.id)
-    if (updateError) toast.error(updateError.message)
-    else {
-      toast.success("Estado de pago actualizado")
-      setSelected((current) => current ? { ...current, payment_status: status } : current)
-      await loadData()
     }
     setSavingAction(false)
   }
@@ -946,23 +954,28 @@ export default function BookingOperationsTimelinePage() {
                       description={task.notes}
                       actions={(
                         <>
-                          {task.status === "pending" && (
+                          {!task.assigned_to && (
+                            <span className="self-center text-xs text-amber-600">Asigna un responsable para ejecutar la tarea.</span>
+                          )}
+                          {["pending", "assigned"].includes(task.status) && (
                             <Button
                               size="sm"
                               variant="outline"
                               onClick={() => void updateHousekeepingStatus(task.id, "in_progress")}
-                              disabled={savingAction}
+                              disabled={savingAction || !task.assigned_to}
                             >
                               <PlayCircle className="mr-2 h-4 w-4" />Iniciar
                             </Button>
                           )}
-                          <Button
-                            size="sm"
-                            onClick={() => void updateHousekeepingStatus(task.id, "completed")}
-                            disabled={savingAction}
-                          >
-                            <CheckCircle2 className="mr-2 h-4 w-4" />Completar
-                          </Button>
+                          {task.status === "in_progress" && (
+                            <Button
+                              size="sm"
+                              onClick={() => void updateHousekeepingStatus(task.id, "completed")}
+                              disabled={savingAction || !task.assigned_to}
+                            >
+                              <CheckCircle2 className="mr-2 h-4 w-4" />Completar
+                            </Button>
+                          )}
                         </>
                       )}
                     />
@@ -981,23 +994,28 @@ export default function BookingOperationsTimelinePage() {
                       description={request.description}
                       actions={(
                         <>
-                          {request.status === "pending" && (
+                          {!request.assigned_to && (
+                            <span className="self-center text-xs text-amber-600">Asigna un responsable para ejecutar la solicitud.</span>
+                          )}
+                          {["pending", "assigned"].includes(request.status) && (
                             <Button
                               size="sm"
                               variant="outline"
                               onClick={() => void updateHospitalityStatus(request.id, "in_progress")}
-                              disabled={savingAction}
+                              disabled={savingAction || !request.assigned_to}
                             >
                               Poner en curso
                             </Button>
                           )}
-                          <Button
-                            size="sm"
-                            onClick={() => void updateHospitalityStatus(request.id, "completed")}
-                            disabled={savingAction}
-                          >
-                            <CheckCircle2 className="mr-2 h-4 w-4" />Completar
-                          </Button>
+                          {request.status === "in_progress" && (
+                            <Button
+                              size="sm"
+                              onClick={() => void updateHospitalityStatus(request.id, "completed")}
+                              disabled={savingAction || !request.assigned_to}
+                            >
+                              <CheckCircle2 className="mr-2 h-4 w-4" />Completar
+                            </Button>
+                          )}
                         </>
                       )}
                     />
@@ -1029,18 +1047,9 @@ export default function BookingOperationsTimelinePage() {
                     disabled={savingAction}
                   />
                 )}
-                <ActionButton
-                  icon={<CircleDollarSign />}
-                  label="Marcar pago recibido"
-                  onClick={() => void markPayment("paid")}
-                  disabled={savingAction}
-                />
-                <ActionButton
-                  icon={<CircleDollarSign />}
-                  label="Marcar pago pendiente"
-                  onClick={() => void markPayment("pending")}
-                  disabled={savingAction}
-                />
+                <div className="col-span-full rounded-lg border border-dashed p-3 text-xs leading-5 text-muted-foreground">
+                  El estado de pago se deriva del ledger financiero. Registra pagos, reversos y ajustes desde el flujo financiero; esta pantalla no puede fabricar un estado de pago manual.
+                </div>
               </ActionSection>
 
               <ActionSection title="Crear Housekeeping" icon={<Sparkles className="h-4 w-4" />}>
