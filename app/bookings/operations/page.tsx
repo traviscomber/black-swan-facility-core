@@ -465,17 +465,24 @@ export default function BookingOperationsTimelinePage() {
     if (selected) await loadOperations(selected.id)
   }
 
-  async function setReservationStatus(status: string) {
+  async function transitionReservation(action: "confirm" | "checkout") {
     if (!selected) return
     setSavingAction(true)
-    const { error: updateError } = await supabase
-      .from("reservations")
-      .update({ status })
-      .eq("id", selected.id)
-    if (updateError) toast.error(updateError.message)
-    else {
-      toast.success("Estado de reserva actualizado")
-      setSelected((current) => current ? { ...current, status } : current)
+    const { data, error: rpcError } = await supabase.rpc("transition_reservation_status", {
+      p_reservation_id: selected.id,
+      p_action: action,
+    })
+    if (rpcError) {
+      toast.error(rpcError.message)
+    } else {
+      const nextReservation = data as Reservation | null
+      const nextStatus = nextReservation?.status ?? (action === "confirm" ? "confirmed" : "checked_out")
+      const nextArrivalStatus = nextReservation?.arrival_status
+        ?? (action === "checkout" ? "checked_out" : selected.arrival_status)
+      toast.success(action === "confirm" ? "Reserva confirmada" : "Check-out registrado")
+      setSelected((current) => current
+        ? { ...current, status: nextStatus, arrival_status: nextArrivalStatus }
+        : current)
       await refreshSelected()
     }
     setSavingAction(false)
@@ -1027,7 +1034,7 @@ export default function BookingOperationsTimelinePage() {
                   <ActionButton
                     icon={<CalendarDays />}
                     label="Confirmar reserva"
-                    onClick={() => void setReservationStatus("confirmed")}
+                    onClick={() => void transitionReservation("confirm")}
                     disabled={savingAction}
                   />
                 )}
@@ -1043,7 +1050,7 @@ export default function BookingOperationsTimelinePage() {
                   <ActionButton
                     icon={<LogOut />}
                     label="Registrar check-out"
-                    onClick={() => void setReservationStatus("checked_out")}
+                    onClick={() => void transitionReservation("checkout")}
                     disabled={savingAction}
                   />
                 )}
