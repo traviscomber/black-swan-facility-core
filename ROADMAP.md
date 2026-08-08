@@ -158,52 +158,59 @@ Stage 4 is functionally complete except for the explicit production identity dec
 
 ## Stage 5 — Hospitality operational completion
 
-Status: ACTIVE IN PARALLEL
+Status: COMPLETE WITH VERIFICATION DEBT
 
-Objective:
+Objective achieved:
 
-Finish Hospitality as a reliable day-to-day operating surface rather than continue backend hardening indefinitely.
+Hospitality now has canonical day-to-day workflows for reservations, check-in/out, financial state, Housekeeping, Hospitality requests, logistics and shift handovers without requiring direct SQL/table-state editing for the audited primary shift flows.
 
-Priority scope:
-
-- reservation calendar reliability and speed;
-- availability, blocks, move/resize/swap/create/undo;
-- check-in/check-out and exception handling;
-- payments, charges, invoices and financial adjustments;
-- housekeeping, requests, logistics and handovers;
-- mobile/touch and keyboard workflows;
-- role-aware and locale-consistent UX.
-
-Completed in Stage 5 so far:
+Completed in Stage 5:
 
 - primary operations panel routes Housekeeping and Hospitality state changes through canonical RPCs;
+- reservation confirmation and checkout route through `transition_reservation_status()` instead of direct client updates;
 - direct manual editing of reservation `payment_status` was removed; payment status is ledger/folio-derived;
 - legacy unbilled `canonical_event_xls` reservations without financial evidence project `not_required` rather than fake receivables;
 - debt-free reservations can check out without an artificial invoice when no receivable exists;
 - dedicated Housekeeping page uses canonical assignment/start/complete transitions;
+- checkout Housekeeping synchronization uses the idempotent reservation lifecycle instead of creating a second ad-hoc `checkout_cleaning` task type;
 - dedicated Hospitality Requests page uses canonical workflow states, requires assignment before execution/closure and no longer triggers a hardcoded WhatsApp side effect;
-- booking message creation is scope-aware and delivery/inbound state remains controlled by the messaging workflow.
+- booking message creation is scope-aware and delivery/inbound state remains controlled by the messaging workflow;
+- reservation logistics has an auditable scoped lifecycle `draft -> planned -> confirmed -> completed` plus controlled cancellation;
+- shift handovers have a complete auditable lifecycle with pending-item acknowledgement/resolution/carry-forward;
+- handovers require a property/location, respect booking scope, and cannot mix reservation/logistics records from another property;
+- the Handovers workspace is integrated into Bookings navigation with EN/ES/DE labels;
+- structural property creation/update is restricted to admin/approver rather than any authenticated user.
 
 Exit gates:
 
-- [ ] primary shift workflows can be completed without fallback spreadsheets/manual DB work;
-- [x] database integrity prevents silent double booking and inventory conflict paths in audited canonical writes;
-- [ ] consequential writes provide clear success/failure/audit state across the primary shift workflows;
-- [ ] desktop and mobile primary workflows receive current visual/interaction verification.
+- [x] primary audited shift workflows can be completed without fallback spreadsheets/manual DB state changes.
+- [x] database integrity prevents silent double booking and inventory conflict paths in audited canonical writes.
+- [x] consequential audited shift writes have controlled success/failure paths and critical transitions emit audit state.
+- [ ] **VERIFICATION DEBT / STAGE 3:** desktop and mobile primary workflows require current visual/interaction verification and booking-calendar multi-browser E2E.
 
-Stage 5 may proceed while Stage 3 waits on GitHub billing and Stage 4 waits on explicit identity authorization. It must not claim visual or interaction completion without browser evidence.
+Closure rule:
+
+Stage 5 is closed for product/engineering scope. Visual, touch, keyboard and cross-browser proof remains release verification debt owned by Stage 3 and does not keep Hospitality implementation open indefinitely. A new reproducible P0/P1 in a primary Hospitality flow may reopen a bounded fix, not the whole stage.
 
 ---
 
 ## Stage 6 — Cross-domain operating-system consistency
 
-Status: PLANNED
+Status: ACTIVE
 
 Objective:
 
 Apply the proven authorization, lifecycle, audit and UI patterns consistently across Maintenance, Inventory, Purchasing, Properties, People, Livestock, Vineyard, Energy, GIS and Administration.
 
-Known model prerequisite carried to Stage 6: geographic scoping for Procurement/Inventory/Fuel requires stable canonical location relationships. Current `warehouses`, procurement delivery location and fuel location models do not all expose a `locations.id` FK, so do not emulate tenant/location isolation from display strings.
+First execution order:
+
+1. establish canonical location relationships for Inventory/Procurement/Fuel where current models still use warehouse/display strings;
+2. define explicit owner/lifecycle/audit contracts for the highest-frequency consequential writes;
+3. eliminate direct client state mutation where a domain workflow requires controlled transitions;
+4. align shared navigation, loading/empty/error states and role visibility using the existing application shell;
+5. stop after each domain reaches its stated exit gate; do not repeat broad security fishing already closed in Stage 2.
+
+Known model prerequisite: geographic scoping for Procurement/Inventory/Fuel requires stable canonical location relationships. Current `warehouses`, procurement delivery location and fuel location models do not all expose a `locations.id` FK, so do not emulate tenant/location isolation from display strings.
 
 Exit gates:
 
@@ -252,14 +259,14 @@ Focus:
 
 ## Current execution order
 
-1. Execute Stage 5 Hospitality operational completion in bounded workflow blocks.
+1. Execute Stage 6 domain-by-domain, starting with the location model required by Inventory/Procurement/Fuel.
 2. Resume Stage 3 immediately when GitHub Actions can start jobs; require same-SHA CI + Vercel before changing release `HOLD`.
 3. Close Stage 4 only after explicit authorization resolves the 2 deterministic production lineage cases.
-4. After Stage 5 is operationally bounded and verified where tools permit, move to Stage 6 cross-domain consistency.
-5. AI and differentiation remain later stages, not distractions from operational completion.
+4. Keep Stage 5 closed unless a new reproducible P0/P1 appears in a primary Hospitality workflow.
+5. AI and differentiation remain later stages, not distractions from operating-system consistency.
 
 ## Current global release verdict
 
 `HOLD`
 
-Reason: Stage 2 is complete; Stage 4 health is controlled and known legacy debt is explicit; production deployment and locale/auth smoke are healthy. Release evidence is still blocked by GitHub Actions billing/spending and booking-calendar E2E cannot run.
+Reason: Stage 2 and Stage 5 implementation scope are complete; Stage 4 health is controlled and known legacy identity cases are explicit; production deployment remains healthy. Release evidence is still blocked by GitHub Actions billing/spending and booking-calendar E2E plus current desktop/mobile interaction verification cannot run to completion.
