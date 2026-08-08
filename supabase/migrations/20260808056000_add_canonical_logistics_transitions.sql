@@ -20,14 +20,17 @@ begin
   if not public.can_app_action('hospitality.operate') then raise exception 'Hospitality permission required'; end if;
   if p_status not in ('planned','confirmed','completed','cancelled') then raise exception 'Unsupported logistics status'; end if;
 
-  select l.*, r.location_id
-  into v_row, v_location_id
-  from public.reservation_logistics l
-  join public.reservations r on r.id = l.reservation_id
-  where l.id = p_logistics_id
-  for update of l;
+  select * into v_row
+  from public.reservation_logistics
+  where id = p_logistics_id
+  for update;
 
   if not found then raise exception 'Logistics record not found'; end if;
+
+  select location_id into v_location_id
+  from public.reservations
+  where id = v_row.reservation_id;
+
   if not public.can_access_operational_scope('hospitality', v_location_id) then
     raise exception 'Logistics record outside operational scope';
   end if;
