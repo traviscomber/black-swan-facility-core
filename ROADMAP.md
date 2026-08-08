@@ -81,14 +81,15 @@ Make Postgres/Supabase a deliberate product boundary: one canonical owner per fa
 - AI sessions/executions now have ownership for new records and child records inherit access;
 - `canonical_event_xls` imports now have durable source-participant lineage for new reservations;
 - a reconciliation queue exists for legacy imported reservations without automatic identity assignment;
-- current legacy import queue is explicitly classified rather than silently reconciled.
+- current legacy import queue is explicitly classified rather than silently reconciled;
+- `operational_events` no longer exposes financial totals through a global authenticated read: the base-table read requires Finance/Procurement permission and Hospitality has a non-financial operational RPC.
 
 ### Exit gates — close Stage 2 when all are done
 
 - [x] **Security invariants:** `anon SECURITY DEFINER = 0`, open authenticated writes = 0, no known P0 authorization bypass.
-- [ ] **Schema versioning:** reconcile the Supabase changes made during this hardening cycle into versioned SQL under `supabase/migrations/` in GitHub. Production state and repository schema must no longer drift.
+- [ ] **Schema versioning:** reconcile the Supabase changes made during this hardening cycle into versioned SQL under `supabase/migrations/` in GitHub. Production state and repository schema must no longer drift. Source of truth for reconciliation: `supabase_migrations.schema_migrations`, which retains version, migration name and executed `statements[]`.
 - [ ] **Effective role matrix:** run deterministic positive/negative checks for `admin`, `approver`, `operator` and a scoped-user scenario across the highest-risk domains (Hospitality, Finance, Procurement, Inventory/Housekeeping).
-- [ ] **Mixed-data contract:** resolve `operational_events`, which mixes shared operational event data with financial totals. Either split restricted financial fields into a protected projection/table or prove the current global read is intentional.
+- [x] **Mixed-data contract:** `operational_events` financial totals are restricted to Finance/Procurement readers; Hospitality reads a dedicated non-financial projection through `get_operational_events_operational()`.
 
 ### Explicitly NOT required to close Stage 2
 
@@ -100,7 +101,7 @@ The following do not keep this stage open unless evidence upgrades them to P0/P1
 - fixing the calendar E2E runner;
 - broad module refactors unrelated to data integrity/security.
 
-Target: close Stage 2 after the three pending exit gates above. No further broad RLS fishing expedition after that point.
+Target: close Stage 2 after the two remaining exit gates above. No further broad RLS fishing expedition after that point.
 
 ---
 
@@ -233,7 +234,7 @@ Focus:
 
 ## Current execution order
 
-1. Finish the three remaining Stage 2 exit gates.
+1. Finish the two remaining Stage 2 exit gates: schema versioning and effective role matrix.
 2. Mark Stage 2 `COMPLETE` and stop broad security/data hardening.
 3. Move immediately to Stage 3 release reliability.
 4. When Stage 3 is deterministic, execute Stage 4 data operations and Stage 5 Hospitality completion in bounded blocks.
