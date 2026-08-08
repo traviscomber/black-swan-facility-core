@@ -12,8 +12,10 @@ import { createClient } from "@/lib/supabase/client"
 import { useLanguage } from "@/lib/hooks/use-language"
 
 type Staff = { id: string; name: string }
+type Location = { id: string; name: string }
 type Handover = {
   id: string
+  location_id: string
   area: string
   shift_date: string
   shift_name: string
@@ -52,8 +54,9 @@ type Logistics = {
 const copy = {
   en: {
     title: "Shift handovers",
-    description: "Create, submit, accept and close operational handovers with auditable pending items.",
+    description: "Create, submit, accept and close property-scoped operational handovers with auditable pending items.",
     newHandover: "New handover",
+    property: "Property",
     summary: "Summary",
     create: "Create draft",
     addItem: "Add item",
@@ -78,8 +81,9 @@ const copy = {
   },
   es: {
     title: "Entregas de turno",
-    description: "Crear, enviar, aceptar y cerrar entregas operativas con pendientes auditables.",
+    description: "Crear, enviar, aceptar y cerrar entregas operativas por propiedad con pendientes auditables.",
     newHandover: "Nueva entrega",
+    property: "Propiedad",
     summary: "Resumen",
     create: "Crear borrador",
     addItem: "Agregar pendiente",
@@ -104,8 +108,9 @@ const copy = {
   },
   de: {
     title: "Schichtübergaben",
-    description: "Operative Übergaben mit nachvollziehbaren offenen Punkten erstellen, übergeben, annehmen und schließen.",
+    description: "Standortbezogene operative Übergaben mit nachvollziehbaren offenen Punkten erstellen, übergeben, annehmen und schließen.",
     newHandover: "Neue Übergabe",
+    property: "Standort",
     summary: "Zusammenfassung",
     create: "Entwurf erstellen",
     addItem: "Punkt hinzufügen",
@@ -148,11 +153,13 @@ export default function BookingHandoversPage() {
   const [handovers, setHandovers] = useState<Handover[]>([])
   const [items, setItems] = useState<HandoverItem[]>([])
   const [staff, setStaff] = useState<Staff[]>([])
+  const [locations, setLocations] = useState<Location[]>([])
   const [logistics, setLogistics] = useState<Logistics[]>([])
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
 
+  const [locationId, setLocationId] = useState("")
   const [area, setArea] = useState("reception")
   const [shiftName, setShiftName] = useState("morning")
   const [shiftDate, setShiftDate] = useState(todayIso())
@@ -164,23 +171,28 @@ export default function BookingHandoversPage() {
 
   const selected = handovers.find((item) => item.id === selectedId) ?? null
   const selectedItems = items.filter((item) => item.handover_id === selectedId)
+  const locationName = useCallback((id: string) => locations.find((item) => item.id === id)?.name ?? t.property, [locations, t.property])
 
   const loadData = useCallback(async () => {
     setLoading(true)
-    const [handoverResult, itemResult, staffResult, logisticsResult] = await Promise.all([
-      supabase.from("booking_shift_handovers").select("id, area, shift_date, shift_name, incoming_employee_id, outgoing_employee_id, summary, status, submitted_at, accepted_at, accepted_by, created_at").order("created_at", { ascending: false }).limit(50),
+    const [handoverResult, itemResult, staffResult, locationResult, logisticsResult] = await Promise.all([
+      supabase.from("booking_shift_handovers").select("id, location_id, area, shift_date, shift_name, incoming_employee_id, outgoing_employee_id, summary, status, submitted_at, accepted_at, accepted_by, created_at").order("created_at", { ascending: false }).limit(50),
       supabase.from("booking_handover_items").select("id, handover_id, reservation_id, source_type, source_id, priority, title, detail, due_at, status").order("created_at", { ascending: true }),
       supabase.rpc("get_booking_handover_staff"),
+      supabase.rpc("get_booking_handover_locations"),
       supabase.from("reservation_logistics").select("id, reservation_id, direction, hub, anchor_at, status, notes, reservation:reservations(guest_name)").not("status", "in", "(completed,cancelled)").order("anchor_at", { ascending: true, nullsFirst: false }),
     ])
 
-    const firstError = handoverResult.error || itemResult.error || staffResult.error || logisticsResult.error
+    const firstError = handoverResult.error || itemResult.error || staffResult.error || locationResult.error || logisticsResult.error
     if (firstError) {
       toast.error(firstError.message)
     } else {
+      const nextLocations = (locationResult.data ?? []) as Location[]
       setHandovers((handoverResult.data ?? []) as Handover[])
       setItems((itemResult.data ?? []) as HandoverItem[])
       setStaff((staffResult.data ?? []) as Staff[])
+      setLocations(nextLocations)
+      setLocationId((current) => current || nextLocations[0]?.id || "")
       setLogistics((logisticsResult.data ?? []) as unknown as Logistics[])
       setSelectedId((current) => current ?? handoverResult.data?.[0]?.id ?? null)
     }
@@ -190,12 +202,17 @@ export default function BookingHandoversPage() {
   useEffect(() => { void loadData() }, [loadData])
 
   async function createHandover() {
+    if (!locationId) {
+      toast.error(`${t.property} is required`)
+      return
+    }
     if (!summary.trim()) {
       toast.error("Summary is required")
       return
     }
     setSaving(true)
     const { data, error } = await supabase.from("booking_shift_handovers").insert({
+      location_id: locationId,
       area,
       shift_date: shiftDate,
       shift_name: shiftName,
@@ -320,6 +337,10 @@ export default function BookingHandoversPage() {
           <Card>
             <CardHeader><CardTitle className="text-base">{t.newHandover}</CardTitle></CardHeader>
             <CardContent className="space-y-3">
+              <select value={locationId} onChange={(e) => setLocationId(e.target.value)} className="h-10 w-full rounded-md border bg-background px-3 text-sm" aria-label={t.property}>
+                <option value="">{t.property}</option>
+                {locations.map((location) => <option key={location.id} value={location.id}>{location.name}</option>)}
+              </select>
               <div className="grid grid-cols-2 gap-2">
                 <select value={area} onChange={(e) => setArea(e.target.value)} className="h-10 rounded-md border bg-background px-3 text-sm">
                   <option value="reception">Reception</option><option value="housekeeping">Housekeeping</option><option value="hospitality">Hospitality</option><option value="maintenance">Maintenance</option><option value="management">Management</option>
@@ -334,7 +355,7 @@ export default function BookingHandoversPage() {
                 {staff.map((person) => <option key={person.id} value={person.id}>{person.name}</option>)}
               </select>
               <textarea value={summary} onChange={(e) => setSummary(e.target.value)} placeholder={t.summary} className="min-h-24 w-full rounded-md border bg-background p-3 text-sm" />
-              <Button className="w-full" onClick={() => void createHandover()} disabled={saving}><Plus className="mr-2 h-4 w-4" />{t.create}</Button>
+              <Button className="w-full" onClick={() => void createHandover()} disabled={saving || !locationId}><Plus className="mr-2 h-4 w-4" />{t.create}</Button>
             </CardContent>
           </Card>
 
@@ -345,7 +366,7 @@ export default function BookingHandoversPage() {
               {handovers.map((handover) => (
                 <button key={handover.id} type="button" onClick={() => setSelectedId(handover.id)} className={`w-full rounded-lg border p-3 text-left ${selectedId === handover.id ? "border-primary bg-primary/5" : ""}`}>
                   <div className="flex items-center justify-between gap-2"><span className="font-medium capitalize">{handover.area} · {handover.shift_name}</span><Badge variant={statusVariant(handover.status)}>{handover.status}</Badge></div>
-                  <p className="mt-1 text-xs text-muted-foreground">{handover.shift_date}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">{locationName(handover.location_id)} · {handover.shift_date}</p>
                   {handover.summary && <p className="mt-2 line-clamp-2 text-sm">{handover.summary}</p>}
                 </button>
               ))}
@@ -357,7 +378,7 @@ export default function BookingHandoversPage() {
           <Card>
             <CardHeader>
               <div className="flex flex-wrap items-center justify-between gap-3">
-                <CardTitle className="flex items-center gap-2 text-base"><ClipboardList className="h-4 w-4" />{selected ? `${selected.area} · ${selected.shift_name} · ${selected.shift_date}` : t.title}</CardTitle>
+                <CardTitle className="flex items-center gap-2 text-base"><ClipboardList className="h-4 w-4" />{selected ? `${locationName(selected.location_id)} · ${selected.area} · ${selected.shift_name} · ${selected.shift_date}` : t.title}</CardTitle>
                 {selected && <Badge variant={statusVariant(selected.status)}>{selected.status}</Badge>}
               </div>
             </CardHeader>
