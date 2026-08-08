@@ -17,6 +17,15 @@
   box-shadow: -18px 0 48px rgba(0, 0, 0, 0.2) !important;
 }
 
+/* Keep the operational command trigger away from page-header actions.
+   The daily operations bar occupies the bottom edge, so the trigger floats
+   immediately above it instead of competing with "Nueva reserva". */
+.booking-workspace button.fixed.right-4.top-24 {
+  top: auto !important;
+  right: 1rem !important;
+  bottom: 4.5rem !important;
+}
+
 @media (min-width: 1200px) {
   .booking-workspace:has(.fixed.inset-0.z-50.flex.justify-end > aside) [data-slot="page-header"],
   .booking-workspace:has(.fixed.inset-0.z-50.flex.justify-end > aside) [data-slot="page-header"] + div {
