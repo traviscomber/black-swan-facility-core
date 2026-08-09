@@ -74,7 +74,7 @@ export function BookingCalendarReservationBar({
   return (
     <button
       type="button"
-      onPointerDown={(event) => onPointerDown(event, reservation, bed)}
+      onPointerDownCapture={(event) => onPointerDown(event, reservation, bed)}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
       onPointerCancel={onPointerCancel}
