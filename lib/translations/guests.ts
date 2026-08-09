@@ -9,9 +9,9 @@ export const guestTranslations: Record<Language, Record<string, string>> = {
   },
   es: {
     title: "Huéspedes", subtitle: "Perfiles, historial de estadías, valor y próximas reservas.", operationalCenter: "Centro operativo", newGuest: "Nuevo huésped",
-    guests: "Huéspedes", recurring: "Recurrentes", historicalValue: "Valor histórico", search: "Buscar por nombre, email, teléfono o empresa", directory: "Directorio consolidado",
+    guests: "Huéspedes", recurring: "Recurrentes", historicalValue: "Valor histórico", search: "Buscar por nombre, correo electrónico, teléfono o empresa", directory: "Directorio consolidado",
     guest: "Huésped", contact: "Contacto", stays: "Estadías", spend: "Gasto", last: "Última", next: "Próxima", actions: "Acciones", loading: "Cargando huéspedes...", noResults: "No hay resultados.",
-    returning: "Recurrente", noEmail: "Sin email", noPhone: "Sin teléfono", deleteConfirm: "¿Eliminar este huésped?", history: "Historial del huésped", notes: "Notas", noReservations: "Sin reservas vinculadas.", guestCount: "huésped(es)",
+    returning: "Recurrente", noEmail: "Sin correo electrónico", noPhone: "Sin teléfono", deleteConfirm: "¿Eliminar este huésped?", history: "Historial del huésped", notes: "Notas", noReservations: "Sin reservas vinculadas.", guestCount: "huésped(es)",
   },
   de: {
     title: "Gäste", subtitle: "Profile, Aufenthaltsverlauf, Kundenwert und kommende Reservierungen.", operationalCenter: "Betriebszentrale", newGuest: "Neuer Gast",
