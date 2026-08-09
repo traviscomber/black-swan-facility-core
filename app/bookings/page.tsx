@@ -6,6 +6,7 @@ import { BookingRealtimePulse } from "@/components/booking-realtime-pulse"
 import { BookingTimelineAlertNavigator } from "@/components/booking-timeline-alert-navigator"
 import { ReservationLogisticsEditor } from "@/components/reservation-logistics-editor"
 import { DailyOperationsPanel } from "@/components/daily-operations-panel"
+import { GuestStayStatusStrip } from "@/components/guest-stay-status-strip"
 import { HospitalityCommandCenter } from "@/components/hospitality-command-center"
 import { SantiagoTodayCommandCenter } from "@/components/santiago-today-command-center"
 
@@ -16,6 +17,7 @@ export default function BookingsPage() {
       <BookingTimelineAlertNavigator />
       <ReservationLogisticsEditor />
       <SantiagoTodayCommandCenter />
+      <GuestStayStatusStrip />
       <BookingOperationsTimelinePage />
       <HospitalityCommandCenter />
       <DailyOperationsPanel />
