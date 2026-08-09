@@ -1,11 +1,19 @@
 import { createHmac, timingSafeEqual } from "node:crypto"
 
-type PublicGuestAccessPayload = {
+type LocationGuestAccessPayload = {
   v: 1
   locationId: string
   deviceId: string
   exp: number
 }
+
+type GlobalGuestAccessPayload = {
+  v: 2
+  scope: "global"
+  exp: number
+}
+
+export type PublicGuestAccessPayload = LocationGuestAccessPayload | GlobalGuestAccessPayload
 
 function getSecret() {
   const secret = process.env.GUEST_REQUEST_QR_SECRET || process.env.SUPABASE_SERVICE_ROLE_KEY
@@ -22,11 +30,22 @@ function sign(encodedPayload: string) {
 }
 
 export function createPublicGuestAccessToken(locationId: string, deviceId: string, ttlSeconds = 7 * 24 * 60 * 60) {
-  const payload: PublicGuestAccessPayload = {
+  const payload: LocationGuestAccessPayload = {
     v: 1,
     locationId,
     deviceId,
     exp: Math.floor(Date.now() / 1000) + ttlSeconds,
+  }
+  const encodedPayload = encode(JSON.stringify(payload))
+  return `${encodedPayload}.${sign(encodedPayload)}`
+}
+
+export function createGlobalGuestAccessToken() {
+  const year = new Date().getUTCFullYear()
+  const payload: GlobalGuestAccessPayload = {
+    v: 2,
+    scope: "global",
+    exp: Math.floor(Date.UTC(year + 1, 0, 1) / 1000),
   }
   const encodedPayload = encode(JSON.stringify(payload))
   return `${encodedPayload}.${sign(encodedPayload)}`
@@ -43,9 +62,15 @@ export function verifyPublicGuestAccessToken(token: string): PublicGuestAccessPa
 
   try {
     const payload = JSON.parse(Buffer.from(encodedPayload, "base64url").toString("utf8")) as PublicGuestAccessPayload
-    if (payload.v !== 1 || !payload.locationId || !payload.deviceId || !payload.exp) return null
-    if (payload.exp <= Math.floor(Date.now() / 1000)) return null
-    return payload
+    if (!payload.exp || payload.exp <= Math.floor(Date.now() / 1000)) return null
+
+    if (payload.v === 1) {
+      if (!payload.locationId || !payload.deviceId) return null
+      return payload
+    }
+
+    if (payload.v === 2 && payload.scope === "global") return payload
+    return null
   } catch {
     return null
   }
