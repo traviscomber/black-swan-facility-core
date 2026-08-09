@@ -5,7 +5,7 @@ import { createBrowserClient } from "@/lib/supabase/client"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Plus, DollarSign, Users, Pencil, Trash2, BedDouble } from "lucide-react"
+import { Plus, DollarSign, Users, Pencil, Trash2, BedDouble, MapPin } from "lucide-react"
 import { AddRoomDialog } from "@/components/add-room-dialog"
 import { EditRoomDialog } from "@/components/edit-room-dialog"
 import { AddBedDialog } from "@/components/add-bed-dialog"
@@ -22,17 +22,6 @@ import {
 import { AppLayout } from "@/components/app-layout"
 import { useLanguage } from "@/lib/hooks/use-language"
 import { roomsTranslations } from "@/lib/translations/rooms"
-
-const FACILITY_COLORS = [
-  { bg: "bg-red-200", border: "border-l-4 border-red-400", text: "text-red-900" },
-  { bg: "bg-blue-200", border: "border-l-4 border-blue-400", text: "text-blue-900" },
-  { bg: "bg-emerald-200", border: "border-l-4 border-emerald-400", text: "text-emerald-900" },
-  { bg: "bg-amber-200", border: "border-l-4 border-amber-400", text: "text-amber-900" },
-  { bg: "bg-violet-200", border: "border-l-4 border-violet-400", text: "text-violet-900" },
-  { bg: "bg-rose-200", border: "border-l-4 border-rose-400", text: "text-rose-900" },
-  { bg: "bg-indigo-200", border: "border-l-4 border-indigo-400", text: "text-indigo-900" },
-  { bg: "bg-teal-200", border: "border-l-4 border-teal-400", text: "text-teal-900" },
-]
 
 interface Room {
   id: string
@@ -65,7 +54,7 @@ interface Location { id: string; name: string }
 export default function RoomsPage() {
   const [rooms, setRooms] = useState<Room[]>([])
   const [beds, setBeds] = useState<Bed[]>([])
-  const [locations, setLocations] = useState<Location[]>([])
+  const [, setLocations] = useState<Location[]>([])
   const [loading, setLoading] = useState(true)
   const [isAddRoomOpen, setIsAddRoomOpen] = useState(false)
   const [isEditRoomOpen, setIsEditRoomOpen] = useState(false)
@@ -92,19 +81,13 @@ export default function RoomsPage() {
     setLoading(false)
   }
 
-  function getFacilityColor(locationId?: string) {
-    if (!locationId) return FACILITY_COLORS[0]
-    const index = locations.findIndex((loc) => loc.id === locationId)
-    return FACILITY_COLORS[Math.max(0, index) % FACILITY_COLORS.length]
-  }
-
-  function getStatusColor(status: string) {
+  function getStatusClass(status: string) {
     switch (status) {
-      case "available": return "bg-green-500"
-      case "occupied": return "bg-blue-500"
-      case "maintenance": return "bg-yellow-500"
-      case "unavailable": return "bg-gray-500"
-      default: return "bg-gray-500"
+      case "available": return "border-primary/30 bg-primary/12 text-primary"
+      case "occupied": return "border-sky-400/30 bg-sky-400/10 text-sky-200"
+      case "maintenance": return "border-amber-400/30 bg-amber-400/10 text-amber-200"
+      case "unavailable": return "border-white/10 bg-white/5 text-muted-foreground"
+      default: return "border-white/10 bg-white/5 text-muted-foreground"
     }
   }
 
@@ -114,6 +97,22 @@ export default function RoomsPage() {
     if (status === "maintenance") return copy.maintenance
     if (status === "unavailable") return copy.unavailable
     return status
+  }
+
+  function getRoomTypeLabel(type: string) {
+    const key = type?.toLowerCase()
+    if (key === "dorm") return copy.roomTypeDorm
+    if (key === "private") return copy.roomTypePrivate
+    if (key === "office") return copy.roomTypeOffice
+    return type
+  }
+
+  function getBedTypeLabel(type: string) {
+    const key = type?.toLowerCase()
+    if (key === "single") return copy.bedTypeSingle
+    if (key === "double") return copy.bedTypeDouble
+    if (key === "queen") return copy.bedTypeQueen
+    return type
   }
 
   async function handleDeleteRoom(roomId: string) {
@@ -138,43 +137,94 @@ export default function RoomsPage() {
   return (
     <AppLayout>
       <div className="flex h-full flex-col bg-background">
-        <div className="flex items-center justify-between border-b bg-card px-6 py-4">
-          <div><h1 className="text-2xl font-bold">{copy.title}</h1><p className="text-sm text-muted-foreground">{copy.description}</p></div>
-          <Button className="gap-2" onClick={() => setIsAddRoomOpen(true)}><Plus className="h-4 w-4" />{copy.addRoom}</Button>
+        <div className="flex flex-col gap-4 border-b border-white/10 bg-card px-6 py-4 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <p className="mb-1 text-xs font-medium uppercase tracking-[0.18em] text-primary">BFCS · Hospitality</p>
+            <h1 className="text-2xl font-semibold text-foreground">{copy.title}</h1>
+            <p className="mt-1 text-sm text-muted-foreground">{copy.description}</p>
+          </div>
+          <Button className="gap-2 bg-primary text-primary-foreground hover:bg-primary/90" onClick={() => setIsAddRoomOpen(true)}>
+            <Plus className="h-4 w-4" />{copy.addRoom}
+          </Button>
         </div>
 
         <div className="flex-1 overflow-auto p-6">
           {loading ? (
             <div className="flex items-center justify-center p-8"><div className="text-muted-foreground">{copy.loading}</div></div>
           ) : (
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               {rooms.map((room) => {
                 const roomBeds = beds.filter((bed) => bed.room_id === room.id)
-                const facilityColor = getFacilityColor(room.location_id)
                 const capacity = room.capacity || room.max_guests || 2
                 return (
-                  <Card key={room.id} className={`${facilityColor.bg} ${facilityColor.border}`}>
+                  <Card key={room.id} className="border border-white/10 bg-card transition-colors hover:border-primary/30 hover:bg-card/95">
                     <CardHeader className="pb-3">
-                      <div className="flex items-start justify-between">
-                        <div className="flex flex-col"><CardTitle className={`${facilityColor.text} text-lg`}>{room.room_number}</CardTitle>{room.locationName && <p className={`${facilityColor.text}/80 mt-1 text-sm font-medium`}>{room.locationName}</p>}</div>
-                        <div className="flex gap-1">
-                          <Button variant="ghost" size="icon" className={`h-7 w-7 ${facilityColor.text} hover:bg-black/10`} onClick={() => { setRoomToEdit(room); setIsEditRoomOpen(true) }}><Pencil className="h-3.5 w-3.5" /></Button>
-                          <Button variant="ghost" size="icon" className={`h-7 w-7 ${facilityColor.text} hover:bg-black/10`} onClick={() => confirmDelete("room", room.id)}><Trash2 className="h-3.5 w-3.5" /></Button>
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="flex h-8 w-8 shrink-0 items-center justify-center border border-primary/25 bg-primary/10 text-primary">
+                              <BedDouble className="h-4 w-4" />
+                            </span>
+                            <CardTitle className="truncate text-base font-medium text-foreground">{room.room_number}</CardTitle>
+                          </div>
+                          {room.locationName && (
+                            <p className="mt-2 flex items-center gap-1.5 text-sm text-muted-foreground">
+                              <MapPin className="h-3.5 w-3.5" />{room.locationName}
+                            </p>
+                          )}
+                        </div>
+                        <div className="flex shrink-0 gap-1">
+                          <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:bg-white/5 hover:text-foreground" onClick={() => { setRoomToEdit(room); setIsEditRoomOpen(true) }} aria-label={copy.addRoom}>
+                            <Pencil className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:bg-destructive/10 hover:text-destructive" onClick={() => confirmDelete("room", room.id)} aria-label={copy.delete}>
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
                         </div>
                       </div>
-                      <div className="mt-2 flex items-center gap-2 text-sm"><p className={`${facilityColor.text}/80`}>{room.room_type}</p><Badge className={getStatusColor(room.status)} variant="secondary">{getStatusLabel(room.status)}</Badge></div>
+                      <div className="mt-3 flex items-center gap-2 text-sm">
+                        <span className="text-muted-foreground">{getRoomTypeLabel(room.room_type)}</span>
+                        <Badge variant="outline" className={getStatusClass(room.status)}>{getStatusLabel(room.status)}</Badge>
+                      </div>
                     </CardHeader>
                     <CardContent className="space-y-3">
-                      <div className={`flex items-center gap-2 text-sm ${facilityColor.text}/90`}><Users className={`h-4 w-4 ${facilityColor.text}/60`} /><span>{copy.guestsUpTo.replace("{count}", String(capacity))}</span></div>
-                      <div className={`flex items-center gap-2 text-sm ${facilityColor.text}/90`}><DollarSign className={`h-4 w-4 ${facilityColor.text}/60`} /><span className="font-semibold">${room.rate_per_night}</span><span className={`${facilityColor.text}/70`}>{copy.perNight}</span></div>
+                      <div className="grid grid-cols-2 gap-2 text-sm">
+                        <div className="flex items-center gap-2 text-foreground"><Users className="h-4 w-4 text-muted-foreground" /><span>{copy.guestsUpTo.replace("{count}", String(capacity))}</span></div>
+                        <div className="flex items-center justify-end gap-1 text-foreground"><DollarSign className="h-4 w-4 text-muted-foreground" /><span className="font-medium">{room.rate_per_night}</span><span className="text-muted-foreground">{copy.perNight}</span></div>
+                      </div>
 
                       {room.amenities && room.amenities.length > 0 && (
-                        <div className="border-t pt-3"><div className="flex flex-wrap gap-1">{room.amenities.slice(0, 3).map((amenity, idx) => <Badge key={idx} variant="secondary" className={`bg-black/10 text-xs ${facilityColor.text}`}>{amenity}</Badge>)}{room.amenities.length > 3 && <Badge variant="secondary" className={`bg-black/10 text-xs ${facilityColor.text}`}>+{room.amenities.length - 3}</Badge>}</div></div>
+                        <div className="border-t border-white/10 pt-3">
+                          <div className="flex flex-wrap gap-1">
+                            {room.amenities.slice(0, 3).map((amenity, idx) => <Badge key={idx} variant="secondary" className="border border-white/10 bg-secondary text-xs text-foreground">{amenity}</Badge>)}
+                            {room.amenities.length > 3 && <Badge variant="secondary" className="border border-white/10 bg-secondary text-xs text-muted-foreground">+{room.amenities.length - 3}</Badge>}
+                          </div>
+                        </div>
                       )}
 
-                      <div className="border-t pt-3">
-                        <div className="mb-2 flex items-center justify-between text-sm"><span className={`font-medium ${facilityColor.text}`}>{copy.beds} ({roomBeds.length})</span><Button variant="ghost" size="sm" className={`h-7 gap-1.5 px-2 ${facilityColor.text} hover:bg-black/10`} onClick={() => { setSelectedRoomForBed(room); setIsAddBedOpen(true) }}><Plus className="h-3 w-3" />{copy.addBed}</Button></div>
-                        {roomBeds.length > 0 ? <div className="space-y-1.5">{roomBeds.map((bed) => <div key={bed.id} className={`flex items-center justify-between rounded-md bg-black/10 px-2 py-1.5 text-xs ${facilityColor.text}/90`}><div className="flex items-center gap-2"><BedDouble className={`h-3 w-3 ${facilityColor.text}/60`} /><span className="font-medium">{bed.bed_number}</span><span className={`${facilityColor.text}/70`}>({bed.bed_type})</span></div><Button variant="ghost" size="icon" className={`h-5 w-5 ${facilityColor.text} hover:bg-black/10`} onClick={() => confirmDelete("bed", bed.id)}><Trash2 className="h-3 w-3" /></Button></div>)}</div> : <p className={`text-xs ${facilityColor.text}/60`}>{copy.noBeds}</p>}
+                      <div className="border-t border-white/10 pt-3">
+                        <div className="mb-2 flex items-center justify-between text-sm">
+                          <span className="font-medium text-foreground">{copy.beds} ({roomBeds.length})</span>
+                          <Button variant="ghost" size="sm" className="h-7 gap-1.5 px-2 text-primary hover:bg-primary/10" onClick={() => { setSelectedRoomForBed(room); setIsAddBedOpen(true) }}>
+                            <Plus className="h-3 w-3" />{copy.addBed}
+                          </Button>
+                        </div>
+                        {roomBeds.length > 0 ? (
+                          <div className="space-y-1.5">
+                            {roomBeds.map((bed) => (
+                              <div key={bed.id} className="flex items-center justify-between border border-white/8 bg-background/35 px-2 py-2 text-xs text-foreground">
+                                <div className="flex items-center gap-2">
+                                  <BedDouble className="h-3.5 w-3.5 text-muted-foreground" />
+                                  <span className="font-medium">{bed.bed_number}</span>
+                                  <span className="text-muted-foreground">({getBedTypeLabel(bed.bed_type)})</span>
+                                </div>
+                                <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:bg-destructive/10 hover:text-destructive" onClick={() => confirmDelete("bed", bed.id)} aria-label={copy.delete}>
+                                  <Trash2 className="h-3 w-3" />
+                                </Button>
+                              </div>
+                            ))}
+                          </div>
+                        ) : <p className="text-xs text-muted-foreground">{copy.noBeds}</p>}
                       </div>
                     </CardContent>
                   </Card>
