@@ -25,6 +25,7 @@ type Task = {
   blocked_reason: string | null
   requires_inspection: boolean
   verified_at: string | null
+  inspection_status: string | null
   room: { room_number: string; location: { name: string } | null } | null
   reservation: { guest_name: string; check_in: string; check_out: string } | null
 }
@@ -49,6 +50,7 @@ const STATUS_LABELS: Record<string, string> = {
   pending: "Pendiente",
   assigned: "Asignada",
   in_progress: "En curso",
+  inspection: "Pendiente de inspección",
   completed: "Completada",
   cancelled: "Cancelada",
   blocked: "Bloqueada",
@@ -84,7 +86,7 @@ export function BookingHousekeepingControl() {
     const [tasksResult, employeesResult] = await Promise.all([
       supabase
         .from("housekeeping_tasks")
-        .select("id,reservation_id,room_id,task_type,status,priority,notes,assigned_to,scheduled_for,due_at,started_at,completed_at,guest_access_status,blocked_reason,requires_inspection,verified_at,room:rooms(room_number,location:locations(name)),reservation:reservations(guest_name,check_in,check_out)")
+        .select("id,reservation_id,room_id,task_type,status,priority,notes,assigned_to,scheduled_for,due_at,started_at,completed_at,guest_access_status,blocked_reason,requires_inspection,verified_at,inspection_status,room:rooms(room_number,location:locations(name)),reservation:reservations(guest_name,check_in,check_out)")
         .not("status", "in", "(completed,cancelled)")
         .order("due_at", { ascending: true, nullsFirst: false }),
       supabase.from("employees").select("id,name,role").eq("is_active", true).order("name"),
@@ -105,18 +107,35 @@ export function BookingHousekeepingControl() {
     return () => { void supabase.removeChannel(channel) }
   }, [load, open, supabase])
 
-  async function act(taskId: string, action: string, extra: Record<string, unknown> = {}) {
+  async function canonicalAction(taskId: string, action: "assign" | "start" | "complete" | "approve", assignedTo?: string) {
+    setSaving(taskId)
+    const { error } = await supabase.rpc("update_housekeeping_task_operation", {
+      p_task_id: taskId,
+      p_action: action,
+      p_assigned_to: assignedTo || null,
+      p_notes: null,
+      p_quality_score: null,
+    })
+    if (error) toast.error(error.message)
+    else {
+      const message = action === "approve" ? "Inspección aprobada" : "Tarea de limpieza actualizada"
+      toast.success(message)
+      await load()
+    }
+    setSaving(null)
+  }
+
+  async function accessAction(taskId: string, action: "do_not_disturb" | "decline", reason: string) {
     setSaving(taskId)
     const { error } = await supabase.rpc("manage_housekeeping_task", {
       p_task_id: taskId,
       p_action: action,
       p_assigned_to: null,
-      p_reason: null,
+      p_reason: reason,
       p_reschedule_for: null,
-      ...extra,
     })
     if (error) toast.error(error.message)
-    else { toast.success("Tarea de limpieza actualizada"); await load() }
+    else { toast.success("Acceso de limpieza actualizado"); await load() }
     setSaving(null)
   }
 
@@ -141,13 +160,14 @@ export function BookingHousekeepingControl() {
               <div className="flex flex-wrap items-start justify-between gap-3"><div><p className="font-medium">{TYPE_LABELS[task.task_type] ?? task.task_type.replaceAll("_", " ")}</p><p className="mt-1 text-xs text-muted-foreground">{task.room?.location?.name ?? "Sin propiedad"} · {task.room?.room_number ?? "Sin habitación"}{task.reservation?.guest_name ? ` · ${task.reservation.guest_name}` : ""}</p></div><div className="flex flex-wrap gap-2"><Badge variant="outline">Estado: {STATUS_LABELS[task.status] ?? task.status}</Badge>{task.priority && <Badge variant="secondary">Prioridad: {PRIORITY_LABELS[task.priority] ?? task.priority}</Badge>}{isOverdue && <Badge variant="destructive">SLA vencido</Badge>}</div></div>
               <div className="mt-3 grid gap-2 text-xs sm:grid-cols-3"><div className="rounded border p-2"><Clock3 className="mb-1 h-4 w-4" />Programada: {task.scheduled_for ? new Date(task.scheduled_for).toLocaleString("es-CL") : "Sin hora"}</div><div className="rounded border p-2">Límite: {task.due_at ? new Date(task.due_at).toLocaleString("es-CL") : "Sin SLA"}</div><div className="rounded border p-2">Acceso: {ACCESS_LABELS[task.guest_access_status] ?? task.guest_access_status}</div></div>
               <div className="mt-3 flex flex-wrap gap-2">
-                {!task.assigned_to && <select className="h-9 rounded-md border bg-background px-2 text-xs" defaultValue="" onChange={(event) => event.target.value && void act(task.id, "assign", { p_assigned_to: event.target.value })}><option value="">Asignar responsable</option>{employees.map((employee) => <option key={employee.id} value={employee.id}>{employee.name}{employee.role ? ` · ${employee.role}` : ""}</option>)}</select>}
-                {["assigned", "pending"].includes(task.status) && <Button size="sm" variant="outline" onClick={() => void act(task.id, "start")} disabled={saving === task.id}><PlayCircle className="mr-2 h-4 w-4" />Iniciar</Button>}
-                {task.status === "in_progress" && <Button size="sm" onClick={() => void act(task.id, "complete")} disabled={saving === task.id}><CheckCircle2 className="mr-2 h-4 w-4" />Completar</Button>}
-                {!["completed", "cancelled"].includes(task.status) && <Button size="sm" variant="outline" onClick={() => void act(task.id, "do_not_disturb", { p_reason: "No molestar registrado desde Booking" })} disabled={saving === task.id}><MoonStar className="mr-2 h-4 w-4" />No molestar</Button>}
-                {!["completed", "cancelled"].includes(task.status) && <Button size="sm" variant="outline" onClick={() => void act(task.id, "decline", { p_reason: "Servicio rechazado por el huésped" })} disabled={saving === task.id}>Rechazado</Button>}
-                {task.requires_inspection && task.status === "completed" && !task.verified_at && <Button size="sm" onClick={() => void act(task.id, "verify")} disabled={saving === task.id}><UserRoundCheck className="mr-2 h-4 w-4" />Inspeccionar</Button>}
+                {!task.assigned_to && <select className="h-9 rounded-md border bg-background px-2 text-xs" defaultValue="" onChange={(event) => event.target.value && void canonicalAction(task.id, "assign", event.target.value)}><option value="">Asignar responsable</option>{employees.map((employee) => <option key={employee.id} value={employee.id}>{employee.name}{employee.role ? ` · ${employee.role}` : ""}</option>)}</select>}
+                {["assigned", "pending"].includes(task.status) && <Button size="sm" variant="outline" onClick={() => void canonicalAction(task.id, "start")} disabled={saving === task.id}><PlayCircle className="mr-2 h-4 w-4" />Iniciar</Button>}
+                {task.status === "in_progress" && <Button size="sm" onClick={() => void canonicalAction(task.id, "complete")} disabled={saving === task.id}><CheckCircle2 className="mr-2 h-4 w-4" />Completar</Button>}
+                {task.status === "inspection" && task.requires_inspection && <Button size="sm" onClick={() => void canonicalAction(task.id, "approve")} disabled={saving === task.id}><UserRoundCheck className="mr-2 h-4 w-4" />Aprobar inspección</Button>}
+                {!["inspection", "completed", "cancelled"].includes(task.status) && <Button size="sm" variant="outline" onClick={() => void accessAction(task.id, "do_not_disturb", "No molestar registrado desde Booking")} disabled={saving === task.id}><MoonStar className="mr-2 h-4 w-4" />No molestar</Button>}
+                {!["inspection", "completed", "cancelled"].includes(task.status) && <Button size="sm" variant="outline" onClick={() => void accessAction(task.id, "decline", "Servicio rechazado por el huésped")} disabled={saving === task.id}>Rechazado</Button>}
               </div>
+              {task.status === "inspection" && <p className="mt-3 text-sm text-muted-foreground">La tarea está completada y requiere aprobación de inspección antes de liberar la habitación para el huésped.</p>}
               {task.blocked_reason && <p className="mt-3 text-sm text-muted-foreground">{task.blocked_reason}</p>}
             </div>
           })}
