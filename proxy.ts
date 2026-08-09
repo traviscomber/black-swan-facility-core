@@ -6,7 +6,7 @@ const DEFAULT_LOCALE = "en"
 const LOCALE_COOKIE = "site-locale"
 const LOCALE_HEADER = "x-site-locale"
 
-const PUBLIC_PAGE_PATHS = new Set(["/auth/login"])
+const PUBLIC_PAGE_PATHS = new Set(["/auth/login", "/guest-access"])
 const PUBLIC_API_PREFIXES = ["/api/auth"]
 const CALENDAR_E2E_PATH = "/bookings/e2e-harness"
 
@@ -16,9 +16,18 @@ function isRouteLocale(value: string | undefined): value is RouteLocale {
   return !!value && LOCALES.includes(value as RouteLocale)
 }
 
-function isPublicRequest(pathname: string) {
+function isPublicRequest(pathname: string, method: string) {
   if (PUBLIC_PAGE_PATHS.has(pathname)) return true
-  return PUBLIC_API_PREFIXES.some((prefix) => pathname.startsWith(prefix))
+  if (PUBLIC_API_PREFIXES.some((prefix) => pathname.startsWith(prefix))) return true
+
+  // Guest QR access is intentionally narrow:
+  // - GET /api/guest-access validates a signed house token and lists only active stays.
+  // - POST /api/guest-access/request validates that same token and scopes the request to one active stay.
+  // - POST /api/guest-access mints QR tokens and remains authenticated/internal.
+  if (pathname === "/api/guest-access" && method === "GET") return true
+  if (pathname === "/api/guest-access/request" && method === "POST") return true
+
+  return false
 }
 
 function isCalendarE2EHarness(pathname: string) {
@@ -122,7 +131,7 @@ export async function proxy(request: NextRequest) {
     return locale ? setLocaleCookie(response, locale) : response
   }
 
-  if (isPublicRequest(effectivePathname)) {
+  if (isPublicRequest(effectivePathname, request.method)) {
     return createPageResponse()
   }
 
