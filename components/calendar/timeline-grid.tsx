@@ -78,14 +78,14 @@ const copy = {
     loading: "Loading availability…", empty: "No rooms match the selected filters.", roomAbbr: "rm.", beds: "beds", roomPrefix: "Room",
   },
   es: {
-    layers: { milestones: "Hitos", housekeeping: "Housekeeping", hospitality: "Hospitality", services: "Servicios", activities: "Actividades", payments: "Pagos", issues: "Incidencias", maintenance: "Mantenimiento" },
+    layers: { milestones: "Hitos", housekeeping: "Limpieza", hospitality: "Hospitalidad", services: "Servicios", activities: "Actividades", payments: "Pagos", issues: "Incidencias", maintenance: "Mantenimiento" },
     legend: { pending: "Pendiente", confirmed: "Confirmada", checkedIn: "Hospedado", completed: "Finalizada", block: "Bloqueo" },
-    noProperty: "Sin propiedad", layersButton: "Capas", summary: "Resumen", shortcuts: "Atajos", interactionHint: "Clic: inspector · doble clic: editar · arrastra: mover · extremos: fechas",
+    noProperty: "Sin propiedad", layersButton: "Capas", summary: "Resumen", shortcuts: "Atajos", interactionHint: "Clic: revisar · doble clic: editar · arrastra: mover · extremos: fechas",
     navigate: "navegar", select: "seleccionar", help: "ayuda", all: "Todo", deselectAll: "Deseleccionar todo", selectAll: "Seleccionar todo", rooms: "Habitaciones", savedView: "Vista guardada",
     loading: "Cargando disponibilidad…", empty: "No hay habitaciones para los filtros seleccionados.", roomAbbr: "hab.", beds: "camas", roomPrefix: "Hab.",
   },
   de: {
-    layers: { milestones: "Meilensteine", housekeeping: "Housekeeping", hospitality: "Hospitality", services: "Services", activities: "Aktivitäten", payments: "Zahlungen", issues: "Vorfälle", maintenance: "Wartung" },
+    layers: { milestones: "Meilensteine", housekeeping: "Zimmerreinigung", hospitality: "Gästeservice", services: "Leistungen", activities: "Aktivitäten", payments: "Zahlungen", issues: "Vorfälle", maintenance: "Wartung" },
     legend: { pending: "Ausstehend", confirmed: "Bestätigt", checkedIn: "Eingecheckt", completed: "Abgeschlossen", block: "Sperre" },
     noProperty: "Keine Unterkunft", layersButton: "Ebenen", summary: "Übersicht", shortcuts: "Tastenkürzel", interactionHint: "Klick: prüfen · Doppelklick: bearbeiten · ziehen: verschieben · Ränder: Daten",
     navigate: "navigieren", select: "auswählen", help: "Hilfe", all: "Alle", deselectAll: "Auswahl aufheben", selectAll: "Alle auswählen", rooms: "Zimmer", savedView: "Gespeicherte Ansicht",
