@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { useCallback, useEffect, useMemo, useState } from "react"
-import { BedDouble, CheckCircle2, ClipboardPlus, Clock3, Loader2, PlayCircle, Search, ShieldCheck, Sparkles, UserRound, XCircle } from "lucide-react"
+import { AlertTriangle, BedDouble, CheckCircle2, ClipboardPlus, Clock3, Loader2, PlayCircle, Search, ShieldCheck, Sparkles, UserRound, XCircle } from "lucide-react"
 import { toast } from "sonner"
 import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
@@ -48,6 +48,7 @@ const employeeOf = (value: Employee | Employee[] | null) => Array.isArray(value)
 const reservationOf = (value: Reservation | Reservation[] | null) => Array.isArray(value) ? value[0] ?? null : value
 const today = () => new Intl.DateTimeFormat("en-CA", { timeZone: "America/Santiago" }).format(new Date())
 const priorityMap: Record<string, "baja" | "media" | "alta" | "urgente"> = { low: "baja", medium: "media", high: "alta", critical: "urgente" }
+const OPEN_TASK_STATUSES = new Set(["pending", "assigned", "in_progress", "inspection"])
 
 function addDays(dateValue: string, days: number) {
   const date = new Date(`${dateValue}T12:00:00-04:00`)
@@ -69,22 +70,50 @@ export default function HousekeepingPage() {
   const [employees, setEmployees] = useState<Employee[]>([])
   const [canManage, setCanManage] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
   const [savingId, setSavingId] = useState<string | null>(null)
   const [search, setSearch] = useState("")
   const [statusFilter, setStatusFilter] = useState("open")
 
   const loadData = useCallback(async () => {
     setLoading(true)
+    setLoadError(null)
     const currentDate = today()
-    const [tasksResult, departuresResult, employeesResult, manageResult] = await Promise.all([
-      supabase.from("housekeeping_tasks").select("id, reservation_id, room_id, task_type, status, assigned_to, priority, notes, created_at, completed_at, service_date, scheduled_for, due_at, requires_inspection, inspection_status, inspected_at, room:rooms(id, room_number, location, status), employee:employees(id, name, role), reservation:reservations(id, guest_name, check_in, check_out)").order("scheduled_for", { ascending: true, nullsFirst: false }).limit(300),
-      supabase.from("reservations").select("id, guest_name, check_out, room_id, room:rooms(id, room_number, location, status)").eq("check_out", currentDate).not("status", "eq", "cancelled"),
+
+    const [tasksResult, departuresResult, employeesResult, roomsResult, reservationsResult, manageResult] = await Promise.all([
+      supabase.from("housekeeping_tasks").select("id, reservation_id, room_id, task_type, status, assigned_to, priority, notes, created_at, completed_at, service_date, scheduled_for, due_at, requires_inspection, inspection_status, inspected_at").order("scheduled_for", { ascending: true, nullsFirst: false }).limit(300),
+      supabase.from("reservations").select("id, guest_name, check_out, room_id").eq("check_out", currentDate).not("status", "eq", "cancelled"),
       supabase.from("employees").select("id, name, role").eq("is_active", true).order("name"),
+      supabase.from("rooms").select("id, room_number, location, status"),
+      supabase.from("reservations").select("id, guest_name, check_in, check_out").limit(1000),
       supabase.rpc("can_app_action", { p_action_key: "housekeeping.manage" }),
     ])
-    if (tasksResult.error) toast.error(tasksResult.error.message)
-    setTasks((tasksResult.data ?? []) as Task[])
-    setDepartures((departuresResult.data ?? []) as Departure[])
+
+    const criticalErrors = [tasksResult.error, roomsResult.error, reservationsResult.error].filter(Boolean)
+    if (criticalErrors.length > 0) {
+      const message = criticalErrors.map((error) => error?.message).filter(Boolean).join(" · ")
+      setLoadError(message || "No fue posible cargar la operación de limpieza")
+      toast.error(message || "No fue posible cargar la operación de limpieza")
+      setTasks([])
+    } else {
+      const rooms = (roomsResult.data ?? []) as Room[]
+      const reservationRows = (reservationsResult.data ?? []) as Reservation[]
+      const employeeRows = (employeesResult.data ?? []) as Employee[]
+      const roomMap = new Map(rooms.map((room) => [room.id, room]))
+      const reservationMap = new Map(reservationRows.map((reservation) => [reservation.id, reservation]))
+      const employeeMap = new Map(employeeRows.map((employee) => [employee.id, employee]))
+      const enrichedTasks = (tasksResult.data ?? []).map((task) => ({
+        ...task,
+        room: task.room_id ? roomMap.get(task.room_id) ?? null : null,
+        employee: task.assigned_to ? employeeMap.get(task.assigned_to) ?? null : null,
+        reservation: task.reservation_id ? reservationMap.get(task.reservation_id) ?? null : null,
+      })) as Task[]
+      setTasks(enrichedTasks)
+    }
+
+    const rooms = (roomsResult.data ?? []) as Room[]
+    const roomMap = new Map(rooms.map((room) => [room.id, room]))
+    setDepartures(((departuresResult.data ?? []) as Array<Omit<Departure, "room">>).map((departure) => ({ ...departure, room: departure.room_id ? roomMap.get(departure.room_id) ?? null : null })))
     setEmployees((employeesResult.data ?? []) as Employee[])
     setCanManage(Boolean(manageResult.data))
     setLoading(false)
@@ -96,8 +125,8 @@ export default function HousekeepingPage() {
     return () => { void supabase.removeChannel(channel) }
   }, [loadData])
 
-  const openTasks = tasks.filter((task) => task.status !== "completed")
-  const completedToday = tasks.filter((task) => task.status === "completed" && task.completed_at?.slice(0, 10) === today())
+  const openTasks = tasks.filter((task) => OPEN_TASK_STATUSES.has(task.status ?? "pending"))
+  const completedToday = tasks.filter((task) => task.status === "completed" && task.completed_at && new Intl.DateTimeFormat("en-CA", { timeZone: "America/Santiago" }).format(new Date(task.completed_at)) === today())
   const unassigned = openTasks.filter((task) => !task.assigned_to)
   const windowStart = today()
   const windowEnd = addDays(windowStart, 2)
@@ -111,7 +140,7 @@ export default function HousekeepingPage() {
     const employee = employeeOf(task.employee)
     const reservation = reservationOf(task.reservation)
     const matchesText = `${room?.room_number ?? ""} ${room?.location ?? ""} ${task.task_type} ${employee?.name ?? ""} ${reservation?.guest_name ?? ""}`.toLowerCase().includes(search.toLowerCase())
-    const matchesStatus = statusFilter === "all" || (statusFilter === "open" ? task.status !== "completed" : task.status === statusFilter)
+    const matchesStatus = statusFilter === "all" || (statusFilter === "open" ? OPEN_TASK_STATUSES.has(task.status ?? "pending") : task.status === statusFilter)
     return matchesText && matchesStatus
   }), [tasks, search, statusFilter])
 
@@ -171,6 +200,7 @@ export default function HousekeepingPage() {
 
   return <div className="space-y-6 p-4 md:p-6">
     <div><h1 className="text-2xl font-semibold">{copy.title}</h1><p className="text-sm text-muted-foreground">{copy.subtitle}</p></div>
+    {loadError && <Card className="border-destructive/40 bg-destructive/10"><CardContent className="flex items-start gap-3 p-4"><AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-destructive" /><div><p className="font-medium text-destructive">No fue posible cargar la operación de limpieza</p><p className="mt-1 text-sm text-muted-foreground">No interpretes los indicadores como cero. Actualiza la página o contacta al administrador.</p></div></CardContent></Card>}
     <div className="grid gap-4 md:grid-cols-5"><Metric title={copy.departuresToday} value={departures.length} icon={<BedDouble className="h-5 w-5" />} /><Metric title={copy.openTasks} value={openTasks.length} icon={<Clock3 className="h-5 w-5" />} /><Metric title={copy.unassigned} value={unassigned.length} icon={<UserRound className="h-5 w-5" />} /><Metric title="Por aprobar" value={readyForApproval.length} icon={<ShieldCheck className="h-5 w-5" />} /><Metric title={copy.completedToday} value={completedToday.length} icon={<CheckCircle2 className="h-5 w-5" />} /></div>
 
     {canManage && <Card>
