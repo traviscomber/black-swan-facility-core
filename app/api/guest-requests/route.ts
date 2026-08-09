@@ -11,7 +11,7 @@ const requestSchema = z.object({
   reservationId: z.string().uuid().nullable().optional(),
   roomNumber: z.string().trim().max(80).nullable().optional(),
   deviceId: z.string().trim().min(8).max(160),
-  language: z.enum(["es", "en"]).default("es"),
+  language: z.enum(["es", "en", "de"]).default("es"),
 })
 
 function getAdminClient() {
@@ -91,7 +91,12 @@ export async function POST(request: Request) {
     }
 
     const priority = payload.category === "maintenance" ? "high" : payload.category === "cleaning" ? "medium" : "medium"
-    const description = `${payload.language === "es" ? "Solicitud enviada desde tablet" : "Request submitted from tablet"}. Dispositivo: ${payload.deviceId}.`
+    const descriptionByLanguage = {
+      es: "Solicitud enviada desde tablet",
+      en: "Request submitted from tablet",
+      de: "Anfrage über Tablet gesendet",
+    } as const
+    const description = `${descriptionByLanguage[payload.language]}. Dispositivo: ${payload.deviceId}.`
 
     const { data: created, error: insertError } = await supabase
       .from("hospitality_requests")
