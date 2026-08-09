@@ -32,6 +32,11 @@ interface Reservation {
 type ActivityType = "arrivals" | "departures" | "active" | "pending"
 type OpsTab = "housekeeping" | "maintenance" | "room_state"
 
+type ActionError = {
+  message: string
+  code: "preparation_pending" | "room_not_ready" | "other"
+}
+
 export default function BookingActivitiesPage() {
   const supabase = useMemo(() => createClient(), [])
   const { language } = useLanguage()
@@ -40,16 +45,17 @@ export default function BookingActivitiesPage() {
   const statusLabels: Record<string, string> = {
     pending: copy.statusPending,
     confirmed: copy.statusConfirmed,
-    checked_in: "Check-in",
-    "checked-in": "Check-in",
-    checked_out: "Check-out",
-    "checked-out": "Check-out",
+    checked_in: copy.checkIn,
+    "checked-in": copy.checkIn,
+    checked_out: copy.checkOut,
+    "checked-out": copy.checkOut,
     cancelled: copy.statusCancelled,
   }
 
   const [reservations, setReservations] = useState<Reservation[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [actionError, setActionError] = useState<ActionError | null>(null)
   const [search, setSearch] = useState("")
   const [type, setType] = useState<ActivityType>("arrivals")
   const today = useMemo(() => startOfDay(new Date()), [])
@@ -129,9 +135,26 @@ export default function BookingActivitiesPage() {
   const maintOpen = (maintTasks as { status?: string }[]).filter((t) => ["open", "pending", "in_progress"].includes(t.status ?? "")).length
   const maintUrgent = (maintTasks as { priority?: number; status?: string }[]).filter((t) => (t.priority ?? 0) >= 3 && t.status !== "completed" && t.status !== "cancelled").length
 
+  function classifyActionError(message: string): ActionError {
+    if (message.includes("preparation_pending")) return { code: "preparation_pending", message: copy.preparationPending }
+    if (message.includes("room_not_ready")) return { code: "room_not_ready", message: copy.roomNotReady }
+    return { code: "other", message: copy.operationalError }
+  }
+
   async function updateReservationStatus(id: string, status: string) {
+    setActionError(null)
+    if (status === "checked_in") {
+      const { error: checkInError } = await supabase.rpc("check_in_or_queue", { p_reservation_id: id })
+      if (checkInError) {
+        setActionError(classifyActionError(checkInError.message))
+        return
+      }
+      await loadReservations()
+      return
+    }
+
     const { error: updateError } = await supabase.from("reservations").update({ status }).eq("id", id)
-    if (updateError) setError(updateError.message)
+    if (updateError) setActionError(classifyActionError(updateError.message))
     else await loadReservations()
   }
 
@@ -161,8 +184,8 @@ export default function BookingActivitiesPage() {
             <p className="text-sm text-muted-foreground">{copy.subtitle}</p>
           </div>
           <div className="flex gap-2">
-            <Button variant="outline" asChild><Link href={localize("/bookings")}><ArrowLeft className="mr-2 h-4 w-4" />{copy.calendar}</Link></Button>
-            <Button variant="outline" onClick={() => { void loadReservations(); void loadOps() }}><RefreshCw className="mr-2 h-4 w-4" />{copy.refresh}</Button>
+            <Button variant="outline" asChild><Link href={localize("/bookings/calendar")}><ArrowLeft className="mr-2 h-4 w-4" />{copy.calendar}</Link></Button>
+            <Button variant="outline" onClick={() => { setActionError(null); void loadReservations(); void loadOps() }}><RefreshCw className="mr-2 h-4 w-4" />{copy.refresh}</Button>
           </div>
         </div>
 
@@ -175,6 +198,23 @@ export default function BookingActivitiesPage() {
             <MetricTile title={copy.pending} value={buckets.pending.length} icon={<Clock3 className="h-4 w-4" />} active={type === "pending"} onClick={() => setType("pending")} />
           </div>
 
+          {actionError && (
+            <Card className="mb-4 border-amber-500/40 bg-amber-500/10">
+              <CardContent className="flex flex-col gap-4 p-4 md:flex-row md:items-center md:justify-between">
+                <div className="flex items-start gap-3">
+                  <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-500" />
+                  <div>
+                    <p className="font-semibold">{copy.attentionRequired}</p>
+                    <p className="mt-1 text-sm text-muted-foreground">{actionError.message}</p>
+                  </div>
+                </div>
+                {(actionError.code === "preparation_pending" || actionError.code === "room_not_ready") && (
+                  <Button asChild size="sm"><Link href={localize("/bookings/housekeeping")}><Sparkles className="mr-2 h-4 w-4" />{copy.resolveHousekeeping}</Link></Button>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
           <Card className="mb-4"><CardContent className="flex flex-col gap-3 p-4 md:flex-row">
             <div className="relative flex-1"><Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" /><Input className="pl-9" value={search} onChange={(e) => setSearch(e.target.value)} placeholder={copy.search} /></div>
             <Select value={type} onValueChange={(v) => setType(v as ActivityType)}><SelectTrigger className="md:w-56"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="arrivals">{copy.arrivalsToday}</SelectItem><SelectItem value="departures">{copy.departuresToday}</SelectItem><SelectItem value="active">{copy.activeStays}</SelectItem><SelectItem value="pending">{copy.pending}</SelectItem></SelectContent></Select>
@@ -186,9 +226,9 @@ export default function BookingActivitiesPage() {
               <div key={reservation.id} className="flex flex-col gap-3 rounded-lg border p-4 lg:flex-row lg:items-center lg:justify-between">
                 <div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><p className="font-semibold">{reservation.guest_name}</p><Badge variant="outline">{statusLabels[reservation.status] ?? reservation.status}</Badge></div><p className="mt-1 text-sm text-muted-foreground">{reservation.bed?.room?.location?.name ?? copy.noProperty} · {copy.roomShort} {reservation.bed?.room?.room_number ?? "—"} · {reservation.bed?.bed_number ?? "—"}</p><p className="text-sm text-muted-foreground">{reservation.check_in} → {reservation.check_out} · {reservation.num_guests ?? 1} {copy.guests}</p></div>
                 <div className="flex flex-wrap gap-2">
-                  {(reservation.status === "confirmed" || reservation.status === "pending") && <Button size="sm" onClick={() => void updateReservationStatus(reservation.id, "checked_in")}><LogIn className="mr-2 h-4 w-4" />Check-in</Button>}
-                  {(reservation.status === "checked_in" || reservation.status === "checked-in") && <Button size="sm" onClick={() => void updateReservationStatus(reservation.id, "checked_out")}><LogOut className="mr-2 h-4 w-4" />Check-out</Button>}
-                  {reservation.status === "pending" && <Button size="sm" variant="outline" onClick={() => void updateReservationStatus(reservation.id, "confirmed")}>{copy.confirm}</Button>}
+                  {reservation.status === "pending" && <Button size="sm" onClick={() => void updateReservationStatus(reservation.id, "confirmed")}>{copy.confirm}</Button>}
+                  {reservation.status === "confirmed" && <Button size="sm" onClick={() => void updateReservationStatus(reservation.id, "checked_in")}><LogIn className="mr-2 h-4 w-4" />{copy.checkIn}</Button>}
+                  {(reservation.status === "checked_in" || reservation.status === "checked-in") && <Button size="sm" onClick={() => void updateReservationStatus(reservation.id, "checked_out")}><LogOut className="mr-2 h-4 w-4" />{copy.checkOut}</Button>}
                 </div>
               </div>
             ))}
