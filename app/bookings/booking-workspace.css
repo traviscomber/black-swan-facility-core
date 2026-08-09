@@ -26,10 +26,114 @@
   bottom: 4.5rem !important;
 }
 
-/* Dialogs are the active task surface. Keep the operational trigger from
-   competing with forms such as "Nueva reserva" while a dialog is open. */
-body:has([data-slot="dialog-overlay"][data-state="open"]) .booking-workspace button.fixed.right-4.top-24 {
+/* Radix dialogs render in a body portal, outside .booking-workspace. While a
+   booking dialog is active, the modal owns the interaction surface. */
+body:has([data-slot="dialog-content"][data-state="open"]) .booking-workspace button.fixed.right-4.top-24 {
   display: none !important;
+}
+
+/* Nueva reserva is a dense operational form. Keep its chrome visible and
+   scroll only the form body so title, close affordance and actions never
+   disappear outside a laptop viewport. */
+[data-slot="dialog-content"]:has(#location_filter) {
+  display: flex !important;
+  height: min(760px, calc(100dvh - 1.5rem)) !important;
+  max-height: calc(100dvh - 1.5rem) !important;
+  width: min(760px, calc(100vw - 1.5rem)) !important;
+  max-width: 760px !important;
+  flex-direction: column !important;
+  gap: 0 !important;
+  overflow: hidden !important;
+  padding: 0 !important;
+}
+
+[data-slot="dialog-content"]:has(#location_filter) > [data-slot="dialog-header"] {
+  flex: none;
+  border-bottom: 1px solid var(--border);
+  background: var(--background);
+  padding: 1rem 3.5rem 1rem 1.25rem;
+}
+
+[data-slot="dialog-content"]:has(#location_filter) > [data-slot="dialog-close"] {
+  top: 0.8rem !important;
+  right: 0.9rem !important;
+  z-index: 30;
+  display: inline-flex;
+  height: 2rem;
+  width: 2rem;
+  align-items: center;
+  justify-content: center;
+  background: var(--secondary);
+  opacity: 1;
+}
+
+[data-slot="dialog-content"]:has(#location_filter) > form {
+  min-height: 0;
+  flex: 1 1 auto;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 1rem 1.25rem 0;
+  scrollbar-gutter: stable;
+}
+
+[data-slot="dialog-content"]:has(#location_filter) [data-slot="dialog-footer"] {
+  position: sticky;
+  bottom: 0;
+  z-index: 20;
+  margin: 1rem -1.25rem 0;
+  border-top: 1px solid var(--border);
+  background: var(--background);
+  padding: 0.8rem 1.25rem;
+}
+
+/* Compact the availability picker inside Nueva reserva. The full month stays
+   visible but no longer dominates the form after a date is selected. */
+[data-slot="dialog-content"]:has(#location_filter) form .max-w-md {
+  max-width: none !important;
+  padding: 0.75rem !important;
+}
+
+[data-slot="dialog-content"]:has(#location_filter) form .max-w-md.space-y-4 > :not([hidden]) ~ :not([hidden]) {
+  margin-top: 0.6rem !important;
+}
+
+[data-slot="dialog-content"]:has(#location_filter) form .grid.grid-cols-7.gap-1 button {
+  min-height: 1.8rem;
+  padding: 0.3rem !important;
+}
+
+[data-slot="dialog-content"]:has(#location_filter) form .grid.grid-cols-3.gap-2 {
+  gap: 0.35rem !important;
+}
+
+[data-slot="dialog-content"]:has(#location_filter) form .grid.grid-cols-3.gap-2 > div {
+  gap: 0.25rem !important;
+  white-space: nowrap;
+}
+
+@media (max-height: 760px) {
+  [data-slot="dialog-content"]:has(#location_filter) {
+    height: calc(100dvh - 0.75rem) !important;
+    max-height: calc(100dvh - 0.75rem) !important;
+  }
+
+  [data-slot="dialog-content"]:has(#location_filter) > [data-slot="dialog-header"] {
+    padding-top: 0.75rem;
+    padding-bottom: 0.75rem;
+  }
+
+  [data-slot="dialog-content"]:has(#location_filter) > form {
+    padding-top: 0.75rem;
+  }
+}
+
+@media (max-width: 640px) {
+  [data-slot="dialog-content"]:has(#location_filter) {
+    height: calc(100dvh - 0.5rem) !important;
+    max-height: calc(100dvh - 0.5rem) !important;
+    width: calc(100vw - 0.5rem) !important;
+    max-width: calc(100vw - 0.5rem) !important;
+  }
 }
 
 @media (min-width: 1200px) {
