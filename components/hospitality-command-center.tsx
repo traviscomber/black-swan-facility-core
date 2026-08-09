@@ -161,6 +161,7 @@ export function HospitalityCommandCenter() {
   const [employees, setEmployees] = useState<Employee[]>([])
   const [tasks, setTasks] = useState<OperationalTask[]>([])
   const [error, setError] = useState<string | null>(null)
+  const [confirmingCheckout, setConfirmingCheckout] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -231,6 +232,7 @@ export function HospitalityCommandCenter() {
       if (!reservationId) return
       setSelectedReservationId(reservationId)
       setShowAll(false)
+      setConfirmingCheckout(false)
     }
     window.addEventListener(BOOKING_COMMAND_SELECTION_EVENT, onSelection)
     return () => window.removeEventListener(BOOKING_COMMAND_SELECTION_EVENT, onSelection)
@@ -300,8 +302,12 @@ export function HospitalityCommandCenter() {
     if (!reservation) return
     setSavingId(reservation.id)
     const { error: updateError } = await supabase.from("reservations").update({ status: "checked_out" }).eq("id", reservation.id)
-    if (updateError) toast.error(updateError.message)
-    else toast.success("Salida registrada")
+    if (updateError) {
+      toast.error(updateError.message)
+    } else {
+      toast.success(`Salida registrada para ${reservation.guest_name}`)
+      setConfirmingCheckout(false)
+    }
     setSavingId(null)
   }
 
@@ -330,7 +336,7 @@ export function HospitalityCommandCenter() {
                     : "Selecciona una reserva en el calendario para dirigir su operación."}
                 </p>
               </div>
-              <Button variant="ghost" size="icon" onClick={() => setOpen(false)}><X className="h-4 w-4" /></Button>
+              <Button variant="ghost" size="icon" onClick={() => { setOpen(false); setConfirmingCheckout(false) }}><X className="h-4 w-4" /></Button>
             </header>
 
             {reservation && (
@@ -350,21 +356,69 @@ export function HospitalityCommandCenter() {
                   </div>
                 )}
 
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   {["confirmed", "waiting_for_room", "ready_for_checkin"].includes(reservation.status) && (
-                    <Button size="sm" onClick={() => void checkIn()} disabled={savingId === reservation.id}>
+                    <Button size="sm" onClick={() => void checkIn()} disabled={savingId === reservation.id} className="min-w-40">
                       <LogIn className="mr-2 h-4 w-4" />Registrar entrada
                     </Button>
                   )}
-                  {["checked_in", "checked-in"].includes(reservation.status) && (
-                    <Button size="sm" onClick={() => void checkOut()} disabled={savingId === reservation.id}>
-                      <LogOut className="mr-2 h-4 w-4" />Registrar salida
+                  {["checked_in", "checked-in"].includes(reservation.status) && !confirmingCheckout && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setConfirmingCheckout(true)}
+                      disabled={savingId === reservation.id}
+                      className="min-w-40 border-amber-500/40 text-amber-500 hover:bg-amber-500/10 hover:text-amber-400"
+                    >
+                      <LogOut className="mr-2 h-4 w-4" />Preparar salida
                     </Button>
                   )}
                   <Button size="sm" variant="outline" onClick={() => setShowAll((current) => !current)}>
                     {showAll ? "Ver solo esta estadía" : "Ver toda la operación"}
                   </Button>
                 </div>
+
+                {["checked_in", "checked-in"].includes(reservation.status) && confirmingCheckout && (
+                  <div className="border border-destructive/45 bg-destructive/10 p-4">
+                    <div className="flex items-start gap-3">
+                      <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-destructive" />
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-destructive">Confirmar salida</p>
+                        <p className="mt-2 text-sm font-medium text-foreground">{reservation.guest_name}</p>
+                        <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                          {reservation.room?.location?.name ?? "Sin ubicación"} · {reservation.room?.room_number ?? "Sin habitación"}
+                          {reservation.bed?.bed_number ? ` · Cama ${reservation.bed.bed_number}` : ""}
+                        </p>
+                        <div className="mt-3 grid grid-cols-2 gap-2 border-y border-destructive/20 py-3 text-xs">
+                          <div>
+                            <p className="text-muted-foreground">Entrada</p>
+                            <p className="mt-1 font-medium text-foreground">{reservation.check_in}</p>
+                          </div>
+                          <div>
+                            <p className="text-muted-foreground">Salida programada</p>
+                            <p className="mt-1 font-medium text-foreground">{reservation.check_out}</p>
+                          </div>
+                        </div>
+                        <p className="mt-3 text-xs leading-5 text-muted-foreground">
+                          Esta acción cerrará la estadía y activará el flujo posterior a la salida. Confirma solo cuando el huésped realmente haya dejado la habitación.
+                        </p>
+                        <div className="mt-4 flex flex-wrap gap-2">
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            onClick={() => void checkOut()}
+                            disabled={savingId === reservation.id}
+                          >
+                            <LogOut className="mr-2 h-4 w-4" />Sí, registrar salida
+                          </Button>
+                          <Button size="sm" variant="outline" onClick={() => setConfirmingCheckout(false)} disabled={savingId === reservation.id}>
+                            Cancelar
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 {reservation.special_requests && (
                   <div className="bg-[var(--muted)] p-3 text-sm">
