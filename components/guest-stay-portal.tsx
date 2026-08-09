@@ -3,21 +3,21 @@
 import { useEffect, useMemo, useState } from "react"
 import { usePathname, useSearchParams } from "next/navigation"
 import type { LucideIcon } from "lucide-react"
-import { Bath, BedDouble, CheckCircle2, ClipboardPenLine, Compass, MapPin, Sparkles, Utensils, Wrench } from "lucide-react"
+import { Bath, BedDouble, CheckCircle2, ClipboardPenLine, Compass, Sparkles, Utensils, Wrench } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 
 type Language = "es" | "en" | "de"
-type GuestOption = { reservationId: string; displayName: string; roomNumber: string | null }
+type GuestOption = { reservationId: string; displayName: string }
 type Category = { id: string; icon: LucideIcon; es: string; en: string; de: string }
 
 const COPY = {
   es: {
     eyebrow: "BLACK SWAN · HOSPITALIDAD",
-    title: "Selecciona tu estadía",
-    subtitle: "Solo aparecen huéspedes con una reserva activa en esta casa.",
+    title: "Selecciona tu nombre",
+    subtitle: "Solo aparecen huéspedes con una estadía activa hoy.",
     choose: "¿Quién eres?",
-    noGuests: "No hay huéspedes con una estadía activa en esta casa en este momento.",
+    noGuests: "No hay huéspedes con una estadía activa en este momento.",
     requestTitle: "¿Qué necesitas?",
     requestSubtitle: "Tu solicitud quedará vinculada automáticamente a tu estadía.",
     back: "Cambiar huésped",
@@ -27,10 +27,10 @@ const COPY = {
   },
   en: {
     eyebrow: "BLACK SWAN · HOSPITALITY",
-    title: "Select your stay",
-    subtitle: "Only guests with an active reservation in this house are shown.",
+    title: "Select your name",
+    subtitle: "Only guests with an active stay today are shown.",
     choose: "Who are you?",
-    noGuests: "There are no guests with an active stay in this house right now.",
+    noGuests: "There are no guests with an active stay right now.",
     requestTitle: "What do you need?",
     requestSubtitle: "Your request will be linked automatically to your stay.",
     back: "Change guest",
@@ -40,10 +40,10 @@ const COPY = {
   },
   de: {
     eyebrow: "BLACK SWAN · GASTBETREUUNG",
-    title: "Aufenthalt auswählen",
-    subtitle: "Es werden nur Gäste mit einer aktiven Reservierung in diesem Haus angezeigt.",
+    title: "Wählen Sie Ihren Namen",
+    subtitle: "Es werden nur Gäste mit einem heute aktiven Aufenthalt angezeigt.",
     choose: "Wer sind Sie?",
-    noGuests: "Derzeit gibt es in diesem Haus keine Gäste mit aktivem Aufenthalt.",
+    noGuests: "Derzeit gibt es keine Gäste mit aktivem Aufenthalt.",
     requestTitle: "Was benötigen Sie?",
     requestSubtitle: "Ihre Anfrage wird automatisch Ihrem Aufenthalt zugeordnet.",
     back: "Gast wechseln",
@@ -77,7 +77,6 @@ export function GuestStayPortal() {
   const access = searchParams.get("access") ?? ""
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [locationName, setLocationName] = useState("")
   const [guests, setGuests] = useState<GuestOption[]>([])
   const [selected, setSelected] = useState<GuestOption | null>(null)
   const [sending, setSending] = useState<string | null>(null)
@@ -88,18 +87,17 @@ export function GuestStayPortal() {
   useEffect(() => {
     async function load() {
       if (!access) {
-        setError("Acceso inválido.")
+        setError("Escanea el QR de Black Swan para continuar.")
         setLoading(false)
         return
       }
       try {
         const response = await fetch(`/api/guest-access?access=${encodeURIComponent(access)}`, { cache: "no-store" })
         const payload = await response.json()
-        if (!response.ok) throw new Error(payload.error || "No fue posible cargar esta casa.")
-        setLocationName(payload.location?.name ?? "")
+        if (!response.ok) throw new Error(payload.error || "No fue posible cargar los huéspedes activos.")
         setGuests(payload.guests ?? [])
       } catch (loadError) {
-        setError(loadError instanceof Error ? loadError.message : "No fue posible cargar esta casa.")
+        setError(loadError instanceof Error ? loadError.message : "No fue posible cargar los huéspedes activos.")
       } finally {
         setLoading(false)
       }
@@ -143,12 +141,6 @@ export function GuestStayPortal() {
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">{copy.eyebrow}</p>
           <h1 className="bs-heading mt-2 text-3xl">{selected ? selected.displayName : copy.title}</h1>
           <p className="mt-2 text-sm leading-6 text-muted-foreground">{selected ? copy.requestSubtitle : copy.subtitle}</p>
-          {locationName && (
-            <div className="mt-4 flex items-center gap-2 text-sm text-foreground">
-              <MapPin className="h-4 w-4 text-primary" />{locationName}
-              {selected?.roomNumber ? <span className="text-muted-foreground">· {selected.roomNumber}</span> : null}
-            </div>
-          )}
         </header>
 
         {error && <div className="mb-4 border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">{error}</div>}
@@ -163,7 +155,7 @@ export function GuestStayPortal() {
           <Card className="border border-border bg-card py-0">
             <CardHeader className="border-b border-border py-5">
               <CardTitle className="text-lg">{copy.choose}</CardTitle>
-              <CardDescription>{locationName}</CardDescription>
+              <CardDescription>{copy.subtitle}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-2 py-5">
               {guests.length === 0 && <p className="py-6 text-sm text-muted-foreground">{copy.noGuests}</p>}
@@ -174,10 +166,7 @@ export function GuestStayPortal() {
                   onClick={() => setSelected(guest)}
                   className="flex w-full items-center justify-between border border-border bg-secondary/30 px-4 py-4 text-left transition hover:border-primary/40 hover:bg-secondary"
                 >
-                  <span>
-                    <span className="block font-medium text-foreground">{guest.displayName}</span>
-                    {guest.roomNumber && <span className="mt-1 block text-xs text-muted-foreground">{guest.roomNumber}</span>}
-                  </span>
+                  <span className="font-medium text-foreground">{guest.displayName}</span>
                   <span className="text-primary">→</span>
                 </button>
               ))}
