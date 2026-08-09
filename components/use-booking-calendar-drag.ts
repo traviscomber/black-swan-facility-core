@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import { useCallback, useRef } from "react"
+import { useCallback, useEffect, useRef } from "react"
 import { differenceInCalendarDays, parseISO } from "date-fns"
 import { toast } from "sonner"
 import {
@@ -24,6 +24,7 @@ import { useLanguage } from "@/lib/hooks/use-language"
 import { bookingCalendarInteractionCopy, bookingTargetLabel } from "@/lib/translations/booking-calendar-interactions"
 
 type DragVisual = { reservationId: string; transform: string; width: number }
+type PointerLifecycleEvent = React.PointerEvent | PointerEvent
 
 type UseBookingCalendarDragInput = {
   scrollRef: React.RefObject<HTMLDivElement | null>
@@ -87,7 +88,7 @@ export function useBookingCalendarDrag({
     try { if (element.hasPointerCapture(pointerId)) element.releasePointerCapture(pointerId) } catch { /* browser released it */ }
   }, [])
   const capturePointer = useCallback((element: HTMLElement, pointerId: number) => {
-    try { element.setPointerCapture(pointerId) } catch { /* root handlers are fallback */ }
+    try { element.setPointerCapture(pointerId) } catch { /* native window handlers are fallback */ }
   }, [])
   const stopAutoScroll = useCallback(() => {
     if (autoScrollFrame.current !== null) window.cancelAnimationFrame(autoScrollFrame.current)
@@ -228,7 +229,7 @@ export function useBookingCalendarDrag({
     } else capturePointer(event.currentTarget, event.pointerId)
   }, [activateDrag, cancelDrag, cancelOther, capturePointer, copy.pendingSantiago, language, pendingIds, scrollRef, updateDrag])
 
-  const onPointerMove = useCallback((event: React.PointerEvent) => {
+  const onPointerMove = useCallback((event: PointerLifecycleEvent) => {
     if (!dragRef.current || dragRef.current.pointerId !== event.pointerId) return false
     updateDrag(event.clientX, event.clientY)
     if (dragRef.current?.active) {
@@ -238,7 +239,7 @@ export function useBookingCalendarDrag({
     return true
   }, [runAutoScroll, updateDrag])
 
-  const finishDrag = useCallback(async (event: React.PointerEvent) => {
+  const finishDrag = useCallback(async (event: PointerLifecycleEvent) => {
     const session = dragRef.current
     if (!session || event.pointerId !== session.pointerId) return false
     if (session.longPressTimer !== null) window.clearTimeout(session.longPressTimer)
@@ -260,6 +261,30 @@ export function useBookingCalendarDrag({
     await applyProposal(session.reservation, session.sourceBed, session.targetBed, session.targetCheckIn, session.targetCheckOut, session.validation)
     return true
   }, [applyProposal, clearInteractionState, releasePointer, stopAutoScroll, suppressClickUntil])
+
+  useEffect(() => {
+    const onWindowPointerMove = (event: PointerEvent) => {
+      if (!dragRef.current || dragRef.current.pointerId !== event.pointerId) return
+      onPointerMove(event)
+    }
+    const onWindowPointerUp = (event: PointerEvent) => {
+      if (!dragRef.current || dragRef.current.pointerId !== event.pointerId) return
+      void finishDrag(event)
+    }
+    const onWindowPointerCancel = (event: PointerEvent) => {
+      if (!dragRef.current || dragRef.current.pointerId !== event.pointerId) return
+      cancelDrag()
+    }
+
+    window.addEventListener("pointermove", onWindowPointerMove, { passive: false })
+    window.addEventListener("pointerup", onWindowPointerUp)
+    window.addEventListener("pointercancel", onWindowPointerCancel)
+    return () => {
+      window.removeEventListener("pointermove", onWindowPointerMove)
+      window.removeEventListener("pointerup", onWindowPointerUp)
+      window.removeEventListener("pointercancel", onWindowPointerCancel)
+    }
+  }, [cancelDrag, finishDrag, onPointerMove])
 
   return { dragRef, cancelDrag, onReservationPointerDown, onPointerMove, finishDrag }
 }
