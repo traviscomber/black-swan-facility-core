@@ -251,3 +251,89 @@ body:has([data-slot="dialog-content"][data-state="open"]) .booking-workspace but
     box-shadow: -18px 0 48px rgba(0, 0, 0, 0.42) !important;
   }
 }
+
+/* Nueva reserva: improve dark-theme contrast without changing business logic. */
+[data-slot="dialog-content"]:has(#guest_name) {
+  background: #171411 !important;
+  border-color: #4a423a !important;
+  color: #f4eee6 !important;
+  box-shadow: 0 24px 72px rgba(0, 0, 0, 0.52) !important;
+}
+
+[data-slot="dialog-content"]:has(#guest_name) > [data-slot="dialog-header"],
+[data-slot="dialog-content"]:has(#guest_name) [data-slot="dialog-footer"] {
+  background: #171411 !important;
+  border-color: #3b342e !important;
+}
+
+[data-slot="dialog-content"]:has(#guest_name) [data-slot="dialog-title"] {
+  color: #fffaf4 !important;
+}
+
+[data-slot="dialog-content"]:has(#guest_name) label {
+  color: #d8cec2 !important;
+  font-weight: 500;
+}
+
+[data-slot="dialog-content"]:has(#guest_name) .text-muted-foreground,
+[data-slot="dialog-content"]:has(#guest_name) p.text-xs {
+  color: #b8ada1 !important;
+}
+
+[data-slot="dialog-content"]:has(#guest_name) input,
+[data-slot="dialog-content"]:has(#guest_name) textarea,
+[data-slot="dialog-content"]:has(#guest_name) button[role="combobox"] {
+  background: #2b2520 !important;
+  border-color: #5a5047 !important;
+  color: #f6f0e8 !important;
+}
+
+[data-slot="dialog-content"]:has(#guest_name) input::placeholder,
+[data-slot="dialog-content"]:has(#guest_name) textarea::placeholder {
+  color: #9f9488 !important;
+}
+
+[data-slot="dialog-content"]:has(#guest_name) input:focus-visible,
+[data-slot="dialog-content"]:has(#guest_name) textarea:focus-visible,
+[data-slot="dialog-content"]:has(#guest_name) button[role="combobox"]:focus-visible {
+  border-color: #9acdb5 !important;
+  box-shadow: 0 0 0 2px rgba(154, 205, 181, 0.24) !important;
+  outline: none !important;
+}
+
+[data-slot="dialog-content"]:has(#guest_name) textarea#special_requests {
+  background: #241f1b !important;
+  color: #f6f0e8 !important;
+}
+
+[data-slot="dialog-content"]:has(#guest_name) > [data-slot="dialog-close"] {
+  background: #352e28 !important;
+  border: 1px solid #5a5047 !important;
+  color: #f5eee6 !important;
+}
+
+[data-slot="dialog-content"]:has(#guest_name) > [data-slot="dialog-close"]:hover {
+  background: #463c34 !important;
+}
+
+[data-slot="dialog-content"]:has(#guest_name) [data-slot="dialog-footer"] button[type="button"] {
+  background: #3a322c !important;
+  border-color: #62574d !important;
+  color: #f3ece4 !important;
+}
+
+[data-slot="dialog-content"]:has(#guest_name) [data-slot="dialog-footer"] button[type="button"]:hover {
+  background: #4a4038 !important;
+}
+
+[data-slot="dialog-content"]:has(#guest_name) [data-slot="dialog-footer"] button[type="submit"] {
+  background: #9fd5b8 !important;
+  border-color: #9fd5b8 !important;
+  color: #121511 !important;
+  font-weight: 600;
+}
+
+[data-slot="dialog-content"]:has(#guest_name) [data-slot="dialog-footer"] button[type="submit"]:hover {
+  background: #b0dfc6 !important;
+  border-color: #b0dfc6 !important;
+}
