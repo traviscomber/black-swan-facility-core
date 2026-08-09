@@ -26,6 +26,12 @@
   bottom: 4.5rem !important;
 }
 
+/* Dialogs are the active task surface. Keep the operational trigger from
+   competing with forms such as "Nueva reserva" while a dialog is open. */
+body:has([data-slot="dialog-overlay"][data-state="open"]) .booking-workspace button.fixed.right-4.top-24 {
+  display: none !important;
+}
+
 @media (min-width: 1200px) {
   .booking-workspace:has(.fixed.inset-0.z-50.flex.justify-end > aside) [data-slot="page-header"],
   .booking-workspace:has(.fixed.inset-0.z-50.flex.justify-end > aside) [data-slot="page-header"] + div {
