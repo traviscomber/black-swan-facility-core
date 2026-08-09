@@ -98,7 +98,7 @@ const navigationGroups: NavigationGroup[] = [
       { nameKey: "nav.bookings", href: "/bookings", icon: Calendar, tipKey: "nav.bookings_tip", action: "booking.modify", department: "booking" },
       { nameKey: "nav.invoices", href: "/bookings/invoices", icon: Receipt, tipKey: "nav.invoices_tip", action: "payments.record", department: "finance" },
       { nameKey: "nav.concierge", href: "/concierge", icon: MessageSquare, tipKey: "nav.concierge_tip", action: "hospitality.operate", department: "hospitality" },
-      { nameKey: "nav.guest_requests", href: "/guest-requests", icon: Tablet, tipKey: "nav.guest_requests_tip", action: "hospitality.operate", department: "hospitality" },
+      { nameKey: "nav.guest_requests", href: "/bookings/requests", icon: Tablet, tipKey: "nav.guest_requests_tip", action: "hospitality.operate", department: "hospitality" },
       { nameKey: "nav.sovereignty_dashboard", href: "/sovereignty", icon: Crown, tipKey: "nav.sovereignty_dashboard_tip", adminOnly: true },
     ],
   },
@@ -110,7 +110,7 @@ const navigationGroups: NavigationGroup[] = [
         nameKey: "nav.orchard_dashboard",
         href: "/orchard",
         icon: Leaf,
-        tipKey: "nav.orchard_dashboard_tip",
+        tipKey: "nav.dashboard_tip",
         department: "orchard",
         subItems: [
           { nameKey: "nav.orchard_overview", href: "/orchard", icon: "🌳" },
@@ -126,7 +126,7 @@ const navigationGroups: NavigationGroup[] = [
         nameKey: "nav.vineyard_dashboard",
         href: "/vineyard",
         icon: Grape,
-        tipKey: "nav.vineyard_dashboard_tip",
+        tipKey: "nav.dashboard_tip",
         department: "vineyard",
         subItems: [
           { nameKey: "nav.vineyard_overview", href: "/vineyard", icon: "🍇" },
