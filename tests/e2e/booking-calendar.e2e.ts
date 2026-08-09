@@ -27,6 +27,31 @@ async function waitForHydration(page: Page) {
 async function openHarness(page: Page) {
   await page.goto(`${baseURL}/bookings/e2e-harness`)
   await waitForHydration(page)
+  await page.evaluate(() => {
+    const trace: Array<Record<string, unknown>> = []
+    Reflect.set(window, "__bookingPointerTrace", trace)
+    for (const type of ["pointerdown", "pointermove", "pointerup", "pointercancel"]) {
+      document.addEventListener(type, (rawEvent) => {
+        const event = rawEvent as PointerEvent
+        const target = event.target instanceof Element ? event.target : null
+        const reservation = target?.closest?.("[data-booking-reservation='true']")
+        const cell = target?.closest?.("[data-booking-cell='true']")
+        trace.push({
+          type: event.type,
+          pointerId: event.pointerId,
+          pointerType: event.pointerType,
+          button: event.button,
+          buttons: event.buttons,
+          clientX: Math.round(event.clientX),
+          clientY: Math.round(event.clientY),
+          target: target?.getAttribute("data-testid") ?? target?.tagName ?? null,
+          reservationId: reservation?.getAttribute("data-booking-reservation-id") ?? null,
+          cellTestId: cell?.getAttribute("data-testid") ?? null,
+        })
+        if (trace.length > 80) trace.splice(0, trace.length - 80)
+      }, true)
+    }
+  })
 }
 
 async function visibleBox(page: Page, selector: string) {
@@ -51,14 +76,27 @@ async function dragBy(page: Page, selector: string, deltaX: number, deltaY: numb
 async function waitForAction(page: Page, prefix: string) {
   const action = page.getByTestId("e2e-last-action")
   await action.waitFor({ state: "visible" })
-  await page.waitForFunction(
-    ({ testId, expectedPrefix }) => {
-      const element = document.querySelector(`[data-testid="${testId}"]`)
-      return element?.textContent?.startsWith(expectedPrefix) ?? false
-    },
-    { testId: "e2e-last-action", expectedPrefix: prefix },
-    { timeout: 12_000 },
-  )
+  try {
+    await page.waitForFunction(
+      ({ testId, expectedPrefix }) => {
+        const element = document.querySelector(`[data-testid="${testId}"]`)
+        return element?.textContent?.startsWith(expectedPrefix) ?? false
+      },
+      { testId: "e2e-last-action", expectedPrefix: prefix },
+      { timeout: 12_000 },
+    )
+  } catch (error) {
+    const diagnostics = await page.evaluate(() => ({
+      trace: Reflect.get(window, "__bookingPointerTrace") ?? [],
+      grabbed: Array.from(document.querySelectorAll('[aria-grabbed="true"]')).map((element) => ({
+        testId: element.getAttribute("data-testid"),
+        reservationId: element.getAttribute("data-booking-reservation-id"),
+        bedId: element.getAttribute("data-booking-bed-id"),
+      })),
+      lastAction: document.querySelector('[data-testid="e2e-last-action"]')?.textContent ?? null,
+    }))
+    throw new Error(`Expected action ${prefix}. Pointer diagnostics: ${JSON.stringify(diagnostics)}`, { cause: error })
+  }
   const value = await action.innerText()
   assert.ok(value.startsWith(prefix), `Expected action ${prefix}, received ${value}`)
   return value
