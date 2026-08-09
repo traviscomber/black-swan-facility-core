@@ -11,7 +11,6 @@ import {
   ClipboardPenLine,
   Compass,
   Lock,
-  Mail,
   MapPin,
   Phone,
   Send,
@@ -161,6 +160,10 @@ const REQUEST_CATEGORIES: RequestCategory[] = [
   { id: "other", labelKey: "other", icon: ClipboardPenLine },
 ]
 
+const HOSPITALITY_CONTACT_NAME = "Travis · Hospitality"
+const HOSPITALITY_WHATSAPP = "+56993826127"
+const HOSPITALITY_WHATSAPP_DISPLAY = "+56 9 9382 6127"
+
 function getDeviceId() {
   const existing = localStorage.getItem("tablet_device_id")
   if (existing) return existing
@@ -283,7 +286,7 @@ export function GuestRequestForm() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          to: "+56979752758",
+          to: HOSPITALITY_WHATSAPP,
           message: `Nueva solicitud de hospitalidad: ${requestLabel}. Huésped: ${guestName.trim()}. Ubicación: ${assignedLocation.name}. Habitación: ${roomNumber || room?.room_number || "sin habitación"}. Solicitud: ${payload.requestId}.`,
         }),
       })
@@ -428,15 +431,15 @@ export function GuestRequestForm() {
               <div className="grid gap-3 border-t border-border pt-5 sm:grid-cols-[1fr_auto] sm:items-center">
                 <div>
                   <p className="text-sm font-medium text-foreground">{t.immediate}</p>
+                  <p className="mt-1 text-xs font-medium text-primary">{HOSPITALITY_CONTACT_NAME}</p>
                   <div className="mt-2 flex flex-wrap gap-x-5 gap-y-2 text-xs text-muted-foreground">
-                    <span className="flex items-center gap-2"><Phone className="h-3.5 w-3.5 text-primary" />+56 9 7975 2758</span>
-                    <span className="flex items-center gap-2"><Mail className="h-3.5 w-3.5 text-primary" />antonia@blackswn.org</span>
+                    <span className="flex items-center gap-2"><Phone className="h-3.5 w-3.5 text-primary" />{HOSPITALITY_WHATSAPP_DISPLAY}</span>
                   </div>
                 </div>
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => window.open(`https://wa.me/56979752758?text=${encodeURIComponent(`Hola, necesito asistencia de hospitalidad desde ${roomNumber || room?.room_number || assignedLocation?.name || "mi ubicación"}`)}`, "_blank")}
+                  onClick={() => window.open(`https://wa.me/${HOSPITALITY_WHATSAPP.replace("+", "")}?text=${encodeURIComponent(`Hola, necesito asistencia de hospitalidad desde ${roomNumber || room?.room_number || assignedLocation?.name || "mi ubicación"}`)}`, "_blank")}
                   className="h-11 border border-primary/30 bg-transparent text-primary hover:bg-primary/10"
                 >
                   <Phone className="h-4 w-4" />{t.whatsapp}
