@@ -27,7 +27,7 @@ export const housekeepingTranslations: Record<Language, Record<string, string>> 
     housekeepingTask: "Housekeeping task",
   },
   es: {
-    title: "Housekeeping",
+    title: "Limpieza",
     subtitle: "Salidas, limpieza, asignaciones y disponibilidad de habitaciones.",
     departuresToday: "Salidas de hoy",
     openTasks: "Tareas abiertas",
@@ -48,11 +48,11 @@ export const housekeepingTranslations: Record<Language, Record<string, string>> 
     assignee: "Responsable",
     noAssignee: "Sin asignar",
     createOperationalTask: "Crear tarea operativa",
-    checkoutCleaning: "Limpieza posterior a salida",
-    housekeepingTask: "Tarea de housekeeping",
+    checkoutCleaning: "Limpieza posterior a la salida",
+    housekeepingTask: "Tarea de limpieza",
   },
   de: {
-    title: "Housekeeping",
+    title: "Zimmerreinigung",
     subtitle: "Abreisen, Reinigung, Zuweisungen und Zimmerverfügbarkeit.",
     departuresToday: "Heutige Abreisen",
     openTasks: "Offene Aufgaben",
@@ -74,7 +74,7 @@ export const housekeepingTranslations: Record<Language, Record<string, string>> 
     noAssignee: "Nicht zugewiesen",
     createOperationalTask: "Betriebsaufgabe erstellen",
     checkoutCleaning: "Reinigung nach Abreise",
-    housekeepingTask: "Housekeeping-Aufgabe",
+    housekeepingTask: "Reinigungsaufgabe",
   },
 }
 
