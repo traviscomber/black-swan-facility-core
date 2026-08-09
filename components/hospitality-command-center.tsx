@@ -74,6 +74,56 @@ const STATUS_LABELS: Record<string, string> = {
   cancelled: "Cancelada",
 }
 
+const TASK_KIND_LABELS: Record<TaskKind, string> = {
+  housekeeping: "Limpieza",
+  hospitality: "Hospitalidad",
+}
+
+const PRIORITY_LABELS: Record<string, string> = {
+  low: "Baja",
+  normal: "Normal",
+  medium: "Media",
+  high: "Alta",
+  urgent: "Urgente",
+  critical: "Crítica",
+}
+
+const TASK_TITLE_LABELS: Record<string, string> = {
+  turnover: "Limpieza de salida",
+  room_preparation: "Preparación de habitación",
+  inspection: "Inspección operativa",
+  cleaning: "Limpieza",
+  deep_cleaning: "Limpieza profunda",
+  pre_arrival_preparation: "Preparación previa a llegada",
+  pre_arrival_inspection: "Inspección previa a llegada",
+  post_checkout_cleaning: "Limpieza posterior a salida",
+  post_checkout_laundry: "Lavandería posterior a salida",
+  post_checkout_damage_review: "Revisión de daños posterior a salida",
+  post_checkout_restock: "Reposición posterior a salida",
+  room_release: "Liberación de habitación",
+  extra_towels: "Toallas adicionales",
+  extra_bedding: "Ropa de cama adicional",
+  room_service: "Servicio a la habitación",
+  maintenance: "Mantenimiento",
+  transport: "Transporte",
+  food_beverage: "Alimentos y bebidas",
+}
+
+const ROOM_STATUS_LABELS: Record<string, string> = {
+  ready: "Lista",
+  inspected: "Inspeccionada",
+  dirty: "Sucia",
+  cleaning: "En limpieza",
+  clean_pending_inspection: "Pendiente de inspección",
+  occupied: "Ocupada",
+  out_of_service: "Fuera de servicio",
+  out_of_inventory: "Fuera de inventario",
+}
+
+function displayTaskTitle(task: OperationalTask) {
+  return TASK_TITLE_LABELS[task.title] ?? task.title.replaceAll("_", " ")
+}
+
 function isRoomReady(status: string | null | undefined) {
   return status === "ready" || status === "inspected"
 }
@@ -82,14 +132,14 @@ function nextAction(reservation: Reservation | null, tasks: OperationalTask[]) {
   if (!reservation) return null
   const openTasks = tasks.filter((task) => task.reservation_id === reservation.id || (task.room_id && task.room_id === reservation.room_id))
   const unassigned = openTasks.find((task) => !task.assigned_to)
-  if (unassigned) return { label: `Asignar ${unassigned.title}`, detail: "La acción no puede comenzar sin encargado.", tone: "warning" as const }
+  if (unassigned) return { label: `Asignar ${displayTaskTitle(unassigned)}`, detail: "La acción no puede comenzar sin encargado.", tone: "warning" as const }
   const pendingHousekeeping = openTasks.find((task) => task.kind === "housekeeping" && ["pending", "assigned"].includes(task.status))
-  if (pendingHousekeeping) return { label: `Iniciar ${pendingHousekeeping.title}`, detail: "Es la siguiente dependencia operacional de la estadía.", tone: "normal" as const }
+  if (pendingHousekeeping) return { label: `Iniciar ${displayTaskTitle(pendingHousekeeping)}`, detail: "Es la siguiente dependencia operacional de la estadía.", tone: "normal" as const }
   if (["confirmed", "waiting_for_room", "ready_for_checkin"].includes(reservation.status)) {
     if (!isRoomReady(reservation.room?.operational_status)) {
       return { label: "Preparar habitación", detail: "La habitación aún no está lista para recibir al huésped.", tone: "warning" as const }
     }
-    return { label: "Registrar check-in", detail: "La habitación está lista y la reserva puede ingresar.", tone: "normal" as const }
+    return { label: "Registrar entrada", detail: "La habitación está lista y la reserva puede ingresar.", tone: "normal" as const }
   }
   if (["checked_in", "checked-in"].includes(reservation.status)) {
     return { label: "Atender estadía", detail: openTasks.length ? "Hay acciones abiertas vinculadas al huésped." : "No existen excepciones operacionales abiertas.", tone: "normal" as const }
@@ -251,7 +301,7 @@ export function HospitalityCommandCenter() {
     setSavingId(reservation.id)
     const { error: updateError } = await supabase.from("reservations").update({ status: "checked_out" }).eq("id", reservation.id)
     if (updateError) toast.error(updateError.message)
-    else toast.success("Check-out registrado")
+    else toast.success("Salida registrada")
     setSavingId(null)
   }
 
@@ -272,7 +322,7 @@ export function HospitalityCommandCenter() {
           <aside className="flex h-full w-full max-w-[560px] flex-col border-l border-[var(--border)] bg-[var(--background)] shadow-2xl">
             <header className="flex items-start justify-between border-b border-[var(--border)] bg-[var(--card)] p-5">
               <div>
-                <p className="text-xs uppercase tracking-[0.16em] text-[var(--primary)]">Hospitality command center</p>
+                <p className="text-xs uppercase tracking-[0.16em] text-[var(--primary)]">Centro de control de hospitalidad</p>
                 <h2 className="mt-1 text-xl font-medium">{reservation?.guest_name ?? "Operación en tiempo real"}</h2>
                 <p className="mt-1 text-sm text-muted-foreground">
                   {reservation
@@ -287,7 +337,7 @@ export function HospitalityCommandCenter() {
               <div className="space-y-4 border-b border-[var(--border)] p-5">
                 <div className="grid grid-cols-2 gap-2 text-xs text-muted-foreground">
                   <span className="flex items-center gap-2"><Clock3 className="h-4 w-4" />{reservation.check_in} → {reservation.check_out}</span>
-                  <span className="flex items-center gap-2"><BedDouble className="h-4 w-4" />{reservation.room?.operational_status ?? "Sin estado"}</span>
+                  <span className="flex items-center gap-2"><BedDouble className="h-4 w-4" />{ROOM_STATUS_LABELS[reservation.room?.operational_status ?? ""] ?? "Sin estado"}</span>
                   {reservation.guest_phone && <a className="flex items-center gap-2 text-foreground" href={`tel:${reservation.guest_phone}`}><Phone className="h-4 w-4" />{reservation.guest_phone}</a>}
                   {reservation.guest_email && <a className="flex items-center gap-2 text-foreground" href={`mailto:${reservation.guest_email}`}><Mail className="h-4 w-4" />{reservation.guest_email}</a>}
                 </div>
@@ -303,12 +353,12 @@ export function HospitalityCommandCenter() {
                 <div className="flex flex-wrap gap-2">
                   {["confirmed", "waiting_for_room", "ready_for_checkin"].includes(reservation.status) && (
                     <Button size="sm" onClick={() => void checkIn()} disabled={savingId === reservation.id}>
-                      <LogIn className="mr-2 h-4 w-4" />Check-in
+                      <LogIn className="mr-2 h-4 w-4" />Registrar entrada
                     </Button>
                   )}
                   {["checked_in", "checked-in"].includes(reservation.status) && (
                     <Button size="sm" onClick={() => void checkOut()} disabled={savingId === reservation.id}>
-                      <LogOut className="mr-2 h-4 w-4" />Check-out
+                      <LogOut className="mr-2 h-4 w-4" />Registrar salida
                     </Button>
                   )}
                   <Button size="sm" variant="outline" onClick={() => setShowAll((current) => !current)}>
@@ -343,16 +393,17 @@ export function HospitalityCommandCenter() {
 
               {relevantTasks.map((task) => {
                 const assignee = employees.find((employee) => employee.id === task.assigned_to)
+                const taskTitle = displayTaskTitle(task)
                 return (
                   <article key={`${task.kind}-${task.id}`} className="border border-[var(--border)] bg-[var(--card)] p-4">
                     <div className="flex items-start justify-between gap-3">
                       <div>
                         <div className="flex flex-wrap items-center gap-2">
-                          <Badge variant="outline">{task.kind === "housekeeping" ? "Housekeeping" : "Hospitality"}</Badge>
-                          <Badge variant="outline">{STATUS_LABELS[task.status] ?? task.status}</Badge>
-                          {task.priority && <Badge variant="secondary">{task.priority}</Badge>}
+                          <Badge variant="outline">Área: {TASK_KIND_LABELS[task.kind]}</Badge>
+                          <Badge variant="outline">Estado: {STATUS_LABELS[task.status] ?? task.status}</Badge>
+                          {task.priority && <Badge variant="secondary">Prioridad: {PRIORITY_LABELS[task.priority] ?? task.priority}</Badge>}
                         </div>
-                        <h3 className="mt-3 text-sm font-medium">{task.title}</h3>
+                        <h3 className="mt-3 text-sm font-medium">{taskTitle}</h3>
                         {task.notes && <p className="mt-1 line-clamp-2 text-xs leading-5 text-muted-foreground">{task.notes}</p>}
                       </div>
                       <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
@@ -365,7 +416,7 @@ export function HospitalityCommandCenter() {
                       </div>
 
                       <select
-                        aria-label={`Asignar encargado a ${task.title}`}
+                        aria-label={`Asignar encargado a ${taskTitle}`}
                         value={task.assigned_to ?? ""}
                         onChange={(event) => void assign(task, event.target.value)}
                         disabled={savingId === task.id}
