@@ -7,6 +7,7 @@ import { BookingTimelineAlertNavigator } from "@/components/booking-timeline-ale
 import { ReservationLogisticsEditor } from "@/components/reservation-logistics-editor"
 import { DailyOperationsPanel } from "@/components/daily-operations-panel"
 import { HospitalityCommandCenter } from "@/components/hospitality-command-center"
+import { SantiagoTodayCommandCenter } from "@/components/santiago-today-command-center"
 
 export default function BookingsPage() {
   return (
@@ -14,6 +15,7 @@ export default function BookingsPage() {
       <BookingRealtimePulse />
       <BookingTimelineAlertNavigator />
       <ReservationLogisticsEditor />
+      <SantiagoTodayCommandCenter />
       <BookingOperationsTimelinePage />
       <HospitalityCommandCenter />
       <DailyOperationsPanel />
