@@ -206,6 +206,75 @@
 .booking-workspace {
   min-height: 100dvh;
   background: var(--bs-bg-primary);
+  --muted-foreground: #c6bdb2;
+  --border: rgba(231, 225, 216, 0.18);
+  --input: #403a33;
+}
+
+/* Operational readability baseline for every section Santiago can access. */
+.booking-workspace .text-muted-foreground,
+.booking-workspace .bs-text-muted,
+.booking-workspace .bs-text-secondary {
+  color: #c6bdb2 !important;
+}
+
+.booking-workspace label,
+.booking-workspace [data-slot="label"] {
+  color: #d1c8bd !important;
+  font-weight: 500;
+}
+
+.booking-workspace input,
+.booking-workspace textarea,
+.booking-workspace select,
+.booking-workspace [data-slot="select-trigger"] {
+  border: 1px solid rgba(231, 225, 216, 0.18) !important;
+  background: #403a33 !important;
+  color: #f0eae2 !important;
+}
+
+.booking-workspace input::placeholder,
+.booking-workspace textarea::placeholder {
+  color: #aaa095 !important;
+  opacity: 1;
+}
+
+.booking-workspace input:focus-visible,
+.booking-workspace textarea:focus-visible,
+.booking-workspace select:focus-visible,
+.booking-workspace [data-slot="select-trigger"]:focus-visible {
+  border-color: var(--bs-cool-sage) !important;
+  outline-color: var(--bs-cool-sky) !important;
+}
+
+.booking-workspace [role="tab"] {
+  color: #bfb6ab;
+}
+
+.booking-workspace [role="tab"][data-state="active"] {
+  color: #f3ede5 !important;
+  background: var(--bs-surface-elevated) !important;
+}
+
+.booking-workspace th,
+.booking-workspace [role="columnheader"] {
+  color: #cfc6bb !important;
+  font-weight: 600;
+}
+
+.booking-workspace td,
+.booking-workspace [role="cell"] {
+  color: #e7e1d8;
+}
+
+.booking-workspace [data-slot="card-description"],
+.booking-workspace [data-slot="dialog-description"] {
+  color: #c3baaf !important;
+}
+
+.booking-workspace :disabled,
+.booking-workspace [aria-disabled="true"] {
+  opacity: 0.62 !important;
 }
 
 .booking-workspace [data-slot="page-header"] {
@@ -213,7 +282,7 @@
   gap: 16px;
   padding: 12px 20px;
   background: var(--bs-bg-secondary);
-  border-color: var(--bs-divider-subtle);
+  border-color: rgba(231, 225, 216, 0.16);
 }
 
 .booking-workspace [data-slot="page-header"] > div:first-child {
@@ -240,6 +309,7 @@
   max-width: 920px;
   font-size: 12px;
   line-height: 1.4;
+  color: #bfb6ab !important;
 }
 
 .booking-workspace [data-slot="card"] {
@@ -258,7 +328,7 @@
   display: grid !important;
   grid-template-columns: repeat(6, minmax(108px, 1fr)) !important;
   gap: 1px !important;
-  background: var(--bs-divider-subtle);
+  background: rgba(231, 225, 216, 0.16);
 }
 
 .booking-workspace [data-slot="page-header"] + div > div:first-child [data-slot="card"] {
@@ -276,10 +346,7 @@
 
 .booking-workspace select,
 .booking-workspace input {
-  border: 0 !important;
   border-radius: 0 !important;
-  background: var(--bs-surface-secondary) !important;
-  color: var(--bs-text-primary) !important;
   box-shadow: none !important;
 }
 
@@ -325,8 +392,8 @@
 .booking-workspace .bg-slate-200,
 .booking-workspace .bg-slate-50 {
   background: var(--bs-surface-secondary) !important;
-  color: var(--bs-text-secondary) !important;
-  border-color: var(--bs-divider-subtle) !important;
+  color: #c6bdb2 !important;
+  border-color: rgba(231, 225, 216, 0.16) !important;
 }
 
 .booking-workspace .bg-rose-50,
@@ -353,7 +420,7 @@
   width: min(460px, 100vw) !important;
   max-width: 460px !important;
   background: var(--bs-surface-primary) !important;
-  border-left: 1px solid var(--bs-divider-subtle) !important;
+  border-left: 1px solid rgba(231, 225, 216, 0.16) !important;
 }
 
 .booking-workspace aside > div:first-child {
@@ -399,7 +466,7 @@
 
 .booking-workspace [class*="border-r"],
 .booking-workspace [class*="border-b"] {
-  border-color: var(--bs-divider-subtle) !important;
+  border-color: rgba(231, 225, 216, 0.14) !important;
 }
 
 .booking-workspace [class*="sticky"][class*="left-0"] {
