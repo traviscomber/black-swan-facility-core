@@ -45,8 +45,40 @@ const STATUS_LABELS: Record<string, string> = {
 const PRIORITY_LABELS: Record<string, string> = {
   low: "Baja",
   normal: "Normal",
+  medium: "Media",
   high: "Alta",
   urgent: "Urgente",
+  critical: "Crítica",
+}
+
+const REQUEST_TYPE_LABELS: Record<string, string> = {
+  blankets: "Mantas",
+  Blankets: "Mantas",
+  "Extra Blankets": "Mantas adicionales",
+  towels: "Toallas",
+  Towels: "Toallas",
+  extra_towels: "Toallas adicionales",
+  room_service: "Servicio a la habitación",
+  maintenance: "Mantenimiento",
+  transport: "Transporte",
+  food_beverage: "Alimentos y bebidas",
+}
+
+const CATEGORY_LABELS: Record<string, string> = {
+  guest_supplies: "Suministros para huéspedes",
+  housekeeping: "Limpieza",
+  hospitality: "Hospitalidad",
+  maintenance: "Mantenimiento",
+  transport: "Transporte",
+  food_beverage: "Alimentos y bebidas",
+}
+
+function requestTypeLabel(value: string) {
+  return REQUEST_TYPE_LABELS[value] ?? value.replaceAll("_", " ")
+}
+
+function categoryLabel(value: string) {
+  return CATEGORY_LABELS[value] ?? value.replaceAll("_", " ")
 }
 
 export function BookingHospitalityControl() {
@@ -134,7 +166,7 @@ export function BookingHospitalityControl() {
     <Card className="mx-4 mb-4">
       <CardHeader className="pb-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <CardTitle className="flex items-center gap-2 text-base"><UsersRound className="h-4 w-4" /> Hospitality operacional</CardTitle>
+          <CardTitle className="flex items-center gap-2 text-base"><UsersRound className="h-4 w-4" /> Hospitalidad operativa</CardTitle>
           <Button variant="outline" size="sm" onClick={() => void load()}><RefreshCw className="mr-2 h-4 w-4" />Actualizar</Button>
         </div>
       </CardHeader>
@@ -146,21 +178,21 @@ export function BookingHospitalityControl() {
         </div>
 
         {requests.length === 0 ? (
-          <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">No existen solicitudes de Hospitality. Las solicitudes enviadas desde la tablet aparecerán aquí.</div>
+          <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">No existen solicitudes de hospitalidad. Las solicitudes enviadas desde la tablet aparecerán aquí.</div>
         ) : (
           <div className="grid gap-4 xl:grid-cols-[1fr_1.2fr]">
             <div className="space-y-2">
               {requests.map((request) => {
                 const isOverdue = request.due_at && !["completed", "cancelled"].includes(request.status) && new Date(request.due_at).getTime() < now
                 return <button key={request.id} type="button" onClick={() => setSelectedId(request.id)} className={`w-full rounded-lg border p-3 text-left ${selectedId === request.id ? "ring-2 ring-primary" : ""}`}>
-                  <div className="flex items-start justify-between gap-3"><div><p className="font-medium">{request.guest_name}</p><p className="text-sm text-muted-foreground">{request.request_type} · {request.category}</p></div><Badge variant={isOverdue ? "destructive" : "secondary"}>{isOverdue ? "Vencida" : PRIORITY_LABELS[request.priority] ?? request.priority}</Badge></div>
+                  <div className="flex items-start justify-between gap-3"><div><p className="font-medium">{request.guest_name}</p><p className="text-sm text-muted-foreground">{requestTypeLabel(request.request_type)} · {categoryLabel(request.category)}</p></div><Badge variant={isOverdue ? "destructive" : "secondary"}>{isOverdue ? "Vencida" : PRIORITY_LABELS[request.priority] ?? request.priority}</Badge></div>
                   <div className="mt-2 flex flex-wrap gap-2 text-xs text-muted-foreground"><span>{STATUS_LABELS[request.status] ?? request.status}</span>{request.locations?.name && <span>{request.locations.name}</span>}{request.rooms?.room_number && <span>Hab. {request.rooms.room_number}</span>}</div>
                 </button>
               })}
             </div>
 
             {selected && <div className="space-y-4 rounded-lg border p-4">
-              <div><div className="flex flex-wrap items-center gap-2"><h3 className="font-medium">{selected.request_type}</h3><Badge>{STATUS_LABELS[selected.status] ?? selected.status}</Badge></div><p className="mt-1 text-sm text-muted-foreground">{selected.description || "Sin descripción adicional"}</p></div>
+              <div><div className="flex flex-wrap items-center gap-2"><h3 className="font-medium">{requestTypeLabel(selected.request_type)}</h3><Badge>{STATUS_LABELS[selected.status] ?? selected.status}</Badge></div><p className="mt-1 text-xs text-muted-foreground">Categoría: {categoryLabel(selected.category)}</p><p className="mt-1 text-sm text-muted-foreground">{selected.description || "Sin descripción adicional"}</p></div>
               <div className="grid gap-3 md:grid-cols-2">
                 <div className="space-y-1.5"><Label>Responsable</Label><select className="h-10 w-full rounded-md border bg-background px-3 text-sm" value={assignedTo} onChange={(event) => setAssignedTo(event.target.value)}><option value="">Sin asignar</option>{employees.map((employee) => <option key={employee.id} value={employee.id}>{employee.name}{employee.role ? ` · ${employee.role}` : ""}</option>)}</select></div>
                 <div className="space-y-1.5"><Label>Prioridad</Label><select className="h-10 w-full rounded-md border bg-background px-3 text-sm" value={priority} onChange={(event) => setPriority(event.target.value)}>{Object.entries(PRIORITY_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></div>
@@ -170,7 +202,7 @@ export function BookingHospitalityControl() {
                 <div className="space-y-1.5"><Label>Nota interna</Label><Input value={notes} onChange={(event) => setNotes(event.target.value)} /></div>
                 <div className="space-y-1.5"><Label>Motivo de bloqueo</Label><Input value={blockedReason} onChange={(event) => setBlockedReason(event.target.value)} /></div>
                 <div className="space-y-1.5"><Label>Motivo de escalamiento</Label><Input value={escalationReason} onChange={(event) => setEscalationReason(event.target.value)} /></div>
-                <div className="space-y-1.5"><Label>Evidencia URL</Label><Input value={evidenceUrl} onChange={(event) => setEvidenceUrl(event.target.value)} /></div>
+                <div className="space-y-1.5"><Label>URL de evidencia</Label><Input value={evidenceUrl} onChange={(event) => setEvidenceUrl(event.target.value)} /></div>
                 <div className="space-y-1.5"><Label>Resultado del servicio</Label><Input value={completionNotes} onChange={(event) => setCompletionNotes(event.target.value)} /></div>
                 <label className="flex items-center gap-2 pt-7 text-sm"><input type="checkbox" checked={guestConfirmed} onChange={(event) => setGuestConfirmed(event.target.checked)} /> Huésped confirmó entrega</label>
                 <div className="space-y-1.5"><Label>Satisfacción</Label><select className="h-10 w-full rounded-md border bg-background px-3 text-sm" value={satisfaction} onChange={(event) => setSatisfaction(event.target.value)}><option value="">Sin evaluar</option>{[1,2,3,4,5].map((score) => <option key={score} value={score}>{score} / 5</option>)}</select></div>
