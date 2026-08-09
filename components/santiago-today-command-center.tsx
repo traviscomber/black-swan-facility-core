@@ -201,11 +201,11 @@ export function SantiagoTodayCommandCenter() {
         {error && <div className="mt-4 border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">{error}</div>}
 
         <div className="mt-5 grid gap-2 sm:grid-cols-2 xl:grid-cols-5">
-          <Metric icon={DoorOpen} label={copy.arrivals} value={arrivals.length} />
-          <Metric icon={LogOut} label={copy.departures} value={departures} />
-          <Metric icon={AlertTriangle} label={copy.notReady} value={notReady.length} warning={notReady.length > 0} />
-          <Metric icon={ClipboardList} label={copy.requests} value={openRequests} warning={unassignedRequests > 0} />
-          <Metric icon={Sparkles} label={copy.housekeeping} value={pendingHousekeeping} />
+          <Metric icon={DoorOpen} label={copy.arrivals} value={arrivals.length} href={localized(locale, "/bookings/activities")} />
+          <Metric icon={LogOut} label={copy.departures} value={departures} href={localized(locale, "/bookings/activities")} />
+          <Metric icon={AlertTriangle} label={copy.notReady} value={notReady.length} warning={notReady.length > 0} href={localized(locale, "/bookings/housekeeping")} />
+          <Metric icon={ClipboardList} label={copy.requests} value={openRequests} warning={unassignedRequests > 0} href={localized(locale, "/bookings/requests")} helper={unassignedRequests > 0 ? `${unassignedRequests} ${copy.unassignedRequests}` : undefined} />
+          <Metric icon={Sparkles} label={copy.housekeeping} value={pendingHousekeeping} href={localized(locale, "/bookings/housekeeping")} />
         </div>
 
         <div className={`mt-3 flex flex-col gap-3 border p-4 md:flex-row md:items-center md:justify-between ${attentionCount > 0 ? "border-amber-400/35 bg-amber-400/8" : "border-primary/25 bg-primary/5"}`}>
@@ -243,14 +243,15 @@ export function SantiagoTodayCommandCenter() {
   )
 }
 
-function Metric({ icon: Icon, label, value, warning = false }: { icon: typeof DoorOpen; label: string; value: number; warning?: boolean }) {
+function Metric({ icon: Icon, label, value, warning = false, href, helper }: { icon: typeof DoorOpen; label: string; value: number; warning?: boolean; href: string; helper?: string }) {
   return (
-    <div className={`border bg-card p-4 ${warning ? "border-amber-400/35" : "border-border"}`}>
+    <Link href={href} className={`group block border bg-card p-4 transition-colors hover:bg-secondary/45 ${warning ? "border-amber-400/35" : "border-border"}`}>
       <div className="flex items-center justify-between gap-3">
         <p className="text-xs text-muted-foreground">{label}</p>
-        <Icon className={`h-4 w-4 ${warning ? "text-amber-500" : "text-primary"}`} />
+        <Icon className={`h-4 w-4 transition-transform group-hover:translate-x-0.5 ${warning ? "text-amber-500" : "text-primary"}`} />
       </div>
       <p className="mt-2 text-2xl font-medium text-foreground">{value}</p>
-    </div>
+      {helper && <p className="mt-1 text-[11px] text-amber-500">{helper}</p>}
+    </Link>
   )
 }
