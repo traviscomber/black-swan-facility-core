@@ -96,7 +96,7 @@ export function useBookingCalendarDrag({
   }, [])
   const cancelDrag = useCallback(() => {
     const session = dragRef.current
-    if (session?.longPressTimer !== null) window.clearTimeout(session.longPressTimer)
+    if (session?.longPressTimer != null) window.clearTimeout(session.longPressTimer)
     if (session) releasePointer(session.element, session.pointerId)
     dragRef.current = null
     stopAutoScroll()
