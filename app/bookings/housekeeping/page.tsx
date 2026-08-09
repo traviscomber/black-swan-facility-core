@@ -206,20 +206,25 @@ export default function HousekeepingPage() {
     {canManage && <Card>
       <CardHeader><CardTitle className="flex items-center gap-2 text-base"><ShieldCheck className="h-4 w-4" />Supervisión · próximas 72 horas</CardTitle></CardHeader>
       <CardContent className="space-y-3">
-        <p className="text-sm text-muted-foreground">Todas las tareas que requieren inspección aparecen aquí antes de su hora programada. Aprobar/Rechazar se habilita cuando el equipo termina la ejecución.</p>
+        <p className="text-sm text-muted-foreground">Gestiona cada tarea desde aquí: iniciar ejecución, enviarla a inspección y finalmente aprobar o rechazar.</p>
         {supervisorQueue.length === 0 && <p className="text-sm text-muted-foreground">No hay inspecciones pendientes en la ventana operativa.</p>}
         {supervisorQueue.map((task) => {
           const room = roomOf(task.room)
           const reservation = reservationOf(task.reservation)
-          const ready = task.status === "inspection"
+          const statusValue = task.status ?? "pending"
+          const ready = statusValue === "inspection"
+          const canStart = ["pending", "assigned"].includes(statusValue) && Boolean(task.assigned_to)
+          const canComplete = statusValue === "in_progress"
           return <div key={`supervisor-${task.id}`} className="flex flex-col gap-3 border-t border-border/60 pt-3 first:border-t-0 first:pt-0 lg:flex-row lg:items-center lg:justify-between">
             <div className="min-w-0">
-              <div className="flex flex-wrap items-center gap-2"><p className="font-medium">{room?.room_number ?? "Sin habitación"} · {reservation?.guest_name ?? task.task_type.replaceAll("_", " ")}</p><Badge variant={ready ? "default" : "outline"}>{ready ? "Lista para aprobar" : statusCopy[task.status ?? "pending"] ?? task.status ?? "Pendiente"}</Badge></div>
+              <div className="flex flex-wrap items-center gap-2"><p className="font-medium">{room?.room_number ?? "Sin habitación"} · {reservation?.guest_name ?? task.task_type.replaceAll("_", " ")}</p><Badge variant={ready ? "default" : "outline"}>{ready ? "Lista para aprobar" : statusCopy[statusValue] ?? statusValue}</Badge></div>
               <p className="mt-1 text-xs text-muted-foreground">{task.task_type.replaceAll("_", " ")} · {formatOperationalDate(task.scheduled_for)} · inspección {task.inspection_status ?? "pending"}</p>
             </div>
-            <div className="flex shrink-0 gap-2">
-              <Button size="sm" disabled={!ready || savingId === task.id} onClick={() => void reviewTask(task, "approve")}><CheckCircle2 className="mr-2 h-4 w-4" />Aprobar</Button>
-              <Button size="sm" variant="outline" disabled={!ready || savingId === task.id} onClick={() => void reviewTask(task, "reject")}><XCircle className="mr-2 h-4 w-4" />Rechazar</Button>
+            <div className="flex shrink-0 flex-wrap gap-2">
+              {canStart && <Button size="sm" variant="outline" disabled={savingId === task.id} onClick={() => void runTaskAction(task, "start")}><PlayCircle className="mr-2 h-4 w-4" />Iniciar tarea</Button>}
+              {["pending", "assigned"].includes(statusValue) && !task.assigned_to && <span className="flex items-center text-xs text-muted-foreground">Asigna un responsable abajo para iniciar</span>}
+              {canComplete && <Button size="sm" disabled={savingId === task.id} onClick={() => void runTaskAction(task, "complete")}><CheckCircle2 className="mr-2 h-4 w-4" />Enviar a inspección</Button>}
+              {ready && <><Button size="sm" disabled={savingId === task.id} onClick={() => void reviewTask(task, "approve")}><CheckCircle2 className="mr-2 h-4 w-4" />Aprobar</Button><Button size="sm" variant="outline" disabled={savingId === task.id} onClick={() => void reviewTask(task, "reject")}><XCircle className="mr-2 h-4 w-4" />Rechazar</Button></>}
             </div>
           </div>
         })}
