@@ -12,12 +12,12 @@ type Props = {
 }
 
 const COPY = {
-  es: { title: "Pedir desde tu celular", detail: "Escanea este QR. Verás solo los huéspedes con estadía activa en esta casa." },
-  en: { title: "Request from your phone", detail: "Scan this QR. You will only see guests with an active stay in this house." },
-  de: { title: "Vom Handy anfragen", detail: "Scannen Sie diesen QR-Code. Es werden nur Gäste mit aktivem Aufenthalt in diesem Haus angezeigt." },
+  es: { title: "Pedir desde tu celular", detail: "Escanea este QR y selecciona tu nombre. El mismo QR funciona en todas las tablets." },
+  en: { title: "Request from your phone", detail: "Scan this QR and select your name. The same QR works on every tablet." },
+  de: { title: "Vom Handy anfragen", detail: "Scannen Sie diesen QR-Code und wählen Sie Ihren Namen. Derselbe QR-Code funktioniert auf allen Tablets." },
 } as const
 
-export function GuestHouseQr({ locationId, locationName, deviceId, language }: Props) {
+export function GuestHouseQr({ locationName, language }: Props) {
   const [url, setUrl] = useState("")
   const [error, setError] = useState<string | null>(null)
   const copy = COPY[language]
@@ -26,12 +26,11 @@ export function GuestHouseQr({ locationId, locationName, deviceId, language }: P
   useEffect(() => {
     let cancelled = false
     async function load() {
-      if (!locationId || !deviceId) return
       try {
         const response = await fetch("/api/guest-access", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ locationId, deviceId }),
+          body: "{}",
         })
         const payload = await response.json()
         if (!response.ok) throw new Error(payload.error || "QR unavailable")
@@ -43,7 +42,7 @@ export function GuestHouseQr({ locationId, locationName, deviceId, language }: P
     }
     void load()
     return () => { cancelled = true }
-  }, [deviceId, locale, locationId])
+  }, [locale])
 
   return (
     <section className="mt-5 border border-border bg-card p-5">
@@ -54,11 +53,11 @@ export function GuestHouseQr({ locationId, locationName, deviceId, language }: P
             <p className="text-xs font-semibold uppercase tracking-[0.14em]">{copy.title}</p>
           </div>
           <p className="mt-2 text-sm leading-6 text-muted-foreground">{copy.detail}</p>
-          <p className="mt-2 text-xs font-medium text-foreground">{locationName}</p>
+          <p className="mt-2 text-xs font-medium text-foreground">Black Swan · {locationName}</p>
           {error && <p className="mt-2 text-xs text-destructive">{error}</p>}
         </div>
         {url && (
-          <div className="bg-white p-3" aria-label={`QR ${locationName}`}>
+          <div className="bg-white p-3" aria-label="QR global de huéspedes Black Swan">
             <QRCode value={url} size={132} level="M" />
           </div>
         )}
