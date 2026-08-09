@@ -428,6 +428,15 @@ export default function BookingOperationsTimelinePage() {
     () => selected ? housekeepingForReservation(selected) : [],
     [housekeepingForReservation, selected],
   )
+  const selectedRoom = useMemo(() => {
+    if (!selected) return null
+    const roomId = selected.bed?.room?.id ?? selected.room_id
+    if (!roomId) return selected.bed?.room ?? null
+    return beds.find((bed) => bed.room.id === roomId)?.room ?? selected.bed?.room ?? null
+  }, [beds, selected])
+  const selectedRoomStatus = selectedRoom?.operational_status ?? null
+  const selectedIsCheckedIn = Boolean(selected && ["checked_in", "checked-in"].includes(selected.status))
+  const selectedIsClosed = Boolean(selected && ["checked_out", "checked-out", "cancelled", "canceled"].includes(selected.status))
 
   const metrics = useMemo(() => {
     const today = iso(new Date())
@@ -515,7 +524,7 @@ export default function BookingOperationsTimelinePage() {
   }
 
   async function setRoomStatus(status: string) {
-    const roomId = selected?.bed?.room.id ?? selected?.room_id
+    const roomId = selectedRoom?.id ?? selected?.room_id
     if (!roomId) return
     setSavingAction(true)
     const { error: rpcError } = await supabase.rpc("set_room_operational_status", {
@@ -525,14 +534,28 @@ export default function BookingOperationsTimelinePage() {
     if (rpcError) toast.error(rpcError.message)
     else {
       toast.success("Estado operativo actualizado")
-      setSelected((current) => current?.bed
-        ? {
-          ...current,
-          bed: {
-            ...current.bed,
-            room: { ...current.bed.room, operational_status: status },
-          },
-        }
+      await refreshSelected()
+    }
+    setSavingAction(false)
+  }
+
+  async function markReservationReady() {
+    if (!selected) return
+    if (selectedIsCheckedIn || selectedIsClosed) {
+      toast.info(selectedIsCheckedIn ? "El huésped ya está alojado." : "La estadía ya está cerrada.")
+      return
+    }
+    setSavingAction(true)
+    const { error: rpcError } = await supabase.rpc("supervisor_mark_reservation_ready", {
+      p_reservation_id: selected.id,
+      p_reason: "Verificación física desde centro de operaciones",
+    })
+    if (rpcError) {
+      toast.error(rpcError.message)
+    } else {
+      toast.success("Habitación lista para entrada")
+      setSelected((current) => current
+        ? { ...current, arrival_status: "ready_for_checkin" }
         : current)
       await refreshSelected()
     }
@@ -788,7 +811,7 @@ export default function BookingOperationsTimelinePage() {
                 <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">Operación de estadía</p>
                 <h2 className="mt-1 text-xl font-semibold">{selected.guest_name}</h2>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  {selected.bed?.room.location?.name} · {selected.bed?.room.room_number} · Cama {selected.bed?.bed_number}
+                  {selectedRoom?.location?.name ?? "Sin ubicación"} · {selectedRoom?.room_number ?? "Sin habitación"} · Cama {selected.bed?.bed_number ?? "—"}
                 </p>
               </div>
               <Button variant="ghost" size="icon" onClick={() => setSelected(null)}>
@@ -805,13 +828,14 @@ export default function BookingOperationsTimelinePage() {
                 </Badge>
                 <Badge variant="outline">Pago: {selected.payment_status ?? "sin registrar"}</Badge>
                 <Badge variant="outline">Origen: {selected.source ?? "interno"}</Badge>
-                {selected.bed?.room && (
+                {selectedRoom && (
                   <Badge
                     variant="outline"
-                    className={ROOM_STATUS_CLASSES[selected.bed.room.operational_status] ?? ""}
+                    className={ROOM_STATUS_CLASSES[selectedRoomStatus ?? ""] ?? ""}
                   >
-                    {ROOM_STATUS_LABELS[selected.bed.room.operational_status]
-                      ?? selected.bed.room.operational_status}
+                    {ROOM_STATUS_LABELS[selectedRoomStatus ?? ""]
+                      ?? selectedRoomStatus
+                      ?? "Sin estado"}
                   </Badge>
                 )}
                 {selectedHousekeeping.length > 0 && (
@@ -842,43 +866,49 @@ export default function BookingOperationsTimelinePage() {
                     <div>
                       <p className="font-medium">Estado operativo actual</p>
                       <p className="mt-1 text-xs text-muted-foreground">
-                        El check-in solo se completa cuando la habitación está lista o inspeccionada.
+                        {selectedIsCheckedIn
+                          ? "El huésped ya está alojado. La habitación queda ocupada durante la estadía."
+                          : selectedIsClosed
+                            ? "La estadía está cerrada. Gestiona la habitación desde Limpieza."
+                            : "Antes de la entrada, Santiago puede certificar físicamente que la habitación está lista."}
                       </p>
                     </div>
                     <Badge
                       variant="outline"
-                      className={ROOM_STATUS_CLASSES[selected.bed?.room.operational_status ?? ""] ?? ""}
+                      className={ROOM_STATUS_CLASSES[selectedRoomStatus ?? ""] ?? ""}
                     >
-                      {ROOM_STATUS_LABELS[selected.bed?.room.operational_status ?? ""]
-                        ?? selected.bed?.room.operational_status
+                      {ROOM_STATUS_LABELS[selectedRoomStatus ?? ""]
+                        ?? selectedRoomStatus
                         ?? "Sin estado"}
                     </Badge>
                   </div>
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => void setRoomStatus("cleaning")}
-                      disabled={savingAction}
-                    >
-                      En limpieza
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => void setRoomStatus("clean_pending_inspection")}
-                      disabled={savingAction}
-                    >
-                      Pendiente inspección
-                    </Button>
-                    <Button
-                      size="sm"
-                      onClick={() => void setRoomStatus("ready")}
-                      disabled={savingAction}
-                    >
-                      <CheckCircle2 className="mr-2 h-4 w-4" />Marcar lista
-                    </Button>
-                  </div>
+                  {!selectedIsCheckedIn && !selectedIsClosed && (
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => void setRoomStatus("cleaning")}
+                        disabled={savingAction}
+                      >
+                        En limpieza
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => void setRoomStatus("clean_pending_inspection")}
+                        disabled={savingAction}
+                      >
+                        Pendiente inspección
+                      </Button>
+                      <Button
+                        size="sm"
+                        onClick={() => void markReservationReady()}
+                        disabled={savingAction}
+                      >
+                        <CheckCircle2 className="mr-2 h-4 w-4" />Marcar lista para entrada
+                      </Button>
+                    </div>
+                  )}
                 </div>
               </ActionSection>
 
@@ -1041,7 +1071,7 @@ export default function BookingOperationsTimelinePage() {
                 {["confirmed", "waiting_for_room", "ready_for_checkin"].includes(selected.status) && (
                   <ActionButton
                     icon={<LogIn />}
-                    label={roomReady(selected.bed?.room.operational_status) ? "Registrar check-in" : "Registrar llegada y enviar a cola"}
+                    label={roomReady(selectedRoomStatus) ? "Registrar check-in" : "Registrar llegada y enviar a cola"}
                     onClick={() => void checkInOrQueue()}
                     disabled={savingAction}
                   />
