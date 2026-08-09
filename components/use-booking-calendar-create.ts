@@ -18,6 +18,7 @@ import { useLanguage } from "@/lib/hooks/use-language"
 import { bookingCalendarInteractionCopy, bookingTargetLabel } from "@/lib/translations/booking-calendar-interactions"
 
 type CreateState = { bedId: string; first: number; last: number; state: "valid" | "invalid" }
+type PointerLifecycleEvent = React.PointerEvent | PointerEvent
 
 type UseBookingCalendarCreateInput = {
   scrollRef: React.RefObject<HTMLDivElement | null>
@@ -58,7 +59,7 @@ export function useBookingCalendarCreate({
     try { if (element.hasPointerCapture(pointerId)) element.releasePointerCapture(pointerId) } catch { /* released */ }
   }, [])
   const capturePointer = useCallback((element: HTMLElement, pointerId: number) => {
-    try { element.setPointerCapture(pointerId) } catch { /* root handlers are fallback */ }
+    try { element.setPointerCapture(pointerId) } catch { /* native window handlers are fallback */ }
   }, [])
   const stopAutoScroll = useCallback(() => {
     if (autoScrollFrame.current !== null) window.cancelAnimationFrame(autoScrollFrame.current)
@@ -177,7 +178,7 @@ export function useBookingCalendarCreate({
     } else capturePointer(event.currentTarget, event.pointerId)
   }, [cancelCreate, cancelOther, capturePointer, scrollRef, updateCreate])
 
-  const onPointerMove = useCallback((event: React.PointerEvent) => {
+  const onPointerMove = useCallback((event: PointerLifecycleEvent) => {
     if (!createRef.current || createRef.current.pointerId !== event.pointerId) return false
     updateCreate(event.clientX)
     if (createRef.current?.active) {
@@ -187,7 +188,7 @@ export function useBookingCalendarCreate({
     return true
   }, [runAutoScroll, updateCreate])
 
-  const finishCreate = useCallback((event: React.PointerEvent) => {
+  const finishCreate = useCallback((event: PointerLifecycleEvent) => {
     const session = createRef.current
     if (!session || event.pointerId !== session.pointerId) return false
     if (session.longPressTimer !== null) window.clearTimeout(session.longPressTimer)
@@ -207,6 +208,30 @@ export function useBookingCalendarCreate({
     onOpenNewReservation(session.bed, parseISO(range.checkIn), parseISO(range.checkOut))
     return true
   }, [clearInteractionState, onOpenNewReservation, rangeForCreate, releasePointer, stopAutoScroll, suppressClickUntil])
+
+  useEffect(() => {
+    const onWindowPointerMove = (event: PointerEvent) => {
+      if (!createRef.current || createRef.current.pointerId !== event.pointerId) return
+      onPointerMove(event)
+    }
+    const onWindowPointerUp = (event: PointerEvent) => {
+      if (!createRef.current || createRef.current.pointerId !== event.pointerId) return
+      finishCreate(event)
+    }
+    const onWindowPointerCancel = (event: PointerEvent) => {
+      if (!createRef.current || createRef.current.pointerId !== event.pointerId) return
+      cancelCreate()
+    }
+
+    window.addEventListener("pointermove", onWindowPointerMove, { passive: false })
+    window.addEventListener("pointerup", onWindowPointerUp)
+    window.addEventListener("pointercancel", onWindowPointerCancel)
+    return () => {
+      window.removeEventListener("pointermove", onWindowPointerMove)
+      window.removeEventListener("pointerup", onWindowPointerUp)
+      window.removeEventListener("pointercancel", onWindowPointerCancel)
+    }
+  }, [cancelCreate, finishCreate, onPointerMove])
 
   const onCellClick = useCallback((bed: BookingCalendarBed, date: Date) => {
     if (Date.now() < suppressClickUntil.current) return
