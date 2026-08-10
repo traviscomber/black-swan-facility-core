@@ -15,8 +15,8 @@ export default function BookingsPage() {
       <BookingTimelineAlertNavigator />
       <ReservationLogisticsEditor />
       <GuestStayStatusStrip />
-      <BookingOperationsTimelinePage />
       <DailyOperationsPanel />
+      <BookingOperationsTimelinePage />
     </>
   )
 }
