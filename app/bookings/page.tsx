@@ -7,7 +7,6 @@ import { BookingTimelineAlertNavigator } from "@/components/booking-timeline-ale
 import { ReservationLogisticsEditor } from "@/components/reservation-logistics-editor"
 import { DailyOperationsPanel } from "@/components/daily-operations-panel"
 import { GuestStayStatusStrip } from "@/components/guest-stay-status-strip"
-import { HospitalityCommandCenter } from "@/components/hospitality-command-center"
 
 export default function BookingsPage() {
   return (
@@ -17,7 +16,6 @@ export default function BookingsPage() {
       <ReservationLogisticsEditor />
       <GuestStayStatusStrip />
       <BookingOperationsTimelinePage />
-      <HospitalityCommandCenter />
       <DailyOperationsPanel />
     </>
   )
