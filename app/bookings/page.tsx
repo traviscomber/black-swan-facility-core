@@ -8,7 +8,6 @@ import { ReservationLogisticsEditor } from "@/components/reservation-logistics-e
 import { DailyOperationsPanel } from "@/components/daily-operations-panel"
 import { GuestStayStatusStrip } from "@/components/guest-stay-status-strip"
 import { HospitalityCommandCenter } from "@/components/hospitality-command-center"
-import { SantiagoTodayCommandCenter } from "@/components/santiago-today-command-center"
 
 export default function BookingsPage() {
   return (
@@ -16,7 +15,6 @@ export default function BookingsPage() {
       <BookingRealtimePulse />
       <BookingTimelineAlertNavigator />
       <ReservationLogisticsEditor />
-      <SantiagoTodayCommandCenter />
       <GuestStayStatusStrip />
       <BookingOperationsTimelinePage />
       <HospitalityCommandCenter />
