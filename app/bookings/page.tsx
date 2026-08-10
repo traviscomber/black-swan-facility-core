@@ -7,6 +7,7 @@ import { BookingTimelineAlertNavigator } from "@/components/booking-timeline-ale
 import { ReservationLogisticsEditor } from "@/components/reservation-logistics-editor"
 import { DailyOperationsPanel } from "@/components/daily-operations-panel"
 import { GuestStayStatusStrip } from "@/components/guest-stay-status-strip"
+import { SantiagoHospitalityQuickTasks } from "@/components/santiago-hospitality-quick-tasks"
 
 export default function BookingsPage() {
   return (
@@ -15,6 +16,7 @@ export default function BookingsPage() {
       <BookingTimelineAlertNavigator />
       <ReservationLogisticsEditor />
       <GuestStayStatusStrip />
+      <SantiagoHospitalityQuickTasks />
       <DailyOperationsPanel />
       <BookingOperationsTimelinePage />
     </>
