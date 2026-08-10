@@ -121,6 +121,23 @@ Calendars use warm neutral cells. Empty cells use the primary surface, hover use
 
 SOP library, editor and execution screens follow the same operational design system. They must not resemble a generic document manager. Use a clear hierarchy for code, status, owner, version, estimated time, procedure steps, evidence and acceptance criteria. Avoid nested cards. A procedure step uses tone, spacing and a restrained semantic indicator. Evidence and approval controls remain visible and operational.
 
+## Mobile Housekeeping execution
+
+The cleaner-facing Housekeeping experience is mobile-first and intentionally simpler than the supervisor view.
+
+- Use one column only.
+- Show only tasks assigned to the authenticated worker.
+- The task hierarchy is: location / room, task name, guest context when relevant, checklist, evidence, completion note and final action.
+- Checklist rows require minimum 48px touch height and an explicit checked state.
+- The worker must be able to open the device camera directly with `accept="image/*"` and `capture="environment"`.
+- Completion requires 100% checklist completion, at least one photographic evidence item and a completion comment.
+- Evidence is stored against the task and must remain available for supervisor inspection.
+- If `requires_inspection` is true, worker completion moves the task to inspection rather than directly to approved/ready state.
+- The final action remains fixed at the bottom of the mobile viewport while a task is in progress.
+- Do not expose the full booking calendar, analytics, supervisor controls or room-state administration in the cleaner execution screen.
+- Use square, borderless warm surfaces and the canonical Black Swan semantic colors. Cool Sage is reserved for checked/completed actions; warnings and blockers use the warm state palette.
+- The UI must remain usable with one hand and on narrow phone screens.
+
 ## States and accessibility
 
 Empty states are concise and provide one next action. Loading uses neutral skeletons without shimmer gradients. Success uses Cool Sage sparingly. Errors use Warm Fire only on the critical element and explain the next action. All controls require visible keyboard focus, WCAG AA contrast, persistent labels and minimum 40px touch targets.
