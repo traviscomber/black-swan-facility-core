@@ -51,7 +51,7 @@ export async function POST(request: Request) {
     if (reservationError) throw reservationError
     if (!reservation) return NextResponse.json({ error: "Esta estadía ya no está activa." }, { status: 403 })
 
-    const priority = payload.category === "maintenance" ? "high" : "medium"
+    const priority = payload.category === "maintenance" ? "high" : "normal"
     const sourceCopy = {
       es: "Solicitud enviada desde portal de huésped por QR global",
       en: "Request submitted from global QR guest portal",
