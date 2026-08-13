@@ -1,0 +1,178 @@
+"use client"
+
+import { useCallback, useEffect, useMemo, useState } from "react"
+import { ChevronDown, ConciergeBell, Flame, Phone, Plus, Sparkles } from "lucide-react"
+import { toast } from "sonner"
+import { BOOKING_COMMAND_SELECTION_EVENT } from "@/components/booking-calendar-timeline"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { createClient } from "@/lib/supabase/client"
+
+type ReservationContext = {
+  id: string
+  guest_name: string
+  guest_phone: string | null
+  guest_email: string | null
+  room_id: string | null
+  location_id: string | null
+  room: { room_number: string; location: { name: string } | null } | null
+}
+
+type QuickActionKey = "towels" | "cleaning" | "heating" | "request" | "call_guest"
+
+const ACTIONS: Array<{ key: QuickActionKey; label: string; icon: typeof ConciergeBell }> = [
+  { key: "towels", label: "Toallas", icon: Sparkles },
+  { key: "cleaning", label: "Limpieza", icon: Sparkles },
+  { key: "heating", label: "Revisar calefacción", icon: Flame },
+  { key: "request", label: "Registrar solicitud", icon: Plus },
+  { key: "call_guest", label: "Llamar huésped", icon: Phone },
+]
+
+export function CompactBookingQuickActions() {
+  const supabase = useMemo(() => createClient(), [])
+  const [open, setOpen] = useState(false)
+  const [reservation, setReservation] = useState<ReservationContext | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [saving, setSaving] = useState<QuickActionKey | null>(null)
+
+  const loadReservation = useCallback(async (reservationId: string) => {
+    setLoading(true)
+    const { data, error } = await supabase
+      .from("reservations")
+      .select("id, guest_name, guest_phone, guest_email, room_id, location_id, room:rooms(room_number, location:locations(name))")
+      .eq("id", reservationId)
+      .single()
+
+    if (error) {
+      setReservation(null)
+      toast.error("No fue posible cargar la reserva para acciones rápidas")
+    } else {
+      setReservation(data as unknown as ReservationContext)
+    }
+    setLoading(false)
+  }, [supabase])
+
+  useEffect(() => {
+    const onSelection = (event: Event) => {
+      const reservationId = (event as CustomEvent<{ reservationId?: string | null }>).detail?.reservationId
+      if (!reservationId) return
+      setOpen(false)
+      void loadReservation(reservationId)
+    }
+
+    window.addEventListener(BOOKING_COMMAND_SELECTION_EVENT, onSelection)
+    return () => window.removeEventListener(BOOKING_COMMAND_SELECTION_EVENT, onSelection)
+  }, [loadReservation])
+
+  const createHospitalityRequest = useCallback(async (
+    requestType: string,
+    category: string,
+    description: string,
+  ) => {
+    if (!reservation) return { error: new Error("Selecciona una reserva") }
+    return supabase.from("hospitality_requests").insert({
+      reservation_id: reservation.id,
+      room_id: reservation.room_id,
+      location_id: reservation.location_id,
+      guest_name: reservation.guest_name,
+      guest_phone: reservation.guest_phone,
+      guest_email: reservation.guest_email,
+      request_type: requestType,
+      category,
+      description,
+      priority: "normal",
+      status: "pending",
+    })
+  }, [reservation, supabase])
+
+  const runAction = useCallback(async (key: QuickActionKey) => {
+    if (!reservation) {
+      toast.error("Selecciona primero una reserva en el calendario")
+      return
+    }
+
+    setSaving(key)
+    let error: { message: string } | null = null
+
+    if (key === "cleaning") {
+      const result = await supabase.from("housekeeping_tasks").insert({
+        reservation_id: reservation.id,
+        room_id: reservation.room_id,
+        task_type: "stayover_cleaning",
+        status: "pending",
+        priority: "normal",
+        notes: `Limpieza solicitada para ${reservation.guest_name}.`,
+      })
+      error = result.error
+    } else if (key === "towels") {
+      const result = await createHospitalityRequest("Toallas", "towels", `Preparar o reponer toallas para ${reservation.guest_name}.`)
+      error = result.error
+    } else if (key === "heating") {
+      const result = await createHospitalityRequest("heating_check", "stay_detail", `Revisar calefacción para ${reservation.guest_name}.`)
+      error = result.error
+    } else if (key === "call_guest") {
+      const result = await createHospitalityRequest("guest_call", "stay_detail", `Llamar a ${reservation.guest_name}${reservation.guest_phone ? ` al ${reservation.guest_phone}` : ""}.`)
+      error = result.error
+    } else {
+      const result = await createHospitalityRequest("guest_request", "hospitality", `Solicitud operativa para ${reservation.guest_name}.`)
+      error = result.error
+    }
+
+    if (error) toast.error(`No fue posible crear la tarea: ${error.message}`)
+    else toast.success(`${ACTIONS.find((action) => action.key === key)?.label ?? "Tarea"} creada`)
+    setSaving(null)
+  }, [createHospitalityRequest, reservation, supabase])
+
+  const context = reservation
+    ? `${reservation.guest_name} · ${reservation.room?.location?.name ?? "Sin casa"} · ${reservation.room?.room_number ?? "Sin habitación"}`
+    : "Selecciona una reserva"
+
+  return (
+    <section className="mx-3 mt-3 overflow-hidden border border-border/50 bg-[var(--bs-bg-secondary)] md:mx-4">
+      <button
+        type="button"
+        className="flex min-h-12 w-full items-center justify-between gap-3 px-4 py-2 text-left transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
+        onClick={() => setOpen((value) => !value)}
+        aria-expanded={open}
+      >
+        <div className="flex min-w-0 items-center gap-3">
+          <ConciergeBell className="h-4 w-4 shrink-0 text-primary" />
+          <div className="min-w-0">
+            <p className="text-sm font-medium">Acciones rápidas</p>
+            <p className="truncate text-xs text-muted-foreground">{context}</p>
+          </div>
+        </div>
+        <div className="flex shrink-0 items-center gap-2">
+          {reservation && <Badge variant="secondary">1 click = 1 tarea</Badge>}
+          <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${open ? "rotate-180" : ""}`} />
+        </div>
+      </button>
+
+      {open && (
+        <div className="border-t border-border/30 px-4 py-3">
+          {!reservation && (
+            <p className="mb-3 text-xs text-muted-foreground">Selecciona una reserva del calendario para habilitar las acciones.</p>
+          )}
+          <div className="flex flex-wrap gap-2">
+            {ACTIONS.map((action) => {
+              const Icon = action.icon
+              return (
+                <Button
+                  key={action.key}
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  disabled={!reservation || loading || saving !== null}
+                  onClick={() => void runAction(action.key)}
+                >
+                  <Icon className="mr-2 h-3.5 w-3.5" />
+                  {saving === action.key ? "Creando…" : action.label}
+                </Button>
+              )
+            })}
+          </div>
+        </div>
+      )}
+    </section>
+  )
+}
