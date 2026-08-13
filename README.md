@@ -1,209 +1,511 @@
 # Blackswan Facility Core
 
-Enterprise operating system for facility, hospitality, finance and field operations.
+**Operational management platform for Fundo Corcovado — hospitality, facilities, finance, procurement, field operations and administration in one system.**
 
-[![Deployed on Vercel](https://img.shields.io/badge/Production-Vercel-black?style=for-the-badge&logo=vercel)](https://vercel.com/travis-projects-c14a785a/v0-black-swan-facility-core)
+[![Production](https://img.shields.io/badge/Production-READY-1f8f4e?style=for-the-badge)](https://blackswn.app)
+[![Vercel](https://img.shields.io/badge/Deployed_on-Vercel-black?style=for-the-badge&logo=vercel)](https://vercel.com/travis-projects-c14a785a/v0-black-swan-facility-core)
+[![Next.js](https://img.shields.io/badge/Next.js-16-black?style=for-the-badge&logo=next.js)](https://nextjs.org/)
+[![Supabase](https://img.shields.io/badge/Supabase-PostgreSQL-3FCF8E?style=for-the-badge&logo=supabase&logoColor=white)](https://supabase.com/)
 
-## Current status
+> **Current state — 13 August 2026:** the application is deployed to production and the latest `main` deployment is `READY` on Vercel. Blackswan Facility Core is an actively developed operational system, not a prototype. Remaining QA/security review items are tracked separately and do not represent the breadth of functionality already implemented.
 
-**Updated:** 2026-08-08  
-**Branch:** `main`  
-**Application deployment:** READY on Vercel  
-**Release gate:** **HOLD** — production builds are healthy, but the mandatory booking-calendar multi-browser E2E gate is still pending because GitHub Actions is externally blocked by billing/spending limits.
+## What Blackswan Facility Core is
 
-Blackswan Facility Core has moved well beyond the original v0 prototype. The current system combines application workflows, canonical PostgreSQL state, authorization, operational automation and audited financial/hospitality processes.
+Blackswan Facility Core (BFCS) is the operational system of record being built for **Fundo Corcovado, Valdivia**. It connects daily hospitality work, rooms and guests, maintenance, inventory, finance, procurement, people, agriculture, livestock, energy, GIS and administrative controls against one authenticated PostgreSQL-backed application.
 
-## Product scope
+The product is designed around four principles:
 
-The platform is being developed as one operational system rather than a collection of disconnected dashboards. Current implemented surfaces and domain work include:
+- **one operational source of truth** instead of disconnected spreadsheets and dashboards;
+- **real workflows** with assignments, status transitions, evidence and audit history;
+- **role and location-aware access** rather than unrestricted CRUD screens;
+- **field usability** across desktop, tablet and mobile operational contexts.
 
-- **Hospitality & Reservations** — reservation calendar, room/bed inventory, check-in/check-out, guest profiles, requests, logistics, activities, extras, payments and booking events.
-- **Housekeeping** — task lifecycle, assignments, room readiness, guest-access states, inspection and automatic checkout/stayover workflows.
-- **Finance & Budgets** — finance documents, approvals, historical imports/mapping, budget structure, reservation folios, invoices, payments, adjustments and canonical financial postings.
-- **Procurement & Inventory** — supplier approval, purchasing, receipts, inventory intake and asset operations.
-- **Operational Tasks & SOPs** — task assignment, evidence, comments, SOP execution and operational-document linkage.
-- **Facilities & Field Operations** — maintenance and broader operational modules including people, assets, agriculture/livestock, energy, GIS and administration surfaces already present in the repository.
+## Platform at a glance
 
-## Architecture
+| Area | Implemented capabilities |
+| --- | --- |
+| Hospitality | Booking calendar, stays, room/bed inventory, arrivals, check-in/check-out, guest profiles, requests, concierge, extras, invoices, payments, logistics, activities and booking events |
+| Housekeeping | Checkout/stayover workflows, room readiness, assignments, mobile task execution, checklists, evidence upload, inspections and guest-access states |
+| Finance | Budget model, finance documents, approval queue, reconciliation, historical imports, invoice/payment state, financial adjustments and canonical postings |
+| Procurement | Purchase requests, suppliers, approval workflow, RFQ/quotation structures, supplier comparison, purchase orders, receipts and inventory intake |
+| Facilities | Maintenance work orders, incidents/issues, assets, infrastructure, property management, checklists and operational tasks |
+| Inventory | Warehouses, locations, asset registry, stock intake, movements, assignments, QR support and retirement workflow structures |
+| People & Operations | Employees, volunteers, task assignments, comments, evidence, status history, operational scopes and shift/operational workflows |
+| Agriculture | Orchard and vineyard operations, crops, care, harvest, pests, soil/amendments, equipment and analytics structures |
+| Livestock | Cattle registry, health/biometric structures, alerts, treatment plans, body-condition history and feeding recommendations |
+| Energy & Fuel | Energy management surfaces, vehicles, fuel consumption, validation, anomaly tracking and operational classifications |
+| GIS | Infrastructure/property map, coordinates, KMZ/KML overlays, connections and field-operation mapping support |
+| AI & Automation | AI operations area, agent/session/event/artifact structures, operational automation hooks and human-controlled workflows |
+| Administration | Role/access profiles, scoped permissions, audit logs, catalogs, configuration, issue types, locations and system administration |
+
+## Feature map
+
+### Hospitality & reservations
+
+The Hospitality workspace is currently the most mature end-to-end domain in BFCS.
+
+- visual booking/calendar workspace;
+- room and bed inventory;
+- whole-location and individual-bed booking modes;
+- reservation create/update workflows;
+- drag/move/swap booking operations with controlled database contracts;
+- undo support for booking changes;
+- guest profiles and stay history context;
+- arrival state and arrival-time tracking;
+- guided check-in workflow;
+- check-out validation;
+- room readiness and operational room state separation;
+- booking extras and scheduled services;
+- reservation activities;
+- transport and logistics planning;
+- guest requests and hospitality task flow;
+- daily operations inside the booking workspace;
+- Santiago hospitality quick-task sets;
+- chronological stay detail and request visibility;
+- booking event timeline;
+- invoice and payment integration;
+- reservation folio/financial state;
+- booking communication records and message templates.
+
+### Guest access & concierge
+
+BFCS includes a guest-facing operational request path in addition to internal staff workflows.
+
+- global guest QR access;
+- tablet-compatible guest request experience;
+- active-guest selection;
+- hospitality request submission;
+- request category, priority and status handling;
+- concierge workspace;
+- request assignment and follow-up;
+- source lineage back to originating guest/issue context where available.
+
+### Housekeeping
+
+Housekeeping is integrated with reservation and room state rather than maintained as a separate checklist app.
+
+- checkout-generated housekeeping lifecycle;
+- stayover housekeeping lifecycle;
+- room readiness state transitions;
+- task assignment;
+- service scheduling and due times;
+- guest access states such as do-not-disturb/reschedule;
+- mobile housekeeping task execution;
+- task checklist completion;
+- evidence/photo upload by operators;
+- inspection workflow;
+- verification fields and quality scoring structures;
+- completion/resolution notes;
+- lost-and-found structures;
+- linen inventory/movement structures.
+
+### Finance & budgets
+
+Finance is structured around controlled approval and posting rather than dashboard-only reporting.
+
+- annual/monthly budget structure;
+- budget divisions and categories;
+- imported budget source lineage;
+- finance document inbox/queue;
+- document classification and mapping status;
+- historical workbook-derived cost-center mapping;
+- finance approval/rejection paths;
+- reconciliation views/workflows;
+- supplier-linked finance documents;
+- invoice generation and lifecycle;
+- reservation payments;
+- payment reversal support;
+- reservation financial adjustments;
+- canonical financial posting structures;
+- document sequencing;
+- source-to-posting traceability;
+- finance pending-work indicator in navigation.
+
+### Procurement & suppliers
+
+The procurement domain supports the full pre-purchase data model and the operational path toward receiving inventory.
+
+- supplier directory;
+- supplier approval state;
+- purchase/procurement requests;
+- category, priority, budget and required-date fields;
+- location-aware purchasing;
+- human approval events;
+- configured approvers and approval limits;
+- quotation rounds;
+- RFQ request structures;
+- supplier quote capture;
+- quote itemization;
+- supplier comparison/recommendation structures;
+- purchase order structures;
+- receiving/receipt records;
+- discrepancy and damaged/incorrect receipt handling;
+- inventory intake workflow;
+- asset vs consumable intake;
+- procurement audit log;
+- automation policy and agent-run structures;
+- controlled outbound-message queue structures.
+
+### Inventory & assets
+
+- canonical asset registry;
+- asset code, class, category and status;
+- warehouse and warehouse-location structure;
+- serial number, brand and model tracking;
+- purchase metadata;
+- location and assignment data;
+- QR data/QR URL support;
+- photos, manuals and documents;
+- asset movement history;
+- receipt/transfer/assignment/return/retirement movements;
+- stock-item structures for consumables;
+- stock movement ledger structures;
+- minimum-stock support;
+- cost-center linkage;
+- asset retirement request workflow;
+- asset linkage to maintenance work.
+
+### Maintenance & incidents
+
+- maintenance work-order registry;
+- preventive and corrective work context;
+- asset-linked maintenance;
+- infrastructure-linked maintenance;
+- vehicle-linked maintenance;
+- room/reservation-linked maintenance;
+- scheduled start/end and target dates;
+- assignment to employees;
+- priority and extended work states;
+- blocked-work tracking;
+- checklist/evidence fields;
+- maintenance weekly view;
+- quick work-order creation;
+- filters for state, priority and unassigned work;
+- incident/issue reporting;
+- issue priority/severity/status;
+- photo evidence;
+- issue labels;
+- linkage from issues to operational tasks;
+- direct navigation between issues and maintenance.
+
+### Operational tasks, evidence & SOPs
+
+- general operational task registry;
+- priority and due dates;
+- operational area/category metadata;
+- employee and volunteer assignment;
+- comments;
+- status history;
+- evidence attachments;
+- source linkage from hospitality, maintenance, housekeeping and issues;
+- SOP procedure registry;
+- versioned SOP definitions;
+- ordered SOP steps;
+- required evidence/approval flags;
+- SOP executions;
+- execution-step state;
+- operational-document linkage;
+- task/SOP traceability.
+
+### Property & infrastructure
+
+- property-management workspace;
+- infrastructure registry;
+- categories, description and operational status;
+- latitude/longitude;
+- installation and inspection dates;
+- specifications and notes;
+- infrastructure photos/documents;
+- inspections and corrective-action structures;
+- infrastructure connection lines for GIS visualization;
+- maintenance and issue linkage to infrastructure.
+
+### GIS, map & field operations
+
+- map workspace;
+- latitude/longitude-backed operational records;
+- KMZ/KML overlay metadata;
+- overlay visibility, opacity and ordering;
+- infrastructure map connections;
+- vehicle/field-operation structures;
+- operation distance, duration and area fields;
+- KMZ attachment structures for operations;
+- mapped property/infrastructure context.
+
+### People, access & administration
+
+- employee directory;
+- volunteer registry;
+- user access profiles;
+- admin / approver / operator role model;
+- operational location/department scopes;
+- action-level permission checks;
+- administration workspace;
+- access-management screens;
+- audit screens;
+- location, asset-type and issue-type administration;
+- critical action audit log;
+- user-access audit log;
+- immutable/append-oriented operational audit structures;
+- authenticated sign-in/sign-out flows;
+- role-aware navigation that hides inaccessible modules.
+
+### Orchard
+
+- orchard overview;
+- plot registry;
+- crops;
+- planting and expected harvest dates;
+- care logs;
+- watering/fertilizing/weeding/pruning/pest-control activities;
+- harvest records;
+- quality/storage metadata;
+- pest and disease logs;
+- treatment effectiveness;
+- soil amendments;
+- orchard equipment;
+- yield and sustainability analytics structures.
+
+### Vineyard
+
+- vineyard overview;
+- plots and vines;
+- crop/vine metadata;
+- vineyard photos surface;
+- harvest records;
+- Brix, pH, quality and yield fields;
+- care logs;
+- pruning/fertilizer/irrigation context;
+- pest/disease logs;
+- soil amendment structures;
+- equipment registry;
+- annual vineyard analytics structures.
+
+### Cattle & animal health
+
+- cattle overview;
+- animal registry structure;
+- breed/gender/birth/acquisition metadata;
+- biometric/lab record structures;
+- health alerts;
+- alert severity and recommendations;
+- treatment plans;
+- dosage/frequency/outcome structures;
+- body-condition and weight history;
+- seasonal feeding recommendation structures;
+- cattle business-plan data structures.
+
+### Energy, vehicles & fuel
+
+- energy-management workspace;
+- vehicle registry;
+- road vehicles, machinery, drones and other operational classes;
+- classification workflow/status;
+- maintenance-tracking flag;
+- fuel-tracking flag;
+- fuel consumption registry;
+- liters, type, cost and odometer fields;
+- source/evidence metadata;
+- verification/rejection workflow;
+- validation-event structures;
+- anomaly detection/confirmation structures;
+- location linkage;
+- monthly summary structures.
+
+### Activities & calendars
+
+- operational activities;
+- activity type/category structures;
+- start/end dates and times;
+- capacity and attendee counts;
+- recurring activity metadata;
+- attendee registry;
+- reservation-linked activity bookings;
+- transport-required flag;
+- activity logs;
+- dedicated activities calendar surface.
+
+### AI operations & automation foundations
+
+BFCS contains an AI/automation layer designed to remain subordinate to canonical operational data and human controls.
+
+- AI operations workspace;
+- AI agent registry;
+- execution records;
+- sessions;
+- events;
+- context records;
+- generated artifact structures;
+- operation logs;
+- procurement automation policy structures;
+- agent-run and outbox structures;
+- human review/approval fields in operational workflows.
+
+## Access model
+
+Navigation and workflows are dynamically restricted by effective access.
+
+Current platform concepts include:
+
+- `admin`, `approver` and `operator` access profiles;
+- department-level access checks;
+- location/operational scopes;
+- action-level permissions for booking, hospitality, finance, procurement, inventory, maintenance and fuel operations;
+- server/database authorization on sensitive transitions;
+- RLS on production operational tables;
+- controlled `SECURITY DEFINER` RPC contracts where elevated database operations are required.
+
+The sidebar itself is permission-aware, so users see only modules they are authorized to operate.
+
+## Data architecture
 
 ```text
-Next.js / React application
-        |
-        | authenticated application contracts
-        v
-Supabase Auth + PostgreSQL
-        |
-        +-- canonical transactional tables
-        +-- RLS and operational scope authorization
-        +-- SECURITY DEFINER RPC contracts
-        +-- triggers and state-machine validation
-        +-- audit/event history
-        +-- derived operational projections/views
-        |
-        v
-Vercel production deployment
+┌───────────────────────────────────────────────┐
+│ Next.js 16 / React 19 application            │
+│ desktop · tablet · mobile operational UI     │
+└───────────────────────┬───────────────────────┘
+                        │
+                        ▼
+┌───────────────────────────────────────────────┐
+│ Supabase Auth                                 │
+│ users · roles · operational scopes            │
+└───────────────────────┬───────────────────────┘
+                        │
+                        ▼
+┌───────────────────────────────────────────────┐
+│ PostgreSQL / Supabase                         │
+│                                               │
+│ canonical transactional tables               │
+│ RLS + scoped authorization                    │
+│ RPC workflow contracts                        │
+│ triggers + state validation                   │
+│ operational history + audit                   │
+│ derived projections/views                     │
+└───────────────────────┬───────────────────────┘
+                        │
+                        ▼
+┌───────────────────────────────────────────────┐
+│ Vercel production                             │
+│ blackswn.app                                  │
+└───────────────────────────────────────────────┘
 ```
 
-### Technology stack
-
-- Next.js 16
-- React 19
-- TypeScript
-- Supabase / PostgreSQL / Auth / RLS
-- Tailwind CSS 4 + Radix UI
-- Vercel
-- Playwright for booking-calendar browser E2E
-- Node test runner for booking rules, drag logic, source policy and task notifications
-- pnpm 10
-
-## Canonical data principles
-
-The current data architecture follows several rules that are now enforced progressively across the system:
+### Canonical-data rules
 
 1. PostgreSQL owns canonical operational state.
-2. Core business transitions are validated in the database, not only in UI code.
-3. Derived views, projections and status summaries are not treated as competing sources of truth.
-4. Financial reservation status is derived from the canonical financial ledger/folio state.
-5. Booking inventory changes are concurrency-aware and must not silently double-book rooms or beds.
-6. Sensitive write paths use explicit action/role checks plus operational location scope where applicable.
-7. Trigger-only/internal functions are not intended to be public application APIs.
-8. Application code should use canonical RPC/state transitions where a workflow contract exists instead of bypassing it with arbitrary direct updates.
+2. Business-critical transitions are validated beyond the UI where workflow contracts exist.
+3. Derived dashboards and projections do not become competing sources of truth.
+4. Financial reservation status derives from canonical financial records.
+5. Booking inventory mutations are concurrency-aware.
+6. Sensitive actions use explicit role/action checks plus operational scope where applicable.
+7. Trigger-only/internal functions are not public application APIs.
+8. Historical imports preserve source lineage instead of silently rewriting the past.
 
-## Hospitality state
+## Technology stack
 
-Hospitality is currently the most hardened operational domain.
+- **Next.js 16**
+- **React 19**
+- **TypeScript 5**
+- **Supabase** — PostgreSQL, Auth, RLS, RPCs
+- **Tailwind CSS 4**
+- **Radix UI**
+- **Leaflet + Mapbox toGeoJSON** for mapping/KMZ workflows
+- **Vercel** production hosting and analytics
+- **Playwright** browser E2E
+- **Node test runner** for deterministic domain tests
+- **pnpm 10**
+- **i18n foundations** with English, Spanish and German route/navigation support
 
-Implemented and verified at database/code level:
+## Production & deployment
 
-- scoped reservation create/update policies;
-- room and bed write authorization by Hospitality scope;
-- advisory-lock/concurrency-aware reservation integrity checks;
-- booking-change, drag, swap and undo RPCs with authorization controls;
-- guided check-in controls;
-- reservation payment scope and finance permission checks;
-- canonical Housekeeping transitions and room-readiness lifecycle;
-- canonical Hospitality Request workflow with assignment requirements;
-- checkout financial-close validation;
-- debt-free reservations can check out without an artificial final invoice when no receivable exists;
-- automatic checkout/stayover housekeeping lifecycle;
-- operational logistics authorization and scope controls;
-- booking-message creation scoped to the reservation location;
-- authenticated users cannot fabricate inbound messages or delivery-state transitions.
+- **Production application:** https://blackswn.app
+- **Vercel project:** `v0-black-swan-facility-core`
+- **Git branch:** `main`
+- **Supabase project:** `ruslvodmzqctkaafnpfx`
+- **Latest verified Vercel state:** `READY`
 
-The Hospitality Requests UI now uses `update_hospitality_request(...)` rather than directly mutating the table for workflow transitions. Invalid UI-only status values and a previously hardcoded WhatsApp side effect were removed.
-
-## Finance state
-
-Finance has been moved toward a canonical approval/posting model:
-
-- finance approval/rejection RPCs require explicit finance authorization;
-- imported finance documents are separated from canonical posted financial state;
-- unbilled imported records do not automatically become reservation receivables;
-- reservation payment status is treated as a projection of canonical financial records;
-- Finance queue/read views use invoker security rather than privileged view execution;
-- anonymous execution was removed from privileged Finance RPCs;
-- historical workbook imports preserve source lineage and reconciliation information.
-
-## Security hardening completed
-
-Recent hardening work includes:
-
-- removal of anonymous execution from privileged Hospitality and Finance `SECURITY DEFINER` RPCs;
-- zero known anonymous-executable `SECURITY DEFINER` functions after the last completed ACL cleanup verification;
-- location/scope validation added to reservation creation, walk-ins, room state changes, check-in and reservation payments;
-- trigger-only functions restricted away from normal authenticated API execution;
-- Hospitality and Finance privileged views restricted to read-only access where appropriate;
-- sensitive guest-profile updates restricted to authorized roles and operational access paths;
-- bulk reservation mutation/restore RPCs verified to require authenticated admin role;
-- `record_booking_message(...)` now validates Booking scope and restricts authenticated callers to outbound/internal draft or queued messages;
-- inbound communication ingestion and delivery-state changes are reserved for controlled messaging workflows/service operations.
-
-Migration `20260808050000_scope_booking_message_creation.sql` is versioned in GitHub and has been applied and verified in production Supabase.
-
-## Database items still under review
-
-The current data/security audit is intentionally not marked complete. Remaining items include:
-
-- review of remaining authenticated `SECURITY DEFINER` RPCs by actual mutation impact and application usage;
-- confirmation of the intended default semantics for `user_operational_scopes` before changing its current allow-when-unassigned behavior;
-- `document_sequences` has RLS enabled with no direct table policies; sequence allocation is intentionally mediated by privileged code and still needs final contract documentation;
-- `btree_gist` remains installed in `public` and should not be moved without dependency analysis;
-- Supabase leaked-password protection remains an external Auth configuration warning.
-
-The reservation date constraint (`check_out > check_in`) has already been validated in production.
-
-## QA and release status
-
-The project is **not declared production-complete**.
-
-Current Qalito release verdict: **HOLD**.
-
-Why:
-
-- Vercel production deployments are currently building successfully and latest application commits are `READY`.
-- The booking calendar has deterministic unit-level tests and a dedicated Playwright E2E harness.
-- The last executable multi-browser calendar run exposed pointer/interaction failures in Chromium/Firefox/WebKit/touch scenarios.
-- Subsequent test isolation/instrumentation changes cannot currently execute because GitHub Actions jobs are being rejected before runner startup by the repository billing/spending limit.
-
-The release gate returns to evaluation once CI can execute the calendar matrix again. A pending CI gate is not considered a PASS.
-
-## Tests and commands
-
-```bash
-pnpm install
-pnpm dev
-pnpm build
-pnpm lint
-pnpm test:booking
-pnpm test:notifications
-pnpm test:e2e:booking
-```
-
-`pnpm build` runs the core task-notification and booking rule/drag/source-policy tests before the Next.js production build.
+Application changes on `main` are deployed through Vercel. Database migrations are versioned under `supabase/migrations/`; a migration being present in Git does not by itself prove production application, so database state is verified independently when changes depend on it.
 
 ## Repository structure
 
 ```text
 app/                  Next.js routes and operational modules
-components/           shared UI and product components
-lib/                  domain logic, Supabase clients and shared utilities
-scripts/              operational/build/E2E scripts
-supabase/migrations/  versioned PostgreSQL/RLS/RPC migrations
-tests/                deterministic unit/domain tests
+components/           shared UI and operational components
+lib/                  domain logic, access rules and Supabase clients
+scripts/              build, operational and E2E utilities
+supabase/migrations/  versioned PostgreSQL / RLS / RPC migrations
+tests/                deterministic booking/task tests
 .github/               GitHub Actions workflows
 ```
 
-The repository also contains historical audit/implementation documents. Some older documents describe conditions that have since been fixed or superseded; **live code, current Supabase state and this README are the preferred current references**.
+## Development
 
-## Deployment
+```bash
+pnpm install
+pnpm dev
+```
 
-Application changes on `main` deploy through Vercel.
+Production validation commands:
 
-- Vercel project: `v0-black-swan-facility-core`
-- Production application: `https://blackswn.app`
-- Supabase project ref: `ruslvodmzqctkaafnpfx`
+```bash
+pnpm lint
+pnpm test:booking
+pnpm test:notifications
+pnpm test:e2e:booking
+pnpm build
+```
 
-Database migrations are versioned under `supabase/migrations/`. A migration being present in Git does **not** by itself prove it has been applied to production; live Supabase state must be verified separately.
+`pnpm build` runs the task-notification and booking rule/drag/source-policy tests before the Next.js production build.
+
+## Reliability and security
+
+The project has already received extensive authorization and data-integrity hardening, including:
+
+- scoped reservation creation/update paths;
+- room/bed write authorization;
+- concurrency-aware booking integrity;
+- authorization on booking move/swap/undo operations;
+- controlled check-in/check-out transitions;
+- finance approval/rejection authorization;
+- restricted privileged views/RPC access;
+- room-readiness state validation;
+- hospitality-request workflow validation;
+- location-aware booking/payment/message controls;
+- protection against fabricated inbound communication state from normal authenticated clients;
+- audit logging for critical operational actions.
+
+## QA status
+
+The application is **production-deployed and operationally substantial**, while formal release verification continues as an independent engineering gate.
+
+The booking calendar has deterministic unit/domain tests plus a Playwright multi-browser harness. The last documented full E2E gate was not considered complete because CI execution was blocked by external GitHub Actions billing/spending limits after earlier interaction failures were identified. This README therefore distinguishes two things clearly:
+
+- **Product status:** deployed, functional and actively used/developed across many operational domains.
+- **Formal QA gate:** still tracked until the complete browser matrix can execute and pass under CI.
+
+A pending QA gate should not be confused with the project being an unfinished prototype.
+
+## Current engineering focus
+
+Current work is incremental hardening and operational completion, including:
+
+- mobile-first housekeeping execution;
+- hospitality daily-operations refinement;
+- maintenance/incidents alignment;
+- continued role/scope verification;
+- broader end-to-end validation across remaining operational modules.
 
 ## Development rules
 
-- Work from the latest production-aligned `main` state.
-- Keep commits small and domain-specific.
-- Never use simulated production data as canonical evidence.
-- Do not weaken RLS, authorization or integrity rules to satisfy UI/tests.
-- Do not modify production rows merely to make a demo pass.
-- Preserve canonical IDs and source lineage during imports/migrations.
-- Verify database migrations, application contracts and deployment independently.
-- Never claim a workflow is complete solely because the build passes.
-
-## Immediate next work
-
-1. Continue the authenticated `SECURITY DEFINER` mutation audit, prioritizing cross-scope and privilege-escalation risk.
-2. Resolve the intended provisioning/default behavior of `user_operational_scopes` before tightening its fallback semantics.
-3. Restore GitHub Actions execution/billing and rerun the complete booking-calendar Playwright matrix.
-4. Continue Stage 5 Hospitality operational completion while preserving canonical DB workflows.
-5. Only after those gates are verified, reconsider the Qalito release verdict.
+- work from the latest production-aligned `main` state;
+- keep commits small and domain-specific;
+- never substitute mock data for canonical production evidence;
+- do not weaken RLS or integrity rules merely to make UI/tests pass;
+- preserve canonical IDs and source lineage;
+- verify application, database and deployment state independently;
+- treat financial and booking state transitions as controlled operational contracts;
+- keep dangerous/destructive operations explicit and auditable.
 
 ---
 
-Blackswan Facility Core is being treated as an operational system of record: canonical data first, explicit authorization, traceable workflows, controlled state transitions and evidence-based release decisions.
+**Blackswan Facility Core is a unified operational platform for Fundo Corcovado: hospitality, facilities, finance, field operations and administration backed by canonical data, explicit authorization and traceable workflows.**
