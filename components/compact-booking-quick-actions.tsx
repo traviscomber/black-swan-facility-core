@@ -15,6 +15,18 @@ type ReservationContext = {
   guest_email: string | null
   room_id: string | null
   location_id: string | null
+  check_in?: string | null
+  check_out?: string | null
+  status?: string | null
+  room: { room_number: string; location: { name: string } | null } | null
+}
+
+type ReservationOption = {
+  id: string
+  guest_name: string
+  check_in: string
+  check_out: string
+  status: string
   room: { room_number: string; location: { name: string } | null } | null
 }
 
@@ -28,18 +40,26 @@ const ACTIONS: Array<{ key: QuickActionKey; label: string; icon: typeof Concierg
   { key: "call_guest", label: "Llamar huésped", icon: Phone },
 ]
 
+function reservationLabel(reservation: ReservationOption) {
+  const location = reservation.room?.location?.name ?? "Sin casa"
+  const room = reservation.room?.room_number ?? "Sin habitación"
+  return `${reservation.guest_name} · ${location} · ${room} · ${reservation.check_in} → ${reservation.check_out}`
+}
+
 export function CompactBookingQuickActions() {
   const supabase = useMemo(() => createClient(), [])
   const [open, setOpen] = useState(false)
   const [reservation, setReservation] = useState<ReservationContext | null>(null)
+  const [reservationOptions, setReservationOptions] = useState<ReservationOption[]>([])
   const [loading, setLoading] = useState(false)
+  const [optionsLoading, setOptionsLoading] = useState(false)
   const [saving, setSaving] = useState<QuickActionKey | null>(null)
 
   const loadReservation = useCallback(async (reservationId: string) => {
     setLoading(true)
     const { data, error } = await supabase
       .from("reservations")
-      .select("id, guest_name, guest_phone, guest_email, room_id, location_id, room:rooms(room_number, location:locations(name))")
+      .select("id, guest_name, guest_phone, guest_email, room_id, location_id, check_in, check_out, status, room:rooms(room_number, location:locations(name))")
       .eq("id", reservationId)
       .single()
 
@@ -52,11 +72,31 @@ export function CompactBookingQuickActions() {
     setLoading(false)
   }, [supabase])
 
+  const loadReservationOptions = useCallback(async () => {
+    setOptionsLoading(true)
+    const { data, error } = await supabase
+      .from("reservations")
+      .select("id, guest_name, check_in, check_out, status, room:rooms(room_number, location:locations(name))")
+      .not("status", "in", "(cancelled,canceled,checked_out,checked-out)")
+      .order("check_in", { ascending: true })
+      .limit(100)
+
+    if (error) {
+      setReservationOptions([])
+    } else {
+      setReservationOptions((data ?? []) as unknown as ReservationOption[])
+    }
+    setOptionsLoading(false)
+  }, [supabase])
+
+  useEffect(() => {
+    void loadReservationOptions()
+  }, [loadReservationOptions])
+
   useEffect(() => {
     const onSelection = (event: Event) => {
       const reservationId = (event as CustomEvent<{ reservationId?: string | null }>).detail?.reservationId
       if (!reservationId) return
-      setOpen(false)
       void loadReservation(reservationId)
     }
 
@@ -87,7 +127,7 @@ export function CompactBookingQuickActions() {
 
   const runAction = useCallback(async (key: QuickActionKey) => {
     if (!reservation) {
-      toast.error("Selecciona primero una reserva en el calendario")
+      toast.error("Selecciona primero una reserva")
       return
     }
 
@@ -149,10 +189,32 @@ export function CompactBookingQuickActions() {
       </button>
 
       {open && (
-        <div className="border-t border-border/30 px-4 py-3">
-          {!reservation && (
-            <p className="mb-3 text-xs text-muted-foreground">Selecciona una reserva del calendario para habilitar las acciones.</p>
-          )}
+        <div className="space-y-3 border-t border-border/30 px-4 py-3">
+          <div className="flex flex-col gap-2 lg:flex-row lg:items-center">
+            <label htmlFor="quick-actions-reservation" className="shrink-0 text-xs font-medium text-muted-foreground">
+              Reserva
+            </label>
+            <select
+              id="quick-actions-reservation"
+              value={reservation?.id ?? ""}
+              onChange={(event) => {
+                const reservationId = event.target.value
+                if (!reservationId) {
+                  setReservation(null)
+                  return
+                }
+                void loadReservation(reservationId)
+              }}
+              disabled={optionsLoading || loading}
+              className="h-9 min-w-0 flex-1 rounded-md border border-input bg-background px-3 text-sm text-foreground outline-none focus:ring-2 focus:ring-ring"
+            >
+              <option value="">{optionsLoading ? "Cargando reservas…" : "Selecciona una reserva"}</option>
+              {reservationOptions.map((option) => (
+                <option key={option.id} value={option.id}>{reservationLabel(option)}</option>
+              ))}
+            </select>
+          </div>
+
           <div className="flex flex-wrap gap-2">
             {ACTIONS.map((action) => {
               const Icon = action.icon
