@@ -114,7 +114,6 @@ export function DailyOperationsPanel() {
     ]
 
     setItems(nextItems)
-    if (nextItems.length > 0) setOpen(true)
     setLoading(false)
   }, [copy.housekeepingFallback, copy.hospitalityFallback, copy.operationsFallback, supabase])
 
