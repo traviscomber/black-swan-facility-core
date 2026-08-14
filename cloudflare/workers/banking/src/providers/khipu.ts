@@ -1,4 +1,7 @@
+import { hmacSha256Base64, timingSafeEqual } from './crypto'
 import type { FinancialProviderAdapter, NormalizedPaymentEvent } from './types'
+
+const MAX_WEBHOOK_AGE_MS = 300_000
 
 export const khipuAdapter: FinancialProviderAdapter = {
   key: 'khipu',
@@ -12,11 +15,21 @@ export const khipuAdapter: FinancialProviderAdapter = {
     chileNative: true,
   },
 
-  // Khipu v3 webhooks carry x-khipu-signature. The exact signing implementation
-  // is intentionally activated only after the merchant secret is configured and
-  // validated against Khipu's sandbox. Fail closed until then.
-  async verifyWebhook() {
-    return false
+  async verifyWebhook(request: Request, secret: string) {
+    const header = request.headers.get('x-khipu-signature')
+    if (!header || !secret) return false
+    const parts = Object.fromEntries(header.split(',').map((part) => {
+      const [key, ...rest] = part.trim().split('=')
+      return [key, rest.join('=')]
+    }))
+    const timestamp = parts.t
+    const expected = parts.s
+    if (!timestamp || !expected) return false
+    const ts = Number(timestamp)
+    if (!Number.isFinite(ts) || Math.abs(Date.now() - ts) > MAX_WEBHOOK_AGE_MS) return false
+    const rawBody = await request.clone().text()
+    const actual = await hmacSha256Base64(secret, `${timestamp}.${rawBody}`)
+    return timingSafeEqual(actual, expected)
   },
 
   async parsePaymentEvent(request: Request): Promise<NormalizedPaymentEvent> {
