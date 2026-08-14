@@ -11,6 +11,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 const operationsApi = process.env.NEXT_PUBLIC_BLACK_SWAN_OPERATIONS_API_URL
 
 type WorkspacePayload = Record<string, unknown>
+type WorkspaceRow = Record<string, unknown>
+type WorkspaceSection = { key: string; rows: WorkspaceRow[] }
 type NavItem = { key: string; label: string; href: string }
 type Navigation = { role?: string; is_member?: boolean; items?: NavItem[] }
 
@@ -43,13 +45,34 @@ function displayValue(value: unknown) {
   return String(value)
 }
 
-function findRows(payload: WorkspacePayload) {
-  const preferred = ['members','events','collections','costs','providers','publications','batches','rules','checks','rows']
+function getSections(payload: WorkspacePayload): WorkspaceSection[] {
+  const preferred = ['members','events','collections','materials','costs','responsibilities','providers','engagements','publications','batches','rows','rules','checks']
+  const seen = new Set<string>()
+  const sections: WorkspaceSection[] = []
+
   for (const key of preferred) {
-    if (Array.isArray(payload[key])) return { key, rows: payload[key] as Array<Record<string, unknown>> }
+    const value = payload[key]
+    if (Array.isArray(value)) {
+      sections.push({ key, rows: value as WorkspaceRow[] })
+      seen.add(key)
+    }
   }
-  const entry = Object.entries(payload).find(([, value]) => Array.isArray(value))
-  return entry ? { key: entry[0], rows: entry[1] as Array<Record<string, unknown>> } : { key: 'records', rows: [] }
+
+  for (const [key, value] of Object.entries(payload)) {
+    if (key === 'summary' || seen.has(key) || !Array.isArray(value)) continue
+    sections.push({ key, rows: value as WorkspaceRow[] })
+  }
+
+  return sections.length ? sections : [{ key: 'records', rows: [] }]
+}
+
+function sectionColumns(rows: WorkspaceRow[]) {
+  const first = rows[0]
+  if (!first) return []
+  return Object.keys(first).filter((key) => {
+    const value = first[key]
+    return !Array.isArray(value) && (typeof value !== 'object' || value === null)
+  }).slice(0, 10)
 }
 
 export function OsWorkspace({ workspace, title, description }: { workspace: string; title: string; description: string }) {
@@ -81,15 +104,7 @@ export function OsWorkspace({ workspace, title, description }: { workspace: stri
   useEffect(() => { void load() }, [workspace])
 
   const summary = (payload?.summary && typeof payload.summary === 'object' ? payload.summary : {}) as Record<string, unknown>
-  const { key: rowKey, rows } = useMemo(() => findRows(payload || {}), [payload])
-  const columns = useMemo(() => {
-    const first = rows[0]
-    if (!first) return []
-    return Object.keys(first).filter((key) => {
-      const value = first[key]
-      return !Array.isArray(value) && (typeof value !== 'object' || value === null)
-    }).slice(0, 10)
-  }, [rows])
+  const sections = useMemo(() => getSections(payload || {}), [payload])
 
   return (
     <div className="space-y-6">
@@ -126,20 +141,25 @@ export function OsWorkspace({ workspace, title, description }: { workspace: stri
 
           <OsActions workspace={workspace} payload={payload || {}} references={references} onDone={load} />
 
-          <Card>
-            <CardHeader>
-              <CardTitle>{humanize(rowKey)}</CardTitle>
-              <CardDescription>Canonical records only. Empty states indicate missing source data or no records, not simulated content.</CardDescription>
-            </CardHeader>
-            <CardContent className="overflow-x-auto">
-              {rows.length === 0 ? <p className="text-sm text-muted-foreground">No canonical records are available for this workspace yet.</p> : (
-                <table className="w-full min-w-[720px] text-sm">
-                  <thead><tr>{columns.map((column) => <th key={column} className="border-b p-2 text-left font-medium">{humanize(column)}</th>)}</tr></thead>
-                  <tbody>{rows.map((row, index) => <tr key={String(row.id || index)}>{columns.map((column) => <td key={column} className="border-b p-2 align-top">{displayValue(row[column])}</td>)}</tr>)}</tbody>
-                </table>
-              )}
-            </CardContent>
-          </Card>
+          {sections.map((section) => {
+            const columns = sectionColumns(section.rows)
+            return (
+              <Card key={section.key}>
+                <CardHeader>
+                  <CardTitle>{humanize(section.key)}</CardTitle>
+                  <CardDescription>Canonical records only. Empty states indicate missing source data or no records, not simulated content.</CardDescription>
+                </CardHeader>
+                <CardContent className="overflow-x-auto">
+                  {section.rows.length === 0 ? <p className="text-sm text-muted-foreground">No canonical records are available for this section yet.</p> : (
+                    <table className="w-full min-w-[720px] text-sm">
+                      <thead><tr>{columns.map((column) => <th key={column} className="border-b p-2 text-left font-medium">{humanize(column)}</th>)}</tr></thead>
+                      <tbody>{section.rows.map((row, index) => <tr key={String(row.id || `${section.key}-${index}`)}>{columns.map((column) => <td key={column} className="border-b p-2 align-top">{displayValue(row[column])}</td>)}</tr>)}</tbody>
+                    </table>
+                  )}
+                </CardContent>
+              </Card>
+            )
+          })}
         </>
       )}
     </div>
