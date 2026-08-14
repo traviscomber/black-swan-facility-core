@@ -1,3 +1,6 @@
+import { handleProviderWebhook, WebhookError } from './provider-webhooks'
+import { listProviderCapabilities } from './providers'
+
 type JsonRecord = Record<string, unknown>
 
 export interface Env {
@@ -5,6 +8,8 @@ export interface Env {
   ENVIRONMENT: string
   SUPABASE_URL?: string
   SUPABASE_ANON_KEY?: string
+  BANK_WEBHOOK_MACHINE_TOKEN?: string
+  FINANCIAL_PROVIDER_WEBHOOK_SECRETS_JSON?: string
 }
 
 class ApiError extends Error {
@@ -105,6 +110,16 @@ export default {
         return json({ status: 'ok', service: 'black-swan-banking', request_id: id }, 200, id)
       }
 
+      if (request.method === 'GET' && url.pathname === `/${version}/banking/providers`) {
+        return json({ data: listProviderCapabilities(), request_id: id }, 200, id)
+      }
+
+      const webhookMatch = url.pathname.match(new RegExp(`^/${version}/banking/webhooks/(fintoc|khipu|transbank|stripe)/([0-9a-fA-F-]{36})$`))
+      if (webhookMatch && request.method === 'POST') {
+        const data = await handleProviderWebhook(request, env, webhookMatch[1], webhookMatch[2])
+        return json({ data, request_id: id }, 200, id)
+      }
+
       const token = await requireUser(request, env)
 
       if (request.method === 'GET' && url.pathname === `/${version}/banking/cash-transactions`) {
@@ -126,7 +141,11 @@ export default {
 
       throw new ApiError('not_found', 404)
     } catch (error) {
-      const normalized = error instanceof ApiError ? error : new ApiError('internal_error', 500)
+      const normalized = error instanceof WebhookError
+        ? new ApiError(error.code, error.status)
+        : error instanceof ApiError
+          ? error
+          : new ApiError('internal_error', 500)
       console.error(JSON.stringify({
         level: normalized.status >= 500 ? 'error' : 'warning',
         service: 'black-swan-banking',
