@@ -1,0 +1,25 @@
+name = "black-swan-ocr"
+main = "src/index.ts"
+compatibility_date = "2026-08-14"
+
+[vars]
+ENVIRONMENT = "development"
+MODEL_PROVIDER = "configurable"
+MODEL_NAME = "document-extraction-v1"
+
+[[r2_buckets]]
+binding = "DOCUMENTS_BUCKET"
+bucket_name = "black-swan-documents"
+
+[[queues.consumers]]
+queue = "black-swan-ocr"
+max_batch_size = 5
+max_batch_timeout = 10
+max_retries = 3
+
+# Configure outside GitHub:
+# SUPABASE_URL
+# SUPABASE_ANON_KEY
+# OCR_MACHINE_TOKEN
+# DOCUMENT_AI_ENDPOINT
+# DOCUMENT_AI_TOKEN (optional, provider dependent)
