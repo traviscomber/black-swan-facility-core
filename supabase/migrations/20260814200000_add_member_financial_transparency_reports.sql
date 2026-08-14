@@ -46,14 +46,13 @@ begin
     return false;
   end if;
 
-  -- Existing entity-specific finance entitlement always wins.
   if public.can_access_legal_entity(p_legal_entity_id, 'finance') then
     return true;
   end if;
 
   select code into v_code
   from public.legal_entities
-  where id = p_legal_entity_id and active;
+  where id = p_legal_entity_id and is_active;
 
   if v_code not in ('BS_INFRA', 'BS_CORPORACION') then
     return false;
@@ -99,7 +98,7 @@ begin
 
   select code, display_name into v_code, v_name
   from public.legal_entities
-  where id = p_legal_entity_id and active;
+  where id = p_legal_entity_id and is_active;
 
   if v_code is null then
     raise exception 'LEGAL_ENTITY_NOT_FOUND';
