@@ -1,0 +1,7 @@
+name = "black-swan-os-hr"
+main = "src/index.ts"
+compatibility_date = "2026-08-14"
+
+[vars]
+API_VERSION = "v1"
+ENVIRONMENT = "development"
