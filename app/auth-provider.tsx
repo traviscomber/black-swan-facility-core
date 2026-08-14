@@ -4,7 +4,7 @@ import { ReactNode, useEffect, useState } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 
-const protectedPaths = ['/procurement', '/dashboard', '/admin']
+const protectedPaths = ['/procurement', '/dashboard', '/admin', '/accounting']
 
 function isProtected(pathname: string | null) {
   return protectedPaths.some(p => pathname?.startsWith(p))
