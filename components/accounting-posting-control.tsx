@@ -43,11 +43,7 @@ async function callApi(path: string, init: RequestInit = {}) {
   if (!token) throw new Error('Authentication required')
   const response = await fetch(`${apiBase}${path}`, {
     ...init,
-    headers: {
-      authorization: `Bearer ${token}`,
-      'content-type': 'application/json',
-      ...(init.headers || {}),
-    },
+    headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json', ...(init.headers || {}) },
   })
   const body = await response.json().catch(() => ({}))
   if (!response.ok) throw new Error(body?.error?.message || body?.error?.code || 'Accounting request failed')
@@ -89,23 +85,9 @@ export function AccountingPostingControl() {
     try {
       const documentId = await callApi(`/v1/accounting/intakes/${intakeId}/materialize`, { method: 'POST', body: '{}' })
       setNotice(`Canonical document created: ${String(documentId)}`)
-      await load()
+      router.push(`/accounting/posting/document/${String(documentId)}`)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Materialization failed')
-    } finally {
-      setBusy(null)
-    }
-  }
-
-  async function createJournal(documentId: string) {
-    setBusy(documentId)
-    setError(null)
-    setNotice(null)
-    try {
-      const journalId = await callApi(`/v1/accounting/documents/${documentId}/journal`, { method: 'POST', body: '{}' })
-      router.push(`/accounting/posting/${String(journalId)}`)
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Draft journal creation failed')
     } finally {
       setBusy(null)
     }
@@ -127,9 +109,7 @@ export function AccountingPostingControl() {
             <div key={row.id} className="flex flex-col gap-3 rounded-lg border p-4 md:flex-row md:items-center md:justify-between">
               <div>
                 <div className="font-medium">{row.source_file_name || row.proposed_document_number || row.id}</div>
-                <div className="text-sm text-muted-foreground">
-                  {row.proposed_document_type || 'Unclassified'} · {row.proposed_currency || ''} {row.proposed_total_amount ?? ''}
-                </div>
+                <div className="text-sm text-muted-foreground">{row.proposed_document_type || 'Unclassified'} · {row.proposed_currency || ''} {row.proposed_total_amount ?? ''}</div>
               </div>
               <Button onClick={() => materialize(row.id)} disabled={busy === row.id}>Create canonical document</Button>
             </div>
@@ -140,7 +120,7 @@ export function AccountingPostingControl() {
       <Card>
         <CardHeader>
           <CardTitle>Canonical Documents</CardTitle>
-          <CardDescription>Approved source documents. A draft journal can only be created after explicit accounting allocations exist.</CardDescription>
+          <CardDescription>Every document must be allocated and reconciled before journal creation.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
           {documents.length === 0 && <p className="text-sm text-muted-foreground">No canonical documents awaiting posting work.</p>}
@@ -153,7 +133,7 @@ export function AccountingPostingControl() {
                 </div>
                 <div className="text-sm text-muted-foreground">{row.document_date} · {row.currency} {row.total_amount}</div>
               </div>
-              <Button variant="outline" onClick={() => createJournal(row.id)} disabled={busy === row.id}>Create / open draft journal</Button>
+              <Button variant="outline" onClick={() => router.push(`/accounting/posting/document/${row.id}`)}>Review allocations</Button>
             </div>
           ))}
         </CardContent>
