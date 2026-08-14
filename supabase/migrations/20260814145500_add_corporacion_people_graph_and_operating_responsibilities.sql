@@ -28,8 +28,8 @@ create index if not exists corporacion_operating_responsibilities_scope_idx
 create or replace view public.corporacion_people_graph as
 select
   m.id as member_id,
-  m.display_name as member_name,
-  m.membership_status,
+  m.full_name as member_name,
+  m.status as membership_status,
   m.email as member_email,
   m.phone as member_phone,
   mp.location_id as member_current_location_id,
@@ -43,12 +43,12 @@ select
   g.email as guest_email,
   g.phone as guest_phone,
   gi.event_id,
-  public.is_member_on_ground(m.id, gi.location_id) as inviting_member_on_ground
+  public.is_member_on_ground(m.id, now()) as inviting_member_on_ground
 from public.members m
 left join lateral (
   select p.location_id, p.checked_in_at
   from public.member_presence p
-  where p.member_id = m.id and p.checked_out_at is null
+  where p.member_id = m.id and p.status = 'on_ground' and p.checked_out_at is null
   order by p.checked_in_at desc
   limit 1
 ) mp on true
