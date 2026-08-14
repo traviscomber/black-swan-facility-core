@@ -1,0 +1,10 @@
+name = "black-swan-accounting-coa"
+main = "src/index.ts"
+compatibility_date = "2026-08-14"
+
+[vars]
+API_VERSION = "v1"
+ENVIRONMENT = "development"
+
+# Configure SUPABASE_URL and SUPABASE_ANON_KEY in Cloudflare.
+# This worker uses the end-user Supabase token and preserves RLS.
