@@ -8,7 +8,6 @@ import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 
 const financeApi = process.env.NEXT_PUBLIC_BLACK_SWAN_FINANCE_API_URL
-const coreApi = process.env.NEXT_PUBLIC_BLACK_SWAN_API_URL
 
 type Entity = { id: string; code: string; display_name: string }
 type ReportType = 'pl' | 'balance-sheet' | 'cash-flow' | 'cash-status' | 'revenue-donations'
@@ -58,15 +57,15 @@ export function FinancialTransparencyDashboard() {
   const [busy, setBusy] = useState(false)
 
   useEffect(() => {
-    if (!coreApi) {
-      setError('NEXT_PUBLIC_BLACK_SWAN_API_URL is not configured.')
+    if (!financeApi) {
+      setError('NEXT_PUBLIC_BLACK_SWAN_FINANCE_API_URL is not configured.')
       return
     }
-    void call(`${coreApi}/v1/entities`).then((rows: Entity[]) => {
+    void call(`${financeApi}/v1/finance/entities`).then((rows: Entity[]) => {
       setEntities(rows || [])
       const preferred = (rows || []).find((row) => row.code === 'BS_CORPORACION') || rows?.[0]
       if (preferred) setEntityId(preferred.id)
-    }).catch((e) => setError(e instanceof Error ? e.message : 'Unable to load legal entities'))
+    }).catch((e) => setError(e instanceof Error ? e.message : 'Unable to load authorized report entities'))
   }, [])
 
   async function loadReport() {
@@ -97,7 +96,7 @@ export function FinancialTransparencyDashboard() {
       <Card>
         <CardHeader>
           <CardTitle>Financial Transparency</CardTitle>
-          <CardDescription>Read-only approved reporting by legal entity. Member access is restricted server-side to Black Swan Infra and Black Swan Corporación.</CardDescription>
+          <CardDescription>Read-only approved reporting. The entity selector itself comes from the canonical server-side finance policy.</CardDescription>
         </CardHeader>
         <CardContent className="grid gap-3 md:grid-cols-4">
           <select className="h-10 rounded-md border bg-background px-3 text-sm" value={entityId} onChange={(e) => setEntityId(e.target.value)}>
