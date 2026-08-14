@@ -47,18 +47,19 @@ async function requireUser(request: Request, env: Env) {
   return token
 }
 
-async function rpc(env: Env, token: string, name: string) {
+async function rpc(env: Env, token: string, name: string, payload: JsonRecord = {}) {
   const response = await supabaseFetch(env, `/rest/v1/rpc/${name}`, token, {
     method: 'POST',
-    body: '{}',
+    body: JSON.stringify(payload),
   })
   if (!response.ok) {
     const detail = await response.text()
     if (response.status === 401) throw new ApiError('unauthorized', 401)
     if (response.status === 403 || detail.includes('FORBIDDEN')) throw new ApiError('forbidden', 403)
-    throw new ApiError('workspace_failed', 409, detail.slice(0, 220) || name)
+    throw new ApiError('workspace_operation_failed', 409, detail.slice(0, 240) || name)
   }
-  return await response.json()
+  const text = await response.text()
+  return text ? JSON.parse(text) : null
 }
 
 const workspaces: Record<string, string> = {
@@ -73,6 +74,44 @@ const workspaces: Record<string, string> = {
   audit: 'get_black_swan_audit_center',
 }
 
+function actionPayload(action: string, body: JsonRecord) {
+  switch (action) {
+    case 'member-presence':
+      return { rpc: 'set_member_ground_presence', payload: { p_member_id: body.member_id, p_action: body.action, p_location_id: body.location_id || null, p_notes: body.notes || null } }
+    case 'guest-invitation':
+      return { rpc: 'create_member_guest_invitation', payload: { p_member_id: body.member_id, p_guest_name: body.guest_name, p_valid_from: body.valid_from, p_valid_until: body.valid_until, p_event_id: body.event_id || null, p_reservation_id: body.reservation_id || null } }
+    case 'event':
+      return { rpc: 'create_member_operational_event', payload: { p_member_id: body.member_id, p_name: body.name, p_start_date: body.start_date, p_end_date: body.end_date, p_location_name: body.location_name || null, p_member_role: body.member_role || 'host' } }
+    case 'education-material':
+      return { rpc: 'add_event_education_material', payload: { p_collection_id: body.collection_id, p_material_type: body.material_type, p_title: body.title, p_privacy_level: body.privacy_level || 'internal', p_source_url: body.source_url || null, p_storage_path: body.storage_path || null } }
+    case 'orchard-kitchen-cost':
+      return { rpc: 'record_orchard_kitchen_cost', payload: { p_cost_domain: body.cost_domain, p_amount_clp: body.amount_clp, p_incurred_on: body.incurred_on, p_description: body.description, p_supplier_id: body.supplier_id || null, p_procurement_request_id: body.procurement_request_id || null } }
+    case 'event-provider':
+      return { rpc: 'register_event_service_provider', payload: { p_supplier_id: body.supplier_id, p_service_category: body.service_category, p_service_description: body.service_description || null, p_coverage_area: body.coverage_area || null, p_capacity_notes: body.capacity_notes || null } }
+    case 'publication-draft':
+      return { rpc: 'create_foundation_publication_draft', payload: { p_education_material_id: body.education_material_id, p_channel: body.channel, p_public_title: body.public_title, p_public_summary: body.public_summary || null, p_campaign_reference: body.campaign_reference || null } }
+    case 'import-review':
+      return { rpc: 'review_canonical_import_batch', payload: { p_batch_id: body.batch_id, p_decision: body.decision, p_notes: body.notes || null } }
+    case 'intercompany-rule':
+      return { rpc: 'save_intercompany_draft_rule', payload: {
+        p_rule_name: body.rule_name,
+        p_source_legal_entity_id: body.source_legal_entity_id,
+        p_destination_legal_entity_id: body.destination_legal_entity_id,
+        p_rule_type: body.rule_type,
+        p_frequency: body.frequency,
+        p_calculation_method: body.calculation_method,
+        p_effective_from: body.effective_from,
+        p_fixed_amount: body.fixed_amount ?? null,
+        p_percentage_rate: body.percentage_rate ?? null,
+        p_tax_treatment: body.tax_treatment || null,
+        p_agreement_reference: body.agreement_reference || null,
+        p_notes: body.notes || null,
+      } }
+    default:
+      throw new ApiError('unsupported_action', 404)
+  }
+}
+
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const requestId = request.headers.get('cf-ray') || request.headers.get('x-request-id') || crypto.randomUUID()
@@ -84,17 +123,26 @@ export default {
         return json({ status: 'ok', service: 'black-swan-operations', request_id: requestId }, 200, requestId)
       }
 
-      if (request.method !== 'GET') throw new ApiError('method_not_allowed', 405)
       const token = await requireUser(request, env)
 
-      if (url.pathname === `/${version}/os/navigation`) {
+      if (request.method === 'GET' && url.pathname === `/${version}/os/navigation`) {
         return json({ data: await rpc(env, token, 'get_black_swan_os_navigation'), request_id: requestId }, 200, requestId)
       }
 
-      const match = url.pathname.match(new RegExp(`^/${version}/os/workspaces/([a-z-]+)$`))
-      if (!match || !workspaces[match[1]]) throw new ApiError('not_found', 404)
+      const workspaceMatch = url.pathname.match(new RegExp(`^/${version}/os/workspaces/([a-z-]+)$`))
+      if (workspaceMatch && request.method === 'GET') {
+        if (!workspaces[workspaceMatch[1]]) throw new ApiError('not_found', 404)
+        return json({ data: await rpc(env, token, workspaces[workspaceMatch[1]]), request_id: requestId }, 200, requestId)
+      }
 
-      return json({ data: await rpc(env, token, workspaces[match[1]]), request_id: requestId }, 200, requestId)
+      const actionMatch = url.pathname.match(new RegExp(`^/${version}/os/actions/([a-z-]+)$`))
+      if (actionMatch && request.method === 'POST') {
+        const body = await request.json() as JsonRecord
+        const action = actionPayload(actionMatch[1], body)
+        return json({ data: await rpc(env, token, action.rpc, action.payload), request_id: requestId }, 200, requestId)
+      }
+
+      throw new ApiError('not_found', 404)
     } catch (error) {
       const normalized = error instanceof ApiError ? error : new ApiError('internal_error', 500)
       console.error(JSON.stringify({
