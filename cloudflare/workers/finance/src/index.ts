@@ -51,25 +51,27 @@ async function requireUser(request: Request, env: Env) {
   return token
 }
 
-async function report(env: Env, token: string, entityId: string, reportType: string, from: string | null, to: string | null) {
-  const response = await supabaseFetch(env, '/rest/v1/rpc/get_entity_financial_report', token, {
+async function rpc(env: Env, token: string, name: string, payload: JsonRecord = {}) {
+  const response = await supabaseFetch(env, `/rest/v1/rpc/${name}`, token, {
     method: 'POST',
-    body: JSON.stringify({
-      p_legal_entity_id: entityId,
-      p_report_type: reportType,
-      p_from: from || null,
-      p_to: to || null,
-    }),
+    body: JSON.stringify(payload),
   })
-
   if (!response.ok) {
     const detail = await response.text()
     if (response.status === 401) throw new ApiError('unauthorized', 401)
     if (response.status === 403 || detail.includes('FINANCIAL_REPORT_FORBIDDEN')) throw new ApiError('forbidden', 403)
     throw new ApiError('financial_report_failed', 409, detail.slice(0, 200) || 'financial_report_failed')
   }
-
   return await response.json()
+}
+
+async function report(env: Env, token: string, entityId: string, reportType: string, from: string | null, to: string | null) {
+  return rpc(env, token, 'get_entity_financial_report', {
+    p_legal_entity_id: entityId,
+    p_report_type: reportType,
+    p_from: from || null,
+    p_to: to || null,
+  })
 }
 
 export default {
@@ -85,6 +87,12 @@ export default {
 
       if (request.method !== 'GET') throw new ApiError('method_not_allowed', 405)
       const token = await requireUser(request, env)
+
+      if (url.pathname === `/${version}/finance/entities`) {
+        const data = await rpc(env, token, 'list_financial_report_entities')
+        return json({ data, request_id: id }, 200, id)
+      }
+
       const match = url.pathname.match(new RegExp(`^/${version}/finance/entities/([0-9a-fA-F-]{36})/(pl|balance-sheet|cash-flow|cash-status|revenue-donations)$`))
       if (!match) throw new ApiError('not_found', 404)
 
