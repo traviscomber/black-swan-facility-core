@@ -76,16 +76,27 @@ async function listCash(env: Env, token: string, entityId: string | null) {
 async function listProposals(env: Env, token: string, cashId: string) {
   const response = await supabaseFetch(
     env,
-    `/rest/v1/accounting_reconciliation_matches?select=id,legal_entity_id,cash_transaction_id,accounting_document_id,matched_amount,match_method,confidence,status,proposed_by,notes,created_at&cash_transaction_id=eq.${encodeURIComponent(cashId)}&order=confidence.desc`,
+    `/rest/v1/accounting_reconciliation_matches?select=id,legal_entity_id,cash_transaction_id,accounting_document_id,matched_amount,match_method,confidence,status,proposed_by,reviewed_by,reviewed_at,notes,created_at&cash_transaction_id=eq.${encodeURIComponent(cashId)}&order=confidence.desc`,
     token,
   )
   if (!response.ok) throw new ApiError('reconciliation_lookup_failed', 502)
   return await response.json()
 }
 
+async function reviewProposal(env: Env, token: string, matchId: string, request: Request) {
+  const payload = await request.json() as JsonRecord
+  const decision = typeof payload.decision === 'string' ? payload.decision : ''
+  if (!new Set(['approved', 'rejected']).has(decision)) throw new ApiError('invalid_decision', 400)
+  return rpc(env, token, 'review_reconciliation_match', {
+    p_match_id: matchId,
+    p_decision: decision,
+    p_notes: typeof payload.notes === 'string' ? payload.notes : null,
+  })
+}
+
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
-    const id = request.headers.get('cf-ray') || crypto.randomUUID()
+    const id = request.headers.get('cf-ray') || request.headers.get('x-request-id') || crypto.randomUUID()
     const version = env.API_VERSION || 'v1'
     const url = new URL(request.url)
 
@@ -106,6 +117,11 @@ export default {
       }
       if (proposals && request.method === 'POST') {
         return json({ data: await rpc(env, token, 'propose_reconciliation_matches', { p_cash_transaction_id: proposals[1] }), request_id: id }, 200, id)
+      }
+
+      const reviewMatch = url.pathname.match(new RegExp(`^/${version}/banking/reconciliation-matches/([0-9a-fA-F-]{36})/review$`))
+      if (reviewMatch && request.method === 'POST') {
+        return json({ data: await reviewProposal(env, token, reviewMatch[1], request), request_id: id }, 200, id)
       }
 
       throw new ApiError('not_found', 404)
