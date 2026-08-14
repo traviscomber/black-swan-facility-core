@@ -49,6 +49,7 @@ declare
   v_targets text[] := array[
     'create_reservation_atomic',
     'create_walk_in_reservation',
+    'check_in_or_queue',
     'add_reservation_financial_adjustment',
     'reverse_reservation_payment',
     'void_reservation_financial_adjustment',
