@@ -12,11 +12,11 @@ export const khipuAdapter: FinancialProviderAdapter = {
     chileNative: true,
   },
 
-  // Khipu payment notifications must be validated against the provider using the
-  // configured collector/API credentials. Until credentials are configured, the
-  // generic webhook endpoint must reject rather than trust the payload itself.
-  async verifyWebhook(_request: Request, secret: string) {
-    return Boolean(secret && secret.startsWith('configured:'))
+  // Khipu v3 webhooks carry x-khipu-signature. The exact signing implementation
+  // is intentionally activated only after the merchant secret is configured and
+  // validated against Khipu's sandbox. Fail closed until then.
+  async verifyWebhook() {
+    return false
   },
 
   async parsePaymentEvent(request: Request): Promise<NormalizedPaymentEvent> {
@@ -31,7 +31,7 @@ export const khipuAdapter: FinancialProviderAdapter = {
       amount: typeof payload.amount === 'number' ? payload.amount : undefined,
       currency: typeof payload.currency === 'string' ? payload.currency : undefined,
       externalReference: typeof payload.transaction_id === 'string' ? payload.transaction_id : null,
-      occurredAt: typeof payload.created_at === 'string' ? payload.created_at : null,
+      occurredAt: typeof payload.conciliation_date === 'string' ? payload.conciliation_date : typeof payload.created_at === 'string' ? payload.created_at : null,
       rawPayload: payload,
     }
   },
