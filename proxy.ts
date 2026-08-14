@@ -11,6 +11,11 @@ const PUBLIC_API_PREFIXES = ["/api/auth"]
 const CALENDAR_E2E_PATH = "/bookings/e2e-harness"
 
 type RouteLocale = (typeof LOCALES)[number]
+type RouteAccess = {
+  role_key?: string | null
+  is_admin?: boolean
+  can_approve_procurement?: boolean
+}
 
 function isRouteLocale(value: string | undefined): value is RouteLocale {
   return !!value && LOCALES.includes(value as RouteLocale)
@@ -170,9 +175,17 @@ export async function proxy(request: NextRequest) {
     return setLocaleCookie(NextResponse.redirect(loginUrl), activeLocale)
   }
 
-  const procurementRole = user.app_metadata?.procurement_role
-  const isAdmin = procurementRole === "admin"
-  const isApprover = procurementRole === "approver" || isAdmin
+  const { data: routeAccessData, error: routeAccessError } = await supabase.rpc(
+    "get_current_route_access",
+  )
+
+  // Fail closed for protected role-sensitive routes if the canonical access
+  // snapshot cannot be resolved. Do not fall back to JWT app_metadata.
+  const routeAccess = (routeAccessData ?? {}) as RouteAccess
+  const isAdmin = routeAccessError ? false : routeAccess.is_admin === true
+  const isApprover = routeAccessError
+    ? false
+    : routeAccess.can_approve_procurement === true
 
   if (effectivePathname === "/auth/login") {
     const activeLocale = locale ?? DEFAULT_LOCALE
