@@ -1,0 +1,11 @@
+name = "black-swan-finance"
+main = "src/index.ts"
+compatibility_date = "2026-08-14"
+
+[vars]
+API_VERSION = "v1"
+ENVIRONMENT = "development"
+
+# Configure SUPABASE_URL and SUPABASE_ANON_KEY in Cloudflare.
+# This Worker is read-only and relies on the authenticated user's token plus
+# the canonical get_entity_financial_report() authorization boundary.
