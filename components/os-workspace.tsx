@@ -44,7 +44,7 @@ function displayValue(value: unknown) {
 }
 
 function findRows(payload: WorkspacePayload) {
-  const preferred = ['members','events','collections','costs','providers','publications','batches','rules','checks']
+  const preferred = ['members','events','collections','costs','providers','publications','batches','rules','checks','rows']
   for (const key of preferred) {
     if (Array.isArray(payload[key])) return { key, rows: payload[key] as Array<Record<string, unknown>> }
   }
@@ -54,6 +54,7 @@ function findRows(payload: WorkspacePayload) {
 
 export function OsWorkspace({ workspace, title, description }: { workspace: string; title: string; description: string }) {
   const [payload, setPayload] = useState<WorkspacePayload | null>(null)
+  const [references, setReferences] = useState<WorkspacePayload>({})
   const [navigation, setNavigation] = useState<Navigation | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(true)
@@ -62,12 +63,14 @@ export function OsWorkspace({ workspace, title, description }: { workspace: stri
     setBusy(true)
     setError(null)
     try {
-      const [workspaceData, navigationData] = await Promise.all([
+      const [workspaceData, navigationData, referenceData] = await Promise.all([
         call(`/v1/os/workspaces/${workspace}`),
         call('/v1/os/navigation'),
+        call(`/v1/os/references/${workspace}`).catch(() => ({})),
       ])
       setPayload(workspaceData || {})
       setNavigation(navigationData || {})
+      setReferences(referenceData || {})
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Unable to load workspace')
     } finally {
@@ -121,7 +124,7 @@ export function OsWorkspace({ workspace, title, description }: { workspace: stri
             ))}
           </div>
 
-          <OsActions workspace={workspace} payload={payload || {}} onDone={load} />
+          <OsActions workspace={workspace} payload={payload || {}} references={references} onDone={load} />
 
           <Card>
             <CardHeader>
