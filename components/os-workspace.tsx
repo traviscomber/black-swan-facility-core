@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
+import { OsActions } from '@/components/os-actions'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -119,6 +120,8 @@ export function OsWorkspace({ workspace, title, description }: { workspace: stri
               <Card key={key}><CardContent className="p-4"><div className="text-xs uppercase tracking-wide text-muted-foreground">{humanize(key)}</div><div className="mt-1 text-2xl font-semibold">{displayValue(value)}</div></CardContent></Card>
             ))}
           </div>
+
+          <OsActions workspace={workspace} payload={payload || {}} onDone={load} />
 
           <Card>
             <CardHeader>
