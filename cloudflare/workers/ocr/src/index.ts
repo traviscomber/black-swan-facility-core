@@ -58,6 +58,13 @@ type ExtractionProposal = {
   confidence: number | null
 }
 
+type ReferenceCatalog = {
+  legal_entities: JsonRecord[]
+  departments: JsonRecord[]
+  cost_centers: JsonRecord[]
+  counterparties: JsonRecord[]
+}
+
 const allowedDocumentTypes = new Set([
   "supplier_invoice",
   "customer_invoice",
@@ -114,7 +121,25 @@ async function machineRpc(env: Env, name: string, payload: JsonRecord) {
   return text ? JSON.parse(text) : null
 }
 
-function extractionSchema() {
+function asRows(value: unknown) {
+  return Array.isArray(value) ? value.filter((row): row is JsonRecord => Boolean(row) && typeof row === "object") : []
+}
+
+function normalizeCatalog(value: unknown): ReferenceCatalog {
+  const row = value && typeof value === "object" ? value as JsonRecord : {}
+  return {
+    legal_entities: asRows(row.legal_entities),
+    departments: asRows(row.departments),
+    cost_centers: asRows(row.cost_centers),
+    counterparties: asRows(row.counterparties),
+  }
+}
+
+function idSet(rows: JsonRecord[]) {
+  return new Set(rows.map((row) => typeof row.id === "string" ? row.id : null).filter((id): id is string => Boolean(id)))
+}
+
+function extractionSchema(references: ReferenceCatalog) {
   return {
     document_types: [...allowedDocumentTypes],
     directions: [...allowedDirections],
@@ -138,11 +163,13 @@ function extractionSchema() {
       confidence: "0..1|null",
     },
     rules: [
-      "Never invent a legal entity, counterparty, account, department, or cost center identifier.",
+      "Never invent a legal entity, counterparty, department, cost center, or account identifier.",
+      "Identifier fields may use only IDs present in reference_catalog; otherwise return null.",
       "Use null when a canonical identifier cannot be resolved confidently.",
       "Amounts must be non-negative numbers in document currency.",
       "This output is a proposal only and will always require human review.",
     ],
+    reference_catalog: references,
   }
 }
 
@@ -154,7 +181,12 @@ function nullableNumber(value: unknown) {
   return typeof value === "number" && Number.isFinite(value) && value >= 0 ? value : null
 }
 
-function normalizeProposal(value: unknown): ExtractionProposal {
+function canonicalId(value: unknown, allowed: Set<string>) {
+  const id = nullableString(value)
+  return id && allowed.has(id) ? id : null
+}
+
+function normalizeProposal(value: unknown, references: ReferenceCatalog): ExtractionProposal {
   if (!value || typeof value !== "object") throw new Error("Document AI returned a non-object response")
   const row = value as JsonRecord
 
@@ -164,14 +196,19 @@ function normalizeProposal(value: unknown): ExtractionProposal {
     ? Math.min(1, Math.max(0, row.confidence))
     : null
 
+  const legalEntityIds = idSet(references.legal_entities)
+  const departmentIds = idSet(references.departments)
+  const costCenterIds = idSet(references.cost_centers)
+  const counterpartyIds = idSet(references.counterparties)
+
   return {
     raw_ocr_text: nullableString(row.raw_ocr_text),
     raw_extraction: row.raw_extraction && typeof row.raw_extraction === "object"
       ? row.raw_extraction as JsonRecord
       : {},
     proposed_document_type: documentType && allowedDocumentTypes.has(documentType) ? documentType : null,
-    proposed_legal_entity_id: nullableString(row.proposed_legal_entity_id),
-    proposed_counterparty_id: nullableString(row.proposed_counterparty_id),
+    proposed_legal_entity_id: canonicalId(row.proposed_legal_entity_id, legalEntityIds),
+    proposed_counterparty_id: canonicalId(row.proposed_counterparty_id, counterpartyIds),
     proposed_document_number: nullableString(row.proposed_document_number),
     proposed_document_date: nullableString(row.proposed_document_date),
     proposed_due_date: nullableString(row.proposed_due_date),
@@ -180,14 +217,19 @@ function normalizeProposal(value: unknown): ExtractionProposal {
     proposed_tax_amount: nullableNumber(row.proposed_tax_amount),
     proposed_total_amount: nullableNumber(row.proposed_total_amount),
     proposed_direction: direction && allowedDirections.has(direction) ? direction : null,
-    proposed_department_id: nullableString(row.proposed_department_id),
-    proposed_cost_center_id: nullableString(row.proposed_cost_center_id),
+    proposed_department_id: canonicalId(row.proposed_department_id, departmentIds),
+    proposed_cost_center_id: canonicalId(row.proposed_cost_center_id, costCenterIds),
     proposed_account_code: nullableString(row.proposed_account_code),
     confidence: confidenceValue,
   }
 }
 
-async function extractDocument(env: Env, job: OcrJob, file: ArrayBuffer) {
+async function extractDocument(
+  env: Env,
+  job: OcrJob,
+  file: ArrayBuffer,
+  references: ReferenceCatalog,
+) {
   const endpoint = required(env, "DOCUMENT_AI_ENDPOINT")
   const token = env.DOCUMENT_AI_TOKEN
 
@@ -205,7 +247,7 @@ async function extractDocument(env: Env, job: OcrJob, file: ArrayBuffer) {
         content_type: job.content_type,
         base64: bytesToBase64(file),
       },
-      schema: extractionSchema(),
+      schema: extractionSchema(references),
     }),
   })
 
@@ -216,7 +258,7 @@ async function extractDocument(env: Env, job: OcrJob, file: ArrayBuffer) {
 
   const payload = await response.json() as JsonRecord
   const proposal = payload.data ?? payload
-  return normalizeProposal(proposal)
+  return normalizeProposal(proposal, references)
 }
 
 async function processJob(env: Env, job: OcrJob) {
@@ -234,7 +276,8 @@ async function processJob(env: Env, job: OcrJob) {
   const object = await env.DOCUMENTS_BUCKET.get(job.storage_key)
   if (!object) throw new Error("Source document missing from R2")
 
-  const proposal = await extractDocument(env, job, await object.arrayBuffer())
+  const references = normalizeCatalog(await machineRpc(env, "ocr_get_reference_catalog", {}))
+  const proposal = await extractDocument(env, job, await object.arrayBuffer(), references)
 
   await machineRpc(env, "ocr_write_proposal", {
     p_intake_id: job.intake_id,
