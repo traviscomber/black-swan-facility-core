@@ -8,3 +8,20 @@ ENVIRONMENT = "development"
 
 # Configure SUPABASE_URL and SUPABASE_ANON_KEY in Cloudflare.
 # Provider credentials must remain Cloudflare secrets and are not committed.
+#
+# Required webhook secrets:
+# - BANK_WEBHOOK_MACHINE_TOKEN
+# - FINANCIAL_PROVIDER_WEBHOOK_SECRETS_JSON
+#
+# FINANCIAL_PROVIDER_WEBHOOK_SECRETS_JSON maps canonical bank_connection UUIDs
+# to their provider webhook/merchant secret, allowing separate credentials per
+# legal entity and connection without storing secrets in Postgres.
+#
+# Provider API credentials should use separate Cloudflare secrets, for example:
+# - FINTOC_API_KEY
+# - FINTOC_JWS_PRIVATE_KEY (only if money-moving transfer APIs are enabled)
+# - KHIPU_RECEIVER_ID
+# - KHIPU_API_KEY
+# - TRANSBANK_COMMERCE_CODE
+# - TRANSBANK_API_KEY
+# - STRIPE_SECRET_KEY (optional; only for an eligible Stripe account/entity)
