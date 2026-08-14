@@ -130,6 +130,52 @@ async function getJournal(env: Env, token: string, journalId: string) {
   return { entry: entries[0], lines: await linesResponse.json(), validation }
 }
 
+async function getJournalReferences(env: Env, token: string, journalId: string) {
+  const journal = await getJournal(env, token, journalId)
+  const legalEntityId = String((journal.entry as JsonRecord).legal_entity_id || "")
+  if (!legalEntityId) throw new ApiError("journal_lookup_failed", 502)
+
+  const [accountsResponse, departmentsResponse, assignmentsResponse] = await Promise.all([
+    supabaseFetch(env, `/rest/v1/entity_chart_of_accounts?select=id,account_code,account_name,account_type,cashflow_class,is_active&legal_entity_id=eq.${encodeURIComponent(legalEntityId)}&is_active=eq.true&order=account_code.asc`, token),
+    supabaseFetch(env, `/rest/v1/entity_departments?select=id,code,name,is_active&legal_entity_id=eq.${encodeURIComponent(legalEntityId)}&is_active=eq.true&order=name.asc`, token),
+    supabaseFetch(env, `/rest/v1/cost_center_legal_entity_assignments?select=cost_center_id&legal_entity_id=eq.${encodeURIComponent(legalEntityId)}&effective_to=is.null`, token),
+  ])
+
+  if (!accountsResponse.ok || !departmentsResponse.ok || !assignmentsResponse.ok) {
+    throw new ApiError("journal_reference_lookup_failed", 502)
+  }
+
+  const assignments = await assignmentsResponse.json() as Array<{ cost_center_id?: string }>
+  const costCenterIds = assignments.map((row) => row.cost_center_id).filter(Boolean) as string[]
+  let costCenters: JsonRecord[] = []
+  if (costCenterIds.length > 0) {
+    const filter = costCenterIds.map((id) => `\"${id}\"`).join(",")
+    const costCentersResponse = await supabaseFetch(
+      env,
+      `/rest/v1/cost_centers?select=id,code,name,is_active&id=in.(${encodeURIComponent(filter)})&is_active=eq.true&order=name.asc`,
+      token,
+    )
+    if (!costCentersResponse.ok) throw new ApiError("journal_reference_lookup_failed", 502)
+    costCenters = await costCentersResponse.json() as JsonRecord[]
+  }
+
+  return {
+    journal,
+    accounts: await accountsResponse.json(),
+    departments: await departmentsResponse.json(),
+    cost_centers: costCenters,
+  }
+}
+
+async function replaceJournalLines(env: Env, token: string, journalId: string, request: Request) {
+  const payload = await request.json() as JsonRecord
+  if (!Array.isArray(payload.lines)) throw new ApiError("invalid_journal_lines", 400)
+  return rpc(env, token, "replace_draft_accounting_journal_lines", {
+    p_journal_id: journalId,
+    p_lines: payload.lines,
+  })
+}
+
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const id = requestId(request)
@@ -164,6 +210,16 @@ export default {
       const journalForDocumentMatch = url.pathname.match(new RegExp(`^/${version}/accounting/documents/([0-9a-fA-F-]{36})/journal$`))
       if (journalForDocumentMatch && request.method === "POST") {
         return json({ data: await rpc(env, auth.token, "create_draft_journal_for_document", { p_document_id: journalForDocumentMatch[1] }), request_id: id }, 200, id)
+      }
+
+      const referencesMatch = url.pathname.match(new RegExp(`^/${version}/accounting/journals/([0-9a-fA-F-]{36})/references$`))
+      if (referencesMatch && request.method === "GET") {
+        return json({ data: await getJournalReferences(env, auth.token, referencesMatch[1]), request_id: id }, 200, id)
+      }
+
+      const linesMatch = url.pathname.match(new RegExp(`^/${version}/accounting/journals/([0-9a-fA-F-]{36})/lines$`))
+      if (linesMatch && request.method === "POST") {
+        return json({ data: await replaceJournalLines(env, auth.token, linesMatch[1], request), request_id: id }, 200, id)
       }
 
       const journalMatch = url.pathname.match(new RegExp(`^/${version}/accounting/journals/([0-9a-fA-F-]{36})$`))
