@@ -1,0 +1,10 @@
+name = "black-swan-os-api"
+main = "src/index.ts"
+compatibility_date = "2026-08-14"
+
+[vars]
+API_VERSION = "v1"
+ENVIRONMENT = "development"
+
+# Secrets and production bindings must be configured in Cloudflare, never committed.
+# Initial API is intentionally read-only and does not alter existing Facility Core flows.
