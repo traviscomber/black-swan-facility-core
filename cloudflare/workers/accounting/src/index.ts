@@ -149,10 +149,10 @@ async function getJournalReferences(env: Env, token: string, journalId: string) 
   const costCenterIds = assignments.map((row) => row.cost_center_id).filter(Boolean) as string[]
   let costCenters: JsonRecord[] = []
   if (costCenterIds.length > 0) {
-    const filter = costCenterIds.map((id) => `\"${id}\"`).join(",")
+    const filter = costCenterIds.join(",")
     const costCentersResponse = await supabaseFetch(
       env,
-      `/rest/v1/cost_centers?select=id,code,name,is_active&id=in.(${encodeURIComponent(filter)})&is_active=eq.true&order=name.asc`,
+      `/rest/v1/cost_centers?select=id,code,name,is_active&id=in.(${filter})&is_active=eq.true&order=name.asc`,
       token,
     )
     if (!costCentersResponse.ok) throw new ApiError("journal_reference_lookup_failed", 502)
