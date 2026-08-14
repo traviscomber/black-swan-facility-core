@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -54,6 +55,7 @@ async function callApi(path: string, init: RequestInit = {}) {
 }
 
 export function AccountingPostingControl() {
+  const router = useRouter()
   const [intakes, setIntakes] = useState<Intake[]>([])
   const [documents, setDocuments] = useState<DocumentRow[]>([])
   const [busy, setBusy] = useState<string | null>(null)
@@ -101,7 +103,7 @@ export function AccountingPostingControl() {
     setNotice(null)
     try {
       const journalId = await callApi(`/v1/accounting/documents/${documentId}/journal`, { method: 'POST', body: '{}' })
-      setNotice(`Draft journal ready: ${String(journalId)}. Add reviewed allocations and balanced journal lines before approval.`)
+      router.push(`/accounting/posting/${String(journalId)}`)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Draft journal creation failed')
     } finally {
