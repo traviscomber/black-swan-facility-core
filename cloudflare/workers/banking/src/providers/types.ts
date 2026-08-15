@@ -1,4 +1,4 @@
-export type ProviderKey = 'fintoc' | 'khipu' | 'transbank' | 'stripe'
+export type ProviderKey = 'fintoc' | 'khipu' | 'transbank' | 'stripe' | 'tuu'
 
 export type NormalizedBankTransaction = {
   legalEntityId: string
