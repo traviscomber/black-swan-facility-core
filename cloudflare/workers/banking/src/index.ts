@@ -1,5 +1,6 @@
 import { handleProviderWebhook, WebhookError } from './provider-webhooks'
 import { listProviderCapabilities } from './providers'
+import { createTuuRemotePayment, getTuuRemotePayment } from './providers/tuu'
 
 type JsonRecord = Record<string, unknown>
 
@@ -10,6 +11,8 @@ export interface Env {
   SUPABASE_ANON_KEY?: string
   BANK_WEBHOOK_MACHINE_TOKEN?: string
   FINANCIAL_PROVIDER_WEBHOOK_SECRETS_JSON?: string
+  TUU_API_KEY?: string
+  TUU_DEVICE_SERIAL?: string
 }
 
 class ApiError extends Error {
@@ -99,6 +102,88 @@ async function reviewProposal(env: Env, token: string, matchId: string, request:
   })
 }
 
+function requireTuu(env: Env) {
+  if (!env.TUU_API_KEY || !env.TUU_DEVICE_SERIAL) throw new ApiError('tuu_not_configured', 503)
+  return { apiKey: env.TUU_API_KEY, device: env.TUU_DEVICE_SERIAL }
+}
+
+async function createTuuPayment(env: Env, token: string, request: Request) {
+  const body = await request.json() as JsonRecord
+  const registrationId = typeof body.registration_id === 'string' ? body.registration_id : ''
+  const amount = Number(body.amount_clp)
+  if (!registrationId) throw new ApiError('registration_required', 400)
+  if (!Number.isInteger(amount) || amount < 100 || amount > 99999999) throw new ApiError('invalid_amount', 400)
+  const tuu = requireTuu(env)
+
+  const prepared = await rpc(env, token, 'prepare_tuu_remote_payment', {
+    p_registration_id: registrationId,
+    p_amount_clp: amount,
+    p_dte_type: body.dte_type == null ? 0 : Number(body.dte_type),
+    p_payment_method: body.payment_method == null || body.payment_method === '' ? null : Number(body.payment_method),
+    p_description: typeof body.description === 'string' ? body.description : null,
+  }) as JsonRecord
+
+  const requestId = String(prepared.request_id || '')
+  try {
+    const provider = await createTuuRemotePayment(tuu.apiKey, {
+      idempotencyKey: String(prepared.idempotency_key),
+      amount: Number(prepared.amount_clp),
+      device: tuu.device,
+      description: String(prepared.description || 'Black Swan event payment'),
+      dteType: Number(prepared.dte_type ?? 0),
+      paymentMethod: prepared.payment_method == null ? null : Number(prepared.payment_method),
+    })
+    const recorded = await rpc(env, token, 'record_tuu_remote_payment_result', {
+      p_request_id: requestId,
+      p_provider_status: provider.normalizedStatus,
+      p_provider_status_code: provider.statusCode,
+      p_provider_request_id: provider.providerRequestId,
+      p_sequence_number: provider.sequenceNumber,
+      p_provider_payload: provider.raw,
+      p_last_error: null,
+    })
+    return { request: recorded, provider: provider.raw, device_serial_configured: true }
+  } catch (error) {
+    const details = error as Error & { status?: number; payload?: JsonRecord }
+    await rpc(env, token, 'record_tuu_remote_payment_result', {
+      p_request_id: requestId,
+      p_provider_status: 'failed',
+      p_provider_status_code: null,
+      p_provider_request_id: null,
+      p_sequence_number: null,
+      p_provider_payload: details.payload || {},
+      p_last_error: details.message,
+    }).catch(() => undefined)
+    if (details.status === 429) throw new ApiError('tuu_rate_limited', 429, details.message)
+    if (details.status === 401) throw new ApiError('tuu_unauthorized', 502, details.message)
+    throw new ApiError('tuu_create_failed', 502, details.message)
+  }
+}
+
+async function refreshTuuPayment(env: Env, token: string, requestId: string) {
+  const tuu = requireTuu(env)
+  const current = await rpc(env, token, 'get_tuu_remote_payment', { p_request_id: requestId }) as JsonRecord
+  const idempotencyKey = String(current.idempotency_key || '')
+  if (!idempotencyKey) throw new ApiError('tuu_idempotency_missing', 409)
+  try {
+    const provider = await getTuuRemotePayment(tuu.apiKey, idempotencyKey)
+    return await rpc(env, token, 'record_tuu_remote_payment_result', {
+      p_request_id: requestId,
+      p_provider_status: provider.normalizedStatus,
+      p_provider_status_code: provider.statusCode,
+      p_provider_request_id: provider.providerRequestId,
+      p_sequence_number: provider.sequenceNumber,
+      p_provider_payload: provider.raw,
+      p_last_error: null,
+    })
+  } catch (error) {
+    const details = error as Error & { status?: number; payload?: JsonRecord }
+    if (details.status === 404) throw new ApiError('tuu_payment_not_found', 404)
+    if (details.status === 401) throw new ApiError('tuu_unauthorized', 502)
+    throw new ApiError('tuu_status_failed', 502, details.message)
+  }
+}
+
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const id = request.headers.get('cf-ray') || request.headers.get('x-request-id') || crypto.randomUUID()
@@ -121,6 +206,15 @@ export default {
       }
 
       const token = await requireUser(request, env)
+
+      if (request.method === 'POST' && url.pathname === `/${version}/banking/tuu/payments`) {
+        return json({ data: await createTuuPayment(env, token, request), request_id: id }, 201, id)
+      }
+
+      const tuuStatus = url.pathname.match(new RegExp(`^/${version}/banking/tuu/payments/([0-9a-fA-F-]{36})$`))
+      if (tuuStatus && request.method === 'GET') {
+        return json({ data: await refreshTuuPayment(env, token, tuuStatus[1]), request_id: id }, 200, id)
+      }
 
       if (request.method === 'GET' && url.pathname === `/${version}/banking/cash-transactions`) {
         return json({ data: await listCash(env, token, url.searchParams.get('entity_id')), request_id: id }, 200, id)
