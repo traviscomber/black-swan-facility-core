@@ -91,6 +91,9 @@ begin
     )
       and o.attempts < coalesce(v_max_attempts,5)
       and o.recipient_email is not null
+      -- Invite links contain an ephemeral secret that is never stored in Postgres.
+      -- Keep invite-issued rows queued until a separate ephemeral delivery-link mechanism is added.
+      and o.notification_type <> 'invite_issued'
     order by o.available_at asc, o.created_at asc
     for update skip locked
     limit v_limit
@@ -173,7 +176,7 @@ begin
     where id=p_notification_id and status='processing';
   else
     update public.event_notification_outbox
-    set status=case when v_attempts >= coalesce(v_max_attempts,5) then 'failed' else 'failed' end,
+    set status='failed',
         last_error=left(coalesce(p_error,'delivery_failed'),1000),
         available_at=case when v_attempts >= coalesce(v_max_attempts,5) then now()+interval '365 days'
                           else now() + make_interval(mins => least(v_attempts*5,60)) end,
