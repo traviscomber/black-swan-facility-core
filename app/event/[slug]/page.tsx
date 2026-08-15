@@ -2,6 +2,7 @@
 
 import { FormEvent, useEffect, useMemo, useState } from 'react'
 import { useParams, useSearchParams } from 'next/navigation'
+import QRCode from 'react-qr-code'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -26,6 +27,13 @@ type Portal = {
   currency: string
 }
 
+type RegistrationResult = {
+  registration_id: string
+  registration_status: 'confirmed' | 'waitlist' | string
+  payment_status: string
+  checkin_token?: string | null
+}
+
 function money(value: number | null | undefined, currency: string) {
   if (value == null) return null
   return new Intl.NumberFormat('en', { style: 'currency', currency }).format(value)
@@ -39,7 +47,7 @@ export default function EventGuestPage() {
   const [portal, setPortal] = useState<Portal | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [registered, setRegistered] = useState(false)
+  const [registration, setRegistration] = useState<RegistrationResult | null>(null)
 
   const initialAccess = useMemo(() => searchParams.get('access') || '', [searchParams])
 
@@ -91,7 +99,7 @@ export default function EventGuestPage() {
       })
       const result = await response.json().catch(() => ({}))
       if (!response.ok) throw new Error(result?.error?.message || 'Registration failed.')
-      setRegistered(true)
+      setRegistration(result.data as RegistrationResult)
       event.currentTarget.reset()
     } catch (e) { setError(e instanceof Error ? e.message : 'Registration failed.') }
     finally { setLoading(false) }
@@ -114,7 +122,7 @@ export default function EventGuestPage() {
         <div className="grid gap-4 md:grid-cols-3">
           <Card><CardHeader><CardDescription>Date</CardDescription><CardTitle className="text-lg">{portal.event.start_date}{portal.event.end_date !== portal.event.start_date ? ` — ${portal.event.end_date}` : ''}</CardTitle></CardHeader></Card>
           <Card><CardHeader><CardDescription>Location</CardDescription><CardTitle className="text-lg">{portal.event.location_name || 'Black Swan'}</CardTitle></CardHeader></Card>
-          <Card><CardHeader><CardDescription>Registration</CardDescription><CardTitle className="text-lg">{portal.places_remaining == null ? 'Invite only' : `${portal.places_remaining} places remaining`}</CardTitle></CardHeader></Card>
+          <Card><CardHeader><CardDescription>Registration</CardDescription><CardTitle className="text-lg">{portal.places_remaining == null ? 'Invite only' : portal.places_remaining > 0 ? `${portal.places_remaining} places remaining` : 'Waitlist available'}</CardTitle></CardHeader></Card>
         </div>
 
         {portal.black_swan_intro && <section className="max-w-3xl space-y-3"><h2 className="text-2xl font-normal">About Black Swan</h2><p className="leading-7 text-muted-foreground">{portal.black_swan_intro}</p></section>}
@@ -124,8 +132,16 @@ export default function EventGuestPage() {
         {portal.commercial_model !== 'free' && <Card><CardHeader><CardTitle>Participation</CardTitle><CardDescription>{portal.ticket_price != null ? money(portal.ticket_price, portal.currency) : 'Payment details will be confirmed after registration.'} Payment processing is not activated in this version.</CardDescription></CardHeader></Card>}
 
         <Card>
-          <CardHeader><CardTitle>{registered ? 'Registration confirmed' : 'Register'}</CardTitle><CardDescription>{registered ? 'Your registration is now linked to this event and its hosting Member.' : 'No Black Swan account is required.'}</CardDescription></CardHeader>
-          {!registered && <CardContent><form className="grid gap-4 md:grid-cols-2" onSubmit={register}><Input name="full_name" placeholder="Full name" required /><Input name="email" type="email" placeholder="Email" required /><Input name="phone" placeholder="WhatsApp / phone" /><Input name="company_name" placeholder="Company / organisation" /><Input name="dietary_preferences" placeholder="Dietary preferences" /><Input name="allergies" placeholder="Allergies" />{portal.allow_companions && <textarea name="companions" className="min-h-24 rounded-md border bg-background p-3 text-sm md:col-span-2" placeholder={`Companion names, one per line (maximum ${portal.max_companions || 0})`} />}<label className="flex gap-2 text-sm md:col-span-2"><input type="checkbox" name="consent_data_processing" required /> I consent to Black Swan processing my registration data for this event.</label><label className="flex gap-2 text-sm md:col-span-2"><input type="checkbox" name="consent_marketing" /> I would like to receive future Black Swan event and educational updates.</label><div className="md:col-span-2"><Button disabled={loading}>{loading ? 'Registering…' : 'Confirm registration'}</Button></div>{error && <p className="text-sm text-destructive md:col-span-2">{error}</p>}</form></CardContent>}
+          <CardHeader>
+            <CardTitle>{registration ? (registration.registration_status === 'waitlist' ? 'You are on the waitlist' : 'Registration confirmed') : 'Register'}</CardTitle>
+            <CardDescription>{registration ? (registration.registration_status === 'waitlist' ? 'Your place is not confirmed yet. Black Swan will contact you if capacity becomes available.' : 'Your registration is linked to this event and its hosting Member. Keep your check-in pass for arrival.') : 'No Black Swan account is required.'}</CardDescription>
+          </CardHeader>
+          {registration ? <CardContent>
+            {registration.registration_status === 'confirmed' && registration.checkin_token ? <div className="flex flex-col items-center gap-4 rounded-md border p-6 text-center">
+              <div className="bg-white p-3"><QRCode value={`black-swan-checkin:${registration.checkin_token}`} size={180} /></div>
+              <div><p className="text-sm font-medium">Guest check-in pass</p><p className="mt-1 max-w-md text-xs text-muted-foreground">Present this QR at arrival. Entry is still subject to the hosting Member being on ground.</p></div>
+            </div> : <p className="text-sm text-muted-foreground">Waitlist registrations do not receive an access pass until promoted to confirmed.</p>}
+          </CardContent> : <CardContent><form className="grid gap-4 md:grid-cols-2" onSubmit={register}><Input name="full_name" placeholder="Full name" required /><Input name="email" type="email" placeholder="Email" required /><Input name="phone" placeholder="WhatsApp / phone" /><Input name="company_name" placeholder="Company / organisation" /><Input name="dietary_preferences" placeholder="Dietary preferences" /><Input name="allergies" placeholder="Allergies" />{portal.allow_companions && <textarea name="companions" className="min-h-24 rounded-md border bg-background p-3 text-sm md:col-span-2" placeholder={`Companion names, one per line (maximum ${portal.max_companions || 0})`} />}<label className="flex gap-2 text-sm md:col-span-2"><input type="checkbox" name="consent_data_processing" required /> I consent to Black Swan processing my registration data for this event.</label><label className="flex gap-2 text-sm md:col-span-2"><input type="checkbox" name="consent_marketing" /> I would like to receive future Black Swan event and educational updates.</label><div className="md:col-span-2"><Button disabled={loading}>{loading ? 'Registering…' : portal.places_remaining === 0 ? 'Join waitlist' : 'Confirm registration'}</Button></div>{error && <p className="text-sm text-destructive md:col-span-2">{error}</p>}</form></CardContent>}
         </Card>
       </div>
     </main>
