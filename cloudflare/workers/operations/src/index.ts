@@ -69,6 +69,7 @@ const workspaces: Record<string, string> = {
   'orchard-kitchen': 'get_orchard_kitchen_workspace',
   'event-providers': 'get_event_provider_workspace',
   'front-door': 'get_foundation_front_door_workspace',
+  discovery: 'get_discovery_workspace',
   imports: 'get_canonical_import_workspace',
   intercompany: 'get_intercompany_workspace',
   audit: 'get_black_swan_audit_center',
@@ -94,6 +95,10 @@ function actionPayload(action: string, body: JsonRecord) {
     case 'event-provider-engagement': return { rpc: 'engage_event_service_provider', payload: { p_event_id: body.event_id, p_provider_profile_id: body.provider_profile_id, p_scope_of_work: body.scope_of_work, p_estimated_amount_clp: body.estimated_amount_clp ?? null, p_procurement_request_id: body.procurement_request_id || null } }
     case 'publication-draft': return { rpc: 'create_foundation_publication_draft', payload: { p_education_material_id: body.education_material_id, p_channel: body.channel, p_public_title: body.public_title, p_public_summary: body.public_summary || null, p_campaign_reference: body.campaign_reference || null } }
     case 'publication-review': return { rpc: 'review_foundation_publication', payload: { p_publication_id: body.publication_id, p_decision: body.decision, p_published_url: body.published_url || null } }
+    case 'discovery-intent': return { rpc: 'create_discovery_intent', payload: { p_summary: body.summary, p_intent_type: body.intent_type, p_privacy: body.privacy || 'network_only', p_network_ids: body.network_ids || null, p_details: body.details || null, p_valid_until: body.valid_until || null } }
+    case 'discovery-intent-status': return { rpc: 'set_discovery_intent_status', payload: { p_intent_id: body.intent_id, p_status: body.status } }
+    case 'discovery-match': return { rpc: 'run_discovery_matching', payload: { p_network_id: body.network_id } }
+    case 'discovery-opportunity': return { rpc: 'respond_discovery_opportunity', payload: { p_opportunity_id: body.opportunity_id, p_decision: body.decision } }
     case 'import-stage': return { rpc: 'stage_canonical_import', payload: { p_import_type: body.import_type, p_source_name: body.source_name, p_rows: body.rows } }
     case 'import-resolve': return { rpc: 'resolve_canonical_import_row', payload: { p_import_type: body.import_type, p_row_id: body.row_id, p_legal_entity_id: body.legal_entity_id || null, p_department_id: body.department_id || null, p_matched_record_id: body.matched_record_id || null, p_resolution_status: body.resolution_status || 'resolved', p_notes: body.notes || null } }
     case 'import-review': return { rpc: 'review_canonical_import_batch', payload: { p_batch_id: body.batch_id, p_decision: body.decision, p_notes: body.notes || null } }
@@ -113,7 +118,15 @@ export default {
       if (request.method === 'GET' && url.pathname === `/${version}/health`) return json({ status: 'ok', service: 'black-swan-operations', request_id: requestId }, 200, requestId)
       const token = await requireUser(request, env)
 
-      if (request.method === 'GET' && url.pathname === `/${version}/os/navigation`) return json({ data: await rpc(env, token, 'get_black_swan_os_navigation'), request_id: requestId }, 200, requestId)
+      if (request.method === 'GET' && url.pathname === `/${version}/os/navigation`) {
+        const navigation = await rpc(env, token, 'get_black_swan_os_navigation') as JsonRecord
+        const discoveryEnabled = Boolean(await rpc(env, token, 'get_discovery_navigation_entitlement'))
+        const items = Array.isArray(navigation?.items) ? navigation.items as JsonRecord[] : []
+        if (discoveryEnabled && !items.some((item) => item?.key === 'discovery')) {
+          navigation.items = [...items, { key: 'discovery', label: 'Discovery', href: '/os/discovery' }]
+        }
+        return json({ data: navigation, request_id: requestId }, 200, requestId)
+      }
 
       const portalManagementMatch = url.pathname.match(new RegExp(`^/${version}/os/event-portals/([0-9a-f-]+)$`))
       if (portalManagementMatch && request.method === 'GET') return json({ data: await rpc(env, token, 'get_event_portal_management', { p_portal_id: portalManagementMatch[1] }), request_id: requestId }, 200, requestId)
