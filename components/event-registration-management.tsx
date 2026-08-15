@@ -1,6 +1,6 @@
 'use client'
 
-import { FormEvent, useState } from 'react'
+import { FormEvent, useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -39,6 +39,8 @@ type Management = {
   invites: Invite[]
 }
 
+type PortalOption = { id: string; slug: string; status: string }
+
 async function token() {
   const supabase = createClient()
   const { data } = await supabase.auth.getSession()
@@ -62,12 +64,22 @@ async function action(name: string, body: Record<string, unknown>) {
   return api(`/v1/os/actions/${name}`, { method: 'POST', body: JSON.stringify(body) })
 }
 
-export function EventRegistrationManagement({ portals }: { portals: Array<Record<string, unknown>> }) {
+export function EventRegistrationManagement() {
+  const [portals, setPortals] = useState<PortalOption[]>([])
   const [portalId, setPortalId] = useState('')
   const [data, setData] = useState<Management | null>(null)
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    void (async () => {
+      try {
+        const workspace = await api('/v1/os/workspaces/events')
+        setPortals(Array.isArray(workspace?.portals) ? workspace.portals : [])
+      } catch (e) { setError(e instanceof Error ? e.message : 'Unable to load event portals') }
+    })()
+  }, [])
 
   async function load(id = portalId) {
     if (!id) return
@@ -103,7 +115,7 @@ export function EventRegistrationManagement({ portals }: { portals: Array<Record
       <div className="flex flex-col gap-2 md:flex-row">
         <select value={portalId} onChange={(e) => { setPortalId(e.target.value); setData(null) }} className="h-10 flex-1 rounded-md border bg-background px-3 text-sm">
           <option value="">Select event portal</option>
-          {portals.map((portal) => <option key={String(portal.id)} value={String(portal.id)}>{String(portal.slug || portal.id)} · {String(portal.status || '')}</option>)}
+          {portals.map((portal) => <option key={portal.id} value={portal.id}>{portal.slug} · {portal.status}</option>)}
         </select>
         <Button type="button" variant="outline" disabled={!portalId || busy} onClick={() => void load()}>Load registrations</Button>
       </div>
