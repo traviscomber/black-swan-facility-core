@@ -17,7 +17,12 @@ ENVIRONMENT = "development"
 # to their provider webhook/merchant secret, allowing separate credentials per
 # legal entity and connection without storing secrets in Postgres.
 #
-# Provider API credentials should use separate Cloudflare secrets, for example:
+# TUU / Haulmer Remote Payment v2 (existing physical POS):
+# - TUU_API_KEY        -> Workspace > Pagos > Configuracion > API
+# - TUU_DEVICE_SERIAL  -> serial number of the activated TUU POS
+# The terminal must be activated and placed in "Modo Integracion" before Black Swan OS sends a charge.
+#
+# Other optional provider API credentials:
 # - FINTOC_API_KEY
 # - FINTOC_JWS_PRIVATE_KEY (only if money-moving transfer APIs are enabled)
 # - KHIPU_RECEIVER_ID
