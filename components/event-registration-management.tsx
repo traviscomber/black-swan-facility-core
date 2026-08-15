@@ -1,6 +1,7 @@
 'use client'
 
 import { FormEvent, useEffect, useState } from 'react'
+import QRCode from 'react-qr-code'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -41,6 +42,8 @@ type Management = {
 
 type PortalOption = { id: string; slug: string; status: string }
 
+type ActionResult = { checkin_token?: string | null; [key: string]: unknown }
+
 async function token() {
   const supabase = createClient()
   const { data } = await supabase.auth.getSession()
@@ -71,6 +74,7 @@ export function EventRegistrationManagement() {
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [promotedPass, setPromotedPass] = useState<string | null>(null)
 
   useEffect(() => {
     void (async () => {
@@ -90,9 +94,16 @@ export function EventRegistrationManagement() {
   }
 
   async function run(name: string, body: Record<string, unknown>) {
-    setBusy(true); setError(null); setMessage(null)
-    try { await action(name, body); setMessage('Saved.'); await load() }
-    catch (e) { setError(e instanceof Error ? e.message : 'Operation failed') }
+    setBusy(true); setError(null); setMessage(null); setPromotedPass(null)
+    try {
+      const result = await action(name, body) as ActionResult | null
+      if (result?.checkin_token) {
+        setPromotedPass(result.checkin_token)
+        setMessage('Guest promoted. This new check-in pass is shown only now; send it to the guest.')
+      } else setMessage('Saved.')
+      await load()
+      return result
+    } catch (e) { setError(e instanceof Error ? e.message : 'Operation failed'); return null }
     finally { setBusy(false) }
   }
 
@@ -113,12 +124,17 @@ export function EventRegistrationManagement() {
     </CardHeader>
     <CardContent className="space-y-6">
       <div className="flex flex-col gap-2 md:flex-row">
-        <select value={portalId} onChange={(e) => { setPortalId(e.target.value); setData(null) }} className="h-10 flex-1 rounded-md border bg-background px-3 text-sm">
+        <select value={portalId} onChange={(e) => { setPortalId(e.target.value); setData(null); setPromotedPass(null) }} className="h-10 flex-1 rounded-md border bg-background px-3 text-sm">
           <option value="">Select event portal</option>
           {portals.map((portal) => <option key={portal.id} value={portal.id}>{portal.slug} · {portal.status}</option>)}
         </select>
         <Button type="button" variant="outline" disabled={!portalId || busy} onClick={() => void load()}>Load registrations</Button>
       </div>
+
+      {promotedPass && <div className="flex flex-col items-center gap-3 rounded-md border p-4 text-center">
+        <div className="bg-white p-3"><QRCode value={`black-swan-checkin:${promotedPass}`} size={160} /></div>
+        <p className="text-xs text-muted-foreground">Promotion pass. Copy/send this QR now; only its hash is stored.</p>
+      </div>}
 
       {data && <>
         <div className="grid gap-3 md:grid-cols-3">
