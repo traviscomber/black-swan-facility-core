@@ -7,6 +7,7 @@ const LOCALE_COOKIE = "site-locale"
 const LOCALE_HEADER = "x-site-locale"
 
 const PUBLIC_PAGE_PATHS = new Set(["/auth/login", "/guest-access"])
+const PUBLIC_PAGE_PREFIXES = ["/event/"]
 const PUBLIC_API_PREFIXES = ["/api/auth"]
 const CALENDAR_E2E_PATH = "/bookings/e2e-harness"
 
@@ -23,6 +24,7 @@ function isRouteLocale(value: string | undefined): value is RouteLocale {
 
 function isPublicRequest(pathname: string, method: string) {
   if (PUBLIC_PAGE_PATHS.has(pathname)) return true
+  if (PUBLIC_PAGE_PREFIXES.some((prefix) => pathname.startsWith(prefix))) return true
   if (PUBLIC_API_PREFIXES.some((prefix) => pathname.startsWith(prefix))) return true
 
   // Guest QR access is intentionally narrow:
