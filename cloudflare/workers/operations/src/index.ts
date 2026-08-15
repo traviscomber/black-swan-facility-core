@@ -79,34 +79,13 @@ function actionPayload(action: string, body: JsonRecord) {
     case 'member-presence': return { rpc: 'set_member_ground_presence', payload: { p_member_id: body.member_id, p_action: body.action, p_location_id: body.location_id || null, p_notes: body.notes || null } }
     case 'guest-invitation': return { rpc: 'create_member_guest_invitation', payload: { p_member_id: body.member_id, p_guest_name: body.guest_name, p_valid_from: body.valid_from, p_valid_until: body.valid_until, p_event_id: body.event_id || null, p_reservation_id: body.reservation_id || null } }
     case 'event': return { rpc: 'create_member_operational_event', payload: { p_member_id: body.member_id, p_name: body.name, p_start_date: body.start_date, p_end_date: body.end_date, p_location_name: body.location_name || null, p_member_role: body.member_role || 'host' } }
-    case 'event-portal': return { rpc: 'upsert_event_guest_portal', payload: {
-      p_event_id: body.event_id,
-      p_slug: body.slug,
-      p_access_mode: body.access_mode || 'invite_token',
-      p_passcode: body.passcode || null,
-      p_headline: body.headline || null,
-      p_black_swan_intro: body.black_swan_intro || null,
-      p_event_description: body.event_description || null,
-      p_program: body.program || [],
-      p_practical_info: body.practical_info || {},
-      p_capacity: body.capacity ?? null,
-      p_allow_companions: Boolean(body.allow_companions),
-      p_max_companions: body.max_companions ?? 0,
-      p_commercial_model: body.commercial_model || 'free',
-      p_ticket_price: body.ticket_price ?? null,
-      p_currency: body.currency || 'CLP',
-      p_collecting_legal_entity_id: body.collecting_legal_entity_id || null,
-      p_payment_provider: body.payment_provider || null,
-      p_status: body.status || 'draft',
-    } }
-    case 'event-portal-invite': return { rpc: 'issue_event_portal_invite', payload: {
-      p_portal_id: body.portal_id,
-      p_inviting_member_id: body.inviting_member_id || null,
-      p_invitee_name: body.invitee_name || null,
-      p_invitee_email: body.invitee_email || null,
-      p_expires_at: body.expires_at || null,
-      p_max_uses: body.max_uses ?? 1,
-    } }
+    case 'event-portal': return { rpc: 'upsert_event_guest_portal', payload: { p_event_id: body.event_id, p_slug: body.slug, p_access_mode: body.access_mode || 'invite_token', p_passcode: body.passcode || null, p_headline: body.headline || null, p_black_swan_intro: body.black_swan_intro || null, p_event_description: body.event_description || null, p_program: body.program || [], p_practical_info: body.practical_info || {}, p_capacity: body.capacity ?? null, p_allow_companions: Boolean(body.allow_companions), p_max_companions: body.max_companions ?? 0, p_commercial_model: body.commercial_model || 'free', p_ticket_price: body.ticket_price ?? null, p_currency: body.currency || 'CLP', p_collecting_legal_entity_id: body.collecting_legal_entity_id || null, p_payment_provider: body.payment_provider || null, p_status: body.status || 'draft' } }
+    case 'event-portal-invite': return { rpc: 'issue_event_portal_invite', payload: { p_portal_id: body.portal_id, p_inviting_member_id: body.inviting_member_id || null, p_invitee_name: body.invitee_name || null, p_invitee_email: body.invitee_email || null, p_expires_at: body.expires_at || null, p_max_uses: body.max_uses ?? 1 } }
+    case 'event-portal-invite-revoke': return { rpc: 'revoke_event_portal_invite', payload: { p_invite_id: body.invite_id, p_reason: body.reason } }
+    case 'event-registration-status': return { rpc: 'set_event_portal_registration_status', payload: { p_registration_id: body.registration_id, p_status: body.status, p_notes: body.notes || null } }
+    case 'event-registration-checkin': return { rpc: 'check_in_event_portal_guest', payload: { p_checkin_token: body.checkin_token } }
+    case 'event-registration-followup': return { rpc: 'update_event_portal_followup', payload: { p_registration_id: body.registration_id, p_followup_status: body.followup_status, p_notes: body.notes || null } }
+    case 'event-portal-close': return { rpc: 'close_event_portal_and_start_education', payload: { p_portal_id: body.portal_id } }
     case 'education-material': return { rpc: 'add_event_education_material', payload: { p_collection_id: body.collection_id, p_material_type: body.material_type, p_title: body.title, p_privacy_level: body.privacy_level || 'internal', p_source_url: body.source_url || null, p_storage_path: body.storage_path || null } }
     case 'education-review': return { rpc: 'review_education_material', payload: { p_material_id: body.material_id, p_decision: body.decision, p_privacy_level: body.privacy_level, p_editorial_notes: body.editorial_notes || null } }
     case 'orchard-kitchen-cost': return { rpc: 'record_orchard_kitchen_cost', payload: { p_cost_domain: body.cost_domain, p_amount_clp: body.amount_clp, p_incurred_on: body.incurred_on, p_description: body.description, p_supplier_id: body.supplier_id || null, p_procurement_request_id: body.procurement_request_id || null } }
@@ -135,6 +114,9 @@ export default {
       const token = await requireUser(request, env)
 
       if (request.method === 'GET' && url.pathname === `/${version}/os/navigation`) return json({ data: await rpc(env, token, 'get_black_swan_os_navigation'), request_id: requestId }, 200, requestId)
+
+      const portalManagementMatch = url.pathname.match(new RegExp(`^/${version}/os/event-portals/([0-9a-f-]+)$`))
+      if (portalManagementMatch && request.method === 'GET') return json({ data: await rpc(env, token, 'get_event_portal_management', { p_portal_id: portalManagementMatch[1] }), request_id: requestId }, 200, requestId)
 
       const workspaceMatch = url.pathname.match(new RegExp(`^/${version}/os/workspaces/([a-z-]+)$`))
       if (workspaceMatch && request.method === 'GET') {
