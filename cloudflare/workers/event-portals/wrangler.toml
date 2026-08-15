@@ -1,0 +1,12 @@
+name = "black-swan-event-portals"
+main = "src/index.ts"
+compatibility_date = "2026-08-15"
+
+[vars]
+API_VERSION = "v1"
+ENVIRONMENT = "development"
+
+# Configure in Cloudflare:
+# SUPABASE_URL
+# SUPABASE_ANON_KEY
+# ALLOWED_ORIGINS (comma-separated production/preview origins)
