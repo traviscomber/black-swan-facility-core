@@ -1,0 +1,20 @@
+name = "black-swan-event-notifications"
+main = "src/index.ts"
+compatibility_date = "2026-08-15"
+
+[vars]
+API_VERSION = "v1"
+ENVIRONMENT = "development"
+DELIVERY_BATCH_SIZE = "20"
+
+[triggers]
+crons = ["* * * * *"]
+
+# Configure as Cloudflare secrets / environment variables, never in GitHub:
+# SUPABASE_URL
+# SUPABASE_ANON_KEY
+# NOTIFICATION_MACHINE_TOKEN
+# RESEND_API_KEY
+# RESEND_FROM_EMAIL
+# RESEND_REPLY_TO (optional)
+# RUN_TOKEN (optional manual-run endpoint)
