@@ -56,6 +56,15 @@ type Workspace = {
   }
 }
 
+type ConciergeProposal = {
+  intent_type: 'seek' | 'offer' | 'interest'
+  summary: string
+  details?: string | null
+  privacy: 'network_only' | 'incognito' | 'private'
+  proposal_source?: string
+  requires_confirmation?: boolean
+}
+
 async function authToken() {
   const supabase = createClient()
   const { data } = await supabase.auth.getSession()
@@ -92,6 +101,8 @@ export function DiscoveryWorkspace() {
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [proposal, setProposal] = useState<ConciergeProposal | null>(null)
+  const [proposalNetworkId, setProposalNetworkId] = useState('')
 
   async function load() {
     setError(null)
@@ -100,6 +111,40 @@ export function DiscoveryWorkspace() {
   }
 
   useEffect(() => { void load() }, [])
+
+  async function proposeIntent(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault(); setBusy(true); setError(null); setMessage(null); setProposal(null)
+    const form = new FormData(event.currentTarget)
+    try {
+      const next = await api('/v1/os/discovery/concierge/propose', {
+        method: 'POST',
+        body: JSON.stringify({ text: form.get('concierge_text') }),
+      }) as ConciergeProposal
+      setProposal(next)
+      setProposalNetworkId('')
+      setMessage('Concierge prepared a proposal. Review it before confirming; nothing has been saved yet.')
+    } catch (e) { setError(e instanceof Error ? e.message : 'Unable to prepare Concierge proposal') }
+    finally { setBusy(false) }
+  }
+
+  async function confirmProposal() {
+    if (!proposal) return
+    setBusy(true); setError(null); setMessage(null)
+    try {
+      await action('discovery-intent', {
+        summary: proposal.summary,
+        details: proposal.details || null,
+        intent_type: proposal.intent_type,
+        privacy: proposal.privacy,
+        network_ids: proposal.privacy === 'private' ? null : proposalNetworkId ? [proposalNetworkId] : null,
+      })
+      setProposal(null)
+      setProposalNetworkId('')
+      setMessage('Intent confirmed and saved. It can now participate only within the selected privacy scope.')
+      await load()
+    } catch (e) { setError(e instanceof Error ? e.message : 'Unable to confirm Concierge proposal') }
+    finally { setBusy(false) }
+  }
 
   async function createIntent(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); setBusy(true); setError(null); setMessage(null)
@@ -153,86 +198,61 @@ export function DiscoveryWorkspace() {
     </div>
 
     <Card>
-      <CardHeader><CardTitle>What are you looking for right now?</CardTitle><CardDescription>Create a current intent. Private intents stay as personal context and never enter matching.</CardDescription></CardHeader>
+      <CardHeader>
+        <CardTitle>Black Swan Concierge</CardTitle>
+        <CardDescription>Write naturally. Concierge structures one intent, but it cannot save anything until you explicitly confirm the proposal.</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <form onSubmit={proposeIntent} className="space-y-3">
+          <textarea name="concierge_text" required minLength={5} maxLength={3000} className="min-h-28 w-full rounded-md border bg-background p-3 text-sm" placeholder="Example: I am looking for someone who understands exporting Chilean wine to Europe and can help me think through distribution partners." />
+          <Button disabled={busy}>{busy ? 'Preparing…' : 'Ask Concierge'}</Button>
+        </form>
+
+        {proposal && <div className="space-y-4 rounded-md border p-4">
+          <div className="flex flex-wrap gap-2"><Badge variant="secondary">{proposal.intent_type}</Badge><Badge variant="outline">{proposal.privacy}</Badge><Badge variant="outline">proposal only</Badge></div>
+          <Input value={proposal.summary} onChange={(e) => setProposal({ ...proposal, summary: e.target.value })} maxLength={500} />
+          <textarea value={proposal.details || ''} onChange={(e) => setProposal({ ...proposal, details: e.target.value })} className="min-h-24 w-full rounded-md border bg-background p-3 text-sm" placeholder="Optional details" />
+          <div className="grid gap-3 md:grid-cols-2">
+            <select value={proposal.intent_type} onChange={(e) => setProposal({ ...proposal, intent_type: e.target.value as ConciergeProposal['intent_type'] })} className="h-10 rounded-md border bg-background px-3 text-sm">
+              <option value="seek">I am looking for…</option><option value="offer">I can offer…</option><option value="interest">I am exploring…</option>
+            </select>
+            <select value={proposal.privacy} onChange={(e) => setProposal({ ...proposal, privacy: e.target.value as ConciergeProposal['privacy'] })} className="h-10 rounded-md border bg-background px-3 text-sm">
+              <option value="incognito">Incognito — reveal on mutual interest</option><option value="network_only">Network only</option><option value="private">Private — no matching</option>
+            </select>
+            {proposal.privacy !== 'private' && <select value={proposalNetworkId} onChange={(e) => setProposalNetworkId(e.target.value)} className="h-10 rounded-md border bg-background px-3 text-sm md:col-span-2">
+              <option value="">Black Swan Network</option>
+              {networks.filter((network) => network.network_type === 'event').map((network) => <option key={network.id} value={network.id}>Event · {network.title}</option>)}
+            </select>}
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button disabled={busy || proposal.summary.trim().length < 5} onClick={() => void confirmProposal()}>Confirm intent</Button>
+            <Button type="button" variant="outline" disabled={busy} onClick={() => setProposal(null)}>Discard proposal</Button>
+          </div>
+          <p className="text-xs text-muted-foreground">Proposal source: {proposal.proposal_source || 'concierge'}. Confirmation is always required before persistence.</p>
+        </div>}
+      </CardContent>
+    </Card>
+
+    <Card>
+      <CardHeader><CardTitle>Create intent manually</CardTitle><CardDescription>Private intents stay as personal context and never enter matching.</CardDescription></CardHeader>
       <CardContent>
         <form className="grid gap-3 md:grid-cols-2" onSubmit={createIntent}>
-          <select name="intent_type" required className="h-10 rounded-md border bg-background px-3 text-sm">
-            <option value="seek">I am looking for…</option>
-            <option value="offer">I can offer…</option>
-            <option value="interest">I am exploring…</option>
-          </select>
-          <select name="privacy" required className="h-10 rounded-md border bg-background px-3 text-sm">
-            <option value="network_only">Network only</option>
-            <option value="incognito">Incognito — reveal on mutual interest</option>
-            <option value="private">Private — Concierge context only</option>
-          </select>
+          <select name="intent_type" required className="h-10 rounded-md border bg-background px-3 text-sm"><option value="seek">I am looking for…</option><option value="offer">I can offer…</option><option value="interest">I am exploring…</option></select>
+          <select name="privacy" required className="h-10 rounded-md border bg-background px-3 text-sm"><option value="network_only">Network only</option><option value="incognito">Incognito — reveal on mutual interest</option><option value="private">Private — Concierge context only</option></select>
           <Input name="summary" required minLength={5} maxLength={500} className="md:col-span-2" placeholder="Example: I am looking for someone experienced in vineyard water management." />
           <textarea name="details" className="min-h-24 rounded-md border bg-background p-3 text-sm md:col-span-2" placeholder="Optional context, constraints, timing or what a useful connection would look like." />
-          <select name="network_id" className="h-10 rounded-md border bg-background px-3 text-sm">
-            <option value="">Black Swan Network</option>
-            {networks.map((network) => <option key={network.id} value={network.id}>{network.network_type === 'event' ? 'Event · ' : ''}{network.title}</option>)}
-          </select>
+          <select name="network_id" className="h-10 rounded-md border bg-background px-3 text-sm"><option value="">Black Swan Network</option>{networks.map((network) => <option key={network.id} value={network.id}>{network.network_type === 'event' ? 'Event · ' : ''}{network.title}</option>)}</select>
           <Input name="valid_until" type="datetime-local" />
           <div className="md:col-span-2"><Button disabled={busy}>Create intent</Button></div>
         </form>
       </CardContent>
     </Card>
 
-    <Card>
-      <CardHeader><CardTitle>Your current intents</CardTitle><CardDescription>Pause, fulfil or expire an intent when it is no longer current.</CardDescription></CardHeader>
-      <CardContent className="space-y-3">
-        {intents.length === 0 ? <p className="text-sm text-muted-foreground">No intents yet.</p> : intents.map((intent) => <div key={intent.id} className="rounded-md border p-4">
-          <div className="flex flex-col justify-between gap-3 md:flex-row">
-            <div className="space-y-2">
-              <div className="flex flex-wrap gap-2"><Badge variant="secondary">{intent.intent_type}</Badge><Badge variant="outline">{intent.privacy}</Badge><Badge variant="outline">{intent.status}</Badge></div>
-              <p className="font-medium">{intent.summary}</p>
-              {intent.details && <p className="text-sm text-muted-foreground">{intent.details}</p>}
-              {Array.isArray(intent.networks) && intent.networks.length > 0 && <p className="text-xs text-muted-foreground">Scope: {intent.networks.map((network) => network.title).join(', ')}</p>}
-            </div>
-            {intent.status === 'active' && <div className="flex flex-wrap gap-2">
-              <Button size="sm" variant="outline" disabled={busy} onClick={() => void runAction('discovery-intent-status', { intent_id: intent.id, status: 'paused' }, 'Intent paused.')}>Pause</Button>
-              <Button size="sm" variant="outline" disabled={busy} onClick={() => void runAction('discovery-intent-status', { intent_id: intent.id, status: 'fulfilled' }, 'Intent marked fulfilled.')}>Fulfilled</Button>
-            </div>}
-            {intent.status === 'paused' && <Button size="sm" variant="outline" disabled={busy} onClick={() => void runAction('discovery-intent-status', { intent_id: intent.id, status: 'active' }, 'Intent reactivated.')}>Reactivate</Button>}
-          </div>
-        </div>)}
-      </CardContent>
-    </Card>
+    <Card><CardHeader><CardTitle>Your current intents</CardTitle><CardDescription>Pause, fulfil or expire an intent when it is no longer current.</CardDescription></CardHeader><CardContent className="space-y-3">{intents.length === 0 ? <p className="text-sm text-muted-foreground">No intents yet.</p> : intents.map((intent) => <div key={intent.id} className="rounded-md border p-4"><div className="flex flex-col justify-between gap-3 md:flex-row"><div className="space-y-2"><div className="flex flex-wrap gap-2"><Badge variant="secondary">{intent.intent_type}</Badge><Badge variant="outline">{intent.privacy}</Badge><Badge variant="outline">{intent.status}</Badge></div><p className="font-medium">{intent.summary}</p>{intent.details && <p className="text-sm text-muted-foreground">{intent.details}</p>}{Array.isArray(intent.networks) && intent.networks.length > 0 && <p className="text-xs text-muted-foreground">Scope: {intent.networks.map((network) => network.title).join(', ')}</p>}</div>{intent.status === 'active' && <div className="flex flex-wrap gap-2"><Button size="sm" variant="outline" disabled={busy} onClick={() => void runAction('discovery-intent-status', { intent_id: intent.id, status: 'paused' }, 'Intent paused.')}>Pause</Button><Button size="sm" variant="outline" disabled={busy} onClick={() => void runAction('discovery-intent-status', { intent_id: intent.id, status: 'fulfilled' }, 'Intent marked fulfilled.')}>Fulfilled</Button></div>}{intent.status === 'paused' && <Button size="sm" variant="outline" disabled={busy} onClick={() => void runAction('discovery-intent-status', { intent_id: intent.id, status: 'active' }, 'Intent reactivated.')}>Reactivate</Button>}</div></div>)}</CardContent></Card>
 
-    <Card>
-      <CardHeader>
-        <CardTitle>Discovery networks</CardTitle>
-        <CardDescription>Run matching inside Black Swan or an event network. Matching never includes intents marked Private.</CardDescription>
-      </CardHeader>
-      <CardContent className="grid gap-3 md:grid-cols-2">
-        {networks.map((network) => <div key={network.id} className="rounded-md border p-4">
-          <div className="flex items-start justify-between gap-3"><div><p className="font-medium">{network.title}</p><p className="mt-1 text-sm text-muted-foreground">{network.prompt}</p></div><Badge variant="outline">{network.network_type}</Badge></div>
-          <Button className="mt-4" size="sm" variant="outline" disabled={busy} onClick={() => void runAction('discovery-match', { network_id: network.id }, `Discovery refreshed for ${network.title}.`)}>Refresh opportunities</Button>
-        </div>)}
-      </CardContent>
-    </Card>
+    <Card><CardHeader><CardTitle>Discovery networks</CardTitle><CardDescription>Run matching inside Black Swan or an event network. Matching never includes intents marked Private.</CardDescription></CardHeader><CardContent className="grid gap-3 md:grid-cols-2">{networks.map((network) => <div key={network.id} className="rounded-md border p-4"><div className="flex items-start justify-between gap-3"><div><p className="font-medium">{network.title}</p><p className="mt-1 text-sm text-muted-foreground">{network.prompt}</p></div><Badge variant="outline">{network.network_type}</Badge></div><Button className="mt-4" size="sm" variant="outline" disabled={busy} onClick={() => void runAction('discovery-match', { network_id: network.id }, `Discovery refreshed for ${network.title}.`)}>Refresh opportunities</Button></div>)}</CardContent></Card>
 
-    <Card>
-      <CardHeader><CardTitle>Opportunities</CardTitle><CardDescription>An introduction is unlocked only when both members independently accept.</CardDescription></CardHeader>
-      <CardContent className="space-y-3">
-        {opportunities.length === 0 ? <p className="text-sm text-muted-foreground">No opportunities yet. Add an intent and refresh a discovery network.</p> : opportunities.map((opportunity) => <div key={opportunity.id} className="rounded-md border p-4">
-          <div className="flex flex-col justify-between gap-3 md:flex-row">
-            <div className="space-y-2">
-              <div className="flex flex-wrap gap-2"><Badge variant="secondary">{confidence(opportunity.confidence)}</Badge><Badge variant="outline">{opportunity.network_title}</Badge><Badge variant="outline">{opportunity.status}</Badge></div>
-              <p className="font-medium">{opportunity.status === 'mutual' ? opportunity.counterpart_name : opportunity.counterpart_name || 'Potential Black Swan connection'}</p>
-              <p className="text-sm">{opportunity.counterpart_intent}</p>
-              <p className="text-sm text-muted-foreground">{opportunity.reason}</p>
-              {opportunity.status === 'mutual' && <p className="text-sm font-medium">Mutual interest confirmed. The introduction is unlocked.</p>}
-            </div>
-            {opportunity.status === 'pending' && opportunity.my_status === 'pending' && <div className="flex gap-2">
-              <Button size="sm" disabled={busy} onClick={() => void runAction('discovery-opportunity', { opportunity_id: opportunity.id, decision: 'accepted' }, 'Interest recorded. The introduction unlocks only if the other member also accepts.')}>Interested</Button>
-              <Button size="sm" variant="outline" disabled={busy} onClick={() => void runAction('discovery-opportunity', { opportunity_id: opportunity.id, decision: 'declined' }, 'Opportunity declined.')}>Not now</Button>
-            </div>}
-            {opportunity.status === 'pending' && opportunity.my_status === 'accepted' && <Badge variant="outline">Waiting for the other member</Badge>}
-          </div>
-        </div>)}
-      </CardContent>
-    </Card>
+    <Card><CardHeader><CardTitle>Opportunities</CardTitle><CardDescription>An introduction is unlocked only when both members independently accept.</CardDescription></CardHeader><CardContent className="space-y-3">{opportunities.length === 0 ? <p className="text-sm text-muted-foreground">No opportunities yet. Add an intent and refresh a discovery network.</p> : opportunities.map((opportunity) => <div key={opportunity.id} className="rounded-md border p-4"><div className="flex flex-col justify-between gap-3 md:flex-row"><div className="space-y-2"><div className="flex flex-wrap gap-2"><Badge variant="secondary">{confidence(opportunity.confidence)}</Badge><Badge variant="outline">{opportunity.network_title}</Badge><Badge variant="outline">{opportunity.status}</Badge></div><p className="font-medium">{opportunity.status === 'mutual' ? opportunity.counterpart_name : opportunity.counterpart_name || 'Potential Black Swan connection'}</p><p className="text-sm">{opportunity.counterpart_intent}</p><p className="text-sm text-muted-foreground">{opportunity.reason}</p>{opportunity.status === 'mutual' && <p className="text-sm font-medium">Mutual interest confirmed. The introduction is unlocked.</p>}</div>{opportunity.status === 'pending' && opportunity.my_status === 'pending' && <div className="flex gap-2"><Button size="sm" disabled={busy} onClick={() => void runAction('discovery-opportunity', { opportunity_id: opportunity.id, decision: 'accepted' }, 'Interest recorded. The introduction unlocks only if the other member also accepts.')}>Interested</Button><Button size="sm" variant="outline" disabled={busy} onClick={() => void runAction('discovery-opportunity', { opportunity_id: opportunity.id, decision: 'declined' }, 'Opportunity declined.')}>Not now</Button></div>}{opportunity.status === 'pending' && opportunity.my_status === 'accepted' && <Badge variant="outline">Waiting for the other member</Badge>}</div></div>)}</CardContent></Card>
 
     {message && <div className="rounded-md border p-3 text-sm text-muted-foreground">{message}</div>}
     {error && <div className="rounded-md border border-destructive/40 bg-destructive/5 p-3 text-sm text-destructive">{error}</div>}
