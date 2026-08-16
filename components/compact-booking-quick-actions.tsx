@@ -302,7 +302,10 @@ export function CompactBookingQuickActions() {
 
       if (error) toast.error(`${copy.createError}: ${error.message}`)
       else if (duplicate) toast.info(copy.duplicate)
-      else toast.success(`${copy.actions[key]} ${copy.created}`)
+      else {
+        toast.success(`${copy.actions[key]} ${copy.created}`)
+        window.dispatchEvent(new Event("booking-daily-operations-refresh"))
+      }
     } catch (caught) {
       const message = caught instanceof Error ? caught.message : String(caught)
       toast.error(`${copy.createError}: ${message}`)
