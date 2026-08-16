@@ -5,6 +5,12 @@ compatibility_date = "2026-08-14"
 [vars]
 API_VERSION = "v1"
 ENVIRONMENT = "development"
+DISCOVERY_CONCIERGE_MODEL = "@cf/meta/llama-3.1-8b-instruct"
+
+[ai]
+binding = "AI"
 
 # Configure SUPABASE_URL and SUPABASE_ANON_KEY in Cloudflare.
 # This Worker uses the caller's Supabase access token and canonical database RPCs.
+# Workers AI is proposal-only for Discovery Concierge: it cannot persist an intent.
+# The user must explicitly confirm the proposal before create_discovery_intent is called.
