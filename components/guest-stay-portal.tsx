@@ -24,6 +24,8 @@ const COPY = {
     sending: "Enviando…",
     sent: "Solicitud enviada",
     sentDetail: "Hospitalidad ya recibió tu solicitud.",
+    duplicate: "Esta solicitud ya estaba abierta",
+    duplicateDetail: "Hospitalidad ya tiene una solicitud activa de este tipo para tu estadía.",
   },
   en: {
     eyebrow: "BLACK SWAN · HOSPITALITY",
@@ -37,6 +39,8 @@ const COPY = {
     sending: "Sending…",
     sent: "Request sent",
     sentDetail: "Hospitality has received your request.",
+    duplicate: "This request is already open",
+    duplicateDetail: "Hospitality already has an active request of this type for your stay.",
   },
   de: {
     eyebrow: "BLACK SWAN · GASTBETREUUNG",
@@ -50,6 +54,8 @@ const COPY = {
     sending: "Wird gesendet…",
     sent: "Anfrage gesendet",
     sentDetail: "Das Hospitality-Team hat Ihre Anfrage erhalten.",
+    duplicate: "Diese Anfrage ist bereits offen",
+    duplicateDetail: "Für Ihren Aufenthalt gibt es bereits eine aktive Anfrage dieses Typs.",
   },
 } as const
 
@@ -80,7 +86,7 @@ export function GuestStayPortal() {
   const [guests, setGuests] = useState<GuestOption[]>([])
   const [selected, setSelected] = useState<GuestOption | null>(null)
   const [sending, setSending] = useState<string | null>(null)
-  const [sent, setSent] = useState(false)
+  const [sentState, setSentState] = useState<"created" | "duplicate" | null>(null)
 
   const languageKey = useMemo(() => language, [language])
 
@@ -106,9 +112,10 @@ export function GuestStayPortal() {
   }, [access])
 
   async function send(category: Category) {
-    if (!selected) return
+    if (!selected || sending) return
     setSending(category.id)
     setError(null)
+    setSentState(null)
     try {
       const response = await fetch("/api/guest-access/request", {
         method: "POST",
@@ -117,14 +124,13 @@ export function GuestStayPortal() {
           access,
           reservationId: selected.reservationId,
           category: category.id,
-          requestLabel: category[languageKey],
           language,
         }),
       })
       const payload = await response.json()
       if (!response.ok) throw new Error(payload.error || "No fue posible enviar la solicitud.")
-      setSent(true)
-      window.setTimeout(() => setSent(false), 3000)
+      setSentState(payload.duplicate ? "duplicate" : "created")
+      window.setTimeout(() => setSentState(null), 4000)
     } catch (sendError) {
       setError(sendError instanceof Error ? sendError.message : "No fue posible enviar la solicitud.")
     } finally {
@@ -144,10 +150,10 @@ export function GuestStayPortal() {
         </header>
 
         {error && <div className="mb-4 border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">{error}</div>}
-        {sent && (
+        {sentState && (
           <div className="mb-4 border border-primary/30 bg-primary/10 p-4">
-            <p className="font-medium text-foreground">{copy.sent}</p>
-            <p className="mt-1 text-sm text-muted-foreground">{copy.sentDetail}</p>
+            <p className="font-medium text-foreground">{sentState === "duplicate" ? copy.duplicate : copy.sent}</p>
+            <p className="mt-1 text-sm text-muted-foreground">{sentState === "duplicate" ? copy.duplicateDetail : copy.sentDetail}</p>
           </div>
         )}
 
@@ -192,7 +198,7 @@ export function GuestStayPortal() {
                     type="button"
                     disabled={Boolean(sending)}
                     onClick={() => void send(category)}
-                    className="min-h-28 border border-border bg-secondary/30 p-4 text-left transition hover:border-primary/40 hover:bg-secondary disabled:opacity-50"
+                    className="min-h-28 border border-border bg-secondary/30 p-4 text-left transition hover:border-primary/40 hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     <Icon className="mb-5 h-5 w-5 text-primary" />
                     <span className="block text-sm font-medium leading-5">{category[languageKey]}</span>
