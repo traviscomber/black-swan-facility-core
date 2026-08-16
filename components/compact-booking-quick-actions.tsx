@@ -47,6 +47,7 @@ type Copy = {
   createError: string
   created: string
   creating: string
+  duplicate: string
   actions: Record<QuickActionKey, string>
 }
 
@@ -64,6 +65,7 @@ const COPY: Record<Language, Copy> = {
     createError: "Could not create the task",
     created: "created",
     creating: "Creating…",
+    duplicate: "An active task of this type already exists for this reservation",
     actions: {
       towels: "Towels",
       cleaning: "Cleaning",
@@ -85,6 +87,7 @@ const COPY: Record<Language, Copy> = {
     createError: "No fue posible crear la tarea",
     created: "creada",
     creating: "Creando…",
+    duplicate: "Ya existe una tarea activa de este tipo para esta reserva",
     actions: {
       towels: "Toallas",
       cleaning: "Limpieza",
@@ -106,6 +109,7 @@ const COPY: Record<Language, Copy> = {
     createError: "Aufgabe konnte nicht erstellt werden",
     created: "erstellt",
     creating: "Wird erstellt…",
+    duplicate: "Für diese Reservierung gibt es bereits eine aktive Aufgabe dieses Typs",
     actions: {
       towels: "Handtücher",
       cleaning: "Reinigung",
@@ -125,6 +129,17 @@ const ACTION_ICONS: Record<QuickActionKey, typeof ConciergeBell> = {
 }
 
 const ACTION_KEYS: QuickActionKey[] = ["towels", "cleaning", "heating", "request", "call_guest"]
+
+function chileOperatingDate() {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Santiago",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date())
+  const value = (type: Intl.DateTimeFormatPartTypes) => parts.find((part) => part.type === type)?.value ?? ""
+  return `${value("year")}-${value("month")}-${value("day")}`
+}
 
 function reservationLabel(reservation: ReservationOption, copy: Copy) {
   const location = reservation.room?.location?.name ?? copy.noHouse
@@ -192,13 +207,28 @@ export function CompactBookingQuickActions() {
     return () => window.removeEventListener(BOOKING_COMMAND_SELECTION_EVENT, onSelection)
   }, [loadReservation])
 
+  const hasActiveHospitalityRequest = useCallback(async (requestType: string) => {
+    if (!reservation) return false
+    const { data, error } = await supabase
+      .from("hospitality_requests")
+      .select("id")
+      .eq("reservation_id", reservation.id)
+      .eq("request_type", requestType)
+      .not("status", "in", "(completed,resolved,cancelled,canceled)")
+      .limit(1)
+    if (error) throw error
+    return (data?.length ?? 0) > 0
+  }, [reservation, supabase])
+
   const createHospitalityRequest = useCallback(async (
     requestType: string,
     category: string,
     description: string,
   ) => {
-    if (!reservation) return { error: new Error(copy.selectFirst) }
-    return supabase.from("hospitality_requests").insert({
+    if (!reservation) return { error: new Error(copy.selectFirst), duplicate: false }
+    if (await hasActiveHospitalityRequest(requestType)) return { error: null, duplicate: true }
+
+    const result = await supabase.from("hospitality_requests").insert({
       reservation_id: reservation.id,
       room_id: reservation.room_id,
       location_id: reservation.location_id,
@@ -211,45 +241,75 @@ export function CompactBookingQuickActions() {
       priority: "normal",
       status: "pending",
     })
-  }, [copy.selectFirst, reservation, supabase])
+    return { error: result.error, duplicate: false }
+  }, [copy.selectFirst, hasActiveHospitalityRequest, reservation, supabase])
 
   const runAction = useCallback(async (key: QuickActionKey) => {
-    if (!reservation) {
-      toast.error(copy.selectFirst)
+    if (!reservation || saving !== null) {
+      if (!reservation) toast.error(copy.selectFirst)
       return
     }
 
     setSaving(key)
-    let error: { message: string } | null = null
+    try {
+      let error: { message: string } | null = null
+      let duplicate = false
 
-    if (key === "cleaning") {
-      const result = await supabase.from("housekeeping_tasks").insert({
-        reservation_id: reservation.id,
-        room_id: reservation.room_id,
-        task_type: "stayover_cleaning",
-        status: "pending",
-        priority: "normal",
-        notes: `Cleaning requested for ${reservation.guest_name}.`,
-      })
-      error = result.error
-    } else if (key === "towels") {
-      const result = await createHospitalityRequest("Towels", "towels", `Prepare or replenish towels for ${reservation.guest_name}.`)
-      error = result.error
-    } else if (key === "heating") {
-      const result = await createHospitalityRequest("heating_check", "stay_detail", `Check heating for ${reservation.guest_name}.`)
-      error = result.error
-    } else if (key === "call_guest") {
-      const result = await createHospitalityRequest("guest_call", "stay_detail", `Call ${reservation.guest_name}${reservation.guest_phone ? ` at ${reservation.guest_phone}` : ""}.`)
-      error = result.error
-    } else {
-      const result = await createHospitalityRequest("guest_request", "hospitality", `Operational request for ${reservation.guest_name}.`)
-      error = result.error
+      if (key === "cleaning") {
+        const today = chileOperatingDate()
+        const existing = await supabase
+          .from("housekeeping_tasks")
+          .select("id")
+          .eq("reservation_id", reservation.id)
+          .eq("task_type", "stayover_cleaning")
+          .eq("service_date", today)
+          .not("status", "in", "(completed,cancelled,canceled)")
+          .limit(1)
+
+        if (existing.error) {
+          error = existing.error
+        } else if ((existing.data?.length ?? 0) > 0) {
+          duplicate = true
+        } else {
+          const result = await supabase.from("housekeeping_tasks").insert({
+            reservation_id: reservation.id,
+            room_id: reservation.room_id,
+            task_type: "stayover_cleaning",
+            service_date: today,
+            status: "pending",
+            priority: "normal",
+            notes: `Cleaning requested for ${reservation.guest_name}.`,
+          })
+          error = result.error
+        }
+      } else if (key === "towels") {
+        const result = await createHospitalityRequest("Towels", "towels", `Prepare or replenish towels for ${reservation.guest_name}.`)
+        error = result.error
+        duplicate = result.duplicate
+      } else if (key === "heating") {
+        const result = await createHospitalityRequest("heating_check", "stay_detail", `Check heating for ${reservation.guest_name}.`)
+        error = result.error
+        duplicate = result.duplicate
+      } else if (key === "call_guest") {
+        const result = await createHospitalityRequest("guest_call", "stay_detail", `Call ${reservation.guest_name}${reservation.guest_phone ? ` at ${reservation.guest_phone}` : ""}.`)
+        error = result.error
+        duplicate = result.duplicate
+      } else {
+        const result = await createHospitalityRequest("guest_request", "hospitality", `Operational request for ${reservation.guest_name}.`)
+        error = result.error
+        duplicate = result.duplicate
+      }
+
+      if (error) toast.error(`${copy.createError}: ${error.message}`)
+      else if (duplicate) toast.info(copy.duplicate)
+      else toast.success(`${copy.actions[key]} ${copy.created}`)
+    } catch (caught) {
+      const message = caught instanceof Error ? caught.message : String(caught)
+      toast.error(`${copy.createError}: ${message}`)
+    } finally {
+      setSaving(null)
     }
-
-    if (error) toast.error(`${copy.createError}: ${error.message}`)
-    else toast.success(`${copy.actions[key]} ${copy.created}`)
-    setSaving(null)
-  }, [copy, createHospitalityRequest, reservation, supabase])
+  }, [copy, createHospitalityRequest, reservation, saving, supabase])
 
   const context = reservation
     ? `${reservation.guest_name} · ${reservation.room?.location?.name ?? copy.noHouse} · ${reservation.room?.room_number ?? copy.noRoom}`
@@ -293,7 +353,7 @@ export function CompactBookingQuickActions() {
                 }
                 void loadReservation(reservationId)
               }}
-              disabled={optionsLoading || loading}
+              disabled={optionsLoading || loading || saving !== null}
               className="h-9 min-w-0 flex-1 rounded-md border border-input bg-background px-3 text-sm text-foreground outline-none focus:ring-2 focus:ring-ring"
             >
               <option value="">{optionsLoading ? copy.loadingReservations : copy.selectReservation}</option>
