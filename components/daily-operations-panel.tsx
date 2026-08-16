@@ -8,6 +8,8 @@ import { Button } from "@/components/ui/button"
 import { useLanguage } from "@/lib/hooks/use-language"
 import { dailyOperationsCopy } from "@/lib/translations/daily-operations"
 
+export const DAILY_OPERATIONS_REFRESH_EVENT = "booking-daily-operations-refresh"
+
 type DailyItem = {
   id: string
   category: "housekeeping" | "hospitality" | "operations"
@@ -120,6 +122,9 @@ export function DailyOperationsPanel() {
   useEffect(() => {
     void loadItems()
 
+    const onLocalRefresh = () => void loadItems()
+    window.addEventListener(DAILY_OPERATIONS_REFRESH_EVENT, onLocalRefresh)
+
     const channel = supabase
       .channel("bookings-daily-operations-live")
       .on("postgres_changes", { event: "*", schema: "public", table: "hospitality_requests" }, () => void loadItems())
@@ -127,7 +132,10 @@ export function DailyOperationsPanel() {
       .on("postgres_changes", { event: "*", schema: "public", table: "tasks" }, () => void loadItems())
       .subscribe()
 
-    return () => { void supabase.removeChannel(channel) }
+    return () => {
+      window.removeEventListener(DAILY_OPERATIONS_REFRESH_EVENT, onLocalRefresh)
+      void supabase.removeChannel(channel)
+    }
   }, [loadItems, supabase])
 
   const counts = useMemo(() => ({
