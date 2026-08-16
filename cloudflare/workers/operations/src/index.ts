@@ -1,10 +1,16 @@
 type JsonRecord = Record<string, unknown>
 
+type AiBinding = {
+  run(model: string, input: Record<string, unknown>): Promise<unknown>
+}
+
 export interface Env {
   API_VERSION: string
   ENVIRONMENT: string
   SUPABASE_URL?: string
   SUPABASE_ANON_KEY?: string
+  AI?: AiBinding
+  DISCOVERY_CONCIERGE_MODEL?: string
 }
 
 class ApiError extends Error {
@@ -62,6 +68,58 @@ async function rpc(env: Env, token: string, name: string, payload: JsonRecord = 
   return text ? JSON.parse(text) : null
 }
 
+function normalizeConciergeProposal(input: JsonRecord, fallbackText: string, source: string) {
+  const intentType = ['seek', 'offer', 'interest'].includes(String(input.intent_type)) ? String(input.intent_type) : 'interest'
+  const privacy = ['network_only', 'incognito', 'private'].includes(String(input.privacy)) ? String(input.privacy) : 'incognito'
+  const summary = String(input.summary || fallbackText).trim().slice(0, 500)
+  const details = String(input.details || '').trim().slice(0, 2000) || null
+  return {
+    intent_type: intentType,
+    summary: summary.length >= 5 ? summary : fallbackText.trim().slice(0, 500),
+    details,
+    privacy,
+    proposal_source: source,
+    requires_confirmation: true,
+  }
+}
+
+function ruleBasedConcierge(text: string) {
+  const lower = text.toLowerCase()
+  const intentType = /\b(i can|i offer|i provide|we can|available to help|puedo|ofrezco)\b/.test(lower)
+    ? 'offer'
+    : /\b(looking for|seeking|need|want to find|busco|necesito|quiero encontrar)\b/.test(lower)
+      ? 'seek'
+      : 'interest'
+  return normalizeConciergeProposal({ intent_type: intentType, summary: text, privacy: 'incognito' }, text, 'rules_v1')
+}
+
+async function proposeDiscoveryIntent(env: Env, text: string) {
+  const clean = text.trim()
+  if (clean.length < 5 || clean.length > 3000) throw new ApiError('invalid_concierge_input', 400)
+  if (!env.AI) return ruleBasedConcierge(clean)
+
+  const model = env.DISCOVERY_CONCIERGE_MODEL || '@cf/meta/llama-3.1-8b-instruct'
+  const prompt = `You are Black Swan Concierge. Convert the member's natural-language statement into one current discovery intent. Return ONLY valid JSON with keys intent_type, summary, details, privacy. intent_type must be seek, offer, or interest. privacy must be incognito unless the member explicitly asks to keep it private, in which case use private. Keep summary under 220 characters. Never invent people, companies, amounts, timing, or constraints that the member did not state. Member statement: ${JSON.stringify(clean)}`
+
+  try {
+    const result = await env.AI.run(model, {
+      messages: [
+        { role: 'system', content: 'Return JSON only. Do not persist or take actions.' },
+        { role: 'user', content: prompt },
+      ],
+      temperature: 0.1,
+      max_tokens: 350,
+    }) as JsonRecord
+    const raw = typeof result?.response === 'string' ? result.response : typeof result === 'string' ? result : ''
+    const match = raw.match(/\{[\s\S]*\}/)
+    if (!match) return ruleBasedConcierge(clean)
+    const parsed = JSON.parse(match[0]) as JsonRecord
+    return normalizeConciergeProposal(parsed, clean, 'workers_ai')
+  } catch {
+    return ruleBasedConcierge(clean)
+  }
+}
+
 const workspaces: Record<string, string> = {
   people: 'get_people_graph_workspace',
   events: 'get_events_workspace',
@@ -117,6 +175,13 @@ export default {
     try {
       if (request.method === 'GET' && url.pathname === `/${version}/health`) return json({ status: 'ok', service: 'black-swan-operations', request_id: requestId }, 200, requestId)
       const token = await requireUser(request, env)
+
+      if (request.method === 'POST' && url.pathname === `/${version}/os/discovery/concierge/propose`) {
+        const allowed = Boolean(await rpc(env, token, 'get_discovery_navigation_entitlement'))
+        if (!allowed) throw new ApiError('forbidden', 403)
+        const body = await request.json() as JsonRecord
+        return json({ data: await proposeDiscoveryIntent(env, String(body.text || '')), request_id: requestId }, 200, requestId)
+      }
 
       if (request.method === 'GET' && url.pathname === `/${version}/os/navigation`) {
         const navigation = await rpc(env, token, 'get_black_swan_os_navigation') as JsonRecord
