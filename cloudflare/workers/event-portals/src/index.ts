@@ -89,6 +89,49 @@ export default {
         return json(request, env, { data }, 201)
       }
 
+      const discoverySessionMatch = url.pathname.match(new RegExp(`^/${version}/events/([a-z0-9-]+)/discovery/session$`))
+      if (discoverySessionMatch && request.method === 'POST') {
+        const body = await request.json() as JsonRecord
+        const data = await rpc(env, 'start_guest_event_discovery_session', {
+          p_slug: discoverySessionMatch[1],
+          p_secret: body.access,
+          p_registration_id: body.registration_id,
+          p_email: body.email,
+        })
+        return json(request, env, { data }, 201)
+      }
+
+      const guestIntentMatch = url.pathname.match(new RegExp(`^/${version}/events/([a-z0-9-]+)/discovery/intents$`))
+      if (guestIntentMatch && request.method === 'POST') {
+        const body = await request.json() as JsonRecord
+        const data = await rpc(env, 'create_guest_event_discovery_intent', {
+          p_session_token: body.session_token,
+          p_summary: body.summary,
+          p_intent_type: body.intent_type,
+          p_privacy: body.privacy || 'incognito',
+          p_details: body.details || null,
+        })
+        return json(request, env, { data: { intent_id: data } }, 201)
+      }
+
+      const guestWorkspaceMatch = url.pathname.match(new RegExp(`^/${version}/events/([a-z0-9-]+)/discovery$`))
+      if (guestWorkspaceMatch && request.method === 'POST') {
+        const body = await request.json() as JsonRecord
+        const data = await rpc(env, 'get_guest_discovery_workspace', { p_session_token: body.session_token })
+        return json(request, env, { data })
+      }
+
+      const guestOpportunityMatch = url.pathname.match(new RegExp(`^/${version}/events/([a-z0-9-]+)/discovery/opportunities/([0-9a-f-]+)$`))
+      if (guestOpportunityMatch && request.method === 'POST') {
+        const body = await request.json() as JsonRecord
+        const data = await rpc(env, 'respond_guest_discovery_opportunity', {
+          p_session_token: body.session_token,
+          p_opportunity_id: guestOpportunityMatch[2],
+          p_decision: body.decision,
+        })
+        return json(request, env, { data })
+      }
+
       throw new ApiError('not_found', 404)
     } catch (error) {
       const normalized = error instanceof ApiError ? error : new ApiError('internal_error', 500)
