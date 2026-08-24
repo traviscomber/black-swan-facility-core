@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge"
 import { ChevronLeft, ChevronRight, Plus, Clock, Edit2, Trash2 } from "lucide-react"
 import { format, addDays } from "date-fns"
 import { createBrowserClient } from "@supabase/ssr"
-import { ScheduleDialog } from "./schedule-dialog"
+import { ScheduleDialog, type ScheduleFormData } from "./schedule-dialog"
 
 interface VesselSchedule {
   id: string
@@ -23,369 +23,120 @@ interface VesselSchedule {
   ports_boats?: { name: string } | null
 }
 
-interface Vessel {
-  id: string
-  name: string
-  type: string
-}
+interface Vessel { id: string; name: string; type: string }
+interface Port { id: string; name: string }
+interface VesselScheduleCalendarProps { vessels: Vessel[]; ports?: Port[] }
 
-interface Port {
-  id: string
-  name: string
-}
-
-interface VesselScheduleCalendarProps {
-  vessels: Vessel[]
-  ports?: Port[]
+function firstRelation<T>(value: T | T[] | null | undefined): T | null {
+  return Array.isArray(value) ? value[0] ?? null : value ?? null
 }
 
 export function VesselScheduleCalendar({ vessels, ports = [] }: VesselScheduleCalendarProps) {
-  const [supabase] = useState(() =>
-    createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!),
-  )
-
+  const [supabase] = useState(() => createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!))
   const [selectedDate, setSelectedDate] = useState(new Date())
   const [schedules, setSchedules] = useState<VesselSchedule[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [selectedSchedule, setSelectedSchedule] = useState<VesselSchedule | null>(null)
-
-  // Hours for timetable (0-23)
   const hours = Array.from({ length: 24 }, (_, i) => i)
-  const boats = vessels.filter((v) => v.type === "boat")
+  const boats = vessels.filter((vessel) => vessel.type === "boat")
 
-  useEffect(() => {
-    fetchSchedules()
-  }, [selectedDate])
+  useEffect(() => { void fetchSchedules() }, [selectedDate])
 
   const fetchSchedules = async () => {
     try {
       setLoading(true)
+      setError(null)
       const dateStr = format(selectedDate, "yyyy-MM-dd")
-
-      const { data, error } = await supabase
+      const { data, error: loadError } = await supabase
         .from("vessel_schedules")
-        .select(`
-          id,
-          vessel_id,
-          scheduled_date,
-          departure_time,
-          arrival_time,
-          origin_port_id,
-          destination_port_id,
-          status,
-          capacity_used,
-          notes,
-          ports_boats(name)
-        `)
+        .select("id,vessel_id,scheduled_date,departure_time,arrival_time,origin_port_id,destination_port_id,status,capacity_used,notes,ports_boats(name)")
         .eq("scheduled_date", dateStr)
         .order("departure_time", { ascending: true })
 
-      if (error) {
-        if (error.message.includes("vessel_schedules")) {
-          const sampleSchedules: VesselSchedule[] = boats
-            .filter((v) => v.type === "boat")
-            .flatMap((vessel, vesselIdx) =>
-              Array.from({ length: 3 + vesselIdx }, (_, scheduleIdx) => ({
-                id: `${vessel.id}-${scheduleIdx}`,
-                vessel_id: vessel.id,
-                scheduled_date: dateStr,
-                departure_time: `${String(6 + scheduleIdx * 4).padStart(2, "0")}:${
-                  (scheduleIdx * 15) % 60 < 10 ? "0" : ""
-                }${(scheduleIdx * 15) % 60}`,
-                arrival_time: undefined,
-                origin_port_id: ports[0]?.id,
-                destination_port_id: ports[ports.length - 1]?.id,
-                status: ["scheduled", "departed"][Math.floor(Math.random() * 2)],
-                ports_boats: { name: vessel.name },
-              })),
-            )
-          setSchedules(sampleSchedules)
-          console.log("[v0] Using sample hourly schedules for demonstration")
-        } else {
-          throw error
-        }
-      } else if (data) {
-        setSchedules(data as VesselSchedule[])
-      }
+      if (loadError) throw loadError
+      setSchedules((data ?? []).map((row) => ({ ...row, ports_boats: firstRelation(row.ports_boats) })))
     } catch (err) {
-      console.error("[v0] Error fetching vessel schedules:", err)
+      const message = err instanceof Error ? err.message : "No fue posible cargar los itinerarios."
+      console.error("[VesselScheduleCalendar] Error fetching schedules:", err)
+      setError(message)
+      setSchedules([])
     } finally {
       setLoading(false)
     }
   }
 
-  const getPortName = (portId?: string) => {
-    if (!portId) return "Unknown Port"
-    return ports.find((p) => p.id === portId)?.name || "Unknown Port"
-  }
+  const getPortName = (portId?: string) => portId ? ports.find((port) => port.id === portId)?.name || "Unknown Port" : "Unknown Port"
 
-  const handleSaveSchedule = async (formData: any) => {
+  const handleSaveSchedule = async (formData: ScheduleFormData) => {
     try {
-      const dateStr = format(selectedDate, "yyyy-MM-dd")
-      const scheduleData = {
-        ...formData,
-        scheduled_date: dateStr,
-      }
-
-      if (selectedSchedule?.id) {
-        const { error } = await supabase.from("vessel_schedules").update(scheduleData).eq("id", selectedSchedule.id)
-
-        if (error) throw error
-        console.log("[v0] Schedule updated successfully")
-      } else {
-        const { error } = await supabase.from("vessel_schedules").insert([scheduleData])
-
-        if (error) throw error
-        console.log("[v0] Schedule created successfully")
-      }
-
+      setError(null)
+      const scheduleData = { ...formData, scheduled_date: format(selectedDate, "yyyy-MM-dd") }
+      const result = selectedSchedule?.id
+        ? await supabase.from("vessel_schedules").update(scheduleData).eq("id", selectedSchedule.id)
+        : await supabase.from("vessel_schedules").insert([scheduleData])
+      if (result.error) throw result.error
       await fetchSchedules()
       setSelectedSchedule(null)
     } catch (err) {
-      console.error("[v0] Error saving schedule:", err)
+      const message = err instanceof Error ? err.message : "No fue posible guardar el itinerario."
+      console.error("[VesselScheduleCalendar] Error saving schedule:", err)
+      setError(message)
     }
   }
 
   const handleDeleteSchedule = async (id: string) => {
     try {
-      const { error } = await supabase.from("vessel_schedules").delete().eq("id", id)
-
-      if (error) throw error
-      console.log("[v0] Schedule deleted successfully")
+      setError(null)
+      const { error: deleteError } = await supabase.from("vessel_schedules").delete().eq("id", id)
+      if (deleteError) throw deleteError
       await fetchSchedules()
     } catch (err) {
-      console.error("[v0] Error deleting schedule:", err)
+      const message = err instanceof Error ? err.message : "No fue posible eliminar el itinerario."
+      console.error("[VesselScheduleCalendar] Error deleting schedule:", err)
+      setError(message)
     }
   }
 
-  const getSchedulesForVesselAndHour = (vesselId: string, hour: number) => {
-    return schedules.filter((schedule) => {
-      if (schedule.vessel_id !== vesselId) return false
-      if (!schedule.departure_time) return false
-      const scheduleHour = Number.parseInt(schedule.departure_time.split(":")[0])
-      return scheduleHour === hour
-    })
-  }
+  const getSchedulesForVesselAndHour = (vesselId: string, hour: number) => schedules.filter((schedule) => schedule.vessel_id === vesselId && schedule.departure_time && Number.parseInt(schedule.departure_time.split(":")[0]) === hour)
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case "scheduled":
-        return "bg-blue-500/10 text-blue-600 border-blue-300"
-      case "departed":
-        return "bg-purple-500/10 text-purple-600 border-purple-300"
-      case "arrived":
-        return "bg-green-500/10 text-green-600 border-green-300"
-      case "cancelled":
-        return "bg-red-500/10 text-red-600 border-red-300"
-      default:
-        return "bg-gray-500/10 text-gray-600 border-gray-300"
+      case "scheduled": return "bg-blue-500/10 text-blue-600 border-blue-300"
+      case "departed": return "bg-purple-500/10 text-purple-600 border-purple-300"
+      case "arrived": return "bg-green-500/10 text-green-600 border-green-300"
+      case "cancelled": return "bg-red-500/10 text-red-600 border-red-300"
+      default: return "bg-gray-500/10 text-gray-600 border-gray-300"
     }
   }
 
   const stats = {
     totalSchedules: schedules.length,
-    scheduled: schedules.filter((s) => s.status === "scheduled").length,
-    departed: schedules.filter((s) => s.status === "departed").length,
-    arrived: schedules.filter((s) => s.status === "arrived").length,
+    scheduled: schedules.filter((schedule) => schedule.status === "scheduled").length,
+    departed: schedules.filter((schedule) => schedule.status === "departed").length,
+    arrived: schedules.filter((schedule) => schedule.status === "arrived").length,
   }
 
-  const goToPreviousDay = () => setSelectedDate(addDays(selectedDate, -1))
-  const goToNextDay = () => setSelectedDate(addDays(selectedDate, 1))
-  const goToToday = () => setSelectedDate(new Date())
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-8">
-        <p className="text-muted-foreground">Loading vessel schedules...</p>
-      </div>
-    )
-  }
+  if (loading) return <div className="flex items-center justify-center py-8"><p className="text-muted-foreground">Loading vessel schedules...</p></div>
 
   return (
     <div className="space-y-6">
-      {/* KPI Cards */}
+      {error && <Card className="border-destructive/40"><CardContent className="p-4 text-sm text-destructive">{error}</CardContent></Card>}
       <div className="grid gap-4 md:grid-cols-4">
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-white">Today's Schedules</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-white">{stats.totalSchedules}</div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-white">Scheduled</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-blue-400">{stats.scheduled}</div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-white">Departed</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-purple-400">{stats.departed}</div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-white">Arrived</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-green-400">{stats.arrived}</div>
-          </CardContent>
-        </Card>
+        <Card><CardHeader className="pb-3"><CardTitle className="text-sm font-medium text-white">Today's Schedules</CardTitle></CardHeader><CardContent><div className="text-3xl font-bold text-white">{stats.totalSchedules}</div></CardContent></Card>
+        <Card><CardHeader className="pb-3"><CardTitle className="text-sm font-medium text-white">Scheduled</CardTitle></CardHeader><CardContent><div className="text-3xl font-bold text-blue-400">{stats.scheduled}</div></CardContent></Card>
+        <Card><CardHeader className="pb-3"><CardTitle className="text-sm font-medium text-white">Departed</CardTitle></CardHeader><CardContent><div className="text-3xl font-bold text-purple-400">{stats.departed}</div></CardContent></Card>
+        <Card><CardHeader className="pb-3"><CardTitle className="text-sm font-medium text-white">Arrived</CardTitle></CardHeader><CardContent><div className="text-3xl font-bold text-green-400">{stats.arrived}</div></CardContent></Card>
       </div>
 
-      {/* Date Navigation */}
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <div>
-            <CardTitle className="text-white">Daily Vessel Schedule</CardTitle>
-            <p className="text-sm text-muted-foreground mt-1">{format(selectedDate, "EEEE, MMMM d, yyyy")}</p>
-          </div>
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={goToPreviousDay} className="gap-2 bg-transparent">
-              <ChevronLeft className="h-4 w-4" />
-              Previous
-            </Button>
-            <Button variant="outline" size="sm" onClick={goToToday} className="gap-2 bg-transparent">
-              Today
-            </Button>
-            <Button variant="outline" size="sm" onClick={goToNextDay} className="gap-2 bg-transparent">
-              Next
-              <ChevronRight className="h-4 w-4" />
-            </Button>
-          </div>
-        </CardHeader>
-      </Card>
+      <Card><CardHeader className="flex flex-row items-center justify-between"><div><CardTitle className="text-white">Daily Vessel Schedule</CardTitle><p className="text-sm text-muted-foreground mt-1">{format(selectedDate, "EEEE, MMMM d, yyyy")}</p></div><div className="flex gap-2"><Button variant="outline" size="sm" onClick={() => setSelectedDate(addDays(selectedDate, -1))} className="gap-2 bg-transparent"><ChevronLeft className="h-4 w-4" />Previous</Button><Button variant="outline" size="sm" onClick={() => setSelectedDate(new Date())} className="gap-2 bg-transparent">Today</Button><Button variant="outline" size="sm" onClick={() => setSelectedDate(addDays(selectedDate, 1))} className="gap-2 bg-transparent">Next<ChevronRight className="h-4 w-4" /></Button></div></CardHeader></Card>
 
-      {/* Hourly Timetable */}
-      <Card className="border-0 shadow-lg overflow-x-auto">
-        <CardContent className="p-0">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="bg-slate-800 border-b border-slate-700">
-                <th className="text-left font-semibold text-white px-4 py-3 w-48 sticky left-0 bg-slate-800 z-20">
-                  Vessel
-                </th>
-                {hours.map((hour) => (
-                  <th key={hour} className="text-center font-semibold px-2 py-3 w-24 min-w-24 bg-slate-800">
-                    <div className="text-xs font-semibold text-gray-400">{String(hour).padStart(2, "0")}:00</div>
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {boats.map((vessel) => (
-                <tr key={vessel.id} className="border-b border-slate-700 hover:bg-slate-800/50">
-                  <td className="px-4 py-3 font-medium text-white sticky left-0 bg-slate-900 z-10">
-                    <div>{vessel.name}</div>
-                    <div className="text-xs text-gray-400 mt-1">Vessel</div>
-                  </td>
-                  {hours.map((hour) => {
-                    const schedulesAtHour = getSchedulesForVesselAndHour(vessel.id, hour)
+      <Card className="border-0 shadow-lg overflow-x-auto"><CardContent className="p-0"><table className="w-full text-sm"><thead><tr className="bg-slate-800 border-b border-slate-700"><th className="text-left font-semibold text-white px-4 py-3 w-48 sticky left-0 bg-slate-800 z-20">Vessel</th>{hours.map((hour) => <th key={hour} className="text-center font-semibold px-2 py-3 w-24 min-w-24 bg-slate-800"><div className="text-xs font-semibold text-gray-400">{String(hour).padStart(2, "0")}:00</div></th>)}</tr></thead><tbody>{boats.map((vessel) => <tr key={vessel.id} className="border-b border-slate-700 hover:bg-slate-800/50"><td className="px-4 py-3 font-medium text-white sticky left-0 bg-slate-900 z-10"><div>{vessel.name}</div><div className="text-xs text-gray-400 mt-1">Vessel</div></td>{hours.map((hour) => { const schedulesAtHour = getSchedulesForVesselAndHour(vessel.id, hour); return <td key={hour} className="text-center px-2 py-3 relative group">{schedulesAtHour.length > 0 ? <div className="space-y-1">{schedulesAtHour.map((schedule) => <div key={schedule.id} className="relative group/item"><Badge className={`${getStatusColor(schedule.status)} border text-xs whitespace-nowrap cursor-pointer hover:opacity-80 flex items-center justify-center gap-1`} title={`${getPortName(schedule.origin_port_id)} → ${getPortName(schedule.destination_port_id)}`}><Clock className="h-3 w-3" />{schedule.departure_time}</Badge><div className="absolute -top-12 left-1/2 transform -translate-x-1/2 opacity-0 group-hover/item:opacity-100 transition-opacity bg-slate-800 rounded border border-slate-600 flex gap-1 p-1 z-50 whitespace-nowrap"><Button size="sm" variant="ghost" className="h-6 w-6 p-0 text-blue-400 hover:text-blue-300" onClick={() => { setSelectedSchedule(schedule); setDialogOpen(true) }}><Edit2 className="h-3 w-3" /></Button><Button size="sm" variant="ghost" className="h-6 w-6 p-0 text-red-400 hover:text-red-300" onClick={() => void handleDeleteSchedule(schedule.id)}><Trash2 className="h-3 w-3" /></Button></div></div>)}</div> : <Button variant="ghost" size="sm" className="w-full h-8 opacity-0 group-hover:opacity-100 hover:bg-blue-500/10" onClick={() => { setSelectedSchedule(null); setDialogOpen(true) }}><Plus className="h-3 w-3" /></Button>}</td>})}</tr>)}</tbody></table></CardContent></Card>
 
-                    return (
-                      <td key={hour} className="text-center px-2 py-3 relative group">
-                        {schedulesAtHour.length > 0 ? (
-                          <div className="space-y-1">
-                            {schedulesAtHour.map((schedule) => (
-                              <div key={schedule.id} className="relative group/item">
-                                <Badge
-                                  className={`${getStatusColor(schedule.status)} border text-xs whitespace-nowrap cursor-pointer hover:opacity-80 flex items-center justify-center gap-1`}
-                                  title={`${getPortName(schedule.origin_port_id)} → ${getPortName(schedule.destination_port_id)}`}
-                                >
-                                  <Clock className="h-3 w-3" />
-                                  {schedule.departure_time}
-                                </Badge>
-                                <div className="absolute -top-12 left-1/2 transform -translate-x-1/2 opacity-0 group-hover/item:opacity-100 transition-opacity bg-slate-800 rounded border border-slate-600 flex gap-1 p-1 z-50 whitespace-nowrap">
-                                  <Button
-                                    size="sm"
-                                    variant="ghost"
-                                    className="h-6 w-6 p-0 text-blue-400 hover:text-blue-300"
-                                    onClick={() => {
-                                      setSelectedSchedule(schedule)
-                                      setDialogOpen(true)
-                                    }}
-                                  >
-                                    <Edit2 className="h-3 w-3" />
-                                  </Button>
-                                  <Button
-                                    size="sm"
-                                    variant="ghost"
-                                    className="h-6 w-6 p-0 text-red-400 hover:text-red-300"
-                                    onClick={() => handleDeleteSchedule(schedule.id)}
-                                  >
-                                    <Trash2 className="h-3 w-3" />
-                                  </Button>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        ) : (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="w-full h-8 opacity-0 group-hover:opacity-100 hover:bg-blue-500/10"
-                            onClick={() => {
-                              setSelectedSchedule(null)
-                              setDialogOpen(true)
-                            }}
-                          >
-                            <Plus className="h-3 w-3" />
-                          </Button>
-                        )}
-                      </td>
-                    )
-                  })}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </CardContent>
-      </Card>
+      <Card className="border-primary/20 bg-primary/5"><CardHeader><CardTitle className="text-sm text-white">Schedule Legend</CardTitle></CardHeader><CardContent className="text-sm text-gray-300 space-y-2"><p>• <Badge className="bg-blue-500/10 text-blue-600 border-blue-300 border inline-block ml-2">scheduled</Badge> - Voyage scheduled</p><p>• <Badge className="bg-purple-500/10 text-purple-600 border-purple-300 border inline-block ml-2">departed</Badge> - Vessel departed</p><p>• <Badge className="bg-green-500/10 text-green-600 border-green-300 border inline-block ml-2">arrived</Badge> - Vessel arrived</p></CardContent></Card>
 
-      {/* Legend */}
-      <Card className="border-primary/20 bg-primary/5">
-        <CardHeader>
-          <CardTitle className="text-sm text-white">Schedule Legend</CardTitle>
-        </CardHeader>
-        <CardContent className="text-sm text-gray-300 space-y-2">
-          <p>
-            • <Badge className="bg-blue-500/10 text-blue-600 border-blue-300 border inline-block ml-2">scheduled</Badge>{" "}
-            - Voyage scheduled
-          </p>
-          <p>
-            •{" "}
-            <Badge className="bg-purple-500/10 text-purple-600 border-purple-300 border inline-block ml-2">
-              departed
-            </Badge>{" "}
-            - Vessel departed
-          </p>
-          <p>
-            •{" "}
-            <Badge className="bg-green-500/10 text-green-600 border-green-300 border inline-block ml-2">arrived</Badge>{" "}
-            - Vessel arrived
-          </p>
-        </CardContent>
-      </Card>
-
-      {/* Schedule Dialog */}
-      <ScheduleDialog
-        isOpen={dialogOpen}
-        onOpenChange={setDialogOpen}
-        schedule={selectedSchedule}
-        vessels={boats}
-        ports={ports}
-        onSave={handleSaveSchedule}
-      />
+      <ScheduleDialog isOpen={dialogOpen} onOpenChange={setDialogOpen} schedule={selectedSchedule} vessels={boats} ports={ports} onSave={handleSaveSchedule} />
     </div>
   )
 }
