@@ -7,6 +7,7 @@ const CATEGORIES = ["blankets", "towels", "cleaning", "maintenance", "amenities"
 
 type Category = (typeof CATEGORIES)[number]
 type Language = "es" | "en" | "de"
+type RoomRelation = { room_number: string | null } | Array<{ room_number: string | null }> | null
 
 const schema = z.object({
   access: z.string().min(20),
@@ -50,6 +51,11 @@ function chileDate() {
   return `${value("year")}-${value("month")}-${value("day")}`
 }
 
+function roomNumberFromRelation(room: RoomRelation | undefined) {
+  if (!room) return null
+  return Array.isArray(room) ? room[0]?.room_number ?? null : room.room_number
+}
+
 export async function POST(request: Request) {
   try {
     const payload = schema.parse(await request.json())
@@ -84,7 +90,7 @@ export async function POST(request: Request) {
 
     if (existingError) throw existingError
 
-    const roomNumber = reservation.room?.room_number ?? null
+    const roomNumber = roomNumberFromRelation(reservation.room as RoomRelation)
 
     if (existing) {
       return NextResponse.json({
