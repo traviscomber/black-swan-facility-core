@@ -104,15 +104,31 @@ async function updateUserAccess(formData: FormData) {
   const { error: deleteError } = await admin.from("user_operational_scopes").delete().eq("user_id", targetUserId)
   if (deleteError) throw new Error(deleteError.message)
 
-  const scopeRows = departments.flatMap((department) =>
-    locations.length > 0
-      ? locations.map((locationId) => ({ user_id: targetUserId, department, location_id: locationId, is_active: true, granted_by: actor.id, notes: reason }))
-      : [{ user_id: targetUserId, department, location_id: null, is_active: true, granted_by: actor.id, notes: reason }],
-  )
-
-  if (scopeRows.length > 0) {
-    const { error: scopeError } = await admin.from("user_operational_scopes").insert(scopeRows)
-    if (scopeError) throw new Error(scopeError.message)
+  if (departments.length > 0) {
+    if (locations.length > 0) {
+      const locationScopeRows = departments.flatMap((department) =>
+        locations.map((locationId) => ({
+          user_id: targetUserId,
+          department,
+          location_id: locationId,
+          is_active: true,
+          granted_by: actor.id,
+          notes: reason,
+        })),
+      )
+      const { error: scopeError } = await admin.from("user_operational_scopes").insert(locationScopeRows)
+      if (scopeError) throw new Error(scopeError.message)
+    } else {
+      const departmentScopeRows = departments.map((department) => ({
+        user_id: targetUserId,
+        department,
+        is_active: true,
+        granted_by: actor.id,
+        notes: reason,
+      }))
+      const { error: scopeError } = await admin.from("user_operational_scopes").insert(departmentScopeRows)
+      if (scopeError) throw new Error(scopeError.message)
+    }
   }
 
   const auditRows = []
