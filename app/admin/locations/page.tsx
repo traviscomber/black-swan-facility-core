@@ -197,9 +197,11 @@ export default function LocationsAdminPage() {
 
   return (
     <AppLayout>
-      <PageHeader title={text.title} description={text.description}>
-        <Button onClick={() => openForm()}><Plus className="mr-2 h-4 w-4" />{text.add}</Button>
-      </PageHeader>
+      <PageHeader
+        title={text.title}
+        description={text.description}
+        actions={<Button onClick={() => openForm()}><Plus className="mr-2 h-4 w-4" />{text.add}</Button>}
+      />
 
       <div className="space-y-4 p-4 md:p-8">
         <div className="flex flex-wrap gap-2 text-sm text-muted-foreground">
