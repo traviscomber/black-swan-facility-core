@@ -201,9 +201,11 @@ export default function IssueTypesPage() {
 
   return (
     <AppLayout>
-      <PageHeader title={text.title} description={text.description}>
-        <Button onClick={() => openForm()}><Plus className="mr-2 h-4 w-4" />{text.add}</Button>
-      </PageHeader>
+      <PageHeader
+        title={text.title}
+        description={text.description}
+        actions={<Button onClick={() => openForm()}><Plus className="mr-2 h-4 w-4" />{text.add}</Button>}
+      />
 
       <div className="space-y-4 p-4 md:p-8">
         <p className="text-sm text-muted-foreground">{issueTypes.length} {text.configured} · {issueTypes.length - customCount} {text.predefined} · {customCount} {text.custom}</p>
