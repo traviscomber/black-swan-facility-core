@@ -20,6 +20,10 @@ type Receipt = { id:string; receipt_number:string|null; purchase_order_id:string
 type Order = { id:string; order_number:string|null }
 type Option = { id:string; name:string; code?:string|null; warehouse_id?:string; warehouses?:{name:string}|null }
 
+function firstRelation<T>(value: T | T[] | null | undefined): T | null {
+ return Array.isArray(value) ? value[0] ?? null : value ?? null
+}
+
 export default function InventoryIntakePage(){
  const supabase=useMemo(()=>createBrowserClient(),[]); const {toast}=useToast()
  const [intakes,setIntakes]=useState<Intake[]>([]); const [items,setItems]=useState<Record<string,ReceiptItem>>({}); const [requests,setRequests]=useState<Record<string,Request>>({}); const [receipts,setReceipts]=useState<Record<string,Receipt>>({}); const [orders,setOrders]=useState<Record<string,Order>>({})
@@ -35,7 +39,7 @@ export default function InventoryIntakePage(){
   supabase.from("asset_categories").select("id,name,code").eq("is_active",true).order("name"),
   supabase.from("cost_centers").select("id,name,code").eq("is_active",true).order("name")])
   const err=[a,b,c,d,e,f,g,h].find(x=>x.error)?.error;if(err){setError(err.message);setLoading(false);return}
-  setIntakes((a.data??[]) as Intake[]);setItems(Object.fromEntries(((b.data??[]) as ReceiptItem[]).map(x=>[x.id,x])));setRequests(Object.fromEntries(((c.data??[]) as Request[]).map(x=>[x.id,x])));setReceipts(Object.fromEntries(((d.data??[]) as Receipt[]).map(x=>[x.id,x])));setOrders(Object.fromEntries(((e.data??[]) as Order[]).map(x=>[x.id,x])));setLocations((f.data??[]) as Option[]);setCategories((g.data??[]) as Option[]);setCostCenters((h.data??[]) as Option[]);setLoading(false)},[supabase])
+  setIntakes((a.data??[]) as Intake[]);setItems(Object.fromEntries(((b.data??[]) as ReceiptItem[]).map(x=>[x.id,x])));setRequests(Object.fromEntries(((c.data??[]) as Request[]).map(x=>[x.id,x])));setReceipts(Object.fromEntries(((d.data??[]) as Receipt[]).map(x=>[x.id,x])));setOrders(Object.fromEntries(((e.data??[]) as Order[]).map(x=>[x.id,x])));setLocations((f.data??[]).map(x=>({...x,warehouses:firstRelation(x.warehouses)})));setCategories((g.data??[]) as Option[]);setCostCenters((h.data??[]) as Option[]);setLoading(false)},[supabase])
  useEffect(()=>{void load()},[load]); const current=intakes.find(x=>x.id===selected); const pending=intakes.filter(x=>x.status==="pending")
  async function process(){if(!current||!locationId)return; if(current.intake_type==="asset"&&(!categoryId||!costCenterId))return;setProcessing(true);const {data,error:rpcError}=await supabase.rpc("process_procurement_inventory_intake",{p_intake_id:current.id,p_warehouse_location_id:locationId,p_asset_category_id:current.intake_type==="asset"?categoryId:null,p_cost_center_id:costCenterId||null,p_asset_class:assetClass,p_minimum_stock:Number(minimumStock||0),p_notes:notes.trim()||null});setProcessing(false);if(rpcError){toast({title:"No fue posible procesar el ingreso",description:rpcError.message,variant:"destructive"});return}toast({title:"Ingreso procesado",description:data?.type==="asset"?`${data.created} activo(s) creados.`:`Stock actualizado en ${data.quantity_added}.`});setSelected("");setLocationId("");setCategoryId("");setCostCenterId("");setNotes("");await load()}
  function label(intake:Intake){const item=items[intake.receipt_item_id];const request=item?requests[item.request_id]:null;const receipt=item?receipts[item.receipt_id]:null;const order=receipt?orders[receipt.purchase_order_id]:null;return `${order?.order_number??"OC"} · ${request?.title??"Ítem recibido"} · ${item?.received_quantity??0} ${request?.unit??""}`}
