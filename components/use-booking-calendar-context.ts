@@ -28,6 +28,8 @@ type UseBookingCalendarContextInput = {
   transport?: BookingCalendarTransport
 }
 
+type NearestBed = { bed: BookingCalendarBed; distance: number }
+
 export function useBookingCalendarContext({
   hierarchy,
   reservations,
@@ -103,7 +105,7 @@ export function useBookingCalendarContext({
   }, [])
 
   const bedAtPoint = useCallback((clientY: number) => {
-    let nearest: { bed: BookingCalendarBed; distance: number } | null = null
+    let nearest: NearestBed | null = null
     rowRefs.current.forEach((row, bedId) => {
       const bed = bedById.get(bedId)
       if (!bed) return
@@ -115,7 +117,8 @@ export function useBookingCalendarContext({
       const distance = Math.min(Math.abs(clientY - rect.top), Math.abs(clientY - rect.bottom))
       if (distance <= 60 && (!nearest || distance < nearest.distance)) nearest = { bed, distance }
     })
-    return nearest?.bed ?? null
+    const resolvedNearest = nearest as NearestBed | null
+    return resolvedNearest?.bed ?? null
   }, [bedById])
 
   const blocksForValidation = context.blocks.length ? context.blocks : blocks
