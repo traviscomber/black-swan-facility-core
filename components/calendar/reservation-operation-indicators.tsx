@@ -13,6 +13,16 @@ type OperationSummary = {
   readiness: { ready: boolean; reason: string | null }
 }
 
+type OperationIndicatorCopy = {
+  related: string
+  readinessFallback: string
+  readiness: Record<string, string>
+  housekeeping: (count: number) => string
+  hospitality: (count: number) => string
+  services: (count: number) => string
+  payments: (confirmed: number, total: number) => string
+}
+
 const EMPTY_SUMMARY: OperationSummary = {
   housekeeping: { total: 0, open: 0, critical: 0 },
   hospitality: { total: 0, open: 0, critical: 0 },
@@ -21,7 +31,7 @@ const EMPTY_SUMMARY: OperationSummary = {
   readiness: { ready: false, reason: null },
 }
 
-const copy = {
+const copy: Record<Language, OperationIndicatorCopy> = {
   en: {
     related: "Related operations",
     readinessFallback: "Preparation status pending",
@@ -36,10 +46,10 @@ const copy = {
       inspection_not_verified: "Inspection not verified",
       ready: "Room ready for check-in",
     },
-    housekeeping: (count: number) => `${count} pending Housekeeping task${count === 1 ? "" : "s"}`,
-    hospitality: (count: number) => `${count} pending Hospitality request${count === 1 ? "" : "s"}`,
-    services: (count: number) => `${count} pending service${count === 1 ? "" : "s"}`,
-    payments: (confirmed: number, total: number) => `${confirmed} of ${total} payment${total === 1 ? "" : "s"} confirmed`,
+    housekeeping: (count) => `${count} pending Housekeeping task${count === 1 ? "" : "s"}`,
+    hospitality: (count) => `${count} pending Hospitality request${count === 1 ? "" : "s"}`,
+    services: (count) => `${count} pending service${count === 1 ? "" : "s"}`,
+    payments: (confirmed, total) => `${confirmed} of ${total} payment${total === 1 ? "" : "s"} confirmed`,
   },
   es: {
     related: "Operaciones relacionadas",
@@ -55,10 +65,10 @@ const copy = {
       inspection_not_verified: "Inspección sin verificar",
       ready: "Habitación lista para check-in",
     },
-    housekeeping: (count: number) => `${count} tarea${count === 1 ? "" : "s"} de Housekeeping pendiente${count === 1 ? "" : "s"}`,
-    hospitality: (count: number) => `${count} solicitud${count === 1 ? "" : "es"} de Hospitality pendiente${count === 1 ? "" : "s"}`,
-    services: (count: number) => `${count} servicio${count === 1 ? "" : "s"} pendiente${count === 1 ? "" : "s"}`,
-    payments: (confirmed: number, total: number) => `${confirmed} de ${total} pago${total === 1 ? "" : "s"} confirmado${total === 1 ? "" : "s"}`,
+    housekeeping: (count) => `${count} tarea${count === 1 ? "" : "s"} de Housekeeping pendiente${count === 1 ? "" : "s"}`,
+    hospitality: (count) => `${count} solicitud${count === 1 ? "" : "es"} de Hospitality pendiente${count === 1 ? "" : "s"}`,
+    services: (count) => `${count} servicio${count === 1 ? "" : "s"} pendiente${count === 1 ? "" : "s"}`,
+    payments: (confirmed, total) => `${confirmed} de ${total} pago${total === 1 ? "" : "s"} confirmado${total === 1 ? "" : "s"}`,
   },
   de: {
     related: "Verknüpfte Vorgänge",
@@ -74,20 +84,12 @@ const copy = {
       inspection_not_verified: "Prüfung nicht verifiziert",
       ready: "Zimmer bereit zum Check-in",
     },
-    housekeeping: (count: number) => `${count} offene Housekeeping-Aufgabe${count === 1 ? "" : "n"}`,
-    hospitality: (count: number) => `${count} offene Hospitality-Anfrage${count === 1 ? "" : "n"}`,
-    services: (count: number) => `${count} offener Service${count === 1 ? "" : "s"}`,
-    payments: (confirmed: number, total: number) => `${confirmed} von ${total} Zahlung${total === 1 ? "" : "en"} bestätigt`,
+    housekeeping: (count) => `${count} offene Housekeeping-Aufgabe${count === 1 ? "" : "n"}`,
+    hospitality: (count) => `${count} offene Hospitality-Anfrage${count === 1 ? "" : "n"}`,
+    services: (count) => `${count} offener Service${count === 1 ? "" : "s"}`,
+    payments: (confirmed, total) => `${confirmed} von ${total} Zahlung${total === 1 ? "" : "en"} bestätigt`,
   },
-} satisfies Record<Language, {
-  related: string
-  readinessFallback: string
-  readiness: Record<string, string>
-  housekeeping: (count: number) => string
-  hospitality: (count: number) => string
-  services: (count: number) => string
-  payments: (confirmed: number, total: number) => string
-}>
+}
 
 function isOpenStatus(status: string | null | undefined) {
   const value = (status ?? "").toLowerCase()
