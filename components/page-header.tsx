@@ -1,9 +1,9 @@
-import type React from "react"
+import React from "react"
 import Link from "next/link"
 import { ArrowLeft } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
-type HeaderIcon = React.ReactNode | React.ComponentType<{ className?: string }>
+type HeaderIcon = React.ReactNode | React.ElementType
 
 interface PageHeaderProps {
   title: string
@@ -21,11 +21,9 @@ interface PageHeaderProps {
 
 function renderIcon(icon: HeaderIcon | undefined) {
   if (!icon) return null
-  if (typeof icon === "function" || (typeof icon === "object" && icon !== null && "$$typeof" in icon && !React.isValidElement(icon))) {
-    const Icon = icon as React.ComponentType<{ className?: string }>
-    return <Icon className="h-5 w-5" />
-  }
-  return icon as React.ReactNode
+  if (React.isValidElement(icon) || typeof icon === "string" || typeof icon === "number") return icon
+  const Icon = icon as React.ElementType
+  return <Icon className="h-5 w-5" />
 }
 
 export function PageHeader({
