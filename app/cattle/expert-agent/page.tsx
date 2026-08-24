@@ -1,16 +1,25 @@
 "use client"
 
 import type React from "react"
-import { useEffect, useRef, useState } from "react"
-import { useChat } from "@ai-sdk/react"
-import { DefaultChatTransport } from "ai"
-import { ArrowLeft, Loader2, MessageSquare, Send } from "lucide-react"
 import Link from "next/link"
+import { useEffect, useRef, useState } from "react"
+import { ArrowLeft, Loader2, MessageSquare, Send } from "lucide-react"
 import { AppLayout } from "@/components/app-layout"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
+
+type ChatMessage = {
+  id: string
+  role: "user" | "assistant"
+  content: string
+}
+
+type ChatApiResponse = {
+  message?: { role?: "assistant"; content?: string }
+  error?: string
+}
 
 const quickQuestions = [
   "Resume el último control biométrico registrado.",
@@ -19,28 +28,55 @@ const quickQuestions = [
   "¿Qué precios y costos registrados requieren validación?",
 ]
 
+function newMessage(role: ChatMessage["role"], content: string): ChatMessage {
+  return { id: crypto.randomUUID(), role, content }
+}
+
 export default function CattleExpertAgent() {
   const [inputValue, setInputValue] = useState("")
-  const { messages, sendMessage, status } = useChat({
-    transport: new DefaultChatTransport({ api: "/api/cattle/expert-agent" }),
-  })
+  const [messages, setMessages] = useState<ChatMessage[]>([])
+  const [isWorking, setIsWorking] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
-  const isWorking = status === "submitted" || status === "streaming" || status === "in_progress"
 
   useEffect(() => {
     scrollRef.current?.scrollIntoView({ behavior: "smooth" })
-  }, [messages])
+  }, [messages, isWorking])
 
-  function submitQuestion(question: string) {
+  async function submitQuestion(question: string) {
     const cleanQuestion = question.trim()
     if (!cleanQuestion || isWorking) return
-    sendMessage({ text: cleanQuestion })
+
+    const userMessage = newMessage("user", cleanQuestion)
+    const nextMessages = [...messages, userMessage]
+    setMessages(nextMessages)
     setInputValue("")
+    setError(null)
+    setIsWorking(true)
+
+    try {
+      const response = await fetch("/api/cattle/expert-agent", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          messages: nextMessages.map(({ role, content }) => ({ role, content })),
+        }),
+      })
+      const payload = (await response.json().catch(() => ({}))) as ChatApiResponse
+      if (!response.ok || !payload.message?.content) {
+        throw new Error(payload.error || "No fue posible generar una respuesta")
+      }
+      setMessages((current) => [...current, newMessage("assistant", payload.message!.content!)])
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : "No fue posible generar una respuesta")
+    } finally {
+      setIsWorking(false)
+    }
   }
 
   function handleSubmit(event: React.FormEvent) {
     event.preventDefault()
-    submitQuestion(inputValue)
+    void submitQuestion(inputValue)
   }
 
   return (
@@ -53,18 +89,32 @@ export default function CattleExpertAgent() {
         </div>
 
         <Card className="flex min-h-[560px] flex-col overflow-hidden border-secondary">
-          <CardHeader className="border-b border-secondary pb-3"><CardTitle className="text-base">Consulta interna</CardTitle><CardDescription>El asistente debe verificar los datos antes de responder con cifras.</CardDescription></CardHeader>
+          <CardHeader className="border-b border-secondary pb-3"><CardTitle className="text-base">Consulta interna</CardTitle><CardDescription>El asistente verifica primero los datos autorizados del sistema y luego consulta OpenAI.</CardDescription></CardHeader>
           <ScrollArea className="flex-1 p-4">
             <div className="space-y-4">
-              {messages.length === 0 ? <div className="flex min-h-[330px] flex-col items-center justify-center px-4 text-center"><MessageSquare className="mb-4 h-10 w-10 text-muted-foreground opacity-50" /><p className="max-w-md text-sm text-muted-foreground">Pregunta por registros existentes. Cuando falte información o los datos sean antiguos, el asistente debe indicarlo explícitamente.</p></div> : messages.map((message) => <div key={message.id} className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}><div className={`max-w-[88%] rounded-lg px-4 py-3 text-sm sm:max-w-[75%] ${message.role === "user" ? "bg-primary text-primary-foreground" : "bg-secondary text-secondary-foreground"}`}>{message.parts.map((part, index) => part.type === "text" ? <p key={index} className="whitespace-pre-wrap">{part.text}</p> : null)}</div></div>)}
+              {messages.length === 0 ? (
+                <div className="flex min-h-[330px] flex-col items-center justify-center px-4 text-center"><MessageSquare className="mb-4 h-10 w-10 text-muted-foreground opacity-50" /><p className="max-w-md text-sm text-muted-foreground">Pregunta por registros existentes. Cuando falte información o los datos sean antiguos, el asistente debe indicarlo explícitamente.</p></div>
+              ) : messages.map((message) => (
+                <div key={message.id} className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}>
+                  <div className={`max-w-[88%] rounded-lg px-4 py-3 text-sm sm:max-w-[75%] ${message.role === "user" ? "bg-primary text-primary-foreground" : "bg-secondary text-secondary-foreground"}`}>
+                    <p className="whitespace-pre-wrap">{message.content}</p>
+                  </div>
+                </div>
+              ))}
               {isWorking && <div className="flex justify-start"><div className="rounded-lg bg-secondary px-4 py-3"><Loader2 className="h-4 w-4 animate-spin" /></div></div>}
+              {error && <div className="rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">{error}</div>}
               <div ref={scrollRef} />
             </div>
           </ScrollArea>
-          <div className="border-t border-secondary p-4"><form onSubmit={handleSubmit} className="flex gap-2"><Input value={inputValue} onChange={(event) => setInputValue(event.target.value)} placeholder="Escribe una consulta sobre los registros ganaderos…" disabled={isWorking} className="flex-1" /><Button type="submit" disabled={isWorking || !inputValue.trim()} size="icon" aria-label="Enviar consulta">{isWorking ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}</Button></form></div>
+          <div className="border-t border-secondary p-4">
+            <form onSubmit={handleSubmit} className="flex gap-2">
+              <Input value={inputValue} onChange={(event) => setInputValue(event.target.value)} placeholder="Escribe una consulta sobre los registros ganaderos…" disabled={isWorking} className="flex-1" />
+              <Button type="submit" disabled={isWorking || !inputValue.trim()} size="icon" aria-label="Enviar consulta">{isWorking ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}</Button>
+            </form>
+          </div>
         </Card>
 
-        <Card><CardHeader><CardTitle className="text-base">Consultas sugeridas</CardTitle><CardDescription>Estas preguntas usan datos registrados y evitan presentar proyecciones como hechos actuales.</CardDescription></CardHeader><CardContent><div className="grid gap-2 md:grid-cols-2">{quickQuestions.map((question) => <button key={question} type="button" onClick={() => submitQuestion(question)} disabled={isWorking} className="rounded-md border p-3 text-left text-sm transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50">{question}</button>)}</div></CardContent></Card>
+        <Card><CardHeader><CardTitle className="text-base">Consultas sugeridas</CardTitle><CardDescription>Estas preguntas usan datos registrados y evitan presentar proyecciones como hechos actuales.</CardDescription></CardHeader><CardContent><div className="grid gap-2 md:grid-cols-2">{quickQuestions.map((question) => <button key={question} type="button" onClick={() => void submitQuestion(question)} disabled={isWorking} className="rounded-md border p-3 text-left text-sm transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50">{question}</button>)}</div></CardContent></Card>
       </div>
     </AppLayout>
   )
