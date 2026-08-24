@@ -3,8 +3,8 @@
 interface Category {
   id: string
   name: string
-  icon?: string
-  color?: string
+  icon?: string | null
+  color?: string | null
   parent_category_id?: string | null
 }
 
@@ -15,7 +15,6 @@ interface CategorySelectorProps {
 }
 
 export function CategorySelector({ categories, value, onChange }: CategorySelectorProps) {
-  // Group categories by parent
   const parentCategories = categories.filter((c) => !c.parent_category_id)
   const categoryMap = new Map<string | null, Category[]>()
 
@@ -46,7 +45,6 @@ export function CategorySelector({ categories, value, onChange }: CategorySelect
             ))}
         </optgroup>
       ))}
-      {/* Add non-grouped categories */}
       {categories
         .filter((c) => !c.parent_category_id && !parentCategories.some((p) => p.id === c.id))
         .map((cat) => (
