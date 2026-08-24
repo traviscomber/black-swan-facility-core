@@ -68,14 +68,22 @@ async function updateUserAccess(formData: FormData) {
   if (currentUserError || !currentUserData.user) throw new Error(currentUserError?.message ?? "Usuario no encontrado")
   const target = currentUserData.user
 
-  const { data: previousScopes, error: previousScopesError } = await admin
-    .from("user_operational_scopes")
-    .select("department,location_id,is_active")
-    .eq("user_id", targetUserId)
+  const [{ data: previousScopes, error: previousScopesError }, { data: previousProfile, error: previousProfileError }] = await Promise.all([
+    admin
+      .from("user_operational_scopes")
+      .select("department,location_id,is_active")
+      .eq("user_id", targetUserId),
+    admin
+      .from("user_access_profiles")
+      .select("is_active")
+      .eq("user_id", targetUserId)
+      .maybeSingle(),
+  ])
   if (previousScopesError) throw new Error(previousScopesError.message)
+  if (previousProfileError) throw new Error(previousProfileError.message)
 
   const previousRole = String(target.app_metadata?.procurement_role ?? "operator")
-  const previousActive = !target.banned_until || new Date(target.banned_until).getTime() <= Date.now()
+  const previousActive = previousProfile?.is_active ?? true
 
   const { error: authError } = await admin.auth.admin.updateUserById(targetUserId, {
     app_metadata: { ...(target.app_metadata ?? {}), procurement_role: role },
@@ -142,7 +150,7 @@ export default async function AdminAccessPage() {
         email: user.email ?? "",
         name: String(user.user_metadata?.full_name ?? user.user_metadata?.name ?? user.email ?? "Usuario"),
         role: profile?.role_key ?? String(user.app_metadata?.procurement_role ?? "operator"),
-        isActive: profile?.is_active ?? (!user.banned_until || new Date(user.banned_until).getTime() <= Date.now()),
+        isActive: profile?.is_active ?? true,
         departments: [...new Set(userScopes.map((scope) => scope.department).filter(Boolean))] as string[],
         locations: [...new Set(userScopes.map((scope) => scope.location_id).filter(Boolean))] as string[],
         restricted: userScopes.length > 0,
