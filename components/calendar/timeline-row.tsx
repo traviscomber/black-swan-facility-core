@@ -34,7 +34,21 @@ export const BLOCK_LABELS: Record<string, string> = {
   maintenance: "Mantenimiento", owner_use: "Uso propietario", out_of_service: "Fuera de servicio", other: "Bloqueada",
 }
 
-const localizedCopy = {
+type TimelineCopy = {
+  statuses: Record<string, string>
+  blocks: Record<string, string>
+  hideOperations: string
+  showOperations: string
+  validating: string
+  confirming: string
+  resizing: string
+  checkinToday: string
+  checkoutToday: string
+  unavailable: string
+  moveTo: string
+}
+
+const localizedCopy: Record<Language, TimelineCopy> = {
   en: {
     statuses: { pending: "Pending", confirmed: "Confirmed", checked_in: "Check-in", checked_out: "Check-out", cancelled: "Cancelled" },
     blocks: { maintenance: "Maintenance", owner_use: "Owner use", out_of_service: "Out of service", other: "Blocked" },
@@ -50,11 +64,7 @@ const localizedCopy = {
     blocks: { maintenance: "Wartung", owner_use: "Eigentümernutzung", out_of_service: "Außer Betrieb", other: "Gesperrt" },
     hideOperations: "Betrieb ausblenden", showOperations: "Betrieb anzeigen", validating: "Wird geprüft…", confirming: "Wird bestätigt…", resizing: "Wird angepasst…", checkinToday: "Check-in heute", checkoutToday: "Check-out heute", unavailable: "Nicht verfügbar", moveTo: "Verschieben nach",
   },
-} satisfies Record<Language, {
-  statuses: Record<string, string>
-  blocks: Record<string, string>
-  hideOperations: string; showOperations: string; validating: string; confirming: string; resizing: string; checkinToday: string; checkoutToday: string; unavailable: string; moveTo: string
-}>
+}
 
 export function normalizedStatus(value: string) { return value.replaceAll("-", "_") }
 
