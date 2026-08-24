@@ -325,6 +325,7 @@ export interface InfrastructureConnection {
   from_infrastructure_id: string
   to_infrastructure_id: string
   connection_type: "road" | "building" | "electricity" | "water" | "internet" | "gas" | "sewage" | string
+  line_style?: "solid" | "dashed" | string | null
   description: string | null
   coordinates: Array<[number, number]> | null // GeoJSON line coordinates
   status: "planned" | "active" | "inactive"
