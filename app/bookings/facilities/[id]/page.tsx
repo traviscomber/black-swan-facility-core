@@ -211,7 +211,10 @@ export default function LocationDetailPage() {
     }
     if (!window.confirm(`¿Eliminar ${room.room_number}?`)) return
     const { error } = await supabase.from("rooms").delete().eq("id", room.id)
-    if (error) return toast({ variant: "destructive", title: "No fue posible eliminar la habitación", description: error.message })
+    if (error) {
+      toast({ variant: "destructive", title: "No fue posible eliminar la habitación", description: error.message })
+      return
+    }
     await loadLocationData()
   }
 
@@ -224,11 +227,20 @@ export default function LocationDetailPage() {
     if (!bedNumber || !bedType) return
 
     const { data: duplicate, error: duplicateError } = await supabase.from("beds").select("id").eq("room_id", selectedRoomForBed).eq("bed_number", bedNumber).maybeSingle()
-    if (duplicateError) return toast({ variant: "destructive", title: "No fue posible validar la cama", description: duplicateError.message })
-    if (duplicate) return toast({ variant: "destructive", title: "Cama duplicada", description: "Ya existe una cama con ese nombre o número en la habitación." })
+    if (duplicateError) {
+      toast({ variant: "destructive", title: "No fue posible validar la cama", description: duplicateError.message })
+      return
+    }
+    if (duplicate) {
+      toast({ variant: "destructive", title: "Cama duplicada", description: "Ya existe una cama con ese nombre o número en la habitación." })
+      return
+    }
 
     const { error } = await supabase.from("beds").insert({ room_id: selectedRoomForBed, bed_number: bedNumber, bed_type: bedType, is_available: true, notes: String(formData.get("notes") ?? "").trim() || null })
-    if (error) return toast({ variant: "destructive", title: "No fue posible agregar la cama", description: error.message })
+    if (error) {
+      toast({ variant: "destructive", title: "No fue posible agregar la cama", description: error.message })
+      return
+    }
     setSelectedRoomForBed(null)
     toast({ title: "Cama agregada" })
     await loadLocationData()
@@ -240,11 +252,20 @@ export default function LocationDetailPage() {
     const formData = new FormData(event.currentTarget)
     const bedNumber = String(formData.get("bed_number") ?? "").trim()
     const { data: duplicate, error: duplicateError } = await supabase.from("beds").select("id").eq("room_id", editingBed.room_id).eq("bed_number", bedNumber).neq("id", editingBed.id).maybeSingle()
-    if (duplicateError) return toast({ variant: "destructive", title: "No fue posible validar la cama", description: duplicateError.message })
-    if (duplicate) return toast({ variant: "destructive", title: "Cama duplicada", description: "Ya existe una cama con ese nombre o número en la habitación." })
+    if (duplicateError) {
+      toast({ variant: "destructive", title: "No fue posible validar la cama", description: duplicateError.message })
+      return
+    }
+    if (duplicate) {
+      toast({ variant: "destructive", title: "Cama duplicada", description: "Ya existe una cama con ese nombre o número en la habitación." })
+      return
+    }
 
     const { error } = await supabase.from("beds").update({ bed_number: bedNumber, bed_type: String(formData.get("bed_type") ?? ""), notes: String(formData.get("notes") ?? "").trim() || null }).eq("id", editingBed.id)
-    if (error) return toast({ variant: "destructive", title: "No fue posible actualizar la cama", description: error.message })
+    if (error) {
+      toast({ variant: "destructive", title: "No fue posible actualizar la cama", description: error.message })
+      return
+    }
     setEditingBed(null)
     toast({ title: "Cama actualizada" })
     await loadLocationData()
@@ -253,7 +274,10 @@ export default function LocationDetailPage() {
   async function handleDeleteBed(bed: Bed) {
     if (!window.confirm(`¿Eliminar ${bed.bed_number}?`)) return
     const { error } = await supabase.from("beds").delete().eq("id", bed.id)
-    if (error) return toast({ variant: "destructive", title: "No fue posible eliminar la cama", description: error.message })
+    if (error) {
+      toast({ variant: "destructive", title: "No fue posible eliminar la cama", description: error.message })
+      return
+    }
     await loadLocationData()
   }
 
@@ -300,11 +324,11 @@ export default function LocationDetailPage() {
   )
 }
 
-function RoomDialog({ open, onOpenChange, title, room, onSubmit }: { open: boolean; onOpenChange: (open: boolean) => void; title: string; room?: Room | null; onSubmit: (event: React.FormEvent<HTMLFormElement>) => void | Promise<void> }) {
+function RoomDialog({ open, onOpenChange, title, room, onSubmit }: { open: boolean; onOpenChange: (open: boolean) => void; title: string; room?: Room | null; onSubmit: React.FormEventHandler<HTMLFormElement> }) {
   return <Dialog open={open} onOpenChange={onOpenChange}><DialogContent className="max-w-2xl"><form onSubmit={onSubmit}><DialogHeader><DialogTitle>{title}</DialogTitle><DialogDescription>Define capacidad, tarifa, estado y atributos operativos.</DialogDescription></DialogHeader><div className="grid gap-4 py-4"><div className="grid gap-4 sm:grid-cols-2"><Field label="Número o nombre"><Input name="room_number" defaultValue={room?.room_number ?? ""} required /></Field><Field label="Tipo"><Select name="room_type" defaultValue={room?.room_type ?? "suite"}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="suite">Suite</SelectItem><SelectItem value="cabin">Cabin</SelectItem><SelectItem value="bungalow">Bungalow</SelectItem><SelectItem value="dorm">Dorm</SelectItem><SelectItem value="studio">Studio</SelectItem></SelectContent></Select></Field></div><div className="grid gap-4 sm:grid-cols-3"><Field label="Capacidad"><Input name="capacity" type="number" min="1" defaultValue={room?.capacity ?? 2} required /></Field><Field label="Tarifa/noche"><Input name="rate_per_night" type="number" min="0" step="1" defaultValue={room?.rate_per_night ?? 0} required /></Field><Field label="Piso"><Input name="floor" defaultValue={room?.floor ?? ""} /></Field></div><Field label="Estado"><Select name="status" defaultValue={room?.status ?? "available"}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="available">Available</SelectItem><SelectItem value="occupied">Occupied</SelectItem><SelectItem value="maintenance">Maintenance</SelectItem><SelectItem value="blocked">Blocked</SelectItem></SelectContent></Select></Field><Field label="Amenities"><Input name="amenities" defaultValue={room?.amenities?.join(", ") ?? ""} placeholder="WiFi, baño privado, cocina" /></Field><Field label="Notas"><Textarea name="notes" defaultValue={room?.notes ?? ""} rows={2} /></Field></div><DialogFooter><Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button><Button type="submit">Guardar</Button></DialogFooter></form></DialogContent></Dialog>
 }
 
-function BedDialog({ open, onOpenChange, title, bed, onSubmit }: { open: boolean; onOpenChange: (open: boolean) => void; title: string; bed?: Bed | null; onSubmit: (event: React.FormEvent<HTMLFormElement>) => void | Promise<void> }) {
+function BedDialog({ open, onOpenChange, title, bed, onSubmit }: { open: boolean; onOpenChange: (open: boolean) => void; title: string; bed?: Bed | null; onSubmit: React.FormEventHandler<HTMLFormElement> }) {
   return <Dialog open={open} onOpenChange={onOpenChange}><DialogContent><form onSubmit={onSubmit}><DialogHeader><DialogTitle>{title}</DialogTitle><DialogDescription>Identifica la cama dentro de la habitación.</DialogDescription></DialogHeader><div className="space-y-4 py-4"><Field label="Nombre o número"><Input name="bed_number" defaultValue={bed?.bed_number ?? ""} required /></Field><Field label="Tipo"><Select name="bed_type" defaultValue={bed?.bed_type ?? "Single"}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="Single">Single</SelectItem><SelectItem value="Double">Double</SelectItem><SelectItem value="Queen">Queen</SelectItem><SelectItem value="King">King</SelectItem><SelectItem value="Bunk_top">Bunk (Top)</SelectItem><SelectItem value="Bunk_bottom">Bunk (Bottom)</SelectItem></SelectContent></Select></Field><Field label="Notas"><Textarea name="notes" defaultValue={bed?.notes ?? ""} rows={2} /></Field></div><DialogFooter><Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button><Button type="submit">Guardar</Button></DialogFooter></form></DialogContent></Dialog>
 }
 
