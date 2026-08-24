@@ -41,7 +41,16 @@ interface OperationalException {
   detail: string | null
 }
 
-const copy = {
+type InspectorCopy = {
+  reservation: string; loading: string; room: string; roomShort: string; unassigned: string; guests: string; total: string; payment: string
+  related: string; services: string; activities: string; issues: string; maintenance: string; exceptions: string; noExceptions: string
+  blocksCheckin: string; overdue: string; status: string; due: string; contact: string; confirm: string; checkin: string; checkout: string; openFull: string
+  dataNote: string; confirmedToast: string; checkinToast: string; checkoutToast: string
+  statuses: Record<string, string>
+  domains: Record<string, string>
+}
+
+const copy: Record<Language, InspectorCopy> = {
   en: {
     reservation: "Reservation", loading: "Loading reservation…", room: "Room", roomShort: "Room", unassigned: "Unassigned", guests: "Guests", total: "Total", payment: "Payment",
     related: "Related operations", services: "Services", activities: "Activities", issues: "Issues", maintenance: "Maintenance", exceptions: "Operational exceptions", noExceptions: "No open operational exceptions.",
@@ -66,15 +75,9 @@ const copy = {
     statuses: { checked_in: "Eingecheckt", checked_out: "Abgeschlossen", confirmed: "Bestätigt", cancelled: "Storniert", pending: "Ausstehend" },
     domains: { housekeeping: "Housekeeping", hospitality: "Hospitality", maintenance: "Wartung", issue: "Vorfall" },
   },
-} satisfies Record<Language, {
-  reservation: string; loading: string; room: string; roomShort: string; unassigned: string; guests: string; total: string; payment: string
-  related: string; services: string; activities: string; issues: string; maintenance: string; exceptions: string; noExceptions: string
-  blocksCheckin: string; overdue: string; status: string; due: string; contact: string; confirm: string; checkin: string; checkout: string; openFull: string
-  dataNote: string; confirmedToast: string; checkinToast: string; checkoutToast: string
-  statuses: Record<string, string>; domains: Record<string, string>
-}>
+}
 
-const dateLocales = { en: enUS, es, de } satisfies Record<Language, typeof enUS>
+const dateLocales: Record<Language, typeof enUS> = { en: enUS, es, de }
 
 function emptyData(reservationLabel: string): InspectorData {
   return { guestName: reservationLabel, guestEmail: null, guestPhone: null, guests: 0, paymentStatus: "pending", totalAmount: 0, roomNumber: null, housekeeping: 0, hospitality: 0, services: 0, activities: 0, issues: 0, maintenance: 0 }
@@ -124,6 +127,13 @@ export function ReservationQuickInspector({ reservation, open, onOpenChange, onO
       supabase.from("maintenance_tasks").select("id", { count: "exact", head: true }).eq("reservation_id", reservation.event_id).not("status", "in", "(completed,cancelled)"),
       supabase.from("reservation_operational_exceptions").select("domain, source_id, title, status, priority, due_at, exception_state, blocks_check_in, blocks_check_out, detail").eq("reservation_id", reservation.event_id),
     ])
+
+    if (reservationResult.error) {
+      toast.error(reservationResult.error.message)
+      setLoading(false)
+      return
+    }
+
     const row = reservationResult.data as { guest_name?: string; guest_email?: string | null; guest_phone?: string | null; num_guests?: number | null; payment_status?: string | null; total_amount?: number | null; status?: string | null; room?: { room_number?: string | null } | Array<{ room_number?: string | null }> | null } | null
     const room = Array.isArray(row?.room) ? row?.room[0] : row?.room
     setCurrentStatus(normalizedStatus(row?.status ?? reservation.status))
@@ -152,7 +162,13 @@ export function ReservationQuickInspector({ reservation, open, onOpenChange, onO
   }, [reservation, supabase])
 
   useEffect(() => { if (open) void load() }, [load, open])
-  useEffect(() => { if (!open) setData((current) => current.guestName === c.reservation ? current : current) }, [c.reservation, open])
+  useEffect(() => {
+    if (!open) {
+      setData(emptyData(c.reservation))
+      setExceptions([])
+      setCurrentStatus("pending")
+    }
+  }, [c.reservation, open])
 
   async function updateStatus(nextStatus: "confirmed" | "checked_in" | "checked_out") {
     if (!reservation || updating) return
