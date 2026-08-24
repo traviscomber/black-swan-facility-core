@@ -48,6 +48,10 @@ type Movement = {
   created_at?: string | null
 }
 
+function firstRelation<T>(value: T | T[] | null | undefined): T | null {
+  return Array.isArray(value) ? value[0] ?? null : value ?? null
+}
+
 const statusLabels: Record<string, string> = {
   active: "Operativo",
   maintenance: "En mantenimiento",
@@ -108,12 +112,25 @@ export default function AssetDetailPage() {
         toast({ title: "No fue posible cargar el registro", description: assetResult.error.message, variant: "destructive" })
         setAsset(null)
       } else {
-        setAsset(assetResult.data as Asset)
+        const rawLocation = firstRelation(assetResult.data.warehouse_locations)
+        setAsset({
+          ...assetResult.data,
+          asset_categories: firstRelation(assetResult.data.asset_categories),
+          cost_centers: firstRelation(assetResult.data.cost_centers),
+          warehouse_locations: rawLocation
+            ? { ...rawLocation, warehouses: firstRelation(rawLocation.warehouses) }
+            : null,
+        })
       }
 
       if (!movementResult.error) setMovements((movementResult.data ?? []) as Movement[])
       if (!locationResult.error) {
-        const locationMap = Object.fromEntries(((locationResult.data ?? []) as WarehouseLocation[]).map((location) => [location.id, location]))
+        const locationMap = Object.fromEntries(
+          (locationResult.data ?? []).map((location) => [
+            location.id,
+            { ...location, warehouses: firstRelation(location.warehouses) } satisfies WarehouseLocation,
+          ]),
+        )
         setLocations(locationMap)
       }
       setLoading(false)
