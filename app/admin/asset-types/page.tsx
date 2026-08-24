@@ -206,7 +206,7 @@ export default function AssetTypesPage() {
 
       <Dialog open={dialogOpen} onOpenChange={(open) => !saving && setDialogOpen(open)}>
         <DialogContent className="max-w-md">
-          <DialogHeader><DialogTitle>{editingType ? text.editTitle : text.addTitle}</DialogTitle><DialogDescription>{text.dialogDescription}</DialogHeader>
+          <DialogHeader><DialogTitle>{editingType ? text.editTitle : text.addTitle}</DialogTitle><DialogDescription>{text.dialogDescription}</DialogDescription></DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2"><Label htmlFor="asset-type-name">{text.name}</Label><Input id="asset-type-name" value={formData.name} onChange={(event) => setFormData({ ...formData, name: event.target.value })} placeholder={text.namePlaceholder} required maxLength={120} /></div>
             <div className="space-y-2"><Label>{text.category}</Label><Select value={formData.category} onValueChange={(value: AssetType["category"]) => setFormData({ ...formData, category: value })}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="internet">{text.internet}</SelectItem><SelectItem value="water">{text.water}</SelectItem><SelectItem value="electricity">{text.electricity}</SelectItem></SelectContent></Select></div>
@@ -218,7 +218,7 @@ export default function AssetTypesPage() {
       </Dialog>
 
       <AlertDialog open={Boolean(deleteTarget)} onOpenChange={(open) => !open && setDeleteTarget(null)}>
-        <AlertDialogContent><AlertDialogHeader><AlertDialogTitle>{text.deleteTitle}</AlertDialogTitle><AlertDialogDescription>{text.deleteDescription}</AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>{text.cancel}</AlertDialogCancel><AlertDialogAction onClick={() => void handleDelete()}>{text.delete}</AlertDialogAction></AlertDialogFooter></AlertDialogContent>
+        <AlertDialogContent><AlertDialogHeader><AlertDialogTitle>{text.deleteTitle}</AlertDialogTitle><AlertDialogDescription>{text.deleteDescription}</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>{text.cancel}</AlertDialogCancel><AlertDialogAction onClick={() => void handleDelete()}>{text.delete}</AlertDialogAction></AlertDialogFooter></AlertDialogContent>
       </AlertDialog>
     </AppLayout>
   )
