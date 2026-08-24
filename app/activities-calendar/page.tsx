@@ -29,6 +29,8 @@ interface Activity {
   color_override: string | null
   status: string
   recurring: boolean
+  recurring_pattern: string | null
+  recurring_end_date: string | null
   notes: any[]
   created_at: string
 }
@@ -220,7 +222,7 @@ export default function ActivitiesCalendarPage() {
               <div className="space-y-4">
                 {/* Day headers */}
                 <div className="grid grid-cols-7 gap-2">
-                  {['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sab'].map((day) => (
+                  {['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'].map((day) => (
                     <div key={day} className="text-center font-bold text-sm text-accent py-2 border-b-2 border-accent/30">
                       {day}
                     </div>
