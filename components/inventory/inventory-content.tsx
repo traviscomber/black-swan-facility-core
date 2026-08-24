@@ -9,59 +9,8 @@ import { Input } from "@/components/ui/input"
 import { createBrowserClient } from "@/lib/supabase/client"
 import { InventoryTable } from "@/components/inventory/inventory-table"
 import { InventoryForm } from "@/components/inventory/inventory-form"
+import type { InventoryAsset, InventoryMetadataOption, WarehouseInfo } from "@/components/inventory/types"
 import { useToast } from "@/hooks/use-toast"
-
-interface WarehouseInfo {
-  id: string
-  code: string
-  name: string
-}
-
-interface WarehouseLocationInfo {
-  id: string
-  code: string
-  name: string
-  warehouse?: WarehouseInfo | null
-}
-
-interface Asset {
-  id: string
-  asset_code: string
-  name: string
-  description?: string | null
-  category_id?: string | null
-  cost_center_id?: string | null
-  warehouse_location_id?: string | null
-  asset_class?: string | null
-  category?: { name: string; color?: string | null } | null
-  cost_center?: { name: string; code?: string | null } | null
-  warehouse_location?: WarehouseLocationInfo | null
-  serial_number?: string | null
-  brand?: string | null
-  model?: string | null
-  purchase_date?: string | null
-  status: string
-  location?: string | null
-  assigned_to?: string | null
-  notes?: string | null
-  photo_url?: string | null
-  qr_code_url?: string | null
-  purchase_price?: number | null
-  created_at: string
-}
-
-type AssetRow = Omit<Asset, "category" | "cost_center" | "warehouse_location"> & {
-  asset_categories?: { name: string; color?: string | null } | null
-  cost_centers?: { name: string; code?: string | null } | null
-  warehouse_locations?: (Omit<WarehouseLocationInfo, "warehouse"> & { warehouses?: WarehouseInfo | null }) | null
-}
-
-interface MetadataOption {
-  id: string
-  name: string
-  code?: string | null
-  color?: string | null
-}
 
 type OperationalView = "all" | "equipment" | "infrastructure" | "storage" | "assigned" | "review"
 
@@ -81,14 +30,18 @@ const VIEW_OPTIONS: Array<{ value: OperationalView; label: string }> = [
   { value: "review", label: "Pendientes" },
 ]
 
-function needsReview(asset: Asset) {
+function firstRelation<T>(value: T | T[] | null | undefined): T | null {
+  return Array.isArray(value) ? value[0] ?? null : value ?? null
+}
+
+function needsReview(asset: InventoryAsset) {
   return !asset.category_id || !asset.cost_center_id || !asset.warehouse_location_id
 }
 
 export function InventoryContent() {
   const supabase = useMemo(() => createBrowserClient(), [])
   const { toast } = useToast()
-  const [assets, setAssets] = useState<Asset[]>([])
+  const [assets, setAssets] = useState<InventoryAsset[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState("")
@@ -97,9 +50,9 @@ export function InventoryContent() {
   const [selectedWarehouse, setSelectedWarehouse] = useState("all")
   const [operationalView, setOperationalView] = useState<OperationalView>("all")
   const [showForm, setShowForm] = useState(false)
-  const [editingAsset, setEditingAsset] = useState<Asset | null>(null)
-  const [categories, setCategories] = useState<MetadataOption[]>([])
-  const [costCenters, setCostCenters] = useState<MetadataOption[]>([])
+  const [editingAsset, setEditingAsset] = useState<InventoryAsset | null>(null)
+  const [categories, setCategories] = useState<InventoryMetadataOption[]>([])
+  const [costCenters, setCostCenters] = useState<InventoryMetadataOption[]>([])
 
   const loadAssets = useCallback(async () => {
     setLoading(true)
@@ -113,17 +66,22 @@ export function InventoryContent() {
       setError(loadError.message)
       setAssets([])
     } else {
-      setAssets(((data ?? []) as AssetRow[]).map((asset) => ({
-        ...asset,
-        category: asset.asset_categories ?? null,
-        cost_center: asset.cost_centers ?? null,
-        warehouse_location: asset.warehouse_locations ? {
-          id: asset.warehouse_locations.id,
-          code: asset.warehouse_locations.code,
-          name: asset.warehouse_locations.name,
-          warehouse: asset.warehouse_locations.warehouses ?? null,
-        } : null,
-      })))
+      setAssets((data ?? []).map((asset) => {
+        const location = firstRelation(asset.warehouse_locations)
+        return {
+          ...asset,
+          category: firstRelation(asset.asset_categories),
+          cost_center: firstRelation(asset.cost_centers),
+          warehouse_location: location
+            ? {
+                id: location.id,
+                code: location.code,
+                name: location.name,
+                warehouse: firstRelation(location.warehouses),
+              }
+            : null,
+        } satisfies InventoryAsset
+      }))
     }
     setLoading(false)
   }, [supabase])
@@ -137,8 +95,8 @@ export function InventoryContent() {
       setError(categoriesResult.error?.message ?? costCentersResult.error?.message ?? "No fue posible cargar la configuración de inventario.")
       return
     }
-    setCategories((categoriesResult.data ?? []) as MetadataOption[])
-    setCostCenters((costCentersResult.data ?? []) as MetadataOption[])
+    setCategories(categoriesResult.data ?? [])
+    setCostCenters(costCentersResult.data ?? [])
   }, [supabase])
 
   useEffect(() => { void Promise.all([loadAssets(), loadMetadata()]) }, [loadAssets, loadMetadata])
