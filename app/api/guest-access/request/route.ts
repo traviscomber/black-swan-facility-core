@@ -84,7 +84,7 @@ export async function POST(request: Request) {
 
     if (existingError) throw existingError
 
-    const roomNumber = Array.isArray(reservation.room) ? reservation.room[0]?.room_number ?? null : reservation.room?.room_number ?? null
+    const roomNumber = reservation.room?.room_number ?? null
 
     if (existing) {
       return NextResponse.json({
