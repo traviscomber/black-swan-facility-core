@@ -1,7 +1,7 @@
-import { createClient } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
 import type { FuelRecord } from '@/lib/fuel-parser'
-import { detectFuelAnomalies } from '@/lib/fuel-anomaly-detector'
+import { detectFuelAnomalies, type FuelReferenceEntity } from '@/lib/fuel-anomaly-detector'
+import { createClient } from '@/lib/supabase/server'
 
 export async function POST(request: NextRequest) {
   try {
@@ -13,11 +13,10 @@ export async function POST(request: NextRequest) {
 
     const supabase = await createClient()
 
-    // Insert fuel consumption records
-    const fuelRecords = records.map(record => ({
+    const fuelRecords = records.map((record) => ({
       date_recorded: record.date.toISOString().split('T')[0],
       time_recorded: record.time,
-      vehicle_id: null, // Will be populated from vehicle name
+      vehicle_id: null,
       fuel_type: record.fuelType,
       liters: record.liters,
       cost_pesos: record.cost,
@@ -35,21 +34,29 @@ export async function POST(request: NextRequest) {
       .select()
 
     if (insertError) {
-      console.error('[v0] Error inserting fuel records:', insertError)
+      console.error('[fuel-consumption] Error inserting fuel records:', insertError)
       return NextResponse.json({ error: insertError.message }, { status: 500 })
     }
 
-    // Get valid vehicles and employees
-    const { data: vehicles } = await supabase.from('vehicles').select('id, name')
-    const { data: employees } = await supabase.from('employees').select('id, name')
+    const [vehiclesResult, employeesResult] = await Promise.all([
+      supabase.from('vehicles').select('id, name'),
+      supabase.from('employees').select('id, name'),
+    ])
 
-    // Detect anomalies
+    if (vehiclesResult.error) {
+      console.error('[fuel-consumption] Unable to load vehicle catalog:', vehiclesResult.error)
+    }
+    if (employeesResult.error) {
+      console.error('[fuel-consumption] Unable to load employee catalog:', employeesResult.error)
+    }
+
+    const vehicles = vehiclesResult.error ? undefined : (vehiclesResult.data ?? []) as FuelReferenceEntity[]
+    const employees = employeesResult.error ? undefined : (employeesResult.data ?? []) as FuelReferenceEntity[]
     const anomalies = await detectFuelAnomalies(records, vehicles, employees)
 
-    // Insert anomalies
     if (anomalies.length > 0) {
-      const anomalyRecords = anomalies.map(anomaly => ({
-        fuel_consumption_id: insertedRecords?.[0]?.id || null, // Reference to first record for now
+      const anomalyRecords = anomalies.map((anomaly) => ({
+        fuel_consumption_id: insertedRecords?.[0]?.id || null,
         anomaly_type: anomaly.anomalyType,
         severity: anomaly.severity,
         description: anomaly.description,
@@ -63,7 +70,7 @@ export async function POST(request: NextRequest) {
         .insert(anomalyRecords)
 
       if (anomalyError) {
-        console.error('[v0] Error inserting anomalies:', anomalyError)
+        console.error('[fuel-consumption] Error inserting anomalies:', anomalyError)
       }
     }
 
@@ -73,10 +80,10 @@ export async function POST(request: NextRequest) {
       anomaliesDetected: anomalies.length,
     })
   } catch (error) {
-    console.error('[v0] API error:', error)
+    console.error('[fuel-consumption] API error:', error)
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Unknown error' },
-      { status: 500 }
+      { status: 500 },
     )
   }
 }
