@@ -51,6 +51,10 @@ interface InventoryFormProps {
   onSuccess: () => void
 }
 
+function firstRelation<T>(value: T | T[] | null | undefined): T | null {
+  return Array.isArray(value) ? value[0] ?? null : value ?? null
+}
+
 export function InventoryForm({ asset, categories, costCenters, onClose, onSuccess }: InventoryFormProps) {
   const supabase = useMemo(() => createBrowserClient(), [])
   const { toast } = useToast()
@@ -88,7 +92,7 @@ export function InventoryForm({ asset, categories, costCenters, onClose, onSucce
       .order("name")
       .then(({ data, error: locationsError }) => {
         if (locationsError) setError(`No fue posible cargar las bodegas: ${locationsError.message}`)
-        else setWarehouseLocations((data ?? []) as WarehouseLocation[])
+        else setWarehouseLocations((data ?? []).map((location) => ({ ...location, warehouses: firstRelation(location.warehouses) })))
       })
   }, [supabase])
 
