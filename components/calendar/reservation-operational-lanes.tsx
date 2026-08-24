@@ -12,8 +12,13 @@ export type CalendarLayerKey = "milestones" | "housekeeping" | "hospitality" | "
 type LaneItem = { id: string; label: string; status: string; startsOn: string; endsOn: string; critical?: boolean }
 type Lane = { key: CalendarLayerKey; label: string; Icon: typeof BedDouble; className: string; items: LaneItem[] }
 type ActivityBookingRow = { id: string; status: string | null; transport_required: boolean | null; activity: { title?: string | null; start_date?: string | null; end_date?: string | null } | Array<{ title?: string | null; start_date?: string | null; end_date?: string | null }> | null }
+type OperationalLaneCopy = {
+  milestones: string; services: string; activities: string; payments: string; maintenance: string; issues: string
+  service: string; activity: string; transport: string; issue: string; loading: string; enableLayer: string; noEvents: string
+  statuses: Record<string, string>
+}
 
-const copy = {
+const copy: Record<Language, OperationalLaneCopy> = {
   en: {
     milestones: "Milestones", services: "Services", activities: "Activities", payments: "Payments", maintenance: "Maintenance", issues: "Issues",
     service: "Service", activity: "Activity", transport: "transport", issue: "Issue", loading: "Loading related operations…", enableLayer: "Enable at least one operational layer.", noEvents: "No events",
@@ -29,11 +34,7 @@ const copy = {
     service: "Service", activity: "Aktivität", transport: "Transport", issue: "Vorfall", loading: "Verknüpfte Vorgänge werden geladen…", enableLayer: "Aktiviere mindestens eine betriebliche Ebene.", noEvents: "Keine Ereignisse",
     statuses: { pending: "Ausstehend", confirmed: "Bestätigt", assigned: "Zugewiesen", in_progress: "In Bearbeitung", completed: "Abgeschlossen", closed: "Geschlossen", paid: "Bezahlt", verified: "Verifiziert", approved: "Freigegeben", cancelled: "Storniert", no_show: "Nicht erschienen" },
   },
-} satisfies Record<Language, {
-  milestones: string; services: string; activities: string; payments: string; maintenance: string; issues: string
-  service: string; activity: string; transport: string; issue: string; loading: string; enableLayer: string; noEvents: string
-  statuses: Record<string, string>
-}>
+}
 
 function dateOnly(value: string | null | undefined, fallback: string) {
   if (!value) return fallback
