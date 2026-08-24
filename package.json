@@ -5,7 +5,8 @@
   "type": "module",
   "packageManager": "pnpm@10.28.0",
   "scripts": {
-    "prebuild": "node --experimental-strip-types --test tests/task-notification.test.ts && node --experimental-strip-types --test tests/booking-rules.test.ts && node --experimental-strip-types --test tests/booking-drag.test.ts && node --experimental-strip-types --test tests/booking-source-policy.test.ts",
+    "typecheck": "tsc --noEmit --pretty false",
+    "prebuild": "pnpm typecheck && node --experimental-strip-types --test tests/task-notification.test.ts && node --experimental-strip-types --test tests/booking-rules.test.ts && node --experimental-strip-types --test tests/booking-drag.test.ts && node --experimental-strip-types --test tests/booking-source-policy.test.ts",
     "build": "NODE_OPTIONS=--import=./scripts/suppress-known-build-warning.mjs next build",
     "dev": "next dev",
     "lint": "eslint .",
