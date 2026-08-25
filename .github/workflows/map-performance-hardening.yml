@@ -1,0 +1,54 @@
+name: Map performance hardening
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [agent/kmz-map-performance-hardening]
+  pull_request:
+    paths:
+      - "app/map/**"
+      - "lib/map/**"
+      - "tests/map-*.test.ts"
+      - "scripts/backfill-gis-overlay-derivatives.mjs"
+      - "supabase/migrations/*gis_overlay*"
+      - "package.json"
+      - ".github/workflows/map-performance-hardening.yml"
+
+jobs:
+  regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Prebuild regression suite
+        run: pnpm prebuild
+      - name: Production build
+        run: pnpm build
+
+  booking-e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    container:
+      image: mcr.microsoft.com/playwright:v1.61.1-noble
+    env:
+      PLAYWRIGHT_BROWSERS_PATH: /ms-playwright
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Booking regression
+        run: pnpm test:e2e:booking
