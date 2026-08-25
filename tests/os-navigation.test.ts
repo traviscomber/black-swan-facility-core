@@ -1,6 +1,7 @@
 import assert from "node:assert/strict"
 import test from "node:test"
 import { filterOsAreas, osAreas, rankAreasForAccess, resolveAreaForPath } from "../lib/os/navigation.ts"
+import { normalizeCapabilitySnapshot } from "../lib/access/capabilities.ts"
 
 const expectedKeys = ["today", "operations", "people", "places-assets", "finance", "network"]
 
@@ -19,16 +20,27 @@ test("preserves established routes while resolving areas", () => {
   assert.equal(resolveAreaForPath("/de/budgets/approvals"), "finance")
 })
 
-test("filters by existing admin, action, and department gates", () => {
-  const visible = filterOsAreas(osAreas, { is_admin: false }, (action) => action !== "payments.record", (department) => department !== "finance")
+test("view capability controls visibility independently from write actions", () => {
+  const snapshot = normalizeCapabilitySnapshot({ domains: { booking: ["view"], operations: ["view"] } })
+  const visible = filterOsAreas(osAreas, snapshot, { is_admin: false })
   const hrefs = visible.flatMap((area) => area.items.map((item) => item.href))
-  assert.equal(hrefs.includes("/bookings/invoices"), false)
-  assert.equal(hrefs.includes("/budgets"), false)
   assert.equal(hrefs.includes("/bookings"), true)
+  assert.equal(hrefs.includes("/activities-calendar"), true)
+  assert.equal(hrefs.includes("/budgets"), false)
+})
+
+test("map is hidden without map view even when other places capabilities exist", () => {
+  const snapshot = normalizeCapabilitySnapshot({ domains: { maintenance: ["view"], inventory: ["view"] } })
+  const visible = filterOsAreas(osAreas, snapshot, { is_admin: false })
+  const hrefs = visible.flatMap((area) => area.items.map((item) => item.href))
+  assert.equal(hrefs.includes("/property-management"), true)
+  assert.equal(hrefs.includes("/inventory"), true)
+  assert.equal(hrefs.includes("/map"), false)
 })
 
 test("keeps all six area hubs while server-authorized children stay out of static navigation", () => {
-  const visible = filterOsAreas(osAreas, { is_admin: false }, () => true, () => true)
+  const snapshot = normalizeCapabilitySnapshot({ domains: { people: ["admin"], network: ["admin"] } })
+  const visible = filterOsAreas(osAreas, snapshot, { is_admin: true })
   assert.deepEqual(visible.map((area) => area.key), expectedKeys)
   const hrefs = visible.flatMap((area) => area.items.map((item) => item.href))
   assert.equal(hrefs.includes("/os/discovery"), false)
@@ -59,9 +71,10 @@ test("three representative perspectives share the same production taxonomy", () 
   }
 })
 
-test("ranking never grants admin or rewrites direct URLs", () => {
+test("ranking never grants capabilities or rewrites direct URLs", () => {
   const access = { is_admin: false, role: "hospitality", departments: ["booking", "hospitality"], allowed_actions: ["booking.modify", "hospitality.operate"] }
-  const filtered = filterOsAreas(osAreas, access, (action) => access.allowed_actions.includes(action), (department) => access.departments.includes(department))
+  const snapshot = normalizeCapabilitySnapshot({ domains: { booking: ["operate"], operations: ["operate"] } })
+  const filtered = filterOsAreas(osAreas, snapshot, access)
   const hrefs = filtered.flatMap((area) => area.items.map((item) => item.href))
   assert.equal(hrefs.includes("/bookings"), true)
   assert.equal(hrefs.includes("/budgets"), false)
