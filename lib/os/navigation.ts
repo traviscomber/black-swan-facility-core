@@ -10,6 +10,7 @@ export type OsNavItem = {
   action?: string
   department?: string
   badge?: "finance_pending"
+  serverAuthorized?: boolean
   subItems?: Array<{ nameKey: string; href: string; icon: string }>
 }
 
@@ -61,7 +62,7 @@ export const osAreas: OsArea[] = [
   {
     key: "people", labelKey: "os.people", descKey: "os.people_desc", href: "/os?area=people", items: [
       { key: "employees", nameKey: "nav.people_operations", href: "/employees", area: "people", tipKey: "nav.employees_tip", department: "administration" },
-      { key: "os-people", nameKey: "os.people", href: "/os/people", area: "people", tipKey: "os.people_desc" },
+      { key: "os-people", nameKey: "os.people", href: "/os/people", area: "people", tipKey: "os.people_desc", serverAuthorized: true },
     ],
   },
   {
@@ -89,11 +90,11 @@ export const osAreas: OsArea[] = [
   },
   {
     key: "network", labelKey: "os.network", descKey: "os.network_desc", href: "/os?area=network", items: [
-      { key: "discovery", nameKey: "os.discovery", href: "/os/discovery", area: "network", tipKey: "os.network_desc" },
-      { key: "events", nameKey: "os.events", href: "/os/events", area: "network", tipKey: "os.network_desc" },
-      { key: "event-providers", nameKey: "os.event_providers", href: "/os/event-providers", area: "network", tipKey: "os.network_desc" },
-      { key: "front-door", nameKey: "os.front_door", href: "/os/front-door", area: "network", tipKey: "os.network_desc" },
-      { key: "education", nameKey: "os.education", href: "/os/education", area: "network", tipKey: "os.network_desc" },
+      { key: "discovery", nameKey: "os.discovery", href: "/os/discovery", area: "network", tipKey: "os.network_desc", serverAuthorized: true },
+      { key: "events", nameKey: "os.events", href: "/os/events", area: "network", tipKey: "os.network_desc", serverAuthorized: true },
+      { key: "event-providers", nameKey: "os.event_providers", href: "/os/event-providers", area: "network", tipKey: "os.network_desc", serverAuthorized: true },
+      { key: "front-door", nameKey: "os.front_door", href: "/os/front-door", area: "network", tipKey: "os.network_desc", serverAuthorized: true },
+      { key: "education", nameKey: "os.education", href: "/os/education", area: "network", tipKey: "os.network_desc", serverAuthorized: true },
     ],
   },
 ]
@@ -120,12 +121,13 @@ export function filterOsAreas(areas: OsArea[], access: { is_admin: boolean }, ca
   return areas.map((area) => ({
     ...area,
     items: area.items.filter((item) => {
+      if (item.serverAuthorized) return false
       if (item.adminOnly && !access.is_admin) return false
       if (item.action && !can(item.action)) return false
       if (item.department && !canAccessDepartment(item.department)) return false
       return true
     }),
-  })).filter((area) => area.key === "today" || area.items.length > 0)
+  }))
 }
 
 export function rankAreasForAccess(areas: OsArea[], access: { is_admin: boolean; role: string; departments: string[]; allowed_actions: string[] }): OsArea[] {
