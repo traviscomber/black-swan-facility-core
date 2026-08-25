@@ -1,3 +1,5 @@
+import { hasCapability, type CanonicalCapabilitySnapshot } from "@/lib/access/capabilities"
+
 export type OsAreaKey = "today" | "operations" | "people" | "places-assets" | "finance" | "network"
 
 export type OsNavItem = {
@@ -6,6 +8,7 @@ export type OsNavItem = {
   href: string
   area: OsAreaKey
   tipKey: string
+  viewDomain?: string
   adminOnly?: boolean
   action?: string
   department?: string
@@ -49,43 +52,43 @@ export const osAreas: OsArea[] = [
   { key: "today", labelKey: "os.today", descKey: "os.today_desc", href: "/os", items: [] },
   {
     key: "operations", labelKey: "os.operations", descKey: "os.operations_desc", href: "/os?area=operations", items: [
-      { key: "bookings", nameKey: "nav.bookings", href: "/bookings", area: "operations", tipKey: "nav.bookings_tip", action: "booking.modify", department: "booking" },
-      { key: "activities", nameKey: "nav.activities", href: "/activities-calendar", area: "operations", tipKey: "nav.activities_tip", department: "operations" },
-      { key: "tasks", nameKey: "nav.tasks", href: "/tasks", area: "operations", tipKey: "nav.tasks_tip", department: "operations" },
-      { key: "checklists", nameKey: "nav.checklists", href: "/checklists", area: "operations", tipKey: "nav.checklists_tip", department: "operations" },
-      { key: "procurement", nameKey: "nav.procurement", href: "/procurement", area: "operations", tipKey: "nav.procurement_tip", action: "procurement.operate", department: "procurement" },
-      { key: "maintenance", nameKey: "nav.maintenance", href: "/maintenance", area: "operations", tipKey: "nav.maintenance_tip", action: "maintenance.operate", department: "maintenance" },
-      { key: "issues", nameKey: "nav.issues", href: "/issues", area: "operations", tipKey: "nav.facility_requests_tip", action: "maintenance.operate", department: "maintenance" },
-      { key: "guest-requests", nameKey: "nav.guest_requests", href: "/bookings/requests", area: "operations", tipKey: "nav.guest_requests_tip", action: "hospitality.operate", department: "hospitality" },
+      { key: "bookings", nameKey: "nav.bookings", href: "/bookings", area: "operations", tipKey: "nav.bookings_tip", viewDomain: "booking", action: "booking.modify", department: "booking" },
+      { key: "activities", nameKey: "nav.activities", href: "/activities-calendar", area: "operations", tipKey: "nav.activities_tip", viewDomain: "operations", department: "operations" },
+      { key: "tasks", nameKey: "nav.tasks", href: "/tasks", area: "operations", tipKey: "nav.tasks_tip", viewDomain: "operations", department: "operations" },
+      { key: "checklists", nameKey: "nav.checklists", href: "/checklists", area: "operations", tipKey: "nav.checklists_tip", viewDomain: "operations", department: "operations" },
+      { key: "procurement", nameKey: "nav.procurement", href: "/procurement", area: "operations", tipKey: "nav.procurement_tip", viewDomain: "procurement", action: "procurement.operate", department: "procurement" },
+      { key: "maintenance", nameKey: "nav.maintenance", href: "/maintenance", area: "operations", tipKey: "nav.maintenance_tip", viewDomain: "maintenance", action: "maintenance.operate", department: "maintenance" },
+      { key: "issues", nameKey: "nav.issues", href: "/issues", area: "operations", tipKey: "nav.facility_requests_tip", viewDomain: "maintenance", action: "maintenance.operate", department: "maintenance" },
+      { key: "guest-requests", nameKey: "nav.guest_requests", href: "/bookings/requests", area: "operations", tipKey: "nav.guest_requests_tip", viewDomain: "operations", action: "hospitality.operate", department: "hospitality" },
     ],
   },
   {
     key: "people", labelKey: "os.people", descKey: "os.people_desc", href: "/os?area=people", items: [
-      { key: "employees", nameKey: "nav.people_operations", href: "/employees", area: "people", tipKey: "nav.employees_tip", department: "administration" },
+      { key: "employees", nameKey: "nav.people_operations", href: "/employees", area: "people", tipKey: "nav.employees_tip", viewDomain: "people", department: "administration" },
       { key: "os-people", nameKey: "os.people", href: "/os/people", area: "people", tipKey: "os.people_desc", serverAuthorized: true },
     ],
   },
   {
     key: "places-assets", labelKey: "os.places_assets", descKey: "os.places_assets_desc", href: "/os?area=places-assets", items: [
-      { key: "property-management", nameKey: "nav.property_management", href: "/property-management", area: "places-assets", tipKey: "nav.property_management_desc", department: "maintenance" },
-      { key: "inventory", nameKey: "nav.inventory", href: "/inventory", area: "places-assets", tipKey: "nav.inventory_tip", action: "inventory.process", department: "inventory" },
-      { key: "energy", nameKey: "nav.energy_management", href: "/energy", area: "places-assets", tipKey: "nav.management_tip", department: "maintenance" },
-      { key: "map", nameKey: "nav.map", href: "/map", area: "places-assets", tipKey: "nav.gis_map_tip" },
-      { key: "orchard", nameKey: "nav.orchard_dashboard", href: "/orchard", area: "places-assets", tipKey: "nav.dashboard_tip", department: "orchard", subItems: orchardSubItems },
-      { key: "vineyard", nameKey: "nav.vineyard_dashboard", href: "/vineyard", area: "places-assets", tipKey: "nav.dashboard_tip", department: "vineyard", subItems: vineyardSubItems },
-      { key: "cattle", nameKey: "nav.cattle_dashboard", href: "/cattle", area: "places-assets", tipKey: "nav.dashboard_tip", department: "cattle", subItems: cattleSubItems },
-      { key: "cattle-health", nameKey: "nav.cattle_health", href: "/cattle-health", area: "places-assets", tipKey: "nav.dashboard_tip", department: "cattle" },
-      { key: "fuel", nameKey: "nav.combustibles", href: "/combustibles", area: "places-assets", tipKey: "nav.combustibles_tip", action: "fuel.review", department: "fuel" },
+      { key: "property-management", nameKey: "nav.property_management", href: "/property-management", area: "places-assets", tipKey: "nav.property_management_desc", viewDomain: "maintenance", department: "maintenance" },
+      { key: "inventory", nameKey: "nav.inventory", href: "/inventory", area: "places-assets", tipKey: "nav.inventory_tip", viewDomain: "inventory", action: "inventory.process", department: "inventory" },
+      { key: "energy", nameKey: "nav.energy_management", href: "/energy", area: "places-assets", tipKey: "nav.management_tip", viewDomain: "maintenance", department: "maintenance" },
+      { key: "map", nameKey: "nav.map", href: "/map", area: "places-assets", tipKey: "nav.gis_map_tip", viewDomain: "map" },
+      { key: "orchard", nameKey: "nav.orchard_dashboard", href: "/orchard", area: "places-assets", tipKey: "nav.dashboard_tip", viewDomain: "orchard", department: "orchard", subItems: orchardSubItems },
+      { key: "vineyard", nameKey: "nav.vineyard_dashboard", href: "/vineyard", area: "places-assets", tipKey: "nav.dashboard_tip", viewDomain: "vineyard", department: "vineyard", subItems: vineyardSubItems },
+      { key: "cattle", nameKey: "nav.cattle_dashboard", href: "/cattle", area: "places-assets", tipKey: "nav.dashboard_tip", viewDomain: "cattle", department: "cattle", subItems: cattleSubItems },
+      { key: "cattle-health", nameKey: "nav.cattle_health", href: "/cattle-health", area: "places-assets", tipKey: "nav.dashboard_tip", viewDomain: "cattle", department: "cattle" },
+      { key: "fuel", nameKey: "nav.combustibles", href: "/combustibles", area: "places-assets", tipKey: "nav.combustibles_tip", viewDomain: "fuel", action: "fuel.review", department: "fuel" },
     ],
   },
   {
     key: "finance", labelKey: "os.finance", descKey: "os.finance_desc", href: "/os?area=finance", items: [
-      { key: "budget", nameKey: "finance_budget", href: "/budgets", area: "finance", tipKey: "finance_budget_tip", action: "payments.record", department: "finance" },
-      { key: "approvals", nameKey: "finance_approvals", href: "/budgets/approvals", area: "finance", tipKey: "finance_approvals_tip", badge: "finance_pending", action: "payments.record", department: "finance" },
-      { key: "documents", nameKey: "finance_documents", href: "/budgets/documents", area: "finance", tipKey: "finance_documents_tip", action: "payments.record", department: "finance" },
-      { key: "reconciliation", nameKey: "finance_reconciliation", href: "/budgets/reconciliation", area: "finance", tipKey: "finance_reconciliation_tip", action: "payments.record", department: "finance" },
-      { key: "accounting", nameKey: "nav.accounting", href: "/accounting", area: "finance", tipKey: "nav.accounting_tip", department: "finance" },
-      { key: "invoices", nameKey: "nav.invoices", href: "/bookings/invoices", area: "finance", tipKey: "nav.invoices_tip", action: "payments.record", department: "finance" },
+      { key: "budget", nameKey: "finance_budget", href: "/budgets", area: "finance", tipKey: "finance_budget_tip", viewDomain: "finance", action: "payments.record", department: "finance" },
+      { key: "approvals", nameKey: "finance_approvals", href: "/budgets/approvals", area: "finance", tipKey: "finance_approvals_tip", viewDomain: "finance", badge: "finance_pending", action: "payments.record", department: "finance" },
+      { key: "documents", nameKey: "finance_documents", href: "/budgets/documents", area: "finance", tipKey: "finance_documents_tip", viewDomain: "finance", action: "payments.record", department: "finance" },
+      { key: "reconciliation", nameKey: "finance_reconciliation", href: "/budgets/reconciliation", area: "finance", tipKey: "finance_reconciliation_tip", viewDomain: "finance", action: "payments.record", department: "finance" },
+      { key: "accounting", nameKey: "nav.accounting", href: "/accounting", area: "finance", tipKey: "nav.accounting_tip", viewDomain: "finance", department: "finance" },
+      { key: "invoices", nameKey: "nav.invoices", href: "/bookings/invoices", area: "finance", tipKey: "nav.invoices_tip", viewDomain: "finance", action: "payments.record", department: "finance" },
     ],
   },
   {
@@ -117,14 +120,13 @@ export function resolveAreaForPath(pathname: string): OsAreaKey | null {
   return matches[0]?.area ?? null
 }
 
-export function filterOsAreas(areas: OsArea[], access: { is_admin: boolean }, can: (action: string) => boolean, canAccessDepartment: (department: string) => boolean): OsArea[] {
+export function filterOsAreas(areas: OsArea[], snapshot: CanonicalCapabilitySnapshot, access: { is_admin: boolean }): OsArea[] {
   return areas.map((area) => ({
     ...area,
     items: area.items.filter((item) => {
       if (item.serverAuthorized) return false
       if (item.adminOnly && !access.is_admin) return false
-      if (item.action && !can(item.action)) return false
-      if (item.department && !canAccessDepartment(item.department)) return false
+      if (item.viewDomain && !hasCapability(snapshot, item.viewDomain, "view")) return false
       return true
     }),
   }))
