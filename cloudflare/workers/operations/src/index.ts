@@ -120,6 +120,37 @@ async function proposeDiscoveryIntent(env: Env, text: string) {
   }
 }
 
+async function evaluateDiscoveryCandidates(env: Env, token: string, networkId: string) {
+  const candidates = await rpc(env, token, 'get_discovery_candidate_pairs', { p_network_id: networkId })
+  const pairs = Array.isArray(candidates) ? candidates as JsonRecord[] : []
+  let evaluated = 0
+
+  for (const pair of pairs) {
+    const lexicalScore = Math.max(0, Math.min(1, Number(pair.lexical_score || 0)))
+    const complementary = Boolean(pair.complementary)
+    if (!complementary && lexicalScore < 0.2) continue
+
+    const confidence = Math.min(0.99, Math.max(0.55, 0.55 + lexicalScore * 0.35 + (complementary ? 0.08 : 0)))
+    const reason = complementary
+      ? `Complementary discovery intents with lexical similarity ${lexicalScore.toFixed(2)}.`
+      : `Related discovery intents with lexical similarity ${lexicalScore.toFixed(2)}.`
+
+    await rpc(env, token, 'record_discovery_evaluation', {
+      p_network_id: networkId,
+      p_intent_a_id: pair.intent_a_id,
+      p_intent_b_id: pair.intent_b_id,
+      p_confidence: confidence,
+      p_reason: reason,
+      p_match_method: 'candidate_lexical_v1',
+      p_evaluation_model: 'operations_deterministic_v1',
+      p_evaluation_version: 'v1',
+    })
+    evaluated += 1
+  }
+
+  return { candidates: pairs.length, evaluated }
+}
+
 const workspaces: Record<string, string> = {
   people: 'get_people_graph_workspace',
   events: 'get_events_workspace',
@@ -155,7 +186,6 @@ function actionPayload(action: string, body: JsonRecord) {
     case 'publication-review': return { rpc: 'review_foundation_publication', payload: { p_publication_id: body.publication_id, p_decision: body.decision, p_published_url: body.published_url || null } }
     case 'discovery-intent': return { rpc: 'create_discovery_intent', payload: { p_summary: body.summary, p_intent_type: body.intent_type, p_privacy: body.privacy || 'network_only', p_network_ids: body.network_ids || null, p_details: body.details || null, p_valid_until: body.valid_until || null } }
     case 'discovery-intent-status': return { rpc: 'set_discovery_intent_status', payload: { p_intent_id: body.intent_id, p_status: body.status } }
-    case 'discovery-match': return { rpc: 'run_discovery_matching', payload: { p_network_id: body.network_id } }
     case 'discovery-opportunity': return { rpc: 'respond_discovery_opportunity', payload: { p_opportunity_id: body.opportunity_id, p_decision: body.decision } }
     case 'import-stage': return { rpc: 'stage_canonical_import', payload: { p_import_type: body.import_type, p_source_name: body.source_name, p_rows: body.rows } }
     case 'import-resolve': return { rpc: 'resolve_canonical_import_row', payload: { p_import_type: body.import_type, p_row_id: body.row_id, p_legal_entity_id: body.legal_entity_id || null, p_department_id: body.department_id || null, p_matched_record_id: body.matched_record_id || null, p_resolution_status: body.resolution_status || 'resolved', p_notes: body.notes || null } }
@@ -208,6 +238,11 @@ export default {
       const actionMatch = url.pathname.match(new RegExp(`^/${version}/os/actions/([a-z-]+)$`))
       if (actionMatch && request.method === 'POST') {
         const body = await request.json() as JsonRecord
+        if (actionMatch[1] === 'discovery-match' || actionMatch[1] === 'discovery-evaluate') {
+          const networkId = String(body.network_id || '')
+          if (!networkId) throw new ApiError('discovery_network_required', 400)
+          return json({ data: await evaluateDiscoveryCandidates(env, token, networkId), request_id: requestId }, 200, requestId)
+        }
         const action = actionPayload(actionMatch[1], body)
         return json({ data: await rpc(env, token, action.rpc, action.payload), request_id: requestId }, 200, requestId)
       }
