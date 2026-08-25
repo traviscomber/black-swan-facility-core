@@ -27,6 +27,16 @@ test("filters by existing admin, action, and department gates", () => {
   assert.equal(hrefs.includes("/bookings"), true)
 })
 
+test("keeps all six area hubs while server-authorized children stay out of static navigation", () => {
+  const visible = filterOsAreas(osAreas, { is_admin: false }, () => true, () => true)
+  assert.deepEqual(visible.map((area) => area.key), expectedKeys)
+  const hrefs = visible.flatMap((area) => area.items.map((item) => item.href))
+  assert.equal(hrefs.includes("/os/discovery"), false)
+  assert.equal(hrefs.includes("/os/events"), false)
+  assert.equal(hrefs.includes("/os/people"), false)
+  assert.equal(resolveAreaForPath("/os/discovery"), "network")
+})
+
 test("ranks one taxonomy from access shape without rewriting hrefs", () => {
   const before = osAreas.flatMap((area) => area.items.map((item) => item.href)).sort()
   const ranked = rankAreasForAccess(osAreas, { is_admin: false, role: "operator", departments: ["maintenance", "operations"], allowed_actions: ["maintenance.operate"] })
