@@ -6,6 +6,7 @@ on:
       - agent/booking-e2e-pointer-fix
     paths:
       - "components/use-booking-calendar-create.ts"
+      - "components/client-providers.tsx"
       - ".github/workflows/booking-e2e-verify-temp.yml"
 
 jobs:
