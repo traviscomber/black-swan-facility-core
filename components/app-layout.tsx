@@ -1,39 +1,56 @@
 "use client"
 
 import type React from "react"
-import { useState, useEffect } from "react"
+import { useMemo, useState, useEffect } from "react"
+import Link from "next/link"
 import { Sidebar } from "./sidebar"
-import { Menu, ArrowLeft, LogOut } from "lucide-react"
-import { useRouter } from "next/navigation"
+import { Menu, ArrowLeft, Bot, LogOut, MessageSquare } from "lucide-react"
+import { usePathname, useRouter } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
+import { useEffectiveAccess } from "@/lib/hooks/use-effective-access"
+import { useLanguage } from "@/lib/hooks/use-language"
+import { buildOsRouteContext } from "@/lib/os/route-context"
 
 interface AppLayoutProps {
   children: React.ReactNode
+}
+
+function contextualHref(locale: string, target: string, pathname: string) {
+  const context = buildOsRouteContext(pathname)
+  const params = new URLSearchParams({ from: pathname })
+  if (context.area) params.set("area", context.area)
+  return `/${locale}${target}?${params.toString()}`
 }
 
 export function AppLayout({ children }: AppLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [userInitials, setUserInitials] = useState<string>("")
   const router = useRouter()
-  const supabase = createClient()
+  const pathname = usePathname() || "/"
+  const { language } = useLanguage()
+  const { access, can, canAccessDepartment } = useEffectiveAccess()
+  const supabase = useMemo(() => createClient(), [])
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }) => {
+    void supabase.auth.getUser().then(({ data: { user } }) => {
       if (user?.email) {
         const parts = user.user_metadata?.full_name?.split(" ") ?? user.email.split("@")[0].split(".")
         setUserInitials(parts.slice(0, 2).map((part: string) => part[0]?.toUpperCase()).join(""))
       }
     })
-  }, [])
+  }, [supabase])
 
   const handleLogout = async () => {
     await supabase.auth.signOut()
-    router.push("/auth/login")
+    router.push(`/${language}/auth/login`)
   }
 
   const isOpen = sidebarOpen
   const onClose = () => setSidebarOpen(false)
   const sidebarSurface = "[&>div]:!border-sidebar-border [&>div]:!bg-sidebar"
+  const showConcierge = can("hospitality.operate") && canAccessDepartment("hospitality")
+  const conciergeHref = contextualHref(language, "/concierge", pathname)
+  const aiHref = contextualHref(language, "/ai-ops", pathname)
 
   return (
     <div className="flex h-screen w-full bg-background">
@@ -68,7 +85,13 @@ export function AppLayout({ children }: AppLayoutProps) {
           </button>
         </div>
 
-        <main className="min-h-0 flex-1 overflow-y-auto bg-background">{children}</main>
+        <main className="relative min-h-0 flex-1 overflow-y-auto bg-background">
+          {children}
+          {(showConcierge || access.is_admin) && <div className="fixed bottom-4 right-4 z-30 flex items-center gap-2">
+            {showConcierge && <Link href={conciergeHref} className="inline-flex h-11 items-center gap-2 rounded-full border bg-background px-4 text-sm font-medium shadow-lg hover:bg-muted"><MessageSquare className="h-4 w-4" />Concierge</Link>}
+            {access.is_admin && <Link href={aiHref} className="inline-flex h-11 w-11 items-center justify-center rounded-full border bg-background shadow-lg hover:bg-muted" aria-label="AI Ops"><Bot className="h-4 w-4" /></Link>}
+          </div>}
+        </main>
       </div>
     </div>
   )
