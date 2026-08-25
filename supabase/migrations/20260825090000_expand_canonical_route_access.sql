@@ -42,9 +42,6 @@ begin
   v_role := public.current_app_role();
   v_admin := v_role = 'admin';
 
-  -- get_current_user_effective_access is the existing canonical aggregate used
-  -- by the application shell. Calling it through FROM works whether the RPC
-  -- exposes a composite row or a json/jsonb scalar; normalize either shape.
   select to_jsonb(x) into v_row
   from public.get_current_user_effective_access() as x
   limit 1;
@@ -80,7 +77,7 @@ begin
   v_capabilities := jsonb_build_object(
     'booking', case when v_admin then '["admin"]'::jsonb when v_booking_view and v_actions ? 'booking.modify' then '["operate"]'::jsonb when v_booking_view then '["view"]'::jsonb else '[]'::jsonb end,
     'operations', case when v_admin then '["admin"]'::jsonb when v_operations_view then '["view"]'::jsonb else '[]'::jsonb end,
-    'people', case when v_admin then '["admin"]'::jsonb when v_people_view then '["view"]'::jsonb else '[]'::jsonb end,
+    'people', case when v_admin then '["admin"]'::jsonb when v_departments ?| array['administration','hr'] then '["operate"]'::jsonb when v_people_view then '["view"]'::jsonb else '[]'::jsonb end,
     'places_assets', case when v_admin then '["admin"]'::jsonb when v_places_view then '["view"]'::jsonb else '[]'::jsonb end,
     'finance', case when v_admin then '["admin"]'::jsonb when v_finance_view then '["view"]'::jsonb else '[]'::jsonb end,
     'network', case when v_admin then '["admin"]'::jsonb when v_network_view then '["view"]'::jsonb else '[]'::jsonb end,
