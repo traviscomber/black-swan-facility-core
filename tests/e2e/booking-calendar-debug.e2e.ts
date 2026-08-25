@@ -19,6 +19,10 @@ test("chromium pointer session checkpoints", async () => {
   const browser = await chromium.launch()
   try {
     const page = await browser.newPage({ viewport: { width: 1500, height: 900 } })
+    page.on("pageerror", (error) => console.log(`PAGEERROR ${error.stack ?? error.message}`))
+    page.on("console", (message) => {
+      if (message.type() === "error") console.log(`CONSOLE_ERROR ${message.text()}`)
+    })
     await page.goto(`${baseURL}/bookings/e2e-harness`)
     await page.getByTestId("e2e-hydrated").waitFor({ state: "visible" })
     await page.waitForFunction(() => document.querySelector('[data-testid="e2e-hydrated"]')?.textContent === "ready")
@@ -33,6 +37,7 @@ test("chromium pointer session checkpoints", async () => {
     await page.mouse.move(x, y)
     await state(page, "before-down")
     await page.mouse.down()
+    await page.waitForTimeout(50)
     await state(page, "after-down")
     await page.mouse.move(x + 10, y)
     await state(page, "after-move-10")
