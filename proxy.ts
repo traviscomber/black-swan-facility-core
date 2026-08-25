@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr"
 import { NextResponse, type NextRequest } from "next/server"
+import { hasCapability, normalizeCapabilitySnapshot, type CapabilityLevel } from "./lib/access/capabilities"
 
 const LOCALES = ["en", "es", "de"] as const
 const DEFAULT_LOCALE = "en"
@@ -16,7 +17,10 @@ type RouteAccess = {
   role_key?: string | null
   is_admin?: boolean
   can_approve_procurement?: boolean
+  capabilities?: unknown
 }
+
+type RouteRequirement = { domain: string; required: CapabilityLevel }
 
 function isRouteLocale(value: string | undefined): value is RouteLocale {
   return !!value && LOCALES.includes(value as RouteLocale)
@@ -27,10 +31,6 @@ function isPublicRequest(pathname: string, method: string) {
   if (PUBLIC_PAGE_PREFIXES.some((prefix) => pathname.startsWith(prefix))) return true
   if (PUBLIC_API_PREFIXES.some((prefix) => pathname.startsWith(prefix))) return true
 
-  // Guest QR access is intentionally narrow:
-  // - GET /api/guest-access validates a signed house token and lists only active stays.
-  // - POST /api/guest-access/request validates that same token and scopes the request to one active stay.
-  // - POST /api/guest-access mints QR tokens and remains authenticated/internal.
   if (pathname === "/api/guest-access" && method === "GET") return true
   if (pathname === "/api/guest-access/request" && method === "POST") return true
 
@@ -45,12 +45,21 @@ function isApiRequest(pathname: string) {
   return pathname.startsWith("/api/")
 }
 
-function isProcurementPath(pathname: string) {
-  return pathname === "/procurement" || pathname.startsWith("/procurement/")
+function isPathFamily(pathname: string, root: string) {
+  return pathname === root || pathname.startsWith(`${root}/`)
 }
 
-function isAdminPath(pathname: string) {
-  return pathname === "/admin" || pathname.startsWith("/admin/")
+export function getRouteRequirement(pathname: string): RouteRequirement | null {
+  if (isPathFamily(pathname, "/bookings/invoices")) return { domain: "finance", required: "view" }
+  if (isPathFamily(pathname, "/bookings/requests")) return { domain: "operations", required: "view" }
+  if (isPathFamily(pathname, "/bookings")) return { domain: "booking", required: "view" }
+  if (isPathFamily(pathname, "/activities-calendar") || isPathFamily(pathname, "/tasks") || isPathFamily(pathname, "/checklists")) return { domain: "operations", required: "view" }
+  if (isPathFamily(pathname, "/employees") || isPathFamily(pathname, "/os/people")) return { domain: "people", required: "view" }
+  if (isPathFamily(pathname, "/map")) return { domain: "map", required: "view" }
+  if (isPathFamily(pathname, "/admin")) return { domain: "admin", required: "admin" }
+  if (isPathFamily(pathname, "/procurement/requests")) return { domain: "procurement", required: "view" }
+  if (isPathFamily(pathname, "/procurement")) return { domain: "procurement", required: "approve" }
+  return null
 }
 
 function getLocalizedPageRequest(request: NextRequest) {
@@ -85,9 +94,6 @@ function setLocaleCookie(response: NextResponse, locale: RouteLocale) {
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
 
-  // The isolated Playwright harness is intentionally auth-neutral and only
-  // exists under the dedicated E2E flag. Pin it to Spanish so historical E2E
-  // assertions stay deterministic while production routes remain locale-based.
   if (isCalendarE2EHarness(pathname)) {
     const requestHeaders = new Headers(request.headers)
     requestHeaders.set(LOCALE_HEADER, "es")
@@ -181,13 +187,11 @@ export async function proxy(request: NextRequest) {
     "get_current_route_access",
   )
 
-  // Fail closed for protected role-sensitive routes if the canonical access
-  // snapshot cannot be resolved. Do not fall back to JWT app_metadata.
   const routeAccess = (routeAccessData ?? {}) as RouteAccess
-  const isAdmin = routeAccessError ? false : routeAccess.is_admin === true
-  const isApprover = routeAccessError
-    ? false
-    : routeAccess.can_approve_procurement === true
+  const capabilitySnapshot = routeAccessError
+    ? normalizeCapabilitySnapshot(null)
+    : normalizeCapabilitySnapshot(routeAccess)
+  const requirement = getRouteRequirement(effectivePathname)
 
   if (effectivePathname === "/auth/login") {
     const activeLocale = locale ?? DEFAULT_LOCALE
@@ -197,26 +201,15 @@ export async function proxy(request: NextRequest) {
     )
   }
 
-  if (isAdminPath(effectivePathname) && !isAdmin) {
+  if (requirement && !hasCapability(capabilitySnapshot, requirement.domain, requirement.required)) {
     if (apiRequest) {
-      return NextResponse.json({ error: "Administrator role required" }, { status: 403 })
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
     }
-
     const activeLocale = locale ?? DEFAULT_LOCALE
     return setLocaleCookie(
       NextResponse.redirect(localizedUrl(request, activeLocale, "/")),
       activeLocale,
     )
-  }
-
-  if (isProcurementPath(effectivePathname) && !isApprover) {
-    if (!effectivePathname.startsWith("/procurement/requests")) {
-      const activeLocale = locale ?? DEFAULT_LOCALE
-      return setLocaleCookie(
-        NextResponse.redirect(localizedUrl(request, activeLocale, "/procurement/requests")),
-        activeLocale,
-      )
-    }
   }
 
   return response
