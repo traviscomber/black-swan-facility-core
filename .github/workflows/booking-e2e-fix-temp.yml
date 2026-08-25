@@ -14,11 +14,12 @@ on:
 jobs:
   booking-e2e:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 15
     container:
       image: mcr.microsoft.com/playwright:v1.61.1-noble
     env:
       PLAYWRIGHT_BROWSERS_PATH: /ms-playwright
+      E2E_BROWSERS: chromium
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
