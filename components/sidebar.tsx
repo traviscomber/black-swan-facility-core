@@ -41,6 +41,7 @@ import { LanguageSwitcher } from "@/components/language-switcher"
 import { useLanguage } from "@/lib/hooks/use-language"
 import { useEffectiveAccess } from "@/lib/hooks/use-effective-access"
 import { createClient } from "@/lib/supabase/client"
+import { normalizeCapabilitySnapshot, type CanonicalCapabilitySnapshot } from "@/lib/access/capabilities"
 import { filterOsAreas, osAreas, rankAreasForAccess, type OsNavItem } from "@/lib/os/navigation"
 
 const ROUTE_LOCALES = new Set(["en", "es", "de"])
@@ -100,6 +101,8 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const router = useRouter()
   const supabase = useMemo(() => createClient(), [])
   const { access, loading, error, can, canAccessDepartment } = useEffectiveAccess()
+  const [routeCapabilities, setRouteCapabilities] = useState<CanonicalCapabilitySnapshot>({ domains: {} })
+  const [routeCapabilitiesLoading, setRouteCapabilitiesLoading] = useState(true)
   const [expandedAreas, setExpandedAreas] = useState<Set<string>>(new Set())
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set())
   const [userEmail, setUserEmail] = useState<string | null>(null)
@@ -114,6 +117,18 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
       setUserInitials(parts.slice(0, 2).map((part: string) => part[0]?.toUpperCase()).join(""))
     })
   }, [supabase])
+
+  useEffect(() => {
+    let cancelled = false
+    if (loading) return () => { cancelled = true }
+    setRouteCapabilitiesLoading(true)
+    void supabase.rpc("get_current_route_access").then(({ data, error: routeError }) => {
+      if (cancelled) return
+      setRouteCapabilities(routeError ? { domains: {} } : normalizeCapabilitySnapshot(data))
+      setRouteCapabilitiesLoading(false)
+    })
+    return () => { cancelled = true }
+  }, [loading, supabase])
 
   useEffect(() => {
     if (!canAccessDepartment("finance")) {
@@ -146,9 +161,9 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
   }, [access.role, error, language, loading, router, supabase])
 
   const visibleAreas = useMemo(() => rankAreasForAccess(
-    filterOsAreas(osAreas, access, can, canAccessDepartment),
+    filterOsAreas(osAreas, routeCapabilities, access),
     access,
-  ), [access, can, canAccessDepartment])
+  ), [access, routeCapabilities])
 
   useEffect(() => {
     const initial = new Set<string>()
@@ -180,6 +195,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
 
   const handleOpenSearch = () => document.dispatchEvent(new KeyboardEvent("keydown", { key: "k", code: "KeyK", metaKey: true, bubbles: true }))
   const showConcierge = can("hospitality.operate") && canAccessDepartment("hospitality")
+  const accessLoading = loading || routeCapabilitiesLoading
 
   return (
     <>
@@ -194,7 +210,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
         </div>
 
         <nav className="min-h-0 flex-1 space-y-2 overflow-y-auto px-3 py-4">
-          {loading ? <p className="px-3 text-xs text-muted-foreground">{t("shell.loading_access")}</p> : visibleAreas.map((area) => {
+          {accessLoading ? <p className="px-3 text-xs text-muted-foreground">{t("shell.loading_access")}</p> : visibleAreas.map((area) => {
             const isToday = area.key === "today"
             const areaActive = isToday ? internalPathname === "/os" : area.items.some((item) => isItemActive(internalPathname, item))
             return <div key={area.key} className="space-y-1">
