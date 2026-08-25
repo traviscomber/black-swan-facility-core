@@ -1,9 +1,10 @@
 "use client"
 
 import type React from "react"
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import type { BookingDragMode } from "@/lib/booking-drag"
 import {
+  iso,
   type BookingCalendarBed,
   type BookingCalendarBlock,
   type BookingCalendarReservation,
@@ -27,6 +28,7 @@ type UseBookingCalendarInteractionsInput = {
   onRefresh: () => Promise<void> | void
   scrollRef: React.RefObject<HTMLDivElement | null>
   rowRefs: React.RefObject<Map<string, HTMLDivElement>>
+  reservations: BookingCalendarReservation[]
   dates: Date[]
   dayWidth: number
   context: CalendarContext
@@ -54,6 +56,7 @@ export function useBookingCalendarInteractions({
   onRefresh,
   scrollRef,
   rowRefs,
+  reservations,
   dates,
   dayWidth,
   context,
@@ -75,6 +78,9 @@ export function useBookingCalendarInteractions({
   const [dropTargetBedId, setDropTargetBedId] = useState<string | null>(null)
   const [createState, setCreateState] = useState<CreateState | null>(null)
   const [keyboardReservationId, setKeyboardReservationId] = useState<string | null>(null)
+  const reservationById = useMemo(() => new Map(reservations.map((reservation) => [reservation.id, reservation])), [reservations])
+  const bedById = useMemo(() => new Map(bedOrder.map((bed) => [bed.id, bed])), [bedOrder])
+  const dateIndexByIso = useMemo(() => new Map(dates.map((date, index) => [iso(date), index])), [dates])
 
   const clearInteractionState = useCallback(() => {
     setFeedback(null)
@@ -148,6 +154,36 @@ export function useBookingCalendarInteractions({
     cancelDragRef.current = drag.cancelDrag
     cancelCreateRef.current = create.cancelCreate
   }, [create.cancelCreate, drag.cancelDrag])
+
+  useEffect(() => {
+    const onNativePointerDown = (event: PointerEvent) => {
+      if (event.button !== 0 || !(event.target instanceof Element)) return
+      const root = event.target.closest<HTMLElement>("[data-testid='booking-calendar-root']")
+      if (!root) return
+
+      const reservationElement = event.target.closest<HTMLButtonElement>("[data-booking-reservation='true']")
+      if (reservationElement) {
+        const reservationId = reservationElement.dataset.bookingReservationId
+        const bedId = reservationElement.dataset.bookingBedId
+        const reservation = reservationId ? reservationById.get(reservationId) : undefined
+        const bed = bedId ? bedById.get(bedId) : undefined
+        if (reservation && bed) drag.startReservationPointer(event, reservation, bed, reservationElement)
+        return
+      }
+
+      const cellElement = event.target.closest<HTMLButtonElement>("button[data-booking-date]")
+      if (!cellElement) return
+      const row = cellElement.closest<HTMLElement>("[data-booking-timeline-row='true']")
+      const bedId = row?.dataset.bookingBedId
+      const date = cellElement.dataset.bookingDate
+      const bed = bedId ? bedById.get(bedId) : undefined
+      const index = date ? dateIndexByIso.get(date) : undefined
+      if (bed && index !== undefined) create.startCellPointer(event, bed, index, cellElement)
+    }
+
+    window.addEventListener("pointerdown", onNativePointerDown, { capture: true })
+    return () => window.removeEventListener("pointerdown", onNativePointerDown, { capture: true })
+  }, [bedById, create.startCellPointer, dateIndexByIso, drag.startReservationPointer, reservationById])
 
   const cancelAll = useCallback(() => {
     drag.cancelDrag()
