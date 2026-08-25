@@ -26,11 +26,6 @@ import { bookingCalendarInteractionCopy, bookingTargetLabel } from "@/lib/transl
 type DragVisual = { reservationId: string; transform: string; width: number }
 type PointerLifecycleEvent = React.PointerEvent | PointerEvent
 
-function debugDrag(stage: string, detail: Record<string, unknown> = {}) {
-  if (typeof window === "undefined") return
-  Reflect.set(window, "__bookingDragDebug", { stage, ...detail })
-}
-
 type UseBookingCalendarDragInput = {
   scrollRef: React.RefObject<HTMLDivElement | null>
   rowRefs: React.RefObject<Map<string, HTMLDivElement>>
@@ -93,12 +88,7 @@ export function useBookingCalendarDrag({
     try { if (element.hasPointerCapture(pointerId)) element.releasePointerCapture(pointerId) } catch { /* browser released it */ }
   }, [])
   const capturePointer = useCallback((element: HTMLElement, pointerId: number) => {
-    try {
-      element.setPointerCapture(pointerId)
-      debugDrag("pointer-captured", { pointerId })
-    } catch (error) {
-      debugDrag("pointer-capture-failed", { pointerId, message: error instanceof Error ? error.message : String(error) })
-    }
+    try { element.setPointerCapture(pointerId) } catch { /* native window handlers are fallback */ }
   }, [])
   const stopAutoScroll = useCallback(() => {
     if (autoScrollFrame.current !== null) window.cancelAnimationFrame(autoScrollFrame.current)
@@ -106,7 +96,6 @@ export function useBookingCalendarDrag({
   }, [])
   const cancelDrag = useCallback(() => {
     const session = dragRef.current
-    if (session) debugDrag("cancel", { pointerId: session.pointerId, active: session.active })
     if (session?.longPressTimer != null) window.clearTimeout(session.longPressTimer)
     if (session) releasePointer(session.element, session.pointerId)
     dragRef.current = null
@@ -117,21 +106,16 @@ export function useBookingCalendarDrag({
   const activateDrag = useCallback((session: DragSession) => {
     session.active = true
     session.touchReady = true
-    debugDrag("activated", { pointerId: session.pointerId, mode: session.mode })
     capturePointer(session.element, session.pointerId)
     updateCandidateStates(session.reservation, session.sourceBed, session.targetCheckIn, session.targetCheckOut, session.mode)
   }, [capturePointer, updateCandidateStates])
 
   const updateDrag = useCallback((clientX: number, clientY: number) => {
     const session = dragRef.current
-    if (!session) {
-      debugDrag("move-without-session", { clientX, clientY })
-      return
-    }
+    if (!session) return
     session.lastX = clientX
     session.lastY = clientY
     const distance = Math.hypot(clientX - session.startX, clientY - session.startY)
-    debugDrag("move", { pointerId: session.pointerId, distance, active: session.active, pointerType: session.pointerType })
     if (session.pointerType === "touch" && !session.touchReady) {
       if (distance > 10) cancelDrag()
       return
@@ -160,7 +144,6 @@ export function useBookingCalendarDrag({
     session.targetCheckIn = nextDates.checkIn
     session.targetCheckOut = nextDates.checkOut
     session.validation = validation
-    debugDrag("updated", { pointerId: session.pointerId, targetBedId: targetBed.id, checkIn: nextDates.checkIn, checkOut: nextDates.checkOut, valid: validation.valid, intent: validation.intent })
     setDragVisual({
       reservationId: session.reservation.id,
       transform: session.mode === "move" ? `translate(${translateX}px, ${translateY}px)` : session.mode === "resize-start" ? `translateX(${translateX}px)` : "none",
@@ -205,23 +188,10 @@ export function useBookingCalendarDrag({
     reservation: BookingCalendarReservation,
     bed: BookingCalendarBed,
   ) => {
-    debugDrag("pointer-down", { pointerId: event.pointerId, pointerType: event.pointerType, button: event.button, reservationId: reservation.id })
-    if (event.button !== 0) {
-      debugDrag("blocked-button", { button: event.button })
-      return
-    }
-    if (pendingIds.has(reservation.id)) {
-      debugDrag("blocked-pending", { reservationId: reservation.id })
-      return void toast.warning(copy.pendingSantiago)
-    }
-    if (bookingSourcePolicy(reservation.source) === "external-read-only") {
-      debugDrag("blocked-source", { source: reservation.source })
-      return void toast.warning(bookingSourcePolicyLabel(reservation.source, language))
-    }
-    if (!futureEditable(reservation)) {
-      debugDrag("blocked-editability", { status: reservation.status, arrivalStatus: reservation.arrival_status })
-      return
-    }
+    if (event.button !== 0) return
+    if (pendingIds.has(reservation.id)) return void toast.warning(copy.pendingSantiago)
+    if (bookingSourcePolicy(reservation.source) === "external-read-only") return void toast.warning(bookingSourcePolicyLabel(reservation.source, language))
+    if (!futureEditable(reservation)) return
     cancelOther()
     cancelDrag()
     const edge = (event.target as HTMLElement).closest<HTMLElement>("[data-booking-resize-edge]")?.dataset.bookingResizeEdge
@@ -249,11 +219,9 @@ export function useBookingCalendarDrag({
       validation: defaultValidation(mode),
     }
     dragRef.current = session
-    debugDrag("session-created", { pointerId: session.pointerId, pointerType: session.pointerType, mode })
     if (event.pointerType === "touch") {
       session.longPressTimer = window.setTimeout(() => {
         if (dragRef.current !== session) return
-        debugDrag("long-press-fired", { pointerId: session.pointerId })
         activateDrag(session)
         updateDrag(session.lastX, session.lastY)
         navigator.vibrate?.(18)
@@ -262,10 +230,7 @@ export function useBookingCalendarDrag({
   }, [activateDrag, cancelDrag, cancelOther, capturePointer, copy.pendingSantiago, language, pendingIds, scrollRef, updateDrag])
 
   const onPointerMove = useCallback((event: PointerLifecycleEvent) => {
-    if (!dragRef.current || dragRef.current.pointerId !== event.pointerId) {
-      debugDrag("pointer-move-miss", { pointerId: event.pointerId, activePointerId: dragRef.current?.pointerId ?? null })
-      return false
-    }
+    if (!dragRef.current || dragRef.current.pointerId !== event.pointerId) return false
     updateDrag(event.clientX, event.clientY)
     if (dragRef.current?.active) {
       event.preventDefault()
@@ -276,11 +241,7 @@ export function useBookingCalendarDrag({
 
   const finishDrag = useCallback(async (event: PointerLifecycleEvent) => {
     const session = dragRef.current
-    if (!session || event.pointerId !== session.pointerId) {
-      debugDrag("finish-miss", { pointerId: event.pointerId, activePointerId: session?.pointerId ?? null })
-      return false
-    }
-    debugDrag("finish", { pointerId: session.pointerId, active: session.active, valid: session.validation.valid })
+    if (!session || event.pointerId !== session.pointerId) return false
     if (session.longPressTimer !== null) window.clearTimeout(session.longPressTimer)
     dragRef.current = null
     stopAutoScroll()
@@ -292,18 +253,12 @@ export function useBookingCalendarDrag({
       || session.targetCheckIn !== session.reservation.check_in
       || session.targetCheckOut !== session.reservation.check_out
     clearInteractionState()
-    if (!changed) {
-      debugDrag("finish-unchanged", { pointerId: session.pointerId })
-      return true
-    }
+    if (!changed) return true
     if (!session.validation.valid) {
-      debugDrag("finish-invalid", { message: session.validation.message })
       toast.error(session.validation.message)
       return true
     }
-    debugDrag("apply", { targetBedId: session.targetBed.id, checkIn: session.targetCheckIn, checkOut: session.targetCheckOut, intent: session.validation.intent })
     await applyProposal(session.reservation, session.sourceBed, session.targetBed, session.targetCheckIn, session.targetCheckOut, session.validation)
-    debugDrag("applied", { reservationId: session.reservation.id })
     return true
   }, [applyProposal, clearInteractionState, releasePointer, stopAutoScroll, suppressClickUntil])
 
