@@ -34,3 +34,26 @@ test("ranks one taxonomy from access shape without rewriting hrefs", () => {
   assert.deepEqual(after, before)
   assert.equal(ranked[0]?.key, "today")
 })
+
+test("three representative perspectives share the same production taxonomy", () => {
+  const fixtures = {
+    santiago: { is_admin: true, role: "owner", departments: ["finance", "administration", "operations"], allowed_actions: ["payments.record", "booking.modify"] },
+    raimundo: { is_admin: false, role: "operations", departments: ["maintenance", "inventory", "operations"], allowed_actions: ["maintenance.operate", "inventory.process"] },
+    tomas: { is_admin: false, role: "hospitality", departments: ["booking", "hospitality"], allowed_actions: ["booking.modify", "hospitality.operate"] },
+  }
+
+  for (const access of Object.values(fixtures)) {
+    const ranked = rankAreasForAccess(osAreas, access)
+    assert.deepEqual([...ranked].map((area) => area.key).sort(), [...expectedKeys].sort())
+    assert.equal(ranked[0]?.key, "today")
+  }
+})
+
+test("ranking never grants admin or rewrites direct URLs", () => {
+  const access = { is_admin: false, role: "hospitality", departments: ["booking", "hospitality"], allowed_actions: ["booking.modify", "hospitality.operate"] }
+  const filtered = filterOsAreas(osAreas, access, (action) => access.allowed_actions.includes(action), (department) => access.departments.includes(department))
+  const hrefs = filtered.flatMap((area) => area.items.map((item) => item.href))
+  assert.equal(hrefs.includes("/bookings"), true)
+  assert.equal(hrefs.includes("/budgets"), false)
+  assert.equal(resolveAreaForPath("/bookings/calendar"), "operations")
+})
