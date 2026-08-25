@@ -48,19 +48,7 @@ async function openHarness(page: Page) {
           reservationId: reservation?.getAttribute("data-booking-reservation-id") ?? null,
           cellTestId: cell?.getAttribute("data-testid") ?? null,
         })
-        if (event.type === "pointerdown" || event.type === "pointermove") {
-          queueMicrotask(() => {
-            const pointerTarget = target instanceof HTMLElement ? target.closest<HTMLElement>("button") : null
-            trace.push({
-              type: `${event.type}-after`,
-              pointerId: event.pointerId,
-              hasCapture: Boolean(pointerTarget?.hasPointerCapture?.(event.pointerId)),
-              ariaGrabbed: reservation?.getAttribute("aria-grabbed") ?? null,
-              createState: cell?.getAttribute("data-booking-create-state") ?? null,
-            })
-          })
-        }
-        if (trace.length > 120) trace.splice(0, trace.length - 120)
+        if (trace.length > 80) trace.splice(0, trace.length - 80)
       }, true)
     }
   })
