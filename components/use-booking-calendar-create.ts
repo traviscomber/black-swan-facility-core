@@ -67,7 +67,7 @@ export function useBookingCalendarCreate({
   }, [])
   const cancelCreate = useCallback(() => {
     const session = createRef.current
-    if (session?.longPressTimer !== null) window.clearTimeout(session.longPressTimer)
+    if (session?.longPressTimer != null) window.clearTimeout(session.longPressTimer)
     if (session) releasePointer(session.element, session.pointerId)
     createRef.current = null
     stopAutoScroll()
