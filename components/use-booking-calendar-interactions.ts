@@ -160,6 +160,7 @@ export function useBookingCalendarInteractions({
       if (event.button !== 0 || !(event.target instanceof Element)) return
       const root = event.target.closest<HTMLElement>("[data-testid='booking-calendar-root']")
       if (!root) return
+      root.dataset.bookingPointerDebug = `down:${event.pointerId}:entered`
 
       const reservationElement = event.target.closest<HTMLButtonElement>("[data-booking-reservation='true']")
       if (reservationElement) {
@@ -167,23 +168,45 @@ export function useBookingCalendarInteractions({
         const bedId = reservationElement.dataset.bookingBedId
         const reservation = reservationId ? reservationById.get(reservationId) : undefined
         const bed = bedId ? bedById.get(bedId) : undefined
-        if (reservation && bed) drag.startReservationPointer(event, reservation, bed, reservationElement)
+        root.dataset.bookingPointerDebug = `down:${event.pointerId}:reservation:${reservationId ?? "none"}:bed:${bedId ?? "none"}:lookup:${Boolean(reservation)}:${Boolean(bed)}`
+        if (reservation && bed) {
+          drag.startReservationPointer(event, reservation, bed, reservationElement)
+          root.dataset.bookingPointerDebug += `:session:${drag.dragRef.current?.pointerId ?? "none"}`
+        }
         return
       }
 
       const cellElement = event.target.closest<HTMLButtonElement>("button[data-booking-date]")
-      if (!cellElement) return
+      if (!cellElement) {
+        root.dataset.bookingPointerDebug = `down:${event.pointerId}:no-target`
+        return
+      }
       const row = cellElement.closest<HTMLElement>("[data-booking-timeline-row='true']")
       const bedId = row?.dataset.bookingBedId
       const date = cellElement.dataset.bookingDate
       const bed = bedId ? bedById.get(bedId) : undefined
       const index = date ? dateIndexByIso.get(date) : undefined
-      if (bed && index !== undefined) create.startCellPointer(event, bed, index, cellElement)
+      root.dataset.bookingPointerDebug = `down:${event.pointerId}:cell:${bedId ?? "none"}:${date ?? "none"}:lookup:${Boolean(bed)}:${index ?? "none"}`
+      if (bed && index !== undefined) {
+        create.startCellPointer(event, bed, index, cellElement)
+        root.dataset.bookingPointerDebug += `:session:${create.createRef.current?.pointerId ?? "none"}`
+      }
+    }
+
+    const onNativePointerMove = (event: PointerEvent) => {
+      if (!(event.target instanceof Element)) return
+      const root = event.target.closest<HTMLElement>("[data-testid='booking-calendar-root']")
+      if (!root) return
+      root.dataset.bookingPointerMoveDebug = `move:${event.pointerId}:drag:${drag.dragRef.current?.pointerId ?? "none"}:${drag.dragRef.current?.active ?? false}:create:${create.createRef.current?.pointerId ?? "none"}:${create.createRef.current?.active ?? false}`
     }
 
     window.addEventListener("pointerdown", onNativePointerDown, { capture: true })
-    return () => window.removeEventListener("pointerdown", onNativePointerDown, { capture: true })
-  }, [bedById, create.startCellPointer, dateIndexByIso, drag.startReservationPointer, reservationById])
+    window.addEventListener("pointermove", onNativePointerMove, { capture: true })
+    return () => {
+      window.removeEventListener("pointerdown", onNativePointerDown, { capture: true })
+      window.removeEventListener("pointermove", onNativePointerMove, { capture: true })
+    }
+  }, [bedById, create.createRef, create.startCellPointer, dateIndexByIso, drag.dragRef, drag.startReservationPointer, reservationById])
 
   const cancelAll = useCallback(() => {
     drag.cancelDrag()
