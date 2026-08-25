@@ -67,7 +67,7 @@ export function useBookingCalendarCreate({
   }, [])
   const cancelCreate = useCallback(() => {
     const session = createRef.current
-    if (session?.longPressTimer !== null) window.clearTimeout(session.longPressTimer)
+    if (session?.longPressTimer != null) window.clearTimeout(session.longPressTimer)
     if (session) releasePointer(session.element, session.pointerId)
     createRef.current = null
     stopAutoScroll()
@@ -146,20 +146,14 @@ export function useBookingCalendarCreate({
     if (velocity !== 0) autoScrollFrame.current = window.requestAnimationFrame(runAutoScroll)
   }, [scrollRef])
 
-  const startCellPointer = useCallback((
-    event: PointerLifecycleEvent,
-    bed: BookingCalendarBed,
-    index: number,
-    element: HTMLButtonElement,
-  ) => {
+  const onCellPointerDown = useCallback((event: React.PointerEvent<HTMLButtonElement>, bed: BookingCalendarBed, index: number) => {
     if (event.button !== 0) return
-    if (createRef.current?.pointerId === event.pointerId) return
     cancelOther()
     cancelCreate()
     const session: CreateSession = {
       pointerId: event.pointerId,
       pointerType: event.pointerType,
-      element,
+      element: event.currentTarget,
       bed,
       startIndex: index,
       currentIndex: index,
@@ -181,12 +175,8 @@ export function useBookingCalendarCreate({
         updateCreate(session.lastX)
         navigator.vibrate?.(18)
       }, 340)
-    } else capturePointer(element, event.pointerId)
+    } else capturePointer(event.currentTarget, event.pointerId)
   }, [cancelCreate, cancelOther, capturePointer, scrollRef, updateCreate])
-
-  const onCellPointerDown = useCallback((event: React.PointerEvent<HTMLButtonElement>, bed: BookingCalendarBed, index: number) => {
-    startCellPointer(event, bed, index, event.currentTarget)
-  }, [startCellPointer])
 
   const onPointerMove = useCallback((event: PointerLifecycleEvent) => {
     if (!createRef.current || createRef.current.pointerId !== event.pointerId) return false
@@ -252,5 +242,5 @@ export function useBookingCalendarCreate({
     onOpenNewReservation(bed, date, addDays(date, 1))
   }, [onOpenNewReservation, suppressClickUntil, validateCreate])
 
-  return { createRef, cancelCreate, startCellPointer, onCellPointerDown, onPointerMove, finishCreate, onCellClick }
+  return { createRef, cancelCreate, onCellPointerDown, onPointerMove, finishCreate, onCellClick }
 }
