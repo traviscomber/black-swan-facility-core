@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react"
 import type { ElementType } from "react"
 import {
+  Activity,
   AlertCircle,
   Beef,
   Bot,
@@ -16,11 +17,13 @@ import {
   Fuel,
   Grape,
   HelpCircle,
+  Home,
   LayoutDashboard,
   Leaf,
   LogOut,
   Map,
   MessageSquare,
+  Network,
   Package,
   Receipt,
   Settings,
@@ -38,24 +41,7 @@ import { LanguageSwitcher } from "@/components/language-switcher"
 import { useLanguage } from "@/lib/hooks/use-language"
 import { useEffectiveAccess } from "@/lib/hooks/use-effective-access"
 import { createClient } from "@/lib/supabase/client"
-
-type NavigationItem = {
-  nameKey: string
-  href: string
-  icon: ElementType
-  tipKey: string
-  badge?: "finance_pending"
-  adminOnly?: boolean
-  action?: string
-  department?: string
-  subItems?: Array<{ nameKey: string; href: string; icon: string }>
-}
-
-type NavigationGroup = {
-  labelKey: string
-  descKey: string
-  items: NavigationItem[]
-}
+import { filterOsAreas, osAreas, rankAreasForAccess, type OsNavItem } from "@/lib/os/navigation"
 
 const ROUTE_LOCALES = new Set(["en", "es", "de"])
 
@@ -69,102 +55,38 @@ function localizedHref(locale: string, href: string) {
   return `/${locale}${href === "/" ? "" : href}`
 }
 
-const navigationGroups: NavigationGroup[] = [
-  {
-    labelKey: "nav.admin_general",
-    descKey: "nav.admin_general_desc",
-    items: [
-      { nameKey: "nav.dashboard", href: "/", icon: LayoutDashboard, tipKey: "nav.dashboard_tip" },
-      { nameKey: "nav.people_operations", href: "/employees", icon: Users, tipKey: "nav.employees_tip", department: "administration" },
-      { nameKey: "nav.energy_management", href: "/energy", icon: Zap, tipKey: "nav.management_tip", department: "maintenance" },
-      { nameKey: "nav.ai_ops", href: "/ai-ops", icon: Bot, tipKey: "nav.ai_ops_tip", adminOnly: true },
-      { nameKey: "nav.admin", href: "/admin", icon: Settings, tipKey: "nav.admin_tip", adminOnly: true },
-    ],
-  },
-  {
-    labelKey: "finance",
-    descKey: "finance_desc",
-    items: [
-      { nameKey: "finance_budget", href: "/budgets", icon: DollarSign, tipKey: "finance_budget_tip", action: "payments.record", department: "finance" },
-      { nameKey: "finance_approvals", href: "/budgets/approvals", icon: CheckSquare, tipKey: "finance_approvals_tip", badge: "finance_pending", action: "payments.record", department: "finance" },
-      { nameKey: "finance_documents", href: "/budgets/documents", icon: Receipt, tipKey: "finance_documents_tip", action: "payments.record", department: "finance" },
-      { nameKey: "finance_reconciliation", href: "/budgets/reconciliation", icon: TrendingUp, tipKey: "finance_reconciliation_tip", action: "payments.record", department: "finance" },
-    ],
-  },
-  {
-    labelKey: "nav.hospitality",
-    descKey: "nav.hospitality_desc",
-    items: [
-      { nameKey: "nav.bookings", href: "/bookings", icon: Calendar, tipKey: "nav.bookings_tip", action: "booking.modify", department: "booking" },
-      { nameKey: "nav.invoices", href: "/bookings/invoices", icon: Receipt, tipKey: "nav.invoices_tip", action: "payments.record", department: "finance" },
-      { nameKey: "nav.concierge", href: "/concierge", icon: MessageSquare, tipKey: "nav.concierge_tip", action: "hospitality.operate", department: "hospitality" },
-      { nameKey: "nav.guest_requests", href: "/bookings/requests", icon: Tablet, tipKey: "nav.guest_requests_tip", action: "hospitality.operate", department: "hospitality" },
-      { nameKey: "nav.sovereignty_dashboard", href: "/sovereignty", icon: Crown, tipKey: "nav.sovereignty_dashboard_tip", adminOnly: true },
-    ],
-  },
-  {
-    labelKey: "nav.landscaping_farming",
-    descKey: "nav.landscaping_farming_desc",
-    items: [
-      {
-        nameKey: "nav.orchard_dashboard",
-        href: "/orchard",
-        icon: Leaf,
-        tipKey: "nav.dashboard_tip",
-        department: "orchard",
-        subItems: [
-          { nameKey: "nav.orchard_overview", href: "/orchard", icon: "🌳" },
-          { nameKey: "nav.orchard_crops", href: "/orchard/crops", icon: "🌱" },
-          { nameKey: "nav.orchard_care", href: "/orchard/care", icon: "❤️" },
-          { nameKey: "nav.orchard_harvest", href: "/orchard/harvest", icon: "✂️" },
-          { nameKey: "nav.orchard_health", href: "/orchard/pests", icon: "🐛" },
-          { nameKey: "nav.orchard_soil", href: "/orchard/soil", icon: "🌍" },
-          { nameKey: "nav.orchard_equipment", href: "/orchard/equipment", icon: "🔧" },
-        ],
-      },
-      {
-        nameKey: "nav.vineyard_dashboard",
-        href: "/vineyard",
-        icon: Grape,
-        tipKey: "nav.dashboard_tip",
-        department: "vineyard",
-        subItems: [
-          { nameKey: "nav.vineyard_overview", href: "/vineyard", icon: "🍇" },
-          { nameKey: "nav.vineyard_photos", href: "/vineyard/photos", icon: "📸" },
-          { nameKey: "nav.vineyard_crops", href: "/vineyard/crops", icon: "🌱" },
-          { nameKey: "nav.vineyard_harvest", href: "/vineyard/harvest", icon: "✂️" },
-          { nameKey: "nav.vineyard_health", href: "/vineyard/pests", icon: "🐛" },
-        ],
-      },
-      {
-        nameKey: "nav.cattle_dashboard",
-        href: "/cattle",
-        icon: Beef,
-        tipKey: "nav.dashboard_tip",
-        department: "cattle",
-        subItems: [
-          { nameKey: "nav.cattle_overview", href: "/cattle", icon: "🐄" },
-          { nameKey: "nav.cattle_health", href: "/cattle-health", icon: "❤️" },
-        ],
-      },
-      { nameKey: "nav.combustibles", href: "/combustibles", icon: Fuel, tipKey: "nav.combustibles_tip", action: "fuel.review", department: "fuel" },
-    ],
-  },
-  {
-    labelKey: "nav.infrastructure",
-    descKey: "nav.infrastructure_desc",
-    items: [
-      { nameKey: "nav.property_management", href: "/property-management", icon: Building, tipKey: "nav.property_management_desc", department: "maintenance" },
-      { nameKey: "nav.inventory", href: "/inventory", icon: Package, tipKey: "nav.inventory_tip", action: "inventory.process", department: "inventory" },
-      { nameKey: "nav.procurement", href: "/procurement", icon: TrendingUp, tipKey: "nav.procurement_tip", action: "procurement.operate", department: "procurement" },
-      { nameKey: "nav.maintenance", href: "/maintenance", icon: Wrench, tipKey: "nav.maintenance_tip", action: "maintenance.operate", department: "maintenance" },
-      { nameKey: "nav.tasks", href: "/tasks", icon: ClipboardList, tipKey: "nav.tasks_tip", department: "operations" },
-      { nameKey: "nav.issues", href: "/issues", icon: AlertCircle, tipKey: "nav.facility_requests_tip", action: "maintenance.operate", department: "maintenance" },
-      { nameKey: "nav.checklists", href: "/checklists", icon: CheckSquare, tipKey: "nav.checklists_tip", department: "operations" },
-      { nameKey: "nav.map", href: "/map", icon: Map, tipKey: "nav.gis_map_tip" },
-    ],
-  },
-]
+const itemIcons: Record<string, ElementType> = {
+  bookings: Calendar,
+  activities: Activity,
+  tasks: ClipboardList,
+  checklists: CheckSquare,
+  procurement: TrendingUp,
+  maintenance: Wrench,
+  issues: AlertCircle,
+  "guest-requests": Tablet,
+  employees: Users,
+  "os-people": Users,
+  "property-management": Building,
+  inventory: Package,
+  energy: Zap,
+  map: Map,
+  orchard: Leaf,
+  vineyard: Grape,
+  cattle: Beef,
+  "cattle-health": Beef,
+  fuel: Fuel,
+  budget: DollarSign,
+  approvals: CheckSquare,
+  documents: Receipt,
+  reconciliation: TrendingUp,
+  accounting: DollarSign,
+  invoices: Receipt,
+  discovery: Network,
+  events: Calendar,
+  "event-providers": Users,
+  "front-door": Home,
+  education: Users,
+}
 
 interface SidebarProps {
   isOpen?: boolean
@@ -178,7 +100,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const router = useRouter()
   const supabase = useMemo(() => createClient(), [])
   const { access, loading, error, can, canAccessDepartment } = useEffectiveAccess()
-  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set())
+  const [expandedAreas, setExpandedAreas] = useState<Set<string>>(new Set())
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set())
   const [userEmail, setUserEmail] = useState<string | null>(null)
   const [userInitials, setUserInitials] = useState("?")
@@ -186,12 +108,10 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
 
   useEffect(() => {
     void supabase.auth.getUser().then(({ data: { user } }) => {
-      if (!user) return
-      if (user.email) {
-        setUserEmail(user.email)
-        const parts = user.user_metadata?.full_name?.split(" ") ?? user.email.split("@")[0].split(".")
-        setUserInitials(parts.slice(0, 2).map((part: string) => part[0]?.toUpperCase()).join(""))
-      }
+      if (!user?.email) return
+      setUserEmail(user.email)
+      const parts = user.user_metadata?.full_name?.split(" ") ?? user.email.split("@")[0].split(".")
+      setUserInitials(parts.slice(0, 2).map((part: string) => part[0]?.toUpperCase()).join(""))
     })
   }, [supabase])
 
@@ -200,7 +120,6 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
       setFinancePendingCount(0)
       return
     }
-
     let cancelled = false
     const loadFinancePendingCount = async () => {
       const [readyResult, mappingResult, reviewResult] = await Promise.all([
@@ -209,11 +128,8 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
         supabase.rpc("can_finance_review_ambiguous"),
       ])
       if (cancelled) return
-      const ready = readyResult.count ?? 0
-      const mapping = reviewResult.data ? (mappingResult.count ?? 0) : 0
-      setFinancePendingCount(ready + mapping)
+      setFinancePendingCount((readyResult.count ?? 0) + (reviewResult.data ? (mappingResult.count ?? 0) : 0))
     }
-
     void loadFinancePendingCount()
     const handler = () => void loadFinancePendingCount()
     window.addEventListener("finance-workbook-imported", handler)
@@ -229,35 +145,26 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
     }
   }, [access.role, error, language, loading, router, supabase])
 
-  const visibleGroups = useMemo(() => navigationGroups
-    .map((group) => ({
-      ...group,
-      items: group.items.filter((item) => {
-        if (item.adminOnly && !access.is_admin) return false
-        if (item.action && !can(item.action)) return false
-        if (item.department && !canAccessDepartment(item.department)) return false
-        return true
-      }),
-    }))
-    .filter((group) => group.items.length > 0), [access.is_admin, can, canAccessDepartment])
+  const visibleAreas = useMemo(() => rankAreasForAccess(
+    filterOsAreas(osAreas, access, can, canAccessDepartment),
+    access,
+  ), [access, can, canAccessDepartment])
 
   useEffect(() => {
-    const initialExpanded = new Set<string>()
-    visibleGroups.forEach((group) => {
-      if (group.items.some((item) => internalPathname === item.href || (item.href !== "/" && internalPathname.startsWith(item.href)) || item.subItems?.some((subItem) => internalPathname === subItem.href))) {
-        initialExpanded.add(group.labelKey)
-      }
+    const initial = new Set<string>()
+    visibleAreas.forEach((area) => {
+      if (area.items.some((item) => isItemActive(internalPathname, item))) initial.add(area.key)
     })
-    setExpandedGroups(initialExpanded)
-  }, [internalPathname, visibleGroups])
+    setExpandedAreas(initial)
+  }, [internalPathname, visibleAreas])
 
   useEffect(() => {
-    const initialExpanded = new Set<string>()
-    visibleGroups.forEach((group) => group.items.forEach((item) => {
-      if (item.subItems?.some((subItem) => internalPathname === subItem.href)) initialExpanded.add(item.nameKey)
+    const initial = new Set<string>()
+    visibleAreas.forEach((area) => area.items.forEach((item) => {
+      if (item.subItems?.some((subItem) => internalPathname === subItem.href)) initial.add(item.key)
     }))
-    setExpandedItems(initialExpanded)
-  }, [internalPathname, visibleGroups])
+    setExpandedItems(initial)
+  }, [internalPathname, visibleAreas])
 
   const handleLogout = async () => {
     await supabase.auth.signOut()
@@ -272,6 +179,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
   }
 
   const handleOpenSearch = () => document.dispatchEvent(new KeyboardEvent("keydown", { key: "k", code: "KeyK", metaKey: true, bubbles: true }))
+  const showConcierge = can("hospitality.operate") && canAccessDepartment("hospitality")
 
   return (
     <>
@@ -285,35 +193,29 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
           <button onClick={onClose} className="rounded p-1 hover:bg-secondary lg:hidden" aria-label={t("shell.close_navigation")}><X className="h-5 w-5" /></button>
         </div>
 
-        <nav className="min-h-0 flex-1 space-y-3 overflow-y-auto px-3 py-4">
-          {loading ? <p className="px-3 text-xs text-muted-foreground">{t("shell.loading_access")}</p> : visibleGroups.map((group) => {
-            const groupLabel = t(group.labelKey)
-            const groupDesc = t(group.descKey)
-            return (
-            <div key={group.labelKey} className="min-w-0 space-y-1">
-              <div className="flex items-start justify-between gap-1 px-2">
-                <div className="min-w-0 flex-1"><h3 className="truncate text-xs font-bold uppercase tracking-wider text-foreground" title={groupLabel}>{groupLabel}</h3><p className="mt-1 hidden text-xs leading-tight text-muted-foreground sm:block">{groupDesc}</p></div>
-                <button onClick={() => toggleSetValue(setExpandedGroups, expandedGroups, group.labelKey)} className="rounded p-1 hover:bg-muted" aria-label={`${t("shell.toggle")} ${groupLabel}`}><ChevronDown className={cn("h-4 w-4 transition-transform", expandedGroups.has(group.labelKey) ? "rotate-0" : "-rotate-90")} /></button>
+        <nav className="min-h-0 flex-1 space-y-2 overflow-y-auto px-3 py-4">
+          {loading ? <p className="px-3 text-xs text-muted-foreground">{t("shell.loading_access")}</p> : visibleAreas.map((area) => {
+            const isToday = area.key === "today"
+            const areaActive = isToday ? internalPathname === "/os" : area.items.some((item) => isItemActive(internalPathname, item))
+            return <div key={area.key} className="space-y-1">
+              <div className="flex items-center gap-1">
+                <Link href={localizedHref(language, area.href)} onClick={onClose} className={cn("flex min-w-0 flex-1 items-center gap-2 rounded px-3 py-2 text-sm font-semibold", areaActive ? "bg-primary text-primary-foreground" : "hover:bg-muted")}>
+                  <span className="truncate">{t(area.labelKey)}</span>
+                </Link>
+                {!isToday && area.items.length > 0 && <button onClick={() => toggleSetValue(setExpandedAreas, expandedAreas, area.key)} className="rounded p-2 hover:bg-muted" aria-label={`${t("shell.toggle")} ${t(area.labelKey)}`}><ChevronDown className={cn("h-4 w-4 transition-transform", expandedAreas.has(area.key) ? "rotate-0" : "-rotate-90")} /></button>}
               </div>
-              {expandedGroups.has(group.labelKey) && <div className="space-y-0.5">
-                {group.items.map((item) => {
-                  const isActive = internalPathname === item.href || (item.href !== "/" && internalPathname.startsWith(item.href))
-                  const hasSubItems = Boolean(item.subItems?.length)
-                  const isExpanded = expandedItems.has(item.nameKey)
-                  const itemName = t(item.nameKey)
-                  const itemTip = t(item.tipKey)
-                  const badgeValue = item.badge === "finance_pending" ? financePendingCount : 0
-                  return <div key={item.nameKey} className="min-w-0">
-                    <div className="flex min-w-0 items-center">
-                      <Link href={localizedHref(language, item.href)} onClick={onClose} className={cn("group flex min-w-0 flex-1 items-center gap-3 rounded px-3 py-2 text-sm font-medium transition-colors", isActive ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted hover:text-foreground")} title={itemTip}><item.icon className="h-5 w-5 flex-shrink-0" /><span className="flex-1 truncate">{itemName}</span>{badgeValue > 0 && <span className="min-w-6 bg-[var(--bs-warm-yellow)] px-1.5 py-0.5 text-center text-[11px] font-semibold text-[var(--bs-bg-primary)]">{badgeValue > 99 ? "99+" : badgeValue}</span>}{isActive && <span className="h-2 w-2 rounded-full bg-current" />}</Link>
-                      {hasSubItems && <button onClick={() => toggleSetValue(setExpandedItems, expandedItems, item.nameKey)} className="rounded p-2 hover:bg-muted" aria-label={`${t("shell.toggle")} ${itemName}`}><ChevronDown className={cn("h-4 w-4 transition-transform", isExpanded ? "rotate-0" : "-rotate-90")} /></button>}
-                    </div>
-                    {hasSubItems && isExpanded && <div className="ml-4 mt-1 space-y-0.5 border-l-2 border-border pl-2">{item.subItems?.map((subItem) => <Link key={subItem.href} href={localizedHref(language, subItem.href)} onClick={onClose} className={cn("flex items-center gap-2 rounded px-3 py-1.5 text-xs transition-colors", internalPathname === subItem.href ? "bg-primary/10 font-medium text-primary" : "text-muted-foreground hover:bg-muted hover:text-foreground")}><span>{subItem.icon}</span><span className="truncate">{t(subItem.nameKey)}</span></Link>)}</div>}
-                  </div>
-                })}
-              </div>}
+              {!isToday && expandedAreas.has(area.key) && <div className="space-y-0.5 pl-2">{area.items.map((item) => <NavItem key={item.key} item={item} language={language} internalPathname={internalPathname} t={t} onClose={onClose} financePendingCount={financePendingCount} expandedItems={expandedItems} toggleItem={() => toggleSetValue(setExpandedItems, expandedItems, item.key)} />)}</div>}
             </div>
-          )})}
+          })}
+
+          <div className="mt-4 border-t pt-3">
+            <p className="px-3 pb-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{t("shell.global_tools")}</p>
+            <UtilityLink href="/" icon={LayoutDashboard} label={t("nav.dashboard")} language={language} onClose={onClose} />
+            {showConcierge && <UtilityLink href="/concierge" icon={MessageSquare} label={t("shell.concierge")} language={language} onClose={onClose} />}
+            {access.is_admin && <UtilityLink href="/ai-ops" icon={Bot} label={t("shell.ai_ops")} language={language} onClose={onClose} />}
+            {access.is_admin && <UtilityLink href="/sovereignty" icon={Crown} label={t("nav.sovereignty_dashboard")} language={language} onClose={onClose} />}
+            {access.is_admin && <UtilityLink href="/admin" icon={Settings} label={t("shell.admin")} language={language} onClose={onClose} />}
+          </div>
         </nav>
 
         <div className="space-y-3 border-t border-secondary p-3">
@@ -324,4 +226,27 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
       </div>
     </>
   )
+}
+
+function isItemActive(pathname: string, item: OsNavItem) {
+  return pathname === item.href || (item.href !== "/" && pathname.startsWith(`${item.href}/`)) || Boolean(item.subItems?.some((subItem) => pathname === subItem.href))
+}
+
+function NavItem({ item, language, internalPathname, t, onClose, financePendingCount, expandedItems, toggleItem }: { item: OsNavItem; language: string; internalPathname: string; t: (key: string) => string; onClose?: () => void; financePendingCount: number; expandedItems: Set<string>; toggleItem: () => void }) {
+  const Icon = itemIcons[item.key] ?? LayoutDashboard
+  const isActive = isItemActive(internalPathname, item)
+  const hasSubItems = Boolean(item.subItems?.length)
+  const isExpanded = expandedItems.has(item.key)
+  const badgeValue = item.badge === "finance_pending" ? financePendingCount : 0
+  return <div className="min-w-0">
+    <div className="flex min-w-0 items-center">
+      <Link href={localizedHref(language, item.href)} onClick={onClose} className={cn("group flex min-w-0 flex-1 items-center gap-3 rounded px-3 py-2 text-sm font-medium transition-colors", isActive ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted hover:text-foreground")} title={t(item.tipKey)}><Icon className="h-4 w-4 flex-shrink-0" /><span className="flex-1 truncate">{t(item.nameKey)}</span>{badgeValue > 0 && <span className="min-w-6 bg-[var(--bs-warm-yellow)] px-1.5 py-0.5 text-center text-[11px] font-semibold text-[var(--bs-bg-primary)]">{badgeValue > 99 ? "99+" : badgeValue}</span>}</Link>
+      {hasSubItems && <button onClick={toggleItem} className="rounded p-2 hover:bg-muted"><ChevronDown className={cn("h-4 w-4 transition-transform", isExpanded ? "rotate-0" : "-rotate-90")} /></button>}
+    </div>
+    {hasSubItems && isExpanded && <div className="ml-4 mt-1 space-y-0.5 border-l-2 border-border pl-2">{item.subItems?.map((subItem) => <Link key={subItem.href} href={localizedHref(language, subItem.href)} onClick={onClose} className={cn("flex items-center gap-2 rounded px-3 py-1.5 text-xs transition-colors", internalPathname === subItem.href ? "bg-primary/10 font-medium text-primary" : "text-muted-foreground hover:bg-muted hover:text-foreground")}><span>{subItem.icon}</span><span className="truncate">{t(subItem.nameKey)}</span></Link>)}</div>}
+  </div>
+}
+
+function UtilityLink({ href, icon: Icon, label, language, onClose }: { href: string; icon: ElementType; label: string; language: string; onClose?: () => void }) {
+  return <Link href={localizedHref(language, href)} onClick={onClose} className="flex items-center gap-3 rounded px-3 py-2 text-sm text-muted-foreground hover:bg-muted hover:text-foreground"><Icon className="h-4 w-4" /><span className="truncate">{label}</span></Link>
 }
