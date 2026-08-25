@@ -89,7 +89,7 @@ begin
     'vineyard', case when v_admin then '["admin"]'::jsonb when v_vineyard_view then '["view"]'::jsonb else '[]'::jsonb end,
     'cattle', case when v_admin then '["admin"]'::jsonb when v_cattle_view then '["view"]'::jsonb else '[]'::jsonb end,
     'fuel', case when v_admin then '["admin"]'::jsonb when v_actions ? 'fuel.review' then '["operate"]'::jsonb when v_fuel_view then '["view"]'::jsonb else '[]'::jsonb end,
-    'map', case when v_admin then '["admin"]'::jsonb when v_places_view then '["view"]'::jsonb else '[]'::jsonb end
+    'map', case when v_admin then '["admin"]'::jsonb when v_places_view and v_actions ? 'maintenance.operate' then '["operate"]'::jsonb when v_places_view then '["view"]'::jsonb else '[]'::jsonb end
   );
 
   return jsonb_build_object(
