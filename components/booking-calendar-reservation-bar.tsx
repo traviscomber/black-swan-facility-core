@@ -74,7 +74,7 @@ export function BookingCalendarReservationBar({
   return (
     <button
       type="button"
-      onPointerDown={(event) => onPointerDown(event, reservation, bed)}
+      onPointerDownCapture={(event) => onPointerDown(event, reservation, bed)}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
       onPointerCancel={onPointerCancel}
@@ -120,7 +120,8 @@ export function BookingCalendarReservationBar({
         )}
         {requestCount > 0 && (
           <span className="flex items-center gap-0.5 rounded bg-black/10 px-1.5 py-0.5">
-            <ConciergeBell className="h-3 w-3" />{requestCount}</span>
+            <ConciergeBell className="h-3 w-3" />{requestCount}
+          </span>
         )}
         <span>{reservation.num_guests ?? 1}p</span>
       </span>
