@@ -1,4 +1,4 @@
-import { hasCapability, type CanonicalCapabilitySnapshot } from "@/lib/access/capabilities"
+import { hasCapability, type CanonicalCapabilitySnapshot } from "../access/capabilities.ts"
 
 export type OsAreaKey = "today" | "operations" | "people" | "places-assets" | "finance" | "network"
 
