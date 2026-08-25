@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useEffect } from "react"
+import { Toaster } from "sonner"
 import { LanguageProvider } from "@/lib/language-provider"
 
 export function ClientProviders({ children }: { children?: React.ReactNode } = {}) {
@@ -22,6 +23,7 @@ export function ClientProviders({ children }: { children?: React.ReactNode } = {
   return (
     <LanguageProvider>
       {children}
+      <Toaster />
     </LanguageProvider>
   )
 }
