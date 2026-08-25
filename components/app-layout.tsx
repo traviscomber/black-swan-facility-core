@@ -32,12 +32,16 @@ export function AppLayout({ children }: AppLayoutProps) {
   const supabase = useMemo(() => createClient(), [])
 
   useEffect(() => {
-    void supabase.auth.getUser().then(({ data: { user } }) => {
-      if (user?.email) {
-        const parts = user.user_metadata?.full_name?.split(" ") ?? user.email.split("@")[0].split(".")
-        setUserInitials(parts.slice(0, 2).map((part: string) => part[0]?.toUpperCase()).join(""))
-      }
-    })
+    let cancelled = false
+    async function loadUser() {
+      const result = await supabase.auth.getUser()
+      const user = result.data.user
+      if (cancelled || !user?.email) return
+      const parts = user.user_metadata?.full_name?.split(" ") ?? user.email.split("@")[0].split(".")
+      setUserInitials(parts.slice(0, 2).map((part: string) => part[0]?.toUpperCase()).join(""))
+    }
+    void loadUser()
+    return () => { cancelled = true }
   }, [supabase])
 
   const handleLogout = async () => {
