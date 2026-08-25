@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Calendar, ChevronLeft, ChevronRight, Clock, MapPin, Plus, Search, Users } from 'lucide-react'
 import { AppLayout } from '@/components/app-layout'
-import { ActivitiesTimeline } from '@/components/activities/activities-timeline'
+import { ActivitiesTimeline, type ActivityTimelineRecord } from '@/components/activities/activities-timeline'
 import { ActivityFormDialog } from '@/components/activities/activity-form-dialog'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -12,24 +12,7 @@ import { createBrowserClient } from '@/lib/supabase/client'
 import { addMonths, eachDayOfInterval, endOfMonth, format, parseISO, startOfMonth, subMonths } from 'date-fns'
 import { es } from 'date-fns/locale'
 
-interface Activity {
-  id: string
-  title: string
-  activity_type_id: string
-  start_date: string
-  start_time: string | null
-  end_date: string | null
-  end_time: string | null
-  description: string
-  location: string
-  capacity: number
-  current_attendees: number
-  color_override: string | null
-  status: string
-  recurring: boolean
-  notes: any[]
-  created_at: string
-}
+type Activity = ActivityTimelineRecord & { created_at: string }
 
 interface ActivityType {
   id: string
@@ -81,9 +64,15 @@ export default function ActivitiesCalendarPage() {
     .filter((activity) => selectedType === 'all' || activity.activity_type_id === selectedType)
     .filter((activity) => !searchQuery || activity.title.toLowerCase().includes(searchQuery.toLowerCase()) || activity.description?.toLowerCase().includes(searchQuery.toLowerCase())), [activities, searchQuery, selectedType])
 
-  function handleEditActivity(activity: Activity) {
-    setEditingActivity(activity)
+  function handleEditActivity(activity: ActivityTimelineRecord) {
+    setEditingActivity(activity as Activity)
     setSelectedDate(null)
+    setShowFormDialog(true)
+  }
+
+  function handleCreateActivity(date: Date | null) {
+    setEditingActivity(null)
+    setSelectedDate(date)
     setShowFormDialog(true)
   }
 
@@ -105,7 +94,7 @@ export default function ActivitiesCalendarPage() {
             <h1 className="text-3xl font-bold text-accent">Calendario de Actividades</h1>
             <p className="mt-1 text-sm text-muted-foreground">Misma lógica temporal que Bed Booking, con el CRUD existente intacto.</p>
           </div>
-          <Button onClick={() => { setEditingActivity(null); setSelectedDate(new Date()); setShowFormDialog(true) }}><Plus className="mr-2 h-4 w-4" />Nueva Actividad</Button>
+          <Button onClick={() => handleCreateActivity(null)}><Plus className="mr-2 h-4 w-4" />Nueva Actividad</Button>
         </div>
 
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
@@ -122,7 +111,7 @@ export default function ActivitiesCalendarPage() {
           <Button variant="ghost" size="sm" onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}><ChevronRight className="h-4 w-4" /></Button>
         </div>
 
-        {loading ? <Card><CardContent className="p-8 text-center text-sm text-muted-foreground">Cargando actividades…</CardContent></Card> : <ActivitiesTimeline activities={filteredActivities} activityTypes={activityTypes} dates={dates} onEdit={handleEditActivity} />}
+        {loading ? <Card><CardContent className="p-8 text-center text-sm text-muted-foreground">Cargando actividades…</CardContent></Card> : <ActivitiesTimeline activities={filteredActivities} activityTypes={activityTypes} dates={dates} onEdit={handleEditActivity} onCreate={(date) => handleCreateActivity(date)} />}
 
         <Card>
           <CardHeader><CardTitle>Próximas Actividades</CardTitle><CardDescription>Vista compacta; editar y eliminar conservan el flujo existente.</CardDescription></CardHeader>
