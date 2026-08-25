@@ -27,6 +27,7 @@ export type OverlayLoadResult = {
   geojson: GeoJsonFeatureCollection
   source: "derived" | "kmz" | "kml"
   timings: OverlayLoadTimings
+  cacheHit: boolean
 }
 
 type LoadOptions = {
@@ -51,7 +52,10 @@ export function defaultParseKmlText(text: string): GeoJsonFeatureCollection {
 export async function loadOverlayGeoJson(overlay: OverlayDescriptor, options: LoadOptions = {}): Promise<OverlayLoadResult> {
   const key = `${overlay.id}:${overlay.source_version}`
   const existing = inflight.get(key)
-  if (existing) return existing
+  if (existing) {
+    const cached = await existing
+    return { ...cached, cacheHit: true }
+  }
 
   const promise = loadOverlayGeoJsonUncached(overlay, options).catch((error) => {
     inflight.delete(key)
@@ -81,6 +85,7 @@ async function loadOverlayGeoJsonUncached(overlay: OverlayDescriptor, options: L
       return {
         geojson,
         source: "derived",
+        cacheHit: false,
         timings: {
           totalMs: now() - totalStart,
           networkMs,
@@ -125,6 +130,7 @@ async function loadOverlayGeoJsonUncached(overlay: OverlayDescriptor, options: L
   return {
     geojson,
     source: isKmz ? "kmz" : "kml",
+    cacheHit: false,
     timings: {
       totalMs: now() - totalStart,
       networkMs,
