@@ -229,9 +229,23 @@ export default function MapPage() {
                 const savedColor = validHexColor(overlay.metadata?.display_color) ? overlay.metadata.display_color : null
                 const displayColor = savedColor ?? findNativeColor(result.geojson) ?? fallbackColor
                 setOverlayColors((current) => ({ ...current, [overlay.id]: displayColor }))
+                const renderStart = performance.now()
                 registerOverlayLayers(map, overlay, result.geojson, displayColor, visibleOverlaysRef.current.has(overlay.id))
-                setOverlayStates((current) => ({ ...current, [overlay.id]: { status: "ready", featureCount: result.timings.featureCount, source: result.source, totalMs: result.timings.totalMs } }))
-                if (process.env.NODE_ENV !== "production") console.info("[map-overlay-performance]", { overlayId: overlay.id, source: result.source, ...result.timings })
+                const renderMs = performance.now() - renderStart
+                setOverlayStates((current) => ({ ...current, [overlay.id]: { status: "ready", featureCount: result.timings.featureCount, source: result.source, totalMs: result.timings.totalMs + renderMs } }))
+                if (process.env.NODE_ENV !== "production") console.info("[map-overlay-performance]", {
+                  overlayId: overlay.id,
+                  overlayName: overlay.name,
+                  source: result.source,
+                  cacheHit: result.cacheHit,
+                  networkMs: result.timings.networkMs,
+                  unzipMs: result.timings.unzipMs,
+                  parseMs: result.timings.parseMs,
+                  renderMs,
+                  byteSize: result.timings.byteSize,
+                  featureCount: result.timings.featureCount,
+                  totalMs: result.timings.totalMs + renderMs,
+                })
               } catch (overlayError) {
                 console.error(`No fue posible cargar ${overlay.name}`, overlayError)
                 setOverlayStates((current) => ({ ...current, [overlay.id]: { status: "error", error: overlayError instanceof Error ? overlayError.message : "Error de capa" } }))
