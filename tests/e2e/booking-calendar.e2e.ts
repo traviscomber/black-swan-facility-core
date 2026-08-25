@@ -137,7 +137,7 @@ function registerDesktopSuite(name: string, browserType: BrowserType) {
       await dragBy(page, `[data-testid="booking-reservation-${reservationAId}"]`, 92, 0)
       await waitForAction(page, "changed:")
 
-      const undoButton = page.getByRole("button", { name: "Deshacer" })
+      const undoButton = page.getByRole("button", { name: /^(Undo|Deshacer|Rückgängig)$/ })
       await undoButton.waitFor({ state: "visible" })
       await undoButton.click()
       await waitForAction(page, "undone:")
