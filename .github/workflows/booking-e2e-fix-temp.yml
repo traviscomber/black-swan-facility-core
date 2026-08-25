@@ -33,3 +33,4 @@ jobs:
           E2E_CALENDAR_HARNESS=1 NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:54321 NEXT_PUBLIC_SUPABASE_ANON_KEY=e2e-anon-key pnpm dev --hostname 127.0.0.1 --port 3100 > /tmp/booking-next.log 2>&1 &
           for i in $(seq 1 120); do curl -fsS http://127.0.0.1:3100/bookings/e2e-harness >/dev/null && break; sleep 1; done
           node --experimental-strip-types --test tests/e2e/booking-calendar-debug.e2e.ts
+          # pointer exception diagnostic run
