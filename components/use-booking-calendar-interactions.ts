@@ -1,10 +1,9 @@
 "use client"
 
 import type React from "react"
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import type { BookingDragMode } from "@/lib/booking-drag"
 import {
-  iso,
   type BookingCalendarBed,
   type BookingCalendarBlock,
   type BookingCalendarReservation,
@@ -28,7 +27,6 @@ type UseBookingCalendarInteractionsInput = {
   onRefresh: () => Promise<void> | void
   scrollRef: React.RefObject<HTMLDivElement | null>
   rowRefs: React.RefObject<Map<string, HTMLDivElement>>
-  reservations: BookingCalendarReservation[]
   dates: Date[]
   dayWidth: number
   context: CalendarContext
@@ -56,7 +54,6 @@ export function useBookingCalendarInteractions({
   onRefresh,
   scrollRef,
   rowRefs,
-  reservations,
   dates,
   dayWidth,
   context,
@@ -78,9 +75,6 @@ export function useBookingCalendarInteractions({
   const [dropTargetBedId, setDropTargetBedId] = useState<string | null>(null)
   const [createState, setCreateState] = useState<CreateState | null>(null)
   const [keyboardReservationId, setKeyboardReservationId] = useState<string | null>(null)
-  const reservationById = useMemo(() => new Map(reservations.map((reservation) => [reservation.id, reservation])), [reservations])
-  const bedById = useMemo(() => new Map(bedOrder.map((bed) => [bed.id, bed])), [bedOrder])
-  const dateIndexByIso = useMemo(() => new Map(dates.map((date, index) => [iso(date), index])), [dates])
 
   const clearInteractionState = useCallback(() => {
     setFeedback(null)
@@ -154,59 +148,6 @@ export function useBookingCalendarInteractions({
     cancelDragRef.current = drag.cancelDrag
     cancelCreateRef.current = create.cancelCreate
   }, [create.cancelCreate, drag.cancelDrag])
-
-  useEffect(() => {
-    const onNativePointerDown = (event: PointerEvent) => {
-      if (event.button !== 0 || !(event.target instanceof Element)) return
-      const root = event.target.closest<HTMLElement>("[data-testid='booking-calendar-root']")
-      if (!root) return
-      root.dataset.bookingPointerDebug = `down:${event.pointerId}:entered`
-
-      const reservationElement = event.target.closest<HTMLButtonElement>("[data-booking-reservation='true']")
-      if (reservationElement) {
-        const reservationId = reservationElement.dataset.bookingReservationId
-        const bedId = reservationElement.dataset.bookingBedId
-        const reservation = reservationId ? reservationById.get(reservationId) : undefined
-        const bed = bedId ? bedById.get(bedId) : undefined
-        root.dataset.bookingPointerDebug = `down:${event.pointerId}:reservation:${reservationId ?? "none"}:bed:${bedId ?? "none"}:lookup:${Boolean(reservation)}:${Boolean(bed)}`
-        if (reservation && bed) {
-          drag.startReservationPointer(event, reservation, bed, reservationElement)
-          root.dataset.bookingPointerDebug += `:session:${drag.dragRef.current?.pointerId ?? "none"}`
-        }
-        return
-      }
-
-      const cellElement = event.target.closest<HTMLButtonElement>("button[data-booking-date]")
-      if (!cellElement) {
-        root.dataset.bookingPointerDebug = `down:${event.pointerId}:no-target`
-        return
-      }
-      const row = cellElement.closest<HTMLElement>("[data-booking-timeline-row='true']")
-      const bedId = row?.dataset.bookingBedId
-      const date = cellElement.dataset.bookingDate
-      const bed = bedId ? bedById.get(bedId) : undefined
-      const index = date ? dateIndexByIso.get(date) : undefined
-      root.dataset.bookingPointerDebug = `down:${event.pointerId}:cell:${bedId ?? "none"}:${date ?? "none"}:lookup:${Boolean(bed)}:${index ?? "none"}`
-      if (bed && index !== undefined) {
-        create.startCellPointer(event, bed, index, cellElement)
-        root.dataset.bookingPointerDebug += `:session:${create.createRef.current?.pointerId ?? "none"}`
-      }
-    }
-
-    const onNativePointerMove = (event: PointerEvent) => {
-      if (!(event.target instanceof Element)) return
-      const root = event.target.closest<HTMLElement>("[data-testid='booking-calendar-root']")
-      if (!root) return
-      root.dataset.bookingPointerMoveDebug = `move:${event.pointerId}:drag:${drag.dragRef.current?.pointerId ?? "none"}:${drag.dragRef.current?.active ?? false}:create:${create.createRef.current?.pointerId ?? "none"}:${create.createRef.current?.active ?? false}`
-    }
-
-    window.addEventListener("pointerdown", onNativePointerDown, { capture: true })
-    window.addEventListener("pointermove", onNativePointerMove, { capture: true })
-    return () => {
-      window.removeEventListener("pointerdown", onNativePointerDown, { capture: true })
-      window.removeEventListener("pointermove", onNativePointerMove, { capture: true })
-    }
-  }, [bedById, create.createRef, create.startCellPointer, dateIndexByIso, drag.dragRef, drag.startReservationPointer, reservationById])
 
   const cancelAll = useCallback(() => {
     drag.cancelDrag()
