@@ -61,7 +61,6 @@ export function BookingCalendarTimeline({
     onRefresh,
     scrollRef: calendarContext.scrollRef,
     rowRefs: calendarContext.rowRefs,
-    reservations,
     dates,
     dayWidth,
     context: calendarContext.context,
