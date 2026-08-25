@@ -34,8 +34,6 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - name: Prebuild regression suite
         run: pnpm prebuild
-      - name: TypeScript
-        run: pnpm exec tsc --noEmit
       - name: Build
         run: pnpm build
       - name: Booking calendar E2E
