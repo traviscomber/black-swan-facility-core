@@ -205,7 +205,7 @@ export function BookingCalendarRoomGroup({
                     <button
                       key={date.toISOString()}
                       type="button"
-                      onPointerDown={(event) => onCellPointerDown(event, bed, index)}
+                      onPointerDownCapture={(event) => onCellPointerDown(event, bed, index)}
                       onClick={() => onCellClick(bed, date)}
                       className={`h-full shrink-0 border-r hover:bg-muted/60 ${iso(date) === iso(new Date()) ? "bg-primary/5" : ""}`}
                       style={{ width: dayWidth }}
