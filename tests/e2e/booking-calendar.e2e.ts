@@ -88,6 +88,8 @@ async function waitForAction(page: Page, prefix: string) {
   } catch (error) {
     const diagnostics = await page.evaluate(() => ({
       trace: Reflect.get(window, "__bookingPointerTrace") ?? [],
+      dragDebug: Reflect.get(window, "__bookingDragDebug") ?? null,
+      createDebug: Reflect.get(window, "__bookingCreateDebug") ?? null,
       grabbed: Array.from(document.querySelectorAll('[aria-grabbed="true"]')).map((element) => ({
         testId: element.getAttribute("data-testid"),
         reservationId: element.getAttribute("data-booking-reservation-id"),
