@@ -183,23 +183,26 @@ export function useBookingCalendarDrag({
     if (velocityX !== 0 || velocityY !== 0) autoScrollFrame.current = window.requestAnimationFrame(runAutoScroll)
   }, [scrollRef, updateDrag])
 
-  const onReservationPointerDown = useCallback((
-    event: React.PointerEvent<HTMLButtonElement>,
+  const startReservationPointer = useCallback((
+    event: PointerLifecycleEvent,
     reservation: BookingCalendarReservation,
     bed: BookingCalendarBed,
+    element: HTMLButtonElement,
   ) => {
     if (event.button !== 0) return
+    if (dragRef.current?.pointerId === event.pointerId) return
     if (pendingIds.has(reservation.id)) return void toast.warning(copy.pendingSantiago)
     if (bookingSourcePolicy(reservation.source) === "external-read-only") return void toast.warning(bookingSourcePolicyLabel(reservation.source, language))
     if (!futureEditable(reservation)) return
     cancelOther()
     cancelDrag()
-    const edge = (event.target as HTMLElement).closest<HTMLElement>("[data-booking-resize-edge]")?.dataset.bookingResizeEdge
+    const target = event.target instanceof Element ? event.target : null
+    const edge = target?.closest<HTMLElement>("[data-booking-resize-edge]")?.dataset.bookingResizeEdge
     const mode: BookingDragMode = edge === "start" ? "resize-start" : edge === "end" ? "resize-end" : "move"
     const session: DragSession = {
       pointerId: event.pointerId,
       pointerType: event.pointerType,
-      element: event.currentTarget,
+      element,
       reservation,
       sourceBed: bed,
       targetBed: bed,
@@ -210,7 +213,7 @@ export function useBookingCalendarDrag({
       lastY: event.clientY,
       initialScrollLeft: scrollRef.current?.scrollLeft ?? 0,
       initialScrollTop: scrollRef.current?.scrollTop ?? 0,
-      originalWidth: event.currentTarget.getBoundingClientRect().width,
+      originalWidth: element.getBoundingClientRect().width,
       active: false,
       touchReady: event.pointerType !== "touch",
       longPressTimer: null,
@@ -226,8 +229,16 @@ export function useBookingCalendarDrag({
         updateDrag(session.lastX, session.lastY)
         navigator.vibrate?.(18)
       }, 340)
-    } else capturePointer(event.currentTarget, event.pointerId)
+    } else capturePointer(element, event.pointerId)
   }, [activateDrag, cancelDrag, cancelOther, capturePointer, copy.pendingSantiago, language, pendingIds, scrollRef, updateDrag])
+
+  const onReservationPointerDown = useCallback((
+    event: React.PointerEvent<HTMLButtonElement>,
+    reservation: BookingCalendarReservation,
+    bed: BookingCalendarBed,
+  ) => {
+    startReservationPointer(event, reservation, bed, event.currentTarget)
+  }, [startReservationPointer])
 
   const onPointerMove = useCallback((event: PointerLifecycleEvent) => {
     if (!dragRef.current || dragRef.current.pointerId !== event.pointerId) return false
@@ -286,5 +297,5 @@ export function useBookingCalendarDrag({
     }
   }, [cancelDrag, finishDrag, onPointerMove])
 
-  return { dragRef, cancelDrag, onReservationPointerDown, onPointerMove, finishDrag }
+  return { dragRef, cancelDrag, startReservationPointer, onReservationPointerDown, onPointerMove, finishDrag }
 }
