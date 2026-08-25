@@ -17,13 +17,18 @@ try {
   await page.mouse.move(x, y)
   await page.mouse.down()
   await page.mouse.move(x + 92, y, { steps: 12 })
-  const during = await page.getByTestId("booking-calendar-root").evaluate((element) => ({
-    down: (element as HTMLElement).dataset.bookingPointerDebug ?? null,
-    move: (element as HTMLElement).dataset.bookingPointerMoveDebug ?? null,
-    grabbed: Array.from(document.querySelectorAll('[aria-grabbed="true"]')).map((item) => item.getAttribute("data-testid")),
-  }))
-  console.log("BOOKING_POINTER_DEBUG", JSON.stringify(during))
   await page.mouse.up()
+  await page.waitForFunction(() => document.querySelector('[data-testid="e2e-last-action"]')?.textContent?.startsWith("changed:") ?? false)
+  await page.waitForTimeout(250)
+  const diagnostic = await page.evaluate(() => ({
+    action: document.querySelector('[data-testid="e2e-last-action"]')?.textContent ?? null,
+    toasterCount: document.querySelectorAll('[data-sonner-toaster]').length,
+    toastCount: document.querySelectorAll('[data-sonner-toast]').length,
+    buttons: Array.from(document.querySelectorAll('button')).map((button) => ({ text: button.textContent, aria: button.getAttribute('aria-label') })).filter((item) => item.text || item.aria),
+    sonner: Array.from(document.querySelectorAll('[data-sonner-toaster], [data-sonner-toast]')).map((element) => element.outerHTML),
+    bodyText: document.body.innerText.slice(-1200),
+  }))
+  console.log("BOOKING_UNDO_DEBUG", JSON.stringify(diagnostic))
 } finally {
   await browser.close()
 }
