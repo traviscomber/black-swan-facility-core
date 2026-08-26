@@ -230,14 +230,14 @@ export async function parseBudgetWorkbook(buffer: ArrayBuffer, fileName: string)
     warnings.push(`No se encontraron estas secciones P&L: ${missingDivisions.map((item) => item.label).join(", ")}.`)
   }
 
-  const presentDivisions = locatedDivisions.filter((division): division is DivisionDefinition & { row: number } => Boolean(division.row))
+  const presentDivisions = locatedDivisions.filter((division): division is DivisionDefinition & { row: number } => typeof division.row === "number")
   if (!presentDivisions.length) throw new Error("No se encontraron centros P&L reconocibles en Budget 26.")
 
   const lines: BudgetWorkbookLine[] = []
   for (const division of presentDivisions) {
     const nextDivisionRow = locatedDivisions
       .map((item) => item.row)
-      .filter((row): row is number => Boolean(row) && row > division.row)
+      .filter((row): row is number => typeof row === "number" && row > division.row)
       .sort((a, b) => a - b)[0]
     const endRow = (nextDivisionRow ?? 106) - 1
 

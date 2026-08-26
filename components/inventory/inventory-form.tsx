@@ -10,8 +10,7 @@ import { Input } from "@/components/ui/input"
 import { createBrowserClient } from "@/lib/supabase/client"
 import { useToast } from "@/hooks/use-toast"
 import { CategorySelector } from "./category-selector"
-
-type MetadataOption = { id: string; name: string; code?: string | null }
+import type { InventoryAsset, InventoryMetadataOption } from "./types"
 
 type WarehouseLocation = {
   id: string
@@ -20,35 +19,16 @@ type WarehouseLocation = {
   warehouses?: { id: string; code: string; name: string } | null
 }
 
-type InventoryAsset = {
-  id: string
-  asset_code: string
-  name: string
-  description?: string | null
-  category_id?: string | null
-  cost_center_id?: string | null
-  warehouse_location_id?: string | null
-  asset_class?: string | null
-  serial_number?: string | null
-  brand?: string | null
-  model?: string | null
-  purchase_date?: string | null
-  purchase_price?: number | null
-  status?: string | null
-  location?: string | null
-  assigned_to?: string | null
-  notes?: string | null
-  photo_url?: string | null
-  qr_code_url?: string | null
-  type?: string | null
-}
-
 interface InventoryFormProps {
   asset?: InventoryAsset | null
-  categories: MetadataOption[]
-  costCenters: MetadataOption[]
+  categories: InventoryMetadataOption[]
+  costCenters: InventoryMetadataOption[]
   onClose: () => void
   onSuccess: () => void
+}
+
+function firstRelation<T>(value: T | T[] | null | undefined): T | null {
+  return Array.isArray(value) ? value[0] ?? null : value ?? null
 }
 
 export function InventoryForm({ asset, categories, costCenters, onClose, onSuccess }: InventoryFormProps) {
@@ -88,7 +68,7 @@ export function InventoryForm({ asset, categories, costCenters, onClose, onSucce
       .order("name")
       .then(({ data, error: locationsError }) => {
         if (locationsError) setError(`No fue posible cargar las bodegas: ${locationsError.message}`)
-        else setWarehouseLocations((data ?? []) as WarehouseLocation[])
+        else setWarehouseLocations((data ?? []).map((location) => ({ ...location, warehouses: firstRelation(location.warehouses) })))
       })
   }, [supabase])
 
