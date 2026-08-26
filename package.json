@@ -12,7 +12,7 @@
     "dev": "next dev",
     "lint": "eslint .",
     "start": "next start",
-    "test:inventory": "node --experimental-strip-types --test tests/inventory-count-contract.test.ts tests/inventory-custody-contract.test.ts tests/inventory-maintenance-contract.test.ts tests/inventory-asset-audit-contract.test.ts tests/inventory-replenishment-contract.test.ts",
+    "test:inventory": "node --experimental-strip-types --test tests/inventory-count-contract.test.ts tests/inventory-custody-contract.test.ts tests/inventory-maintenance-contract.test.ts tests/inventory-asset-audit-contract.test.ts tests/inventory-replenishment-contract.test.ts tests/procurement-sourcing-contract.test.ts",
     "test:notifications": "node --experimental-strip-types --test tests/task-notification.test.ts",
     "test:booking": "node --experimental-strip-types --test tests/booking-rules.test.ts && node --experimental-strip-types --test tests/booking-drag.test.ts && node --experimental-strip-types --test tests/booking-source-policy.test.ts",
     "test:drag": "node --experimental-strip-types --test tests/booking-drag.test.ts",
