@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { useCallback, useEffect, useMemo, useState } from "react"
-import { CheckCircle2, ClipboardList, RefreshCw, Send, ShieldCheck, ShoppingCart, Users } from "lucide-react"
+import { CheckCircle2, ClipboardList, RefreshCw, Send, ShieldCheck, ShoppingCart, Store, Users } from "lucide-react"
 import { AppLayout } from "@/components/app-layout"
 import { PageHeader } from "@/components/page-header"
 import { Badge } from "@/components/ui/badge"
@@ -182,6 +182,7 @@ export default function ProcurementPage() {
         description="Flujo interno desde la solicitud y aprobación hasta la emisión y recepción de órdenes de compra."
         actions={<div className="flex flex-wrap gap-2">
           <Button variant="outline" asChild><Link href="/procurement/requests"><ClipboardList className="mr-2 h-4 w-4" />Solicitudes</Link></Button>
+          <Button variant="outline" asChild><Link href="/procurement/sourcing"><Store className="mr-2 h-4 w-4" />Sourcing</Link></Button>
           <Button variant="outline" asChild><Link href="/suppliers"><Users className="mr-2 h-4 w-4" />Proveedores</Link></Button>
           <Button variant="outline" asChild><Link href="/procurement/approvals"><ShieldCheck className="mr-2 h-4 w-4" />Aprobaciones</Link></Button>
         </div>}
