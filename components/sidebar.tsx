@@ -40,9 +40,11 @@ import { cn } from "@/lib/utils"
 import { LanguageSwitcher } from "@/components/language-switcher"
 import { useLanguage } from "@/lib/hooks/use-language"
 import { useEffectiveAccess } from "@/lib/hooks/use-effective-access"
+import { useOsPersona } from "@/lib/hooks/use-os-persona"
 import { createClient } from "@/lib/supabase/client"
 import { normalizeCapabilitySnapshot, type CanonicalCapabilitySnapshot } from "@/lib/access/capabilities"
 import { filterOsAreas, osAreas, rankAreasForAccess, type OsNavItem } from "@/lib/os/navigation"
+import { rankAreasForPersona } from "@/lib/os/personas"
 
 const ROUTE_LOCALES = new Set(["en", "es", "de"])
 
@@ -101,6 +103,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const router = useRouter()
   const supabase = useMemo(() => createClient(), [])
   const { access, loading, error, can, canAccessDepartment } = useEffectiveAccess()
+  const { persona, personaLabel } = useOsPersona()
   const [routeCapabilities, setRouteCapabilities] = useState<CanonicalCapabilitySnapshot>({ domains: {} })
   const [routeCapabilitiesLoading, setRouteCapabilitiesLoading] = useState(true)
   const [expandedAreas, setExpandedAreas] = useState<Set<string>>(new Set())
@@ -160,10 +163,13 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
     }
   }, [access.role, error, language, loading, router, supabase])
 
-  const visibleAreas = useMemo(() => rankAreasForAccess(
-    filterOsAreas(osAreas, routeCapabilities, access),
-    access,
-  ), [access, routeCapabilities])
+  const visibleAreas = useMemo(() => rankAreasForPersona(
+    rankAreasForAccess(
+      filterOsAreas(osAreas, routeCapabilities, access),
+      access,
+    ),
+    persona,
+  ), [access, persona, routeCapabilities])
 
   useEffect(() => {
     const initial = new Set<string>()
@@ -202,7 +208,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
       {isOpen && <div className="fixed inset-0 z-40 bg-black/20 lg:hidden" onClick={onClose} />}
       <div className={cn("fixed inset-y-0 left-0 z-50 flex h-screen w-64 flex-col overflow-y-auto border-r border-secondary bg-white transition-transform duration-300 lg:relative lg:inset-auto lg:z-auto lg:h-full lg:translate-x-0", isOpen ? "translate-x-0" : "-translate-x-full")}>
         <div className="flex h-16 items-center justify-between border-b border-secondary bg-primary/5 px-4 sm:h-20">
-          <Link href={localizedHref(language, "/")} className="flex min-w-0 items-center gap-2 hover:opacity-80">
+          <Link href={localizedHref(language, "/os")} className="flex min-w-0 items-center gap-2 hover:opacity-80">
             <img src="/blackswan-logo.png" alt="Blackswan Logo" className="h-12 w-12 flex-shrink-0 object-contain sm:h-14 sm:w-14" />
             <div className="min-w-0"><h1 className="truncate text-sm font-bold uppercase tracking-wider text-accent sm:text-base">BFCS</h1><p className="text-xs text-muted-foreground">Core System</p></div>
           </Link>
@@ -226,7 +232,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
 
           <div className="mt-4 border-t pt-3">
             <p className="px-3 pb-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{t("shell.global_tools")}</p>
-            <UtilityLink href="/" icon={LayoutDashboard} label={t("nav.dashboard")} language={language} onClose={onClose} />
+            <UtilityLink href="/os" icon={LayoutDashboard} label={t("os.today")} language={language} onClose={onClose} />
             {showConcierge && <UtilityLink href="/concierge" icon={MessageSquare} label={t("shell.concierge")} language={language} onClose={onClose} />}
             {access.is_admin && <UtilityLink href="/ai-ops" icon={Bot} label={t("shell.ai_ops")} language={language} onClose={onClose} />}
             {access.is_admin && <UtilityLink href="/sovereignty" icon={Crown} label={t("nav.sovereignty_dashboard")} language={language} onClose={onClose} />}
@@ -237,7 +243,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
         <div className="space-y-3 border-t border-secondary p-3">
           <LanguageSwitcher />
           <button onClick={handleOpenSearch} className="flex w-full items-center gap-3 rounded px-3 py-2 text-sm text-muted-foreground hover:bg-muted hover:text-foreground"><HelpCircle className="h-5 w-5" /><span>{t("shell.search")}</span><span className="ml-auto text-xs">⌘K</span></button>
-          <div className="flex items-center gap-3 rounded bg-muted/40 px-3 py-2"><span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">{userInitials}</span><div className="min-w-0 flex-1"><p className="truncate text-xs font-medium">{userEmail || t("shell.user")}</p><p className="text-[11px] text-muted-foreground">{access.role || "user"}</p></div><button onClick={handleLogout} className="rounded p-1.5 hover:bg-muted" title={t("shell.logout")}><LogOut className="h-4 w-4" /></button></div>
+          <div className="flex items-center gap-3 rounded bg-muted/40 px-3 py-2"><span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">{userInitials}</span><div className="min-w-0 flex-1"><p className="truncate text-xs font-medium">{userEmail || t("shell.user")}</p><p className="truncate text-[11px] text-muted-foreground">{personaLabel} · {access.role || "user"}</p></div><button onClick={handleLogout} className="rounded p-1.5 hover:bg-muted" title={t("shell.logout")}><LogOut className="h-4 w-4" /></button></div>
         </div>
       </div>
     </>
