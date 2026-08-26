@@ -6,24 +6,7 @@ import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import { useState } from "react"
 import Image from "next/image"
-
-interface Asset {
-  id: string
-  asset_code: string
-  name: string
-  asset_class?: string | null
-  category?: { name: string; color?: string | null } | null
-  cost_center?: { name: string; code?: string | null } | null
-  warehouse_location?: {
-    code: string
-    name: string
-    warehouse?: { code: string; name: string } | null
-  } | null
-  status: string
-  location?: string | null
-  assigned_to?: string | null
-  photo_url?: string | null
-}
+import type { InventoryAsset } from "@/components/inventory/types"
 
 const STATUS_LABELS: Record<string, string> = {
   active: "Activo",
@@ -41,9 +24,9 @@ const CLASS_LABELS: Record<string, string> = {
 }
 
 export function InventoryTable({ assets, loading, onEdit, onDelete, onEditClick }: {
-  assets: Asset[]
+  assets: InventoryAsset[]
   loading: boolean
-  onEdit: (asset: Asset) => void
+  onEdit: (asset: InventoryAsset) => void
   onDelete: (id: string) => void
   onEditClick: () => void
 }) {
