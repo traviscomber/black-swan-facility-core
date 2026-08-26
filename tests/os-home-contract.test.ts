@@ -8,6 +8,8 @@ const personaSource = readFileSync(new URL("../lib/os/personas.ts", import.meta.
 const personaHook = readFileSync(new URL("../lib/hooks/use-os-persona.ts", import.meta.url), "utf8")
 const proxySource = readFileSync(new URL("../proxy.ts", import.meta.url), "utf8")
 const rootPage = readFileSync(new URL("../app/page.tsx", import.meta.url), "utf8")
+const bookingsPage = readFileSync(new URL("../app/bookings/page.tsx", import.meta.url), "utf8")
+const hospitalityStrip = readFileSync(new URL("../components/hospitality-command-strip.tsx", import.meta.url), "utf8")
 const personaMigration = readFileSync(new URL("../supabase/migrations/20260826204906_add_os_persona_profiles.sql", import.meta.url), "utf8")
 const employeeMigration = readFileSync(new URL("../supabase/migrations/20260826210614_link_os_users_to_employees.sql", import.meta.url), "utf8")
 const workspaceMigration = readFileSync(new URL("../supabase/migrations/20260826233705_set_os_primary_workspace_profiles.sql", import.meta.url), "utf8")
@@ -47,6 +49,25 @@ test("Santiago profile is CEO plus Hospitality and starts in the reservation cal
   assert.match(workspaceMigration, /santiago@blackswn\.org/)
   assert.match(personaSource, /CEO · Hospitality/)
   assert.match(personaHook, /os_primary_domain, os_start_path/)
+})
+
+test("Hospitality keeps the reservation calendar primary and removes duplicate permanent trays", () => {
+  assert.match(bookingsPage, /HospitalityCommandStrip/)
+  assert.match(bookingsPage, /BookingOperationsTimelinePage/)
+  assert.doesNotMatch(bookingsPage, /DailyOperationsPanel/)
+  assert.doesNotMatch(bookingsPage, /CompactBookingQuickActions/)
+})
+
+test("Hospitality command strip is read-only and grounded in canonical operational state", () => {
+  assert.match(hospitalityStrip, /reservation_room_readiness/)
+  assert.match(hospitalityStrip, /reservation_operational_exceptions/)
+  assert.match(hospitalityStrip, /hospitality_requests/)
+  assert.match(hospitalityStrip, /America\/Santiago/)
+  assert.match(hospitalityStrip, /is_ready_for_checkin/)
+  assert.match(hospitalityStrip, /blocks_check_in/)
+  assert.doesNotMatch(hospitalityStrip, /\.insert\(/)
+  assert.doesNotMatch(hospitalityStrip, /\.update\(/)
+  assert.doesNotMatch(hospitalityStrip, /\.delete\(/)
 })
 
 test("root navigation respects profile start path but still validates route capability", () => {
