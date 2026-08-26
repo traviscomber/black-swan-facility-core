@@ -7,6 +7,7 @@ import { useBookingCalendarContext } from "@/components/use-booking-calendar-con
 import { useBookingCalendarInteractions } from "@/components/use-booking-calendar-interactions"
 import {
   normalizeName,
+  type BookingCalendarBed,
   type BookingCalendarReservation,
   type BookingCalendarTimelineProps,
 } from "@/components/booking-calendar-model"
@@ -47,11 +48,11 @@ export function BookingCalendarTimeline({
 }: BookingCalendarTimelineProps) {
   const calendarContext = useBookingCalendarContext({ hierarchy, reservations, blocks, transport })
 
-  const openReservation = useCallback((reservation: BookingCalendarReservation) => {
+  const openReservation = useCallback((reservation: BookingCalendarReservation, bed: BookingCalendarBed) => {
     window.dispatchEvent(new CustomEvent(BOOKING_COMMAND_SELECTION_EVENT, {
       detail: { reservationId: reservation.id },
     }))
-    onOpenReservation(reservation)
+    onOpenReservation(reservation, bed)
   }, [onOpenReservation])
 
   const interactions = useBookingCalendarInteractions({
