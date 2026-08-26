@@ -13,7 +13,8 @@ interface MaintenanceQuickAddDrawerProps {
   onTaskCreated: () => void
 }
 
-type Option = { id: string; name: string }
+type AssetOption = { id: string; name: string; asset_code: string; warehouse_location_id: string | null; status: string | null }
+type EmployeeOption = { employee_id: string; employee_name: string; employee_role: string | null }
 
 const initialForm = () => ({
   title: '',
@@ -28,8 +29,8 @@ const initialForm = () => ({
 
 export function MaintenanceQuickAddDrawer({ isOpen, onClose, onTaskCreated }: MaintenanceQuickAddDrawerProps) {
   const supabase = useMemo(() => createClient(), [])
-  const [assets, setAssets] = useState<Option[]>([])
-  const [employees, setEmployees] = useState<Option[]>([])
+  const [assets, setAssets] = useState<AssetOption[]>([])
+  const [employees, setEmployees] = useState<EmployeeOption[]>([])
   const [formData, setFormData] = useState(initialForm)
   const [loading, setLoading] = useState(false)
   const [loadingOptions, setLoadingOptions] = useState(false)
@@ -43,15 +44,15 @@ export function MaintenanceQuickAddDrawer({ isOpen, onClose, onTaskCreated }: Ma
       setLoadingOptions(true)
       setError(null)
       const [assetsResult, employeesResult] = await Promise.all([
-        supabase.from('assets').select('id, name').order('name'),
-        supabase.from('employees').select('id, name').eq('is_active', true).order('name'),
+        supabase.from('assets').select('id, name, asset_code, warehouse_location_id, status').neq('status', 'deprecated').order('name'),
+        supabase.rpc('list_maintenance_assignees'),
       ])
 
       if (cancelled) return
       const loadError = assetsResult.error || employeesResult.error
       if (loadError) setError(`No fue posible cargar activos o responsables: ${loadError.message}`)
-      setAssets((assetsResult.data ?? []) as Option[])
-      setEmployees((employeesResult.data ?? []) as Option[])
+      setAssets((assetsResult.data ?? []) as AssetOption[])
+      setEmployees((employeesResult.data ?? []) as EmployeeOption[])
       setLoadingOptions(false)
     }
 
@@ -76,25 +77,52 @@ export function MaintenanceQuickAddDrawer({ isOpen, onClose, onTaskCreated }: Ma
       return
     }
 
+    const selectedAsset = formData.asset_id === 'none' ? null : assets.find((asset) => asset.id === formData.asset_id) ?? null
+    if (formData.asset_id !== 'none' && !selectedAsset) {
+      setError('El activo seleccionado ya no está disponible.')
+      return
+    }
+    if (selectedAsset && !selectedAsset.warehouse_location_id) {
+      setError('El activo debe tener una posición de bodega antes de programar mantenimiento.')
+      return
+    }
+
     setLoading(true)
     setError(null)
-    const { error: insertError } = await supabase.from('maintenance_tasks').insert({
-      title: formData.title.trim(),
-      description: formData.description.trim() || null,
-      asset_id: formData.asset_id === 'none' ? null : formData.asset_id,
-      assigned_to: formData.assigned_to === 'none' ? null : formData.assigned_to,
-      prioridad: formData.prioridad,
-      estado_extendido: formData.assigned_to === 'none' ? 'scheduled' : 'assigned',
-      status: formData.assigned_to === 'none' ? 'scheduled' : 'assigned',
-      duracion_estimada_minutos: duration,
-      tipo_trabajo: formData.tipo_trabajo,
-      fecha_objetivo: formData.fecha_objetivo,
-      next_run: formData.fecha_objetivo,
-      bloqueado: false,
-    })
 
-    if (insertError) {
-      setError(`No fue posible registrar el trabajo: ${insertError.message}`)
+    let saveError: { message: string } | null = null
+    if (selectedAsset) {
+      const result = await supabase.rpc('create_inventory_asset_maintenance_task', {
+        p_asset_id: selectedAsset.id,
+        p_title: formData.title.trim(),
+        p_description: formData.description.trim() || null,
+        p_assigned_to: formData.assigned_to === 'none' ? null : formData.assigned_to,
+        p_priority: formData.prioridad,
+        p_duration_minutes: duration,
+        p_work_type: formData.tipo_trabajo,
+        p_target_date: formData.fecha_objetivo,
+      })
+      saveError = result.error
+    } else {
+      const result = await supabase.from('maintenance_tasks').insert({
+        title: formData.title.trim(),
+        description: formData.description.trim() || null,
+        asset_id: null,
+        assigned_to: formData.assigned_to === 'none' ? null : formData.assigned_to,
+        prioridad: formData.prioridad,
+        estado_extendido: formData.assigned_to === 'none' ? 'scheduled' : 'assigned',
+        status: formData.assigned_to === 'none' ? 'scheduled' : 'assigned',
+        duracion_estimada_minutos: duration,
+        tipo_trabajo: formData.tipo_trabajo,
+        fecha_objetivo: formData.fecha_objetivo,
+        next_run: formData.fecha_objetivo,
+        bloqueado: false,
+      })
+      saveError = result.error
+    }
+
+    if (saveError) {
+      setError(`No fue posible registrar el trabajo: ${saveError.message}`)
       setLoading(false)
       return
     }
@@ -106,6 +134,8 @@ export function MaintenanceQuickAddDrawer({ isOpen, onClose, onTaskCreated }: Ma
   }
 
   if (!isOpen) return null
+
+  const selectedAsset = formData.asset_id === 'none' ? null : assets.find((asset) => asset.id === formData.asset_id) ?? null
 
   return (
     <>
@@ -139,26 +169,32 @@ export function MaintenanceQuickAddDrawer({ isOpen, onClose, onTaskCreated }: Ma
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="Fecha objetivo" required><Input type="date" value={formData.fecha_objetivo} onChange={(event) => updateField('fecha_objetivo', event.target.value)} /></Field>
+            <Field label="Fecha objetivo" required><Input type="date" min={new Date().toISOString().slice(0, 10)} value={formData.fecha_objetivo} onChange={(event) => updateField('fecha_objetivo', event.target.value)} /></Field>
             <Field label="Duración estimada (min)" required><Input type="number" min="5" step="5" value={formData.duracion_estimada_minutos} onChange={(event) => updateField('duracion_estimada_minutos', event.target.value)} /></Field>
           </div>
 
           <Field label="Activo asociado">
             <select disabled={loadingOptions} value={formData.asset_id} onChange={(event) => updateField('asset_id', event.target.value)} className="w-full rounded-md border bg-background px-3 py-2 text-sm">
-              <option value="none">Sin activo asociado</option>{assets.map((asset) => <option key={asset.id} value={asset.id}>{asset.name}</option>)}
+              <option value="none">Sin activo asociado</option>{assets.map((asset) => <option key={asset.id} value={asset.id}>{asset.asset_code} · {asset.name}{asset.warehouse_location_id ? '' : ' · Sin posición'}</option>)}
             </select>
           </Field>
 
+          {selectedAsset && <div className={`rounded-lg border p-3 text-sm ${selectedAsset.warehouse_location_id ? 'bg-muted/20' : 'border-amber-300 bg-amber-50/60'}`}>
+            <p className="font-medium">Orden vinculada a Inventario</p>
+            <p className="mt-1 text-xs text-muted-foreground">La creación y los cambios de estado se ejecutan de forma atómica y quedan en la bitácora del activo.</p>
+            {!selectedAsset.warehouse_location_id && <p className="mt-2 text-xs text-amber-800">Completa primero la ubicación física del activo.</p>}
+          </div>}
+
           <Field label="Responsable">
             <select disabled={loadingOptions} value={formData.assigned_to} onChange={(event) => updateField('assigned_to', event.target.value)} className="w-full rounded-md border bg-background px-3 py-2 text-sm">
-              <option value="none">Sin responsable asignado</option>{employees.map((employee) => <option key={employee.id} value={employee.id}>{employee.name}</option>)}
+              <option value="none">Sin responsable asignado</option>{employees.map((employee) => <option key={employee.employee_id} value={employee.employee_id}>{employee.employee_name}{employee.employee_role ? ` · ${employee.employee_role}` : ''}</option>)}
             </select>
           </Field>
         </form>
 
         <div className="flex gap-2 border-t p-5">
           <Button type="button" variant="outline" className="flex-1" onClick={onClose}>Cancelar</Button>
-          <Button type="submit" form="maintenance-quick-add" className="flex-1" disabled={loading || loadingOptions || !formData.title.trim()}><Plus className="mr-2 h-4 w-4" />{loading ? 'Registrando…' : 'Registrar trabajo'}</Button>
+          <Button type="submit" form="maintenance-quick-add" className="flex-1" disabled={loading || loadingOptions || !formData.title.trim() || Boolean(selectedAsset && !selectedAsset.warehouse_location_id)}><Plus className="mr-2 h-4 w-4" />{loading ? 'Registrando…' : 'Registrar trabajo'}</Button>
         </div>
       </aside>
     </>
