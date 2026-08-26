@@ -6,6 +6,12 @@ import { deriveOverlay, needsDerivative } from "../lib/map/server/derive-overlay
 const kml = `<?xml version="1.0" encoding="UTF-8"?>
 <kml xmlns="http://www.opengis.net/kml/2.2"><Document><Placemark><name>Punto</name><Point><coordinates>-73.15,-39.82,0</coordinates></Point></Placemark></Document></kml>`
 
+function asArrayBuffer(bytes: Uint8Array): ArrayBuffer {
+  const copy = new Uint8Array(bytes.byteLength)
+  copy.set(bytes)
+  return copy.buffer
+}
+
 test("derivative generation skips matching source versions", () => {
   assert.equal(needsDerivative({ sourceVersion: "v1", derivedSourceVersion: "v1" }), false)
   assert.equal(needsDerivative({ sourceVersion: "v2", derivedSourceVersion: "v1" }), true)
@@ -32,7 +38,7 @@ test("server converter extracts KML from KMZ", async () => {
     sourceUrl: "https://example.test/source.kmz",
     fileType: "kmz",
     sourceVersion: "v2",
-    fetchImpl: async () => new Response(bytes, { status: 200 }),
+    fetchImpl: async () => new Response(asArrayBuffer(bytes), { status: 200 }),
   })
   assert.equal(result.featureCount, 1)
   assert.equal(result.sourceVersion, "v2")
@@ -46,6 +52,6 @@ test("server converter rejects KMZ without KML", async () => {
     sourceUrl: "https://example.test/broken.kmz",
     fileType: "kmz",
     sourceVersion: "v3",
-    fetchImpl: async () => new Response(bytes, { status: 200 }),
+    fetchImpl: async () => new Response(asArrayBuffer(bytes), { status: 200 }),
   }), /no contiene un archivo KML/)
 })
