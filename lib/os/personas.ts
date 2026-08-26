@@ -9,7 +9,7 @@ const personaLabels: Record<OsPersonaKey, string> = {
 }
 
 const areaPriorities: Record<OsPersonaKey, OsAreaKey[]> = {
-  executive: ["today", "finance", "operations", "places-assets", "people", "network"],
+  executive: ["operations", "today", "finance", "places-assets", "people", "network"],
   field_admin: ["today", "operations", "places-assets", "people", "finance", "network"],
   general: ["today", "operations", "places-assets", "people", "finance", "network"],
 }
@@ -18,7 +18,8 @@ export function normalizeOsPersona(value: unknown): OsPersonaKey {
   return value === "executive" || value === "field_admin" || value === "general" ? value : "general"
 }
 
-export function getOsPersonaLabel(persona: OsPersonaKey) {
+export function getOsPersonaLabel(persona: OsPersonaKey, primaryDomain?: string | null) {
+  if (persona === "executive" && primaryDomain === "hospitality") return "CEO · Hospitality"
   return personaLabels[persona]
 }
 
