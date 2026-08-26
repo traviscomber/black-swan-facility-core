@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { useCallback, useEffect, useMemo, useState } from "react"
-import { AlertTriangle, Boxes, ClipboardCheck, ClipboardList, PackageSearch, RefreshCw, ShieldCheck, Warehouse } from "lucide-react"
+import { AlertTriangle, Boxes, ClipboardCheck, ClipboardList, PackageSearch, RefreshCw, ScanLine, ShieldCheck, Warehouse, Wrench } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -14,6 +14,8 @@ type CountRow = { status: string }
 type CustodyRow = { status: string; due_at: string | null }
 type IntakeRow = { status: string }
 type RetirementRow = { status: string }
+type MaintenanceRow = { status: string | null; estado_extendido: string | null }
+type AuditRow = { status: string }
 type AssetRow = { status: string | null; assigned_to: string | null; category_id: string | null; cost_center_id: string | null; warehouse_location_id: string | null }
 
 type Metrics = {
@@ -27,6 +29,10 @@ type Metrics = {
   openCounts: number
   pendingIntakes: number
   pendingRetirements: number
+  maintenanceOpen: number
+  maintenanceBlocked: number
+  auditOpen: number
+  auditPendingReview: number
 }
 
 const EMPTY: Metrics = {
@@ -40,6 +46,10 @@ const EMPTY: Metrics = {
   openCounts: 0,
   pendingIntakes: 0,
   pendingRetirements: 0,
+  maintenanceOpen: 0,
+  maintenanceBlocked: 0,
+  auditOpen: 0,
+  auditPendingReview: 0,
 }
 
 function numberValue(value: number | string | null | undefined) {
@@ -65,16 +75,18 @@ export function InventoryCommandCenter() {
 
     setLoading(true)
     setError(null)
-    const [assetsResult, stockResult, countsResult, custodiesResult, intakeResult, retirementsResult] = await Promise.all([
+    const [assetsResult, stockResult, countsResult, custodiesResult, intakeResult, retirementsResult, maintenanceResult, auditsResult] = await Promise.all([
       supabase.from("assets").select("status,assigned_to,category_id,cost_center_id,warehouse_location_id").neq("status", "deprecated"),
       supabase.from("inventory_stock_status").select("stock_state,inventory_value"),
       supabase.from("inventory_count_sessions").select("status").in("status", ["in_progress", "submitted", "approved"]),
       supabase.from("inventory_asset_custodies").select("status,due_at").eq("status", "active"),
       supabase.from("procurement_inventory_intake").select("status").eq("status", "pending"),
       supabase.from("asset_retirement_requests").select("status").in("status", ["pending", "approved"]),
+      supabase.from("maintenance_tasks").select("status,estado_extendido").not("asset_id", "is", null).in("estado_extendido", ["scheduled", "assigned", "in_progress", "blocked"]),
+      supabase.from("inventory_asset_audit_sessions").select("status").in("status", ["in_progress", "submitted", "approved"]),
     ])
 
-    const results = [assetsResult, stockResult, countsResult, custodiesResult, intakeResult, retirementsResult]
+    const results = [assetsResult, stockResult, countsResult, custodiesResult, intakeResult, retirementsResult, maintenanceResult, auditsResult]
     const firstError = results.find((result) => result.error)?.error
     if (firstError) setError(firstError.message)
 
@@ -84,6 +96,8 @@ export function InventoryCommandCenter() {
     const custodies = (custodiesResult.data ?? []) as CustodyRow[]
     const intakes = (intakeResult.data ?? []) as IntakeRow[]
     const retirements = (retirementsResult.data ?? []) as RetirementRow[]
+    const maintenance = (maintenanceResult.data ?? []) as MaintenanceRow[]
+    const audits = (auditsResult.data ?? []) as AuditRow[]
     const now = Date.now()
 
     setMetrics({
@@ -97,6 +111,10 @@ export function InventoryCommandCenter() {
       openCounts: counts.length,
       pendingIntakes: intakes.length,
       pendingRetirements: retirements.length,
+      maintenanceOpen: maintenance.length,
+      maintenanceBlocked: maintenance.filter((item) => (item.estado_extendido ?? item.status) === "blocked").length,
+      auditOpen: audits.length,
+      auditPendingReview: audits.filter((audit) => audit.status === "submitted").length,
     })
     setLoading(false)
   }, [accessLoading, canOperate, supabase])
@@ -105,8 +123,8 @@ export function InventoryCommandCenter() {
 
   if (accessLoading || !canOperate) return null
 
-  const critical = metrics.custodyOverdue + metrics.outOfStock + metrics.pendingRetirements
-  const attention = metrics.incompleteAssets + metrics.lowStock + metrics.openCounts + metrics.pendingIntakes
+  const critical = metrics.custodyOverdue + metrics.outOfStock + metrics.pendingRetirements + metrics.maintenanceBlocked
+  const attention = metrics.incompleteAssets + metrics.lowStock + metrics.openCounts + metrics.pendingIntakes + metrics.maintenanceOpen + metrics.auditOpen
 
   return (
     <div className="px-4 pt-4 md:px-6 md:pt-6">
@@ -118,7 +136,7 @@ export function InventoryCommandCenter() {
                 <div className="rounded-lg border bg-background p-2"><ShieldCheck className="h-5 w-5" /></div>
                 <div>
                   <CardTitle className="text-lg">Inventory Command Center</CardTitle>
-                  <CardDescription>Estado operacional consolidado de activos, stock, custodias, conteos e ingresos.</CardDescription>
+                  <CardDescription>Estado operacional consolidado de activos, stock, custodias, mantenimiento, conteos, auditorías e ingresos.</CardDescription>
                 </div>
               </div>
             </div>
@@ -132,23 +150,26 @@ export function InventoryCommandCenter() {
         <CardContent className="space-y-5 p-5">
           {error && <div className="rounded-lg border border-amber-300 bg-amber-50/60 p-3 text-sm text-amber-900">El tablero se cargó parcialmente: {error}</div>}
 
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
             <Metric icon={Boxes} label="Activos" value={metrics.activeAssets} detail={`${metrics.incompleteAssets} incompletos`} alert={metrics.incompleteAssets > 0} />
             <Metric icon={ShieldCheck} label="En custodia" value={metrics.custodyActive} detail={`${metrics.custodyOverdue} vencidas`} alert={metrics.custodyOverdue > 0} />
             <Metric icon={PackageSearch} label="Stock crítico" value={metrics.lowStock + metrics.outOfStock} detail={`${metrics.outOfStock} sin stock`} alert={metrics.outOfStock > 0} />
-            <Metric icon={ClipboardList} label="Conteos abiertos" value={metrics.openCounts} detail="Ubicaciones congeladas" alert={metrics.openCounts > 0} />
-            <Metric icon={ClipboardCheck} label="Ingresos pendientes" value={metrics.pendingIntakes} detail={`${metrics.pendingRetirements} bajas en workflow`} alert={metrics.pendingRetirements > 0} />
+            <Metric icon={Wrench} label="Mantenimiento" value={metrics.maintenanceOpen} detail={`${metrics.maintenanceBlocked} bloqueadas`} alert={metrics.maintenanceBlocked > 0} />
+            <Metric icon={ClipboardList} label="Conteos" value={metrics.openCounts} detail="Sesiones abiertas" alert={metrics.openCounts > 0} />
+            <Metric icon={ScanLine} label="Auditorías" value={metrics.auditOpen} detail={`${metrics.auditPendingReview} por revisar`} alert={metrics.auditPendingReview > 0} />
           </div>
 
-          <div className="grid gap-3 lg:grid-cols-3">
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
             <ActionCard href="/inventory/stock" icon={PackageSearch} title="Stock y kardex" detail={metrics.lowStock + metrics.outOfStock > 0 ? `${metrics.lowStock + metrics.outOfStock} posiciones requieren reposición` : "Saldos, movimientos y reposición"} alert={metrics.outOfStock > 0} />
-            <ActionCard href="/inventory/counts" icon={ClipboardList} title="Conteos cíclicos" detail={metrics.openCounts > 0 ? `${metrics.openCounts} sesiones en curso o revisión` : "Abrir control físico por ubicación"} alert={metrics.openCounts > 0} />
+            <ActionCard href="/maintenance" icon={Wrench} title="Mantenimiento de activos" detail={metrics.maintenanceOpen > 0 ? `${metrics.maintenanceOpen} órdenes abiertas` : "Sin órdenes abiertas"} alert={metrics.maintenanceBlocked > 0} />
+            <ActionCard href="/inventory/counts" icon={ClipboardList} title="Conteos cíclicos" detail={metrics.openCounts > 0 ? `${metrics.openCounts} sesiones en curso o revisión` : "Abrir control de consumibles"} alert={metrics.openCounts > 0} />
+            <ActionCard href="/inventory/audits" icon={ScanLine} title="Auditoría física" detail={metrics.auditOpen > 0 ? `${metrics.auditOpen} sesiones abiertas` : "Verificación serializada por ubicación"} alert={metrics.auditPendingReview > 0} />
             <ActionCard href="/inventory/intake" icon={Warehouse} title="Ingresos desde Compras" detail={metrics.pendingIntakes > 0 ? `${metrics.pendingIntakes} recepciones por clasificar` : "Sin ingresos pendientes"} alert={metrics.pendingIntakes > 0} />
           </div>
 
           <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border bg-muted/15 p-3 text-sm">
             <div className="flex items-center gap-2"><AlertTriangle className={`h-4 w-4 ${critical > 0 ? "text-destructive" : "text-muted-foreground"}`} /><span>{critical > 0 ? "Hay excepciones que requieren acción operacional." : "No hay excepciones críticas abiertas en Inventario."}</span></div>
-            <span className="text-muted-foreground">Valor de stock registrado: {new Intl.NumberFormat("es-CL", { style: "currency", currency: "CLP", maximumFractionDigits: 0 }).format(metrics.stockValue)}</span>
+            <div className="flex flex-wrap gap-3 text-muted-foreground"><span>{metrics.pendingIntakes} ingresos pendientes</span><span>{metrics.pendingRetirements} bajas en workflow</span><span>Stock: {new Intl.NumberFormat("es-CL", { style: "currency", currency: "CLP", maximumFractionDigits: 0 }).format(metrics.stockValue)}</span></div>
           </div>
         </CardContent>
       </Card>
