@@ -129,6 +129,7 @@ export function ReservationOperationalLanes({ reservation, timelineWidth, geomet
 
   useEffect(() => { void load() }, [load])
   const visibleLanes = lanes.filter((lane) => activeLayers.has(lane.key))
+  const statusLabels: Record<string, string> = c.statuses
 
   return (
     <div className="border-t bg-muted/10">
@@ -138,7 +139,7 @@ export function ReservationOperationalLanes({ reservation, timelineWidth, geomet
           <div className="relative min-h-8" style={{ width: timelineWidth }}>
             {items.length === 0 ? <span className="absolute left-3 top-2 text-[10px] text-muted-foreground">{c.noEvents}</span> : items.map((item, index) => {
               const geometry = geometryForDates(item.startsOn, item.endsOn)
-              const status = c.statuses[item.status?.replaceAll("-", "_")] ?? item.status
+              const status = statusLabels[item.status?.replaceAll("-", "_")] ?? item.status
               return <div key={item.id} title={`${item.label} · ${status}`} className={`absolute h-5 overflow-hidden rounded-sm border border-black/10 px-1.5 text-[10px] font-semibold leading-5 ${item.critical ? "bg-red-600 text-white" : className}`} style={{ left: geometry.left, width: Math.max(22, geometry.width), top: 5 + (index % 2) * 2 }}><span className="truncate">{item.label}</span></div>
             })}
             {key === "milestones" && <LogOut className="sr-only" />}
