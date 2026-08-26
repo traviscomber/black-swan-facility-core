@@ -163,12 +163,13 @@ export function ReservationOperationIndicators({ reservationId }: { reservationI
   }, [load, reservationId, supabase])
 
   const readinessReason = summary.readiness.reason ?? "room_not_ready"
+  const readinessLabels: Record<string, string> = c.readiness
   const indicators = [
     {
       key: "readiness",
       Icon: summary.readiness.ready ? CheckCircle2 : ShieldAlert,
       visible: true,
-      label: c.readiness[readinessReason] ?? c.readinessFallback,
+      label: readinessLabels[readinessReason] ?? c.readinessFallback,
       className: summary.readiness.ready ? "bg-emerald-100 text-emerald-900" : "bg-red-100 text-red-900",
       count: 0,
     },
