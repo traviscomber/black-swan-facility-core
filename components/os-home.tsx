@@ -96,7 +96,7 @@ async function loadTodaySignals(navigation: Navigation): Promise<Signal[]> {
       : zero,
   ])
 
-  return [
+  const nextSignals: Signal[] = [
     { key: 'finance', label: 'Decisiones financieras', value: financeReady.count ?? 0, detail: 'Documentos listos para decisión', href: '/budgets/approvals', group: 'attention' },
     { key: 'procurement', label: 'Compras por decidir', value: procurementPending.count ?? 0, detail: 'Solicitudes enviadas o pendientes de aprobación', href: '/procurement', group: 'attention' },
     { key: 'maintenance-blocked', label: 'Mantenimiento bloqueado', value: maintenanceBlocked.count ?? 0, detail: 'Órdenes que requieren destrabe', href: '/maintenance', group: 'attention' },
@@ -107,7 +107,9 @@ async function loadTodaySignals(navigation: Navigation): Promise<Signal[]> {
     { key: 'tasks', label: 'Tareas vencidas o para hoy', value: tasksDue.count ?? 0, detail: 'Trabajo operativo que requiere ejecución', href: '/tasks', group: 'attention' },
     { key: 'arrivals', label: 'Llegadas', value: arrivals.count ?? 0, detail: 'Check-ins de hoy', href: '/bookings', group: 'today' },
     { key: 'departures', label: 'Salidas', value: departures.count ?? 0, detail: 'Check-outs de hoy', href: '/bookings', group: 'today' },
-  ].filter((signal) => signal.group === 'today' || signal.value > 0)
+  ]
+
+  return nextSignals.filter((signal) => signal.group === 'today' || signal.value > 0)
 }
 
 const selectableAreas = new Set<OsAreaKey>(['operations', 'people', 'places-assets', 'finance', 'network'])
