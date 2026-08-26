@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react"
 import Link from "next/link"
-import { ArrowLeft, CheckCircle2, PackageCheck, RefreshCw, ShieldX } from "lucide-react"
+import { ArrowLeft, CheckCircle2, PackageCheck, RefreshCw, ShieldCheck, ShieldX } from "lucide-react"
 import { AppLayout } from "@/components/app-layout"
 import { PageHeader } from "@/components/page-header"
 import { Badge } from "@/components/ui/badge"
@@ -34,6 +34,14 @@ type Receipt = {
   procurement_receipt_items: Array<{ received_quantity: number; rejected_quantity: number; condition: string; inventory_intake_required: boolean; intake_type: string | null }>
 }
 
+type ReplenishmentNeed = {
+  purchase_order_id: string | null
+  procurement_request_id: string | null
+  stock_item_id: string
+  status: string
+  inventory_stock_items: { item_code: string; name: string } | { item_code: string; name: string }[] | null
+}
+
 const initialForm = {
   purchaseOrderId: "",
   receivedQuantity: "",
@@ -59,6 +67,7 @@ export default function ProcurementReceivingPage() {
   const canCreateInventoryIntake = can("inventory.process") && canAccessDepartment("inventory")
   const [orders, setOrders] = useState<Order[]>([])
   const [receipts, setReceipts] = useState<Receipt[]>([])
+  const [replenishments, setReplenishments] = useState<ReplenishmentNeed[]>([])
   const [form, setForm] = useState(initialForm)
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
@@ -69,16 +78,18 @@ export default function ProcurementReceivingPage() {
     if (!canReceive) {
       setOrders([])
       setReceipts([])
+      setReplenishments([])
       setLoading(false)
       return
     }
     setLoading(true)
     setError(null)
-    const [ordersResult, receiptsResult] = await Promise.all([
+    const [ordersResult, receiptsResult, replenishmentResult] = await Promise.all([
       supabase.from("procurement_purchase_orders").select("id, order_number, status, expected_delivery, total, currency, suppliers(name), procurement_requests(id, title, request_number, quantity, unit)").in("status", ["issued", "acknowledged", "confirmed", "partially_received"]).order("created_at", { ascending: false }),
       supabase.from("procurement_receipts").select("id, receipt_number, received_at, delivery_document, evidence_url, procurement_purchase_orders(order_number, suppliers(name)), procurement_receipt_items(received_quantity, rejected_quantity, condition, inventory_intake_required, intake_type)").eq("status", "posted").order("received_at", { ascending: false }).limit(20),
+      supabase.from("inventory_replenishment_needs").select("purchase_order_id,procurement_request_id,stock_item_id,status,inventory_stock_items(item_code,name)").in("status", ["requested", "approved", "ordered", "receiving"]),
     ])
-    const loadError = ordersResult.error || receiptsResult.error
+    const loadError = ordersResult.error || receiptsResult.error || replenishmentResult.error
     if (loadError) setError(loadError.message)
     setOrders((ordersResult.data ?? []).map((order) => ({
       ...order,
@@ -89,12 +100,11 @@ export default function ProcurementReceivingPage() {
       const purchaseOrder = firstRelation(receipt.procurement_purchase_orders)
       return {
         ...receipt,
-        procurement_purchase_orders: purchaseOrder
-          ? { ...purchaseOrder, suppliers: firstRelation(purchaseOrder.suppliers) }
-          : null,
+        procurement_purchase_orders: purchaseOrder ? { ...purchaseOrder, suppliers: firstRelation(purchaseOrder.suppliers) } : null,
         procurement_receipt_items: receipt.procurement_receipt_items ?? [],
       }
     }))
+    setReplenishments((replenishmentResult.data ?? []) as unknown as ReplenishmentNeed[])
     setLoading(false)
   }, [accessLoading, canReceive, supabase])
 
@@ -106,11 +116,13 @@ export default function ProcurementReceivingPage() {
   }, [canCreateInventoryIntake, form.inventoryIntakeRequired])
 
   const selectedOrder = orders.find((order) => order.id === form.purchaseOrderId)
+  const selectedReplenishment = selectedOrder ? replenishments.find((need) => need.purchase_order_id === selectedOrder.id || need.procurement_request_id === selectedOrder.procurement_requests?.id) ?? null : null
+  const replenishmentStock = firstRelation(selectedReplenishment?.inventory_stock_items)
 
   async function submitReceipt(event: React.FormEvent) {
     event.preventDefault()
     if (!canReceive) return setError("Tu perfil no tiene permiso para registrar recepciones de compras.")
-    if (form.inventoryIntakeRequired && !canCreateInventoryIntake) return setError("Tu perfil no tiene permiso para generar ingresos a Inventario.")
+    if (!selectedReplenishment && form.inventoryIntakeRequired && !canCreateInventoryIntake) return setError("Tu perfil no tiene permiso para generar ingresos manuales a Inventario.")
     if (!form.purchaseOrderId) return setError("Selecciona una orden de compra.")
     const received = Number(form.receivedQuantity)
     const rejected = Number(form.rejectedQuantity || 0)
@@ -119,6 +131,7 @@ export default function ProcurementReceivingPage() {
 
     setSubmitting(true)
     setError(null)
+    const mandatoryReplenishmentIntake = Boolean(selectedReplenishment)
     const { error: rpcError } = await supabase.rpc("post_procurement_receipt", {
       p_purchase_order_id: form.purchaseOrderId,
       p_received_quantity: received,
@@ -128,70 +141,54 @@ export default function ProcurementReceivingPage() {
       p_delivery_document: form.deliveryDocument.trim() || null,
       p_evidence_url: form.evidenceUrl.trim() || null,
       p_notes: form.notes.trim() || null,
-      p_inventory_intake_required: form.inventoryIntakeRequired,
-      p_intake_type: form.inventoryIntakeRequired ? form.intakeType : null,
+      p_inventory_intake_required: mandatoryReplenishmentIntake || form.inventoryIntakeRequired,
+      p_intake_type: mandatoryReplenishmentIntake ? "consumable" : form.inventoryIntakeRequired ? form.intakeType : null,
     })
     if (rpcError) {
       setError(rpcError.message)
       setSubmitting(false)
       return
     }
-    toast({ title: "Recepción registrada", description: form.inventoryIntakeRequired ? "La orden y la cola de Inventario fueron actualizadas." : "La orden de compra fue actualizada." })
+    toast({
+      title: "Recepción registrada",
+      description: mandatoryReplenishmentIntake
+        ? "La recepción quedó enviada automáticamente a Inventario para reponer el SKU de origen."
+        : form.inventoryIntakeRequired ? "La orden y la cola de Inventario fueron actualizadas." : "La orden de compra fue actualizada.",
+    })
     setForm(initialForm)
     setSubmitting(false)
     await loadData()
   }
 
-  if (accessLoading) {
-    return <AppLayout><div className="flex min-h-[320px] items-center justify-center text-sm text-muted-foreground">Validando acceso…</div></AppLayout>
-  }
+  if (accessLoading) return <AppLayout><div className="flex min-h-[320px] items-center justify-center text-sm text-muted-foreground">Validando acceso…</div></AppLayout>
 
   if (accessError || !canReceive) {
-    return (
-      <AppLayout>
-        <PageHeader title="Recepción de compras" description="Control de entregas y diferencias de órdenes de compra." />
-        <div className="p-4 sm:p-8">
-          <Card className="mx-auto max-w-xl"><CardContent className="p-8 text-center"><ShieldX className="mx-auto h-8 w-8 text-muted-foreground" /><h2 className="mt-4 text-lg font-semibold">Acceso restringido</h2><p className="mt-2 text-sm text-muted-foreground">Tu perfil no tiene permiso de Compras para registrar recepciones.</p></CardContent></Card>
-        </div>
-      </AppLayout>
-    )
+    return <AppLayout><PageHeader title="Recepción de compras" description="Control de entregas y diferencias de órdenes de compra." /><div className="p-4 sm:p-8"><Card className="mx-auto max-w-xl"><CardContent className="p-8 text-center"><ShieldX className="mx-auto h-8 w-8 text-muted-foreground" /><h2 className="mt-4 text-lg font-semibold">Acceso restringido</h2><p className="mt-2 text-sm text-muted-foreground">Tu perfil no tiene permiso de Compras para registrar recepciones.</p></CardContent></Card></div></AppLayout>
   }
 
-  return (
-    <AppLayout>
-      <PageHeader title="Recepción de compras" description="Control de entregas parciales o totales, diferencias y traspaso a Inventario." actions={<Button variant="outline" asChild><Link href="/procurement"><ArrowLeft className="mr-2 h-4 w-4" />Volver a Compras</Link></Button>} />
-      <div className="space-y-6 p-4 sm:p-8">
-        {error && <Card className="border-destructive/50"><CardContent className="flex items-center justify-between gap-4 p-4"><p className="text-sm text-destructive">{error}</p><Button variant="outline" size="sm" onClick={() => void loadData()}><RefreshCw className="mr-2 h-4 w-4" />Reintentar</Button></CardContent></Card>}
+  return <AppLayout>
+    <PageHeader title="Recepción de compras" description="Control de entregas parciales o totales, diferencias y traspaso a Inventario." actions={<Button variant="outline" asChild><Link href="/procurement"><ArrowLeft className="mr-2 h-4 w-4" />Volver a Compras</Link></Button>} />
+    <div className="space-y-6 p-4 sm:p-8">
+      {error && <Card className="border-destructive/50"><CardContent className="flex items-center justify-between gap-4 p-4"><p className="text-sm text-destructive">{error}</p><Button variant="outline" size="sm" onClick={() => void loadData()}><RefreshCw className="mr-2 h-4 w-4" />Reintentar</Button></CardContent></Card>}
+      <div className="grid gap-4 md:grid-cols-3"><Metric label="Órdenes recepcionables" value={orders.length} /><Metric label="Recepciones registradas" value={receipts.length} /><Metric label="Ingresos enviados a Inventario" value={receipts.reduce((sum, receipt) => sum + receipt.procurement_receipt_items.filter((item) => item.inventory_intake_required).length, 0)} /></div>
 
-        <div className="grid gap-4 md:grid-cols-3">
-          <Metric label="Órdenes recepcionables" value={orders.length} />
-          <Metric label="Recepciones registradas" value={receipts.length} />
-          <Metric label="Ingresos enviados a Inventario" value={receipts.reduce((sum, receipt) => sum + receipt.procurement_receipt_items.filter((item) => item.inventory_intake_required).length, 0)} />
-        </div>
+      <Card><CardHeader><CardTitle>Registrar recepción</CardTitle><CardDescription>La cantidad acumulada nunca puede superar la solicitada. Las compras originadas por reposición siempre generan ingreso consumible al SKU original; en compras normales el envío a Inventario sigue siendo explícito y requiere permiso.</CardDescription></CardHeader><CardContent>
+        {orders.length === 0 ? <div className="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">No existen órdenes emitidas, acusadas, confirmadas o parcialmente recibidas.</div> : <form onSubmit={submitReceipt} className="space-y-4">
+          <div><label className="text-sm font-medium">Orden de compra</label><select className="mt-1 w-full rounded-md border bg-background px-3 py-2 text-sm" value={form.purchaseOrderId} onChange={(event) => setForm({ ...form, purchaseOrderId: event.target.value, receivedQuantity: "" })}><option value="">Seleccionar orden</option>{orders.map((order) => <option key={order.id} value={order.id}>{order.order_number ?? "Sin número"} · {order.procurement_requests?.title ?? "Solicitud"} · {order.suppliers?.name ?? "Proveedor"}</option>)}</select></div>
+          {selectedOrder && <div className="rounded-lg border bg-muted/20 p-3 text-sm"><p className="font-medium">{selectedOrder.procurement_requests?.title}</p><p className="text-muted-foreground">Pedido: {selectedOrder.procurement_requests?.quantity} {selectedOrder.procurement_requests?.unit} · Estado: {selectedOrder.status}</p></div>}
+          {selectedReplenishment && <div className="flex gap-3 rounded-lg border border-emerald-300 bg-emerald-50/50 p-4 text-sm"><ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-emerald-700" /><div><p className="font-medium text-emerald-900">Reposición de Inventario protegida</p><p className="mt-1 text-emerald-800">La cantidad aceptada irá obligatoriamente a la cola de Inventario como consumible y sólo podrá aplicarse al SKU {replenishmentStock?.item_code ?? selectedReplenishment.stock_item_id.slice(0, 8)} · {replenishmentStock?.name ?? "de origen"}.</p></div></div>}
+          <div className="grid gap-4 md:grid-cols-3"><Field label="Cantidad aceptada"><Input required type="number" min="0" step="0.01" value={form.receivedQuantity} onChange={(event) => setForm({ ...form, receivedQuantity: event.target.value })} /></Field><Field label="Cantidad rechazada"><Input type="number" min="0" step="0.01" value={form.rejectedQuantity} onChange={(event) => setForm({ ...form, rejectedQuantity: event.target.value })} /></Field><Field label="Condición"><select className="w-full rounded-md border bg-background px-3 py-2 text-sm" value={form.condition} onChange={(event) => setForm({ ...form, condition: event.target.value })}><option value="accepted">Aceptado</option><option value="partial_damage">Daño parcial</option><option value="damaged">Dañado</option><option value="incorrect">Producto incorrecto</option></select></Field></div>
+          <Field label="Motivo de diferencia"><Input value={form.discrepancyReason} onChange={(event) => setForm({ ...form, discrepancyReason: event.target.value })} placeholder="Obligatorio si existe rechazo, daño o diferencia" /></Field>
+          <div className="grid gap-4 md:grid-cols-2"><Field label="Guía o documento de entrega"><Input value={form.deliveryDocument} onChange={(event) => setForm({ ...form, deliveryDocument: event.target.value })} /></Field><Field label="URL de evidencia"><Input type="url" value={form.evidenceUrl} onChange={(event) => setForm({ ...form, evidenceUrl: event.target.value })} placeholder="Foto o documento almacenado" /></Field></div>
+          <Field label="Notas"><textarea className="min-h-20 w-full rounded-md border bg-background px-3 py-2 text-sm" value={form.notes} onChange={(event) => setForm({ ...form, notes: event.target.value })} /></Field>
+          {!selectedReplenishment && (canCreateInventoryIntake ? <div className="rounded-lg border p-4"><label className="flex items-center gap-2 text-sm font-medium"><input type="checkbox" checked={form.inventoryIntakeRequired} onChange={(event) => setForm({ ...form, inventoryIntakeRequired: event.target.checked })} />Enviar a cola de Inventario</label>{form.inventoryIntakeRequired && <select className="mt-3 w-full rounded-md border bg-background px-3 py-2 text-sm" value={form.intakeType} onChange={(event) => setForm({ ...form, intakeType: event.target.value })}><option value="asset">Activo individual</option><option value="consumable">Insumo consumible</option></select>}</div> : <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">Puedes registrar la recepción, pero tu perfil no puede generar ingresos manuales a Inventario.</div>)}
+          <div className="flex justify-end"><Button type="submit" disabled={submitting}><PackageCheck className="mr-2 h-4 w-4" />{submitting ? "Registrando…" : "Confirmar recepción"}</Button></div>
+        </form>}
+      </CardContent></Card>
 
-        <Card>
-          <CardHeader><CardTitle>Registrar recepción</CardTitle><CardDescription>La cantidad acumulada nunca puede superar la cantidad solicitada. Se admiten órdenes emitidas, acusadas, confirmadas o parcialmente recibidas. El traspaso a Inventario requiere permiso adicional.</CardDescription></CardHeader>
-          <CardContent>
-            {orders.length === 0 ? <div className="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">No existen órdenes emitidas, acusadas, confirmadas o parcialmente recibidas.</div> : <form onSubmit={submitReceipt} className="space-y-4">
-              <div><label className="text-sm font-medium">Orden de compra</label><select className="mt-1 w-full rounded-md border bg-background px-3 py-2 text-sm" value={form.purchaseOrderId} onChange={(event) => setForm({ ...form, purchaseOrderId: event.target.value, receivedQuantity: "" })}><option value="">Seleccionar orden</option>{orders.map((order) => <option key={order.id} value={order.id}>{order.order_number ?? "Sin número"} · {order.procurement_requests?.title ?? "Solicitud"} · {order.suppliers?.name ?? "Proveedor"}</option>)}</select></div>
-              {selectedOrder && <div className="rounded-lg border bg-muted/20 p-3 text-sm"><p className="font-medium">{selectedOrder.procurement_requests?.title}</p><p className="text-muted-foreground">Pedido: {selectedOrder.procurement_requests?.quantity} {selectedOrder.procurement_requests?.unit} · Estado: {selectedOrder.status}</p></div>}
-              <div className="grid gap-4 md:grid-cols-3"><Field label="Cantidad aceptada"><Input required type="number" min="0" step="0.01" value={form.receivedQuantity} onChange={(event) => setForm({ ...form, receivedQuantity: event.target.value })} /></Field><Field label="Cantidad rechazada"><Input type="number" min="0" step="0.01" value={form.rejectedQuantity} onChange={(event) => setForm({ ...form, rejectedQuantity: event.target.value })} /></Field><Field label="Condición"><select className="w-full rounded-md border bg-background px-3 py-2 text-sm" value={form.condition} onChange={(event) => setForm({ ...form, condition: event.target.value })}><option value="accepted">Aceptado</option><option value="partial_damage">Daño parcial</option><option value="damaged">Dañado</option><option value="incorrect">Producto incorrecto</option></select></Field></div>
-              <Field label="Motivo de diferencia"><Input value={form.discrepancyReason} onChange={(event) => setForm({ ...form, discrepancyReason: event.target.value })} placeholder="Obligatorio si existe rechazo, daño o diferencia" /></Field>
-              <div className="grid gap-4 md:grid-cols-2"><Field label="Guía o documento de entrega"><Input value={form.deliveryDocument} onChange={(event) => setForm({ ...form, deliveryDocument: event.target.value })} /></Field><Field label="URL de evidencia"><Input type="url" value={form.evidenceUrl} onChange={(event) => setForm({ ...form, evidenceUrl: event.target.value })} placeholder="Foto o documento almacenado" /></Field></div>
-              <Field label="Notas"><textarea className="min-h-20 w-full rounded-md border bg-background px-3 py-2 text-sm" value={form.notes} onChange={(event) => setForm({ ...form, notes: event.target.value })} /></Field>
-              {canCreateInventoryIntake ? <div className="rounded-lg border p-4"><label className="flex items-center gap-2 text-sm font-medium"><input type="checkbox" checked={form.inventoryIntakeRequired} onChange={(event) => setForm({ ...form, inventoryIntakeRequired: event.target.checked })} />Enviar a cola de Inventario</label>{form.inventoryIntakeRequired && <select className="mt-3 w-full rounded-md border bg-background px-3 py-2 text-sm" value={form.intakeType} onChange={(event) => setForm({ ...form, intakeType: event.target.value })}><option value="asset">Activo individual</option><option value="consumable">Insumo consumible</option></select>}</div> : <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">Puedes registrar la recepción, pero tu perfil no puede generar ingresos a Inventario.</div>}
-              <div className="flex justify-end"><Button type="submit" disabled={submitting}><PackageCheck className="mr-2 h-4 w-4" />{submitting ? "Registrando…" : "Confirmar recepción"}</Button></div>
-            </form>}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader><CardTitle>Historial reciente</CardTitle><CardDescription>Recepciones publicadas y su vínculo con Inventario.</CardDescription></CardHeader>
-          <CardContent>{loading ? <p className="py-8 text-center text-sm text-muted-foreground">Cargando recepciones…</p> : receipts.length === 0 ? <p className="py-8 text-center text-sm text-muted-foreground">Todavía no hay recepciones registradas.</p> : <div className="space-y-3">{receipts.map((receipt) => { const item = receipt.procurement_receipt_items[0]; return <div key={receipt.id} className="rounded-lg border p-4"><div className="flex flex-wrap items-start justify-between gap-3"><div><p className="font-medium">{receipt.receipt_number ?? "Recepción"}</p><p className="text-sm text-muted-foreground">{receipt.procurement_purchase_orders?.order_number ?? "OC"} · {receipt.procurement_purchase_orders?.suppliers?.name ?? "Proveedor"}</p></div><Badge variant="outline"><CheckCircle2 className="mr-1 h-3.5 w-3.5" />Publicada</Badge></div><p className="mt-3 text-sm">Aceptado: {item?.received_quantity ?? 0} · Rechazado: {item?.rejected_quantity ?? 0} · Condición: {item?.condition ?? "-"}</p>{item?.inventory_intake_required && <p className="mt-1 text-xs text-muted-foreground">Enviado a Inventario · {item.intake_type === "asset" ? "Activo" : "Consumible"}</p>}</div>})}</div>}</CardContent>
-        </Card>
-      </div>
-    </AppLayout>
-  )
+      <Card><CardHeader><CardTitle>Historial reciente</CardTitle><CardDescription>Recepciones publicadas y su vínculo con Inventario.</CardDescription></CardHeader><CardContent>{loading ? <p className="py-8 text-center text-sm text-muted-foreground">Cargando recepciones…</p> : receipts.length === 0 ? <p className="py-8 text-center text-sm text-muted-foreground">Todavía no hay recepciones registradas.</p> : <div className="space-y-3">{receipts.map((receipt) => { const item = receipt.procurement_receipt_items[0]; return <div key={receipt.id} className="rounded-lg border p-4"><div className="flex flex-wrap items-start justify-between gap-3"><div><p className="font-medium">{receipt.receipt_number ?? "Recepción"}</p><p className="text-sm text-muted-foreground">{receipt.procurement_purchase_orders?.order_number ?? "OC"} · {receipt.procurement_purchase_orders?.suppliers?.name ?? "Proveedor"}</p></div><Badge variant="outline"><CheckCircle2 className="mr-1 h-3.5 w-3.5" />Publicada</Badge></div><p className="mt-3 text-sm">Aceptado: {item?.received_quantity ?? 0} · Rechazado: {item?.rejected_quantity ?? 0} · Condición: {item?.condition ?? "-"}</p>{item?.inventory_intake_required && <p className="mt-1 text-xs text-muted-foreground">Enviado a Inventario · {item.intake_type === "asset" ? "Activo" : "Consumible"}</p>}</div>})}</div>}</CardContent></Card>
+    </div>
+  </AppLayout>
 }
 
 function Metric({ label, value }: { label: string; value: number }) { return <Card><CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">{label}</CardTitle></CardHeader><CardContent><div className="text-3xl font-semibold">{value.toLocaleString("es-CL")}</div></CardContent></Card> }
