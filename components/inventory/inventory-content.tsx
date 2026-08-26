@@ -5,6 +5,7 @@ import { AlertTriangle, Boxes, Package, Plus, RefreshCw, Search, UserRound, Ware
 import { AppLayout } from "@/components/app-layout"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { createBrowserClient } from "@/lib/supabase/client"
 import { InventoryTable } from "@/components/inventory/inventory-table"
@@ -53,6 +54,9 @@ export function InventoryContent() {
   const [editingAsset, setEditingAsset] = useState<InventoryAsset | null>(null)
   const [categories, setCategories] = useState<InventoryMetadataOption[]>([])
   const [costCenters, setCostCenters] = useState<InventoryMetadataOption[]>([])
+  const [retirementTarget, setRetirementTarget] = useState<InventoryAsset | null>(null)
+  const [retirementReason, setRetirementReason] = useState("")
+  const [submittingRetirement, setSubmittingRetirement] = useState(false)
 
   const loadAssets = useCallback(async () => {
     setLoading(true)
@@ -142,26 +146,38 @@ export function InventoryContent() {
 
   const handleFormClose = () => { setShowForm(false); setEditingAsset(null) }
 
-  const handleRetire = async (id: string) => {
+  const openRetirementRequest = (id: string) => {
     const asset = assets.find((item) => item.id === id)
     if (!asset || asset.status === "deprecated") return
-    if (!window.confirm(`¿Marcar “${asset.name}” (${asset.asset_code}) como retirado? El registro y sus movimientos se conservarán.`)) return
+    setRetirementTarget(asset)
+    setRetirementReason("")
+  }
 
-    const now = new Date().toISOString()
-    const { error: updateError } = await supabase.from("assets").update({ status: "deprecated", updated_at: now }).eq("id", id)
-    if (updateError) {
-      toast({ title: "No se pudo retirar", description: updateError.message, variant: "destructive" })
+  const closeRetirementRequest = () => {
+    if (submittingRetirement) return
+    setRetirementTarget(null)
+    setRetirementReason("")
+  }
+
+  const submitRetirementRequest = async () => {
+    if (!retirementTarget || !retirementReason.trim() || submittingRetirement) return
+    setSubmittingRetirement(true)
+    const { error: retirementError } = await supabase.rpc("request_inventory_asset_retirement", {
+      p_asset_id: retirementTarget.id,
+      p_reason: retirementReason.trim(),
+    })
+    setSubmittingRetirement(false)
+
+    if (retirementError) {
+      toast({ title: "No se pudo crear la solicitud", description: retirementError.message, variant: "destructive" })
       return
     }
-    await supabase.from("inventory_movements").insert({
-      asset_id: id,
-      movement_type: "retirement",
-      from_location_id: asset.warehouse_location_id ?? null,
-      assigned_to: asset.assigned_to ?? null,
-      notes: "Retiro registrado desde el inventario.",
-      moved_at: now,
+
+    toast({
+      title: "Solicitud de baja creada",
+      description: `${retirementTarget.name} continúa activo hasta que un aprobador revise y ejecute la baja.`,
     })
-    toast({ title: "Activo retirado", description: `${asset.name} permanece en el historial con estado Retirado.` })
+    closeRetirementRequest()
     await loadAssets()
   }
 
@@ -172,7 +188,7 @@ export function InventoryContent() {
           <div>
             <p className="mb-1 text-xs font-semibold uppercase tracking-[0.16em] text-primary">Operaciones · Fundo Corcovado</p>
             <h1 className="text-3xl font-semibold tracking-tight">Inventario, bodegas y equipos</h1>
-            <p className="mt-1 max-w-3xl text-sm text-muted-foreground">Control de activos individuales por clase, bodega, posición de resguardo y responsable. Cada retiro conserva su trazabilidad en el historial de movimientos.</p>
+            <p className="mt-1 max-w-3xl text-sm text-muted-foreground">Control de activos individuales por clase, bodega, posición de resguardo y responsable. Las bajas requieren solicitud, aprobación y ejecución con trazabilidad.</p>
           </div>
           <Button onClick={() => setShowForm(true)}><Plus className="mr-2 h-4 w-4" />Registrar equipo o activo</Button>
         </div>
@@ -211,10 +227,27 @@ export function InventoryContent() {
 
         <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-muted-foreground"><span>{filteredAssets.length.toLocaleString("es-CL")} registros visibles</span><span>Valor de compra visible: {new Intl.NumberFormat("es-CL", { style: "currency", currency: "CLP", maximumFractionDigits: 0 }).format(registeredValue)}</span></div>
 
-        {loading ? <Card><CardContent className="py-12 text-center text-sm text-muted-foreground">Cargando inventario…</CardContent></Card> : filteredAssets.length === 0 ? <Card><CardContent className="py-12 text-center"><Package className="mx-auto mb-3 h-6 w-6 text-muted-foreground" /><p className="font-medium">No hay registros para esta vista.</p><p className="mt-1 text-sm text-muted-foreground">Ajusta los filtros o registra un nuevo equipo o activo.</p></CardContent></Card> : <InventoryTable assets={filteredAssets} loading={false} onEdit={setEditingAsset} onDelete={handleRetire} onEditClick={() => setShowForm(true)} />}
+        {loading ? <Card><CardContent className="py-12 text-center text-sm text-muted-foreground">Cargando inventario…</CardContent></Card> : filteredAssets.length === 0 ? <Card><CardContent className="py-12 text-center"><Package className="mx-auto mb-3 h-6 w-6 text-muted-foreground" /><p className="font-medium">No hay registros para esta vista.</p><p className="mt-1 text-sm text-muted-foreground">Ajusta los filtros o registra un nuevo equipo o activo.</p></CardContent></Card> : <InventoryTable assets={filteredAssets} loading={false} onEdit={setEditingAsset} onDelete={openRetirementRequest} onEditClick={() => setShowForm(true)} />}
 
         {showForm && <InventoryForm asset={editingAsset} categories={categories} costCenters={costCenters} onClose={handleFormClose} onSuccess={async () => { await loadAssets(); handleFormClose() }} />}
       </div>
+
+      <Dialog open={Boolean(retirementTarget)} onOpenChange={(open) => { if (!open) closeRetirementRequest() }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Solicitar baja de activo</DialogTitle>
+            <DialogDescription>{retirementTarget ? `${retirementTarget.name} (${retirementTarget.asset_code}) seguirá activo hasta que un aprobador revise y ejecute la baja.` : "La baja requiere aprobación."}</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <label htmlFor="retirement-reason" className="text-sm font-medium">Motivo obligatorio</label>
+            <textarea id="retirement-reason" className="min-h-28 w-full rounded-md border bg-background px-3 py-2 text-sm" value={retirementReason} onChange={(event) => setRetirementReason(event.target.value)} placeholder="Describe la causa, condición del activo y cualquier referencia operacional relevante." />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={closeRetirementRequest} disabled={submittingRetirement}>Cancelar</Button>
+            <Button variant="destructive" onClick={() => void submitRetirementRequest()} disabled={submittingRetirement || !retirementReason.trim()}>{submittingRetirement ? "Registrando…" : "Crear solicitud"}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </AppLayout>
   )
 }
