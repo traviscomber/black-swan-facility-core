@@ -73,7 +73,7 @@ export function HospitalityCommandStrip() {
         .not("status", "in", "(completed,resolved,cancelled,canceled)"),
       supabase
         .from("reservation_operational_exceptions")
-        .select("reservation_id,title,detail,exception_state,blocks_check_in,blocks_check_out")
+        .select("reservation_id,title,detail,exception_state,blocks_check_in,blocks_check_out", { count: "exact" })
         .in("exception_state", ["open", "overdue"])
         .or("blocks_check_in.eq.true,blocks_check_out.eq.true")
         .limit(12),
@@ -112,7 +112,7 @@ export function HospitalityCommandStrip() {
       departures: departuresResult.count ?? 0,
       arrivalsNotReady,
       openRequests: requestsResult.count ?? 0,
-      blockingExceptions: nextExceptions.length,
+      blockingExceptions: exceptionsResult.count ?? nextExceptions.length,
     })
     setExceptions(nextExceptions)
     setLoading(false)
