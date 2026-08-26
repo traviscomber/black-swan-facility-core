@@ -68,14 +68,22 @@ async function updateUserAccess(formData: FormData) {
   if (currentUserError || !currentUserData.user) throw new Error(currentUserError?.message ?? "Usuario no encontrado")
   const target = currentUserData.user
 
-  const { data: previousScopes, error: previousScopesError } = await admin
-    .from("user_operational_scopes")
-    .select("department,location_id,is_active")
-    .eq("user_id", targetUserId)
+  const [{ data: previousScopes, error: previousScopesError }, { data: previousProfile, error: previousProfileError }] = await Promise.all([
+    admin
+      .from("user_operational_scopes")
+      .select("department,location_id,is_active")
+      .eq("user_id", targetUserId),
+    admin
+      .from("user_access_profiles")
+      .select("is_active")
+      .eq("user_id", targetUserId)
+      .maybeSingle(),
+  ])
   if (previousScopesError) throw new Error(previousScopesError.message)
+  if (previousProfileError) throw new Error(previousProfileError.message)
 
   const previousRole = String(target.app_metadata?.procurement_role ?? "operator")
-  const previousActive = !target.banned_until || new Date(target.banned_until).getTime() <= Date.now()
+  const previousActive = previousProfile?.is_active ?? true
 
   const { error: authError } = await admin.auth.admin.updateUserById(targetUserId, {
     app_metadata: { ...(target.app_metadata ?? {}), procurement_role: role },
@@ -96,15 +104,31 @@ async function updateUserAccess(formData: FormData) {
   const { error: deleteError } = await admin.from("user_operational_scopes").delete().eq("user_id", targetUserId)
   if (deleteError) throw new Error(deleteError.message)
 
-  const scopeRows = departments.flatMap((department) =>
-    locations.length > 0
-      ? locations.map((locationId) => ({ user_id: targetUserId, department, location_id: locationId, is_active: true, granted_by: actor.id, notes: reason }))
-      : [{ user_id: targetUserId, department, location_id: null, is_active: true, granted_by: actor.id, notes: reason }],
-  )
-
-  if (scopeRows.length > 0) {
-    const { error: scopeError } = await admin.from("user_operational_scopes").insert(scopeRows)
-    if (scopeError) throw new Error(scopeError.message)
+  if (departments.length > 0) {
+    if (locations.length > 0) {
+      const locationScopeRows = departments.flatMap((department) =>
+        locations.map((locationId) => ({
+          user_id: targetUserId,
+          department,
+          location_id: locationId,
+          is_active: true,
+          granted_by: actor.id,
+          notes: reason,
+        })),
+      )
+      const { error: scopeError } = await admin.from("user_operational_scopes").insert(locationScopeRows)
+      if (scopeError) throw new Error(scopeError.message)
+    } else {
+      const departmentScopeRows = departments.map((department) => ({
+        user_id: targetUserId,
+        department,
+        is_active: true,
+        granted_by: actor.id,
+        notes: reason,
+      }))
+      const { error: scopeError } = await admin.from("user_operational_scopes").insert(departmentScopeRows)
+      if (scopeError) throw new Error(scopeError.message)
+    }
   }
 
   const auditRows = []
@@ -142,7 +166,7 @@ export default async function AdminAccessPage() {
         email: user.email ?? "",
         name: String(user.user_metadata?.full_name ?? user.user_metadata?.name ?? user.email ?? "Usuario"),
         role: profile?.role_key ?? String(user.app_metadata?.procurement_role ?? "operator"),
-        isActive: profile?.is_active ?? (!user.banned_until || new Date(user.banned_until).getTime() <= Date.now()),
+        isActive: profile?.is_active ?? true,
         departments: [...new Set(userScopes.map((scope) => scope.department).filter(Boolean))] as string[],
         locations: [...new Set(userScopes.map((scope) => scope.location_id).filter(Boolean))] as string[],
         restricted: userScopes.length > 0,

@@ -47,6 +47,10 @@ const initialForm = {
   intakeType: "asset",
 }
 
+function firstRelation<T>(value: T | T[] | null | undefined): T | null {
+  return Array.isArray(value) ? value[0] ?? null : value ?? null
+}
+
 export default function ProcurementReceivingPage() {
   const supabase = useMemo(() => createBrowserClient(), [])
   const { toast } = useToast()
@@ -76,8 +80,21 @@ export default function ProcurementReceivingPage() {
     ])
     const loadError = ordersResult.error || receiptsResult.error
     if (loadError) setError(loadError.message)
-    setOrders((ordersResult.data ?? []) as Order[])
-    setReceipts((receiptsResult.data ?? []) as Receipt[])
+    setOrders((ordersResult.data ?? []).map((order) => ({
+      ...order,
+      suppliers: firstRelation(order.suppliers),
+      procurement_requests: firstRelation(order.procurement_requests),
+    })))
+    setReceipts((receiptsResult.data ?? []).map((receipt) => {
+      const purchaseOrder = firstRelation(receipt.procurement_purchase_orders)
+      return {
+        ...receipt,
+        procurement_purchase_orders: purchaseOrder
+          ? { ...purchaseOrder, suppliers: firstRelation(purchaseOrder.suppliers) }
+          : null,
+        procurement_receipt_items: receipt.procurement_receipt_items ?? [],
+      }
+    }))
     setLoading(false)
   }, [accessLoading, canReceive, supabase])
 

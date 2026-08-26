@@ -1,27 +1,19 @@
 "use client"
 
 import type React from "react"
-
-import { useState, useEffect } from "react"
-import { useParams, useRouter } from "next/navigation"
+import { useCallback, useEffect, useMemo, useState } from "react"
+import { useParams } from "next/navigation"
+import Link from "next/link"
+import { ArrowLeft, BedIcon, Home, Pencil, Plus, Trash2 } from "lucide-react"
 import { createBrowserClient } from "@/lib/supabase/client"
-import { Plus, Pencil, Trash2, ArrowLeft, Home, BedIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useToast } from "@/hooks/use-toast"
-import Link from "next/link"
 
 interface Location {
   id: string
@@ -50,763 +42,295 @@ interface Bed {
   notes: string | null
 }
 
+function errorMessage(error: unknown) {
+  return error instanceof Error ? error.message : "Unexpected error"
+}
+
+function parseAmenities(value: FormDataEntryValue | null) {
+  return String(value ?? "")
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean)
+}
+
 export default function LocationDetailPage() {
-  const params = useParams()
-  const router = useRouter()
-  const locationId = params.id as string
+  const params = useParams<{ id: string }>()
+  const locationId = params.id
+  const supabase = useMemo(() => createBrowserClient(), [])
   const { toast } = useToast()
 
   const [location, setLocation] = useState<Location | null>(null)
   const [rooms, setRooms] = useState<Room[]>([])
   const [beds, setBeds] = useState<Bed[]>([])
+  const [loading, setLoading] = useState(true)
 
   const [isAddRoomDialogOpen, setIsAddRoomDialogOpen] = useState(false)
-  const [isEditRoomDialogOpen, setIsEditRoomDialogOpen] = useState(false)
   const [editingRoom, setEditingRoom] = useState<Room | null>(null)
-
-  const [isAddBedDialogOpen, setIsAddBedDialogOpen] = useState(false)
   const [selectedRoomForBed, setSelectedRoomForBed] = useState<string | null>(null)
-  const [isEditBedDialogOpen, setIsEditBedDialogOpen] = useState(false)
   const [editingBed, setEditingBed] = useState<Bed | null>(null)
 
-  const supabase = createBrowserClient()
+  const loadLocationData = useCallback(async () => {
+    setLoading(true)
+    const [locationResult, roomsResult] = await Promise.all([
+      supabase.from("locations").select("id,name,description").eq("id", locationId).single(),
+      supabase.from("rooms").select("id,room_number,room_type,capacity,rate_per_night,status,floor,amenities,notes").eq("location_id", locationId).order("room_number"),
+    ])
 
-  useEffect(() => {
-    loadLocationData()
-  }, [locationId])
-
-  async function loadLocationData() {
-    // Load location details
-    const { data: locationData, error: locationError } = await supabase
-      .from("locations")
-      .select("*")
-      .eq("id", locationId)
-      .single()
-
-    if (locationError) {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Failed to load location details",
-      })
+    if (locationResult.error) {
+      toast({ variant: "destructive", title: "No fue posible cargar la instalación", description: locationResult.error.message })
+      setLocation(null)
+      setRooms([])
+      setBeds([])
+      setLoading(false)
       return
     }
 
-    setLocation(locationData)
+    setLocation(locationResult.data)
+    if (roomsResult.error) {
+      toast({ variant: "destructive", title: "No fue posible cargar las habitaciones", description: roomsResult.error.message })
+      setRooms([])
+      setBeds([])
+      setLoading(false)
+      return
+    }
 
-    const { data: roomsData, error: roomsError } = await supabase
-      .from("rooms")
-      .select("*")
-      .eq("location_id", locationId)
-      .order("room_number")
+    const nextRooms = roomsResult.data ?? []
+    setRooms(nextRooms)
+    if (nextRooms.length === 0) {
+      setBeds([])
+      setLoading(false)
+      return
+    }
 
-    if (roomsError) {
-      console.error("Error loading rooms:", roomsError)
+    const { data: bedData, error: bedError } = await supabase
+      .from("beds")
+      .select("id,bed_number,bed_type,room_id,is_available,notes")
+      .in("room_id", nextRooms.map((room) => room.id))
+      .order("bed_number")
+
+    if (bedError) {
+      toast({ variant: "destructive", title: "No fue posible cargar las camas", description: bedError.message })
+      setBeds([])
     } else {
-      setRooms(roomsData || [])
-
-      // Load all beds for these rooms
-      if (roomsData && roomsData.length > 0) {
-        const roomIds = roomsData.map((r) => r.id)
-        const { data: bedsData, error: bedsError } = await supabase
-          .from("beds")
-          .select("*")
-          .in("room_id", roomIds)
-          .order("bed_number")
-
-        if (bedsError) {
-          console.error("Error loading beds:", bedsError)
-        } else {
-          setBeds(bedsData || [])
-        }
-      }
+      setBeds(bedData ?? [])
     }
-  }
+    setLoading(false)
+  }, [locationId, supabase, toast])
 
-  async function handleAddRoom(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault()
-    console.log("[v0] Add Room form submitted")
+  useEffect(() => { void loadLocationData() }, [loadLocationData])
 
-    const formData = new FormData(e.currentTarget)
-    const data = {
-      room_number: formData.get("room_number") as string,
-      room_type: formData.get("room_type") as string,
-      capacity: Number(formData.get("capacity")),
-      rate_per_night: Number(formData.get("rate_per_night")),
-      status: formData.get("status") as string,
-      floor: formData.get("floor") as string,
-      amenities: (formData.get("amenities") as string)
-        .split(",")
-        .map((a) => a.trim())
-        .filter(Boolean),
-      location_id: locationId,
-    }
-
-    console.log("[v0] Form data:", data)
-
-    if (!data.room_type) {
-      toast({
-        variant: "destructive",
-        title: "Validation Error",
-        description: "Please select a room type",
-      })
-      return
-    }
+  async function handleAddRoom(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    const formData = new FormData(event.currentTarget)
+    const roomNumber = String(formData.get("room_number") ?? "").trim()
+    const roomType = String(formData.get("room_type") ?? "").trim()
+    if (!roomNumber || !roomType) return
 
     try {
-      const { error: checkError } = await supabase
+      const { data: existingRoom, error: checkError } = await supabase
         .from("rooms")
-        .select("id, room_number")
-        .eq("room_number", data.room_number)
+        .select("id")
+        .eq("location_id", locationId)
+        .eq("room_number", roomNumber)
         .maybeSingle()
-
-      if (checkError) {
-        console.error("[v0] Error checking room:", checkError)
-        throw checkError
-      }
-
-      if (checkError) {
-        toast({
-          variant: "destructive",
-          title: "Error",
-          description: "Failed to check room existence",
-        })
+      if (checkError) throw checkError
+      if (existingRoom) {
+        toast({ variant: "destructive", title: "Habitación duplicada", description: "Ya existe una habitación con ese número o nombre en esta instalación." })
         return
       }
 
-      if (checkError && checkError.message?.includes("Row exists")) {
-        toast({
-          variant: "destructive",
-          title: "Error",
-          description: "Room number already exists. Please use a different room number.",
-        })
-        return
-      }
-
-      const { error } = await supabase.from("rooms").insert([
-        {
-          location_id: data.location_id,
-          room_number: data.room_number,
-          room_type: data.room_type,
-          capacity: data.capacity,
-          rate_per_night: data.rate_per_night,
-          status: data.status,
-          floor: data.floor,
-          amenities: data.amenities,
-        },
-      ])
-
-      if (error) {
-        console.error("[v0] Error adding room:", error.message)
-        throw error
-      }
-
-      console.log("[v0] Room added successfully")
-      toast({
-        title: "Success",
-        description: "Room added successfully",
+      const { error } = await supabase.from("rooms").insert({
+        location_id: locationId,
+        room_number: roomNumber,
+        room_type: roomType,
+        capacity: Number(formData.get("capacity") ?? 1),
+        rate_per_night: Number(formData.get("rate_per_night") ?? 0),
+        status: String(formData.get("status") ?? "available"),
+        floor: String(formData.get("floor") ?? "").trim() || null,
+        amenities: parseAmenities(formData.get("amenities")),
+        notes: String(formData.get("notes") ?? "").trim() || null,
       })
+      if (error) throw error
       setIsAddRoomDialogOpen(false)
-      loadLocationData()
-    } catch (error: any) {
-      console.error("[v0] Error adding room:", error.message)
-      if (error.message?.includes("duplicate key")) {
-        toast({
-          variant: "destructive",
-          title: "Error",
-          description: "This room number already exists. Please use a different room number.",
-        })
-      } else {
-        toast({
-          variant: "destructive",
-          title: "Error",
-          description: `Failed to add room: ${error.message}`,
-        })
-      }
+      toast({ title: "Habitación creada", description: `${roomNumber} quedó registrada en ${location?.name ?? "la instalación"}.` })
+      await loadLocationData()
+    } catch (error) {
+      toast({ variant: "destructive", title: "No fue posible crear la habitación", description: errorMessage(error) })
     }
   }
 
-  async function handleEditRoom(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault()
+  async function handleEditRoom(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault()
     if (!editingRoom) return
+    const formData = new FormData(event.currentTarget)
+    const roomNumber = String(formData.get("room_number") ?? "").trim()
 
-    const formData = new FormData(e.currentTarget)
+    const { data: duplicate, error: duplicateError } = await supabase
+      .from("rooms")
+      .select("id")
+      .eq("location_id", locationId)
+      .eq("room_number", roomNumber)
+      .neq("id", editingRoom.id)
+      .maybeSingle()
+    if (duplicateError) {
+      toast({ variant: "destructive", title: "No fue posible validar la habitación", description: duplicateError.message })
+      return
+    }
+    if (duplicate) {
+      toast({ variant: "destructive", title: "Habitación duplicada", description: "Ya existe una habitación con ese número o nombre en esta instalación." })
+      return
+    }
 
     const { error } = await supabase
       .from("rooms")
       .update({
-        room_number: formData.get("room_number") as string,
-        room_type: formData.get("room_type") as string,
-        capacity: Number(formData.get("capacity")),
-        rate_per_night: Number(formData.get("rate_per_night")),
-        status: formData.get("status") as string,
-        floor: formData.get("floor") as string,
-        amenities: (formData.get("amenities") as string)
-          .split(",")
-          .map((a) => a.trim())
-          .filter(Boolean),
-        notes: formData.get("notes") as string,
+        room_number: roomNumber,
+        room_type: String(formData.get("room_type") ?? ""),
+        capacity: Number(formData.get("capacity") ?? 1),
+        rate_per_night: Number(formData.get("rate_per_night") ?? 0),
+        status: String(formData.get("status") ?? "available"),
+        floor: String(formData.get("floor") ?? "").trim() || null,
+        amenities: parseAmenities(formData.get("amenities")),
+        notes: String(formData.get("notes") ?? "").trim() || null,
       })
       .eq("id", editingRoom.id)
 
     if (error) {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Failed to update room",
-      })
-    } else {
-      toast({
-        title: "Success",
-        description: "Room updated successfully",
-      })
-      setIsEditRoomDialogOpen(false)
-      setEditingRoom(null)
-      loadLocationData()
+      toast({ variant: "destructive", title: "No fue posible actualizar la habitación", description: error.message })
+      return
     }
+    setEditingRoom(null)
+    toast({ title: "Habitación actualizada" })
+    await loadLocationData()
   }
 
-  async function handleDeleteRoom(roomId: string) {
-    const roomBeds = beds.filter((b) => b.room_id === roomId)
-    if (roomBeds.length > 0) {
-      toast({
-        variant: "destructive",
-        title: "Cannot Delete",
-        description: "Please delete all beds in this room first",
-      })
+  async function handleDeleteRoom(room: Room) {
+    if (beds.some((bed) => bed.room_id === room.id)) {
+      toast({ variant: "destructive", title: "No se puede eliminar", description: "La habitación todavía contiene camas. Retíralas primero." })
+      return
+    }
+    if (!window.confirm(`¿Eliminar ${room.room_number}?`)) return
+    const { error } = await supabase.from("rooms").delete().eq("id", room.id)
+    if (error) {
+      toast({ variant: "destructive", title: "No fue posible eliminar la habitación", description: error.message })
+      return
+    }
+    await loadLocationData()
+  }
+
+  async function handleAddBed(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    if (!selectedRoomForBed) return
+    const formData = new FormData(event.currentTarget)
+    const bedNumber = String(formData.get("bed_number") ?? "").trim()
+    const bedType = String(formData.get("bed_type") ?? "").trim()
+    if (!bedNumber || !bedType) return
+
+    const { data: duplicate, error: duplicateError } = await supabase.from("beds").select("id").eq("room_id", selectedRoomForBed).eq("bed_number", bedNumber).maybeSingle()
+    if (duplicateError) {
+      toast({ variant: "destructive", title: "No fue posible validar la cama", description: duplicateError.message })
+      return
+    }
+    if (duplicate) {
+      toast({ variant: "destructive", title: "Cama duplicada", description: "Ya existe una cama con ese nombre o número en la habitación." })
       return
     }
 
-    if (!confirm("Are you sure you want to delete this room?")) return
-
-    const { error } = await supabase.from("rooms").delete().eq("id", roomId)
-
+    const { error } = await supabase.from("beds").insert({ room_id: selectedRoomForBed, bed_number: bedNumber, bed_type: bedType, is_available: true, notes: String(formData.get("notes") ?? "").trim() || null })
     if (error) {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Failed to delete room",
-      })
-    } else {
-      toast({
-        title: "Success",
-        description: "Room deleted successfully",
-      })
-      loadLocationData()
+      toast({ variant: "destructive", title: "No fue posible agregar la cama", description: error.message })
+      return
     }
+    setSelectedRoomForBed(null)
+    toast({ title: "Cama agregada" })
+    await loadLocationData()
   }
 
-  async function handleAddBed(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault()
-    if (!selectedRoomForBed) return
-
-    const formData = new FormData(e.currentTarget)
-
-    const { error } = await supabase.from("beds").insert({
-      room_id: selectedRoomForBed,
-      bed_number: formData.get("bed_number") as string,
-      bed_type: formData.get("bed_type") as string,
-      is_available: true,
-      notes: formData.get("notes") as string,
-    })
-
-    if (error) {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Failed to add bed",
-      })
-    } else {
-      toast({
-        title: "Success",
-        description: "Bed added successfully",
-      })
-      setIsAddBedDialogOpen(false)
-      setSelectedRoomForBed(null)
-      loadLocationData()
-    }
-  }
-
-  async function handleEditBed(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault()
+  async function handleEditBed(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault()
     if (!editingBed) return
-
-    const formData = new FormData(e.currentTarget)
-
-    const { error } = await supabase
-      .from("beds")
-      .update({
-        bed_number: formData.get("bed_number") as string,
-        bed_type: formData.get("bed_type") as string,
-        notes: formData.get("notes") as string,
-      })
-      .eq("id", editingBed.id)
-
-    if (error) {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Failed to update bed",
-      })
-    } else {
-      toast({
-        title: "Success",
-        description: "Bed updated successfully",
-      })
-      setIsEditBedDialogOpen(false)
-      setEditingBed(null)
-      loadLocationData()
+    const formData = new FormData(event.currentTarget)
+    const bedNumber = String(formData.get("bed_number") ?? "").trim()
+    const { data: duplicate, error: duplicateError } = await supabase.from("beds").select("id").eq("room_id", editingBed.room_id).eq("bed_number", bedNumber).neq("id", editingBed.id).maybeSingle()
+    if (duplicateError) {
+      toast({ variant: "destructive", title: "No fue posible validar la cama", description: duplicateError.message })
+      return
     }
-  }
-
-  async function handleDeleteBed(bedId: string) {
-    if (!confirm("Are you sure you want to delete this bed?")) return
-
-    const { error } = await supabase.from("beds").delete().eq("id", bedId)
-
-    if (error) {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Failed to delete bed",
-      })
-    } else {
-      toast({
-        title: "Success",
-        description: "Bed deleted successfully",
-      })
-      loadLocationData()
+    if (duplicate) {
+      toast({ variant: "destructive", title: "Cama duplicada", description: "Ya existe una cama con ese nombre o número en la habitación." })
+      return
     }
+
+    const { error } = await supabase.from("beds").update({ bed_number: bedNumber, bed_type: String(formData.get("bed_type") ?? ""), notes: String(formData.get("notes") ?? "").trim() || null }).eq("id", editingBed.id)
+    if (error) {
+      toast({ variant: "destructive", title: "No fue posible actualizar la cama", description: error.message })
+      return
+    }
+    setEditingBed(null)
+    toast({ title: "Cama actualizada" })
+    await loadLocationData()
   }
 
-  if (!location) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-muted-foreground">Loading...</div>
-      </div>
-    )
+  async function handleDeleteBed(bed: Bed) {
+    if (!window.confirm(`¿Eliminar ${bed.bed_number}?`)) return
+    const { error } = await supabase.from("beds").delete().eq("id", bed.id)
+    if (error) {
+      toast({ variant: "destructive", title: "No fue posible eliminar la cama", description: error.message })
+      return
+    }
+    await loadLocationData()
   }
+
+  if (loading) return <div className="flex min-h-64 items-center justify-center text-sm text-muted-foreground">Cargando instalación…</div>
+  if (!location) return <div className="space-y-4 p-6 text-center"><p>No se encontró la instalación.</p><Button variant="outline" asChild><Link href="/bookings/locations">Volver a instalaciones</Link></Button></div>
 
   return (
-    <div className="flex-1 overflow-auto p-6">
+    <div className="flex-1 overflow-auto p-4 sm:p-6">
       <div className="space-y-6">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Link href="/bookings/locations">
-              <Button variant="outline" size="icon">
-                <ArrowLeft className="h-4 w-4" />
-              </Button>
-            </Link>
-            <div>
-              <h1 className="text-3xl font-bold">{location.name}</h1>
-              <p className="text-muted-foreground">
-                {location.description || "Manage rooms and beds for this location"}
-              </p>
-            </div>
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div className="flex items-start gap-3">
+            <Button variant="outline" size="icon" asChild><Link href="/bookings/locations"><ArrowLeft className="h-4 w-4" /></Link></Button>
+            <div><h1 className="text-2xl font-bold sm:text-3xl">{location.name}</h1><p className="mt-1 text-muted-foreground">{location.description || "Habitaciones y camas disponibles en esta instalación."}</p></div>
           </div>
-          <Button onClick={() => setIsAddRoomDialogOpen(true)}>
-            <Plus className="mr-2 h-4 w-4" />
-            Add Room
-          </Button>
+          <Button onClick={() => setIsAddRoomDialogOpen(true)}><Plus className="mr-2 h-4 w-4" />Agregar habitación</Button>
         </div>
 
-        {/* Rooms Grid */}
         {rooms.length === 0 ? (
-          <Card>
-            <CardContent className="flex flex-col items-center justify-center py-12">
-              <Home className="h-12 w-12 text-muted-foreground mb-4" />
-              <h3 className="text-lg font-semibold mb-2">No Rooms Yet</h3>
-              <p className="text-muted-foreground mb-4">Add your first room to get started</p>
-              <Button onClick={() => setIsAddRoomDialogOpen(true)}>
-                <Plus className="mr-2 h-4 w-4" />
-                Add Room
-              </Button>
-            </CardContent>
-          </Card>
+          <Card><CardContent className="flex flex-col items-center justify-center py-12"><Home className="mb-4 h-10 w-10 text-muted-foreground" /><h3 className="font-semibold">Sin habitaciones</h3><p className="mb-4 mt-1 text-sm text-muted-foreground">Registra la primera unidad alojable de esta instalación.</p><Button onClick={() => setIsAddRoomDialogOpen(true)}><Plus className="mr-2 h-4 w-4" />Agregar habitación</Button></CardContent></Card>
         ) : (
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
             {rooms.map((room) => {
-              const roomBeds = beds.filter((b) => b.room_id === room.id)
-
+              const roomBeds = beds.filter((bed) => bed.room_id === room.id)
               return (
                 <Card key={room.id}>
-                  <CardHeader>
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <CardTitle className="flex items-center gap-2">
-                          <Home className="h-5 w-5 text-primary" />
-                          {room.room_number}
-                        </CardTitle>
-                        <CardDescription>
-                          {room.room_type} • {room.capacity} guests
-                        </CardDescription>
-                      </div>
-                      <div className="flex gap-1">
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          onClick={() => {
-                            setEditingRoom(room)
-                            setIsEditRoomDialogOpen(true)
-                          }}
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button size="icon" variant="ghost" onClick={() => handleDeleteRoom(room.id)}>
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  </CardHeader>
+                  <CardHeader><div className="flex items-start justify-between gap-3"><div><CardTitle className="flex items-center gap-2"><Home className="h-5 w-5 text-primary" />{room.room_number}</CardTitle><CardDescription>{room.room_type} · capacidad {room.capacity}</CardDescription></div><div className="flex gap-1"><Button size="icon" variant="ghost" onClick={() => setEditingRoom(room)} aria-label={`Editar ${room.room_number}`}><Pencil className="h-4 w-4" /></Button><Button size="icon" variant="ghost" onClick={() => void handleDeleteRoom(room)} aria-label={`Eliminar ${room.room_number}`}><Trash2 className="h-4 w-4" /></Button></div></div></CardHeader>
                   <CardContent className="space-y-4">
-                    {/* Room Details */}
-                    <div className="space-y-2 text-sm">
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Rate:</span>
-                        <span className="font-medium">${room.rate_per_night}/night</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Status:</span>
-                        <span className={room.status === "available" ? "text-green-600" : "text-orange-600"}>
-                          {room.status}
-                        </span>
-                      </div>
-                      {room.floor && (
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Floor:</span>
-                          <span>{room.floor}</span>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Beds Section */}
-                    <div className="border-t pt-4">
-                      <div className="flex items-center justify-between mb-3">
-                        <h4 className="font-semibold flex items-center gap-2">
-                          <BedIcon className="h-4 w-4" />
-                          Beds ({roomBeds.length})
-                        </h4>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => {
-                            setSelectedRoomForBed(room.id)
-                            setIsAddBedDialogOpen(true)
-                          }}
-                        >
-                          <Plus className="h-3 w-3" />
-                        </Button>
-                      </div>
-
-                      {roomBeds.length === 0 ? (
-                        <p className="text-sm text-muted-foreground text-center py-2">No beds added yet</p>
-                      ) : (
-                        <div className="space-y-2">
-                          {roomBeds.map((bed) => (
-                            <div key={bed.id} className="flex items-center justify-between p-2 bg-muted/50 rounded">
-                              <div className="flex-1">
-                                <div className="font-medium text-sm">{bed.bed_number}</div>
-                                <div className="text-xs text-muted-foreground">{bed.bed_type}</div>
-                              </div>
-                              <div className="flex gap-1">
-                                <Button
-                                  size="icon"
-                                  variant="ghost"
-                                  className="h-6 w-6"
-                                  onClick={() => {
-                                    setEditingBed(bed)
-                                    setIsEditBedDialogOpen(true)
-                                  }}
-                                >
-                                  <Pencil className="h-3 w-3" />
-                                </Button>
-                                <Button
-                                  size="icon"
-                                  variant="ghost"
-                                  className="h-6 w-6"
-                                  onClick={() => handleDeleteBed(bed.id)}
-                                >
-                                  <Trash2 className="h-3 w-3" />
-                                </Button>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
+                    <div className="grid grid-cols-2 gap-3 text-sm"><Info label="Tarifa" value={new Intl.NumberFormat("es-CL", { style: "currency", currency: "CLP", maximumFractionDigits: 0 }).format(room.rate_per_night)} /><Info label="Estado" value={room.status} /><Info label="Piso" value={room.floor || "No registrado"} /><Info label="Camas" value={String(roomBeds.length)} /></div>
+                    {room.amenities?.length ? <p className="text-xs text-muted-foreground">{room.amenities.join(" · ")}</p> : null}
+                    <div className="border-t pt-4"><div className="mb-3 flex items-center justify-between"><h4 className="flex items-center gap-2 font-semibold"><BedIcon className="h-4 w-4" />Camas</h4><Button size="sm" variant="outline" onClick={() => setSelectedRoomForBed(room.id)}><Plus className="h-3.5 w-3.5" /></Button></div>{roomBeds.length === 0 ? <p className="py-2 text-center text-sm text-muted-foreground">Sin camas registradas.</p> : <div className="space-y-2">{roomBeds.map((bed) => <div key={bed.id} className="flex items-center justify-between rounded-md bg-muted/40 p-2"><div><p className="text-sm font-medium">{bed.bed_number}</p><p className="text-xs text-muted-foreground">{bed.bed_type}</p></div><div className="flex gap-1"><Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setEditingBed(bed)}><Pencil className="h-3.5 w-3.5" /></Button><Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => void handleDeleteBed(bed)}><Trash2 className="h-3.5 w-3.5" /></Button></div></div>)}</div>}</div>
                   </CardContent>
                 </Card>
               )
             })}
           </div>
         )}
-
-        {/* Add Room Dialog */}
-        <Dialog open={isAddRoomDialogOpen} onOpenChange={setIsAddRoomDialogOpen}>
-          <DialogContent className="max-w-2xl">
-            <form onSubmit={handleAddRoom}>
-              <DialogHeader>
-                <DialogTitle>Add Room to {location.name}</DialogTitle>
-                <DialogDescription>Create a new room unit in this location</DialogDescription>
-              </DialogHeader>
-              <div className="grid gap-4 py-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="room_number">Room Number/Name *</Label>
-                    <Input id="room_number" name="room_number" placeholder="e.g., Room 101, Suite A" required />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="room_type">Room Type *</Label>
-                    <Select name="room_type" required>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select type" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="suite">Suite</SelectItem>
-                        <SelectItem value="cabin">Cabin</SelectItem>
-                        <SelectItem value="bungalow">Bungalow</SelectItem>
-                        <SelectItem value="dorm">Dorm</SelectItem>
-                        <SelectItem value="studio">Studio</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-                <div className="grid grid-cols-3 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="capacity">Max Guests *</Label>
-                    <Input id="capacity" name="capacity" type="number" min="1" defaultValue="2" required />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="rate_per_night">Rate/Night ($) *</Label>
-                    <Input
-                      id="rate_per_night"
-                      name="rate_per_night"
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      defaultValue="100"
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="floor">Floor</Label>
-                    <Input id="floor" name="floor" placeholder="e.g., 1st, 2nd" />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="status">Status *</Label>
-                  <Select name="status" defaultValue="available">
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="available">Available</SelectItem>
-                      <SelectItem value="occupied">Occupied</SelectItem>
-                      <SelectItem value="maintenance">Maintenance</SelectItem>
-                      <SelectItem value="blocked">Blocked</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="amenities">Amenities (comma-separated)</Label>
-                  <Input id="amenities" name="amenities" placeholder="WiFi, AC, Private Bath, Kitchen" />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="notes">Notes</Label>
-                  <Textarea id="notes" name="notes" rows={2} placeholder="Additional information" />
-                </div>
-              </div>
-              <DialogFooter>
-                <Button type="button" variant="outline" onClick={() => setIsAddRoomDialogOpen(false)}>
-                  Cancel
-                </Button>
-                <Button type="submit">Add Room</Button>
-              </DialogFooter>
-            </form>
-          </DialogContent>
-        </Dialog>
-
-        {/* Edit Room Dialog */}
-        <Dialog open={isEditRoomDialogOpen} onOpenChange={setIsEditRoomDialogOpen}>
-          <DialogContent className="max-w-2xl">
-            <form onSubmit={handleEditRoom}>
-              <DialogHeader>
-                <DialogTitle>Edit Room</DialogTitle>
-                <DialogDescription>Update room details</DialogDescription>
-              </DialogHeader>
-              <div className="grid gap-4 py-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="edit_room_number">Room Number/Name *</Label>
-                    <Input id="edit_room_number" name="room_number" defaultValue={editingRoom?.room_number} required />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="edit_room_type">Room Type *</Label>
-                    <Select name="room_type" defaultValue={editingRoom?.room_type}>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="suite">Suite</SelectItem>
-                        <SelectItem value="cabin">Cabin</SelectItem>
-                        <SelectItem value="bungalow">Bungalow</SelectItem>
-                        <SelectItem value="dorm">Dorm</SelectItem>
-                        <SelectItem value="studio">Studio</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-                <div className="grid grid-cols-3 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="edit_capacity">Max Guests *</Label>
-                    <Input
-                      id="edit_capacity"
-                      name="capacity"
-                      type="number"
-                      min="1"
-                      defaultValue={editingRoom?.capacity}
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="edit_rate">Rate/Night ($) *</Label>
-                    <Input
-                      id="edit_rate"
-                      name="rate_per_night"
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      defaultValue={editingRoom?.rate_per_night}
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="edit_floor">Floor</Label>
-                    <Input id="edit_floor" name="floor" defaultValue={editingRoom?.floor || ""} />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="edit_status">Status *</Label>
-                  <Select name="status" defaultValue={editingRoom?.status}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="available">Available</SelectItem>
-                      <SelectItem value="occupied">Occupied</SelectItem>
-                      <SelectItem value="maintenance">Maintenance</SelectItem>
-                      <SelectItem value="blocked">Blocked</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="edit_amenities">Amenities (comma-separated)</Label>
-                  <Input id="edit_amenities" name="amenities" defaultValue={editingRoom?.amenities?.join(", ") || ""} />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="edit_notes">Notes</Label>
-                  <Textarea id="edit_notes" name="notes" rows={2} defaultValue={editingRoom?.notes || ""} />
-                </div>
-              </div>
-              <DialogFooter>
-                <Button type="button" variant="outline" onClick={() => setIsEditRoomDialogOpen(false)}>
-                  Cancel
-                </Button>
-                <Button type="submit">Save Changes</Button>
-              </DialogFooter>
-            </form>
-          </DialogContent>
-        </Dialog>
-
-        {/* Add Bed Dialog */}
-        <Dialog open={isAddBedDialogOpen} onOpenChange={setIsAddBedDialogOpen}>
-          <DialogContent>
-            <form onSubmit={handleAddBed}>
-              <DialogHeader>
-                <DialogTitle>Add Bed</DialogTitle>
-                <DialogDescription>Add a new bed to this room</DialogDescription>
-              </DialogHeader>
-              <div className="space-y-4 py-4">
-                <div className="space-y-2">
-                  <Label htmlFor="bed_number">Bed Name/Number *</Label>
-                  <Input id="bed_number" name="bed_number" placeholder="e.g., Cama 1, Litera Superior" required />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="bed_type">Bed Type *</Label>
-                  <Select name="bed_type" required>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select bed type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Single">Single</SelectItem>
-                      <SelectItem value="Double">Double</SelectItem>
-                      <SelectItem value="Queen">Queen</SelectItem>
-                      <SelectItem value="King">King</SelectItem>
-                      <SelectItem value="Bunk_top">Bunk (Top)</SelectItem>
-                      <SelectItem value="Bunk_bottom">Bunk (Bottom)</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="bed_notes">Notes</Label>
-                  <Textarea id="bed_notes" name="notes" rows={2} placeholder="Optional notes" />
-                </div>
-              </div>
-              <DialogFooter>
-                <Button type="button" variant="outline" onClick={() => setIsAddBedDialogOpen(false)}>
-                  Cancel
-                </Button>
-                <Button type="submit">Add Bed</Button>
-              </DialogFooter>
-            </form>
-          </DialogContent>
-        </Dialog>
-
-        {/* Edit Bed Dialog */}
-        <Dialog open={isEditBedDialogOpen} onOpenChange={setIsEditBedDialogOpen}>
-          <DialogContent>
-            <form onSubmit={handleEditBed}>
-              <DialogHeader>
-                <DialogTitle>Edit Bed</DialogTitle>
-                <DialogDescription>Update bed details</DialogDescription>
-              </DialogHeader>
-              <div className="space-y-4 py-4">
-                <div className="space-y-2">
-                  <Label htmlFor="edit_bed_number">Bed Name/Number *</Label>
-                  <Input id="edit_bed_number" name="bed_number" defaultValue={editingBed?.bed_number} required />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="edit_bed_type">Bed Type *</Label>
-                  <Select name="bed_type" defaultValue={editingBed?.bed_type}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Single">Single</SelectItem>
-                      <SelectItem value="Double">Double</SelectItem>
-                      <SelectItem value="Queen">Queen</SelectItem>
-                      <SelectItem value="King">King</SelectItem>
-                      <SelectItem value="Bunk_top">Bunk (Top)</SelectItem>
-                      <SelectItem value="Bunk_bottom">Bunk (Bottom)</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="edit_bed_notes">Notes</Label>
-                  <Textarea id="edit_bed_notes" name="notes" rows={2} defaultValue={editingBed?.notes || ""} />
-                </div>
-              </div>
-              <DialogFooter>
-                <Button type="button" variant="outline" onClick={() => setIsEditBedDialogOpen(false)}>
-                  Cancel
-                </Button>
-                <Button type="submit">Save Changes</Button>
-              </DialogFooter>
-            </form>
-          </DialogContent>
-        </Dialog>
       </div>
+
+      <RoomDialog open={isAddRoomDialogOpen} onOpenChange={setIsAddRoomDialogOpen} title={`Agregar habitación a ${location.name}`} onSubmit={handleAddRoom} />
+      <RoomDialog open={Boolean(editingRoom)} onOpenChange={(open) => !open && setEditingRoom(null)} title="Editar habitación" room={editingRoom} onSubmit={handleEditRoom} />
+      <BedDialog open={Boolean(selectedRoomForBed)} onOpenChange={(open) => !open && setSelectedRoomForBed(null)} title="Agregar cama" onSubmit={handleAddBed} />
+      <BedDialog open={Boolean(editingBed)} onOpenChange={(open) => !open && setEditingBed(null)} title="Editar cama" bed={editingBed} onSubmit={handleEditBed} />
     </div>
   )
 }
+
+function RoomDialog({ open, onOpenChange, title, room, onSubmit }: { open: boolean; onOpenChange: (open: boolean) => void; title: string; room?: Room | null; onSubmit: React.FormEventHandler<HTMLFormElement> }) {
+  return <Dialog open={open} onOpenChange={onOpenChange}><DialogContent className="max-w-2xl"><form onSubmit={onSubmit}><DialogHeader><DialogTitle>{title}</DialogTitle><DialogDescription>Define capacidad, tarifa, estado y atributos operativos.</DialogDescription></DialogHeader><div className="grid gap-4 py-4"><div className="grid gap-4 sm:grid-cols-2"><Field label="Número o nombre"><Input name="room_number" defaultValue={room?.room_number ?? ""} required /></Field><Field label="Tipo"><Select name="room_type" defaultValue={room?.room_type ?? "suite"}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="suite">Suite</SelectItem><SelectItem value="cabin">Cabin</SelectItem><SelectItem value="bungalow">Bungalow</SelectItem><SelectItem value="dorm">Dorm</SelectItem><SelectItem value="studio">Studio</SelectItem></SelectContent></Select></Field></div><div className="grid gap-4 sm:grid-cols-3"><Field label="Capacidad"><Input name="capacity" type="number" min="1" defaultValue={room?.capacity ?? 2} required /></Field><Field label="Tarifa/noche"><Input name="rate_per_night" type="number" min="0" step="1" defaultValue={room?.rate_per_night ?? 0} required /></Field><Field label="Piso"><Input name="floor" defaultValue={room?.floor ?? ""} /></Field></div><Field label="Estado"><Select name="status" defaultValue={room?.status ?? "available"}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="available">Available</SelectItem><SelectItem value="occupied">Occupied</SelectItem><SelectItem value="maintenance">Maintenance</SelectItem><SelectItem value="blocked">Blocked</SelectItem></SelectContent></Select></Field><Field label="Amenities"><Input name="amenities" defaultValue={room?.amenities?.join(", ") ?? ""} placeholder="WiFi, baño privado, cocina" /></Field><Field label="Notas"><Textarea name="notes" defaultValue={room?.notes ?? ""} rows={2} /></Field></div><DialogFooter><Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button><Button type="submit">Guardar</Button></DialogFooter></form></DialogContent></Dialog>
+}
+
+function BedDialog({ open, onOpenChange, title, bed, onSubmit }: { open: boolean; onOpenChange: (open: boolean) => void; title: string; bed?: Bed | null; onSubmit: React.FormEventHandler<HTMLFormElement> }) {
+  return <Dialog open={open} onOpenChange={onOpenChange}><DialogContent><form onSubmit={onSubmit}><DialogHeader><DialogTitle>{title}</DialogTitle><DialogDescription>Identifica la cama dentro de la habitación.</DialogDescription></DialogHeader><div className="space-y-4 py-4"><Field label="Nombre o número"><Input name="bed_number" defaultValue={bed?.bed_number ?? ""} required /></Field><Field label="Tipo"><Select name="bed_type" defaultValue={bed?.bed_type ?? "Single"}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="Single">Single</SelectItem><SelectItem value="Double">Double</SelectItem><SelectItem value="Queen">Queen</SelectItem><SelectItem value="King">King</SelectItem><SelectItem value="Bunk_top">Bunk (Top)</SelectItem><SelectItem value="Bunk_bottom">Bunk (Bottom)</SelectItem></SelectContent></Select></Field><Field label="Notas"><Textarea name="notes" defaultValue={bed?.notes ?? ""} rows={2} /></Field></div><DialogFooter><Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button><Button type="submit">Guardar</Button></DialogFooter></form></DialogContent></Dialog>
+}
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) { return <div className="space-y-1.5"><Label>{label}</Label>{children}</div> }
+function Info({ label, value }: { label: string; value: string }) { return <div><p className="text-xs text-muted-foreground">{label}</p><p className="font-medium">{value}</p></div> }
