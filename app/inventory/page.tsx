@@ -1,6 +1,7 @@
 "use client"
 
 import { Suspense } from "react"
+import { InventoryCommandCenter } from "@/components/inventory/inventory-command-center"
 import { InventoryContent } from "@/components/inventory/inventory-content"
 import { InventoryHealthPanel } from "@/components/inventory/inventory-health-panel"
 import { InventoryOperationsConsole } from "@/components/inventory/inventory-operations-console"
@@ -10,6 +11,7 @@ import { InventoryWorkflowNav } from "@/components/inventory/inventory-workflow-
 export default function InventoryPage() {
   return (
     <>
+      <InventoryCommandCenter />
       <InventoryHealthPanel />
       <InventoryWorkflowNav />
       <AssetQrLookup />
