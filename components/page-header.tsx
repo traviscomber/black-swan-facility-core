@@ -9,6 +9,7 @@ interface PageHeaderProps {
   title: string
   description?: string
   actions?: React.ReactNode
+  children?: React.ReactNode
   /** @deprecated Prefer actions. Kept while legacy pages converge on the shared contract. */
   action?: React.ReactNode
   /** @deprecated Prefer actions. */
@@ -30,13 +31,14 @@ export function PageHeader({
   title,
   description,
   actions,
+  children,
   action,
   actionLabel,
   onAction,
   icon,
   backHref,
 }: PageHeaderProps) {
-  const resolvedActions = actions ?? action ?? (actionLabel && onAction ? (
+  const resolvedActions = actions ?? action ?? children ?? (actionLabel && onAction ? (
     <Button onClick={onAction}>{actionLabel}</Button>
   ) : null)
 
