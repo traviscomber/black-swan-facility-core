@@ -8,6 +8,9 @@ export function useOsPersona() {
   const supabase = useMemo(() => createClient(), [])
   const [persona, setPersona] = useState<OsPersonaKey>("general")
   const [firstName, setFirstName] = useState<string>("")
+  const [primaryDomain, setPrimaryDomain] = useState<string | null>(null)
+  const [startPath, setStartPath] = useState<string>("/os")
+  const [employeeId, setEmployeeId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -24,16 +27,19 @@ export function useOsPersona() {
       const fallbackName = user.email?.split("@")[0]?.split(/[._-]/)[0] ?? ""
       const resolvedFirstName = fullName.split(/\s+/)[0] || fallbackName
 
-      // UX persona is read only to prioritize presentation. It never grants access.
+      // UX context only. Route permissions remain server/database controlled.
       const { data } = await supabase
         .from("user_access_profiles")
-        .select("os_persona_key")
+        .select("os_persona_key, os_primary_domain, os_start_path, employee_id")
         .eq("user_id", user.id)
         .maybeSingle()
 
       if (cancelled) return
       setFirstName(resolvedFirstName)
       setPersona(normalizeOsPersona(data?.os_persona_key))
+      setPrimaryDomain(typeof data?.os_primary_domain === "string" ? data.os_primary_domain : null)
+      setStartPath(typeof data?.os_start_path === "string" && data.os_start_path.startsWith("/") ? data.os_start_path : "/os")
+      setEmployeeId(typeof data?.employee_id === "string" ? data.employee_id : null)
       setLoading(false)
     }
 
@@ -48,8 +54,11 @@ export function useOsPersona() {
 
   return {
     persona,
-    personaLabel: getOsPersonaLabel(persona),
+    personaLabel: getOsPersonaLabel(persona, primaryDomain),
     firstName,
+    primaryDomain,
+    startPath,
+    employeeId,
     loading,
   }
 }
