@@ -4,7 +4,8 @@ import test from "node:test"
 
 const workflowPath = new URL("../supabase/migrations/20260826190000_harden_inventory_asset_maintenance_workflow.sql", import.meta.url)
 const assigneePath = new URL("../supabase/migrations/20260826190500_add_maintenance_assignee_directory.sql", import.meta.url)
-const [workflow, assignees] = await Promise.all([readFile(workflowPath, "utf8"), readFile(assigneePath, "utf8")])
+const syncPath = new URL("../supabase/migrations/20260826194000_refine_inventory_asset_maintenance_status_sync.sql", import.meta.url)
+const [workflow, assignees, sync] = await Promise.all([readFile(workflowPath, "utf8"), readFile(assigneePath, "utf8"), readFile(syncPath, "utf8")])
 
 function includesSql(source: string, fragment: string) {
   return source.toLowerCase().includes(fragment.toLowerCase())
@@ -43,11 +44,13 @@ test("asset maintenance state machine fails closed", () => {
   assert.ok(includesSql(workflow, "p_action = 'cancel' and v_state in ('scheduled','assigned','in_progress','blocked')"))
 })
 
-test("asset status follows actual maintenance execution instead of scheduling", () => {
-  assert.ok(includesSql(workflow, "v_new_state in ('in_progress','blocked')"))
-  assert.ok(includesSql(workflow, "set status = 'maintenance'"))
-  assert.ok(includesSql(workflow, "set status = 'active'"))
-  assert.ok(includesSql(workflow, "where id = v_asset_id and status = 'maintenance'"))
+test("asset status follows actual execution and scheduling never clears a manual maintenance state", () => {
+  assert.ok(includesSql(sync, "v_new_state in ('in_progress','blocked')"))
+  assert.ok(includesSql(sync, "set status = 'maintenance'"))
+  assert.ok(includesSql(sync, "v_old_state in ('in_progress','blocked') and v_new_state not in ('in_progress','blocked')"))
+  assert.ok(includesSql(sync, "set status = 'active'"))
+  assert.ok(includesSql(sync, "where id = v_asset_id and status = 'maintenance'"))
+  assert.equal(includesSql(sync, "if tg_op <> 'DELETE' and v_new_state in ('scheduled','assigned')"), false)
 })
 
 test("asset maintenance transitions leave an asset audit trail", () => {
