@@ -49,6 +49,10 @@ function isPathFamily(pathname: string, root: string) {
   return pathname === root || pathname.startsWith(`${root}/`)
 }
 
+function isSafeInternalStartPath(value: unknown): value is string {
+  return typeof value === "string" && value.startsWith("/") && !value.startsWith("//") && value !== "/"
+}
+
 export function getRouteRequirement(pathname: string): RouteRequirement | null {
   if (isPathFamily(pathname, "/bookings/invoices")) return { domain: "finance", required: "view" }
   if (isPathFamily(pathname, "/bookings/requests")) return { domain: "operations", required: "view" }
@@ -191,6 +195,31 @@ export async function proxy(request: NextRequest) {
   const capabilitySnapshot = routeAccessError
     ? normalizeCapabilitySnapshot(null)
     : normalizeCapabilitySnapshot(routeAccess)
+
+  if (!apiRequest && effectivePathname === "/") {
+    const { data: osProfile } = await supabase
+      .from("user_access_profiles")
+      .select("os_start_path")
+      .eq("user_id", user.id)
+      .maybeSingle()
+
+    const preferredStartPath = isSafeInternalStartPath(osProfile?.os_start_path)
+      ? osProfile.os_start_path
+      : "/os"
+    const startRequirement = getRouteRequirement(preferredStartPath)
+    const startAllowed = !startRequirement || hasCapability(
+      capabilitySnapshot,
+      startRequirement.domain,
+      startRequirement.required,
+    )
+    const activeLocale = locale ?? DEFAULT_LOCALE
+
+    return setLocaleCookie(
+      NextResponse.redirect(localizedUrl(request, activeLocale, startAllowed ? preferredStartPath : "/os")),
+      activeLocale,
+    )
+  }
+
   const requirement = getRouteRequirement(effectivePathname)
 
   if (effectivePathname === "/auth/login") {
