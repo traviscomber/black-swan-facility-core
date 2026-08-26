@@ -5,6 +5,12 @@ import { clearOverlayLoadCache, loadOverlayGeoJson } from "../lib/map/overlay-lo
 
 const emptyCollection = { type: "FeatureCollection" as const, features: [] }
 
+function asArrayBuffer(bytes: Uint8Array): ArrayBuffer {
+  const copy = new Uint8Array(bytes.byteLength)
+  copy.set(bytes)
+  return copy.buffer
+}
+
 test("prefers a version-matched derived GeoJSON URL", async () => {
   clearOverlayLoadCache()
   const requests: string[] = []
@@ -25,7 +31,7 @@ test("falls back to KMZ and extracts the first KML entry", async () => {
   const bytes = await zip.generateAsync({ type: "uint8array" })
   let parsed = ""
   const result = await loadOverlayGeoJson({ id: "overlay-2", file_url: "https://example.test/source.kmz", file_type: "kmz", source_version: "v1" }, {
-    fetchImpl: async () => new Response(bytes, { status: 200 }),
+    fetchImpl: async () => new Response(asArrayBuffer(bytes), { status: 200 }),
     parseKmlText: (text) => { parsed = text; return emptyCollection },
   })
   assert.equal(result.source, "kmz")
