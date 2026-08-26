@@ -103,13 +103,15 @@ export function ReservationQuickInspector({ reservation, open, onOpenChange, onO
   const [loading, setLoading] = useState(false)
   const [updating, setUpdating] = useState(false)
   const [currentStatus, setCurrentStatus] = useState("pending")
+  const statusLabels: Record<string, string> = c.statuses
+  const domainLabels: Record<string, string> = c.domains
 
   const statusLabel = useCallback((value: string | null | undefined) => {
     const status = normalizedStatus(value)
-    return c.statuses[status] ?? c.statuses.pending
-  }, [c.statuses])
+    return statusLabels[status] ?? statusLabels.pending
+  }, [statusLabels])
 
-  const domainLabel = useCallback((domain: string) => c.domains[domain] ?? domain, [c.domains])
+  const domainLabel = useCallback((domain: string) => domainLabels[domain] ?? domain, [domainLabels])
 
   const load = useCallback(async () => {
     if (!reservation) return
