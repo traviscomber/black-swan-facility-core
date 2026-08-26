@@ -5,7 +5,8 @@
   "type": "module",
   "packageManager": "pnpm@10.28.0",
   "scripts": {
-    "prebuild": "node --experimental-strip-types --test tests/map-overlay-loader.test.ts tests/map-overlay-runtime.test.ts tests/map-gis-derivative-contract.test.ts tests/map-overlay-derivative.test.ts tests/map-performance-contract.test.ts && node --experimental-strip-types --test tests/task-notification.test.ts && node --experimental-strip-types --test tests/booking-rules.test.ts && node --experimental-strip-types --test tests/booking-drag.test.ts && node --experimental-strip-types --test tests/booking-source-policy.test.ts && node --experimental-strip-types --test tests/discovery-evaluation-flow.test.ts && node --experimental-strip-types --test tests/access-capabilities.test.ts && pnpm test:os",
+    "typecheck": "tsc --noEmit --pretty false",
+    "prebuild": "node scripts/check-no-ai-sdk.mjs && pnpm typecheck && node --experimental-strip-types --test tests/map-overlay-loader.test.ts tests/map-overlay-runtime.test.ts tests/map-gis-derivative-contract.test.ts tests/map-overlay-derivative.test.ts tests/map-performance-contract.test.ts && node --experimental-strip-types --test tests/task-notification.test.ts && node --experimental-strip-types --test tests/booking-rules.test.ts && node --experimental-strip-types --test tests/booking-drag.test.ts && node --experimental-strip-types --test tests/booking-source-policy.test.ts && node --experimental-strip-types --test tests/discovery-evaluation-flow.test.ts && node --experimental-strip-types --test tests/access-capabilities.test.ts && pnpm test:os",
     "build": "NODE_OPTIONS=--import=./scripts/suppress-known-build-warning.mjs next build",
     "dev": "next dev",
     "lint": "eslint .",
