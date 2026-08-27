@@ -11,14 +11,20 @@ test("room catalog opens a canonical room object", () => {
   assert.match(roomIndex, /Abrir objeto habitación/)
 })
 
-test("room object reads canonical operational relationships without writes", () => {
+test("room object reads the canonical hospitality and work graph without writes", () => {
   assert.match(roomObject, /from\("room_state_matrix"\)/)
   assert.match(roomObject, /from\("reservations"\)/)
   assert.match(roomObject, /from\("housekeeping_tasks"\)/)
+  assert.match(roomObject, /from\("hospitality_requests"\)/)
   assert.match(roomObject, /from\("maintenance_tasks"\)/)
-  assert.match(roomObject, /from\("incidents"\)/)
+  assert.match(roomObject, /from\("issues"\)/)
+  assert.match(roomObject, /related_item_type", "room"/)
+  assert.match(roomObject, /related_item_type", "reservation"/)
+  assert.match(roomObject, /from\("assets"\)/)
+  assert.match(roomObject, /vínculo por incidencia o mantenimiento/)
   assert.match(roomObject, /from\("room_operational_history"\)/)
   assert.match(roomObject, /\/bookings\/reservations\/\$\{state\.current_reservation_id\}/)
+  assert.doesNotMatch(roomObject, /from\("incidents"\)/)
   assert.doesNotMatch(roomObject, /\.insert\(/)
   assert.doesNotMatch(roomObject, /\.update\(/)
   assert.doesNotMatch(roomObject, /\.delete\(/)
