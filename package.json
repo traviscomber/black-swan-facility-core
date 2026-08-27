@@ -20,7 +20,7 @@
     "test:source-policy": "node --experimental-strip-types --test tests/booking-source-policy.test.ts",
     "test:discovery": "node --experimental-strip-types --test tests/discovery-evaluation-flow.test.ts",
     "test:os-navigation": "node --experimental-strip-types --test tests/os-navigation.test.ts",
-    "test:os": "node --experimental-strip-types --test tests/os-navigation.test.ts tests/os-home-contract.test.ts tests/os-big-picture-contract.test.ts tests/os-shell-contract.test.ts tests/os-route-context.test.ts tests/temporal-foundation.test.ts tests/activities-timeline.test.ts tests/activities-calendar-contract.test.ts tests/os-compatibility.test.ts tests/object-os-contract.test.ts",
+    "test:os": "node --experimental-strip-types --test tests/os-navigation.test.ts tests/os-home-contract.test.ts tests/os-big-picture-contract.test.ts tests/os-shell-contract.test.ts tests/os-route-context.test.ts tests/temporal-foundation.test.ts tests/activities-timeline.test.ts tests/activities-calendar-contract.test.ts tests/os-compatibility.test.ts tests/object-os-contract.test.ts tests/object-command-contract.test.ts",
     "test:e2e:booking": "node scripts/run-booking-calendar-e2e.mjs",
     "map:backfill-derivatives": "node scripts/backfill-gis-overlay-derivatives.mjs"
   },
