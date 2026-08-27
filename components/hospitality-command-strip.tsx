@@ -48,7 +48,7 @@ export function HospitalityCommandStrip() {
   const [pulse, setPulse] = useState<HospitalityPulse>(EMPTY_PULSE)
   const [exceptions, setExceptions] = useState<ExceptionRow[]>([])
   const [canApproveFinance, setCanApproveFinance] = useState(false)
-  const [financeApprovalCount, setFinanceApprovalCount] = useState(0)
+  const [financeApprovalCount, setFinanceApprovalCount] = useState<number | null>(0)
   const [open, setOpen] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -59,15 +59,9 @@ export function HospitalityCommandStrip() {
     const today = chileOperatingDate()
 
     const financePermissionResult = await supabase.rpc("can_finance_approve")
-    if (financePermissionResult.error) {
-      setCanApproveFinance(false)
-      setFinanceApprovalCount(0)
-      setError(financePermissionResult.error.message)
-      setLoading(false)
-      return
-    }
-    const financeAllowed = Boolean(financePermissionResult.data)
+    const financeAllowed = !financePermissionResult.error && Boolean(financePermissionResult.data)
     setCanApproveFinance(financeAllowed)
+    if (!financeAllowed) setFinanceApprovalCount(0)
 
     const [arrivalsResult, departuresResult, requestsResult, exceptionsResult, financeResult] = await Promise.all([
       supabase
@@ -95,11 +89,10 @@ export function HospitalityCommandStrip() {
         : Promise.resolve({ count: 0, error: null }),
     ])
 
-    const firstError = arrivalsResult.error || departuresResult.error || requestsResult.error || exceptionsResult.error || financeResult.error
+    const firstError = arrivalsResult.error || departuresResult.error || requestsResult.error || exceptionsResult.error
     if (firstError) {
       setPulse(EMPTY_PULSE)
       setExceptions([])
-      setFinanceApprovalCount(0)
       setError(firstError.message)
       setLoading(false)
       return
@@ -116,7 +109,6 @@ export function HospitalityCommandStrip() {
       if (readinessResult.error) {
         setPulse(EMPTY_PULSE)
         setExceptions([])
-        setFinanceApprovalCount(0)
         setError(readinessResult.error.message)
         setLoading(false)
         return
@@ -133,7 +125,7 @@ export function HospitalityCommandStrip() {
       blockingExceptions: exceptionsResult.count ?? nextExceptions.length,
     })
     setExceptions(nextExceptions)
-    setFinanceApprovalCount(financeResult.count ?? 0)
+    if (financeAllowed) setFinanceApprovalCount(financeResult.error ? null : financeResult.count ?? 0)
     setLoading(false)
   }, [supabase])
 
@@ -165,7 +157,7 @@ export function HospitalityCommandStrip() {
         <PulseLink href="/bookings" icon={<DoorOpen className="h-3.5 w-3.5" />} label="No listas" value={pulse.arrivalsNotReady} warning={pulse.arrivalsNotReady > 0} />
         <PulseLink href="/bookings" icon={<LogOut className="h-3.5 w-3.5" />} label="Salidas" value={pulse.departures} />
         <PulseLink href="/bookings/requests" icon={<ConciergeBell className="h-3.5 w-3.5" />} label="Solicitudes" value={pulse.openRequests} warning={pulse.openRequests > 0} />
-        {canApproveFinance && <PulseLink href="/budgets/approvals" icon={<FileCheck2 className="h-3.5 w-3.5" />} label="Aprobaciones" value={financeApprovalCount} warning={financeApprovalCount > 0} />}
+        {canApproveFinance && <PulseLink href="/budgets/approvals" icon={<FileCheck2 className="h-3.5 w-3.5" />} label="Aprobaciones" value={financeApprovalCount ?? "—"} warning={(financeApprovalCount ?? 0) > 0} />}
         <button
           type="button"
           onClick={() => setOpen((current) => !current)}
@@ -210,7 +202,7 @@ export function HospitalityCommandStrip() {
   )
 }
 
-function PulseLink({ href, icon, label, value, warning = false }: { href: string; icon: React.ReactNode; label: string; value: number; warning?: boolean }) {
+function PulseLink({ href, icon, label, value, warning = false }: { href: string; icon: React.ReactNode; label: string; value: number | string; warning?: boolean }) {
   return (
     <Link
       href={href}
