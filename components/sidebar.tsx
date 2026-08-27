@@ -201,6 +201,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
 
   const handleOpenSearch = () => document.dispatchEvent(new KeyboardEvent("keydown", { key: "k", code: "KeyK", metaKey: true, bubbles: true }))
   const showConcierge = can("hospitality.operate") && canAccessDepartment("hospitality")
+  const showItControl = access.is_admin || access.departments.includes("it")
   const accessLoading = loading || routeCapabilitiesLoading
 
   return (
@@ -236,6 +237,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
             {showConcierge && <UtilityLink href="/concierge" icon={MessageSquare} label={t("shell.concierge")} language={language} onClose={onClose} />}
             {access.is_admin && <UtilityLink href="/ai-ops" icon={Bot} label={t("shell.ai_ops")} language={language} onClose={onClose} />}
             {access.is_admin && <UtilityLink href="/sovereignty" icon={Crown} label={t("nav.sovereignty_dashboard")} language={language} onClose={onClose} />}
+            {showItControl && <UtilityLink href="/admin/it-control" icon={Activity} label={t("shell.it_control")} language={language} onClose={onClose} />}
             {access.is_admin && <UtilityLink href="/admin" icon={Settings} label={t("shell.admin")} language={language} onClose={onClose} />}
           </div>
         </nav>
