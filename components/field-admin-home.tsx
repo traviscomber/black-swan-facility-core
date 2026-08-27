@@ -135,12 +135,14 @@ export function FieldAdminHome() {
   const [attention, setAttention] = useState<AttentionSignal[]>([])
   const [financeApprovals, setFinanceApprovals] = useState<CostCenterApprovalGroup[]>([])
   const [canApproveFinance, setCanApproveFinance] = useState(false)
+  const [financeLoadError, setFinanceLoadError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
     setError(null)
+    setFinanceLoadError(null)
     try {
       const nav = await loadNavigation()
       setNavigation(nav)
@@ -148,8 +150,7 @@ export function FieldAdminHome() {
       const personal: WorkItem[] = []
 
       const financePermissionResult = await supabase.rpc('can_finance_approve')
-      if (financePermissionResult.error) throw financePermissionResult.error
-      const financeAllowed = Boolean(financePermissionResult.data)
+      const financeAllowed = !financePermissionResult.error && Boolean(financePermissionResult.data)
       setCanApproveFinance(financeAllowed)
 
       if (financeAllowed) {
@@ -157,8 +158,12 @@ export function FieldAdminHome() {
           .from('finance_approval_queue')
           .select('id,operational_label,cost_center_name,cost_center_code,total_amount,currency')
           .eq('approval_status', 'ready')
-        if (financeResult.error) throw financeResult.error
-        setFinanceApprovals(groupFinanceApprovals((financeResult.data ?? []) as FinanceApprovalRow[]))
+        if (financeResult.error) {
+          setFinanceApprovals([])
+          setFinanceLoadError(financeResult.error.message)
+        } else {
+          setFinanceApprovals(groupFinanceApprovals((financeResult.data ?? []) as FinanceApprovalRow[]))
+        }
       } else {
         setFinanceApprovals([])
       }
@@ -300,6 +305,7 @@ export function FieldAdminHome() {
       setAttention([])
       setFinanceApprovals([])
       setCanApproveFinance(false)
+      setFinanceLoadError(null)
     } finally {
       setLoading(false)
     }
@@ -362,6 +368,8 @@ export function FieldAdminHome() {
           </div>
           {loading ? (
             <div className="rounded border border-dashed p-5 text-sm text-muted-foreground">Actualizando aprobaciones…</div>
+          ) : financeLoadError ? (
+            <div className="rounded border border-amber-500/30 bg-amber-500/5 p-5 text-sm text-muted-foreground">No pudimos actualizar el contador de facturas. La cola canónica de aprobaciones sigue disponible desde “Revisar aprobaciones”.</div>
           ) : financeApprovals.length === 0 ? (
             <div className="flex items-center gap-3 rounded border border-dashed p-5 text-sm text-muted-foreground"><CheckCircle2 className="h-5 w-5" /><span>No hay facturas listas para tu aprobación.</span></div>
           ) : (
