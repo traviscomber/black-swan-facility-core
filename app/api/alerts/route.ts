@@ -1,12 +1,10 @@
-import { generateOperationalAlerts } from "@/lib/alert-generator"
+import { generateOperationalAlertSnapshot } from "@/lib/alert-generator"
 import { NextResponse } from "next/server"
 
 export async function GET() {
   try {
-    const alerts = await generateOperationalAlerts()
-    
-    // Transform alerts to match the client interface
-    const formattedAlerts = alerts.map((alert: any) => ({
+    const snapshot = await generateOperationalAlertSnapshot()
+    const formattedAlerts = snapshot.alerts.map((alert) => ({
       id: alert.id,
       title: alert.title,
       description: alert.description,
@@ -16,9 +14,21 @@ export async function GET() {
       actionLabel: alert.actionLabel || 'View',
     }))
 
-    return NextResponse.json(formattedAlerts)
+    return NextResponse.json(formattedAlerts, {
+      status: snapshot.health === 'failed' ? 503 : 200,
+      headers: {
+        'x-operations-health': snapshot.health,
+        'x-operations-failed-sources': snapshot.failedSources.join(','),
+      },
+    })
   } catch (error) {
     console.error("[API] Error generating alerts:", error)
-    return NextResponse.json([], { status: 200 })
+    return NextResponse.json([], {
+      status: 503,
+      headers: {
+        'x-operations-health': 'failed',
+        'x-operations-failed-sources': 'alert-generator',
+      },
+    })
   }
 }
