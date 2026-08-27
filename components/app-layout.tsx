@@ -4,6 +4,7 @@ import type React from "react"
 import { useMemo, useState, useEffect } from "react"
 import Link from "next/link"
 import { Sidebar } from "./sidebar"
+import { ObjectCommandPalette } from "./object-command-palette"
 import { Menu, ArrowLeft, Bot, LogOut, MessageSquare } from "lucide-react"
 import { usePathname, useRouter } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
@@ -58,6 +59,8 @@ export function AppLayout({ children }: AppLayoutProps) {
 
   return (
     <div className="flex h-screen w-full bg-background">
+      <ObjectCommandPalette access={access} canAccessDepartment={canAccessDepartment} />
+
       <div className={`brand-sidebar-shell hidden flex-shrink-0 lg:sticky lg:top-0 lg:z-40 lg:flex lg:h-screen lg:w-64 lg:flex-col ${sidebarSurface}`}>
         <Sidebar isOpen={true} onClose={() => {}} />
       </div>
