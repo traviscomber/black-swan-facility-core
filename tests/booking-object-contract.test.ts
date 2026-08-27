@@ -2,9 +2,18 @@ import assert from "node:assert/strict"
 import test from "node:test"
 import { readFileSync } from "node:fs"
 
+const bookingsPage = readFileSync(new URL("../app/bookings/page.tsx", import.meta.url), "utf8")
+const bookingShortcut = readFileSync(new URL("../components/booking-object-shortcut.tsx", import.meta.url), "utf8")
 const roomIndex = readFileSync(new URL("../app/bookings/rooms/page.tsx", import.meta.url), "utf8")
 const roomObject = readFileSync(new URL("../app/bookings/rooms/[id]/page.tsx", import.meta.url), "utf8")
 const reservationObject = readFileSync(new URL("../app/bookings/reservations/[id]/page.tsx", import.meta.url), "utf8")
+
+test("calendar selection exposes the canonical reservation object in one click", () => {
+  assert.match(bookingsPage, /<BookingObjectShortcut \/>/)
+  assert.match(bookingShortcut, /BOOKING_COMMAND_SELECTION_EVENT/)
+  assert.match(bookingShortcut, /href={`\/bookings\/reservations\/\$\{reservationId\}`}/)
+  assert.match(bookingShortcut, /Abrir objeto completo/)
+})
 
 test("room catalog opens a canonical room object", () => {
   assert.match(roomIndex, /href={`\/bookings\/rooms\/\$\{room\.id\}`}/)
