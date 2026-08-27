@@ -8,6 +8,7 @@ const component = readFileSync(new URL("../components/it-control-center.tsx", im
 const sidebar = readFileSync(new URL("../components/sidebar.tsx", import.meta.url), "utf8")
 const proxy = readFileSync(new URL("../proxy.ts", import.meta.url), "utf8")
 const adminPage = readFileSync(new URL("../app/admin/page.tsx", import.meta.url), "utf8")
+const adminQuickLinks = readFileSync(new URL("../components/admin-quick-links.tsx", import.meta.url), "utf8")
 const legacySecurityPage = readFileSync(new URL("../app/admin/security/page.tsx", import.meta.url), "utf8")
 
 test("IT snapshot is fail-closed and restricted to admin or active IT scope", () => {
@@ -57,6 +58,17 @@ test("administration no longer ships stale security KPI theater", () => {
   assert.doesNotMatch(adminPage, /publicTables:\s*129/)
   assert.doesNotMatch(adminPage, /permissiveTables:\s*75/)
   assert.doesNotMatch(adminPage, /verifiedOn:\s*"26-07-2026"/)
-  assert.match(adminPage, /href="\/admin\/it-control"/)
+  assert.match(adminPage, /<AdminQuickLinks \/>/)
+  assert.match(adminQuickLinks, /admin\/it-control/)
   assert.match(legacySecurityPage, /it-control\/page/)
+})
+
+test("administration closing links preserve locale in Spanish, English and German", () => {
+  assert.match(adminQuickLinks, /es:\s*\{/)
+  assert.match(adminQuickLinks, /en:\s*\{/)
+  assert.match(adminQuickLinks, /de:\s*\{/)
+  assert.match(adminQuickLinks, /href=\{`\/\$\{language\}\/admin\/access`\}/)
+  assert.match(adminQuickLinks, /href=\{`\/\$\{language\}\/admin\/it-control`\}/)
+  assert.match(adminQuickLinks, /Manage access and scope/)
+  assert.match(adminQuickLinks, /Zugriff und Geltungsbereich verwalten/)
 })
