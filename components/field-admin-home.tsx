@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 import Link from 'next/link'
-import { ArrowRight, CheckCircle2, ClipboardList, FileCheck2, Sparkles, Wrench } from 'lucide-react'
+import { AlertTriangle, ArrowRight, CheckCircle2, ClipboardList, FileCheck2, Sparkles, Wrench } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { createClient } from '@/lib/supabase/client'
@@ -12,7 +12,29 @@ const operationsApi = process.env.NEXT_PUBLIC_BLACK_SWAN_OPERATIONS_API_URL
 
 type NavItem = { key: string; label: string; href: string }
 type Navigation = { role?: string; items?: NavItem[] }
-type WorkItem = { id: string; kind: 'task' | 'maintenance' | 'housekeeping'; title: string; status: string; detail: string | null; href: string }
+type WorkKind = 'task' | 'maintenance' | 'issue' | 'housekeeping'
+type WorkFilter = 'all' | WorkKind
+type WorkItem = {
+  id: string
+  kind: WorkKind
+  title: string
+  status: string
+  detail: string | null
+  href: string
+  priority: string | null
+  dueDate: string | null
+  blocked?: boolean
+  scope: 'mine' | 'triage'
+}
+type IssueRow = {
+  id: string
+  title: string | null
+  status: string | null
+  priority: string | null
+  severity: string | null
+  category: string | null
+  issue_task_assignments: Array<{ task_id: string }> | null
+}
 type AttentionSignal = { key: string; label: string; value: number; detail: string; href: string }
 type FinanceApprovalRow = {
   id: string
@@ -49,6 +71,33 @@ function chileDateKey() {
   return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Santiago', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date())
 }
 
+function normalizedPriority(value: string | null) {
+  return value?.trim().toLowerCase() || ''
+}
+
+function priorityRank(value: string | null) {
+  const priority = normalizedPriority(value)
+  if (priority === 'critical' || priority === 'urgente') return 0
+  if (priority === 'high' || priority === 'alta') return 1
+  if (priority === 'medium' || priority === 'media') return 2
+  if (priority === 'low' || priority === 'baja') return 3
+  return 4
+}
+
+function sortWorkItems(items: WorkItem[], today: string) {
+  return [...items].sort((a, b) => {
+    if (Boolean(a.blocked) !== Boolean(b.blocked)) return a.blocked ? -1 : 1
+    const priorityDelta = priorityRank(a.priority) - priorityRank(b.priority)
+    if (priorityDelta !== 0) return priorityDelta
+    const aOverdue = Boolean(a.dueDate && a.dueDate <= today)
+    const bOverdue = Boolean(b.dueDate && b.dueDate <= today)
+    if (aOverdue !== bOverdue) return aOverdue ? -1 : 1
+    if (a.dueDate && b.dueDate && a.dueDate !== b.dueDate) return a.dueDate.localeCompare(b.dueDate)
+    if (a.dueDate !== b.dueDate) return a.dueDate ? -1 : 1
+    return a.title.localeCompare(b.title, 'es')
+  })
+}
+
 function groupFinanceApprovals(rows: FinanceApprovalRow[]): CostCenterApprovalGroup[] {
   const groups = new Map<string, CostCenterApprovalGroup>()
   for (const row of rows) {
@@ -82,6 +131,7 @@ export function FieldAdminHome() {
   const { employeeId, firstName, personaLabel } = useOsPersona()
   const [navigation, setNavigation] = useState<Navigation | null>(null)
   const [work, setWork] = useState<WorkItem[]>([])
+  const [workFilter, setWorkFilter] = useState<WorkFilter>('all')
   const [attention, setAttention] = useState<AttentionSignal[]>([])
   const [financeApprovals, setFinanceApprovals] = useState<CostCenterApprovalGroup[]>([])
   const [canApproveFinance, setCanApproveFinance] = useState(false)
@@ -133,6 +183,9 @@ export function FieldAdminHome() {
             status: item.status,
             detail: item.due_date ? `Vence ${item.due_date}${item.priority ? ` · ${item.priority}` : ''}` : item.priority,
             href: '/tasks',
+            priority: item.priority,
+            dueDate: item.due_date,
+            scope: 'mine' as const,
           })))
         }
       }
@@ -153,6 +206,10 @@ export function FieldAdminHome() {
           status: item.status,
           detail: `${item.bloqueado ? 'Bloqueado · ' : ''}${item.fecha_objetivo ? `Objetivo ${item.fecha_objetivo}` : 'Sin fecha objetivo'}${item.prioridad ? ` · ${item.prioridad}` : ''}`,
           href: '/maintenance',
+          priority: item.prioridad,
+          dueDate: item.fecha_objetivo,
+          blocked: Boolean(item.bloqueado),
+          scope: 'mine' as const,
         })))
       }
 
@@ -172,7 +229,37 @@ export function FieldAdminHome() {
           status: item.status,
           detail: item.service_date ? `Servicio ${item.service_date}${item.priority ? ` · ${item.priority}` : ''}` : item.priority,
           href: '/bookings/housekeeping',
+          priority: item.priority,
+          dueDate: item.service_date,
+          scope: 'mine' as const,
         })))
+      }
+
+      if (employeeId && hasNavKey(nav, 'issues')) {
+        const issues = await supabase
+          .from('issues')
+          .select('id,title,status,priority,severity,category,issue_task_assignments(task_id)')
+          .not('status', 'in', '(resolved,closed)')
+          .order('created_at', { ascending: false })
+          .limit(12)
+        if (issues.error) throw issues.error
+        const issueRows = (issues.data ?? []) as unknown as IssueRow[]
+        personal.push(...issueRows
+          .filter((item) => (item.issue_task_assignments ?? []).length === 0)
+          .map((item) => {
+            const priority = item.severity || item.priority
+            return {
+              id: item.id,
+              kind: 'issue' as const,
+              title: item.title || 'Incidencia sin título',
+              status: item.status || 'open',
+              detail: `Sin tarea vinculada · ${item.category || 'Incidencia'}${priority ? ` · ${priority}` : ''}`,
+              href: '/issues',
+              priority,
+              dueDate: null,
+              scope: 'triage' as const,
+            }
+          }))
       }
 
       const zero = Promise.resolve({ count: 0, error: null })
@@ -205,7 +292,7 @@ export function FieldAdminHome() {
         { key: 'replenishment', label: 'Reposición en curso', value: replenishment.count ?? 0, detail: 'Necesidades todavía abiertas', href: '/inventory/replenishment' },
       ].filter((signal) => signal.value > 0)
 
-      setWork(personal)
+      setWork(sortWorkItems(personal, today))
       setAttention(nextAttention)
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'No fue posible cargar la operación del campo')
@@ -221,10 +308,22 @@ export function FieldAdminHome() {
   useEffect(() => { void load() }, [load])
 
   const financeApprovalCount = useMemo(() => financeApprovals.reduce((sum, group) => sum + group.count, 0), [financeApprovals])
+  const workCounts = useMemo(() => work.reduce<Record<WorkKind, number>>((counts, item) => {
+    counts[item.kind] += 1
+    return counts
+  }, { task: 0, maintenance: 0, issue: 0, housekeeping: 0 }), [work])
+  const visibleWork = useMemo(() => workFilter === 'all' ? work : work.filter((item) => item.kind === workFilter), [work, workFilter])
+  const workFilters: Array<{ key: WorkFilter; label: string; count: number }> = [
+    { key: 'all', label: 'Todo', count: work.length },
+    { key: 'task', label: 'Tareas', count: workCounts.task },
+    { key: 'maintenance', label: 'Mantenimiento', count: workCounts.maintenance },
+    { key: 'issue', label: 'Incidencias', count: workCounts.issue },
+    { key: 'housekeeping', label: 'Housekeeping', count: workCounts.housekeeping },
+  ]
 
   const quickWorkspaces = useMemo(() => {
     const items = navigation?.items ?? []
-    return ['tasks', 'maintenance', 'inventory', 'bookings', 'map', 'procurement']
+    return ['tasks', 'maintenance', 'issues', 'inventory', 'bookings', 'procurement']
       .map((key) => items.find((item) => item.key === key))
       .filter((item): item is NavItem => Boolean(item))
       .slice(0, 6)
@@ -285,19 +384,38 @@ export function FieldAdminHome() {
       )}
 
       <section className="space-y-3">
-        <div>
-          <h2 className="text-lg font-semibold">Mi trabajo</h2>
-          <p className="text-sm text-muted-foreground">Asignaciones reales vinculadas a tu registro de empleado.</p>
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <h2 className="text-lg font-semibold">Mi trabajo</h2>
+            <p className="text-sm text-muted-foreground">Una sola cola para tareas, mantenimiento, housekeeping e incidencias que todavía necesitan convertirse en trabajo ejecutable.</p>
+          </div>
+          {!loading && work.length > 0 && (
+            <div className="flex flex-wrap gap-2" aria-label="Filtrar trabajo por tipo">
+              {workFilters.map((filter) => (
+                <button
+                  key={filter.key}
+                  type="button"
+                  onClick={() => setWorkFilter(filter.key)}
+                  aria-pressed={workFilter === filter.key}
+                  className={`rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${workFilter === filter.key ? 'border-primary bg-primary text-primary-foreground' : 'hover:bg-muted'}`}
+                >
+                  {filter.label} · {filter.count}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
         {loading ? (
           <div className="rounded border border-dashed p-5 text-sm text-muted-foreground">Actualizando tu operación…</div>
         ) : !employeeId ? (
           <div className="rounded border border-dashed p-5 text-sm text-muted-foreground">Tu usuario todavía no tiene una identidad de empleado vinculada.</div>
         ) : work.length === 0 ? (
-          <div className="flex items-center gap-3 rounded border border-dashed p-5 text-sm text-muted-foreground"><CheckCircle2 className="h-5 w-5" /><span>No tienes tareas, mantenimiento ni housekeeping asignados directamente.</span></div>
+          <div className="flex items-center gap-3 rounded border border-dashed p-5 text-sm text-muted-foreground"><CheckCircle2 className="h-5 w-5" /><span>No tienes trabajo asignado ni incidencias pendientes de triaje.</span></div>
+        ) : visibleWork.length === 0 ? (
+          <div className="rounded border border-dashed p-5 text-sm text-muted-foreground">No hay trabajo de este tipo en tu cola actual.</div>
         ) : (
           <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-            {work.map((item) => <WorkCard key={`${item.kind}-${item.id}`} item={item} />)}
+            {visibleWork.map((item) => <WorkCard key={`${item.kind}-${item.id}`} item={item} />)}
           </div>
         )}
       </section>
@@ -334,12 +452,28 @@ export function FieldAdminHome() {
 }
 
 function WorkCard({ item }: { item: WorkItem }) {
-  const icon: ReactNode = item.kind === 'maintenance' ? <Wrench className="h-4 w-4" /> : item.kind === 'housekeeping' ? <Sparkles className="h-4 w-4" /> : <ClipboardList className="h-4 w-4" />
+  const icon: ReactNode = item.kind === 'maintenance'
+    ? <Wrench className="h-4 w-4" />
+    : item.kind === 'housekeeping'
+      ? <Sparkles className="h-4 w-4" />
+      : item.kind === 'issue'
+        ? <AlertTriangle className="h-4 w-4" />
+        : <ClipboardList className="h-4 w-4" />
+  const kindLabel = item.kind === 'maintenance' ? 'Mantenimiento' : item.kind === 'housekeeping' ? 'Housekeeping' : item.kind === 'issue' ? 'Incidencia' : 'Tarea'
+
   return (
     <Link href={item.href} className="rounded-lg border p-4 transition-colors hover:bg-muted/40">
       <div className="flex items-start gap-3">
         <div className="mt-0.5 text-primary">{icon}</div>
-        <div className="min-w-0 flex-1"><p className="font-medium">{item.title}</p><p className="mt-1 text-xs text-muted-foreground">{item.detail || 'Sin detalle adicional'}</p><Badge variant="outline" className="mt-2">{item.status}</Badge></div>
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2"><p className="font-medium">{item.title}</p><Badge variant="secondary">{kindLabel}</Badge></div>
+          <p className="mt-1 text-xs text-muted-foreground">{item.detail || 'Sin detalle adicional'}</p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            <Badge variant="outline">{item.status}</Badge>
+            {item.priority && <Badge variant={priorityRank(item.priority) <= 1 ? 'destructive' : 'outline'}>{item.priority}</Badge>}
+            {item.scope === 'triage' && <Badge variant="outline">Requiere triaje</Badge>}
+          </div>
+        </div>
       </div>
     </Link>
   )
