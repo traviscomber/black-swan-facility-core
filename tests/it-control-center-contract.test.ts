@@ -6,6 +6,7 @@ const migration = readFileSync(new URL("../supabase/migrations/20260827220000_it
 const page = readFileSync(new URL("../app/admin/it-control/page.tsx", import.meta.url), "utf8")
 const component = readFileSync(new URL("../components/it-control-center.tsx", import.meta.url), "utf8")
 const sidebar = readFileSync(new URL("../components/sidebar.tsx", import.meta.url), "utf8")
+const proxy = readFileSync(new URL("../proxy.ts", import.meta.url), "utf8")
 const adminPage = readFileSync(new URL("../app/admin/page.tsx", import.meta.url), "utf8")
 const legacySecurityPage = readFileSync(new URL("../app/admin/security/page.tsx", import.meta.url), "utf8")
 
@@ -42,6 +43,14 @@ test("navigation exposes IT control only to admin or IT-scoped users", () => {
   assert.match(sidebar, /access\.is_admin \|\| access\.departments\.includes\("it"\)/)
   assert.match(sidebar, /href="\/admin\/it-control"/)
   assert.match(sidebar, /shell\.it_control/)
+})
+
+test("middleware aligns the IT route with the same admin-or-IT policy", () => {
+  assert.match(proxy, /isItControlPath\(pathname\)/)
+  assert.match(proxy, /if \(isItControlPath\(pathname\)\) return null/)
+  assert.match(proxy, /rpc\(\s*"get_current_user_effective_access"/)
+  assert.match(proxy, /departments\.includes\("it"\)/)
+  assert.match(proxy, /effectiveAccessError \|\| \(!isAdmin && !departments\.includes\("it"\)\)/)
 })
 
 test("administration no longer ships stale security KPI theater", () => {
