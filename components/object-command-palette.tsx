@@ -266,6 +266,7 @@ export function ObjectCommandPalette({ access, canAccessDepartment }: ObjectComm
             <Search className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
             <Command.Input
               autoFocus
+              aria-label={text.title}
               value={query}
               onValueChange={setQuery}
               placeholder={text.placeholder}
@@ -295,9 +296,9 @@ export function ObjectCommandPalette({ access, canAccessDepartment }: ObjectComm
               )
             })}
           </Command.List>
-          <div className="flex items-center justify-between border-t px-4 py-2 text-[11px] text-muted-foreground">
-            <span>{text.description}</span>
-            <span>⌘K / Ctrl K</span>
+          <div className="flex items-center justify-between gap-3 border-t px-4 py-2 text-[11px] text-muted-foreground">
+            <span className="min-w-0">{text.description}</span>
+            <span className="shrink-0 whitespace-nowrap">⌘K / Ctrl K</span>
           </div>
         </Command>
       </DialogContent>
