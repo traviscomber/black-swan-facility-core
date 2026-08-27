@@ -1,0 +1,53 @@
+import assert from "node:assert/strict"
+import test from "node:test"
+import { readFileSync } from "node:fs"
+
+const entry = readFileSync(new URL("../components/os-entry.tsx", import.meta.url), "utf8")
+const panorama = readFileSync(new URL("../components/big-picture-home.tsx", import.meta.url), "utf8")
+
+test("OS exposes daily operation and Panorama as two views of the same shell", () => {
+  assert.match(entry, /searchParams\.get\('view'\) === 'panorama'/)
+  assert.match(entry, /href="\/os"/)
+  assert.match(entry, /href="\/os\?view=panorama"/)
+  assert.match(entry, /panorama \? <BigPictureHome \/>/)
+  assert.match(entry, /persona === 'field_admin' \? <FieldAdminHome \/> : <OsHome \/>/)
+})
+
+test("Panorama remains capability and RLS scoped instead of persona-authorized", () => {
+  assert.match(panorama, /\/v1\/os\/navigation/)
+  assert.match(panorama, /authorization: `Bearer \$\{token\}`/)
+  assert.match(panorama, /hasNavKey\(nav, 'bookings'\)/)
+  assert.match(panorama, /hasNavKey\(nav, 'tasks'\)/)
+  assert.match(panorama, /hasNavKey\(nav, 'maintenance'\)/)
+  assert.match(panorama, /hasNavKey\(nav, 'issues'\)/)
+  assert.match(panorama, /hasNavKey\(nav, 'inventory'\)/)
+  assert.match(panorama, /hasNavKey\(nav, 'procurement'\)/)
+  assert.doesNotMatch(panorama, /persona ===/)
+})
+
+test("Panorama is grounded in canonical operational sources and finance permission", () => {
+  assert.match(panorama, /from\('reservations'\)/)
+  assert.match(panorama, /from\('hospitality_requests'\)/)
+  assert.match(panorama, /from\('reservation_operational_exceptions'\)/)
+  assert.match(panorama, /from\('tasks'\)/)
+  assert.match(panorama, /from\('maintenance_tasks'\)/)
+  assert.match(panorama, /from\('issues'\)/)
+  assert.match(panorama, /from\('inventory_stock_status'\)/)
+  assert.match(panorama, /from\('inventory_replenishment_needs'\)/)
+  assert.match(panorama, /from\('procurement_requests'\)/)
+  assert.match(panorama, /rpc\('can_finance_approve'\)/)
+  assert.match(panorama, /from\('finance_approval_queue'\)/)
+  assert.match(panorama, /approval_status', 'ready'/)
+})
+
+test("Panorama reports evidence, not synthetic business scores", () => {
+  assert.match(panorama, /Sin scores sintéticos/)
+  assert.match(panorama, /Estado visible/)
+  assert.match(panorama, /señales requieren atención/)
+  assert.doesNotMatch(panorama, /AI score/i)
+  assert.doesNotMatch(panorama, /ROI/i)
+  assert.doesNotMatch(panorama, /efficiency score/i)
+  assert.doesNotMatch(panorama, /\.insert\(/)
+  assert.doesNotMatch(panorama, /\.update\(/)
+  assert.doesNotMatch(panorama, /\.delete\(/)
+})
