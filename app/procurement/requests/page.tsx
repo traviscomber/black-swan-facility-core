@@ -187,7 +187,7 @@ export default function ProcurementRequestsPage() {
     <AppLayout>
       <PageHeader
         title="Solicitudes de compra"
-        description="Etapa previa a cotizaciones y órdenes de compra"
+        description="Requerimientos operativos conectados a su ciclo completo de compra"
         actions={
           <div className="flex gap-2">
             <Button variant="outline" asChild>
@@ -245,7 +245,7 @@ export default function ProcurementRequestsPage() {
               <CardTitle>Requerimientos internos</CardTitle>
             </div>
             <CardDescription>
-              Estas solicitudes no crean ni modifican órdenes en procurement_items.
+              Abre cualquier solicitud para seguir cotización, aprobación, orden, recepción e ingreso a stock desde un solo objeto.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -279,9 +279,9 @@ export default function ProcurementRequestsPage() {
                     </TableRow>
                   ) : (
                     requests.map((request) => (
-                      <TableRow key={request.id}>
-                        <TableCell className="font-mono text-xs">{request.request_number ?? "Pendiente"}</TableCell>
-                        <TableCell className="font-medium">{request.title}</TableCell>
+                      <TableRow key={request.id} className="group">
+                        <TableCell className="font-mono text-xs"><Link href={`/procurement/requests/${request.id}`} className="hover:text-primary hover:underline">{request.request_number ?? "Pendiente"}</Link></TableCell>
+                        <TableCell className="font-medium"><Link href={`/procurement/requests/${request.id}`} className="group-hover:text-primary hover:underline">{request.title}</Link></TableCell>
                         <TableCell>{request.category}</TableCell>
                         <TableCell>
                           {request.quantity} {request.unit}
