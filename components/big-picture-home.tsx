@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 import Link from 'next/link'
-import { ArrowRight, BedDouble, CheckCircle2, ClipboardList, FileCheck2, ShoppingCart } from 'lucide-react'
+import { AlertTriangle, ArrowRight, BedDouble, CheckCircle2, ClipboardList, FileCheck2, ShoppingCart } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { createClient } from '@/lib/supabase/client'
@@ -18,6 +18,37 @@ type PictureSignal = {
   detail: string
   href: string
   alert?: boolean
+}
+type AttentionItem = {
+  key: string
+  domain: string
+  title: string
+  detail: string
+  href: string
+  priority?: string | null
+}
+type ReservationBlockerRow = {
+  reservation_id: string
+  title: string
+  detail: string | null
+  priority: string | null
+  exception_state: string
+  blocks_check_in: boolean
+  blocks_check_out: boolean
+}
+type BlockedMaintenanceRow = {
+  id: string
+  title: string
+  prioridad: string | null
+  fecha_objetivo: string | null
+}
+type ProcurementDecisionRow = {
+  id: string
+  request_number: string | null
+  title: string
+  priority: string | null
+  status: string | null
+  required_date: string | null
 }
 type FinanceApprovalRow = { total_amount: number | string | null; currency: string | null }
 type FinancePicture = { count: number; totals: Record<string, number> }
@@ -70,12 +101,21 @@ function formatFinanceTotals(totals: Record<string, number>) {
   return parts.length > 0 ? parts.join(' · ') : 'Sin monto pendiente visible'
 }
 
+function priorityRank(value: string | null | undefined) {
+  const normalized = value?.toLowerCase() ?? ''
+  if (['critical', 'critica', 'crítica', 'urgent', 'urgente'].includes(normalized)) return 0
+  if (['high', 'alta'].includes(normalized)) return 1
+  if (['medium', 'normal', 'media'].includes(normalized)) return 2
+  return 3
+}
+
 export function BigPictureHome() {
   const supabase = useMemo(() => createClient(), [])
   const [navigation, setNavigation] = useState<Navigation | null>(null)
   const [hospitality, setHospitality] = useState<PictureSignal[]>([])
   const [work, setWork] = useState<PictureSignal[]>([])
   const [supply, setSupply] = useState<PictureSignal[]>([])
+  const [attention, setAttention] = useState<AttentionItem[]>([])
   const [finance, setFinance] = useState<FinancePicture | null>(null)
   const [financeAllowed, setFinanceAllowed] = useState(false)
   const [loading, setLoading] = useState(true)
@@ -90,6 +130,7 @@ export function BigPictureHome() {
       const today = chileDateOffset(0)
       const horizon = chileDateOffset(7)
       const zero = Promise.resolve({ count: 0, error: null })
+      const emptyRows = Promise.resolve({ data: [], error: null })
 
       const financePermission = await supabase.rpc('can_finance_approve')
       const canApprove = !financePermission.error && Boolean(financePermission.data)
@@ -107,6 +148,9 @@ export function BigPictureHome() {
         replenishment,
         procurementPending,
         financeRows,
+        blockerRows,
+        blockedMaintenanceRows,
+        procurementDecisionRows,
       ] = await Promise.all([
         hasNavKey(nav, 'bookings')
           ? supabase.from('reservations').select('id', { count: 'exact', head: true }).gte('check_in', today).lt('check_in', horizon).not('status', 'in', '(cancelled,canceled,void,voided)')
@@ -141,6 +185,15 @@ export function BigPictureHome() {
         canApprove
           ? supabase.from('finance_approval_queue').select('total_amount,currency').eq('approval_status', 'ready')
           : Promise.resolve({ data: [], error: null }),
+        hasNavKey(nav, 'bookings')
+          ? supabase.from('reservation_operational_exceptions').select('reservation_id,title,detail,priority,exception_state,blocks_check_in,blocks_check_out').in('exception_state', ['open', 'overdue']).or('blocks_check_in.eq.true,blocks_check_out.eq.true').limit(5)
+          : emptyRows,
+        hasNavKey(nav, 'maintenance')
+          ? supabase.from('maintenance_tasks').select('id,title,prioridad,fecha_objetivo').eq('bloqueado', true).not('status', 'in', '(completada,completed,cancelada,cancelled,canceled)').limit(4)
+          : emptyRows,
+        hasNavKey(nav, 'procurement')
+          ? supabase.from('procurement_requests').select('id,request_number,title,priority,status,required_date').in('status', ['submitted', 'pending_approval']).limit(4)
+          : emptyRows,
       ])
 
       const operationalError = arrivals7d.error
@@ -173,8 +226,48 @@ export function BigPictureHome() {
         nextSupply.push({ key: 'stock', label: 'Stock crítico', value: criticalStock.count ?? 0, detail: 'Posiciones bajo mínimo o sin stock', href: '/inventory/stock', alert: (criticalStock.count ?? 0) > 0 })
         nextSupply.push({ key: 'replenishment', label: 'Reposición en curso', value: replenishment.count ?? 0, detail: 'Necesidades abiertas hasta recepción', href: '/inventory/replenishment' })
       }
-      if (hasNavKey(nav, 'procurement')) nextSupply.push({ key: 'procurement', label: 'Compras por decidir', value: procurementPending.count ?? 0, detail: 'Solicitudes enviadas o pendientes de aprobación', href: '/procurement', alert: (procurementPending.count ?? 0) > 0 })
+      if (hasNavKey(nav, 'procurement')) nextSupply.push({ key: 'procurement', label: 'Compras por decidir', value: procurementPending.count ?? 0, detail: 'Solicitudes enviadas o pendientes de aprobación', href: '/procurement/requests', alert: (procurementPending.count ?? 0) > 0 })
       setSupply(nextSupply)
+
+      const nextAttention: AttentionItem[] = []
+      if (!blockerRows.error) {
+        for (const row of (blockerRows.data ?? []) as ReservationBlockerRow[]) {
+          const blocking = [row.blocks_check_in ? 'check-in' : null, row.blocks_check_out ? 'check-out' : null].filter(Boolean).join(' y ')
+          nextAttention.push({
+            key: `reservation-${row.reservation_id}-${row.title}`,
+            domain: 'Hospitality',
+            title: row.title,
+            detail: `${row.exception_state}${blocking ? ` · bloquea ${blocking}` : ''}${row.detail ? ` · ${row.detail}` : ''}`,
+            href: `/bookings/reservations/${row.reservation_id}`,
+            priority: row.priority,
+          })
+        }
+      }
+      if (!blockedMaintenanceRows.error) {
+        for (const row of (blockedMaintenanceRows.data ?? []) as BlockedMaintenanceRow[]) {
+          nextAttention.push({
+            key: `maintenance-${row.id}`,
+            domain: 'Mantenimiento',
+            title: row.title,
+            detail: row.fecha_objetivo ? `Bloqueado · objetivo ${row.fecha_objetivo}` : 'Trabajo técnico bloqueado',
+            href: '/maintenance',
+            priority: row.prioridad,
+          })
+        }
+      }
+      if (!procurementDecisionRows.error) {
+        for (const row of (procurementDecisionRows.data ?? []) as ProcurementDecisionRow[]) {
+          nextAttention.push({
+            key: `procurement-${row.id}`,
+            domain: 'Compra',
+            title: row.title,
+            detail: `${row.request_number ?? 'Solicitud'} · ${row.status ?? 'pendiente'}${row.required_date ? ` · requerida ${row.required_date}` : ''}`,
+            href: `/procurement/requests/${row.id}`,
+            priority: row.priority,
+          })
+        }
+      }
+      setAttention(nextAttention.sort((a, b) => priorityRank(a.priority) - priorityRank(b.priority)).slice(0, 8))
 
       if (canApprove && !financeRows.error) setFinance(financeTotals((financeRows.data ?? []) as FinanceApprovalRow[]))
       else setFinance(null)
@@ -182,6 +275,7 @@ export function BigPictureHome() {
       setHospitality([])
       setWork([])
       setSupply([])
+      setAttention([])
       setFinance(null)
       setError(caught instanceof Error ? caught.message : 'No fue posible cargar Panorama')
     } finally {
@@ -221,6 +315,29 @@ export function BigPictureHome() {
 
       {!loading && !error && <>
         {attentionCount === 0 && <div className="flex items-center gap-3 rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-4 text-sm"><CheckCircle2 className="h-5 w-5 text-emerald-500" /><span>No hay bloqueos, incidencias, stock crítico o decisiones pendientes visibles en las fuentes revisadas.</span></div>}
+
+        {attention.length > 0 && (
+          <Card className="border-amber-500/25 bg-amber-500/[0.03]">
+            <CardHeader>
+              <div className="flex items-center gap-2"><AlertTriangle className="h-4 w-4 text-amber-500" /><CardTitle className="text-base">Requiere atención ahora</CardTitle></div>
+              <CardDescription>Objetos concretos detrás de las señales. Abre el contexto antes de decidir.</CardDescription>
+            </CardHeader>
+            <CardContent className="grid gap-2 lg:grid-cols-2">
+              {attention.map((item) => (
+                <Link key={item.key} href={item.href} className="group rounded-lg border bg-background/70 p-4 transition-colors hover:bg-muted/50">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2"><Badge variant="outline">{item.domain}</Badge>{item.priority && <Badge variant="secondary">{item.priority}</Badge>}</div>
+                      <p className="mt-2 font-medium">{item.title}</p>
+                      <p className="mt-1 text-xs leading-5 text-muted-foreground">{item.detail}</p>
+                    </div>
+                    <ArrowRight className="mt-1 h-4 w-4 shrink-0 text-primary transition-transform group-hover:translate-x-0.5" />
+                  </div>
+                </Link>
+              ))}
+            </CardContent>
+          </Card>
+        )}
 
         <div className="grid gap-6 xl:grid-cols-2">
           {visibleSections.hospitality && <PictureSection title="Hospitality" icon={<BedDouble className="h-4 w-4" />} description="Carga próxima y fricción operativa de las estadías." signals={hospitality} />}
