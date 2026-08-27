@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react"
 import Link from "next/link"
-import { AlertTriangle, ChevronDown, ConciergeBell, DoorOpen, LogIn, LogOut, RefreshCw } from "lucide-react"
+import { AlertTriangle, ChevronDown, ConciergeBell, DoorOpen, FileCheck2, LogIn, LogOut, RefreshCw } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { createClient } from "@/lib/supabase/client"
@@ -47,6 +47,8 @@ export function HospitalityCommandStrip() {
   const supabase = useMemo(() => createClient(), [])
   const [pulse, setPulse] = useState<HospitalityPulse>(EMPTY_PULSE)
   const [exceptions, setExceptions] = useState<ExceptionRow[]>([])
+  const [canApproveFinance, setCanApproveFinance] = useState(false)
+  const [financeApprovalCount, setFinanceApprovalCount] = useState(0)
   const [open, setOpen] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -56,7 +58,18 @@ export function HospitalityCommandStrip() {
     setError(null)
     const today = chileOperatingDate()
 
-    const [arrivalsResult, departuresResult, requestsResult, exceptionsResult] = await Promise.all([
+    const financePermissionResult = await supabase.rpc("can_finance_approve")
+    if (financePermissionResult.error) {
+      setCanApproveFinance(false)
+      setFinanceApprovalCount(0)
+      setError(financePermissionResult.error.message)
+      setLoading(false)
+      return
+    }
+    const financeAllowed = Boolean(financePermissionResult.data)
+    setCanApproveFinance(financeAllowed)
+
+    const [arrivalsResult, departuresResult, requestsResult, exceptionsResult, financeResult] = await Promise.all([
       supabase
         .from("reservations")
         .select("id", { count: "exact" })
@@ -77,12 +90,16 @@ export function HospitalityCommandStrip() {
         .in("exception_state", ["open", "overdue"])
         .or("blocks_check_in.eq.true,blocks_check_out.eq.true")
         .limit(12),
+      financeAllowed
+        ? supabase.from("finance_approval_queue").select("id", { count: "exact", head: true }).eq("approval_status", "ready")
+        : Promise.resolve({ count: 0, error: null }),
     ])
 
-    const firstError = arrivalsResult.error || departuresResult.error || requestsResult.error || exceptionsResult.error
+    const firstError = arrivalsResult.error || departuresResult.error || requestsResult.error || exceptionsResult.error || financeResult.error
     if (firstError) {
       setPulse(EMPTY_PULSE)
       setExceptions([])
+      setFinanceApprovalCount(0)
       setError(firstError.message)
       setLoading(false)
       return
@@ -99,6 +116,7 @@ export function HospitalityCommandStrip() {
       if (readinessResult.error) {
         setPulse(EMPTY_PULSE)
         setExceptions([])
+        setFinanceApprovalCount(0)
         setError(readinessResult.error.message)
         setLoading(false)
         return
@@ -115,6 +133,7 @@ export function HospitalityCommandStrip() {
       blockingExceptions: exceptionsResult.count ?? nextExceptions.length,
     })
     setExceptions(nextExceptions)
+    setFinanceApprovalCount(financeResult.count ?? 0)
     setLoading(false)
   }, [supabase])
 
@@ -146,6 +165,7 @@ export function HospitalityCommandStrip() {
         <PulseLink href="/bookings" icon={<DoorOpen className="h-3.5 w-3.5" />} label="No listas" value={pulse.arrivalsNotReady} warning={pulse.arrivalsNotReady > 0} />
         <PulseLink href="/bookings" icon={<LogOut className="h-3.5 w-3.5" />} label="Salidas" value={pulse.departures} />
         <PulseLink href="/bookings/requests" icon={<ConciergeBell className="h-3.5 w-3.5" />} label="Solicitudes" value={pulse.openRequests} warning={pulse.openRequests > 0} />
+        {canApproveFinance && <PulseLink href="/budgets/approvals" icon={<FileCheck2 className="h-3.5 w-3.5" />} label="Aprobaciones" value={financeApprovalCount} warning={financeApprovalCount > 0} />}
         <button
           type="button"
           onClick={() => setOpen((current) => !current)}
