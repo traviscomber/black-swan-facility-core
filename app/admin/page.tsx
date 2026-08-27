@@ -1,5 +1,5 @@
 import Link from "next/link"
-import { KeyRound, ShieldAlert } from "lucide-react"
+import { Activity, KeyRound } from "lucide-react"
 import { AppLayout } from "@/components/app-layout"
 import { AdminOverview } from "@/components/admin-overview"
 import { Card, CardContent } from "@/components/ui/card"
@@ -50,19 +50,7 @@ export default async function AdminPage() {
           locations: locations.count ?? 0,
           issueTypes: issueTypes.count ?? 0,
         }}
-        controls={{
-          publicTables: 129,
-          rlsEnabled: 129,
-          rlsDisabled: 0,
-          tablesWithoutPolicies: 0,
-          permissiveTables: 75,
-          publicRoleTables: 60,
-          authenticatedRoleTables: 15,
-          adminUsers: 1,
-          approverUsers: 3,
-          auditRecords: (approverAudit.count ?? 0) + (procurementAudit.count ?? 0) + (auditActions.count ?? 0),
-          verifiedOn: "26-07-2026",
-        }}
+        auditRecords={(approverAudit.count ?? 0) + (procurementAudit.count ?? 0) + (auditActions.count ?? 0)}
       />
       <div className="grid gap-4 px-4 pb-8 md:grid-cols-2 md:px-8">
         <Link href="/admin/access">
@@ -79,14 +67,14 @@ export default async function AdminPage() {
             </CardContent>
           </Card>
         </Link>
-        <Link href="/admin/security">
-          <Card className="h-full border-amber-500/50 transition-colors hover:border-amber-500">
+        <Link href="/admin/it-control">
+          <Card className="h-full border-sky-500/50 transition-colors hover:border-sky-500">
             <CardContent className="flex items-center justify-between gap-4 p-4">
               <div className="flex items-center gap-3">
-                <ShieldAlert className="h-5 w-5 text-muted-foreground" />
+                <Activity className="h-5 w-5 text-muted-foreground" />
                 <div>
-                  <p className="text-sm font-medium">Revisar riesgo de acceso a datos</p>
-                  <p className="text-xs text-muted-foreground">Clasificación de políticas amplias y plan de endurecimiento por fases.</p>
+                  <p className="text-sm font-medium">IT Control Center</p>
+                  <p className="text-xs text-muted-foreground">Jobs, freshness, retries, RLS y perfiles leídos en vivo desde producción.</p>
                 </div>
               </div>
               <span className="text-sm">Abrir →</span>
