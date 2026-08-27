@@ -36,6 +36,10 @@ jobs:
   calendar-interactions:
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    container:
+      image: mcr.microsoft.com/playwright:v1.61.1-noble
+    env:
+      PLAYWRIGHT_BROWSERS_PATH: /ms-playwright
     steps:
       - uses: actions/checkout@v4
       - name: Publish pending calendar E2E status
@@ -58,8 +62,10 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm exec playwright install --with-deps chromium firefox webkit
-      - run: pnpm test:e2e:booking
+      - name: Verify Playwright runtime
+        run: pnpm exec playwright --version
+      - name: Run booking calendar E2E
+        run: pnpm test:e2e:booking
       - name: Publish final calendar E2E status
         if: always()
         uses: actions/github-script@v7
