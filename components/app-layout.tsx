@@ -16,6 +16,24 @@ interface AppLayoutProps {
   children: React.ReactNode
 }
 
+const mobileCopy = {
+  es: {
+    openNavigation: "Abrir navegación",
+    back: "Volver",
+    logout: "Cerrar sesión",
+  },
+  en: {
+    openNavigation: "Open navigation",
+    back: "Back",
+    logout: "Sign out",
+  },
+  de: {
+    openNavigation: "Navigation öffnen",
+    back: "Zurück",
+    logout: "Abmelden",
+  },
+} as const
+
 function contextualHref(locale: string, target: string, pathname: string) {
   const context = buildOsRouteContext(pathname)
   const params = new URLSearchParams({ from: pathname })
@@ -29,6 +47,7 @@ export function AppLayout({ children }: AppLayoutProps) {
   const router = useRouter()
   const pathname = usePathname() || "/"
   const { language } = useLanguage()
+  const mobileText = mobileCopy[language as keyof typeof mobileCopy] ?? mobileCopy.en
   const { access, can, canAccessDepartment } = useEffectiveAccess()
   const supabase = useMemo(() => createClient(), [])
 
@@ -75,18 +94,33 @@ export function AppLayout({ children }: AppLayoutProps) {
       <div className="flex w-full flex-1 flex-col overflow-hidden">
         <div className="sticky top-0 z-40 flex h-14 items-center justify-between border-b border-border bg-sidebar px-3 sm:h-16 sm:px-4 lg:hidden">
           <div className="flex items-center gap-1">
-            <button onClick={() => setSidebarOpen(true)} className="rounded-md p-2 text-sidebar-foreground transition-colors hover:bg-sidebar-accent" aria-label="Abrir navegación">
+            <button
+              onClick={() => setSidebarOpen(true)}
+              className="rounded-md p-2 text-sidebar-foreground transition-colors hover:bg-sidebar-accent"
+              aria-label={mobileText.openNavigation}
+              title={mobileText.openNavigation}
+            >
               <Menu className="h-5 w-5" />
             </button>
-            <button onClick={() => router.back()} className="rounded-md p-2 text-sidebar-foreground transition-colors hover:bg-sidebar-accent" title="Volver">
+            <button
+              onClick={() => router.back()}
+              className="rounded-md p-2 text-sidebar-foreground transition-colors hover:bg-sidebar-accent"
+              aria-label={mobileText.back}
+              title={mobileText.back}
+            >
               <ArrowLeft className="h-5 w-5" />
             </button>
           </div>
           <div className="flex flex-1 items-center justify-center gap-2">
             <img src="/blackswan-logo.png" alt="Blackswan Logo" className="h-7 w-7 object-contain" />
-            <span className="text-xs font-semibold tracking-[0.12em] text-sidebar-foreground sm:text-sm">BFCS</span>
+            <span className="text-xs font-semibold tracking-[0.12em] text-sidebar-foreground sm:text-sm">BSFC</span>
           </div>
-          <button onClick={handleLogout} className="flex items-center gap-1.5 rounded-md px-2 py-1 text-sidebar-foreground transition-colors hover:bg-sidebar-accent" title="Cerrar sesión">
+          <button
+            onClick={handleLogout}
+            className="flex items-center gap-1.5 rounded-md px-2 py-1 text-sidebar-foreground transition-colors hover:bg-sidebar-accent"
+            aria-label={mobileText.logout}
+            title={mobileText.logout}
+          >
             {userInitials && <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-xs font-semibold text-primary-foreground">{userInitials}</span>}
             <LogOut className="h-4 w-4 text-muted-foreground" />
           </button>
