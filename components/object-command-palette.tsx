@@ -169,7 +169,7 @@ export function ObjectCommandPalette({ access, canAccessDepartment }: ObjectComm
       const pattern = `%${term}%`
 
       void (async () => {
-        const searches: Array<Promise<SearchResult[]>> = []
+        const searches: Array<PromiseLike<SearchResult[]>> = []
 
         if (canSearchBooking) {
           searches.push(
