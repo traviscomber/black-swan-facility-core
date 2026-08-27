@@ -73,6 +73,17 @@ test("Hospitality command strip is read-only and grounded in canonical operation
   assert.doesNotMatch(hospitalityStrip, /\.delete\(/)
 })
 
+test("Santiago sees canonical invoice approvals from Hospitality only when finance approval is allowed", () => {
+  assert.match(hospitalityStrip, /rpc\("can_finance_approve"\)/)
+  assert.match(hospitalityStrip, /finance_approval_queue/)
+  assert.match(hospitalityStrip, /eq\("approval_status", "ready"\)/)
+  assert.match(hospitalityStrip, /canApproveFinance && <PulseLink/)
+  assert.match(hospitalityStrip, /href="\/budgets\/approvals"/)
+  assert.match(hospitalityStrip, /label="Aprobaciones"/)
+  assert.doesNotMatch(hospitalityStrip, /approve_finance_document/)
+  assert.doesNotMatch(hospitalityStrip, /reject_finance_document/)
+})
+
 test("Raimundo field admin gets a dedicated OS desktop instead of Santiago's experience", () => {
   assert.match(osEntry, /persona === 'field_admin'/)
   assert.match(osEntry, /<FieldAdminHome/)
@@ -89,13 +100,14 @@ test("field desktop keeps authorized navigation as the gate for every operationa
   assert.match(fieldAdminHome, /hasNavKey\(nav, 'bookings'\)/)
 })
 
-test("Raimundo invoice approvals are permission checked and grouped by cost center", () => {
+test("Raimundo invoice approvals are permission checked, grouped by cost center and always one click away", () => {
   assert.match(fieldAdminHome, /rpc\('can_finance_approve'\)/)
   assert.match(fieldAdminHome, /finance_approval_queue/)
   assert.match(fieldAdminHome, /approval_status', 'ready'/)
   assert.match(fieldAdminHome, /operational_label \|\| row\.cost_center_name/)
   assert.match(fieldAdminHome, /Facturas por aprobar/)
   assert.match(fieldAdminHome, /agrupados por centro de costo/)
+  assert.match(fieldAdminHome, /Revisar aprobaciones/)
   assert.match(fieldAdminHome, /href="\/budgets\/approvals"/)
   assert.doesNotMatch(fieldAdminHome, /approve_finance_document/)
   assert.doesNotMatch(fieldAdminHome, /reject_finance_document/)
