@@ -252,7 +252,14 @@ export function FieldAdminHome() {
               <h2 className="text-lg font-semibold">Facturas por aprobar</h2>
               <p className="text-sm text-muted-foreground">Documentos listos para decisión, agrupados por centro de costo.</p>
             </div>
-            {financeApprovalCount > 0 && <Badge variant="secondary">{financeApprovalCount} pendiente{financeApprovalCount === 1 ? '' : 's'} · {financeApprovals.length} centro{financeApprovals.length === 1 ? '' : 's'}</Badge>}
+            <div className="flex flex-wrap items-center gap-2">
+              {financeApprovalCount > 0 && <Badge variant="secondary">{financeApprovalCount} pendiente{financeApprovalCount === 1 ? '' : 's'} · {financeApprovals.length} centro{financeApprovals.length === 1 ? '' : 's'}</Badge>}
+              <Link href="/budgets/approvals" className="inline-flex h-9 items-center gap-2 rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90">
+                <FileCheck2 className="h-4 w-4" />
+                Revisar aprobaciones
+                <ArrowRight className="h-3.5 w-3.5" />
+              </Link>
+            </div>
           </div>
           {loading ? (
             <div className="rounded border border-dashed p-5 text-sm text-muted-foreground">Actualizando aprobaciones…</div>
