@@ -40,6 +40,18 @@ test("Panorama is grounded in canonical operational sources and finance permissi
   assert.match(panorama, /approval_status', 'ready'/)
 })
 
+test("Panorama exposes concrete priority objects instead of stopping at counts", () => {
+  assert.match(panorama, /Requiere atención ahora/)
+  assert.match(panorama, /Objetos concretos detrás de las señales/)
+  assert.match(panorama, /href: `\/bookings\/reservations\/\$\{row\.reservation_id\}`/)
+  assert.match(panorama, /href: `\/procurement\/requests\/\$\{row\.id\}`/)
+  assert.match(panorama, /priorityRank/)
+  assert.match(panorama, /slice\(0, 8\)/)
+  assert.match(panorama, /if \(!blockerRows\.error\)/)
+  assert.match(panorama, /if \(!blockedMaintenanceRows\.error\)/)
+  assert.match(panorama, /if \(!procurementDecisionRows\.error\)/)
+})
+
 test("Panorama reports evidence, not synthetic business scores", () => {
   assert.match(panorama, /Sin scores sintéticos/)
   assert.match(panorama, /Estado visible/)
