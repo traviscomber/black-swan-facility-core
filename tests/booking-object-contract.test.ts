@@ -25,6 +25,7 @@ test("room object reads the canonical hospitality and work graph without writes"
   assert.match(roomObject, /from\("room_operational_history"\)/)
   assert.match(roomObject, /\/bookings\/reservations\/\$\{state\.current_reservation_id\}/)
   assert.doesNotMatch(roomObject, /from\("incidents"\)/)
+  assert.doesNotMatch(roomObject, /\.or\(/)
   assert.doesNotMatch(roomObject, /\.insert\(/)
   assert.doesNotMatch(roomObject, /\.update\(/)
   assert.doesNotMatch(roomObject, /\.delete\(/)
