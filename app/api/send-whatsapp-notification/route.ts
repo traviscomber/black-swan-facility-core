@@ -1,53 +1,65 @@
 import { type NextRequest, NextResponse } from "next/server"
 
-// WhatsApp notification endpoint - sends request to Antonia Valencia
+function textField(value: unknown) {
+  return typeof value === "string" ? value.trim() : ""
+}
+
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json()
-    const { requestType, guestName, roomNumber, locationName, description, priority } = body
+    const body = (await req.json()) as Record<string, unknown>
+    const requestType = textField(body.requestType)
+    const guestName = textField(body.guestName)
+    const roomNumber = textField(body.roomNumber)
+    const locationName = textField(body.locationName)
+    const priority = textField(body.priority)
 
-    // Format message for WhatsApp
-    const message = `
-🏨 *New Hospitality Request*
-
-👤 Guest: ${guestName}
-🛏️ Room: ${roomNumber}
-📍 Location: ${locationName}
-📋 Request: ${requestType}
-⚡ Priority: ${priority.toUpperCase()}
-
-${description ? `📝 Details: ${description}` : ""}
-
-Please reply when the request is handled.
-    `.trim()
-
-    const whatsappNumber = process.env.WHATSAPP_CONTACT_NUMBER
-
-    if (!whatsappNumber) {
-      console.error("[WhatsApp Error] WHATSAPP_CONTACT_NUMBER not configured")
-      return NextResponse.json({ error: "WhatsApp number not configured" }, { status: 500 })
+    if (!requestType || !guestName || !roomNumber || !locationName || !priority) {
+      return NextResponse.json(
+        {
+          success: false,
+          status: "invalid_request",
+          error: "requestType, guestName, roomNumber, locationName and priority are required",
+        },
+        { status: 400 },
+      )
     }
 
-    // TODO: Integrate with your WhatsApp service (Twilio, MessageBird, etc.)
-    // Example for Twilio (uncomment and configure):
-    /*
-    const accountSid = process.env.TWILIO_ACCOUNT_SID
-    const authToken = process.env.TWILIO_AUTH_TOKEN
-    const client = require('twilio')(accountSid, authToken)
-    
-    await client.messages.create({
-      body: message,
-      from: process.env.TWILIO_WHATSAPP_NUMBER,
-      to: `whatsapp:${whatsappNumber}`,
+    const whatsappNumber = process.env.WHATSAPP_CONTACT_NUMBER
+    if (!whatsappNumber) {
+      console.error("[WhatsApp Notification] WHATSAPP_CONTACT_NUMBER is not configured")
+      return NextResponse.json(
+        {
+          success: false,
+          status: "not_configured",
+          error: "Automated WhatsApp delivery is not configured",
+        },
+        { status: 503 },
+      )
+    }
+
+    console.warn("[WhatsApp Notification] Automated provider is not configured; delivery was not attempted", {
+      guestName,
+      roomNumber,
+      priority,
     })
-    */
 
-    // Log the request (replace with actual WhatsApp sending)
-    console.log("[WhatsApp Notification Sent]", { guestName, roomNumber, priority })
-
-    return NextResponse.json({ success: true, message: "Notification sent" })
-  } catch (error: any) {
-    console.error("[WhatsApp Error]", error)
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json(
+      {
+        success: false,
+        status: "manual_required",
+        error: "Automated WhatsApp delivery is unavailable. Use the manual WhatsApp flow instead.",
+      },
+      { status: 501 },
+    )
+  } catch (error) {
+    console.error("[WhatsApp Notification] Request failed", error)
+    return NextResponse.json(
+      {
+        success: false,
+        status: "failed",
+        error: error instanceof Error ? error.message : "Unknown error",
+      },
+      { status: 500 },
+    )
   }
 }
