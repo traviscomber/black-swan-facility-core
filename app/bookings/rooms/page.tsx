@@ -1,5 +1,6 @@
 "use client"
 
+import Link from "next/link"
 import { useState, useEffect } from "react"
 import { createBrowserClient } from "@/lib/supabase/client"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -226,6 +227,10 @@ export default function RoomsPage() {
                           </div>
                         ) : <p className="text-xs text-muted-foreground">{copy.noBeds}</p>}
                       </div>
+
+                      <Button asChild variant="outline" className="w-full border-primary/20 text-primary hover:bg-primary/10">
+                        <Link href={`/bookings/rooms/${room.id}`}>Abrir objeto habitación</Link>
+                      </Button>
                     </CardContent>
                   </Card>
                 )
