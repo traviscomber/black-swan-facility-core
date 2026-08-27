@@ -19,6 +19,11 @@ type RouteAccess = {
   can_approve_procurement?: boolean
   capabilities?: unknown
 }
+type EffectiveAccess = {
+  isAdmin?: boolean
+  is_admin?: boolean
+  departments?: unknown
+}
 
 type RouteRequirement = { domain: string; required: CapabilityLevel }
 
@@ -49,6 +54,10 @@ function isPathFamily(pathname: string, root: string) {
   return pathname === root || pathname.startsWith(`${root}/`)
 }
 
+function isItControlPath(pathname: string) {
+  return isPathFamily(pathname, "/admin/it-control")
+}
+
 function isSafeInternalStartPath(value: unknown): value is string {
   return typeof value === "string" && value.startsWith("/") && !value.startsWith("//") && value !== "/"
 }
@@ -60,6 +69,7 @@ export function getRouteRequirement(pathname: string): RouteRequirement | null {
   if (isPathFamily(pathname, "/activities-calendar") || isPathFamily(pathname, "/tasks") || isPathFamily(pathname, "/checklists")) return { domain: "operations", required: "view" }
   if (isPathFamily(pathname, "/employees") || isPathFamily(pathname, "/os/people")) return { domain: "people", required: "view" }
   if (isPathFamily(pathname, "/map")) return { domain: "map", required: "view" }
+  if (isItControlPath(pathname)) return null
   if (isPathFamily(pathname, "/admin")) return { domain: "admin", required: "admin" }
   if (isPathFamily(pathname, "/procurement/requests")) return { domain: "procurement", required: "view" }
   if (isPathFamily(pathname, "/procurement")) return { domain: "procurement", required: "approve" }
@@ -195,6 +205,25 @@ export async function proxy(request: NextRequest) {
   const capabilitySnapshot = routeAccessError
     ? normalizeCapabilitySnapshot(null)
     : normalizeCapabilitySnapshot(routeAccess)
+
+  if (!apiRequest && isItControlPath(effectivePathname)) {
+    const { data: effectiveAccessData, error: effectiveAccessError } = await supabase.rpc(
+      "get_current_user_effective_access",
+    )
+    const effectiveAccess = (effectiveAccessData ?? {}) as EffectiveAccess
+    const departments = Array.isArray(effectiveAccess.departments)
+      ? effectiveAccess.departments.filter((item): item is string => typeof item === "string").map((item) => item.toLowerCase())
+      : []
+    const isAdmin = effectiveAccess.isAdmin === true || effectiveAccess.is_admin === true || routeAccess.is_admin === true
+
+    if (effectiveAccessError || (!isAdmin && !departments.includes("it"))) {
+      const activeLocale = locale ?? DEFAULT_LOCALE
+      return setLocaleCookie(
+        NextResponse.redirect(localizedUrl(request, activeLocale, "/")),
+        activeLocale,
+      )
+    }
+  }
 
   if (!apiRequest && effectivePathname === "/") {
     const { data: osProfile } = await supabase
