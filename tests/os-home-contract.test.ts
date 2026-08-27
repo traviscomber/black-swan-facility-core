@@ -84,6 +84,13 @@ test("Santiago sees canonical invoice approvals from Hospitality only when finan
   assert.doesNotMatch(hospitalityStrip, /reject_finance_document/)
 })
 
+test("Hospitality finance pulse fails closed without taking the reservation cockpit down", () => {
+  assert.match(hospitalityStrip, /const financeAllowed = !financePermissionResult\.error && Boolean\(financePermissionResult\.data\)/)
+  assert.match(hospitalityStrip, /const firstError = arrivalsResult\.error \|\| departuresResult\.error \|\| requestsResult\.error \|\| exceptionsResult\.error/)
+  assert.match(hospitalityStrip, /financeResult\.error \? null : financeResult\.count \?\? 0/)
+  assert.doesNotMatch(hospitalityStrip, /setError\(financePermissionResult\.error\.message\)/)
+})
+
 test("Raimundo field admin gets a dedicated OS desktop instead of Santiago's experience", () => {
   assert.match(osEntry, /persona === 'field_admin'/)
   assert.match(osEntry, /<FieldAdminHome/)
@@ -112,6 +119,14 @@ test("Raimundo invoice approvals are permission checked, grouped by cost center 
   assert.match(fieldAdminHome, /href="\/budgets\/approvals"/)
   assert.doesNotMatch(fieldAdminHome, /approve_finance_document/)
   assert.doesNotMatch(fieldAdminHome, /reject_finance_document/)
+})
+
+test("field finance pulse degrades independently from field operations", () => {
+  assert.match(fieldAdminHome, /const financeAllowed = !financePermissionResult\.error && Boolean\(financePermissionResult\.data\)/)
+  assert.match(fieldAdminHome, /setFinanceLoadError\(financeResult\.error\.message\)/)
+  assert.match(fieldAdminHome, /La cola canónica de aprobaciones sigue disponible/)
+  assert.doesNotMatch(fieldAdminHome, /if \(financePermissionResult\.error\) throw financePermissionResult\.error/)
+  assert.doesNotMatch(fieldAdminHome, /if \(financeResult\.error\) throw financeResult\.error/)
 })
 
 test("Raimundo unified work keeps canonical assignments and turns unlinked issues into triage", () => {
