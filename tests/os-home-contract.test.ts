@@ -89,6 +89,18 @@ test("field desktop keeps authorized navigation as the gate for every operationa
   assert.match(fieldAdminHome, /hasNavKey\(nav, 'bookings'\)/)
 })
 
+test("Raimundo invoice approvals are permission checked and grouped by cost center", () => {
+  assert.match(fieldAdminHome, /rpc\('can_finance_approve'\)/)
+  assert.match(fieldAdminHome, /finance_approval_queue/)
+  assert.match(fieldAdminHome, /approval_status', 'ready'/)
+  assert.match(fieldAdminHome, /operational_label \|\| row\.cost_center_name/)
+  assert.match(fieldAdminHome, /Facturas por aprobar/)
+  assert.match(fieldAdminHome, /agrupados por centro de costo/)
+  assert.match(fieldAdminHome, /href="\/budgets\/approvals"/)
+  assert.doesNotMatch(fieldAdminHome, /approve_finance_document/)
+  assert.doesNotMatch(fieldAdminHome, /reject_finance_document/)
+})
+
 test("Raimundo personal work uses canonical employee assignments and does not fabricate work", () => {
   assert.match(fieldAdminHome, /task_assignments/)
   assert.match(fieldAdminHome, /\.eq\('employee_id', employeeId\)/)
@@ -101,11 +113,13 @@ test("Raimundo personal work uses canonical employee assignments and does not fa
   assert.doesNotMatch(fieldAdminHome, /\.update\(/)
 })
 
-test("field desktop puts personal work before field exceptions and workspaces", () => {
+test("field desktop puts invoice decisions before personal work, field exceptions and workspaces", () => {
+  const financeIndex = fieldAdminHome.indexOf('<h2 className="text-lg font-semibold">Facturas por aprobar</h2>')
   const personalIndex = fieldAdminHome.indexOf('<h2 className="text-lg font-semibold">Mi trabajo</h2>')
   const attentionIndex = fieldAdminHome.indexOf('<h2 className="text-lg font-semibold">Campo requiere atención</h2>')
   const workspacesIndex = fieldAdminHome.indexOf('<h2 className="text-base font-semibold">Workspaces</h2>')
-  assert.ok(personalIndex >= 0)
+  assert.ok(financeIndex >= 0)
+  assert.ok(personalIndex > financeIndex)
   assert.ok(attentionIndex > personalIndex)
   assert.ok(workspacesIndex > attentionIndex)
 })
