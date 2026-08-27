@@ -2,9 +2,9 @@
 
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 import Link from 'next/link'
-import { AlertTriangle, ArrowRight, CheckCircle2, ClipboardList, Package, Sparkles, Wrench } from 'lucide-react'
+import { ArrowRight, CheckCircle2, ClipboardList, FileCheck2, Sparkles, Wrench } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { createClient } from '@/lib/supabase/client'
 import { useOsPersona } from '@/lib/hooks/use-os-persona'
 
@@ -14,6 +14,20 @@ type NavItem = { key: string; label: string; href: string }
 type Navigation = { role?: string; items?: NavItem[] }
 type WorkItem = { id: string; kind: 'task' | 'maintenance' | 'housekeeping'; title: string; status: string; detail: string | null; href: string }
 type AttentionSignal = { key: string; label: string; value: number; detail: string; href: string }
+type FinanceApprovalRow = {
+  id: string
+  operational_label: string | null
+  cost_center_name: string | null
+  cost_center_code: string | null
+  total_amount: number | string
+  currency: string
+}
+type CostCenterApprovalGroup = {
+  key: string
+  label: string
+  count: number
+  totals: Record<string, number>
+}
 
 async function loadNavigation(): Promise<Navigation> {
   if (!operationsApi) throw new Error('NEXT_PUBLIC_BLACK_SWAN_OPERATIONS_API_URL is not configured.')
@@ -35,12 +49,42 @@ function chileDateKey() {
   return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Santiago', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date())
 }
 
+function groupFinanceApprovals(rows: FinanceApprovalRow[]): CostCenterApprovalGroup[] {
+  const groups = new Map<string, CostCenterApprovalGroup>()
+  for (const row of rows) {
+    const label = row.operational_label || row.cost_center_name || 'Sin centro de costo'
+    const key = row.cost_center_code || label
+    const current = groups.get(key) ?? { key, label, count: 0, totals: {} }
+    const currency = row.currency || 'CLP'
+    const amount = Number(row.total_amount ?? 0)
+    current.count += 1
+    current.totals[currency] = (current.totals[currency] ?? 0) + (Number.isFinite(amount) ? amount : 0)
+    groups.set(key, current)
+  }
+  return Array.from(groups.values()).sort((a, b) => b.count - a.count || a.label.localeCompare(b.label, 'es'))
+}
+
+function formatApprovalTotals(totals: Record<string, number>) {
+  return Object.entries(totals)
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([currency, amount]) => {
+      try {
+        return new Intl.NumberFormat('es-CL', { style: 'currency', currency, maximumFractionDigits: currency === 'CLP' ? 0 : 2 }).format(amount)
+      } catch {
+        return `${amount.toLocaleString('es-CL')} ${currency}`
+      }
+    })
+    .join(' · ')
+}
+
 export function FieldAdminHome() {
   const supabase = useMemo(() => createClient(), [])
   const { employeeId, firstName, personaLabel } = useOsPersona()
   const [navigation, setNavigation] = useState<Navigation | null>(null)
   const [work, setWork] = useState<WorkItem[]>([])
   const [attention, setAttention] = useState<AttentionSignal[]>([])
+  const [financeApprovals, setFinanceApprovals] = useState<CostCenterApprovalGroup[]>([])
+  const [canApproveFinance, setCanApproveFinance] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -52,6 +96,22 @@ export function FieldAdminHome() {
       setNavigation(nav)
       const today = chileDateKey()
       const personal: WorkItem[] = []
+
+      const financePermissionResult = await supabase.rpc('can_finance_approve')
+      if (financePermissionResult.error) throw financePermissionResult.error
+      const financeAllowed = Boolean(financePermissionResult.data)
+      setCanApproveFinance(financeAllowed)
+
+      if (financeAllowed) {
+        const financeResult = await supabase
+          .from('finance_approval_queue')
+          .select('id,operational_label,cost_center_name,cost_center_code,total_amount,currency')
+          .eq('approval_status', 'ready')
+        if (financeResult.error) throw financeResult.error
+        setFinanceApprovals(groupFinanceApprovals((financeResult.data ?? []) as FinanceApprovalRow[]))
+      } else {
+        setFinanceApprovals([])
+      }
 
       if (employeeId && hasNavKey(nav, 'tasks')) {
         const assignments = await supabase.from('task_assignments').select('task_id').eq('employee_id', employeeId)
@@ -151,12 +211,16 @@ export function FieldAdminHome() {
       setError(caught instanceof Error ? caught.message : 'No fue posible cargar la operación del campo')
       setWork([])
       setAttention([])
+      setFinanceApprovals([])
+      setCanApproveFinance(false)
     } finally {
       setLoading(false)
     }
   }, [employeeId, supabase])
 
   useEffect(() => { void load() }, [load])
+
+  const financeApprovalCount = useMemo(() => financeApprovals.reduce((sum, group) => sum + group.count, 0), [financeApprovals])
 
   const quickWorkspaces = useMemo(() => {
     const items = navigation?.items ?? []
@@ -175,11 +239,43 @@ export function FieldAdminHome() {
             <Badge variant="secondary">{personaLabel}</Badge>
             {navigation?.role && <Badge variant="outline">{navigation.role}</Badge>}
           </div>
-          <CardDescription>Tu trabajo primero. Después, sólo las excepciones del campo que requieren atención.</CardDescription>
+          <CardDescription>Aprobaciones y trabajo operativo primero. Después, sólo las excepciones que requieren atención.</CardDescription>
         </CardHeader>
       </Card>
 
       {error && <div className="rounded-md border border-destructive/40 bg-destructive/5 p-3 text-sm text-destructive">{error}</div>}
+
+      {canApproveFinance && (
+        <section className="space-y-3">
+          <div className="flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <h2 className="text-lg font-semibold">Facturas por aprobar</h2>
+              <p className="text-sm text-muted-foreground">Documentos listos para decisión, agrupados por centro de costo.</p>
+            </div>
+            {financeApprovalCount > 0 && <Badge variant="secondary">{financeApprovalCount} pendiente{financeApprovalCount === 1 ? '' : 's'} · {financeApprovals.length} centro{financeApprovals.length === 1 ? '' : 's'}</Badge>}
+          </div>
+          {loading ? (
+            <div className="rounded border border-dashed p-5 text-sm text-muted-foreground">Actualizando aprobaciones…</div>
+          ) : financeApprovals.length === 0 ? (
+            <div className="flex items-center gap-3 rounded border border-dashed p-5 text-sm text-muted-foreground"><CheckCircle2 className="h-5 w-5" /><span>No hay facturas listas para tu aprobación.</span></div>
+          ) : (
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              {financeApprovals.slice(0, 8).map((group) => (
+                <Link key={group.key} href="/budgets/approvals" className="group rounded-lg border p-4 transition-colors hover:bg-muted/40">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2"><FileCheck2 className="h-4 w-4 shrink-0 text-primary" /><p className="truncate font-medium">{group.label}</p></div>
+                      <p className="mt-2 text-xs text-muted-foreground">{formatApprovalTotals(group.totals)}</p>
+                    </div>
+                    <span className="text-2xl font-semibold tabular-nums">{group.count}</span>
+                  </div>
+                  <div className="mt-3 flex items-center gap-1 text-xs font-medium text-primary">Revisar facturas <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" /></div>
+                </Link>
+              ))}
+            </div>
+          )}
+        </section>
+      )}
 
       <section className="space-y-3">
         <div>
