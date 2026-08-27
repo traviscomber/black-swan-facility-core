@@ -1,0 +1,50 @@
+import assert from "node:assert/strict"
+import test from "node:test"
+import { readFileSync } from "node:fs"
+
+const assetObject = readFileSync(new URL("../app/inventory/[id]/page.tsx", import.meta.url), "utf8")
+const purchaseIndex = readFileSync(new URL("../app/procurement/requests/page.tsx", import.meta.url), "utf8")
+const purchaseObject = readFileSync(new URL("../app/procurement/requests/[id]/page.tsx", import.meta.url), "utf8")
+
+test("asset object connects canonical maintenance, issues, custody and movement context", () => {
+  assert.match(assetObject, /Objeto · Activo/)
+  assert.match(assetObject, /from\("assets"\)/)
+  assert.match(assetObject, /from\("maintenance_tasks"\)/)
+  assert.match(assetObject, /from\("issues"\)/)
+  assert.match(assetObject, /from\("inventory_asset_custodies"\)/)
+  assert.match(assetObject, /from\("inventory_movements"\)/)
+  assert.match(assetObject, /Parte del contexto relacionado no pudo cargarse/)
+  assert.doesNotMatch(assetObject, /\.insert\(/)
+  assert.doesNotMatch(assetObject, /\.update\(/)
+  assert.doesNotMatch(assetObject, /\.delete\(/)
+})
+
+test("procurement request list opens the canonical purchase object", () => {
+  assert.match(purchaseIndex, /href={`\/procurement\/requests\/\$\{request\.id\}`}/)
+  assert.match(purchaseIndex, /ciclo completo de compra/)
+})
+
+test("purchase object follows request through sourcing, order, receiving and inventory", () => {
+  assert.match(purchaseObject, /Objeto · Compra/)
+  assert.match(purchaseObject, /from\("procurement_requests"\)/)
+  assert.match(purchaseObject, /from\("procurement_quotation_rounds"\)/)
+  assert.match(purchaseObject, /from\("procurement_quotation_requests"\)/)
+  assert.match(purchaseObject, /from\("procurement_supplier_quotes"\)/)
+  assert.match(purchaseObject, /from\("procurement_comparisons"\)/)
+  assert.match(purchaseObject, /from\("procurement_purchase_orders"\)/)
+  assert.match(purchaseObject, /from\("procurement_receipts"\)/)
+  assert.match(purchaseObject, /from\("procurement_receipt_items"\)/)
+  assert.match(purchaseObject, /from\("procurement_inventory_intake"\)/)
+  assert.match(purchaseObject, /from\("inventory_replenishment_needs"\)/)
+  assert.match(purchaseObject, /from\("procurement_approval_events"\)/)
+  assert.match(purchaseObject, /from\("procurement_audit_log"\)/)
+  assert.match(purchaseObject, /Comprar/)
+  assert.match(purchaseObject, /Cotizar/)
+  assert.match(purchaseObject, /Aprobar/)
+  assert.match(purchaseObject, /En camino/)
+  assert.match(purchaseObject, /Recibir/)
+  assert.match(purchaseObject, /Stock listo/)
+  assert.doesNotMatch(purchaseObject, /\.insert\(/)
+  assert.doesNotMatch(purchaseObject, /\.update\(/)
+  assert.doesNotMatch(purchaseObject, /\.delete\(/)
+})
