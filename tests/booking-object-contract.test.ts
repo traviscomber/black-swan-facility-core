@@ -1,0 +1,50 @@
+import assert from "node:assert/strict"
+import test from "node:test"
+import { readFileSync } from "node:fs"
+
+const roomIndex = readFileSync(new URL("../app/bookings/rooms/page.tsx", import.meta.url), "utf8")
+const roomObject = readFileSync(new URL("../app/bookings/rooms/[id]/page.tsx", import.meta.url), "utf8")
+const reservationObject = readFileSync(new URL("../app/bookings/reservations/[id]/page.tsx", import.meta.url), "utf8")
+
+test("room catalog opens a canonical room object", () => {
+  assert.match(roomIndex, /href={`\/bookings\/rooms\/\$\{room\.id\}`}/)
+  assert.match(roomIndex, /Abrir objeto habitación/)
+})
+
+test("room object reads canonical operational relationships without writes", () => {
+  assert.match(roomObject, /from\("room_state_matrix"\)/)
+  assert.match(roomObject, /from\("reservations"\)/)
+  assert.match(roomObject, /from\("housekeeping_tasks"\)/)
+  assert.match(roomObject, /from\("maintenance_tasks"\)/)
+  assert.match(roomObject, /from\("incidents"\)/)
+  assert.match(roomObject, /from\("room_operational_history"\)/)
+  assert.match(roomObject, /\/bookings\/reservations\/\$\{state\.current_reservation_id\}/)
+  assert.doesNotMatch(roomObject, /\.insert\(/)
+  assert.doesNotMatch(roomObject, /\.update\(/)
+  assert.doesNotMatch(roomObject, /\.delete\(/)
+})
+
+test("reservation object is the connected hospitality object graph", () => {
+  assert.match(reservationObject, /from\("reservations"\)/)
+  assert.match(reservationObject, /from\("guests"\)/)
+  assert.match(reservationObject, /from\("rooms"\)/)
+  assert.match(reservationObject, /from\("payments"\)/)
+  assert.match(reservationObject, /from\("invoices"\)/)
+  assert.match(reservationObject, /from\("housekeeping_tasks"\)/)
+  assert.match(reservationObject, /from\("maintenance_tasks"\)/)
+  assert.match(reservationObject, /from\("hospitality_requests"\)/)
+  assert.match(reservationObject, /from\("reservation_operational_exceptions"\)/)
+  assert.match(reservationObject, /from\("operational_documents"\)/)
+  assert.match(reservationObject, /from\("booking_events"\)/)
+  assert.match(reservationObject, /href={`\/bookings\/rooms\/\$\{room\.id\}`}/)
+  assert.doesNotMatch(reservationObject, /\.insert\(/)
+  assert.doesNotMatch(reservationObject, /\.update\(/)
+  assert.doesNotMatch(reservationObject, /\.delete\(/)
+})
+
+test("object pages degrade partial related-data failures without fabricating state", () => {
+  assert.match(roomObject, /Parte del contexto relacionado no pudo cargarse/)
+  assert.match(reservationObject, /Parte del contexto relacionado no pudo cargarse/)
+  assert.match(roomObject, /sin señal/)
+  assert.match(reservationObject, /sin señal/)
+})
