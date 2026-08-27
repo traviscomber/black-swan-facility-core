@@ -6,6 +6,9 @@ import { rankAreasForPersona } from "../lib/os/personas.ts"
 const source = readFileSync(new URL("../components/os-home.tsx", import.meta.url), "utf8")
 const personaSource = readFileSync(new URL("../lib/os/personas.ts", import.meta.url), "utf8")
 const personaHook = readFileSync(new URL("../lib/hooks/use-os-persona.ts", import.meta.url), "utf8")
+const osEntry = readFileSync(new URL("../components/os-entry.tsx", import.meta.url), "utf8")
+const fieldAdminHome = readFileSync(new URL("../components/field-admin-home.tsx", import.meta.url), "utf8")
+const osPage = readFileSync(new URL("../app/os/page.tsx", import.meta.url), "utf8")
 const proxySource = readFileSync(new URL("../proxy.ts", import.meta.url), "utf8")
 const rootPage = readFileSync(new URL("../app/page.tsx", import.meta.url), "utf8")
 const bookingsPage = readFileSync(new URL("../app/bookings/page.tsx", import.meta.url), "utf8")
@@ -68,6 +71,43 @@ test("Hospitality command strip is read-only and grounded in canonical operation
   assert.doesNotMatch(hospitalityStrip, /\.insert\(/)
   assert.doesNotMatch(hospitalityStrip, /\.update\(/)
   assert.doesNotMatch(hospitalityStrip, /\.delete\(/)
+})
+
+test("Raimundo field admin gets a dedicated OS desktop instead of Santiago's experience", () => {
+  assert.match(osEntry, /persona === 'field_admin'/)
+  assert.match(osEntry, /<FieldAdminHome/)
+  assert.match(osEntry, /<OsHome/)
+  assert.match(osPage, /<OsEntry/)
+})
+
+test("field desktop keeps authorized navigation as the gate for every operational query", () => {
+  assert.match(fieldAdminHome, /\/v1\/os\/navigation/)
+  assert.match(fieldAdminHome, /authorization: `Bearer \$\{token\}`/)
+  assert.match(fieldAdminHome, /hasNavKey\(nav, 'tasks'\)/)
+  assert.match(fieldAdminHome, /hasNavKey\(nav, 'maintenance'\)/)
+  assert.match(fieldAdminHome, /hasNavKey\(nav, 'inventory'\)/)
+  assert.match(fieldAdminHome, /hasNavKey\(nav, 'bookings'\)/)
+})
+
+test("Raimundo personal work uses canonical employee assignments and does not fabricate work", () => {
+  assert.match(fieldAdminHome, /task_assignments/)
+  assert.match(fieldAdminHome, /\.eq\('employee_id', employeeId\)/)
+  assert.match(fieldAdminHome, /maintenance_tasks/)
+  assert.match(fieldAdminHome, /\.eq\('assigned_to', employeeId\)/)
+  assert.match(fieldAdminHome, /housekeeping_tasks/)
+  assert.match(fieldAdminHome, /Mi trabajo/)
+  assert.match(fieldAdminHome, /No tienes tareas, mantenimiento ni housekeeping asignados directamente/)
+  assert.doesNotMatch(fieldAdminHome, /\.insert\(/)
+  assert.doesNotMatch(fieldAdminHome, /\.update\(/)
+})
+
+test("field desktop puts personal work before field exceptions and workspaces", () => {
+  const personalIndex = fieldAdminHome.indexOf('Mi trabajo')
+  const attentionIndex = fieldAdminHome.indexOf('Campo requiere atención')
+  const workspacesIndex = fieldAdminHome.indexOf('Workspaces')
+  assert.ok(personalIndex >= 0)
+  assert.ok(attentionIndex > personalIndex)
+  assert.ok(workspacesIndex > attentionIndex)
 })
 
 test("root navigation respects profile start path but still validates route capability", () => {
