@@ -94,13 +94,23 @@ export default async function RoomObjectPage({ params }: { params: Promise<{ id:
   const history = (historyResult.data ?? []) as HistoryRow[]
   const reservationIds = reservations.map((item) => item.id)
 
-  const requestsResult = await supabase
+  const roomRequestsResult = await supabase
     .from("hospitality_requests")
     .select("id,request_type,category,description,status,priority,due_at")
-    .or(reservationIds.length > 0 ? `room_id.eq.${id},reservation_id.in.(${reservationIds.join(",")})` : `room_id.eq.${id}`)
+    .eq("room_id", id)
     .not("status", "in", "(completed,resolved,closed,cancelled,canceled)")
     .order("due_at", { ascending: true, nullsFirst: false })
     .limit(8)
+
+  const reservationRequestsResult = reservationIds.length > 0
+    ? await supabase
+      .from("hospitality_requests")
+      .select("id,request_type,category,description,status,priority,due_at")
+      .in("reservation_id", reservationIds)
+      .not("status", "in", "(completed,resolved,closed,cancelled,canceled)")
+      .order("due_at", { ascending: true, nullsFirst: false })
+      .limit(8)
+    : { data: [], error: null }
 
   const roomIssuesResult = await supabase
     .from("issues")
@@ -122,7 +132,7 @@ export default async function RoomObjectPage({ params }: { params: Promise<{ id:
       .limit(8)
     : { data: [], error: null }
 
-  const requests = (requestsResult.data ?? []) as RequestRow[]
+  const requests = Array.from(new Map([...(roomRequestsResult.data ?? []), ...(reservationRequestsResult.data ?? [])].map((item) => [item.id, item as RequestRow])).values())
   const issues = Array.from(new Map([...(roomIssuesResult.data ?? []), ...(reservationIssuesResult.data ?? [])].map((item) => [item.id, item as Issue])).values())
   const assetIds = Array.from(new Set([...maintenance.map((item) => item.asset_id), ...issues.map((item) => item.asset_id)].filter((value): value is string => Boolean(value))))
   const assetsResult = assetIds.length > 0
@@ -135,7 +145,8 @@ export default async function RoomObjectPage({ params }: { params: Promise<{ id:
     || housekeepingResult.error
     || maintenanceResult.error
     || historyResult.error
-    || requestsResult.error
+    || roomRequestsResult.error
+    || reservationRequestsResult.error
     || roomIssuesResult.error
     || reservationIssuesResult.error
     || assetsResult.error
