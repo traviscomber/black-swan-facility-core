@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 import Link from 'next/link'
-import { AlertTriangle, ArrowRight, BedDouble, CheckCircle2, ClipboardList, FileCheck2, PackageSearch, ShoppingCart, Wrench } from 'lucide-react'
+import { ArrowRight, BedDouble, CheckCircle2, ClipboardList, FileCheck2, ShoppingCart } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { createClient } from '@/lib/supabase/client'
@@ -155,22 +155,26 @@ export function BigPictureHome() {
         || procurementPending.error
       if (operationalError) throw operationalError
 
-      setHospitality([
+      setHospitality(hasNavKey(nav, 'bookings') ? [
         { key: 'arrivals', label: 'Llegadas · 7 días', value: arrivals7d.count ?? 0, detail: 'Reservas con check-in en el horizonte', href: '/bookings' },
         { key: 'departures', label: 'Salidas · 7 días', value: departures7d.count ?? 0, detail: 'Reservas con check-out en el horizonte', href: '/bookings' },
         { key: 'requests', label: 'Solicitudes abiertas', value: openRequests.count ?? 0, detail: 'Hospitality todavía por resolver', href: '/bookings/requests', alert: (openRequests.count ?? 0) > 0 },
         { key: 'blockers', label: 'Bloqueos de estadía', value: blockingExceptions.count ?? 0, detail: 'Excepciones que bloquean check-in o check-out', href: '/bookings', alert: (blockingExceptions.count ?? 0) > 0 },
-      ])
-      setWork([
-        { key: 'tasks', label: 'Tareas abiertas', value: openTasks.count ?? 0, detail: 'Trabajo operativo aún no cerrado', href: '/tasks' },
-        { key: 'maintenance', label: 'Mantenimiento bloqueado', value: blockedMaintenance.count ?? 0, detail: 'Trabajo técnico que necesita destrabe', href: '/maintenance', alert: (blockedMaintenance.count ?? 0) > 0 },
-        { key: 'issues', label: 'Incidencias abiertas', value: openIssues.count ?? 0, detail: 'Hallazgos todavía sin resolver', href: '/issues', alert: (openIssues.count ?? 0) > 0 },
-      ])
-      setSupply([
-        { key: 'stock', label: 'Stock crítico', value: criticalStock.count ?? 0, detail: 'Posiciones bajo mínimo o sin stock', href: '/inventory/stock', alert: (criticalStock.count ?? 0) > 0 },
-        { key: 'replenishment', label: 'Reposición en curso', value: replenishment.count ?? 0, detail: 'Necesidades abiertas hasta recepción', href: '/inventory/replenishment' },
-        { key: 'procurement', label: 'Compras por decidir', value: procurementPending.count ?? 0, detail: 'Solicitudes enviadas o pendientes de aprobación', href: '/procurement', alert: (procurementPending.count ?? 0) > 0 },
-      ])
+      ] : [])
+
+      const nextWork: PictureSignal[] = []
+      if (hasNavKey(nav, 'tasks')) nextWork.push({ key: 'tasks', label: 'Tareas abiertas', value: openTasks.count ?? 0, detail: 'Trabajo operativo aún no cerrado', href: '/tasks' })
+      if (hasNavKey(nav, 'maintenance')) nextWork.push({ key: 'maintenance', label: 'Mantenimiento bloqueado', value: blockedMaintenance.count ?? 0, detail: 'Trabajo técnico que necesita destrabe', href: '/maintenance', alert: (blockedMaintenance.count ?? 0) > 0 })
+      if (hasNavKey(nav, 'issues')) nextWork.push({ key: 'issues', label: 'Incidencias abiertas', value: openIssues.count ?? 0, detail: 'Hallazgos todavía sin resolver', href: '/issues', alert: (openIssues.count ?? 0) > 0 })
+      setWork(nextWork)
+
+      const nextSupply: PictureSignal[] = []
+      if (hasNavKey(nav, 'inventory')) {
+        nextSupply.push({ key: 'stock', label: 'Stock crítico', value: criticalStock.count ?? 0, detail: 'Posiciones bajo mínimo o sin stock', href: '/inventory/stock', alert: (criticalStock.count ?? 0) > 0 })
+        nextSupply.push({ key: 'replenishment', label: 'Reposición en curso', value: replenishment.count ?? 0, detail: 'Necesidades abiertas hasta recepción', href: '/inventory/replenishment' })
+      }
+      if (hasNavKey(nav, 'procurement')) nextSupply.push({ key: 'procurement', label: 'Compras por decidir', value: procurementPending.count ?? 0, detail: 'Solicitudes enviadas o pendientes de aprobación', href: '/procurement', alert: (procurementPending.count ?? 0) > 0 })
+      setSupply(nextSupply)
 
       if (canApprove && !financeRows.error) setFinance(financeTotals((financeRows.data ?? []) as FinanceApprovalRow[]))
       else setFinance(null)
