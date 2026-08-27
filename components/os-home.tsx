@@ -33,16 +33,46 @@ const areaLabels: Record<OsAreaKey, string> = {
   network: 'Red',
 }
 
+function normalizeNavigation(value: unknown): Navigation {
+  if (!value || typeof value !== 'object') return { items: [] }
+  const navigation = value as Navigation
+  return {
+    ...navigation,
+    items: Array.isArray(navigation.items) ? [...navigation.items] : [],
+  }
+}
+
+async function loadCanonicalNavigation(supabase: ReturnType<typeof createClient>): Promise<Navigation> {
+  const { data: navigationData, error: navigationError } = await supabase.rpc('get_black_swan_os_navigation')
+  if (navigationError) throw new Error(navigationError.message || 'Unable to load canonical navigation')
+
+  const navigation = normalizeNavigation(navigationData)
+  const { data: discoveryEnabled, error: discoveryError } = await supabase.rpc('get_discovery_navigation_entitlement')
+
+  if (!discoveryError && Boolean(discoveryEnabled) && !navigation.items?.some((item) => item.key === 'discovery')) {
+    navigation.items = [...(navigation.items || []), { key: 'discovery', label: 'Discovery', href: '/os/discovery' }]
+  }
+
+  return navigation
+}
+
 async function loadNavigation() {
-  if (!operationsApi) throw new Error('NEXT_PUBLIC_BLACK_SWAN_OPERATIONS_API_URL is not configured.')
   const supabase = createClient()
   const { data } = await supabase.auth.getSession()
   const token = data.session?.access_token
   if (!token) throw new Error('Authentication required')
-  const response = await fetch(`${operationsApi}/v1/os/navigation`, { headers: { authorization: `Bearer ${token}` } })
-  const body = await response.json().catch(() => ({}))
-  if (!response.ok) throw new Error(body?.error?.message || body?.error?.code || 'Unable to load navigation')
-  return body.data as Navigation
+
+  if (operationsApi) {
+    try {
+      const response = await fetch(`${operationsApi}/v1/os/navigation`, { headers: { authorization: `Bearer ${token}` } })
+      const body = await response.json().catch(() => ({}))
+      if (response.ok && body?.data) return body.data as Navigation
+    } catch {
+      // Fall through to the same canonical Supabase RPCs used by the Worker.
+    }
+  }
+
+  return loadCanonicalNavigation(supabase)
 }
 
 function chileDateKey() {
