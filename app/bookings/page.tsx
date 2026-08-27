@@ -2,6 +2,7 @@
 
 import "./booking-workspace.css"
 import BookingOperationsTimelinePage from "./operations/page"
+import { BookingObjectShortcut } from "@/components/booking-object-shortcut"
 import { BookingRealtimePulse } from "@/components/booking-realtime-pulse"
 import { BookingTimelineAlertNavigator } from "@/components/booking-timeline-alert-navigator"
 import { ReservationLogisticsEditor } from "@/components/reservation-logistics-editor"
@@ -13,6 +14,7 @@ export default function BookingsPage() {
     <>
       <BookingRealtimePulse />
       <BookingTimelineAlertNavigator />
+      <BookingObjectShortcut />
       <ReservationLogisticsEditor />
       <GuestStayStatusStrip />
       <HospitalityCommandStrip />
