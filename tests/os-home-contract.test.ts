@@ -102,9 +102,9 @@ test("Raimundo personal work uses canonical employee assignments and does not fa
 })
 
 test("field desktop puts personal work before field exceptions and workspaces", () => {
-  const personalIndex = fieldAdminHome.indexOf('Mi trabajo')
-  const attentionIndex = fieldAdminHome.indexOf('Campo requiere atención')
-  const workspacesIndex = fieldAdminHome.indexOf('Workspaces')
+  const personalIndex = fieldAdminHome.indexOf('<h2 className="text-lg font-semibold">Mi trabajo</h2>')
+  const attentionIndex = fieldAdminHome.indexOf('<h2 className="text-lg font-semibold">Campo requiere atención</h2>')
+  const workspacesIndex = fieldAdminHome.indexOf('<h2 className="text-base font-semibold">Workspaces</h2>')
   assert.ok(personalIndex >= 0)
   assert.ok(attentionIndex > personalIndex)
   assert.ok(workspacesIndex > attentionIndex)
