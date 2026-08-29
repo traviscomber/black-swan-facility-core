@@ -15,441 +15,89 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea"
 import { createBrowserClient } from "@/lib/supabase/client"
 import { useLanguage } from "@/lib/hooks/use-language"
+import { ALL_GAME_PLANS, gamePlanScopeLabel, resolveRequestedGamePlanId, resolveSelectedGamePlan, scopeBySuccessionId, scopeGamePlanGraph, syncGamePlanQuery, type OrchardGamePlanRef } from "@/lib/orchard/game-plan-scope"
 
+type GamePlan = OrchardGamePlanRef & { start_date: string; end_date: string; status: string }
 type Plot = { id: string; name: string; plot_type: string; size_sqm: number | null; status: string | null; soil_type: string | null; irrigation_type: string | null; notes: string | null }
 type Bed = { id: string; plot_id: string; name: string; code: string | null; length_m: number | null; width_m: number | null; area_sqm: number | null; status: "active" | "resting" | "cover_crop" | "out_of_service"; orientation: string | null; notes: string | null }
 type Allocation = { id: string; bed_id: string; crop_succession_id: string; planned_start_date: string; planned_end_date: string; allocated_area_sqm: number | null; planned_plants: number | null; notes: string | null }
 type Succession = { id: string; crop_cycle_id: string; sequence_no: number; planned_sow_date: string; planned_transplant_date: string | null; planned_first_harvest_date: string | null; planned_last_harvest_date: string | null; planned_plants: number | null; planned_area_sqm: number | null; status: string }
-type Cycle = { id: string; crop_name: string; variety: string | null }
+type Cycle = { id: string; game_plan_id: string; crop_name: string; variety: string | null }
 
-const CROP_PHOTOS: Record<string, string> = {
-  tomato: "https://images.unsplash.com/photo-1592841200221-a6898f307baa?auto=format&fit=crop&w=1200&q=92",
-  lettuce: "https://images.unsplash.com/photo-1622206151226-18ca2c9ab4a1?auto=format&fit=crop&w=1200&q=92",
-  onion: "https://images.unsplash.com/photo-1508747703725-719777637510?auto=format&fit=crop&w=1200&q=92",
-  arugula: "https://images.unsplash.com/photo-1506806732259-39c2d0268443?auto=format&fit=crop&w=1200&q=92",
-  radish: "https://images.unsplash.com/photo-1582284540020-8acbe03f4924?auto=format&fit=crop&w=1200&q=92",
-  carrot: "https://images.unsplash.com/photo-1598170845058-32b9d6a5da37?auto=format&fit=crop&w=1200&q=92",
-  basil: "https://images.unsplash.com/photo-1600788886242-5c96aabe3757?auto=format&fit=crop&w=1200&q=92",
-}
+const CROP_PHOTOS: Record<string, string> = { tomato: "https://images.unsplash.com/photo-1592841200221-a6898f307baa?auto=format&fit=crop&w=1200&q=92", lettuce: "https://images.unsplash.com/photo-1622206151226-18ca2c9ab4a1?auto=format&fit=crop&w=1200&q=92", onion: "https://images.unsplash.com/photo-1508747703725-719777637510?auto=format&fit=crop&w=1200&q=92", arugula: "https://images.unsplash.com/photo-1506806732259-39c2d0268443?auto=format&fit=crop&w=1200&q=92", radish: "https://images.unsplash.com/photo-1582284540020-8acbe03f4924?auto=format&fit=crop&w=1200&q=92", carrot: "https://images.unsplash.com/photo-1598170845058-32b9d6a5da37?auto=format&fit=crop&w=1200&q=92", basil: "https://images.unsplash.com/photo-1600788886242-5c96aabe3757?auto=format&fit=crop&w=1200&q=92" }
 const FALLBACK_CROP_PHOTO = "https://images.unsplash.com/photo-1416879595882-3373a0480b5b?auto=format&fit=crop&w=1200&q=92"
-const PLOT_PHOTOS = [
-  "https://images.unsplash.com/photo-1500937386664-56d1dfef3854?auto=format&fit=crop&w=1600&q=92",
-  "https://images.unsplash.com/photo-1500382017468-9049fed747ef?auto=format&fit=crop&w=1600&q=92",
-  "https://images.unsplash.com/photo-1523348837708-15d4a09cfac2?auto=format&fit=crop&w=1600&q=92",
-]
+const PLOT_PHOTOS = ["https://images.unsplash.com/photo-1500937386664-56d1dfef3854?auto=format&fit=crop&w=1600&q=92", "https://images.unsplash.com/photo-1500382017468-9049fed747ef?auto=format&fit=crop&w=1600&q=92", "https://images.unsplash.com/photo-1523348837708-15d4a09cfac2?auto=format&fit=crop&w=1600&q=92"]
 
 const copy = {
-  en: {
-    title: "Crop Map",
-    description: "Place successions directly into real beds, see 12-week occupancy, future capacity and rotation risk before field work starts.",
-    refresh: "Refresh",
-    loadError: "Could not load crop map",
-    saveError: "Could not save changes",
-    capacity: "Bed capacity",
-    occupied: "Occupied today",
-    placement: "Placement coverage",
-    future: "Free in 30 days",
-    activeBeds: "active beds",
-    allocations: "allocations",
-    queue: "waiting for space",
-    unallocated: "Unallocated successions",
-    unallocatedHelp: "Drag a succession onto an active bed, or use Place on mobile.",
-    noQueue: "All planned successions are placed.",
-    place: "Place",
-    planner: "12-week bed planner",
-    plannerHelp: "Each bed shows weekly occupancy. Drag an unallocated succession onto a bed to use its planned dates.",
-    drop: "Drop succession here",
-    open: "Open",
-    rotation: "Rotation warning",
-    capacityWarning: "Allocation exceeds recorded bed area",
-    freeToday: "Free today",
-    free30: "Free +30d",
-    free60: "Free +60d",
-    history: "Recent rotation",
-    setup: "Space setup",
-    setupHelp: "Create plots and beds without leaving the planning cockpit.",
-    newPlot: "New plot",
-    plotName: "Plot name",
-    plotType: "Plot type",
-    size: "Size (m²)",
-    soil: "Soil type",
-    irrigation: "Irrigation",
-    notes: "Notes",
-    createPlot: "Create plot",
-    newBed: "New bed",
-    plot: "Plot",
-    bedName: "Bed name",
-    code: "Code",
-    length: "Length (m)",
-    width: "Width (m)",
-    orientation: "Orientation",
-    createBed: "Create bed",
-    manual: "Manual allocation",
-    succession: "Succession",
-    bed: "Bed",
-    start: "Bed start",
-    end: "Bed end",
-    area: "Allocated area (m²)",
-    plants: "Planned plants",
-    saveAllocation: "Place on crop map",
-    conflict: "This bed is already occupied during part of that date range.",
-    deleteBed: "Delete this bed and its allocations?",
-    deleteAllocation: "Remove this crop allocation?",
-    deletePlot: "Delete this plot and all of its beds?",
-    noPlots: "No plots yet. Create the first growing area.",
-    noBeds: "No beds in this plot yet.",
-    spatialBoard: "Spatial occupancy board",
-    spatialBoardHelp: "See each growing area as a field block, with live occupancy and rotation context before you assign work.",
-  },
-  es: {
-    title: "Mapa de Cultivos",
-    description: "Ubica sucesiones directamente en camas reales y visualiza 12 semanas de ocupación, capacidad futura y riesgo de rotación.",
-    refresh: "Actualizar",
-    loadError: "No fue posible cargar el mapa",
-    saveError: "No fue posible guardar cambios",
-    capacity: "Capacidad de camas",
-    occupied: "Ocupadas hoy",
-    placement: "Cobertura de ubicación",
-    future: "Libres en 30 días",
-    activeBeds: "camas activas",
-    allocations: "asignaciones",
-    queue: "esperando espacio",
-    unallocated: "Sucesiones sin ubicar",
-    unallocatedHelp: "Arrastra una sucesión a una cama activa o usa Ubicar en móvil.",
-    noQueue: "Todas las sucesiones planificadas están ubicadas.",
-    place: "Ubicar",
-    planner: "Planificador de camas · 12 semanas",
-    plannerHelp: "Cada cama muestra ocupación semanal. Arrastra una sucesión sin ubicar para usar sus fechas planificadas.",
-    drop: "Suelta la sucesión aquí",
-    open: "Libre",
-    rotation: "Alerta de rotación",
-    capacityWarning: "La asignación excede el área registrada de la cama",
-    freeToday: "Libre hoy",
-    free30: "Libre +30d",
-    free60: "Libre +60d",
-    history: "Rotación reciente",
-    setup: "Configuración de espacio",
-    setupHelp: "Crea sectores y camas sin salir del cockpit de planificación.",
-    newPlot: "Nuevo sector",
-    plotName: "Nombre del sector",
-    plotType: "Tipo",
-    size: "Superficie (m²)",
-    soil: "Tipo de suelo",
-    irrigation: "Riego",
-    notes: "Notas",
-    createPlot: "Crear sector",
-    newBed: "Nueva cama",
-    plot: "Sector",
-    bedName: "Nombre de cama",
-    code: "Código",
-    length: "Largo (m)",
-    width: "Ancho (m)",
-    orientation: "Orientación",
-    createBed: "Crear cama",
-    manual: "Asignación manual",
-    succession: "Sucesión",
-    bed: "Cama",
-    start: "Inicio en cama",
-    end: "Fin en cama",
-    area: "Área asignada (m²)",
-    plants: "Plantas planificadas",
-    saveAllocation: "Ubicar en mapa",
-    conflict: "Esta cama ya está ocupada durante parte de ese rango de fechas.",
-    deleteBed: "¿Eliminar esta cama y sus asignaciones?",
-    deleteAllocation: "¿Quitar esta asignación del mapa?",
-    deletePlot: "¿Eliminar este sector y todas sus camas?",
-    noPlots: "Aún no hay sectores. Crea la primera zona de cultivo.",
-    noBeds: "Aún no hay camas en este sector.",
-    spatialBoard: "Tablero espacial de ocupación",
-    spatialBoardHelp: "Lee cada zona de cultivo como un bloque de campo, con ocupación y contexto de rotación antes de asignar trabajo.",
-  },
+  en: { title: "Crop Map", description: "Place Game Plan successions into shared physical beds while preserving full-site occupancy and conflict truth.", refresh: "Refresh", loadError: "Could not load crop map", saveError: "Could not save changes", capacity: "Shared bed capacity", occupied: "Physical occupancy today", placement: "Scoped placement coverage", future: "Physical beds free in 30 days", activeBeds: "active beds", allocations: "allocations in scope", queue: "waiting for space", unallocated: "Unallocated successions", unallocatedHelp: "Only successions in the selected Game Plan are placeable. Beds and plots remain shared resources.", noQueue: "All scoped successions are placed.", place: "Place", planner: "12-week physical bed planner", plannerHelp: "Physical occupancy includes allocations from every Game Plan so conflicts cannot be hidden by scope.", drop: "Drop succession here", open: "Open", rotation: "Rotation review", capacityWarning: "Allocation exceeds recorded bed area", freeToday: "Free today", free30: "Free +30d", free60: "Free +60d", history: "Recent rotation", setup: "Shared space setup", setupHelp: "Plots and beds are shared physical resources. Their setup is not owned by a Game Plan.", newPlot: "New plot", plotName: "Plot name", plotType: "Plot type", size: "Size (m²)", soil: "Soil type", irrigation: "Irrigation", notes: "Notes", createPlot: "Create plot", newBed: "New bed", plot: "Plot", bedName: "Bed name", code: "Code", length: "Length (m)", width: "Width (m)", orientation: "Orientation", createBed: "Create bed", manual: "Manual allocation", succession: "Succession", bed: "Bed", start: "Bed start", end: "Bed end", area: "Allocated area (m²)", plants: "Planned plants", saveAllocation: "Place on crop map", conflict: "This bed is already occupied during part of that date range.", deleteBed: "Delete this shared bed and its allocations?", deleteAllocation: "Remove this crop allocation?", deletePlot: "Delete this shared plot and all of its beds?", noPlots: "No plots yet. Create the first growing area.", noBeds: "No beds in this plot yet.", spatialBoard: "Shared spatial occupancy board", spatialBoardHelp: "Read the real physical site while planning only the successions in the active scope.", scope: "Game Plan scope", allPlans: "All Game Plans", scopeHelp: "Placement lists and editable allocations follow this Game Plan. Physical occupancy, conflicts, plots and beds always reflect the whole Orchard.", sharedDelete: "Switch to All Game Plans to delete shared plots or beds." },
+  es: { title: "Mapa de Cultivos", description: "Ubica sucesiones del Plan de Cultivo en camas físicas compartidas sin ocultar ocupación ni conflictos del sitio completo.", refresh: "Actualizar", loadError: "No fue posible cargar el mapa", saveError: "No fue posible guardar cambios", capacity: "Capacidad compartida", occupied: "Ocupación física hoy", placement: "Cobertura de ubicación del scope", future: "Camas físicas libres en 30 días", activeBeds: "camas activas", allocations: "asignaciones del scope", queue: "esperando espacio", unallocated: "Sucesiones sin ubicar", unallocatedHelp: "Solo se ubican sucesiones del Plan seleccionado. Las camas y sectores siguen siendo recursos compartidos.", noQueue: "Todas las sucesiones del scope están ubicadas.", place: "Ubicar", planner: "Planificador físico de camas · 12 semanas", plannerHelp: "La ocupación física incluye asignaciones de todos los Planes para no ocultar conflictos.", drop: "Suelta la sucesión aquí", open: "Libre", rotation: "Revisión de rotación", capacityWarning: "La asignación excede el área registrada de la cama", freeToday: "Libre hoy", free30: "Libre +30d", free60: "Libre +60d", history: "Rotación reciente", setup: "Configuración de espacio compartido", setupHelp: "Sectores y camas son recursos físicos compartidos; no pertenecen a un Plan de Cultivo.", newPlot: "Nuevo sector", plotName: "Nombre del sector", plotType: "Tipo", size: "Superficie (m²)", soil: "Tipo de suelo", irrigation: "Riego", notes: "Notas", createPlot: "Crear sector", newBed: "Nueva cama", plot: "Sector", bedName: "Nombre de cama", code: "Código", length: "Largo (m)", width: "Ancho (m)", orientation: "Orientación", createBed: "Crear cama", manual: "Asignación manual", succession: "Sucesión", bed: "Cama", start: "Inicio en cama", end: "Fin en cama", area: "Área asignada (m²)", plants: "Plantas planificadas", saveAllocation: "Ubicar en mapa", conflict: "Esta cama ya está ocupada durante parte de ese rango de fechas.", deleteBed: "¿Eliminar esta cama compartida y sus asignaciones?", deleteAllocation: "¿Quitar esta asignación del mapa?", deletePlot: "¿Eliminar este sector compartido y todas sus camas?", noPlots: "Aún no hay sectores. Crea la primera zona de cultivo.", noBeds: "Aún no hay camas en este sector.", spatialBoard: "Tablero espacial compartido", spatialBoardHelp: "Lee el sitio físico real mientras planificas solo las sucesiones del scope activo.", scope: "Scope de Plan de Cultivo", allPlans: "Todos los Planes", scopeHelp: "Las listas y asignaciones editables siguen este Plan. La ocupación física, conflictos, sectores y camas siempre reflejan Orchard completo.", sharedDelete: "Cambia a Todos los Planes para eliminar sectores o camas compartidas." },
 } as const
 
-function dateKey(date: Date) {
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`
-}
-function addDays(value: string, days: number) {
-  const d = new Date(`${value}T12:00:00`)
-  d.setDate(d.getDate() + days)
-  return dateKey(d)
-}
-function mondayOf(value: string) {
-  const d = new Date(`${value}T12:00:00`)
-  d.setDate(d.getDate() - ((d.getDay() + 6) % 7))
-  return dateKey(d)
-}
-function dateLabel(value: string, locale: string) {
-  return new Date(`${value}T12:00:00`).toLocaleDateString(locale, { month: "short", day: "numeric" })
-}
-function cropPhoto(name: string | undefined) {
-  const normalized = (name ?? "").toLowerCase()
-  const match = Object.keys(CROP_PHOTOS).find((key) => normalized.includes(key))
-  return match ? CROP_PHOTOS[match] : FALLBACK_CROP_PHOTO
-}
+function dateKey(date: Date) { return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}` }
+function addDays(value: string, days: number) { const d = new Date(`${value}T12:00:00`); d.setDate(d.getDate() + days); return dateKey(d) }
+function mondayOf(value: string) { const d = new Date(`${value}T12:00:00`); d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); return dateKey(d) }
+function dateLabel(value: string, locale: string) { return new Date(`${value}T12:00:00`).toLocaleDateString(locale, { month: "short", day: "numeric" }) }
+function cropPhoto(name: string | undefined) { const normalized = (name ?? "").toLowerCase(); const match = Object.keys(CROP_PHOTOS).find((key) => normalized.includes(key)); return match ? CROP_PHOTOS[match] : FALLBACK_CROP_PHOTO }
 
 export default function OrchardCropMapPage() {
-  const supabase = useMemo(() => createBrowserClient(), [])
-  const { language } = useLanguage()
-  const lang = language === "es" ? "es" : "en"
-  const text = copy[lang]
-  const locale = lang === "es" ? "es-CL" : "en-US"
-  const [plots, setPlots] = useState<Plot[]>([])
-  const [beds, setBeds] = useState<Bed[]>([])
-  const [allocations, setAllocations] = useState<Allocation[]>([])
-  const [successions, setSuccessions] = useState<Succession[]>([])
-  const [cycles, setCycles] = useState<Cycle[]>([])
-  const [loading, setLoading] = useState(true)
-  const [saving, setSaving] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [draggingSuccession, setDraggingSuccession] = useState<string | null>(null)
-  const [plotForm, setPlotForm] = useState({ name: "", plot_type: "growing", size_sqm: "", soil_type: "", irrigation_type: "", notes: "" })
-  const [bedForm, setBedForm] = useState({ plot_id: "", name: "", code: "", length_m: "", width_m: "", orientation: "", notes: "" })
-  const [allocationForm, setAllocationForm] = useState({ bed_id: "", crop_succession_id: "", planned_start_date: "", planned_end_date: "", allocated_area_sqm: "", planned_plants: "", notes: "" })
+  const supabase = useMemo(() => createBrowserClient(), []); const { language } = useLanguage(); const lang = language === "es" ? "es" : "en"; const text = copy[lang]; const locale = lang === "es" ? "es-CL" : "en-US"
+  const [plans, setPlans] = useState<GamePlan[]>([]); const [selectedPlanId, setSelectedPlanId] = useState<string>(ALL_GAME_PLANS)
+  const [plots, setPlots] = useState<Plot[]>([]); const [beds, setBeds] = useState<Bed[]>([]); const [allocations, setAllocations] = useState<Allocation[]>([]); const [successions, setSuccessions] = useState<Succession[]>([]); const [cycles, setCycles] = useState<Cycle[]>([])
+  const [loading, setLoading] = useState(true); const [saving, setSaving] = useState(false); const [error, setError] = useState<string | null>(null); const [draggingSuccession, setDraggingSuccession] = useState<string | null>(null)
+  const [plotForm, setPlotForm] = useState({ name: "", plot_type: "growing", size_sqm: "", soil_type: "", irrigation_type: "", notes: "" }); const [bedForm, setBedForm] = useState({ plot_id: "", name: "", code: "", length_m: "", width_m: "", orientation: "", notes: "" }); const [allocationForm, setAllocationForm] = useState({ bed_id: "", crop_succession_id: "", planned_start_date: "", planned_end_date: "", allocated_area_sqm: "", planned_plants: "", notes: "" })
 
   const loadData = useCallback(async () => {
-    setLoading(true)
-    setError(null)
-    const [plotResult, bedResult, allocationResult, successionResult, cycleResult] = await Promise.all([
+    setLoading(true); setError(null)
+    const [planResult, plotResult, bedResult, allocationResult, successionResult, cycleResult] = await Promise.all([
+      supabase.from("orchard_game_plans").select("id,name,season,start_date,end_date,status").order("start_date", { ascending: false }),
       supabase.from("orchard_plots").select("id,name,plot_type,size_sqm,status,soil_type,irrigation_type,notes").order("name"),
       supabase.from("orchard_beds").select("id,plot_id,name,code,length_m,width_m,area_sqm,status,orientation,notes").order("name"),
       supabase.from("orchard_bed_allocations").select("id,bed_id,crop_succession_id,planned_start_date,planned_end_date,allocated_area_sqm,planned_plants,notes").order("planned_start_date"),
       supabase.from("orchard_crop_successions").select("id,crop_cycle_id,sequence_no,planned_sow_date,planned_transplant_date,planned_first_harvest_date,planned_last_harvest_date,planned_plants,planned_area_sqm,status").neq("status", "cancelled").order("planned_sow_date"),
-      supabase.from("orchard_crop_cycles").select("id,crop_name,variety").order("crop_name"),
+      supabase.from("orchard_crop_cycles").select("id,game_plan_id,crop_name,variety").order("crop_name"),
     ])
-    const firstError = plotResult.error ?? bedResult.error ?? allocationResult.error ?? successionResult.error ?? cycleResult.error
+    const firstError = planResult.error ?? plotResult.error ?? bedResult.error ?? allocationResult.error ?? successionResult.error ?? cycleResult.error
     if (firstError) setError(`${text.loadError}: ${firstError.message}`)
-    else {
-      setPlots((plotResult.data ?? []) as Plot[])
-      setBeds((bedResult.data ?? []) as Bed[])
-      setAllocations((allocationResult.data ?? []) as Allocation[])
-      setSuccessions((successionResult.data ?? []) as Succession[])
-      setCycles((cycleResult.data ?? []) as Cycle[])
-    }
+    else { const nextPlans = (planResult.data ?? []) as GamePlan[]; setPlans(nextPlans); setSelectedPlanId(resolveRequestedGamePlanId(nextPlans, typeof window === "undefined" ? "" : window.location.search)); setPlots((plotResult.data ?? []) as Plot[]); setBeds((bedResult.data ?? []) as Bed[]); setAllocations((allocationResult.data ?? []) as Allocation[]); setSuccessions((successionResult.data ?? []) as Succession[]); setCycles((cycleResult.data ?? []) as Cycle[]) }
     setLoading(false)
   }, [supabase, text.loadError])
-
   useEffect(() => { void loadData() }, [loadData])
 
-  const cycleById = useMemo(() => new Map(cycles.map((item) => [item.id, item])), [cycles])
-  const successionById = useMemo(() => new Map(successions.map((item) => [item.id, item])), [successions])
-  const plotById = useMemo(() => new Map(plots.map((item) => [item.id, item])), [plots])
-  const allocatedIds = useMemo(() => new Set(allocations.map((item) => item.crop_succession_id)), [allocations])
-  const unallocated = successions.filter((item) => !allocatedIds.has(item.id))
-  const activeBeds = beds.filter((item) => item.status === "active")
-  const today = dateKey(new Date())
-  const in30 = addDays(today, 30)
-  const in60 = addDays(today, 60)
-  const weekStart = mondayOf(today)
-  const weeks = Array.from({ length: 12 }, (_, index) => addDays(weekStart, index * 7))
+  const selectedPlan = useMemo(() => resolveSelectedGamePlan(plans, selectedPlanId), [plans, selectedPlanId]); const scopeLabel = gamePlanScopeLabel(selectedPlan, text.allPlans)
+  const graph = useMemo(() => scopeGamePlanGraph(cycles, successions, selectedPlanId), [cycles, successions, selectedPlanId]); const scopedSuccessions = graph.scopedSuccessions; const scopedAllocations = useMemo(() => scopeBySuccessionId(allocations, graph.successionIds, selectedPlanId, (row) => row.crop_succession_id), [allocations, graph.successionIds, selectedPlanId])
+  const cycleById = useMemo(() => new Map(cycles.map((item) => [item.id, item])), [cycles]); const successionById = useMemo(() => new Map(successions.map((item) => [item.id, item])), [successions]); const scopedSuccessionById = useMemo(() => new Map(scopedSuccessions.map((item) => [item.id, item])), [scopedSuccessions]); const plotById = useMemo(() => new Map(plots.map((item) => [item.id, item])), [plots]); const allocatedIds = useMemo(() => new Set(scopedAllocations.map((item) => item.crop_succession_id)), [scopedAllocations]); const unallocated = scopedSuccessions.filter((item) => !allocatedIds.has(item.id)); const activeBeds = beds.filter((item) => item.status === "active")
+  const today = dateKey(new Date()); const in30 = addDays(today, 30); const in60 = addDays(today, 60); const weekStart = mondayOf(today); const weeks = Array.from({ length: 12 }, (_, index) => addDays(weekStart, index * 7))
+  const bedArea = (bed: Bed) => bed.area_sqm ?? ((bed.length_m ?? 0) * (bed.width_m ?? 0)); const isOccupied = (bedId: string, date: string) => allocations.some((item) => item.bed_id === bedId && item.planned_start_date <= date && item.planned_end_date >= date); const freeToday = activeBeds.filter((bed) => !isOccupied(bed.id, today)).length; const free30 = activeBeds.filter((bed) => !isOccupied(bed.id, in30)).length; const free60 = activeBeds.filter((bed) => !isOccupied(bed.id, in60)).length; const coverage = scopedSuccessions.length ? Math.round(((scopedSuccessions.length - unallocated.length) / scopedSuccessions.length) * 100) : 100
+  const successionLabel = (item: Succession) => { const cycle = cycleById.get(item.crop_cycle_id); return `${cycle?.crop_name ?? "Crop"}${cycle?.variety ? ` · ${cycle.variety}` : ""} #${item.sequence_no}` }; const cropNameForSuccession = (item: Succession) => cycleById.get(item.crop_cycle_id)?.crop_name ?? "Crop"; const cropNameForAllocation = (allocation: Allocation) => { const succession = successionById.get(allocation.crop_succession_id); const cycle = succession ? cycleById.get(succession.crop_cycle_id) : null; return cycle?.crop_name ?? "Crop" }; const defaultDates = (item: Succession) => ({ start: item.planned_transplant_date ?? item.planned_sow_date, end: item.planned_last_harvest_date ?? item.planned_first_harvest_date ?? item.planned_transplant_date ?? item.planned_sow_date })
+  const historyForBed = (bedId: string) => allocations.filter((item) => item.bed_id === bedId && item.planned_end_date < today).sort((a, b) => b.planned_end_date.localeCompare(a.planned_end_date)).slice(0, 3); const rotationReview = (bedId: string) => { const history = historyForBed(bedId); if (history.length < 2) return false; return cropNameForAllocation(history[0]).toLowerCase() === cropNameForAllocation(history[1]).toLowerCase() }
 
-  const bedArea = (bed: Bed) => bed.area_sqm ?? ((bed.length_m ?? 0) * (bed.width_m ?? 0))
-  const isOccupied = (bedId: string, date: string) => allocations.some((item) => item.bed_id === bedId && item.planned_start_date <= date && item.planned_end_date >= date)
-  const freeToday = activeBeds.filter((bed) => !isOccupied(bed.id, today)).length
-  const free30 = activeBeds.filter((bed) => !isOccupied(bed.id, in30)).length
-  const free60 = activeBeds.filter((bed) => !isOccupied(bed.id, in60)).length
-  const coverage = successions.length ? Math.round(((successions.length - unallocated.length) / successions.length) * 100) : 100
+  async function createPlot(event: FormEvent) { event.preventDefault(); if (!plotForm.name.trim()) return; setSaving(true); const { error: saveError } = await supabase.from("orchard_plots").insert({ name: plotForm.name.trim(), plot_type: plotForm.plot_type.trim(), size_sqm: plotForm.size_sqm ? Number(plotForm.size_sqm) : null, soil_type: plotForm.soil_type.trim() || null, irrigation_type: plotForm.irrigation_type.trim() || null, notes: plotForm.notes.trim() || null }); if (saveError) setError(`${text.saveError}: ${saveError.message}`); else { setPlotForm({ name: "", plot_type: "growing", size_sqm: "", soil_type: "", irrigation_type: "", notes: "" }); await loadData() } setSaving(false) }
+  async function createBed(event: FormEvent) { event.preventDefault(); if (!bedForm.plot_id || !bedForm.name.trim()) return; setSaving(true); const { error: saveError } = await supabase.from("orchard_beds").insert({ plot_id: bedForm.plot_id, name: bedForm.name.trim(), code: bedForm.code.trim() || null, length_m: bedForm.length_m ? Number(bedForm.length_m) : null, width_m: bedForm.width_m ? Number(bedForm.width_m) : null, orientation: bedForm.orientation.trim() || null, notes: bedForm.notes.trim() || null }); if (saveError) setError(`${text.saveError}: ${saveError.message}`); else { setBedForm({ plot_id: "", name: "", code: "", length_m: "", width_m: "", orientation: "", notes: "" }); await loadData() } setSaving(false) }
+  async function saveAllocation(payload: { bed_id: string; crop_succession_id: string; planned_start_date: string; planned_end_date: string; allocated_area_sqm: number | null; planned_plants: number | null; notes?: string | null }) { if (selectedPlanId !== ALL_GAME_PLANS && !graph.successionIds.has(payload.crop_succession_id)) return false; if (!activeBeds.some((bed) => bed.id === payload.bed_id)) return false; setSaving(true); setError(null); const { error: saveError } = await supabase.from("orchard_bed_allocations").insert(payload); if (saveError) setError(saveError.message.includes("orchard_bed_allocations_no_overlap") || saveError.message.toLowerCase().includes("overlap") ? text.conflict : `${text.saveError}: ${saveError.message}`); else await loadData(); setSaving(false); return !saveError }
+  async function createAllocation(event: FormEvent) { event.preventDefault(); if (!allocationForm.bed_id || !allocationForm.crop_succession_id || !allocationForm.planned_start_date || !allocationForm.planned_end_date) return; const saved = await saveAllocation({ bed_id: allocationForm.bed_id, crop_succession_id: allocationForm.crop_succession_id, planned_start_date: allocationForm.planned_start_date, planned_end_date: allocationForm.planned_end_date, allocated_area_sqm: allocationForm.allocated_area_sqm ? Number(allocationForm.allocated_area_sqm) : null, planned_plants: allocationForm.planned_plants ? Number(allocationForm.planned_plants) : null, notes: allocationForm.notes.trim() || null }); if (saved) setAllocationForm({ bed_id: "", crop_succession_id: "", planned_start_date: "", planned_end_date: "", allocated_area_sqm: "", planned_plants: "", notes: "" }) }
+  async function quickAllocate(succession: Succession, bed: Bed) { const dates = defaultDates(succession); await saveAllocation({ bed_id: bed.id, crop_succession_id: succession.id, planned_start_date: dates.start, planned_end_date: dates.end, allocated_area_sqm: succession.planned_area_sqm, planned_plants: succession.planned_plants }) }
+  function prepare(item: Succession) { const dates = defaultDates(item); setAllocationForm((value) => ({ ...value, crop_succession_id: item.id, planned_start_date: dates.start, planned_end_date: dates.end, allocated_area_sqm: item.planned_area_sqm?.toString() ?? "", planned_plants: item.planned_plants?.toString() ?? "" })); document.getElementById("manual-allocation")?.scrollIntoView({ behavior: "smooth", block: "center" }) }
+  function dragStart(event: DragEvent<HTMLDivElement>, successionId: string) { event.dataTransfer.setData("text/orchard-succession", successionId); event.dataTransfer.effectAllowed = "move"; setDraggingSuccession(successionId) }
+  async function dropOnBed(event: DragEvent<HTMLDivElement>, bed: Bed) { event.preventDefault(); const id = event.dataTransfer.getData("text/orchard-succession") || draggingSuccession; setDraggingSuccession(null); const succession = id ? scopedSuccessionById.get(id) : null; if (succession) await quickAllocate(succession, bed) }
+  async function remove(table: string, id: string, message: string) { if ((table === "orchard_plots" || table === "orchard_beds") && selectedPlanId !== ALL_GAME_PLANS) { setError(text.sharedDelete); return } if (table === "orchard_bed_allocations" && selectedPlanId !== ALL_GAME_PLANS && !scopedAllocations.some((row) => row.id === id)) return; if (!window.confirm(message)) return; setSaving(true); const { error: deleteError } = await supabase.from(table).delete().eq("id", id); if (deleteError) setError(`${text.saveError}: ${deleteError.message}`); else await loadData(); setSaving(false) }
+  function changeScope(value: string) { setSelectedPlanId(value); syncGamePlanQuery(value); setAllocationForm((current) => ({ ...current, crop_succession_id: "" })) }
 
-  const successionLabel = (item: Succession) => {
-    const cycle = cycleById.get(item.crop_cycle_id)
-    return `${cycle?.crop_name ?? "Crop"}${cycle?.variety ? ` · ${cycle.variety}` : ""} #${item.sequence_no}`
-  }
-  const cropNameForSuccession = (item: Succession) => cycleById.get(item.crop_cycle_id)?.crop_name ?? "Crop"
-  const cropNameForAllocation = (allocation: Allocation) => {
-    const succession = successionById.get(allocation.crop_succession_id)
-    const cycle = succession ? cycleById.get(succession.crop_cycle_id) : null
-    return cycle?.crop_name ?? "Crop"
-  }
-  const defaultDates = (item: Succession) => ({
-    start: item.planned_transplant_date ?? item.planned_sow_date,
-    end: item.planned_last_harvest_date ?? item.planned_first_harvest_date ?? item.planned_transplant_date ?? item.planned_sow_date,
-  })
-
-  const historyForBed = (bedId: string) => allocations.filter((item) => item.bed_id === bedId && item.planned_end_date < today).sort((a, b) => b.planned_end_date.localeCompare(a.planned_end_date)).slice(0, 3)
-  const rotationWarning = (bedId: string) => {
-    const history = historyForBed(bedId)
-    if (history.length < 2) return false
-    return cropNameForAllocation(history[0]).toLowerCase() === cropNameForAllocation(history[1]).toLowerCase()
-  }
-
-  async function createPlot(event: FormEvent) {
-    event.preventDefault()
-    if (!plotForm.name.trim()) return
-    setSaving(true)
-    const { error: saveError } = await supabase.from("orchard_plots").insert({ name: plotForm.name.trim(), plot_type: plotForm.plot_type.trim(), size_sqm: plotForm.size_sqm ? Number(plotForm.size_sqm) : null, soil_type: plotForm.soil_type.trim() || null, irrigation_type: plotForm.irrigation_type.trim() || null, notes: plotForm.notes.trim() || null })
-    if (saveError) setError(`${text.saveError}: ${saveError.message}`)
-    else { setPlotForm({ name: "", plot_type: "growing", size_sqm: "", soil_type: "", irrigation_type: "", notes: "" }); await loadData() }
-    setSaving(false)
-  }
-
-  async function createBed(event: FormEvent) {
-    event.preventDefault()
-    if (!bedForm.plot_id || !bedForm.name.trim()) return
-    setSaving(true)
-    const { error: saveError } = await supabase.from("orchard_beds").insert({ plot_id: bedForm.plot_id, name: bedForm.name.trim(), code: bedForm.code.trim() || null, length_m: bedForm.length_m ? Number(bedForm.length_m) : null, width_m: bedForm.width_m ? Number(bedForm.width_m) : null, orientation: bedForm.orientation.trim() || null, notes: bedForm.notes.trim() || null })
-    if (saveError) setError(`${text.saveError}: ${saveError.message}`)
-    else { setBedForm({ plot_id: "", name: "", code: "", length_m: "", width_m: "", orientation: "", notes: "" }); await loadData() }
-    setSaving(false)
-  }
-
-  async function saveAllocation(payload: { bed_id: string; crop_succession_id: string; planned_start_date: string; planned_end_date: string; allocated_area_sqm: number | null; planned_plants: number | null; notes?: string | null }) {
-    setSaving(true)
-    setError(null)
-    const { error: saveError } = await supabase.from("orchard_bed_allocations").insert(payload)
-    if (saveError) setError(saveError.message.includes("orchard_bed_allocations_no_overlap") || saveError.message.toLowerCase().includes("overlap") ? text.conflict : `${text.saveError}: ${saveError.message}`)
-    else await loadData()
-    setSaving(false)
-    return !saveError
-  }
-
-  async function createAllocation(event: FormEvent) {
-    event.preventDefault()
-    if (!allocationForm.bed_id || !allocationForm.crop_succession_id || !allocationForm.planned_start_date || !allocationForm.planned_end_date) return
-    const saved = await saveAllocation({ bed_id: allocationForm.bed_id, crop_succession_id: allocationForm.crop_succession_id, planned_start_date: allocationForm.planned_start_date, planned_end_date: allocationForm.planned_end_date, allocated_area_sqm: allocationForm.allocated_area_sqm ? Number(allocationForm.allocated_area_sqm) : null, planned_plants: allocationForm.planned_plants ? Number(allocationForm.planned_plants) : null, notes: allocationForm.notes.trim() || null })
-    if (saved) setAllocationForm({ bed_id: "", crop_succession_id: "", planned_start_date: "", planned_end_date: "", allocated_area_sqm: "", planned_plants: "", notes: "" })
-  }
-
-  async function quickAllocate(succession: Succession, bed: Bed) {
-    const dates = defaultDates(succession)
-    await saveAllocation({ bed_id: bed.id, crop_succession_id: succession.id, planned_start_date: dates.start, planned_end_date: dates.end, allocated_area_sqm: succession.planned_area_sqm, planned_plants: succession.planned_plants })
-  }
-
-  function prepare(item: Succession) {
-    const dates = defaultDates(item)
-    setAllocationForm((value) => ({ ...value, crop_succession_id: item.id, planned_start_date: dates.start, planned_end_date: dates.end, allocated_area_sqm: item.planned_area_sqm?.toString() ?? "", planned_plants: item.planned_plants?.toString() ?? "" }))
-    document.getElementById("manual-allocation")?.scrollIntoView({ behavior: "smooth", block: "center" })
-  }
-
-  function dragStart(event: DragEvent<HTMLDivElement>, successionId: string) {
-    event.dataTransfer.setData("text/orchard-succession", successionId)
-    event.dataTransfer.effectAllowed = "move"
-    setDraggingSuccession(successionId)
-  }
-  async function dropOnBed(event: DragEvent<HTMLDivElement>, bed: Bed) {
-    event.preventDefault()
-    const id = event.dataTransfer.getData("text/orchard-succession") || draggingSuccession
-    setDraggingSuccession(null)
-    const succession = id ? successionById.get(id) : null
-    if (succession) await quickAllocate(succession, bed)
-  }
-
-  async function remove(table: string, id: string, message: string) {
-    if (!window.confirm(message)) return
-    setSaving(true)
-    const { error: deleteError } = await supabase.from(table).delete().eq("id", id)
-    if (deleteError) setError(`${text.saveError}: ${deleteError.message}`)
-    else await loadData()
-    setSaving(false)
-  }
-
-  return (
-    <AppLayout>
-      <PageHeader title={text.title} description={text.description} actions={<Button variant="outline" onClick={() => void loadData()} disabled={loading}><RefreshCw className={`mr-2 h-4 w-4 ${loading ? "animate-spin" : ""}`} />{text.refresh}</Button>} />
-      <OrchardNavigation />
-      <div className="space-y-6 p-4 sm:p-8">
-        {error && <Card className="border-destructive/60"><CardContent className="p-4 text-sm text-destructive">{error}</CardContent></Card>}
-
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          <Metric icon={<Layers3 className="h-4 w-4" />} label={text.capacity} value={`${activeBeds.length} ${text.activeBeds}`} detail={`${freeToday} ${text.freeToday.toLowerCase()}`} />
-          <Metric icon={<Sprout className="h-4 w-4" />} label={text.occupied} value={`${activeBeds.length - freeToday}/${activeBeds.length}`} detail={`${allocations.length} ${text.allocations}`} />
-          <Metric icon={<MapIcon className="h-4 w-4" />} label={text.placement} value={`${coverage}%`} detail={`${unallocated.length} ${text.queue}`} />
-          <Metric icon={<CalendarRange className="h-4 w-4" />} label={text.future} value={`${free30}/${activeBeds.length}`} detail={`${free60}/${activeBeds.length} ${text.free60.toLowerCase()}`} />
-        </div>
-
-        <section className="space-y-3">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">{text.spatialBoard}</p>
-            <p className="mt-1 max-w-3xl text-sm text-muted-foreground">{text.spatialBoardHelp}</p>
-          </div>
-          <div className="grid gap-4 xl:grid-cols-3">
-            {plots.map((plot, plotIndex) => {
-              const plotBeds = beds.filter((bed) => bed.plot_id === plot.id)
-              const occupiedBeds = plotBeds.filter((bed) => isOccupied(bed.id, today)).length
-              return <Card key={plot.id} className="overflow-hidden border-white/10 bg-card/90">
-                <div className="relative h-40 overflow-hidden">
-                  <img src={PLOT_PHOTOS[plotIndex % PLOT_PHOTOS.length]} alt="" className="h-full w-full object-cover [filter:none] [opacity:1] transition-transform duration-500 hover:scale-[1.02]" />
-                  <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(6,9,7,0.08)_0%,rgba(6,9,7,0.84)_100%)]" />
-                  <div className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-3 p-4 text-white">
-                    <div><p className="text-lg font-semibold">{plot.name}</p><p className="text-xs text-white/70">{plot.plot_type}{plot.size_sqm != null ? ` · ${plot.size_sqm} m²` : ""}{plot.irrigation_type ? ` · ${plot.irrigation_type}` : ""}</p></div>
-                    <Badge className="border-white/15 bg-black/30 text-white backdrop-blur-sm">{occupiedBeds}/{plotBeds.length} occupied</Badge>
-                  </div>
-                </div>
-                <CardContent className="grid gap-2 p-3 sm:grid-cols-2">
-                  {plotBeds.length === 0 ? <div className="col-span-full rounded-lg border border-dashed p-4 text-sm text-muted-foreground">{text.noBeds}</div> : plotBeds.map((bed) => {
-                    const current = allocations.find((item) => item.bed_id === bed.id && item.planned_start_date <= today && item.planned_end_date >= today)
-                    const warning = rotationWarning(bed.id)
-                    return <div key={bed.id} onDragOver={(event) => { event.preventDefault(); event.dataTransfer.dropEffect = "move" }} onDrop={(event) => void dropOnBed(event, bed)} className={`relative overflow-hidden rounded-xl border p-3 transition-all ${current ? "border-primary/25 bg-primary/5" : draggingSuccession ? "border-dashed border-primary/50 bg-primary/5" : "bg-muted/10"}`}>
-                      {current && <img src={cropPhoto(cropNameForAllocation(current))} alt="" className="absolute inset-0 h-full w-full object-cover [filter:none] [opacity:1]" />}
-                      {current && <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(8,11,9,0.92)_0%,rgba(8,11,9,0.72)_58%,rgba(8,11,9,0.28)_100%)]" />}
-                      <div className={`relative ${current ? "text-white" : ""}`}>
-                        <div className="flex items-start justify-between gap-2"><div><p className="font-medium">{bed.name}{bed.code ? ` · ${bed.code}` : ""}</p><p className={`text-xs ${current ? "text-white/65" : "text-muted-foreground"}`}>{bedArea(bed).toFixed(1)} m² · {bed.status}</p></div>{warning && <AlertTriangle className="h-4 w-4 text-amber-400" />}</div>
-                        <div className="mt-5"><p className={`text-xs ${current ? "text-white/60" : "text-muted-foreground"}`}>{current ? cropNameForAllocation(current) : draggingSuccession ? text.drop : text.open}</p>{current && <p className="mt-1 text-[11px] text-white/70">{dateLabel(current.planned_start_date, locale)} → {dateLabel(current.planned_end_date, locale)}</p>}</div>
-                      </div>
-                    </div>
-                  })}
-                </CardContent>
-              </Card>
-            })}
-            {plots.length === 0 && <Card><CardContent className="p-6 text-sm text-muted-foreground">{text.noPlots}</CardContent></Card>}
-          </div>
-        </section>
-
-        <Card className={unallocated.length ? "overflow-hidden border-amber-500/30" : undefined}>
-          <CardHeader><CardTitle>{text.unallocated}</CardTitle><CardDescription>{text.unallocatedHelp}</CardDescription></CardHeader>
-          <CardContent>{unallocated.length === 0 ? <div className="rounded-lg border border-dashed p-5 text-sm text-muted-foreground">{text.noQueue}</div> : <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">{unallocated.map((item) => { const dates = defaultDates(item); const cropName = cropNameForSuccession(item); return <div key={item.id} draggable onDragStart={(event) => dragStart(event, item.id)} onDragEnd={() => setDraggingSuccession(null)} className="group relative min-h-48 overflow-hidden rounded-xl border border-white/10 bg-black text-white"><img src={cropPhoto(cropName)} alt="" className="absolute inset-0 h-full w-full object-cover [filter:none] [opacity:1] transition-transform duration-500 group-hover:scale-[1.02]" /><div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(7,10,8,0.94)_0%,rgba(7,10,8,0.74)_55%,rgba(7,10,8,0.18)_100%)]"/><div className="relative flex h-full min-h-48 flex-col justify-between p-4"><div className="flex items-start gap-3"><GripVertical className="mt-0.5 hidden h-5 w-5 text-white/50 md:block" /><div className="min-w-0 flex-1"><p className="text-lg font-semibold">{successionLabel(item)}</p><p className="mt-1 text-xs text-white/65">{dateLabel(dates.start, locale)} → {dateLabel(dates.end, locale)}</p><div className="mt-3 flex flex-wrap gap-2">{item.planned_area_sqm != null && <Badge className="border-white/15 bg-black/25 text-white">{item.planned_area_sqm} m²</Badge>}{item.planned_plants != null && <Badge className="border-white/15 bg-black/25 text-white">{item.planned_plants} plants</Badge>}</div></div></div><Button className="mt-6 w-full border-white/15 bg-white/10 text-white hover:bg-white/15 hover:text-white md:w-auto" variant="outline" onClick={() => prepare(item)}>{text.place}</Button></div></div>})}</div>}</CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader><CardTitle>{text.planner}</CardTitle><CardDescription>{text.plannerHelp}</CardDescription></CardHeader>
-          <CardContent className="space-y-5">
-            <div className="overflow-x-auto pb-2">
-              <div className="min-w-[1040px]">
-                <div className="grid grid-cols-[240px_repeat(12,minmax(62px,1fr))] gap-1 border-b pb-2 text-xs text-muted-foreground"><div>Bed</div>{weeks.map((week) => <div key={week} className="text-center">{dateLabel(week, locale)}</div>)}</div>
-                <div className="divide-y">{activeBeds.map((bed) => {
-                  const bedAllocations = allocations.filter((item) => item.bed_id === bed.id)
-                  const current = bedAllocations.find((item) => item.planned_start_date <= today && item.planned_end_date >= today)
-                  const recent = historyForBed(bed.id)
-                  const warning = rotationWarning(bed.id)
-                  return <div key={bed.id} className="grid grid-cols-[240px_repeat(12,minmax(62px,1fr))] gap-1 py-2" onDragOver={(event) => { event.preventDefault(); event.dataTransfer.dropEffect = "move" }} onDrop={(event) => void dropOnBed(event, bed)}>
-                    <div className="relative mr-2 min-h-16 overflow-hidden rounded-lg border">
-                      {current && <img src={cropPhoto(cropNameForAllocation(current))} alt="" className="absolute inset-0 h-full w-full object-cover [filter:none] [opacity:1]" />}
-                      {current && <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(7,10,8,0.92)_0%,rgba(7,10,8,0.62)_100%)]" />}
-                      <div className={`relative p-2.5 ${current ? "text-white" : ""}`}><div className="flex items-center gap-2"><p className="font-medium">{plotById.get(bed.plot_id)?.name ? `${plotById.get(bed.plot_id)?.name} · ` : ""}{bed.name}</p>{warning && <AlertTriangle className="h-4 w-4 text-amber-500" />}</div><p className={`mt-0.5 text-xs ${current ? "text-white/65" : "text-muted-foreground"}`}>{bedArea(bed).toFixed(1)} m² · {bed.orientation || bed.status}</p>{recent.length > 0 && <p className={`mt-1 truncate text-[11px] ${current ? "text-white/60" : "text-muted-foreground"}`}>{text.history}: {recent.map(cropNameForAllocation).join(" → ")}</p>}</div>
-                    </div>
-                    {weeks.map((week) => {
-                      const weekEnd = addDays(week, 6)
-                      const matches = bedAllocations.filter((item) => item.planned_start_date <= weekEnd && item.planned_end_date >= week)
-                      return <div key={week} className={`relative min-h-16 overflow-hidden rounded-md border p-1 ${matches.length ? "border-primary/25" : draggingSuccession ? "border-dashed bg-muted/20" : "bg-background"}`} title={matches.map((item) => `${successionLabel(successionById.get(item.crop_succession_id) as Succession)} · ${item.planned_start_date} → ${item.planned_end_date}`).join("\n")}>{matches.length === 0 ? <span className="flex h-full items-center justify-center text-[10px] text-muted-foreground">{draggingSuccession ? text.drop : text.open}</span> : matches.map((item) => <div key={item.id} className="relative h-full min-h-14 overflow-hidden rounded"><img src={cropPhoto(cropNameForAllocation(item))} alt="" className="absolute inset-0 h-full w-full object-cover [filter:none] [opacity:1]"/><div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(6,9,7,0.12)_0%,rgba(6,9,7,0.82)_100%)]"/><div className="absolute inset-x-1 bottom-1 truncate text-[10px] font-semibold text-white">{cropNameForAllocation(item)}</div></div>)}</div>
-                    })}
-                  </div>
-                })}</div>
-              </div>
-            </div>
-
-            <div className="grid gap-4 lg:grid-cols-3">
-              <Metric icon={<MapIcon className="h-4 w-4" />} label={text.freeToday} value={`${freeToday}/${activeBeds.length}`} detail={today} />
-              <Metric icon={<CalendarRange className="h-4 w-4" />} label={text.free30} value={`${free30}/${activeBeds.length}`} detail={in30} />
-              <Metric icon={<CalendarRange className="h-4 w-4" />} label={text.free60} value={`${free60}/${activeBeds.length}`} detail={in60} />
-            </div>
-          </CardContent>
-        </Card>
-
-        <div className="grid gap-5 xl:grid-cols-2">
-          {plots.map((plot, plotIndex) => <Card key={plot.id} className="overflow-hidden"><div className="relative h-32 overflow-hidden"><img src={PLOT_PHOTOS[plotIndex % PLOT_PHOTOS.length]} alt="" className="h-full w-full object-cover [filter:none] [opacity:1]"/><div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(7,10,8,0.05)_0%,rgba(7,10,8,0.86)_100%)]"/><div className="absolute inset-x-0 bottom-0 flex items-end justify-between p-4 text-white"><div><p className="text-lg font-semibold">{plot.name}</p><p className="text-xs text-white/70">{plot.plot_type}{plot.size_sqm != null ? ` · ${plot.size_sqm} m²` : ""}{plot.irrigation_type ? ` · ${plot.irrigation_type}` : ""}</p></div><Button variant="ghost" size="icon" className="text-white hover:bg-white/10 hover:text-white" onClick={() => void remove("orchard_plots", plot.id, text.deletePlot)}><Trash2 className="h-4 w-4" /></Button></div></div><CardContent className="space-y-3 p-4">{beds.filter((bed) => bed.plot_id === plot.id).length === 0 ? <p className="text-sm text-muted-foreground">{text.noBeds}</p> : beds.filter((bed) => bed.plot_id === plot.id).map((bed) => { const rows = allocations.filter((item) => item.bed_id === bed.id).sort((a, b) => a.planned_start_date.localeCompare(b.planned_start_date)); return <div key={bed.id} className="rounded-lg border p-3"><div className="flex items-start justify-between gap-3"><div><p className="font-medium">{bed.name}{bed.code ? ` · ${bed.code}` : ""}</p><p className="text-xs text-muted-foreground">{bed.status} · {bedArea(bed).toFixed(1)} m²</p></div><Button variant="ghost" size="icon" onClick={() => void remove("orchard_beds", bed.id, text.deleteBed)}><Trash2 className="h-4 w-4" /></Button></div><div className="mt-3 grid gap-2 sm:grid-cols-2">{rows.length === 0 ? <div className="col-span-full rounded-md border border-dashed p-3 text-xs text-muted-foreground">{text.open}</div> : rows.map((allocation) => { const succession = successionById.get(allocation.crop_succession_id); const capacityIssue = allocation.allocated_area_sqm != null && bedArea(bed) > 0 && allocation.allocated_area_sqm > bedArea(bed); return <div key={allocation.id} className="group relative min-h-28 overflow-hidden rounded-md border"><img src={cropPhoto(cropNameForAllocation(allocation))} alt="" className="absolute inset-0 h-full w-full object-cover [filter:none] [opacity:1] transition-transform duration-500 group-hover:scale-[1.02]"/><div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(7,10,8,0.92)_0%,rgba(7,10,8,0.58)_100%)]"/><div className="relative flex h-full min-h-28 items-start justify-between gap-2 p-3 text-white"><div><p className="text-sm font-medium">{succession ? successionLabel(succession) : "Crop"}</p><p className="text-xs text-white/65">{allocation.planned_start_date} → {allocation.planned_end_date}</p>{capacityIssue && <p className="mt-2 flex items-center gap-1 text-xs text-amber-300"><AlertTriangle className="h-3 w-3" />{text.capacityWarning}</p>}</div><Button variant="ghost" size="icon" className="text-white hover:bg-white/10 hover:text-white" onClick={() => void remove("orchard_bed_allocations", allocation.id, text.deleteAllocation)}><Trash2 className="h-4 w-4" /></Button></div></div>})}</div></div> })}</CardContent></Card>)}
-          {plots.length === 0 && <Card><CardContent className="p-6 text-sm text-muted-foreground">{text.noPlots}</CardContent></Card>}
-        </div>
-
-        <Card id="manual-allocation"><CardHeader><CardTitle>{text.manual}</CardTitle><CardDescription>{text.unallocatedHelp}</CardDescription></CardHeader><CardContent><form onSubmit={createAllocation} className="grid gap-4 md:grid-cols-2 xl:grid-cols-4"><Field label={text.succession}><Select value={allocationForm.crop_succession_id} onValueChange={(value) => { const succession = successionById.get(value); const dates = succession ? defaultDates(succession) : null; setAllocationForm((current) => ({ ...current, crop_succession_id: value, planned_start_date: dates?.start ?? current.planned_start_date, planned_end_date: dates?.end ?? current.planned_end_date, allocated_area_sqm: succession?.planned_area_sqm?.toString() ?? current.allocated_area_sqm, planned_plants: succession?.planned_plants?.toString() ?? current.planned_plants })) }}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{successions.map((item) => <SelectItem key={item.id} value={item.id}>{successionLabel(item)}</SelectItem>)}</SelectContent></Select></Field><Field label={text.bed}><Select value={allocationForm.bed_id} onValueChange={(value) => setAllocationForm((current) => ({ ...current, bed_id: value }))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{activeBeds.map((bed) => <SelectItem key={bed.id} value={bed.id}>{plotById.get(bed.plot_id)?.name ? `${plotById.get(bed.plot_id)?.name} · ` : ""}{bed.name}</SelectItem>)}</SelectContent></Select></Field><Field label={text.start}><Input type="date" value={allocationForm.planned_start_date} onChange={(event) => setAllocationForm((current) => ({ ...current, planned_start_date: event.target.value }))} required /></Field><Field label={text.end}><Input type="date" value={allocationForm.planned_end_date} onChange={(event) => setAllocationForm((current) => ({ ...current, planned_end_date: event.target.value }))} required /></Field><Field label={text.area}><Input type="number" min="0" step="0.1" value={allocationForm.allocated_area_sqm} onChange={(event) => setAllocationForm((current) => ({ ...current, allocated_area_sqm: event.target.value }))} /></Field><Field label={text.plants}><Input type="number" min="0" step="1" value={allocationForm.planned_plants} onChange={(event) => setAllocationForm((current) => ({ ...current, planned_plants: event.target.value }))} /></Field><div className="md:col-span-2"><Field label={text.notes}><Textarea value={allocationForm.notes} onChange={(event) => setAllocationForm((current) => ({ ...current, notes: event.target.value }))} /></Field></div><div className="md:col-span-2 xl:col-span-4"><Button type="submit" disabled={saving}><Plus className="mr-2 h-4 w-4" />{text.saveAllocation}</Button></div></form></CardContent></Card>
-
-        <Card><CardHeader><CardTitle>{text.setup}</CardTitle><CardDescription>{text.setupHelp}</CardDescription></CardHeader><CardContent className="grid gap-6 xl:grid-cols-2"><form onSubmit={createPlot} className="space-y-4 rounded-xl border p-4"><h3 className="font-semibold">{text.newPlot}</h3><Field label={text.plotName}><Input value={plotForm.name} onChange={(event) => setPlotForm((current) => ({ ...current, name: event.target.value }))} required /></Field><div className="grid gap-3 sm:grid-cols-2"><Field label={text.plotType}><Input value={plotForm.plot_type} onChange={(event) => setPlotForm((current) => ({ ...current, plot_type: event.target.value }))} /></Field><Field label={text.size}><Input type="number" min="0" step="0.1" value={plotForm.size_sqm} onChange={(event) => setPlotForm((current) => ({ ...current, size_sqm: event.target.value }))} /></Field><Field label={text.soil}><Input value={plotForm.soil_type} onChange={(event) => setPlotForm((current) => ({ ...current, soil_type: event.target.value }))} /></Field><Field label={text.irrigation}><Input value={plotForm.irrigation_type} onChange={(event) => setPlotForm((current) => ({ ...current, irrigation_type: event.target.value }))} /></Field></div><Field label={text.notes}><Textarea value={plotForm.notes} onChange={(event) => setPlotForm((current) => ({ ...current, notes: event.target.value }))} /></Field><Button type="submit" disabled={saving}><Plus className="mr-2 h-4 w-4" />{text.createPlot}</Button></form><form onSubmit={createBed} className="space-y-4 rounded-xl border p-4"><h3 className="font-semibold">{text.newBed}</h3><Field label={text.plot}><Select value={bedForm.plot_id} onValueChange={(value) => setBedForm((current) => ({ ...current, plot_id: value }))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{plots.map((plot) => <SelectItem key={plot.id} value={plot.id}>{plot.name}</SelectItem>)}</SelectContent></Select></Field><div className="grid gap-3 sm:grid-cols-2"><Field label={text.bedName}><Input value={bedForm.name} onChange={(event) => setBedForm((current) => ({ ...current, name: event.target.value }))} required /></Field><Field label={text.code}><Input value={bedForm.code} onChange={(event) => setBedForm((current) => ({ ...current, code: event.target.value }))} /></Field><Field label={text.length}><Input type="number" min="0" step="0.1" value={bedForm.length_m} onChange={(event) => setBedForm((current) => ({ ...current, length_m: event.target.value }))} /></Field><Field label={text.width}><Input type="number" min="0" step="0.1" value={bedForm.width_m} onChange={(event) => setBedForm((current) => ({ ...current, width_m: event.target.value }))} /></Field></div><Field label={text.orientation}><Input value={bedForm.orientation} onChange={(event) => setBedForm((current) => ({ ...current, orientation: event.target.value }))} /></Field><Field label={text.notes}><Textarea value={bedForm.notes} onChange={(event) => setBedForm((current) => ({ ...current, notes: event.target.value }))} /></Field><Button type="submit" disabled={saving}><Plus className="mr-2 h-4 w-4" />{text.createBed}</Button></form></CardContent></Card>
-      </div>
-    </AppLayout>
-  )
+  return <AppLayout>
+    <PageHeader title={text.title} description={text.description} actions={<div className="flex flex-wrap gap-2"><Select value={selectedPlanId} onValueChange={changeScope}><SelectTrigger className="w-[220px]"><SelectValue /></SelectTrigger><SelectContent><SelectItem value={ALL_GAME_PLANS}>{text.allPlans}</SelectItem>{plans.map((plan) => <SelectItem key={plan.id} value={plan.id}>{gamePlanScopeLabel(plan, plan.name)}</SelectItem>)}</SelectContent></Select><Button variant="outline" onClick={() => void loadData()} disabled={loading}><RefreshCw className={`mr-2 h-4 w-4 ${loading ? "animate-spin" : ""}`} />{text.refresh}</Button></div>} />
+    <OrchardNavigation />
+    <div className="space-y-6 p-4 sm:p-8">
+      {error && <Card className="border-destructive/60"><CardContent className="p-4 text-sm text-destructive">{error}</CardContent></Card>}
+      <Card><CardContent className="flex flex-wrap items-center justify-between gap-3 p-4"><div><p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">{text.scope}</p><p className="mt-1 font-medium">{scopeLabel}</p></div><p className="max-w-2xl text-xs text-muted-foreground">{text.scopeHelp}</p></CardContent></Card>
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4"><Metric icon={<Layers3 className="h-4 w-4" />} label={text.capacity} value={`${activeBeds.length} ${text.activeBeds}`} detail={`${freeToday} ${text.freeToday.toLowerCase()}`} /><Metric icon={<Sprout className="h-4 w-4" />} label={text.occupied} value={`${activeBeds.length - freeToday}/${activeBeds.length}`} detail={`${scopedAllocations.length} ${text.allocations}`} /><Metric icon={<MapIcon className="h-4 w-4" />} label={text.placement} value={`${coverage}%`} detail={`${unallocated.length} ${text.queue}`} /><Metric icon={<CalendarRange className="h-4 w-4" />} label={text.future} value={`${free30}/${activeBeds.length}`} detail={`${free60}/${activeBeds.length} ${text.free60.toLowerCase()}`} /></div>
+      <section className="space-y-3"><div><p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">{text.spatialBoard}</p><p className="mt-1 max-w-3xl text-sm text-muted-foreground">{text.spatialBoardHelp}</p></div><div className="grid gap-4 xl:grid-cols-3">{plots.map((plot, plotIndex) => { const plotBeds = beds.filter((bed) => bed.plot_id === plot.id); const occupiedBeds = plotBeds.filter((bed) => isOccupied(bed.id, today)).length; return <Card key={plot.id} className="overflow-hidden border-white/10 bg-card/90"><div className="relative h-40 overflow-hidden"><img src={PLOT_PHOTOS[plotIndex % PLOT_PHOTOS.length]} alt="" className="h-full w-full object-cover [filter:none] [opacity:1]" /><div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(6,9,7,0.08)_0%,rgba(6,9,7,0.84)_100%)]" /><div className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-3 p-4 text-white"><div><p className="text-lg font-semibold">{plot.name}</p><p className="text-xs text-white/70">{plot.plot_type}{plot.size_sqm != null ? ` · ${plot.size_sqm} m²` : ""}{plot.irrigation_type ? ` · ${plot.irrigation_type}` : ""}</p></div><Badge className="border-white/15 bg-black/30 text-white">{occupiedBeds}/{plotBeds.length} occupied</Badge></div></div><CardContent className="grid gap-2 p-3 sm:grid-cols-2">{plotBeds.length === 0 ? <div className="col-span-full rounded-lg border border-dashed p-4 text-sm text-muted-foreground">{text.noBeds}</div> : plotBeds.map((bed) => { const current = allocations.find((item) => item.bed_id === bed.id && item.planned_start_date <= today && item.planned_end_date >= today); const review = rotationReview(bed.id); return <div key={bed.id} onDragOver={(event) => { event.preventDefault(); event.dataTransfer.dropEffect = "move" }} onDrop={(event) => void dropOnBed(event, bed)} className={`relative overflow-hidden rounded-xl border p-3 ${current ? "border-primary/25 bg-primary/5" : draggingSuccession ? "border-dashed border-primary/50 bg-primary/5" : "bg-muted/10"}`}>{current && <img src={cropPhoto(cropNameForAllocation(current))} alt="" className="absolute inset-0 h-full w-full object-cover [filter:none] [opacity:1]" />}{current && <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(8,11,9,0.92)_0%,rgba(8,11,9,0.72)_58%,rgba(8,11,9,0.28)_100%)]" />}<div className={`relative ${current ? "text-white" : ""}`}><div className="flex items-start justify-between gap-2"><div><p className="font-medium">{bed.name}{bed.code ? ` · ${bed.code}` : ""}</p><p className={`text-xs ${current ? "text-white/65" : "text-muted-foreground"}`}>{bedArea(bed).toFixed(1)} m² · {bed.status}</p></div>{review && <AlertTriangle className="h-4 w-4 text-amber-400" aria-label={text.rotation} />}</div><div className="mt-5"><p className={`text-xs ${current ? "text-white/60" : "text-muted-foreground"}`}>{current ? cropNameForAllocation(current) : draggingSuccession ? text.drop : text.open}</p>{current && <p className="mt-1 text-[11px] text-white/70">{dateLabel(current.planned_start_date, locale)} → {dateLabel(current.planned_end_date, locale)}</p>}</div></div></div> })}</CardContent></Card> })}{plots.length === 0 && <Card><CardContent className="p-6 text-sm text-muted-foreground">{text.noPlots}</CardContent></Card>}</div></section>
+      <Card className={unallocated.length ? "overflow-hidden border-amber-500/30" : undefined}><CardHeader><CardTitle>{text.unallocated}</CardTitle><CardDescription>{text.unallocatedHelp}</CardDescription></CardHeader><CardContent>{unallocated.length === 0 ? <div className="rounded-lg border border-dashed p-5 text-sm text-muted-foreground">{text.noQueue}</div> : <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">{unallocated.map((item) => { const dates = defaultDates(item); const cropName = cropNameForSuccession(item); return <div key={item.id} draggable onDragStart={(event) => dragStart(event, item.id)} onDragEnd={() => setDraggingSuccession(null)} className="group relative min-h-48 overflow-hidden rounded-xl border border-white/10 bg-black text-white"><img src={cropPhoto(cropName)} alt="" className="absolute inset-0 h-full w-full object-cover [filter:none] [opacity:1]" /><div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(7,10,8,0.94)_0%,rgba(7,10,8,0.74)_55%,rgba(7,10,8,0.18)_100%)]"/><div className="relative flex h-full min-h-48 flex-col justify-between p-4"><div className="flex items-start gap-3"><GripVertical className="mt-0.5 hidden h-5 w-5 text-white/50 md:block" /><div className="min-w-0 flex-1"><p className="text-lg font-semibold">{successionLabel(item)}</p><p className="mt-1 text-xs text-white/65">{dateLabel(dates.start, locale)} → {dateLabel(dates.end, locale)}</p><div className="mt-3 flex flex-wrap gap-2">{item.planned_area_sqm != null && <Badge className="border-white/15 bg-black/25 text-white">{item.planned_area_sqm} m²</Badge>}{item.planned_plants != null && <Badge className="border-white/15 bg-black/25 text-white">{item.planned_plants} plants</Badge>}</div></div></div><Button className="mt-6 w-full border-white/15 bg-white/10 text-white hover:bg-white/15 hover:text-white md:w-auto" variant="outline" onClick={() => prepare(item)}>{text.place}</Button></div></div> })}</div>}</CardContent></Card>
+      <Card><CardHeader><CardTitle>{text.planner}</CardTitle><CardDescription>{text.plannerHelp}</CardDescription></CardHeader><CardContent className="space-y-5"><div className="overflow-x-auto pb-2"><div className="min-w-[1040px]"><div className="grid grid-cols-[240px_repeat(12,minmax(62px,1fr))] gap-1 border-b pb-2 text-xs text-muted-foreground"><div>Bed</div>{weeks.map((week) => <div key={week} className="text-center">{dateLabel(week, locale)}</div>)}</div><div className="divide-y">{activeBeds.map((bed) => { const bedAllocations = allocations.filter((item) => item.bed_id === bed.id); const current = bedAllocations.find((item) => item.planned_start_date <= today && item.planned_end_date >= today); const recent = historyForBed(bed.id); const review = rotationReview(bed.id); return <div key={bed.id} className="grid grid-cols-[240px_repeat(12,minmax(62px,1fr))] gap-1 py-2" onDragOver={(event) => { event.preventDefault(); event.dataTransfer.dropEffect = "move" }} onDrop={(event) => void dropOnBed(event, bed)}><div className="relative mr-2 min-h-16 overflow-hidden rounded-lg border">{current && <img src={cropPhoto(cropNameForAllocation(current))} alt="" className="absolute inset-0 h-full w-full object-cover [filter:none] [opacity:1]" />}{current && <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(7,10,8,0.92)_0%,rgba(7,10,8,0.62)_100%)]" />}<div className={`relative p-2.5 ${current ? "text-white" : ""}`}><div className="flex items-center gap-2"><p className="font-medium">{plotById.get(bed.plot_id)?.name ? `${plotById.get(bed.plot_id)?.name} · ` : ""}{bed.name}</p>{review && <AlertTriangle className="h-4 w-4 text-amber-500" aria-label={text.rotation} />}</div><p className={`mt-0.5 text-xs ${current ? "text-white/65" : "text-muted-foreground"}`}>{bedArea(bed).toFixed(1)} m² · {bed.orientation || bed.status}</p>{recent.length > 0 && <p className={`mt-1 truncate text-[11px] ${current ? "text-white/60" : "text-muted-foreground"}`}>{text.history}: {recent.map(cropNameForAllocation).join(" → ")}</p>}</div></div>{weeks.map((week) => { const weekEnd = addDays(week, 6); const matches = bedAllocations.filter((item) => item.planned_start_date <= weekEnd && item.planned_end_date >= week); return <div key={week} className={`relative min-h-16 overflow-hidden rounded-md border p-1 ${matches.length ? "border-primary/25" : draggingSuccession ? "border-dashed bg-muted/20" : "bg-background"}`} title={matches.map((item) => `${successionById.get(item.crop_succession_id) ? successionLabel(successionById.get(item.crop_succession_id) as Succession) : "Crop"} · ${item.planned_start_date} → ${item.planned_end_date}`).join("\n")}>{matches.length === 0 ? <span className="flex h-full items-center justify-center text-[10px] text-muted-foreground">{draggingSuccession ? text.drop : text.open}</span> : matches.map((item) => <div key={item.id} className="relative h-full min-h-14 overflow-hidden rounded"><img src={cropPhoto(cropNameForAllocation(item))} alt="" className="absolute inset-0 h-full w-full object-cover [filter:none] [opacity:1]"/><div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(6,9,7,0.12)_0%,rgba(6,9,7,0.82)_100%)]"/><div className="absolute inset-x-1 bottom-1 truncate text-[10px] font-semibold text-white">{cropNameForAllocation(item)}</div></div>)}</div> })}</div> })}</div></div></div><div className="grid gap-4 lg:grid-cols-3"><Metric icon={<MapIcon className="h-4 w-4" />} label={text.freeToday} value={`${freeToday}/${activeBeds.length}`} detail={today} /><Metric icon={<CalendarRange className="h-4 w-4" />} label={text.free30} value={`${free30}/${activeBeds.length}`} detail={in30} /><Metric icon={<CalendarRange className="h-4 w-4" />} label={text.free60} value={`${free60}/${activeBeds.length}`} detail={in60} /></div></CardContent></Card>
+      <div className="grid gap-5 xl:grid-cols-2">{plots.map((plot, plotIndex) => <Card key={plot.id} className="overflow-hidden"><div className="relative h-32 overflow-hidden"><img src={PLOT_PHOTOS[plotIndex % PLOT_PHOTOS.length]} alt="" className="h-full w-full object-cover [filter:none] [opacity:1]"/><div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(7,10,8,0.05)_0%,rgba(7,10,8,0.86)_100%)]"/><div className="absolute inset-x-0 bottom-0 flex items-end justify-between p-4 text-white"><div><p className="text-lg font-semibold">{plot.name}</p><p className="text-xs text-white/70">{plot.plot_type}{plot.size_sqm != null ? ` · ${plot.size_sqm} m²` : ""}{plot.irrigation_type ? ` · ${plot.irrigation_type}` : ""}</p></div><Button variant="ghost" size="icon" disabled={selectedPlanId !== ALL_GAME_PLANS} className="text-white hover:bg-white/10 hover:text-white" onClick={() => void remove("orchard_plots", plot.id, text.deletePlot)}><Trash2 className="h-4 w-4" /></Button></div></div><CardContent className="space-y-3 p-4">{beds.filter((bed) => bed.plot_id === plot.id).length === 0 ? <p className="text-sm text-muted-foreground">{text.noBeds}</p> : beds.filter((bed) => bed.plot_id === plot.id).map((bed) => { const rows = scopedAllocations.filter((item) => item.bed_id === bed.id).sort((a, b) => a.planned_start_date.localeCompare(b.planned_start_date)); return <div key={bed.id} className="rounded-lg border p-3"><div className="flex items-start justify-between gap-3"><div><p className="font-medium">{bed.name}{bed.code ? ` · ${bed.code}` : ""}</p><p className="text-xs text-muted-foreground">{bed.status} · {bedArea(bed).toFixed(1)} m²</p></div><Button variant="ghost" size="icon" disabled={selectedPlanId !== ALL_GAME_PLANS} onClick={() => void remove("orchard_beds", bed.id, text.deleteBed)}><Trash2 className="h-4 w-4" /></Button></div><div className="mt-3 grid gap-2 sm:grid-cols-2">{rows.length === 0 ? <div className="col-span-full rounded-md border border-dashed p-3 text-xs text-muted-foreground">{text.open}</div> : rows.map((allocation) => { const succession = successionById.get(allocation.crop_succession_id); const capacityIssue = allocation.allocated_area_sqm != null && bedArea(bed) > 0 && allocation.allocated_area_sqm > bedArea(bed); return <div key={allocation.id} className="group relative min-h-28 overflow-hidden rounded-md border"><img src={cropPhoto(cropNameForAllocation(allocation))} alt="" className="absolute inset-0 h-full w-full object-cover [filter:none] [opacity:1]"/><div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(7,10,8,0.92)_0%,rgba(7,10,8,0.58)_100%)]"/><div className="relative flex h-full min-h-28 items-start justify-between gap-2 p-3 text-white"><div><p className="text-sm font-medium">{succession ? successionLabel(succession) : "Crop"}</p><p className="text-xs text-white/65">{allocation.planned_start_date} → {allocation.planned_end_date}</p>{capacityIssue && <p className="mt-2 flex items-center gap-1 text-xs text-amber-300"><AlertTriangle className="h-3 w-3" />{text.capacityWarning}</p>}</div><Button variant="ghost" size="icon" className="text-white hover:bg-white/10 hover:text-white" onClick={() => void remove("orchard_bed_allocations", allocation.id, text.deleteAllocation)}><Trash2 className="h-4 w-4" /></Button></div></div> })}</div></div> })}</CardContent></Card>)}{plots.length === 0 && <Card><CardContent className="p-6 text-sm text-muted-foreground">{text.noPlots}</CardContent></Card>}</div>
+      <Card id="manual-allocation"><CardHeader><CardTitle>{text.manual}</CardTitle><CardDescription>{text.unallocatedHelp}</CardDescription></CardHeader><CardContent><form onSubmit={createAllocation} className="grid gap-4 md:grid-cols-2 xl:grid-cols-4"><Field label={text.succession}><Select value={allocationForm.crop_succession_id} onValueChange={(value) => { const succession = scopedSuccessionById.get(value); const dates = succession ? defaultDates(succession) : null; setAllocationForm((current) => ({ ...current, crop_succession_id: value, planned_start_date: dates?.start ?? current.planned_start_date, planned_end_date: dates?.end ?? current.planned_end_date, allocated_area_sqm: succession?.planned_area_sqm?.toString() ?? current.allocated_area_sqm, planned_plants: succession?.planned_plants?.toString() ?? current.planned_plants })) }}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{scopedSuccessions.map((item) => <SelectItem key={item.id} value={item.id}>{successionLabel(item)}</SelectItem>)}</SelectContent></Select></Field><Field label={text.bed}><Select value={allocationForm.bed_id} onValueChange={(value) => setAllocationForm((current) => ({ ...current, bed_id: value }))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{activeBeds.map((bed) => <SelectItem key={bed.id} value={bed.id}>{plotById.get(bed.plot_id)?.name ? `${plotById.get(bed.plot_id)?.name} · ` : ""}{bed.name}</SelectItem>)}</SelectContent></Select></Field><Field label={text.start}><Input type="date" value={allocationForm.planned_start_date} onChange={(event) => setAllocationForm((current) => ({ ...current, planned_start_date: event.target.value }))} required /></Field><Field label={text.end}><Input type="date" value={allocationForm.planned_end_date} onChange={(event) => setAllocationForm((current) => ({ ...current, planned_end_date: event.target.value }))} required /></Field><Field label={text.area}><Input type="number" min="0" step="0.1" value={allocationForm.allocated_area_sqm} onChange={(event) => setAllocationForm((current) => ({ ...current, allocated_area_sqm: event.target.value }))} /></Field><Field label={text.plants}><Input type="number" min="0" step="1" value={allocationForm.planned_plants} onChange={(event) => setAllocationForm((current) => ({ ...current, planned_plants: event.target.value }))} /></Field><div className="md:col-span-2"><Field label={text.notes}><Textarea value={allocationForm.notes} onChange={(event) => setAllocationForm((current) => ({ ...current, notes: event.target.value }))} /></Field></div><div className="md:col-span-2 xl:col-span-4"><Button type="submit" disabled={saving || !allocationForm.crop_succession_id}><Plus className="mr-2 h-4 w-4" />{text.saveAllocation}</Button></div></form></CardContent></Card>
+      <Card><CardHeader><CardTitle>{text.setup}</CardTitle><CardDescription>{text.setupHelp}</CardDescription></CardHeader><CardContent className="grid gap-6 xl:grid-cols-2"><form onSubmit={createPlot} className="space-y-4 rounded-xl border p-4"><h3 className="font-semibold">{text.newPlot}</h3><Field label={text.plotName}><Input value={plotForm.name} onChange={(event) => setPlotForm((current) => ({ ...current, name: event.target.value }))} required /></Field><div className="grid gap-3 sm:grid-cols-2"><Field label={text.plotType}><Input value={plotForm.plot_type} onChange={(event) => setPlotForm((current) => ({ ...current, plot_type: event.target.value }))} /></Field><Field label={text.size}><Input type="number" min="0" step="0.1" value={plotForm.size_sqm} onChange={(event) => setPlotForm((current) => ({ ...current, size_sqm: event.target.value }))} /></Field><Field label={text.soil}><Input value={plotForm.soil_type} onChange={(event) => setPlotForm((current) => ({ ...current, soil_type: event.target.value }))} /></Field><Field label={text.irrigation}><Input value={plotForm.irrigation_type} onChange={(event) => setPlotForm((current) => ({ ...current, irrigation_type: event.target.value }))} /></Field></div><Field label={text.notes}><Textarea value={plotForm.notes} onChange={(event) => setPlotForm((current) => ({ ...current, notes: event.target.value }))} /></Field><Button type="submit" disabled={saving}><Plus className="mr-2 h-4 w-4" />{text.createPlot}</Button></form><form onSubmit={createBed} className="space-y-4 rounded-xl border p-4"><h3 className="font-semibold">{text.newBed}</h3><Field label={text.plot}><Select value={bedForm.plot_id} onValueChange={(value) => setBedForm((current) => ({ ...current, plot_id: value }))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{plots.map((plot) => <SelectItem key={plot.id} value={plot.id}>{plot.name}</SelectItem>)}</SelectContent></Select></Field><div className="grid gap-3 sm:grid-cols-2"><Field label={text.bedName}><Input value={bedForm.name} onChange={(event) => setBedForm((current) => ({ ...current, name: event.target.value }))} required /></Field><Field label={text.code}><Input value={bedForm.code} onChange={(event) => setBedForm((current) => ({ ...current, code: event.target.value }))} /></Field><Field label={text.length}><Input type="number" min="0" step="0.1" value={bedForm.length_m} onChange={(event) => setBedForm((current) => ({ ...current, length_m: event.target.value }))} /></Field><Field label={text.width}><Input type="number" min="0" step="0.1" value={bedForm.width_m} onChange={(event) => setBedForm((current) => ({ ...current, width_m: event.target.value }))} /></Field></div><Field label={text.orientation}><Input value={bedForm.orientation} onChange={(event) => setBedForm((current) => ({ ...current, orientation: event.target.value }))} /></Field><Field label={text.notes}><Textarea value={bedForm.notes} onChange={(event) => setBedForm((current) => ({ ...current, notes: event.target.value }))} /></Field><Button type="submit" disabled={saving}><Plus className="mr-2 h-4 w-4" />{text.createBed}</Button></form></CardContent></Card>
+    </div>
+  </AppLayout>
 }
 
-function Field({ label, children }: { label: string; children: ReactNode }) {
-  return <div className="space-y-2"><Label>{label}</Label>{children}</div>
-}
-
-function Metric({ icon, label, value, detail }: { icon: ReactNode; label: string; value: string; detail: string }) {
-  return <Card><CardContent className="p-4"><div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">{icon}{label}</div><p className="mt-2 text-2xl font-semibold tabular-nums">{value}</p><p className="mt-1 text-xs text-muted-foreground">{detail}</p></CardContent></Card>
-}
+function Field({ label, children }: { label: string; children: ReactNode }) { return <div className="space-y-2"><Label>{label}</Label>{children}</div> }
+function Metric({ icon, label, value, detail }: { icon: ReactNode; label: string; value: string; detail: string }) { return <Card><CardContent className="p-4"><div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">{icon}{label}</div><p className="mt-2 text-2xl font-semibold tabular-nums">{value}</p><p className="mt-1 text-xs text-muted-foreground">{detail}</p></CardContent></Card> }
