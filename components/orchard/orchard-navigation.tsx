@@ -108,6 +108,19 @@ body:has([data-orchard-navigation]) main {
   color: var(--bs-text-primary);
   font-family: var(--bs-font-body);
 }
+body:has([data-orchard-navigation]) main:has(> [data-slot="page-header"] + [data-orchard-navigation]) {
+  display: flex;
+  flex-direction: column;
+}
+body:has([data-orchard-navigation]) main:has(> [data-slot="page-header"] + [data-orchard-navigation]) > [data-orchard-navigation] { order: 0; }
+body:has([data-orchard-navigation]) main:has(> [data-slot="page-header"] + [data-orchard-navigation]) > [data-slot="page-header"] { order: 1; }
+body:has([data-orchard-navigation]) main:has(> [data-slot="page-header"] + [data-orchard-navigation]) > :not([data-orchard-navigation]):not([data-slot="page-header"]) { order: 2; }
+body:has([data-orchard-navigation]) main:has(> [data-orchard-navigation]) > div:not([data-slot]):not([class*="fixed"]) {
+  width: 100%;
+  max-width: 1560px;
+  margin-left: auto;
+  margin-right: auto;
+}
 body:has([data-orchard-navigation]) main h1,
 body:has([data-orchard-navigation]) main h2,
 body:has([data-orchard-navigation]) main h3,
