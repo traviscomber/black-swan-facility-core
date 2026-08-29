@@ -10,6 +10,7 @@ const items = [
   { href: "/orchard", label: { en: "Overview", es: "Resumen" }, icon: LayoutDashboard },
   { href: "/orchard/game-plan", label: { en: "Game Plan", es: "Plan" }, icon: CalendarRange },
   { href: "/orchard/crop-map", label: { en: "Crop Map", es: "Mapa" }, icon: Map },
+  { href: "/orchard/nursery", label: { en: "Seeds & Nursery", es: "Semillas" }, icon: Sprout },
   { href: "/orchard/crops", label: { en: "Crops", es: "Cultivos" }, icon: Sprout },
   { href: "/orchard/care", label: { en: "Care", es: "Cuidados" }, icon: Activity },
   { href: "/orchard/harvest", label: { en: "Harvest", es: "Cosecha" }, icon: Leaf },
@@ -19,10 +20,7 @@ const items = [
   { href: "/orchard/analytics", label: { en: "Insights", es: "Análisis" }, icon: BarChart3 },
 ] as const
 
-function internalPath(pathname: string) {
-  return pathname.replace(/^\/(en|es|de)(?=\/|$)/, "") || "/"
-}
-
+function internalPath(pathname: string) { return pathname.replace(/^\/(en|es|de)(?=\/|$)/, "") || "/" }
 export function OrchardNavigation() {
   const pathname = internalPath(usePathname() || "/")
   const { language } = useLanguage()
