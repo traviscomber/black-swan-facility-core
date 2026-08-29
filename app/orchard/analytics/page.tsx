@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react"
 import { AppLayout } from "@/components/app-layout"
 import { PageHeader } from "@/components/page-header"
+import { OrchardNavigation } from "@/components/orchard/orchard-navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { TrendingUp, BarChart3, PieChart, Activity } from "lucide-react"
 import { createBrowserClient } from "@/lib/supabase/client"
@@ -115,6 +116,7 @@ export default function OrchardAnalyticsPage() {
 
   return (
     <AppLayout>
+      <OrchardNavigation />
       <div className="space-y-6">
         <PageHeader
           title={t("orchard.yield_analytics")}
