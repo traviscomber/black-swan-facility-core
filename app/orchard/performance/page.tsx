@@ -1,9 +1,8 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useState } from "react"
-import { Activity, CalendarClock, Leaf, RefreshCw, Sprout, Target } from "lucide-react"
+import { Activity, CalendarClock, Leaf, RefreshCw, Sprout, Target, TrendingUp } from "lucide-react"
 import { AppLayout } from "@/components/app-layout"
-import { PageHeader } from "@/components/page-header"
 import { OrchardNavigation } from "@/components/orchard/orchard-navigation"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -11,232 +10,43 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { createBrowserClient } from "@/lib/supabase/client"
 import { useLanguage } from "@/lib/hooks/use-language"
 
-type Succession = {
-  id: string
-  crop_cycle_id: string
-  sequence_no: number
-  planned_sow_date: string
-  planned_transplant_date: string | null
-  planned_first_harvest_date: string | null
-  planned_last_harvest_date: string | null
-  planned_plants: number | null
-  planned_area_sqm: number | null
-  status: string
-}
+type Succession={id:string;crop_cycle_id:string;sequence_no:number;planned_sow_date:string;planned_transplant_date:string|null;planned_first_harvest_date:string|null;planned_last_harvest_date:string|null;planned_plants:number|null;planned_area_sqm:number|null;status:string}
+type Cycle={id:string;crop_name:string;variety:string|null}
+type Nursery={crop_succession_id:string;sow_date:string;transplant_date:string|null;transplanted_count:number|null;ready_count:number|null;loss_count:number;status:string}
+type Crop={id:string;crop_succession_id:string|null;planting_date:string|null;actual_harvest_date:string|null;quantity_planted:number|null;estimated_yield:number|null;actual_yield:number|null;yield_unit:string|null;status:string}
+type Harvest={crop_succession_id:string|null;crop_id:string;harvest_date:string;quantity_harvested:number|null;harvest_unit:string|null}
+type Row={succession:Succession;label:string;cropName:string;actualSow:string|null;actualTransplant:string|null;actualFirstHarvest:string|null;actualLastHarvest:string|null;actualPlants:number|null;nurseryLosses:number;harvestQuantity:number|null;harvestUnit:string|null;cropYield:number|null;cropYieldUnit:string|null}
 
-type Cycle = { id: string; crop_name: string; variety: string | null }
-type Nursery = { crop_succession_id: string; sow_date: string; transplant_date: string | null; transplanted_count: number | null; ready_count: number | null; loss_count: number; status: string }
-type Crop = { id: string; crop_succession_id: string | null; planting_date: string | null; actual_harvest_date: string | null; quantity_planted: number | null; estimated_yield: number | null; actual_yield: number | null; yield_unit: string | null; status: string }
-type Harvest = { crop_succession_id: string | null; crop_id: string; harvest_date: string; quantity_harvested: number | null; harvest_unit: string | null }
+type Photo={src:string;alt:string}
+const img=(id:string,w=1800)=>`https://images.unsplash.com/photo-${id}?auto=format&fit=crop&q=92&w=${w}`
+const HERO:Photo={src:img("1500382017468-9049fed747ef",2200),alt:"Productive field rows at golden hour"}
+const PHOTOS:Photo[]=[{src:img("1416879595882-3373a0480b5b"),alt:"Fresh produce in field"},{src:img("1464226184884-fa280b87c399"),alt:"Hands tending crops"},{src:img("1498579397066-22750a3cb424"),alt:"Green crop rows"},{src:img("1471194402529-8e0f5a675de6"),alt:"Healthy field plants"}]
+const CROP_PHOTOS:Record<string,Photo>={Tomato:{src:"https://unsplash.com/photos/WHHbA0kU8Qg/download?force=true&w=1800",alt:"Tomato plants"},Lettuce:{src:"https://unsplash.com/photos/SXztF2mpCTA/download?force=true&w=1800",alt:"Lettuce plants"},Carrot:{src:"https://unsplash.com/photos/4yK8iDaWnm8/download?force=true&w=1800",alt:"Carrots"},Basil:{src:"https://unsplash.com/photos/T4uyB67uZ40/download?force=true&w=1800",alt:"Basil"}}
 
-type Row = {
-  succession: Succession
-  label: string
-  actualSow: string | null
-  actualTransplant: string | null
-  actualFirstHarvest: string | null
-  actualLastHarvest: string | null
-  actualPlants: number | null
-  nurseryLosses: number
-  harvestQuantity: number | null
-  harvestUnit: string | null
-  cropYield: number | null
-  cropYieldUnit: string | null
-}
-
-const copy = {
-  en: {
-    title: "Plan vs Actual",
-    description: "Compare planned crop timing and volume with real nursery, planting and harvest execution.",
-    refresh: "Refresh",
-    successions: "Planned successions",
-    started: "Started",
-    onTime: "On-time starts",
-    harvested: "Harvested",
-    timing: "Timing variance",
-    timingHelp: "Actual nursery sow, field planting and first harvest compared with the planned succession dates.",
-    volume: "Volume variance",
-    volumeHelp: "Planned plants compared with recorded transplanted or planted quantities. Harvest quantities stay separated by unit.",
-    succession: "Succession",
-    sow: "Sow",
-    transplant: "Transplant",
-    firstHarvest: "First harvest",
-    plants: "Plants",
-    losses: "Nursery losses",
-    harvest: "Harvest",
-    planned: "Planned",
-    actual: "Actual",
-    variance: "Variance",
-    noActual: "No actual yet",
-    noData: "No crop successions available yet.",
-    loadError: "Could not load plan-vs-actual data",
-    daysEarly: "days early",
-    daysLate: "days late",
-    onPlan: "on plan",
-    notPlanned: "not planned",
-    coverage: "Execution coverage",
-  },
-  es: {
-    title: "Plan vs Real",
-    description: "Compara fechas y volúmenes planificados con la ejecución real de almácigo, plantación y cosecha.",
-    refresh: "Actualizar",
-    successions: "Sucesiones planificadas",
-    started: "Iniciadas",
-    onTime: "Inicios a tiempo",
-    harvested: "Cosechadas",
-    timing: "Variación de fechas",
-    timingHelp: "Siembra real en almácigo, plantación en terreno y primera cosecha comparadas con las fechas planificadas.",
-    volume: "Variación de volumen",
-    volumeHelp: "Plantas planificadas comparadas con trasplantes o plantaciones registradas. Las cosechas se mantienen separadas por unidad.",
-    succession: "Sucesión",
-    sow: "Siembra",
-    transplant: "Trasplante",
-    firstHarvest: "Primera cosecha",
-    plants: "Plantas",
-    losses: "Pérdidas de almácigo",
-    harvest: "Cosecha",
-    planned: "Plan",
-    actual: "Real",
-    variance: "Variación",
-    noActual: "Sin real aún",
-    noData: "Aún no hay sucesiones de cultivo.",
-    loadError: "No fue posible cargar plan vs real",
-    daysEarly: "días antes",
-    daysLate: "días tarde",
-    onPlan: "en fecha",
-    notPlanned: "sin plan",
-    coverage: "Cobertura de ejecución",
-  },
+const copy={
+ en:{title:"Execution Intelligence",description:"See where the crop plan is holding, where timing is drifting, and how planned volume is converting into real field execution.",refresh:"Refresh",successions:"Planned successions",started:"Started",onTime:"On-time starts",harvested:"Harvested",coverage:"Execution coverage",timing:"Timing performance",timingHelp:"Actual nursery, transplant and harvest dates compared with each planned succession.",volume:"Volume conversion",volumeHelp:"Planned plants versus real transplanted or planted quantities, with harvest evidence kept in its recorded unit.",planned:"Plan",actual:"Actual",sow:"Sow",transplant:"Transplant",firstHarvest:"First harvest",plants:"Plants",losses:"Nursery losses",harvest:"Harvest",noActual:"No actual yet",noData:"No crop successions available yet.",loadError:"Could not load performance data",daysEarly:"days early",daysLate:"days late",onPlan:"on plan",notPlanned:"not planned",late:"Late",ahead:"Ahead",onTrack:"On track",execution:"Execution",variance:"Variance",conversion:"Conversion"},
+ es:{title:"Inteligencia de Ejecución",description:"Ve dónde el plan agrícola se sostiene, dónde las fechas se desvían y cómo el volumen planificado se convierte en ejecución real.",refresh:"Actualizar",successions:"Sucesiones planificadas",started:"Iniciadas",onTime:"Inicios a tiempo",harvested:"Cosechadas",coverage:"Cobertura de ejecución",timing:"Rendimiento temporal",timingHelp:"Fechas reales de almácigo, trasplante y cosecha comparadas con cada sucesión planificada.",volume:"Conversión de volumen",volumeHelp:"Plantas planificadas versus trasplantadas o plantadas, manteniendo la cosecha en su unidad registrada.",planned:"Plan",actual:"Real",sow:"Siembra",transplant:"Trasplante",firstHarvest:"Primera cosecha",plants:"Plantas",losses:"Pérdidas de almácigo",harvest:"Cosecha",noActual:"Sin real aún",noData:"Aún no hay sucesiones de cultivo.",loadError:"No fue posible cargar performance",daysEarly:"días antes",daysLate:"días tarde",onPlan:"en fecha",notPlanned:"sin plan",late:"Atrasada",ahead:"Adelantada",onTrack:"En plan",execution:"Ejecución",variance:"Variación",conversion:"Conversión"}
 } as const
+const daysBetween=(p:string|null,a:string|null)=>!p||!a?null:Math.round((new Date(`${a}T12:00:00`).getTime()-new Date(`${p}T12:00:00`).getTime())/86400000)
+const firstDate=(v:Array<string|null|undefined>)=>v.filter(Boolean).sort()[0]??null
+const lastDate=(v:Array<string|null|undefined>)=>v.filter(Boolean).sort().at(-1)??null
 
-const daysBetween = (planned: string | null, actual: string | null) => {
-  if (!planned || !actual) return null
-  const a = new Date(`${planned}T12:00:00`).getTime()
-  const b = new Date(`${actual}T12:00:00`).getTime()
-  return Math.round((b - a) / 86400000)
+export default function OrchardPerformancePage(){
+ const supabase=useMemo(()=>createBrowserClient(),[]);const {language}=useLanguage();const lang=language==="es"?"es":"en";const text=copy[lang];const locale=lang==="es"?"es-CL":"en-US"
+ const [successions,setSuccessions]=useState<Succession[]>([]);const [cycles,setCycles]=useState<Cycle[]>([]);const [nursery,setNursery]=useState<Nursery[]>([]);const [crops,setCrops]=useState<Crop[]>([]);const [harvests,setHarvests]=useState<Harvest[]>([]);const [loading,setLoading]=useState(true);const [error,setError]=useState<string|null>(null)
+ const load=useCallback(async()=>{setLoading(true);setError(null);const [s,cy,n,c,h]=await Promise.all([supabase.from("orchard_crop_successions").select("id,crop_cycle_id,sequence_no,planned_sow_date,planned_transplant_date,planned_first_harvest_date,planned_last_harvest_date,planned_plants,planned_area_sqm,status").order("planned_sow_date"),supabase.from("orchard_crop_cycles").select("id,crop_name,variety"),supabase.from("orchard_nursery_batches").select("crop_succession_id,sow_date,transplant_date,transplanted_count,ready_count,loss_count,status"),supabase.from("orchard_crops").select("id,crop_succession_id,planting_date,actual_harvest_date,quantity_planted,estimated_yield,actual_yield,yield_unit,status"),supabase.from("orchard_harvest_records").select("crop_succession_id,crop_id,harvest_date,quantity_harvested,harvest_unit")]);const e=s.error??cy.error??n.error??c.error??h.error;if(e)setError(`${text.loadError}: ${e.message}`);else{setSuccessions((s.data??[]) as Succession[]);setCycles((cy.data??[]) as Cycle[]);setNursery((n.data??[]) as Nursery[]);setCrops((c.data??[]) as Crop[]);setHarvests((h.data??[]) as Harvest[])}setLoading(false)},[supabase,text.loadError]);useEffect(()=>{void load()},[load])
+ const cycleById=useMemo(()=>new Map(cycles.map(x=>[x.id,x])),[cycles]);const rows=useMemo<Row[]>(()=>successions.map(s=>{const cycle=cycleById.get(s.crop_cycle_id);const nr=nursery.filter(x=>x.crop_succession_id===s.id);const cr=crops.filter(x=>x.crop_succession_id===s.id);const ids=new Set(cr.map(x=>x.id));const hr=harvests.filter(x=>x.crop_succession_id===s.id||ids.has(x.crop_id));const units=[...new Set(hr.map(x=>x.harvest_unit).filter(Boolean))];const qty=units.length===1?hr.reduce((sum,x)=>sum+(x.quantity_harvested??0),0):null;const transplanted=nr.reduce((sum,x)=>sum+(x.transplanted_count??0),0);const planted=cr.reduce((sum,x)=>sum+(x.quantity_planted??0),0);const yields=cr.filter(x=>x.actual_yield!=null);const yu=[...new Set(yields.map(x=>x.yield_unit).filter(Boolean))];return{succession:s,label:`${cycle?.crop_name??"Crop"}${cycle?.variety?` · ${cycle.variety}`:""} #${s.sequence_no}`,cropName:cycle?.crop_name??"Crop",actualSow:firstDate(nr.map(x=>x.sow_date)),actualTransplant:firstDate([...nr.map(x=>x.transplant_date),...cr.map(x=>x.planting_date)]),actualFirstHarvest:firstDate([...hr.map(x=>x.harvest_date),...cr.map(x=>x.actual_harvest_date)]),actualLastHarvest:lastDate(hr.map(x=>x.harvest_date)),actualPlants:transplanted>0?transplanted:planted>0?planted:null,nurseryLosses:nr.reduce((sum,x)=>sum+(x.loss_count??0),0),harvestQuantity:qty,harvestUnit:units.length===1?units[0] as string:null,cropYield:yu.length===1?yields.reduce((sum,x)=>sum+(x.actual_yield??0),0):null,cropYieldUnit:yu.length===1?yu[0] as string:null}}),[successions,cycleById,nursery,crops,harvests])
+ const started=rows.filter(r=>r.actualSow||r.actualTransplant).length;const onTime=rows.filter(r=>{const d=daysBetween(r.succession.planned_sow_date,r.actualSow);return d!=null&&Math.abs(d)<=3}).length;const harvested=rows.filter(r=>r.actualFirstHarvest).length;const coverage=rows.length?Math.round(started/rows.length*100):0;const lateRows=rows.filter(r=>{const d=daysBetween(r.succession.planned_sow_date,r.actualSow);return d!=null&&d>3}).length
+ const dateLabel=(v:string|null)=>v?new Date(`${v}T12:00:00`).toLocaleDateString(locale):"—";const variance=(p:string|null,a:string|null)=>{if(!a)return text.noActual;if(!p)return text.notPlanned;const d=daysBetween(p,a);if(d===0)return text.onPlan;if(d==null)return text.noActual;return d<0?`${Math.abs(d)} ${text.daysEarly}`:`${d} ${text.daysLate}`}
+ return <AppLayout><OrchardNavigation/><main className="mx-auto w-full max-w-[1560px] space-y-10 px-4 pb-16 pt-4 sm:px-6 lg:px-8">
+  <section className="relative isolate min-h-[360px] overflow-hidden bg-neutral-950 sm:min-h-[420px]"><img src={HERO.src} alt={HERO.alt} className="absolute inset-0 h-full w-full object-cover opacity-100 [filter:none]"/><div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(0,0,0,.84)_0%,rgba(0,0,0,.42)_58%,rgba(0,0,0,.12)_100%)]"/><div className="relative flex min-h-[360px] max-w-3xl flex-col justify-end p-6 text-white sm:min-h-[420px] sm:p-10"><p className="text-xs uppercase tracking-[0.2em] text-white/60">Orchard · Performance</p><h1 className="mt-3 text-4xl font-medium tracking-[-0.03em] sm:text-5xl">{text.title}</h1><p className="mt-4 max-w-2xl text-sm leading-6 text-white/75">{text.description}</p><div className="mt-6 flex flex-wrap gap-2"><Button onClick={()=>void load()} disabled={loading} className="bg-white text-black hover:bg-white/90"><RefreshCw className={`mr-2 h-4 w-4 ${loading?"animate-spin":""}`}/>{text.refresh}</Button><Badge className="border-white/20 bg-black/30 px-3 py-2 text-white">{coverage}% {text.coverage}</Badge></div></div><div className="absolute bottom-6 right-6 hidden grid-cols-2 gap-px bg-white/10 lg:grid"><HeroMetric label={text.successions} value={rows.length}/><HeroMetric label={text.onTime} value={onTime}/><HeroMetric label={text.harvested} value={harvested}/><HeroMetric label={text.late} value={lateRows}/></div></section>
+  {error&&<Card className="border-destructive/60"><CardContent className="p-4 text-sm text-destructive">{error}</CardContent></Card>}
+  <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5"><Metric icon={Target} label={text.successions} value={String(rows.length)}/><Metric icon={Sprout} label={text.started} value={String(started)}/><Metric icon={CalendarClock} label={text.onTime} value={String(onTime)}/><Metric icon={Leaf} label={text.harvested} value={String(harvested)}/><Metric icon={Activity} label={text.coverage} value={`${coverage}%`}/></section>
+  <section><div className="mb-5"><p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">01 · {text.execution}</p><h2 className="mt-2">{text.timing}</h2><p className="mt-1 text-sm text-muted-foreground">{text.timingHelp}</p></div>{rows.length===0?<div className="border border-dashed p-6 text-sm text-muted-foreground">{text.noData}</div>:<div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{rows.map((r,i)=>{const d=daysBetween(r.succession.planned_sow_date,r.actualSow);const status=d==null?text.noActual:Math.abs(d)<=3?text.onTrack:d>0?text.late:text.ahead;const photo=CROP_PHOTOS[r.cropName]??PHOTOS[i%PHOTOS.length];return <article key={r.succession.id} className="overflow-hidden border bg-background"><div className="relative h-44 overflow-hidden"><img src={photo.src} alt={photo.alt} className="h-full w-full object-cover opacity-100 [filter:none] transition-transform duration-500 hover:scale-[1.015]"/><div className="absolute inset-0 bg-[linear-gradient(0deg,rgba(0,0,0,.78)_0%,rgba(0,0,0,.08)_80%)]"/><div className="absolute inset-x-4 bottom-4 text-white"><div className="flex gap-2"><Badge className="bg-black/40 text-white">{status}</Badge><Badge className="bg-black/40 text-white">{r.succession.status}</Badge></div><h3 className="mt-2 text-lg text-white!">{r.label}</h3></div></div><div className="grid gap-px bg-border sm:grid-cols-3"><Timing datum={text.sow} planned={dateLabel(r.succession.planned_sow_date)} actual={dateLabel(r.actualSow)} variance={variance(r.succession.planned_sow_date,r.actualSow)}/><Timing datum={text.transplant} planned={dateLabel(r.succession.planned_transplant_date)} actual={dateLabel(r.actualTransplant)} variance={variance(r.succession.planned_transplant_date,r.actualTransplant)}/><Timing datum={text.firstHarvest} planned={dateLabel(r.succession.planned_first_harvest_date)} actual={dateLabel(r.actualFirstHarvest)} variance={variance(r.succession.planned_first_harvest_date,r.actualFirstHarvest)}/></div></article>})}</div>}</section>
+  <section><div className="mb-5"><p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">02 · {text.conversion}</p><h2 className="mt-2">{text.volume}</h2><p className="mt-1 text-sm text-muted-foreground">{text.volumeHelp}</p></div><div className="grid gap-4 lg:grid-cols-2">{rows.map((r,i)=>{const plan=r.succession.planned_plants??0;const actual=r.actualPlants;const pct=plan>0&&actual!=null?Math.round(actual/plan*100):null;const photo=CROP_PHOTOS[r.cropName]??PHOTOS[i%PHOTOS.length];return <article key={r.succession.id} className="grid overflow-hidden border bg-background sm:grid-cols-[180px_1fr]"><div className="relative min-h-44"><img src={photo.src} alt={photo.alt} className="absolute inset-0 h-full w-full object-cover opacity-100 [filter:none]"/><div className="absolute inset-0 bg-black/20"/></div><div className="p-5"><div className="flex items-start justify-between gap-3"><div><p className="font-medium">{r.label}</p><p className="mt-1 text-xs text-muted-foreground">{text.plants}: {plan.toLocaleString(locale)} {text.planned.toLowerCase()} · {actual==null?text.noActual:`${actual.toLocaleString(locale)} ${text.actual.toLowerCase()}`}</p></div>{pct!=null&&<Badge variant={pct>=90?"secondary":"outline"}><TrendingUp className="mr-1 h-3 w-3"/>{pct}%</Badge>}</div><div className="mt-5 h-2 overflow-hidden rounded-full bg-muted"><div className="h-full bg-foreground" style={{width:`${Math.min(100,Math.max(0,pct??0))}%`}}/></div><div className="mt-5 grid grid-cols-2 gap-3 text-sm"><Datum label={text.losses} value={r.nurseryLosses.toLocaleString(locale)}/><Datum label={text.harvest} value={r.harvestQuantity!=null&&r.harvestUnit?`${r.harvestQuantity.toLocaleString(locale)} ${r.harvestUnit}`:r.cropYield!=null&&r.cropYieldUnit?`${r.cropYield.toLocaleString(locale)} ${r.cropYieldUnit}`:"—"}/></div></div></article>})}</div></section>
+ </main></AppLayout>
 }
-
-const firstDate = (values: Array<string | null | undefined>) => values.filter(Boolean).sort()[0] ?? null
-const lastDate = (values: Array<string | null | undefined>) => values.filter(Boolean).sort().at(-1) ?? null
-
-export default function OrchardPerformancePage() {
-  const supabase = useMemo(() => createBrowserClient(), [])
-  const { language } = useLanguage()
-  const lang = language === "es" ? "es" : "en"
-  const text = copy[lang]
-  const locale = lang === "es" ? "es-CL" : "en-US"
-  const [successions, setSuccessions] = useState<Succession[]>([])
-  const [cycles, setCycles] = useState<Cycle[]>([])
-  const [nursery, setNursery] = useState<Nursery[]>([])
-  const [crops, setCrops] = useState<Crop[]>([])
-  const [harvests, setHarvests] = useState<Harvest[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-
-  const load = useCallback(async () => {
-    setLoading(true)
-    setError(null)
-    const [s, cy, n, c, h] = await Promise.all([
-      supabase.from("orchard_crop_successions").select("id, crop_cycle_id, sequence_no, planned_sow_date, planned_transplant_date, planned_first_harvest_date, planned_last_harvest_date, planned_plants, planned_area_sqm, status").order("planned_sow_date"),
-      supabase.from("orchard_crop_cycles").select("id, crop_name, variety"),
-      supabase.from("orchard_nursery_batches").select("crop_succession_id, sow_date, transplant_date, transplanted_count, ready_count, loss_count, status"),
-      supabase.from("orchard_crops").select("id, crop_succession_id, planting_date, actual_harvest_date, quantity_planted, estimated_yield, actual_yield, yield_unit, status"),
-      supabase.from("orchard_harvest_records").select("crop_succession_id, crop_id, harvest_date, quantity_harvested, harvest_unit"),
-    ])
-    const queryError = s.error ?? cy.error ?? n.error ?? c.error ?? h.error
-    if (queryError) setError(`${text.loadError}: ${queryError.message}`)
-    else {
-      setSuccessions((s.data ?? []) as Succession[])
-      setCycles((cy.data ?? []) as Cycle[])
-      setNursery((n.data ?? []) as Nursery[])
-      setCrops((c.data ?? []) as Crop[])
-      setHarvests((h.data ?? []) as Harvest[])
-    }
-    setLoading(false)
-  }, [supabase, text.loadError])
-
-  useEffect(() => { void load() }, [load])
-
-  const cycleById = useMemo(() => new Map(cycles.map((item) => [item.id, item])), [cycles])
-  const rows = useMemo<Row[]>(() => successions.map((succession) => {
-    const cycle = cycleById.get(succession.crop_cycle_id)
-    const nurseryRows = nursery.filter((item) => item.crop_succession_id === succession.id)
-    const cropRows = crops.filter((item) => item.crop_succession_id === succession.id)
-    const cropIds = new Set(cropRows.map((item) => item.id))
-    const harvestRows = harvests.filter((item) => item.crop_succession_id === succession.id || cropIds.has(item.crop_id))
-    const harvestUnits = [...new Set(harvestRows.map((item) => item.harvest_unit).filter(Boolean))]
-    const harvestQuantity = harvestUnits.length === 1 ? harvestRows.reduce((sum, item) => sum + (item.quantity_harvested ?? 0), 0) : null
-    const transplanted = nurseryRows.reduce((sum, item) => sum + (item.transplanted_count ?? 0), 0)
-    const planted = cropRows.reduce((sum, item) => sum + (item.quantity_planted ?? 0), 0)
-    const yields = cropRows.filter((item) => item.actual_yield != null)
-    const yieldUnits = [...new Set(yields.map((item) => item.yield_unit).filter(Boolean))]
-    return {
-      succession,
-      label: `${cycle?.crop_name ?? "Crop"}${cycle?.variety ? ` · ${cycle.variety}` : ""} #${succession.sequence_no}`,
-      actualSow: firstDate(nurseryRows.map((item) => item.sow_date)),
-      actualTransplant: firstDate([...nurseryRows.map((item) => item.transplant_date), ...cropRows.map((item) => item.planting_date)]),
-      actualFirstHarvest: firstDate([...harvestRows.map((item) => item.harvest_date), ...cropRows.map((item) => item.actual_harvest_date)]),
-      actualLastHarvest: lastDate(harvestRows.map((item) => item.harvest_date)),
-      actualPlants: transplanted > 0 ? transplanted : planted > 0 ? planted : null,
-      nurseryLosses: nurseryRows.reduce((sum, item) => sum + (item.loss_count ?? 0), 0),
-      harvestQuantity,
-      harvestUnit: harvestUnits.length === 1 ? harvestUnits[0] as string : null,
-      cropYield: yieldUnits.length === 1 ? yields.reduce((sum, item) => sum + (item.actual_yield ?? 0), 0) : null,
-      cropYieldUnit: yieldUnits.length === 1 ? yieldUnits[0] as string : null,
-    }
-  }), [successions, cycleById, nursery, crops, harvests])
-
-  const started = rows.filter((row) => row.actualSow || row.actualTransplant).length
-  const onTime = rows.filter((row) => {
-    const delta = daysBetween(row.succession.planned_sow_date, row.actualSow)
-    return delta != null && Math.abs(delta) <= 3
-  }).length
-  const harvested = rows.filter((row) => row.actualFirstHarvest).length
-  const coverage = rows.length ? Math.round((started / rows.length) * 100) : 0
-
-  const varianceLabel = (planned: string | null, actual: string | null) => {
-    if (!actual) return text.noActual
-    if (!planned) return text.notPlanned
-    const delta = daysBetween(planned, actual)
-    if (delta === 0) return text.onPlan
-    if (delta == null) return text.noActual
-    return delta < 0 ? `${Math.abs(delta)} ${text.daysEarly}` : `${delta} ${text.daysLate}`
-  }
-
-  const dateLabel = (value: string | null) => value ? new Date(`${value}T12:00:00`).toLocaleDateString(locale) : "—"
-
-  return <AppLayout>
-    <PageHeader title={text.title} description={text.description} actions={<Button variant="outline" onClick={() => void load()} disabled={loading}><RefreshCw className={`mr-2 h-4 w-4 ${loading ? "animate-spin" : ""}`} />{text.refresh}</Button>} />
-    <OrchardNavigation />
-    <div className="space-y-6 p-4 sm:p-8">
-      {error && <Card className="border-destructive/60"><CardContent className="p-4 text-sm text-destructive">{error}</CardContent></Card>}
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
-        <Metric icon={Target} label={text.successions} value={rows.length.toString()} />
-        <Metric icon={Sprout} label={text.started} value={started.toString()} />
-        <Metric icon={CalendarClock} label={text.onTime} value={onTime.toString()} />
-        <Metric icon={Leaf} label={text.harvested} value={harvested.toString()} />
-        <Metric icon={Activity} label={text.coverage} value={`${coverage}%`} />
-      </div>
-
-      <Card>
-        <CardHeader><CardTitle>{text.timing}</CardTitle><CardDescription>{text.timingHelp}</CardDescription></CardHeader>
-        <CardContent>{rows.length === 0 ? <p className="py-8 text-sm text-muted-foreground">{text.noData}</p> : <div className="overflow-x-auto"><table className="w-full min-w-[960px] text-sm"><thead><tr className="border-b text-left text-xs text-muted-foreground"><th className="py-3 pr-4">{text.succession}</th><th className="px-3 py-3">{text.sow}</th><th className="px-3 py-3">{text.transplant}</th><th className="px-3 py-3">{text.firstHarvest}</th></tr></thead><tbody>{rows.map((row) => <tr key={row.succession.id} className="border-b last:border-0"><td className="py-4 pr-4 align-top"><p className="font-medium">{row.label}</p><Badge className="mt-2" variant="outline">{row.succession.status}</Badge></td><TimingCell planned={row.succession.planned_sow_date} actual={row.actualSow} variance={varianceLabel(row.succession.planned_sow_date, row.actualSow)} dateLabel={dateLabel} text={text} /><TimingCell planned={row.succession.planned_transplant_date} actual={row.actualTransplant} variance={varianceLabel(row.succession.planned_transplant_date, row.actualTransplant)} dateLabel={dateLabel} text={text} /><TimingCell planned={row.succession.planned_first_harvest_date} actual={row.actualFirstHarvest} variance={varianceLabel(row.succession.planned_first_harvest_date, row.actualFirstHarvest)} dateLabel={dateLabel} text={text} /></tr>)}</tbody></table></div>}</CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader><CardTitle>{text.volume}</CardTitle><CardDescription>{text.volumeHelp}</CardDescription></CardHeader>
-        <CardContent>{rows.length === 0 ? <p className="py-8 text-sm text-muted-foreground">{text.noData}</p> : <div className="grid gap-3 lg:grid-cols-2">{rows.map((row) => { const plan = row.succession.planned_plants ?? 0; const actual = row.actualPlants; const pct = plan > 0 && actual != null ? Math.round((actual / plan) * 100) : null; return <div key={row.succession.id} className="rounded-lg border p-4"><div className="flex items-start justify-between gap-3"><div><p className="font-semibold">{row.label}</p><p className="mt-1 text-xs text-muted-foreground">{text.plants}: {plan.toLocaleString(locale)} {text.planned.toLowerCase()} · {actual == null ? text.noActual : `${actual.toLocaleString(locale)} ${text.actual.toLowerCase()}`}</p></div>{pct != null && <Badge variant={pct >= 90 ? "secondary" : "outline"}>{pct}%</Badge>}</div><div className="mt-4 h-2 overflow-hidden rounded-full bg-muted"><div className="h-full bg-foreground" style={{ width: `${Math.min(100, Math.max(0, pct ?? 0))}%` }} /></div><div className="mt-4 grid grid-cols-2 gap-3 text-xs"><div><p className="text-muted-foreground">{text.losses}</p><p className="mt-1 font-medium">{row.nurseryLosses.toLocaleString(locale)}</p></div><div><p className="text-muted-foreground">{text.harvest}</p><p className="mt-1 font-medium">{row.harvestQuantity != null && row.harvestUnit ? `${row.harvestQuantity.toLocaleString(locale)} ${row.harvestUnit}` : row.cropYield != null && row.cropYieldUnit ? `${row.cropYield.toLocaleString(locale)} ${row.cropYieldUnit}` : "—"}</p></div></div></div> })}</div>}</CardContent>
-      </Card>
-    </div>
-  </AppLayout>
-}
-
-function TimingCell({ planned, actual, variance, dateLabel, text }: { planned: string | null; actual: string | null; variance: string; dateLabel: (value: string | null) => string; text: typeof copy.en | typeof copy.es }) {
-  const delta = daysBetween(planned, actual)
-  const variant = delta == null ? "outline" : Math.abs(delta) <= 3 ? "secondary" : "destructive"
-  return <td className="px-3 py-4 align-top"><div className="space-y-1"><p><span className="text-muted-foreground">{text.planned}:</span> {dateLabel(planned)}</p><p><span className="text-muted-foreground">{text.actual}:</span> {dateLabel(actual)}</p><Badge variant={variant}>{variance}</Badge></div></td>
-}
-
-function Metric({ icon: Icon, label, value }: { icon: typeof Target; label: string; value: string }) {
-  return <Card><CardContent className="flex items-center gap-3 p-4"><div className="rounded-md bg-muted p-2"><Icon className="h-4 w-4" /></div><div><p className="text-xs text-muted-foreground">{label}</p><p className="mt-0.5 text-2xl font-semibold">{value}</p></div></CardContent></Card>
-}
+function Timing({datum,planned,actual,variance}:{datum:string;planned:string;actual:string;variance:string}){return <div className="bg-background p-4"><p className="text-[10px] uppercase tracking-[0.13em] text-muted-foreground">{datum}</p><p className="mt-2 text-xs text-muted-foreground">Plan · {planned}</p><p className="mt-1 text-sm font-medium">Actual · {actual}</p><p className="mt-2 text-xs">{variance}</p></div>}
+function Datum({label,value}:{label:string;value:string}){return <div className="border p-3"><p className="text-xs text-muted-foreground">{label}</p><p className="mt-1 font-medium">{value}</p></div>}
+function Metric({icon:Icon,label,value}:{icon:typeof Target;label:string;value:string}){return <Card><CardContent className="flex items-center gap-3 p-4"><div className="rounded-md bg-muted p-2"><Icon className="h-4 w-4"/></div><div><p className="text-xs text-muted-foreground">{label}</p><p className="mt-0.5 text-2xl font-semibold">{value}</p></div></CardContent></Card>}
+function HeroMetric({label,value}:{label:string;value:number}){return <div className="min-w-32 bg-black/45 px-5 py-4 text-white"><p className="text-[10px] uppercase tracking-[0.14em] text-white/55">{label}</p><p className="mt-1 text-2xl font-medium tabular-nums">{value}</p></div>}
