@@ -184,7 +184,6 @@ export default function OrchardPage() {
       <OrchardNavigation />
       <div className="space-y-6 p-4 sm:p-8">
         {error && <Card className="border-destructive/60"><CardContent className="p-4 text-sm text-destructive">{text.loadError}: {error}</CardContent></Card>}
-        {overdue.length > 0 && <Card className="border-amber-300"><CardContent className="flex gap-3 p-4"><AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" /><div><p className="font-medium">{text.overdueTitle(overdue.length)}</p><p className="mt-1 text-sm text-muted-foreground">{text.overdueBody}</p></div></CardContent></Card>}
 
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <Metric title={text.plots} value={plots.length.toLocaleString(locale)} />
