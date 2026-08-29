@@ -15,6 +15,12 @@ const orchardTaskSourceMigration = readFileSync(
   new URL("../supabase/migrations/20260829144501_allow_orchard_task_source_types.sql", import.meta.url),
   "utf8",
 )
+const orchardReferenceMigration = readFileSync(
+  new URL("../supabase/migrations/20260829152000_orchard_reference_gaps_1_4.sql", import.meta.url),
+  "utf8",
+)
+const orchardChartsPage = readFileSync(new URL("../app/orchard/charts/page.tsx", import.meta.url), "utf8")
+const orchardServiceWorker = readFileSync(new URL("../public/orchard-sw.js", import.meta.url), "utf8")
 
 test("location-specific operational scopes fail closed when an object has no location", () => {
   assert.match(nullLocationMigration, /s\.location_id is null/)
@@ -45,4 +51,34 @@ test("every Orchard task source emitted by the Work cockpit is accepted by the d
     "orchard_succession_transplant",
   ])
   for (const source of uiSources) assert.match(orchardTaskSourceMigration, new RegExp(`'${source}'::text`))
+})
+
+test("new Orchard intelligence and commercial tables stay behind Orchard RLS", () => {
+  for (const table of ["orchard_crop_library", "orchard_cultivar_library", "orchard_sales_channels", "orchard_revenue_targets", "orchard_chart_definitions"]) {
+    assert.match(orchardReferenceMigration, new RegExp(`alter table public\\.${table} enable row level security`))
+  }
+  assert.match(orchardReferenceMigration, /can_access_orchard_global\(\)/)
+  assert.match(orchardReferenceMigration, /can_access_orchard_succession\(crop_succession_id\)/)
+})
+
+test("multi-bed auto placement is RLS-aware and keeps overlap authority in the database", () => {
+  assert.match(orchardReferenceMigration, /security invoker/)
+  assert.match(orchardReferenceMigration, /can_access_orchard_succession\(p_succession_id\)/)
+  assert.match(orchardReferenceMigration, /can_access_orchard_plot\(p_plot_id\)/)
+  assert.match(orchardReferenceMigration, /daterange\(a\.planned_start_date, a\.planned_end_date, '\[\]'\)/)
+  assert.match(orchardReferenceMigration, /Insufficient conflict-free bed area/)
+})
+
+test("custom Orchard charts are whitelist-driven rather than arbitrary SQL", () => {
+  assert.match(orchardChartsPage, /const config=\{harvest:/)
+  assert.match(orchardChartsPage, /commercial:\{metrics:/)
+  assert.doesNotMatch(orchardChartsPage, /\.rpc\([^)]*sql/i)
+  assert.doesNotMatch(orchardChartsPage, /from\(form\./)
+})
+
+test("Orchard PWA never caches API responses or offline mutations", () => {
+  assert.match(orchardServiceWorker, /if \(request\.method !== "GET"\) return/)
+  assert.match(orchardServiceWorker, /url\.pathname\.startsWith\("\/api\/"\)/)
+  assert.match(orchardServiceWorker, /request\.mode === "navigate"/)
+  assert.doesNotMatch(orchardServiceWorker, /indexedDB|backgroundSync|sync\.register/)
 })
