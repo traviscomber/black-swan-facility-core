@@ -97,20 +97,17 @@ body:has([data-orchard-navigation]) {
   background: var(--bs-bg-primary);
   color: var(--bs-text-primary);
 }
-
 body:has([data-orchard-navigation]) [data-orchard-navigation] {
   background: var(--bs-bg-secondary) !important;
   border-color: var(--bs-divider-subtle) !important;
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
 }
-
 body:has([data-orchard-navigation]) main {
   background: var(--bs-bg-primary);
   color: var(--bs-text-primary);
   font-family: var(--bs-font-body);
 }
-
 body:has([data-orchard-navigation]) main h1,
 body:has([data-orchard-navigation]) main h2,
 body:has([data-orchard-navigation]) main h3,
@@ -121,40 +118,27 @@ body:has([data-orchard-navigation]) main h6 {
   font-weight: 400 !important;
   color: var(--bs-text-primary) !important;
 }
-
 body:has([data-orchard-navigation]) main h1 {
   font-size: clamp(28px, 2.8vw, 40px) !important;
   line-height: 1.08 !important;
   letter-spacing: -0.015em !important;
 }
-
-body:has([data-orchard-navigation]) main h2 {
-  font-size: clamp(22px, 2vw, 30px) !important;
-}
-
+body:has([data-orchard-navigation]) main h2 { font-size: clamp(22px, 2vw, 30px) !important; }
 body:has([data-orchard-navigation]) main [class*="rounded"],
 body:has([data-orchard-navigation]) [data-slot="dialog-content"],
 body:has([data-orchard-navigation]) [data-slot="dropdown-menu-content"],
-body:has([data-orchard-navigation]) [data-slot="popover-content"] {
-  border-radius: 0 !important;
-}
-
+body:has([data-orchard-navigation]) [data-slot="popover-content"] { border-radius: 0 !important; }
 body:has([data-orchard-navigation]) main [class*="shadow"],
 body:has([data-orchard-navigation]) [data-slot="dialog-content"],
-body:has([data-orchard-navigation]) [data-slot="dropdown-menu-content"] {
-  box-shadow: none !important;
-}
-
+body:has([data-orchard-navigation]) [data-slot="dropdown-menu-content"] { box-shadow: none !important; }
 body:has([data-orchard-navigation]) main [class*="backdrop-blur"] {
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
 }
-
 body:has([data-orchard-navigation]) main [class*="bg-gradient"] {
   background-image: none !important;
   background-color: var(--bs-overlay) !important;
 }
-
 body:has([data-orchard-navigation]) main [data-slot="card"],
 body:has([data-orchard-navigation]) [data-slot="dialog-content"] {
   background: var(--bs-surface-primary) !important;
@@ -162,11 +146,7 @@ body:has([data-orchard-navigation]) [data-slot="dialog-content"] {
   border-radius: 0 !important;
   box-shadow: none !important;
 }
-
-body:has([data-orchard-navigation]) main [data-slot="card"] [data-slot="card"] {
-  background: var(--bs-surface-secondary) !important;
-}
-
+body:has([data-orchard-navigation]) main [data-slot="card"] [data-slot="card"] { background: var(--bs-surface-secondary) !important; }
 body:has([data-orchard-navigation]) main button,
 body:has([data-orchard-navigation]) main [role="button"],
 body:has([data-orchard-navigation]) main [data-slot="button"] {
@@ -174,7 +154,6 @@ body:has([data-orchard-navigation]) main [data-slot="button"] {
   border-radius: 0 !important;
   box-shadow: none !important;
 }
-
 body:has([data-orchard-navigation]) main input,
 body:has([data-orchard-navigation]) main textarea,
 body:has([data-orchard-navigation]) main select,
@@ -188,102 +167,38 @@ body:has([data-orchard-navigation]) main [data-slot="select-trigger"] {
   border-radius: 0 !important;
   box-shadow: none !important;
 }
-
 body:has([data-orchard-navigation]) main label,
-body:has([data-orchard-navigation]) main [data-slot="label"] {
-  color: var(--bs-text-secondary) !important;
-  font-weight: 500;
-}
-
-body:has([data-orchard-navigation]) main [data-slot="badge"] {
-  border-radius: 0 !important;
-  box-shadow: none !important;
-}
-
-body:has([data-orchard-navigation]) main table {
-  border-collapse: collapse;
-  background: var(--bs-surface-primary);
-}
-
-body:has([data-orchard-navigation]) main th {
-  color: var(--bs-text-secondary) !important;
-  font-weight: 500;
-  background: var(--bs-bg-secondary);
-}
-
-body:has([data-orchard-navigation]) main td {
-  color: var(--bs-text-primary);
-}
-
-body:has([data-orchard-navigation]) main tbody tr:nth-child(even) {
-  background: rgba(57, 52, 45, 0.34);
-}
-
+body:has([data-orchard-navigation]) main [data-slot="label"] { color: var(--bs-text-secondary) !important; font-weight: 500; }
+body:has([data-orchard-navigation]) main [data-slot="badge"] { border-radius: 0 !important; box-shadow: none !important; }
+body:has([data-orchard-navigation]) main table { border-collapse: collapse; background: var(--bs-surface-primary); }
+body:has([data-orchard-navigation]) main th { color: var(--bs-text-secondary) !important; font-weight: 500; background: var(--bs-bg-secondary); }
+body:has([data-orchard-navigation]) main td { color: var(--bs-text-primary); }
+body:has([data-orchard-navigation]) main tbody tr:nth-child(even) { background: rgba(57, 52, 45, 0.34); }
 body:has([data-orchard-navigation]) main [class*="bg-white"],
 body:has([data-orchard-navigation]) main [class*="bg-gray-50"],
 body:has([data-orchard-navigation]) main [class*="bg-slate-50"],
-body:has([data-orchard-navigation]) main [class*="bg-zinc-50"] {
-  background-color: var(--bs-surface-primary) !important;
-}
-
-body:has([data-orchard-navigation]) main button[class*="bg-white"] {
-  background-color: var(--bs-cool-sage) !important;
-  color: var(--bs-bg-primary) !important;
-}
-
-body:has([data-orchard-navigation]) main [class*="text-black"] {
-  color: var(--bs-text-primary) !important;
-}
-
-body:has([data-orchard-navigation]) main button[class*="text-black"] {
-  color: var(--bs-bg-primary) !important;
-}
-
+body:has([data-orchard-navigation]) main [class*="bg-zinc-50"] { background-color: var(--bs-surface-primary) !important; }
+body:has([data-orchard-navigation]) main button[class*="bg-white"] { background-color: var(--bs-cool-sage) !important; color: var(--bs-bg-primary) !important; }
+body:has([data-orchard-navigation]) main [class*="text-black"] { color: var(--bs-text-primary) !important; }
+body:has([data-orchard-navigation]) main button[class*="text-black"] { color: var(--bs-bg-primary) !important; }
 body:has([data-orchard-navigation]) main [class*="bg-blue-"],
-body:has([data-orchard-navigation]) main [class*="bg-cyan-"] {
-  background-color: rgba(70, 121, 174, 0.28) !important;
-  color: var(--bs-text-primary) !important;
-}
-
+body:has([data-orchard-navigation]) main [class*="bg-cyan-"] { background-color: rgba(70, 121, 174, 0.28) !important; color: var(--bs-text-primary) !important; }
 body:has([data-orchard-navigation]) main [class*="bg-emerald-"],
-body:has([data-orchard-navigation]) main [class*="bg-green-"] {
-  background-color: rgba(139, 203, 168, 0.20) !important;
-  color: var(--bs-text-primary) !important;
-}
-
+body:has([data-orchard-navigation]) main [class*="bg-green-"] { background-color: rgba(139, 203, 168, 0.20) !important; color: var(--bs-text-primary) !important; }
 body:has([data-orchard-navigation]) main [class*="bg-amber-"],
-body:has([data-orchard-navigation]) main [class*="bg-yellow-"] {
-  background-color: rgba(253, 211, 44, 0.18) !important;
-  color: var(--bs-text-primary) !important;
-}
-
-body:has([data-orchard-navigation]) main [class*="bg-orange-"] {
-  background-color: rgba(214, 105, 66, 0.22) !important;
-  color: var(--bs-text-primary) !important;
-}
-
+body:has([data-orchard-navigation]) main [class*="bg-yellow-"] { background-color: rgba(253, 211, 44, 0.18) !important; color: var(--bs-text-primary) !important; }
+body:has([data-orchard-navigation]) main [class*="bg-orange-"] { background-color: rgba(214, 105, 66, 0.22) !important; color: var(--bs-text-primary) !important; }
 body:has([data-orchard-navigation]) main [class*="bg-red-"],
-body:has([data-orchard-navigation]) main [class*="bg-rose-"] {
-  background-color: rgba(236, 43, 2, 0.18) !important;
-  color: var(--bs-text-primary) !important;
-}
-
+body:has([data-orchard-navigation]) main [class*="bg-rose-"] { background-color: rgba(236, 43, 2, 0.18) !important; color: var(--bs-text-primary) !important; }
 body:has([data-orchard-navigation]) main .text-muted-foreground,
-body:has([data-orchard-navigation]) main [data-slot="card-description"] {
-  color: var(--bs-text-secondary) !important;
-}
-
+body:has([data-orchard-navigation]) main [data-slot="card-description"] { color: var(--bs-text-secondary) !important; }
 body:has([data-orchard-navigation]) main :focus-visible,
 body:has([data-orchard-navigation]) [data-orchard-navigation] :focus-visible {
   outline: 2px solid var(--bs-cool-sky) !important;
   outline-offset: 2px;
 }
-
 @media (max-width: 639px) {
-  body:has([data-orchard-navigation]) main {
-    padding-left: 16px;
-    padding-right: 16px;
-  }
+  body:has([data-orchard-navigation]) main { padding-left: 16px; padding-right: 16px; }
 }
 `
 
@@ -307,9 +222,9 @@ export function OrchardNavigation() {
       <nav
         data-orchard-navigation
         aria-label={locale === "es" ? "Navegación del huerto" : "Orchard navigation"}
-        className="relative z-50 border-b border-border bg-background px-3 md:px-8"
+        className="sticky top-0 z-[70] border-b border-border bg-background px-3 md:px-8"
       >
-        <div className="flex min-h-14 items-center gap-1 overflow-x-auto py-2 [scrollbar-width:none] sm:overflow-visible [&::-webkit-scrollbar]:hidden">
+        <div className="mx-auto flex min-h-14 w-full max-w-[1560px] items-center gap-1 overflow-x-auto py-2 [scrollbar-width:none] sm:overflow-visible [&::-webkit-scrollbar]:hidden">
           {primaryItems.map((item) => {
             const active = isActive(pathname, item)
             const Icon = item.icon
@@ -337,7 +252,7 @@ export function OrchardNavigation() {
             const groupActive = group.items.some((item) => isActive(pathname, item))
             const GroupIcon = group.icon
             return (
-              <details key={group.key} className="group relative z-50 shrink-0">
+              <details key={group.key} className="group relative z-[80] shrink-0">
                 <summary
                   className={cn(
                     "flex min-h-10 cursor-pointer list-none items-center gap-2 px-3 text-sm font-medium transition-colors marker:content-none focus-visible:outline-none [&::-webkit-details-marker]:hidden",
@@ -350,7 +265,7 @@ export function OrchardNavigation() {
                   <span className="hidden sm:inline">{group.label[locale]}</span>
                   <ChevronDown className="h-3.5 w-3.5 transition-transform group-open:rotate-180" aria-hidden="true" />
                 </summary>
-                <div className="fixed left-3 right-3 z-[100] mt-2 bg-[var(--bs-surface-elevated)] p-2 text-popover-foreground sm:absolute sm:left-auto sm:right-0 sm:w-72">
+                <div className="fixed left-3 right-3 top-[60px] z-[90] max-h-[calc(100dvh-72px)] overflow-y-auto border border-[var(--bs-divider-subtle)] bg-[var(--bs-surface-elevated)] p-2 text-popover-foreground sm:absolute sm:left-auto sm:right-0 sm:top-auto sm:mt-2 sm:max-h-[min(70vh,520px)] sm:w-72">
                   <div className="mb-1 px-2 py-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                     {group.label[locale]}
                   </div>
