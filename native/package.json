@@ -1,0 +1,23 @@
+{
+  "name": "@blackswan/facility-core-native",
+  "private": true,
+  "version": "0.1.0",
+  "packageManager": "pnpm@10.28.0",
+  "scripts": {
+    "add:ios": "capacitor add ios",
+    "add:android": "capacitor add android",
+    "sync": "capacitor sync",
+    "open:ios": "capacitor open ios",
+    "open:android": "capacitor open android",
+    "doctor": "capacitor doctor"
+  },
+  "dependencies": {
+    "@capacitor/android": "^7.4.3",
+    "@capacitor/core": "^7.4.3",
+    "@capacitor/ios": "^7.4.3"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^7.4.3",
+    "typescript": "^5.9.2"
+  }
+}
