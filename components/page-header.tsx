@@ -13,11 +13,8 @@ interface PageHeaderProps {
   description?: string
   actions?: React.ReactNode
   children?: React.ReactNode
-  /** @deprecated Prefer actions. Kept while legacy pages converge on the shared contract. */
   action?: React.ReactNode
-  /** @deprecated Prefer actions. */
   actionLabel?: string
-  /** @deprecated Prefer actions. */
   onAction?: () => void
   icon?: HeaderIcon
   backHref?: string
@@ -46,15 +43,21 @@ const ORCHARD_HERO_EXCLUSIONS = new Set([
   "/orchard/work",
   "/orchard/harvest",
   "/orchard/assistant",
+  "/orchard/game-plan",
+  "/orchard/crops",
+  "/orchard/nursery",
+  "/orchard/charts",
+  "/orchard/analytics",
+  "/orchard/season-summary",
+  "/orchard/traceability",
+  "/orchard/reports",
 ])
 
 const PLANNING_ROUTES = [
   "/orchard/library",
   "/orchard/crop-map",
   "/orchard/auto-place",
-  "/orchard/nursery",
   "/orchard/fao",
-  "/orchard/game-plan",
   "/orchard/game-plans",
   "/orchard/crop-cycles",
   "/orchard/successions",
@@ -64,7 +67,6 @@ const PLANNING_ROUTES = [
 ]
 
 const OPERATIONS_ROUTES = [
-  "/orchard/crops",
   "/orchard/lifecycle",
   "/orchard/care",
   "/orchard/pests",
@@ -80,11 +82,6 @@ const PERFORMANCE_ROUTES = [
   "/orchard/commercial",
   "/orchard/performance",
   "/orchard/decisions",
-  "/orchard/charts",
-  "/orchard/analytics",
-  "/orchard/season-summary",
-  "/orchard/traceability",
-  "/orchard/reports",
 ]
 
 const ROUTE_HEROES: Array<{ match: (pathname: string) => boolean; config: OrchardHeroConfig }> = [
@@ -97,24 +94,24 @@ const ROUTE_HEROES: Array<{ match: (pathname: string) => boolean; config: Orchar
     config: { image: ORCHARD_HERO_IMAGES.cropMap, kicker: "Spatial planning", signals: ["Beds", "Occupancy", "Rotation"] },
   },
   {
-    match: (pathname) => pathname === "/orchard/nursery" || pathname.startsWith("/orchard/nursery/"),
-    config: { image: ORCHARD_HERO_IMAGES.nursery, kicker: "Nursery operations", signals: ["Trays", "Germination", "Transplant queue"] },
-  },
-  {
     match: (pathname) => pathname === "/orchard/seeds" || pathname.startsWith("/orchard/seeds/"),
     config: { image: ORCHARD_HERO_IMAGES.seeds, kicker: "Seed inventory", signals: ["Lots", "Viability", "Sowing readiness"] },
   },
 ]
 
-function orchardHeroForPath(pathname: string): OrchardHeroConfig | null {
+function internalPath(pathname: string) {
+  return pathname.replace(/^\/(en|es|de)(?=\/|$)/, "") || "/"
+}
+
+function orchardHeroForPath(rawPathname: string): OrchardHeroConfig | null {
+  const pathname = internalPath(rawPathname)
   if (!pathname.startsWith("/orchard") || ORCHARD_HERO_EXCLUSIONS.has(pathname)) return null
   const specific = ROUTE_HEROES.find((item) => item.match(pathname))
   if (specific) return specific.config
-  if (pathname.startsWith("/orchard/game-plan")) return { image: ORCHARD_HERO_IMAGES.planningDetail, kicker: "Season strategy", signals: ["Targets", "Cycles", "Capacity"] }
   if (PLANNING_ROUTES.some((route) => pathname === route || pathname.startsWith(`${route}/`))) return { image: ORCHARD_HERO_IMAGES.planning, kicker: "Planning system" }
   if (OPERATIONS_ROUTES.some((route) => pathname === route || pathname.startsWith(`${route}/`))) return { image: ORCHARD_HERO_IMAGES.operations, kicker: "Field operations" }
   if (PERFORMANCE_ROUTES.some((route) => pathname === route || pathname.startsWith(`${route}/`))) return { image: ORCHARD_HERO_IMAGES.performance, kicker: "Performance intelligence" }
-  return { image: ORCHARD_HERO_IMAGES.operations, kicker: "Orchard operations" }
+  return null
 }
 
 function renderIcon(icon: HeaderIcon | undefined) {
@@ -137,9 +134,7 @@ export function PageHeader({
 }: PageHeaderProps) {
   const pathname = usePathname()
   const orchardHero = orchardHeroForPath(pathname)
-  const resolvedActions = actions ?? action ?? children ?? (actionLabel && onAction ? (
-    <Button onClick={onAction}>{actionLabel}</Button>
-  ) : null)
+  const resolvedActions = actions ?? action ?? children ?? (actionLabel && onAction ? <Button onClick={onAction}>{actionLabel}</Button> : null)
 
   if (orchardHero) {
     return (
@@ -163,24 +158,20 @@ export function PageHeader({
                   <Link href={backHref}><ArrowLeft className="h-4 w-4" /></Link>
                 </Button>
               )}
-              {icon && <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-white/15 bg-black/25 text-emerald-200 backdrop-blur-sm">{renderIcon(icon)}</span>}
+              {icon && <span className="flex h-9 w-9 shrink-0 items-center justify-center border border-white/15 bg-black/25 text-emerald-200">{renderIcon(icon)}</span>}
               <div className="min-w-0">
                 <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-emerald-200">Black Swan Facility Core · {orchardHero.kicker}</p>
-                <h1 className="text-balance text-3xl font-semibold tracking-[-0.035em] text-white drop-shadow-sm md:text-4xl">{title}</h1>
+                <h1 className="text-balance text-3xl font-semibold tracking-[-0.035em] text-white md:text-4xl">{title}</h1>
               </div>
             </div>
             {description && <p className="max-w-2xl text-sm leading-6 text-white/72 md:text-[15px]">{description}</p>}
             {orchardHero.signals && (
               <div className="flex flex-wrap gap-2 pt-1">
-                {orchardHero.signals.map((signal) => (
-                  <span key={signal} className="rounded-full border border-white/14 bg-black/25 px-3 py-1 text-[11px] font-medium tracking-wide text-white/78 backdrop-blur-sm">
-                    {signal}
-                  </span>
-                ))}
+                {orchardHero.signals.map((signal) => <span key={signal} className="border border-white/14 bg-black/25 px-3 py-1 text-[11px] font-medium tracking-wide text-white/78">{signal}</span>)}
               </div>
             )}
           </div>
-          {resolvedActions && <div className="flex shrink-0 flex-wrap items-center gap-2 [&_button]:border-white/15 [&_button]:shadow-lg">{resolvedActions}</div>}
+          {resolvedActions && <div className="flex shrink-0 flex-wrap items-center gap-2">{resolvedActions}</div>}
         </div>
       </div>
     )
@@ -195,7 +186,7 @@ export function PageHeader({
               <Link href={backHref}><ArrowLeft className="h-4 w-4" /></Link>
             </Button>
           )}
-          {icon && <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">{renderIcon(icon)}</span>}
+          {icon && <span className="flex h-8 w-8 shrink-0 items-center justify-center bg-primary/10 text-primary">{renderIcon(icon)}</span>}
           <div className="min-w-0">
             <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-primary">Black Swan Facility Core</p>
             <h1 className="truncate text-2xl font-semibold tracking-[-0.025em] text-foreground md:text-3xl">{title}</h1>
