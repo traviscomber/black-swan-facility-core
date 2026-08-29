@@ -5,7 +5,7 @@ import { AppLayout } from "@/components/app-layout"
 import { OrchardNavigation } from "@/components/orchard/orchard-navigation"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { AlertTriangle, CheckCircle2, Clock3, MapPin, ShieldCheck, Wrench } from "lucide-react"
+import { AlertTriangle, CheckCircle2, MapPin, ShieldCheck, Wrench } from "lucide-react"
 import { createBrowserClient } from "@/lib/supabase/client"
 import { useLanguage } from "@/lib/hooks/use-language"
 
@@ -30,10 +30,7 @@ function dueState(next: string | null) {
   const d = dateKey(next)
   if (!d) return "unscheduled"
   const today = new Date(); today.setHours(0, 0, 0, 0)
-  const delta = Math.ceil((d.getTime() - today.getTime()) / 86400000)
-  if (delta < 0) return "overdue"
-  if (delta <= 14) return "due_soon"
-  return "scheduled"
+  return d.getTime() < today.getTime() ? "overdue" : "scheduled"
 }
 
 export default function OrchardEquipmentPage() {
@@ -54,13 +51,11 @@ export default function OrchardEquipmentPage() {
 
   const active = equipment.filter((item) => item.condition !== "broken")
   const overdue = equipment.filter((item) => dueState(item.next_maintenance_date) === "overdue")
-  const dueSoon = equipment.filter((item) => dueState(item.next_maintenance_date) === "due_soon")
   const unscheduled = equipment.filter((item) => !item.next_maintenance_date)
-  const typeCount = new Set(equipment.map((item) => item.equipment_type)).size
   const locations = [...new Set(equipment.map((item) => item.storage_location).filter(Boolean))]
   const readiness = equipment.length ? Math.round((equipment.filter((item) => item.condition !== "broken" && dueState(item.next_maintenance_date) !== "overdue").length / equipment.length) * 100) : 0
   const ordered = [...equipment].sort((a, b) => {
-    const rank = (item: Equipment) => ({ overdue: 0, due_soon: 1, scheduled: 2, unscheduled: 3 }[dueState(item.next_maintenance_date)] ?? 4)
+    const rank = (item: Equipment) => ({ overdue: 0, scheduled: 1, unscheduled: 2 }[dueState(item.next_maintenance_date)] ?? 3)
     return rank(a) - rank(b)
   })
 
@@ -76,17 +71,17 @@ export default function OrchardEquipmentPage() {
         <p className="mt-4 max-w-2xl text-sm leading-6 text-white/72">{t("orchard.equipment_description")}</p>
         <div className="mt-6 flex flex-wrap gap-2"><Badge className="border-white/15 bg-black/30 px-3 py-2 text-white">{active.length} active</Badge><Badge className="border-white/15 bg-black/30 px-3 py-2 text-white">{overdue.length} overdue maintenance</Badge><Badge className="border-white/15 bg-black/30 px-3 py-2 text-white">{readiness}% ready</Badge></div>
       </div>
-      <div className="absolute bottom-6 right-6 hidden grid-cols-2 gap-px bg-white/10 lg:grid"><HeroMetric icon={<Wrench className="h-4 w-4" />} label="Assets" value={String(equipment.length)} /><HeroMetric icon={<AlertTriangle className="h-4 w-4" />} label="Due" value={String(overdue.length + dueSoon.length)} /><HeroMetric icon={<ShieldCheck className="h-4 w-4" />} label="Ready" value={`${readiness}%`} /><HeroMetric icon={<MapPin className="h-4 w-4" />} label="Locations" value={String(locations.length)} /></div>
+      <div className="absolute bottom-6 right-6 hidden grid-cols-2 gap-px bg-white/10 lg:grid"><HeroMetric icon={<Wrench className="h-4 w-4" />} label="Assets" value={String(equipment.length)} /><HeroMetric icon={<AlertTriangle className="h-4 w-4" />} label="Overdue" value={String(overdue.length)} /><HeroMetric icon={<ShieldCheck className="h-4 w-4" />} label="Ready" value={`${readiness}%`} /><HeroMetric icon={<MapPin className="h-4 w-4" />} label="Locations" value={String(locations.length)} /></div>
     </section>
 
     <section className="grid gap-6 xl:grid-cols-[1fr_380px]">
       <div className="space-y-6">
-        <div><p className="text-xs uppercase tracking-[.18em] text-muted-foreground">01</p><h2 className="mt-2">Maintenance readiness board</h2><p className="mt-1 text-sm text-muted-foreground">Equipment is prioritized by maintenance urgency so field risk is visible before work starts.</p></div>
-        {ordered.length === 0 ? <div className="border border-dashed p-8 text-sm text-muted-foreground">{t("orchard.no_equipment")}</div> : <div className="grid gap-4 md:grid-cols-2">{ordered.map((item, index) => { const state = dueState(item.next_maintenance_date); const urgent = state === "overdue" || item.condition === "broken"; return <article key={item.id} className="overflow-hidden border bg-background"><div className="relative h-44 overflow-hidden"><img src={index % 2 ? workshopPhoto : equipmentPhoto} alt="Orchard equipment" className="h-full w-full object-cover opacity-100 [filter:none]" /><div className="absolute inset-0 bg-[linear-gradient(0deg,rgba(0,0,0,.78),rgba(0,0,0,.08)_70%)]" /><div className="absolute inset-x-4 bottom-4 text-white"><div className="flex flex-wrap gap-2"><Badge className="border-white/15 bg-black/35 text-white">{item.equipment_type}</Badge><Badge variant={urgent ? "destructive" : "outline"} className={urgent ? "" : "border-white/20 bg-black/25 text-white"}>{item.condition}</Badge>{state === "overdue" && <Badge variant="destructive">Maintenance overdue</Badge>}{state === "due_soon" && <Badge className="bg-amber-500/90 text-black">Due soon</Badge>}</div><h3 className="mt-2 text-xl text-white!">{item.equipment_name}</h3><p className="mt-1 text-xs text-white/70">{item.storage_location || "No storage location"}</p></div></div><div className="grid grid-cols-2 gap-px bg-border sm:grid-cols-4"><Datum label="Purchased" value={dateKey(item.purchase_date)?.toLocaleDateString() || "—"} /><Datum label="Last service" value={dateKey(item.last_maintenance_date)?.toLocaleDateString() || "Never"} /><Datum label="Next service" value={dateKey(item.next_maintenance_date)?.toLocaleDateString() || "Unscheduled"} /><Datum label="Status" value={state.replaceAll("_", " ")} /></div>{item.description && <p className="p-4 text-sm leading-6 text-muted-foreground">{item.description}</p>}</article> })}</div>}
+        <div><p className="text-xs uppercase tracking-[.18em] text-muted-foreground">01</p><h2 className="mt-2">Maintenance readiness board</h2><p className="mt-1 text-sm text-muted-foreground">Equipment is ordered by recorded maintenance state. No undocumented “due soon” window is applied.</p></div>
+        {ordered.length === 0 ? <div className="border border-dashed p-8 text-sm text-muted-foreground">{t("orchard.no_equipment")}</div> : <div className="grid gap-4 md:grid-cols-2">{ordered.map((item, index) => { const state = dueState(item.next_maintenance_date); const urgent = state === "overdue" || item.condition === "broken"; return <article key={item.id} className="overflow-hidden border bg-background"><div className="relative h-44 overflow-hidden"><img src={index % 2 ? workshopPhoto : equipmentPhoto} alt="Orchard equipment" className="h-full w-full object-cover opacity-100 [filter:none]" /><div className="absolute inset-0 bg-[linear-gradient(0deg,rgba(0,0,0,.78),rgba(0,0,0,.08)_70%)]" /><div className="absolute inset-x-4 bottom-4 text-white"><div className="flex flex-wrap gap-2"><Badge className="border-white/15 bg-black/35 text-white">{item.equipment_type}</Badge><Badge variant={urgent ? "destructive" : "outline"} className={urgent ? "" : "border-white/20 bg-black/25 text-white"}>{item.condition}</Badge>{state === "overdue" && <Badge variant="destructive">Maintenance overdue</Badge>}</div><h3 className="mt-2 text-xl text-white!">{item.equipment_name}</h3><p className="mt-1 text-xs text-white/70">{item.storage_location || "No storage location"}</p></div></div><div className="grid grid-cols-2 gap-px bg-border sm:grid-cols-4"><Datum label="Purchased" value={dateKey(item.purchase_date)?.toLocaleDateString() || "—"} /><Datum label="Last service" value={dateKey(item.last_maintenance_date)?.toLocaleDateString() || "Never"} /><Datum label="Next service" value={dateKey(item.next_maintenance_date)?.toLocaleDateString() || "Unscheduled"} /><Datum label="Status" value={state.replaceAll("_", " ")} /></div>{item.description && <p className="p-4 text-sm leading-6 text-muted-foreground">{item.description}</p>}</article> })}</div>}
       </div>
 
       <div className="space-y-6">
-        <Card><CardHeader><CardTitle>Readiness signals</CardTitle><CardDescription>Operational maintenance exposure from the records already in Orchard.</CardDescription></CardHeader><CardContent className="space-y-3"><Signal icon={<AlertTriangle className="h-4 w-4" />} label="Overdue maintenance" value={overdue.length} tone="risk" /><Signal icon={<Clock3 className="h-4 w-4" />} label="Due within 14 days" value={dueSoon.length} /><Signal icon={<CheckCircle2 className="h-4 w-4" />} label="Active equipment" value={active.length} /><Signal icon={<Wrench className="h-4 w-4" />} label="No service scheduled" value={unscheduled.length} /></CardContent></Card>
+        <Card><CardHeader><CardTitle>Readiness signals</CardTitle><CardDescription>Signals derived only from recorded condition and maintenance dates.</CardDescription></CardHeader><CardContent className="space-y-3"><Signal icon={<AlertTriangle className="h-4 w-4" />} label="Overdue maintenance" value={overdue.length} tone="risk" /><Signal icon={<CheckCircle2 className="h-4 w-4" />} label="Active equipment" value={active.length} /><Signal icon={<Wrench className="h-4 w-4" />} label="No service scheduled" value={unscheduled.length} /></CardContent></Card>
         <Card><CardHeader><CardTitle>Storage footprint</CardTitle><CardDescription>Where orchard assets are currently recorded.</CardDescription></CardHeader><CardContent className="space-y-3">{locations.length === 0 ? <p className="text-sm text-muted-foreground">No storage locations recorded.</p> : locations.map((location) => { const count = equipment.filter((item) => item.storage_location === location).length; return <div key={location} className="flex items-center justify-between border-b pb-3 last:border-b-0 last:pb-0"><div className="flex items-center gap-2"><MapPin className="h-4 w-4 text-muted-foreground" /><span className="text-sm font-medium">{location}</span></div><Badge variant="outline">{count}</Badge></div> })}</CardContent></Card>
         <Card className="overflow-hidden"><div className="relative h-48"><img src={workshopPhoto} alt="Equipment maintenance workspace" className="h-full w-full object-cover opacity-100 [filter:none]" /><div className="absolute inset-0 bg-black/38" /><div className="absolute bottom-4 left-4 right-4 text-white"><ShieldCheck className="mb-2 h-5 w-5" /><p className="font-medium">Readiness before assignment</p><p className="mt-1 text-xs text-white/70">This cockpit exposes maintenance risk without inventing utilization or service history that is not recorded.</p></div></div></Card>
       </div>
