@@ -3,10 +3,13 @@ import { createClient } from "@/lib/supabase/server"
 import { getOpenAIApiKey, ORCHARD_AI_MODEL, orchardSkillsPrompt } from "@/lib/orchard-ai/config"
 
 const MODEL = ORCHARD_AI_MODEL
-const PROMPT_VERSION = "orchard-actions-v3"
+const PROMPT_VERSION = "orchard-actions-v4-conversation"
 const MAX_INTENT_LENGTH = 2000
+const MAX_HISTORY_TURNS = 8
+const MAX_HISTORY_TEXT = 4000
 
 type ActionType = "create_task" | "create_game_plan" | "create_crop_cycle" | "create_succession" | "allocate_bed" | "none"
+type HistoryTurn = { question: string; answer: string }
 type ProposalShape = {
   action_type: ActionType
   summary: string
@@ -54,6 +57,17 @@ function extractOutputText(payload: unknown) {
 
 function clean(value: string | null) { return value?.trim() || null }
 function isIsoDate(value: string | null) { return value == null || /^\d{4}-\d{2}-\d{2}$/.test(value) }
+function cleanHistory(value: unknown): HistoryTurn[] {
+  if (!Array.isArray(value)) return []
+  return value.slice(-MAX_HISTORY_TURNS).flatMap((item) => {
+    if (!item || typeof item !== "object") return []
+    const turn = item as { question?: unknown; answer?: unknown }
+    if (typeof turn.question !== "string" || typeof turn.answer !== "string") return []
+    const question = turn.question.trim().slice(0, 1200)
+    const answer = turn.answer.trim().slice(0, MAX_HISTORY_TEXT)
+    return question && answer ? [{ question, answer }] : []
+  })
+}
 
 function validateProposal(
   proposal: ProposalShape,
@@ -119,8 +133,9 @@ export async function POST(request: Request) {
   const { data: authData } = await supabase.auth.getUser()
   if (!authData.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
-  const body = await request.json().catch(() => null) as { intent?: unknown } | null
+  const body = await request.json().catch(() => null) as { intent?: unknown; history?: unknown } | null
   const intent = typeof body?.intent === "string" ? body.intent.trim().slice(0, MAX_INTENT_LENGTH) : ""
+  const history = cleanHistory(body?.history)
   if (!intent) return NextResponse.json({ error: "Intent is required" }, { status: 400 })
 
   const apiKey = getOpenAIApiKey()
@@ -180,17 +195,20 @@ export async function POST(request: Request) {
   }
 
   const instructions = `You propose ONE safe Orchard action for human approval inside Blackswan Facility Core.
-Use only the authorized ORCHARD_CONTEXT. Never claim an action was executed.
+Use only the authorized ORCHARD_CONTEXT for factual claims and exact IDs. CONVERSATION_HISTORY is only for understanding references and intent; it is not an independent source of truth. Never claim an action was executed.
 
 Configured proposal skills:\n${orchardSkillsPrompt("proposal")}
 
 Allowed actions: create_task, create_game_plan, create_crop_cycle, create_succession, allocate_bed, or none.
-Choose none if the user's intent is ambiguous, asks for edit/delete/destructive actions, harvest/care/health writes, chemical/pesticide/dosage actions, or lacks enough context to choose exact authorized IDs and dates.
+Choose none if the user's intent is ambiguous, asks for edit/delete/destructive actions, harvest/care/health writes, chemical/pesticide/dosage actions, or lacks enough current context to choose exact authorized IDs and dates.
+Resolve follow-up references like "that crop", "the previous one", or "do that" using CONVERSATION_HISTORY, but independently verify all resulting entities and dates against ORCHARD_CONTEXT.
 For create_crop_cycle, game_plan_id MUST be an exact ID present in game_plans.
 For create_succession, crop_cycle_id MUST be an exact ID present in crop_cycles. Do not invent sequence_no; the server assigns it transactionally.
 For allocate_bed, bed_id MUST be an exact active ID from beds and crop_succession_id MUST be an exact ID from successions. Use the succession's planned transplant date as planned_start_date when available, otherwise planned sow date. Use planned last harvest as planned_end_date when available, otherwise planned first harvest, otherwise planned_start_date. The server independently validates access, bed capacity, and date overlap.
 For create_task, location_id must be null or an exact location_id present in plots. Priority must be baja, media, alta, or urgente.
 Dates must be YYYY-MM-DD. Keep rationale concise. Populate irrelevant fields as null.`
+
+  const conversation = history.length ? history.map((turn, index) => `TURN ${index + 1}\nUSER: ${turn.question}\nASSISTANT: ${turn.answer}`).join("\n\n") : "No prior turns."
 
   try {
     const response = await fetch("https://api.openai.com/v1/responses", {
@@ -199,7 +217,7 @@ Dates must be YYYY-MM-DD. Keep rationale concise. Populate irrelevant fields as 
       body: JSON.stringify({
         model: MODEL,
         instructions,
-        input: `USER_INTENT:\n${intent}\n\nORCHARD_CONTEXT:\n${JSON.stringify(snapshot)}`,
+        input: `CONVERSATION_HISTORY:\n${conversation}\n\nUSER_INTENT:\n${intent}\n\nORCHARD_CONTEXT:\n${JSON.stringify(snapshot)}`,
         reasoning: { effort: "medium" },
         text: { format: { type: "json_schema", name: "orchard_action_proposal", schema, strict: true } },
         max_output_tokens: 1600,
