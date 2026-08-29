@@ -44,6 +44,30 @@ export const ORCHARD_AI_SKILLS: OrchardAiSkill[] = [
     description: "Allocate an authorized active bed to an authorized succession using validated dates and capacity checks.",
     guardrail: "Proposal only. Do not invent bed or succession IDs; server validation remains authoritative. Do not turn proximity in time or repeated crop names into agronomic risk claims unless an authorized policy explicitly defines that rule.",
   },
+  {
+    id: "log_care",
+    mode: "proposal",
+    description: "Prepare a care-log proposal for an exact authorized crop, date, activity type, and only the operational details explicitly supplied by the user or present in authorized context.",
+    guardrail: "Proposal only. Do not invent hours, weather, temperature, humidity, observations, treatment instructions, or agronomic thresholds.",
+  },
+  {
+    id: "record_health_observation",
+    mode: "proposal",
+    description: "Prepare an observation-only crop health record with exact crop, date, pest or disease observation, severity, affected percentage, and notes when explicitly supported.",
+    guardrail: "Observation only. Never propose pesticides, chemicals, dosage, treatment, or treatment effectiveness. Do not infer that a historical observation is still open or resolved.",
+  },
+  {
+    id: "record_harvest",
+    mode: "proposal",
+    description: "Prepare a harvest record for an exact authorized crop using explicit date, positive quantity, unit, and optional factual quality, storage, value, and sales-channel details.",
+    guardrail: "Proposal only. Never infer harvest quantity, quality, price, currency, or sales channel. A market value without a currency-bearing sales channel must not be described as a consolidated monetary result.",
+  },
+  {
+    id: "create_sales_commitment",
+    mode: "proposal",
+    description: "Prepare a commercial commitment for an exact active sales channel with explicit crop, delivery dates, quantity, unit, and optional price and customer reference.",
+    guardrail: "Proposal only. Currency must follow the selected sales channel; do not invent FX conversion or aggregate different currencies as one total.",
+  },
 ]
 
 export function getOpenAIApiKey() {
