@@ -70,8 +70,9 @@ test("multi-bed auto placement is RLS-aware and keeps overlap authority in the d
 })
 
 test("custom Orchard charts are whitelist-driven rather than arbitrary SQL", () => {
-  assert.match(orchardChartsPage, /const config=\{harvest:/)
+  assert.match(orchardChartsPage, /const config(?:\s*:\s*Record<[^\n]+>)?\s*=\s*\{harvest:/)
   assert.match(orchardChartsPage, /commercial:\{metrics:/)
+  assert.match(orchardChartsPage, /performance:\{metrics:/)
   assert.doesNotMatch(orchardChartsPage, /\.rpc\([^)]*sql/i)
   assert.doesNotMatch(orchardChartsPage, /from\(form\./)
 })
