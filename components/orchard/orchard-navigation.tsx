@@ -104,9 +104,9 @@ export function OrchardNavigation() {
   return (
     <nav
       aria-label={locale === "es" ? "Navegación del huerto" : "Orchard navigation"}
-      className="relative z-30 border-b border-border bg-background/95 px-3 backdrop-blur md:px-8"
+      className="relative z-50 border-b border-border bg-background/95 px-3 backdrop-blur md:px-8"
     >
-      <div className="flex min-h-14 items-center gap-1 overflow-x-auto py-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <div className="flex min-h-14 items-center gap-1 overflow-x-auto py-2 [scrollbar-width:none] sm:overflow-visible [&::-webkit-scrollbar]:hidden">
         {primaryItems.map((item) => {
           const active = isActive(pathname, item)
           const Icon = item.icon
@@ -134,7 +134,7 @@ export function OrchardNavigation() {
           const groupActive = group.items.some((item) => isActive(pathname, item))
           const GroupIcon = group.icon
           return (
-            <details key={group.key} className="group relative shrink-0">
+            <details key={group.key} className="group relative z-50 shrink-0">
               <summary
                 className={cn(
                   "flex min-h-9 cursor-pointer list-none items-center gap-2 rounded-lg px-3 text-sm font-medium transition-colors marker:content-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring [&::-webkit-details-marker]:hidden",
@@ -147,7 +147,7 @@ export function OrchardNavigation() {
                 <span className="hidden sm:inline">{group.label[locale]}</span>
                 <ChevronDown className="h-3.5 w-3.5 transition-transform group-open:rotate-180" aria-hidden="true" />
               </summary>
-              <div className="fixed left-3 right-3 z-50 mt-2 rounded-xl border border-border bg-popover p-2 text-popover-foreground shadow-xl sm:absolute sm:left-auto sm:right-0 sm:w-72">
+              <div className="fixed left-3 right-3 z-[100] mt-2 rounded-xl border border-border bg-popover p-2 text-popover-foreground shadow-xl sm:absolute sm:left-auto sm:right-0 sm:w-72">
                 <div className="mb-1 px-2 py-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                   {group.label[locale]}
                 </div>
