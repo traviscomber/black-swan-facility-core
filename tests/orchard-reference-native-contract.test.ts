@@ -21,6 +21,17 @@ test("FAO WCA crop catalog is authenticated and source bounded", () => {
   assert.doesNotMatch(faoRoute, /service_role|SUPABASE_SERVICE_ROLE/)
 })
 
+test("WCA parser follows Caliper SKOS semantics and has URI fallback", () => {
+  for (const source of [faoRoute, faoSyncRoute]) {
+    assert.match(source, /alternative_label/)
+    assert.match(source, /alt_label/)
+    assert.match(source, /vernacular_name/)
+    assert.match(source, /nameFromUri/)
+    assert.match(source, /pref_label_lat/)
+    assert.match(source, /dwc_scientificname/)
+  }
+})
+
 test("FAO imports preserve canonical crop identity without inventing agronomy", () => {
   assert.match(identityMigration, /external_source text/)
   assert.match(identityMigration, /external_id text/)
