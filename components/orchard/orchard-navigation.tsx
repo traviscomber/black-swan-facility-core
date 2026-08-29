@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Activity, BadgeDollarSign, BarChart3, BookOpen, Bot, Bug, CalendarDays, CalendarRange, ChartNoAxesCombined, ChartSpline, GitBranch, Hammer, LayoutDashboard, Leaf, Map, ShieldAlert, Smartphone, Sprout, TestTube2, WandSparkles } from "lucide-react"
+import { Activity, BadgeDollarSign, BarChart3, BookOpen, Bot, Bug, CalendarDays, CalendarRange, ChartNoAxesCombined, ChartSpline, Database, GitBranch, Hammer, LayoutDashboard, Leaf, Map, ShieldAlert, Smartphone, Sprout, TestTube2, WandSparkles } from "lucide-react"
 import { useLanguage } from "@/lib/hooks/use-language"
 import { cn } from "@/lib/utils"
 
@@ -12,6 +12,7 @@ const items = [
   { href: "/orchard/mobile", label: { en: "Mobile App", es: "App Móvil" }, icon: Smartphone },
   { href: "/orchard/game-plan", label: { en: "Game Plan", es: "Plan" }, icon: CalendarRange },
   { href: "/orchard/library", label: { en: "Crop Library", es: "Biblioteca" }, icon: BookOpen },
+  { href: "/orchard/library/fao", label: { en: "FAO Catalog", es: "Catálogo FAO" }, icon: Database },
   { href: "/orchard/crop-map", label: { en: "Crop Map", es: "Mapa" }, icon: Map },
   { href: "/orchard/crop-map/auto-place", label: { en: "Auto-place", es: "Auto-ubicar" }, icon: WandSparkles },
   { href: "/orchard/nursery", label: { en: "Seeds & Nursery", es: "Semillas" }, icon: Sprout },
