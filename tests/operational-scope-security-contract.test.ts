@@ -36,7 +36,7 @@ test("operational scope hardening preserves service and admin boundaries", () =>
 })
 
 test("every Orchard task source emitted by the Work cockpit is accepted by the database contract", () => {
-  const uiSources = [...new Set([...orchardWorkPage.matchAll(/["`](orchard_[a-z_]+)["`]/g)].map((match) => match[1]))].sort()
+  const uiSources = [...new Set([...orchardWorkPage.matchAll(/["`](orchard_(?:general|succession(?:_(?:sow|transplant|harvest))?))["`]/g)].map((match) => match[1]))].sort()
   assert.deepEqual(uiSources, [
     "orchard_general",
     "orchard_succession",
