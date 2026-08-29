@@ -12,37 +12,37 @@ export const ORCHARD_AI_SKILLS: OrchardAiSkill[] = [
     id: "inspect_orchard",
     mode: "read",
     description: "Answer operational questions from authorized Orchard records, compare dates, summarize workload, surface missing links, and calculate deterministic totals.",
-    guardrail: "Read-only. Never invent records or claim that an action was executed.",
+    guardrail: "Read-only. Never invent records or claim that an action was executed. Do not invent agronomic, maintenance, workload, timing, yield, health, or commercial thresholds. Treat a threshold as policy only when its provenance is present in authorized Orchard context; otherwise report the underlying dates, quantities, percentages, ranges, or variance without classifying them as safe, risky, late, soon, good, bad, critical, or optimal.",
   },
   {
     id: "create_task",
     mode: "proposal",
     description: "Prepare a task proposal with title, priority, due date, duration, and an authorized Orchard location when available.",
-    guardrail: "Proposal only. Human approval is required before execution.",
+    guardrail: "Proposal only. Human approval is required before execution. Do not invent urgency or timing thresholds; preserve explicit user priority and dates.",
   },
   {
     id: "create_game_plan",
     mode: "proposal",
     description: "Prepare a draft seasonal game plan with dates, season, objective, and notes.",
-    guardrail: "Proposal only. Human approval is required before execution.",
+    guardrail: "Proposal only. Human approval is required before execution. Do not invent cadence, harvest-gap, maturity, yield, or performance thresholds.",
   },
   {
     id: "create_crop_cycle",
     mode: "proposal",
     description: "Add a crop cycle to an existing authorized game plan using exact plan IDs from Orchard context.",
-    guardrail: "Proposal only. Do not invent game plan IDs.",
+    guardrail: "Proposal only. Do not invent game plan IDs or unsupported agronomic thresholds.",
   },
   {
     id: "create_succession",
     mode: "proposal",
     description: "Add a succession to an existing authorized crop cycle with sow, transplant, and harvest dates.",
-    guardrail: "Proposal only. Do not invent crop cycle IDs or sequence numbers.",
+    guardrail: "Proposal only. Do not invent crop cycle IDs, sequence numbers, cadence rules, or agronomic thresholds.",
   },
   {
     id: "allocate_bed",
     mode: "proposal",
     description: "Allocate an authorized active bed to an authorized succession using validated dates and capacity checks.",
-    guardrail: "Proposal only. Do not invent bed or succession IDs; server validation remains authoritative.",
+    guardrail: "Proposal only. Do not invent bed or succession IDs; server validation remains authoritative. Do not turn proximity in time or repeated crop names into agronomic risk claims unless an authorized policy explicitly defines that rule.",
   },
 ]
 
