@@ -51,3 +51,10 @@ test("Orchard brand layer encodes canonical Black Swan rules", async () => {
   assert.match(source, /backdrop-filter:\s*none\s*!important/)
   assert.match(source, /--bs-cool-sky/)
 })
+
+test("Orchard navigation preserves accessible names when mobile labels are visually hidden", async () => {
+  const source = await readFile("components/orchard/orchard-navigation.tsx", "utf8")
+
+  assert.match(source, /aria-label=\{item\.label\[locale\]\}/)
+  assert.match(source, /aria-label=\{group\.label\[locale\]\}/)
+})
