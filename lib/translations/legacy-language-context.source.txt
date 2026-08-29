@@ -231,6 +231,7 @@ export const translations = {
     'nav.orchard_soil': 'Soil',
     'nav.orchard_soil_tip': 'Soil management',
     'nav.orchard_equipment': 'Equipment',
+    'nav.orchard_analytics': 'Insights',
     'nav.orchard_equipment_tip': 'Equipment tracking',
     'nav.orchard_analytics': 'Analytics',
     'nav.orchard_analytics_tip': 'Production analytics',
@@ -1103,6 +1104,7 @@ export const translations = {
     'nav.orchard_harvest': 'Cosecha',
     'nav.orchard_soil': 'Suelo',
     'nav.orchard_equipment': 'Equipo',
+    'nav.orchard_analytics': 'Análisis',
     'nav.orchard_analytics': 'Analítica',
     'nav.orchard_analytics_tip': 'Analítica de producción',
     
