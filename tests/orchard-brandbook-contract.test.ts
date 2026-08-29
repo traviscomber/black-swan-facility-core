@@ -48,6 +48,6 @@ test("Orchard brand layer encodes canonical Black Swan rules", async () => {
   assert.match(source, /border-radius:\s*0\s*!important/)
   assert.match(source, /box-shadow:\s*none\s*!important/)
   assert.match(source, /background-image:\s*none\s*!important/)
+  assert.match(source, /backdrop-filter:\s*none\s*!important/)
   assert.match(source, /--bs-cool-sky/)
-  assert.doesNotMatch(source, /backdrop-blur/)
 })
