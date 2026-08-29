@@ -32,6 +32,10 @@ function pickIndex(headers: string[], exact: string[], contains: string[]) {
   for (const candidate of contains) { const i = headers.findIndex((header) => header.includes(candidate)); if (i >= 0) return i }
   return -1
 }
+function nameFromUri(value: string) {
+  try { const last = new URL(value).pathname.split("/").filter(Boolean).pop() ?? ""; return decodeURIComponent(last).replace(/[_-]+/g, " ").trim() }
+  catch { return "" }
+}
 
 export async function GET(request: Request) {
   const supabase = await createClient()
@@ -50,27 +54,27 @@ export async function GET(request: Request) {
     if (rows.length < 2) return NextResponse.json({ error: "FAO crop list returned no rows" }, { status: 502 })
 
     const headers = rows[0].map(normalizeHeader)
-    const codeIndex = pickIndex(headers, ["code", "notation", "item_code"], ["code", "notation"])
-    const commonNameIndex = pickIndex(headers, ["title_en", "label_en", "name_en", "common_name", "vernacular_name", "title", "label", "name"], ["vernacular", "common", "title_en", "label_en", "name_en"])
-    const scientificNameIndex = pickIndex(headers, ["scientific_name", "scientificname", "dwc_scientificname"], ["scientific"])
+    const codeIndex = pickIndex(headers, ["code", "notation", "skos_notation", "item_code"], ["notation", "code"])
+    const commonNameIndex = pickIndex(headers,
+      ["vernacular_name", "vernacular_name_en", "alternative_label", "alternative_label_en", "alt_label", "alt_label_en", "altlabel", "altlabel_en", "skos_altlabel", "skos_altlabel_en", "common_name", "common_name_en", "title_en", "label_en", "name_en"],
+      ["vernacular", "alternative_label", "alt_label", "altlabel", "common_name"])
+    const scientificNameIndex = pickIndex(headers,
+      ["scientific_name", "scientificname", "dwc_scientificname", "pref_label_lat", "preflabel_lat", "preferred_label_lat", "latin_label", "label_lat"],
+      ["scientific", "label_lat", "latin"])
+    const uriIndex = pickIndex(headers, ["uri", "concept_uri", "subject", "concept"], ["uri"])
     const iccIndex = pickIndex(headers, ["icc_1_1_code", "icc11_code", "icc_code"], ["icc_1_1", "icc11"])
-    if (commonNameIndex < 0) return NextResponse.json({ error: "FAO WCA crop-list schema changed", headers }, { status: 502 })
+    if (commonNameIndex < 0 && uriIndex < 0) return NextResponse.json({ error: "FAO WCA crop-list schema changed", headers }, { status: 502 })
 
     const seen = new Set<string>()
     const allItems = rows.slice(1).flatMap((row, index) => {
-      const name = (row[commonNameIndex] ?? "").trim()
+      const name = ((commonNameIndex >= 0 ? row[commonNameIndex] : "") || (uriIndex >= 0 ? nameFromUri(row[uriIndex] ?? "") : "")).trim()
       if (!name) return []
       const key = name.toLowerCase()
       if (seen.has(key)) return []
       seen.add(key)
       const scientificName = scientificNameIndex >= 0 ? (row[scientificNameIndex] ?? "").trim() || null : null
       const iccCode = iccIndex >= 0 ? (row[iccIndex] ?? "").trim() || null : null
-      return [{
-        externalId: (codeIndex >= 0 ? (row[codeIndex] ?? "").trim() : "") || `wca-${index + 1}`,
-        name,
-        scientificName,
-        iccCode,
-      }]
+      return [{ externalId: (codeIndex >= 0 ? (row[codeIndex] ?? "").trim() : "") || `wca-${index + 1}`, name, scientificName, iccCode }]
     })
     const items = allItems
       .filter((item) => !query || `${item.name} ${item.scientificName ?? ""} ${item.iccCode ?? ""} ${item.externalId}`.toLowerCase().includes(query))
