@@ -124,7 +124,7 @@ export async function POST(request: Request) {
   if (!intent) return NextResponse.json({ error: "Intent is required" }, { status: 400 })
 
   const apiKey = getOpenAIApiKey()
-  if (!apiKey) return NextResponse.json({ error: "Orchard AI is not configured: OPENAI_API_CALL is missing" }, { status: 503 })
+  if (!apiKey) return NextResponse.json({ error: "Orchard AI is not configured: OPENAI_API_KEY is missing" }, { status: 503 })
 
   const [plansResult, cyclesResult, successionsResult, plotsResult, bedsResult, allocationsResult, tasksResult, lifecycleResult] = await Promise.all([
     supabase.from("orchard_game_plans").select("id,name,season,start_date,end_date,status,objective").limit(50),
