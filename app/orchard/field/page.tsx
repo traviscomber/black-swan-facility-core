@@ -41,8 +41,8 @@ const copy = {
     tasks: "Tasks",
     care: "Record care",
     health: "Record health",
-    harvest: "Record harvest",
-    nursery: "Nursery",
+    harvest: "Quick harvest",
+    nursery: "Nursery actions",
     openWork: "Open task cockpit",
     loadError: "Could not load Field Mode",
   },
@@ -67,8 +67,8 @@ const copy = {
     tasks: "Tareas",
     care: "Registrar cuidado",
     health: "Registrar sanidad",
-    harvest: "Registrar cosecha",
-    nursery: "Almácigos",
+    harvest: "Cosecha rápida",
+    nursery: "Acciones de almácigo",
     openWork: "Abrir cockpit de tareas",
     loadError: "No fue posible cargar Modo Terreno",
   },
@@ -139,8 +139,8 @@ export default function OrchardFieldPage() {
     { href: `/${language}/orchard/work`, title: text.tasks, description: text.openWork, icon: ClipboardCheck },
     { href: `/${language}/orchard/care`, title: text.care, description: text.quickHelp, icon: Activity },
     { href: `/${language}/orchard/pests`, title: text.health, description: text.quickHelp, icon: Bug },
-    { href: `/${language}/orchard/harvest`, title: text.harvest, description: text.quickHelp, icon: Leaf },
-    { href: `/${language}/orchard/nursery`, title: text.nursery, description: text.quickHelp, icon: Sprout },
+    { href: `/${language}/orchard/field/harvest`, title: text.harvest, description: text.quickHelp, icon: Leaf },
+    { href: `/${language}/orchard/field/nursery`, title: text.nursery, description: text.quickHelp, icon: Sprout },
   ]
 
   const attentionTasks = [...overdue, ...dueToday, ...upcoming].filter((task, index, all) => all.findIndex((other) => other.id === task.id) === index)
@@ -183,8 +183,8 @@ export default function OrchardFieldPage() {
           <CardHeader className="pb-3"><CardTitle className="text-lg">{text.signals}</CardTitle><CardDescription>{text.signalsHelp}</CardDescription></CardHeader>
           <CardContent className="space-y-2">
             {readyNursery.length === 0 && harvestReady.length === 0 && unresolvedHealth.length === 0 ? <p className="text-sm text-muted-foreground">{text.noSignals}</p> : <>
-              {readyNursery.slice(0, 5).map((batch) => <Signal key={`nursery-${batch.id}`} href={`/${language}/orchard/nursery`} icon={Sprout} label={text.nurseryReady} detail={`${Math.max((batch.ready_count ?? 0) - (batch.transplanted_count ?? 0), 0)} ready${batch.location ? ` · ${batch.location}` : ""}`} />)}
-              {harvestReady.slice(0, 5).map((item) => <Signal key={`harvest-${item.crop_succession_id}`} href={`/${language}/orchard/harvest`} icon={Leaf} label={text.harvestReady} detail={item.planned_first_harvest_date ?? item.effective_status} />)}
+              {readyNursery.slice(0, 5).map((batch) => <Signal key={`nursery-${batch.id}`} href={`/${language}/orchard/field/nursery`} icon={Sprout} label={text.nurseryReady} detail={`${Math.max((batch.ready_count ?? 0) - (batch.transplanted_count ?? 0), 0)} ready${batch.location ? ` · ${batch.location}` : ""}`} />)}
+              {harvestReady.slice(0, 5).map((item) => <Signal key={`harvest-${item.crop_succession_id}`} href={`/${language}/orchard/field/harvest`} icon={Leaf} label={text.harvestReady} detail={item.planned_first_harvest_date ?? item.effective_status} />)}
               {unresolvedHealth.slice(0, 5).map((item) => <Signal key={`health-${item.id}`} href={`/${language}/orchard/pests`} icon={Bug} label={text.healthRisk} detail={`${item.severity_level ?? "—"} · ${item.observation_date}`} />)}
             </>}
           </CardContent>
