@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
+import { getOpenAIApiKey, ORCHARD_AI_MODEL, orchardSkillsPrompt } from "@/lib/orchard-ai/config"
 
-const MODEL = "gpt-5.6-sol"
-const PROMPT_VERSION = "orchard-actions-v2"
+const MODEL = ORCHARD_AI_MODEL
+const PROMPT_VERSION = "orchard-actions-v3"
 const MAX_INTENT_LENGTH = 2000
 
 type ActionType = "create_task" | "create_game_plan" | "create_crop_cycle" | "create_succession" | "allocate_bed" | "none"
@@ -122,8 +123,8 @@ export async function POST(request: Request) {
   const intent = typeof body?.intent === "string" ? body.intent.trim().slice(0, MAX_INTENT_LENGTH) : ""
   if (!intent) return NextResponse.json({ error: "Intent is required" }, { status: 400 })
 
-  const apiKey = process.env.OPENAI_API_KEY
-  if (!apiKey) return NextResponse.json({ error: "Orchard AI is not configured" }, { status: 503 })
+  const apiKey = getOpenAIApiKey()
+  if (!apiKey) return NextResponse.json({ error: "Orchard AI is not configured: OPENAI_API_CALL is missing" }, { status: 503 })
 
   const [plansResult, cyclesResult, successionsResult, plotsResult, bedsResult, allocationsResult, tasksResult, lifecycleResult] = await Promise.all([
     supabase.from("orchard_game_plans").select("id,name,season,start_date,end_date,status,objective").limit(50),
@@ -180,6 +181,9 @@ export async function POST(request: Request) {
 
   const instructions = `You propose ONE safe Orchard action for human approval inside Blackswan Facility Core.
 Use only the authorized ORCHARD_CONTEXT. Never claim an action was executed.
+
+Configured proposal skills:\n${orchardSkillsPrompt("proposal")}
+
 Allowed actions: create_task, create_game_plan, create_crop_cycle, create_succession, allocate_bed, or none.
 Choose none if the user's intent is ambiguous, asks for edit/delete/destructive actions, harvest/care/health writes, chemical/pesticide/dosage actions, or lacks enough context to choose exact authorized IDs and dates.
 For create_crop_cycle, game_plan_id MUST be an exact ID present in game_plans.
