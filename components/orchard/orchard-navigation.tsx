@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Activity, BarChart3, Bug, CalendarRange, Hammer, LayoutDashboard, Leaf, Map, Sprout, TestTube2 } from "lucide-react"
+import { Activity, BarChart3, Bug, CalendarDays, CalendarRange, Hammer, LayoutDashboard, Leaf, Map, Sprout, TestTube2 } from "lucide-react"
 import { useLanguage } from "@/lib/hooks/use-language"
 import { cn } from "@/lib/utils"
 
@@ -11,6 +11,7 @@ const items = [
   { href: "/orchard/game-plan", label: { en: "Game Plan", es: "Plan" }, icon: CalendarRange },
   { href: "/orchard/crop-map", label: { en: "Crop Map", es: "Mapa" }, icon: Map },
   { href: "/orchard/nursery", label: { en: "Seeds & Nursery", es: "Semillas" }, icon: Sprout },
+  { href: "/orchard/work", label: { en: "Tasks & Calendar", es: "Tareas" }, icon: CalendarDays },
   { href: "/orchard/crops", label: { en: "Crops", es: "Cultivos" }, icon: Sprout },
   { href: "/orchard/care", label: { en: "Care", es: "Cuidados" }, icon: Activity },
   { href: "/orchard/harvest", label: { en: "Harvest", es: "Cosecha" }, icon: Leaf },
