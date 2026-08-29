@@ -19,6 +19,10 @@ const orchardReferenceMigration = readFileSync(
   new URL("../supabase/migrations/20260829152000_orchard_reference_gaps_1_4.sql", import.meta.url),
   "utf8",
 )
+const orchardTriggerRpcMigration = readFileSync(
+  new URL("../supabase/migrations/20260829235500_orchard_trigger_functions_not_rpc.sql", import.meta.url),
+  "utf8",
+)
 const orchardChartsPage = readFileSync(new URL("../app/orchard/charts/page.tsx", import.meta.url), "utf8")
 const orchardServiceWorker = readFileSync(new URL("../public/orchard-sw.js", import.meta.url), "utf8")
 
@@ -75,6 +79,11 @@ test("custom Orchard charts are whitelist-driven rather than arbitrary SQL", () 
   assert.match(orchardChartsPage, /performance:\{metrics:/)
   assert.doesNotMatch(orchardChartsPage, /\.rpc\([^)]*sql/i)
   assert.doesNotMatch(orchardChartsPage, /from\(form\./)
+})
+
+test("Orchard trigger helpers are not exposed as client-callable RPCs", () => {
+  assert.match(orchardTriggerRpcMigration, /revoke execute on function public\.normalize_orchard_ai_commitment_currency\(\) from public, anon, authenticated/i)
+  assert.match(orchardTriggerRpcMigration, /revoke execute on function public\.orchard_lifecycle_trigger\(\) from public, anon, authenticated/i)
 })
 
 test("Orchard PWA never caches API responses or offline mutations", () => {
