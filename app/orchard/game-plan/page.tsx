@@ -1,6 +1,7 @@
 "use client"
 
-import { FormEvent, useCallback, useEffect, useMemo, useState } from "react"
+import type { FormEvent, ReactNode } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import { CalendarRange, Plus, RefreshCw, Sprout, Trash2 } from "lucide-react"
 import { AppLayout } from "@/components/app-layout"
 import { PageHeader } from "@/components/page-header"
@@ -73,9 +74,10 @@ const copy = {
     saveError: "Could not save changes",
     deleteConfirmPlan: "Delete this game plan and all of its crop cycles?",
     deleteConfirmCycle: "Delete this crop cycle?",
-    status: "Status",
     activeWindow: "Operating window",
     refresh: "Refresh",
+    loading: "Loading…",
+    cycleCount: (count: number) => `${count} cycle${count === 1 ? "" : "s"}`,
   },
   es: {
     title: "Plan de Cultivo",
@@ -108,9 +110,10 @@ const copy = {
     saveError: "No fue posible guardar los cambios",
     deleteConfirmPlan: "¿Eliminar este plan y todos sus ciclos de cultivo?",
     deleteConfirmCycle: "¿Eliminar este ciclo de cultivo?",
-    status: "Estado",
     activeWindow: "Ventana operativa",
     refresh: "Actualizar",
+    loading: "Cargando…",
+    cycleCount: (count: number) => `${count} ciclo${count === 1 ? "" : "s"}`,
   },
 } as const
 
@@ -289,7 +292,7 @@ export default function OrchardGamePlanPage() {
                 <CardDescription>{plans.length} {text.plans.toLowerCase()}</CardDescription>
               </CardHeader>
               <CardContent>
-                {loading ? <p className="py-8 text-center text-sm text-muted-foreground">Loading…</p> : plans.length === 0 ? <p className="py-8 text-center text-sm text-muted-foreground">{text.noPlans}</p> : (
+                {loading ? <p className="py-8 text-center text-sm text-muted-foreground">{text.loading}</p> : plans.length === 0 ? <p className="py-8 text-center text-sm text-muted-foreground">{text.noPlans}</p> : (
                   <div className="grid gap-3 lg:grid-cols-2">
                     {plans.map((plan) => {
                       const selected = plan.id === selectedPlanId
@@ -305,7 +308,7 @@ export default function OrchardGamePlanPage() {
                           </div>
                           <div className="mt-4 flex items-center justify-between text-sm text-muted-foreground">
                             <span>{new Date(`${plan.start_date}T12:00:00`).toLocaleDateString(locale)} – {new Date(`${plan.end_date}T12:00:00`).toLocaleDateString(locale)}</span>
-                            <span>{cycleCount} cycles</span>
+                            <span>{text.cycleCount(cycleCount)}</span>
                           </div>
                         </button>
                       )
@@ -390,6 +393,6 @@ export default function OrchardGamePlanPage() {
   )
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({ label, children }: { label: string; children: ReactNode }) {
   return <div className="space-y-2"><Label>{label}</Label>{children}</div>
 }
