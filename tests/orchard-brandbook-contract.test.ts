@@ -58,3 +58,19 @@ test("Orchard navigation preserves accessible names when mobile labels are visua
   assert.match(source, /aria-label=\{item\.label\[locale\]\}/)
   assert.match(source, /aria-label=\{group\.label\[locale\]\}/)
 })
+
+test("Orchard analytics and charts expose accessible names for their form controls", async () => {
+  for (const page of ["app/orchard/analytics/page.tsx", "app/orchard/charts/page.tsx"]) {
+    const source = await readFile(page, "utf8")
+    assert.match(source, /aria-label="Game Plan"/)
+    assert.match(source, /labelFieldControl/)
+    assert.match(source, /"aria-label":label/)
+  }
+})
+
+test("Orchard decision cockpit localizes the refresh action", async () => {
+  const source = await readFile("app/orchard/decisions/page.tsx", "utf8")
+
+  assert.match(source, /refresh:"Actualizar"/)
+  assert.match(source, /\{text\.refresh\}/)
+})
