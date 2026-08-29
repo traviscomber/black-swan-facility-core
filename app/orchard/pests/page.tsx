@@ -1,218 +1,35 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import type { FormEvent, ReactNode } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
+import { Plus, RefreshCw, Trash2 } from "lucide-react"
 import { AppLayout } from "@/components/app-layout"
 import { PageHeader } from "@/components/page-header"
 import { OrchardNavigation } from "@/components/orchard/orchard-navigation"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Zap, AlertTriangle } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Textarea } from "@/components/ui/textarea"
 import { createBrowserClient } from "@/lib/supabase/client"
 import { useLanguage } from "@/lib/hooks/use-language"
 
-interface PestLog {
-  id: string
-  crop_id: string
-  pest_type: string
-  disease_name: string
-  severity: string
-  affected_area: number
-  detected_date: string
-  treatment_applied: string
-  treatment_date: string
-  effectiveness: string
-  description: string
-}
-
-interface Crop {
-  id: string
-  crop_name: string
-}
-
+type Health = { id: string; crop_id: string; observation_date: string; pest_type: string | null; disease_name: string | null; severity_level: string | null; affected_percentage: number | null; treatment_applied: string | null; treatment_date: string | null; treatment_effectiveness: string | null; prevention_methods: string | null; notes: string | null }
+type Crop = { id: string; crop_name: string; variety: string | null }
+const severity = ["low", "medium", "high", "critical"]
+const effectiveness = ["unknown", "ineffective", "partially_effective", "effective", "very_effective"]
+const copy = { en: { title: "Crop Health", description: "Record pests, disease observations, severity, treatment and follow-up against live crops.", new: "New health observation", crop: "Crop", date: "Observation date", pest: "Pest", disease: "Disease", severity: "Severity", affected: "Affected %", treatment: "Treatment applied", treatmentDate: "Treatment date", effectiveness: "Effectiveness", prevention: "Prevention / follow-up", notes: "Notes", create: "Record observation", refresh: "Refresh", empty: "No crop-health observations yet.", delete: "Delete this health observation?", saveError: "Could not save health observation", save: "Save follow-up" }, es: { title: "Sanidad", description: "Registra plagas, enfermedades, severidad, tratamiento y seguimiento contra cultivos vivos.", new: "Nueva observación sanitaria", crop: "Cultivo", date: "Fecha de observación", pest: "Plaga", disease: "Enfermedad", severity: "Severidad", affected: "% afectado", treatment: "Tratamiento aplicado", treatmentDate: "Fecha tratamiento", effectiveness: "Efectividad", prevention: "Prevención / seguimiento", notes: "Notas", create: "Registrar observación", refresh: "Actualizar", empty: "Aún no hay observaciones sanitarias.", delete: "¿Eliminar esta observación sanitaria?", saveError: "No fue posible guardar la observación", save: "Guardar seguimiento" } } as const
 export default function OrchardPestsPage() {
-  const [pestLogs, setPestLogs] = useState<PestLog[]>([])
-  const [crops, setCrops] = useState<Crop[]>([])
-  const [loading, setLoading] = useState(true)
-  const supabase = createBrowserClient()
-  const { t } = useLanguage()
-
-  useEffect(() => {
-    fetchData()
-  }, [])
-
-  const fetchData = async () => {
-    try {
-      setLoading(true)
-      const { data: logsData } = await supabase
-        .from("orchard_pest_logs")
-        .select("*")
-        .order("detected_date", { ascending: false })
-
-      const { data: cropsData } = await supabase
-        .from("orchard_crops")
-        .select("id, crop_name")
-
-      setPestLogs(logsData || [])
-      setCrops(cropsData || [])
-    } catch (error) {
-      console.error("[v0] Error fetching pest logs:", error)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const getCropName = (cropId: string) => {
-    return crops.find((c) => c.id === cropId)?.crop_name || t("orchard.unknown")
-  }
-
-  const getSeverityColor = (severity: string) => {
-    if (severity === "low") return "bg-yellow-100 text-yellow-800"
-    if (severity === "medium") return "bg-orange-100 text-orange-800"
-    if (severity === "high") return "bg-red-100 text-red-800"
-    return "bg-gray-100 text-gray-800"
-  }
-
-  const getEffectivenessColor = (effectiveness: string) => {
-    if (effectiveness === "very_effective") return "bg-green-100 text-green-800"
-    if (effectiveness === "effective") return "bg-green-50 text-green-700"
-    if (effectiveness === "partially_effective") return "bg-yellow-50 text-yellow-700"
-    return "bg-red-50 text-red-700"
-  }
-
-  if (loading) {
-    return (
-      <AppLayout>
-        <div className="flex items-center justify-center min-h-screen">
-          <p className="text-muted-foreground">{t("orchard.loading")}</p>
-      </div>
-    </AppLayout>
-  )
+  const supabase = useMemo(() => createBrowserClient(), []); const { language } = useLanguage(); const text = copy[language === "es" ? "es" : "en"]
+  const [logs, setLogs] = useState<Health[]>([]); const [crops, setCrops] = useState<Crop[]>([]); const [saving, setSaving] = useState(false); const [error, setError] = useState<string | null>(null)
+  const [form, setForm] = useState({ crop_id: "", observation_date: "", pest_type: "", disease_name: "", severity_level: "medium", affected_percentage: "", treatment_applied: "", treatment_date: "", treatment_effectiveness: "unknown", prevention_methods: "", notes: "" })
+  const load = useCallback(async () => { const [l, c] = await Promise.all([supabase.from("orchard_pest_logs").select("*").order("observation_date", { ascending: false }), supabase.from("orchard_crops").select("id, crop_name, variety").order("crop_name")]); const e = l.error ?? c.error; if (e) setError(e.message); else { setLogs((l.data ?? []) as Health[]); setCrops((c.data ?? []) as Crop[]) } }, [supabase])
+  useEffect(() => { void load() }, [load])
+  async function create(event: FormEvent) { event.preventDefault(); if (!form.crop_id || !form.observation_date) return; setSaving(true); const { error: e } = await supabase.from("orchard_pest_logs").insert({ crop_id: form.crop_id, observation_date: form.observation_date, pest_type: form.pest_type.trim() || null, disease_name: form.disease_name.trim() || null, severity_level: form.severity_level, affected_percentage: form.affected_percentage ? Number(form.affected_percentage) : null, treatment_applied: form.treatment_applied.trim() || null, treatment_date: form.treatment_date || null, treatment_effectiveness: form.treatment_effectiveness === "unknown" ? null : form.treatment_effectiveness, prevention_methods: form.prevention_methods.trim() || null, notes: form.notes.trim() || null }); if (e) setError(`${text.saveError}: ${e.message}`); else { setForm({ crop_id: "", observation_date: "", pest_type: "", disease_name: "", severity_level: "medium", affected_percentage: "", treatment_applied: "", treatment_date: "", treatment_effectiveness: "unknown", prevention_methods: "", notes: "" }); await load() } setSaving(false) }
+  async function update(id: string, changes: Partial<Health>) { setSaving(true); const { error: e } = await supabase.from("orchard_pest_logs").update(changes).eq("id", id); if (e) setError(`${text.saveError}: ${e.message}`); else await load(); setSaving(false) }
+  async function remove(id: string) { if (!window.confirm(text.delete)) return; const { error: e } = await supabase.from("orchard_pest_logs").delete().eq("id", id); if (e) setError(`${text.saveError}: ${e.message}`); else await load() }
+  return <AppLayout><PageHeader title={text.title} description={text.description} actions={<Button variant="outline" onClick={() => void load()}><RefreshCw className="mr-2 h-4 w-4" />{text.refresh}</Button>} /><OrchardNavigation /><div className="space-y-6 p-4 sm:p-8">{error && <Card className="border-destructive/60"><CardContent className="p-4 text-sm text-destructive">{error}</CardContent></Card>}<Card><CardHeader><CardTitle>{text.new}</CardTitle></CardHeader><CardContent><form onSubmit={create} className="grid gap-4 md:grid-cols-2 xl:grid-cols-4"><Field label={text.crop}><Select value={form.crop_id} onValueChange={(v) => setForm((f) => ({ ...f, crop_id: v }))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{crops.map((c) => <SelectItem key={c.id} value={c.id}>{c.crop_name}{c.variety ? ` · ${c.variety}` : ""}</SelectItem>)}</SelectContent></Select></Field><Field label={text.date}><Input type="date" value={form.observation_date} onChange={(e) => setForm((f) => ({ ...f, observation_date: e.target.value }))} required /></Field><Field label={text.pest}><Input value={form.pest_type} onChange={(e) => setForm((f) => ({ ...f, pest_type: e.target.value }))} /></Field><Field label={text.disease}><Input value={form.disease_name} onChange={(e) => setForm((f) => ({ ...f, disease_name: e.target.value }))} /></Field><Field label={text.severity}><Select value={form.severity_level} onValueChange={(v) => setForm((f) => ({ ...f, severity_level: v }))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{severity.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent></Select></Field><Field label={text.affected}><Input type="number" min="0" max="100" step="0.1" value={form.affected_percentage} onChange={(e) => setForm((f) => ({ ...f, affected_percentage: e.target.value }))} /></Field><Field label={text.treatmentDate}><Input type="date" value={form.treatment_date} onChange={(e) => setForm((f) => ({ ...f, treatment_date: e.target.value }))} /></Field><Field label={text.effectiveness}><Select value={form.treatment_effectiveness} onValueChange={(v) => setForm((f) => ({ ...f, treatment_effectiveness: v }))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{effectiveness.map((s) => <SelectItem key={s} value={s}>{s.replaceAll("_", " ")}</SelectItem>)}</SelectContent></Select></Field><div className="md:col-span-2"><Field label={text.treatment}><Textarea value={form.treatment_applied} onChange={(e) => setForm((f) => ({ ...f, treatment_applied: e.target.value }))} /></Field></div><div className="md:col-span-2"><Field label={text.prevention}><Textarea value={form.prevention_methods} onChange={(e) => setForm((f) => ({ ...f, prevention_methods: e.target.value }))} /></Field></div><div className="md:col-span-2 xl:col-span-4"><Field label={text.notes}><Textarea value={form.notes} onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))} /></Field></div><div className="md:col-span-2 xl:col-span-4"><Button type="submit" disabled={saving || crops.length === 0}><Plus className="mr-2 h-4 w-4" />{text.create}</Button></div></form></CardContent></Card><Card><CardHeader><CardTitle>{text.title}</CardTitle></CardHeader><CardContent>{logs.length === 0 ? <p className="text-sm text-muted-foreground">{text.empty}</p> : <div className="space-y-3">{logs.map((log) => <div key={log.id} className="rounded-lg border p-4"><div className="flex items-start justify-between gap-4"><div><div className="flex flex-wrap gap-2"><p className="font-semibold">{log.pest_type || log.disease_name || text.title}</p><Badge variant="outline">{log.severity_level || "—"}</Badge><Badge variant="secondary">{crops.find((c) => c.id === log.crop_id)?.crop_name ?? "—"}</Badge></div><p className="mt-1 text-sm text-muted-foreground">{log.observation_date}{log.affected_percentage != null ? ` · ${log.affected_percentage}%` : ""}</p></div><Button variant="ghost" size="icon" onClick={() => void remove(log.id)}><Trash2 className="h-4 w-4" /></Button></div><div className="mt-4 grid gap-3 border-t pt-4 md:grid-cols-3"><Field label={text.treatment}><Textarea defaultValue={log.treatment_applied ?? ""} onBlur={(e) => void update(log.id, { treatment_applied: e.target.value || null })} /></Field><Field label={text.effectiveness}><Select value={log.treatment_effectiveness ?? "unknown"} onValueChange={(v) => void update(log.id, { treatment_effectiveness: v === "unknown" ? null : v })}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{effectiveness.map((s) => <SelectItem key={s} value={s}>{s.replaceAll("_", " ")}</SelectItem>)}</SelectContent></Select></Field><Field label={text.notes}><Textarea defaultValue={log.notes ?? ""} onBlur={(e) => void update(log.id, { notes: e.target.value || null })} /></Field></div></div>)}</div>}</CardContent></Card></div></AppLayout>
 }
-
-  return (
-    <AppLayout>
-      <OrchardNavigation />
-      <div className="space-y-6">
-        <PageHeader
-          title={t("orchard.pest_logs")}
-          description={t("orchard.pest_description")}
-        />
-
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                <AlertTriangle className="h-4 w-4" />
-                {t("orchard.total_incidents")}
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold">{pestLogs.length}</div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">{t("orchard.high_severity")}</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold">
-                {pestLogs.filter((l) => l.severity === "high").length}
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">{t("orchard.treated")}</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold">
-                {pestLogs.filter((l) => l.treatment_date).length}
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">{t("orchard.avg_effectiveness")}</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold">
-                {pestLogs.filter((l) => l.effectiveness).length > 0
-                  ? `${Math.round((pestLogs.filter((l) => l.effectiveness === "very_effective").length / pestLogs.filter((l) => l.effectiveness).length) * 100)}%`
-                  : "N/A"}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>{t("orchard.pest_logs")}</CardTitle>
-            <CardDescription>Pest and disease monitoring records</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {pestLogs.length === 0 ? (
-              <div className="text-center py-8">
-                <p className="text-muted-foreground">No pest logs found</p>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {pestLogs.map((log) => (
-                  <div
-                    key={log.id}
-                    className="border rounded-lg p-4 hover:bg-accent/5 transition-colors"
-                  >
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-2">
-                          <h3 className="font-semibold">{log.pest_type || log.disease_name}</h3>
-                          <Badge className={getSeverityColor(log.severity)}>
-                            {log.severity}
-                          </Badge>
-                          {log.effectiveness && (
-                            <Badge className={getEffectivenessColor(log.effectiveness)}>
-                              {log.effectiveness.replace("_", " ")}
-                            </Badge>
-                          )}
-                        </div>
-                        <p className="text-sm text-muted-foreground mb-2">{log.description}</p>
-                        <div className="grid grid-cols-2 md:grid-cols-5 gap-2 text-xs">
-                          <div>
-                            <p className="text-muted-foreground">Crop</p>
-                            <p className="font-semibold">{getCropName(log.crop_id)}</p>
-                          </div>
-                          <div>
-                            <p className="text-muted-foreground">Detected</p>
-                            <p className="font-semibold">
-                              {new Date(log.detected_date).toLocaleDateString()}
-                            </p>
-                          </div>
-                          <div>
-                            <p className="text-muted-foreground">Affected Area</p>
-                            <p className="font-semibold">{log.affected_area}%</p>
-                          </div>
-                          <div>
-                            <p className="text-muted-foreground">Treatment</p>
-                            <p className="font-semibold text-xs">{log.treatment_applied}</p>
-                          </div>
-                          <div>
-                            <p className="text-muted-foreground">Treated Date</p>
-                            <p className="font-semibold">
-                              {log.treatment_date ? new Date(log.treatment_date).toLocaleDateString() : "-"}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-    </AppLayout>
-  )
-}
+function Field({ label, children }: { label: string; children: ReactNode }) { return <div className="space-y-2"><Label>{label}</Label>{children}</div> }
