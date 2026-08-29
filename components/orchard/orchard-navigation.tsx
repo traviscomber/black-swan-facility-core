@@ -264,6 +264,7 @@ export function OrchardNavigation() {
               <Link
                 key={item.href}
                 href={scopedHref(item.href)}
+                aria-label={item.label[locale]}
                 aria-current={active ? "page" : undefined}
                 className={cn(
                   "inline-flex min-h-10 shrink-0 items-center gap-2 px-3 text-sm font-medium transition-colors focus-visible:outline-none",
@@ -286,6 +287,7 @@ export function OrchardNavigation() {
             return (
               <details key={group.key} className="group relative z-[80] shrink-0">
                 <summary
+                  aria-label={group.label[locale]}
                   className={cn(
                     "flex min-h-10 cursor-pointer list-none items-center gap-2 px-3 text-sm font-medium transition-colors marker:content-none focus-visible:outline-none [&::-webkit-details-marker]:hidden",
                     groupActive
