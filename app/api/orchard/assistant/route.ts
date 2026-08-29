@@ -1,8 +1,9 @@
 import { createClient } from "@/lib/supabase/server"
 import { getOpenAIApiKey, ORCHARD_AI_MODEL, orchardSkillsPrompt } from "@/lib/orchard-ai/config"
+import { orchardAiScopeLabel, resolveOrchardAiGamePlanScope, scopeOrchardAiSnapshot } from "@/lib/orchard-ai/game-plan-scope"
 
 const MODEL = ORCHARD_AI_MODEL
-const PROMPT_VERSION = "orchard-assistant-v4-multiturn"
+const PROMPT_VERSION = "orchard-assistant-v5-game-plan-scope"
 const MAX_QUESTION_LENGTH = 2000
 const MAX_HISTORY_TURNS = 8
 
@@ -20,6 +21,7 @@ function asRows(value: unknown): Record<string, unknown>[] {
 }
 function text(value: unknown) { return typeof value === "string" ? value : null }
 function numberValue(value: unknown) { return typeof value === "number" && Number.isFinite(value) ? value : 0 }
+function localDateKey() { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}` }
 function cleanHistory(value: unknown): HistoryTurn[] {
   if (!Array.isArray(value)) return []
   return value.slice(-MAX_HISTORY_TURNS).map((item) => {
@@ -30,6 +32,11 @@ function cleanHistory(value: unknown): HistoryTurn[] {
     }
   }).filter((item) => item.question && item.answer)
 }
+function gamePlanFromReferer(request: Request) {
+  const referer = request.headers.get("referer")
+  if (!referer) return null
+  try { return new URL(referer).searchParams.get("game_plan") } catch { return null }
+}
 
 function buildVisualContext(snapshot: Record<string, unknown[]>): VisualContext {
   const tasks = asRows(snapshot.tasks)
@@ -37,7 +44,7 @@ function buildVisualContext(snapshot: Record<string, unknown[]>): VisualContext 
   const nursery = asRows(snapshot.nursery_batches)
   const health = asRows(snapshot.health_logs)
   const care = asRows(snapshot.care_logs)
-  const today = new Date().toISOString().slice(0, 10)
+  const today = localDateKey()
   const completed = new Set(["done", "completed", "cancelled", "canceled"])
   const caredCropIds = new Set(care.map((row) => text(row.crop_id)).filter(Boolean) as string[])
 
@@ -55,7 +62,7 @@ function buildVisualContext(snapshot: Record<string, unknown[]>): VisualContext 
     .slice(0, 4).map((row) => ({ status: text(row.status), ready: numberValue(row.ready_count), transplanted: numberValue(row.transplanted_count), expectedReady: text(row.expected_ready_date), location: text(row.location) }))
 
   const healthRows = health.slice(0, 4).map((row) => ({ cropId: text(row.crop_id), issue: text(row.pest_type) ?? text(row.disease_name) ?? "Health observation", severity: text(row.severity_level), date: text(row.observation_date) }))
-  const careGaps = crops.filter((row) => { const id = text(row.id); return Boolean(id && !caredCropIds.has(id)) }).slice(0, 6)
+  const careGaps = crops.filter((row) => { const cropId = text(row.id); return Boolean(cropId && !caredCropIds.has(cropId)) }).slice(0, 6)
     .map((row) => ({ crop: text(row.crop_name) ?? "Crop", variety: text(row.variety) }))
   return { overdueTasks, harvests, nursery: nurseryRows, health: healthRows, careGaps }
 }
@@ -65,9 +72,10 @@ export async function POST(request: Request) {
   const { data: authData } = await supabase.auth.getUser()
   if (!authData.user) return Response.json({ error: "Unauthorized" }, { status: 401 })
 
-  const body = await request.json().catch(() => null) as { question?: unknown; history?: unknown } | null
+  const body = await request.json().catch(() => null) as { question?: unknown; history?: unknown; game_plan_id?: unknown } | null
   const question = typeof body?.question === "string" ? body.question.trim().slice(0, MAX_QUESTION_LENGTH) : ""
   const history = cleanHistory(body?.history)
+  const requestedGamePlanId = typeof body?.game_plan_id === "string" && body.game_plan_id.trim() ? body.game_plan_id.trim() : gamePlanFromReferer(request)
   if (!question) return Response.json({ error: "Question is required" }, { status: 400 })
 
   const apiKey = getOpenAIApiKey()
@@ -95,16 +103,24 @@ export async function POST(request: Request) {
   ])
 
   const sourceNames = ["game_plans","crop_cycles","successions","lifecycle","plots","beds","bed_allocations","seed_lots","nursery_batches","crops","care_logs","health_logs","harvests","revenue_targets","sales_commitments","sales_channels","notes","tasks"]
-  const snapshot: Record<string, unknown[]> = {}; const sourceCounts: Record<string, number> = {}
+  const unscopedSnapshot: Record<string, unknown[]> = {}
   for (let index = 0; index < sources.length; index += 1) {
     const result = sources[index]
     if (result.error) return Response.json({ error: `Could not read ${sourceNames[index]}` }, { status: 500 })
-    const rows = result.data ?? []; snapshot[sourceNames[index]] = rows; sourceCounts[sourceNames[index]] = rows.length
+    unscopedSnapshot[sourceNames[index]] = result.data ?? []
   }
 
+  const scope = resolveOrchardAiGamePlanScope(unscopedSnapshot, requestedGamePlanId)
+  if (requestedGamePlanId && !scope) return Response.json({ error: "Requested Game Plan is not accessible" }, { status: 400 })
+  const snapshot = scopeOrchardAiSnapshot(unscopedSnapshot, scope)
+  const sourceCounts = Object.fromEntries(sourceNames.map((name) => [name, snapshot[name]?.length ?? 0]))
   const visualContext = buildVisualContext(snapshot)
+  const scopeLabel = orchardAiScopeLabel(scope)
+
   const instructions = `You are the Orchard operations assistant inside Blackswan Facility Core.
 Use ONLY the authorized ORCHARD_SNAPSHOT supplied in the current user input for factual claims. The CONVERSATION_HISTORY is context for follow-up references, not an independent factual source.
+ACTIVE_GAME_PLAN_SCOPE: ${scopeLabel}.
+${scope ? "The snapshot has already been filtered to this Game Plan. Never infer, mention, compare, or use records from another Game Plan unless the user explicitly leaves this scope and starts a new request without a Game Plan scope." : "No Game Plan filter is active; the snapshot contains all authorized Orchard records."}
 Never invent rows, weather, agronomy facts, prices, yields, tasks, dates, or actions that are not present.
 
 Configured read skill:\n${orchardSkillsPrompt("read")}
@@ -123,7 +139,7 @@ Distinguish recorded facts from inferences. Label inferred conclusions as "Infer
   const openaiResponse = await fetch("https://api.openai.com/v1/responses", {
     method: "POST",
     headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ model: MODEL, instructions, input: `CONVERSATION_HISTORY:\n${conversation}\n\nQUESTION:\n${question}\n\nORCHARD_SNAPSHOT:\n${JSON.stringify(snapshot)}`, reasoning: { effort: "medium" }, max_output_tokens: 2200, stream: true }),
+    body: JSON.stringify({ model: MODEL, instructions, input: `CONVERSATION_HISTORY:\n${conversation}\n\nQUESTION:\n${question}\n\nACTIVE_GAME_PLAN_SCOPE:\n${scopeLabel}\n\nORCHARD_SNAPSHOT:\n${JSON.stringify(snapshot)}`, reasoning: { effort: "medium" }, max_output_tokens: 2200, stream: true }),
   })
 
   if (!openaiResponse.ok || !openaiResponse.body) {
@@ -138,7 +154,7 @@ Distinguish recorded facts from inferences. Label inferred conclusions as "Infer
     async start(controller) {
       const send = (event: Record<string, unknown>) => controller.enqueue(encoder.encode(`${JSON.stringify(event)}\n`))
       try {
-        send({ type: "meta", model: MODEL, sourceCounts, visualContext, historyTurns: history.length })
+        send({ type: "meta", model: MODEL, sourceCounts, visualContext, historyTurns: history.length, gamePlanScope: scope ? { id: scope.gamePlanId, label: scopeLabel } : null })
         while (true) {
           const { done, value } = await upstream.read(); if (done) break
           buffer += decoder.decode(value, { stream: true }); const blocks = buffer.split("\n\n"); buffer = blocks.pop() ?? ""
