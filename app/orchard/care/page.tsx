@@ -1,198 +1,32 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import type { FormEvent, ReactNode } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
+import { Plus, RefreshCw, Trash2 } from "lucide-react"
 import { AppLayout } from "@/components/app-layout"
 import { PageHeader } from "@/components/page-header"
 import { OrchardNavigation } from "@/components/orchard/orchard-navigation"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Heart, Droplet, Cloud } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Textarea } from "@/components/ui/textarea"
 import { createBrowserClient } from "@/lib/supabase/client"
 import { useLanguage } from "@/lib/hooks/use-language"
 
-interface CareLog {
-  id: string
-  crop_id: string
-  activity_date: string
-  activity_type: string
-  hours_spent: number
-  description: string
-  weather_conditions: string
-  temperature_c: number
-  humidity_percent: number
-  observations: string
-}
-
-interface Crop {
-  id: string
-  crop_name: string
-}
-
+type Care = { id: string; crop_id: string; activity_date: string; activity_type: string; hours_spent: number | null; description: string | null; weather_conditions: string | null; temperature_c: number | null; humidity_percent: number | null; observations: string | null }
+type Crop = { id: string; crop_name: string; variety: string | null }
+const copy = { en: { title: "Crop Care", description: "Record real watering, feeding, cultivation and field-care actions against a live crop.", new: "Record care activity", crop: "Crop", date: "Date", type: "Activity", hours: "Hours", descriptionLabel: "Description", weather: "Weather", temp: "Temperature °C", humidity: "Humidity %", observations: "Observations", create: "Record activity", refresh: "Refresh", empty: "No care activities recorded yet.", delete: "Delete this care record?", saveError: "Could not save care record" }, es: { title: "Cuidados", description: "Registra riego, fertilización, cultivo y cuidados reales contra un cultivo vivo.", new: "Registrar cuidado", crop: "Cultivo", date: "Fecha", type: "Actividad", hours: "Horas", descriptionLabel: "Descripción", weather: "Clima", temp: "Temperatura °C", humidity: "Humedad %", observations: "Observaciones", create: "Registrar actividad", refresh: "Actualizar", empty: "Aún no hay actividades de cuidado.", delete: "¿Eliminar este registro de cuidado?", saveError: "No fue posible guardar el cuidado" } } as const
 export default function OrchardCarePage() {
-  const [careLogs, setCareLogs] = useState<CareLog[]>([])
-  const [crops, setCrops] = useState<Crop[]>([])
-  const [loading, setLoading] = useState(true)
-  const supabase = createBrowserClient()
-  const { t } = useLanguage()
-
-  useEffect(() => {
-    fetchData()
-  }, [])
-
-  const fetchData = async () => {
-    try {
-      setLoading(true)
-      const { data: logsData } = await supabase
-        .from("orchard_care_logs")
-        .select("*")
-        .order("activity_date", { ascending: false })
-
-      const { data: cropsData } = await supabase
-        .from("orchard_crops")
-        .select("id, crop_name")
-
-      setCareLogs(logsData || [])
-      setCrops(cropsData || [])
-    } catch (error) {
-      console.error("[v0] Error fetching care logs:", error)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const getCropName = (cropId: string) => {
-    return crops.find((c) => c.id === cropId)?.crop_name || t("orchard.unknown")
-  }
-
-  const getActivityIcon = (type: string) => {
-    if (type === "watering") return <Droplet className="h-4 w-4 text-blue-500" />
-    if (type === "fertilizing") return <Heart className="h-4 w-4 text-green-500" />
-    if (type === "pest_control") return <Heart className="h-4 w-4 text-red-500" />
-    return <Heart className="h-4 w-4" />
-  }
-
-  if (loading) {
-    return (
-      <AppLayout>
-        <div className="flex items-center justify-center min-h-screen">
-          <p className="text-muted-foreground">{t("orchard.loading")}</p>
-      </div>
-    </AppLayout>
-  )
+  const supabase = useMemo(() => createBrowserClient(), []); const { language } = useLanguage(); const text = copy[language === "es" ? "es" : "en"]
+  const [logs, setLogs] = useState<Care[]>([]); const [crops, setCrops] = useState<Crop[]>([]); const [saving, setSaving] = useState(false); const [error, setError] = useState<string | null>(null)
+  const [form, setForm] = useState({ crop_id: "", activity_date: "", activity_type: "watering", hours_spent: "", description: "", weather_conditions: "", temperature_c: "", humidity_percent: "", observations: "" })
+  const load = useCallback(async () => { const [l, c] = await Promise.all([supabase.from("orchard_care_logs").select("*").order("activity_date", { ascending: false }), supabase.from("orchard_crops").select("id, crop_name, variety").order("crop_name")]); const e = l.error ?? c.error; if (e) setError(e.message); else { setLogs((l.data ?? []) as Care[]); setCrops((c.data ?? []) as Crop[]) } }, [supabase])
+  useEffect(() => { void load() }, [load])
+  async function create(event: FormEvent) { event.preventDefault(); if (!form.crop_id || !form.activity_date || !form.activity_type) return; const n = (v: string) => v ? Number(v) : null; setSaving(true); const { error: e } = await supabase.from("orchard_care_logs").insert({ crop_id: form.crop_id, activity_date: form.activity_date, activity_type: form.activity_type, hours_spent: n(form.hours_spent), description: form.description.trim() || null, weather_conditions: form.weather_conditions.trim() || null, temperature_c: n(form.temperature_c), humidity_percent: n(form.humidity_percent), observations: form.observations.trim() || null }); if (e) setError(`${text.saveError}: ${e.message}`); else { setForm({ crop_id: "", activity_date: "", activity_type: "watering", hours_spent: "", description: "", weather_conditions: "", temperature_c: "", humidity_percent: "", observations: "" }); await load() } setSaving(false) }
+  async function remove(id: string) { if (!window.confirm(text.delete)) return; const { error: e } = await supabase.from("orchard_care_logs").delete().eq("id", id); if (e) setError(`${text.saveError}: ${e.message}`); else await load() }
+  return <AppLayout><PageHeader title={text.title} description={text.description} actions={<Button variant="outline" onClick={() => void load()}><RefreshCw className="mr-2 h-4 w-4" />{text.refresh}</Button>} /><OrchardNavigation /><div className="space-y-6 p-4 sm:p-8">{error && <Card className="border-destructive/60"><CardContent className="p-4 text-sm text-destructive">{error}</CardContent></Card>}<Card><CardHeader><CardTitle>{text.new}</CardTitle></CardHeader><CardContent><form onSubmit={create} className="grid gap-4 md:grid-cols-2 xl:grid-cols-4"><Field label={text.crop}><Select value={form.crop_id} onValueChange={(v) => setForm((f) => ({ ...f, crop_id: v }))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{crops.map((c) => <SelectItem key={c.id} value={c.id}>{c.crop_name}{c.variety ? ` · ${c.variety}` : ""}</SelectItem>)}</SelectContent></Select></Field><Field label={text.date}><Input type="date" value={form.activity_date} onChange={(e) => setForm((f) => ({ ...f, activity_date: e.target.value }))} required /></Field><Field label={text.type}><Input value={form.activity_type} onChange={(e) => setForm((f) => ({ ...f, activity_type: e.target.value }))} required /></Field><Field label={text.hours}><Input type="number" min="0" step="0.1" value={form.hours_spent} onChange={(e) => setForm((f) => ({ ...f, hours_spent: e.target.value }))} /></Field><Field label={text.weather}><Input value={form.weather_conditions} onChange={(e) => setForm((f) => ({ ...f, weather_conditions: e.target.value }))} /></Field><Field label={text.temp}><Input type="number" step="0.1" value={form.temperature_c} onChange={(e) => setForm((f) => ({ ...f, temperature_c: e.target.value }))} /></Field><Field label={text.humidity}><Input type="number" min="0" max="100" step="0.1" value={form.humidity_percent} onChange={(e) => setForm((f) => ({ ...f, humidity_percent: e.target.value }))} /></Field><div className="md:col-span-2"><Field label={text.descriptionLabel}><Textarea value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} /></Field></div><div className="md:col-span-2"><Field label={text.observations}><Textarea value={form.observations} onChange={(e) => setForm((f) => ({ ...f, observations: e.target.value }))} /></Field></div><div className="md:col-span-2 xl:col-span-4"><Button type="submit" disabled={saving || crops.length === 0}><Plus className="mr-2 h-4 w-4" />{text.create}</Button></div></form></CardContent></Card><Card><CardHeader><CardTitle>{text.title}</CardTitle></CardHeader><CardContent>{logs.length === 0 ? <p className="text-sm text-muted-foreground">{text.empty}</p> : <div className="space-y-3">{logs.map((log) => <div key={log.id} className="flex items-start justify-between gap-4 rounded-lg border p-4"><div><div className="flex flex-wrap gap-2"><p className="font-semibold">{log.activity_type.replaceAll("_", " ")}</p><Badge variant="outline">{crops.find((c) => c.id === log.crop_id)?.crop_name ?? "—"}</Badge></div><p className="mt-1 text-sm text-muted-foreground">{log.activity_date}{log.hours_spent != null ? ` · ${log.hours_spent}h` : ""}{log.weather_conditions ? ` · ${log.weather_conditions}` : ""}</p><p className="mt-2 text-sm">{log.description || log.observations || "—"}</p></div><Button variant="ghost" size="icon" onClick={() => void remove(log.id)}><Trash2 className="h-4 w-4" /></Button></div>)}</div>}</CardContent></Card></div></AppLayout>
 }
-
-  return (
-    <AppLayout>
-      <OrchardNavigation />
-      <div className="space-y-6">
-        <PageHeader
-          title={t("orchard.care_logs")}
-          description="Track watering, fertilizing, and plant care activities"
-        />
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                <Droplet className="h-4 w-4" />
-                Watering Logs
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold">
-                {careLogs.filter((l) => l.activity_type === "watering").length}
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                <Heart className="h-4 w-4" />
-                Total Activities
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold">{careLogs.length}</div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                <Cloud className="h-4 w-4" />
-                Avg Temperature
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold">
-                {careLogs.length > 0
-                  ? (careLogs.reduce((sum, l) => sum + l.temperature_c, 0) / careLogs.length).toFixed(1)
-                  : 0}
-                °C
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>{t("orchard.care_logs")}</CardTitle>
-            <CardDescription>Recent plant care activities</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {careLogs.length === 0 ? (
-              <div className="text-center py-8">
-                <p className="text-muted-foreground">No care logs found</p>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {careLogs.map((log) => (
-                  <div
-                    key={log.id}
-                    className="border rounded-lg p-4 hover:bg-accent/5 transition-colors"
-                  >
-                    <div className="flex items-start gap-3">
-                      <div className="mt-1">{getActivityIcon(log.activity_type)}</div>
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <h3 className="font-semibold capitalize">{log.activity_type.replace("_", " ")}</h3>
-                          <Badge variant="outline" className="text-xs">
-                            {getCropName(log.crop_id)}
-                          </Badge>
-                        </div>
-                        <p className="text-sm text-muted-foreground mb-2">{log.description}</p>
-                        <div className="grid grid-cols-2 md:grid-cols-5 gap-2 text-xs">
-                          <div>
-                            <p className="text-muted-foreground">Date</p>
-                            <p className="font-semibold">{new Date(log.activity_date).toLocaleDateString()}</p>
-                          </div>
-                          <div>
-                            <p className="text-muted-foreground">Hours</p>
-                            <p className="font-semibold">{log.hours_spent}h</p>
-                          </div>
-                          <div>
-                            <p className="text-muted-foreground">Temp</p>
-                            <p className="font-semibold">{log.temperature_c}°C</p>
-                          </div>
-                          <div>
-                            <p className="text-muted-foreground">Humidity</p>
-                            <p className="font-semibold">{log.humidity_percent}%</p>
-                          </div>
-                          <div>
-                            <p className="text-muted-foreground">Weather</p>
-                            <p className="font-semibold text-xs">{log.weather_conditions}</p>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-    </AppLayout>
-  )
-}
+function Field({ label, children }: { label: string; children: ReactNode }) { return <div className="space-y-2"><Label>{label}</Label>{children}</div> }
