@@ -2,11 +2,9 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react"
 import Link from "next/link"
-import { AlertTriangle, ArrowRight, CalendarClock, Leaf, Map as MapIcon, RefreshCw, Sprout } from "lucide-react"
+import { AlertTriangle, ArrowRight, CalendarClock, Map as MapIcon, RefreshCw, Sprout } from "lucide-react"
 import { AppLayout } from "@/components/app-layout"
-import { PageHeader } from "@/components/page-header"
 import { OrchardNavigation } from "@/components/orchard/orchard-navigation"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { createBrowserClient } from "@/lib/supabase/client"
@@ -19,8 +17,6 @@ type Plot = {
   size_sqm: number | null
   status: string | null
   soil_type: string | null
-  ph_level: number | null
-  sunlight_hours: number | null
   irrigation_type: string | null
   description: string | null
 }
@@ -36,89 +32,79 @@ type Crop = {
   quantity_planted: number | null
   planting_unit: string | null
   status: string | null
-  notes: string | null
 }
 
+const PHOTOS = {
+  hero: "https://images.unsplash.com/photo-1566218246241-934ad8b38ea6?auto=format&fit=crop&q=82&w=1800",
+  roots: "https://images.unsplash.com/photo-1769082301052-6c6fb1c5f043?auto=format&fit=crop&q=80&w=1000",
+  seedlings: "https://images.unsplash.com/photo-1466692476868-aef1dfb1e735?auto=format&fit=crop&q=80&w=1000",
+  greens: "https://images.unsplash.com/photo-1744726010540-bf318d4a691f?auto=format&fit=crop&q=80&w=1000",
+} as const
+
 const copy = {
-  es: {
-    title: "Huerto",
-    description: "Seguimiento operativo de sectores y cultivos registrados en Fundo Corcovado.",
-    loadError: "No fue posible cargar el huerto",
-    retry: "Reintentar",
-    plots: "Sectores registrados",
-    area: "Superficie declarada",
-    crops: "Cultivos registrados",
-    pendingHarvest: "Cosechas pendientes",
-    overdueTitle: (count: number) => `${count} cultivo${count === 1 ? "" : "s"} con fecha de cosecha vencida y sin cierre.`,
-    overdueBody: "Los registros se mantienen sin cambios y requieren revisión en terreno.",
-    plotsTitle: "Sectores del huerto",
-    plotsDescription: "Características físicas actualmente registradas.",
-    cropsTitle: "Cultivos activos y pendientes",
-    cropsDescription: "No se estiman rendimientos porque todavía no existen cosechas registradas.",
-    noPlots: "No hay sectores registrados.",
-    noCrops: "No hay cultivos registrados.",
-    noDescription: "Sin descripción operativa.",
-    noRecord: "Sin registro",
-    noStatus: "Sin estado",
-    type: "Tipo",
-    soil: "Suelo",
-    irrigation: "Riego",
-    planted: "Plantación",
-    harvest: "Cosecha esperada",
-    quantity: "Cantidad",
-    sector: "Sector",
-    unknownSector: "No identificado",
-    fieldStatus: "Estado de campo",
-    fieldStatusDescription: "Prioridades derivadas de los registros actuales, sin estimaciones simuladas.",
-    overdueAction: "Revisar cosechas vencidas",
-    upcomingAction: "Preparar cosechas próximas",
-    upcomingDetail: "Cultivos con cosecha prevista en los próximos 14 días.",
-    plotAction: "Revisar sectores y asignaciones",
-    plotDetail: "Contexto físico disponible para la planificación.",
-    open: "Abrir",
-    crop: "Cultivo",
-    status: "Estado",
-    loading: "Cargando…",
-  },
   en: {
-    title: "Orchard",
-    description: "Operational tracking of registered orchard plots and crops at Fundo Corcovado.",
+    eyebrow: "Fundo Corcovado · Orchard",
+    title: "What is growing now",
+    description: "A calm view of the field: what is planted, what needs attention, and what is coming next.",
+    refresh: "Refresh",
     loadError: "The orchard could not be loaded",
-    retry: "Retry",
-    plots: "Registered plots",
-    area: "Declared area",
-    crops: "Registered crops",
-    pendingHarvest: "Pending harvests",
-    overdueTitle: (count: number) => `${count} crop${count === 1 ? "" : "s"} with an overdue harvest date and no closure.`,
-    overdueBody: "Records remain unchanged and require field review.",
-    plotsTitle: "Orchard plots",
-    plotsDescription: "Currently registered physical characteristics.",
-    cropsTitle: "Active and pending crops",
-    cropsDescription: "Yield is not estimated because no harvest records exist yet.",
-    noPlots: "No plots are registered.",
-    noCrops: "No crops are registered.",
-    noDescription: "No operational description.",
+    plots: "Plots",
+    area: "Area",
+    crops: "Crops",
+    pending: "Pending harvests",
+    fieldStatus: "Today in the field",
+    overdue: "Overdue harvests",
+    overdueDetail: "Records that need a field check before they can be closed.",
+    upcoming: "Coming up",
+    upcomingDetail: "Crops expected to reach harvest within 14 days.",
+    map: "Crop map",
+    mapDetail: "See where current crops and planned successions sit.",
+    open: "Open",
+    growing: "Growing now",
+    growingDescription: "Current crop records, shown as field objects instead of a spreadsheet.",
+    noCrops: "No crops are registered yet.",
+    plotsTitle: "Plots",
+    plotsDescription: "Physical growing areas currently registered in Orchard.",
+    noPlots: "No plots are registered yet.",
     noRecord: "Not recorded",
     noStatus: "No status",
-    type: "Type",
+    expected: "Expected",
+    planted: "Planted",
+    quantity: "Quantity",
     soil: "Soil",
     irrigation: "Irrigation",
-    planted: "Planting",
-    harvest: "Expected harvest",
-    quantity: "Quantity",
-    sector: "Plot",
-    unknownSector: "Unidentified",
-    fieldStatus: "Field status",
-    fieldStatusDescription: "Priorities derived from current records, with no simulated estimates.",
-    overdueAction: "Review overdue harvests",
-    upcomingAction: "Prepare upcoming harvests",
-    upcomingDetail: "Crops expected to be ready within the next 14 days.",
-    plotAction: "Review plots and assignments",
-    plotDetail: "Physical context available for planning.",
-    open: "Open",
-    crop: "Crop",
-    status: "Status",
-    loading: "Loading…",
+  },
+  es: {
+    eyebrow: "Fundo Corcovado · Huerto",
+    title: "Qué está creciendo ahora",
+    description: "Una vista tranquila del campo: qué está plantado, qué necesita atención y qué viene después.",
+    refresh: "Actualizar",
+    loadError: "No fue posible cargar el huerto",
+    plots: "Sectores",
+    area: "Superficie",
+    crops: "Cultivos",
+    pending: "Cosechas pendientes",
+    fieldStatus: "Hoy en terreno",
+    overdue: "Cosechas vencidas",
+    overdueDetail: "Registros que necesitan revisión en terreno antes de cerrarse.",
+    upcoming: "Próximamente",
+    upcomingDetail: "Cultivos con cosecha prevista dentro de 14 días.",
+    map: "Mapa de cultivos",
+    mapDetail: "Revisa dónde están los cultivos actuales y las sucesiones planificadas.",
+    open: "Abrir",
+    growing: "En crecimiento",
+    growingDescription: "Cultivos actuales mostrados como objetos de campo, no como planilla.",
+    noCrops: "Todavía no hay cultivos registrados.",
+    plotsTitle: "Sectores",
+    plotsDescription: "Áreas físicas de cultivo actualmente registradas en Orchard.",
+    noPlots: "Todavía no hay sectores registrados.",
+    noRecord: "Sin registro",
+    noStatus: "Sin estado",
+    expected: "Esperada",
+    planted: "Plantado",
+    quantity: "Cantidad",
+    soil: "Suelo",
+    irrigation: "Riego",
   },
 } as const
 
@@ -130,6 +116,14 @@ const statuses: Record<"es" | "en", Record<string, string>> = {
 const cropNames: Record<"es" | "en", Record<string, string>> = {
   es: { Tomato: "Tomate", Lettuce: "Lechuga", "Bell Pepper": "Pimentón", Carrot: "Zanahoria", Zucchini: "Zapallo italiano", Onion: "Cebolla", Basil: "Albahaca", Parsley: "Perejil", Spinach: "Espinaca", Arugula: "Rúcula", Potato: "Papa", Beet: "Betarraga", Radish: "Rabanito" },
   en: {},
+}
+
+function cropPhoto(name: string) {
+  const normalized = name.toLowerCase()
+  if (["carrot", "potato", "beet", "radish", "onion"].some((item) => normalized.includes(item))) return PHOTOS.roots
+  if (["lettuce", "spinach", "arugula", "parsley", "basil"].some((item) => normalized.includes(item))) return PHOTOS.greens
+  if (["seedling", "nursery"].some((item) => normalized.includes(item))) return PHOTOS.seedlings
+  return PHOTOS.hero
 }
 
 export default function OrchardPage() {
@@ -147,8 +141,8 @@ export default function OrchardPage() {
     setLoading(true)
     setError(null)
     const [plotsResult, cropsResult] = await Promise.all([
-      supabase.from("orchard_plots").select("id, name, plot_type, size_sqm, status, soil_type, ph_level, sunlight_hours, irrigation_type, description").order("name"),
-      supabase.from("orchard_crops").select("id, plot_id, crop_name, crop_type, variety, planting_date, expected_harvest_date, quantity_planted, planting_unit, status, notes").order("expected_harvest_date"),
+      supabase.from("orchard_plots").select("id, name, plot_type, size_sqm, status, soil_type, irrigation_type, description").order("name"),
+      supabase.from("orchard_crops").select("id, plot_id, crop_name, crop_type, variety, planting_date, expected_harvest_date, quantity_planted, planting_unit, status").order("expected_harvest_date"),
     ])
     const loadError = plotsResult.error ?? cropsResult.error
     if (loadError) {
@@ -176,52 +170,74 @@ export default function OrchardPage() {
     const date = new Date(`${crop.expected_harvest_date}T12:00:00`)
     return date >= now && date <= fourteenDaysFromNow
   })
-  const orchardHref = (path: string) => `/${language}${path}`
+  const href = (path: string) => `/${language}${path}`
 
   return (
     <AppLayout>
-      <PageHeader title={text.title} description={text.description} actions={<Button variant="outline" onClick={() => void loadData()} disabled={loading}><RefreshCw className={`mr-2 h-4 w-4 ${loading ? "animate-spin" : ""}`} />{text.retry}</Button>} />
       <OrchardNavigation />
-      <div className="space-y-6 p-4 sm:p-8">
-        {error && <Card className="border-destructive/60"><CardContent className="p-4 text-sm text-destructive">{text.loadError}: {error}</CardContent></Card>}
-
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          <Metric title={text.plots} value={plots.length.toLocaleString(locale)} />
-          <Metric title={text.area} value={`${totalArea.toLocaleString(locale)} m²`} />
-          <Metric title={text.crops} value={crops.length.toLocaleString(locale)} />
-          <Metric title={text.pendingHarvest} value={pending.length.toLocaleString(locale)} />
-        </div>
-
-        <section aria-labelledby="orchard-field-status" className="space-y-3">
-          <div>
-            <h2 id="orchard-field-status" className="text-lg font-semibold">{text.fieldStatus}</h2>
-            <p className="text-sm text-muted-foreground">{text.fieldStatusDescription}</p>
+      <main className="mx-auto w-full max-w-[1560px] px-4 pb-12 pt-4 sm:px-6 sm:pt-6 lg:px-8">
+        <section className="relative isolate min-h-[440px] overflow-hidden rounded-[28px] bg-neutral-950 sm:min-h-[500px]">
+          <img src={PHOTOS.hero} alt="Rows of tomato plants growing in a greenhouse" className="absolute inset-0 h-full w-full object-cover" />
+          <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/45 to-black/10" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-transparent to-black/10" />
+          <div className="relative flex min-h-[440px] max-w-3xl flex-col justify-end p-6 text-white sm:min-h-[500px] sm:p-10 lg:p-14">
+            <p className="mb-4 text-xs font-medium uppercase tracking-[0.22em] text-white/65">{text.eyebrow}</p>
+            <h1 className="max-w-2xl text-4xl font-medium tracking-[-0.04em] sm:text-6xl lg:text-7xl">{text.title}</h1>
+            <p className="mt-5 max-w-xl text-sm leading-6 text-white/75 sm:text-base">{text.description}</p>
+            <div className="mt-7 flex flex-wrap items-center gap-3">
+              <Button asChild className="bg-white text-black hover:bg-white/90"><Link href={href("/orchard/field")}>{lang === "es" ? "Abrir terreno" : "Open field mode"}<ArrowRight className="ml-2 h-4 w-4" /></Link></Button>
+              <Button variant="outline" onClick={() => void loadData()} disabled={loading} className="border-white/30 bg-black/20 text-white hover:bg-white/10 hover:text-white"><RefreshCw className={`mr-2 h-4 w-4 ${loading ? "animate-spin" : ""}`} />{text.refresh}</Button>
+            </div>
           </div>
-          <div className="grid gap-3 lg:grid-cols-3">
-            <OperationalLink href={orchardHref("/orchard/harvest")} icon={AlertTriangle} title={text.overdueAction} value={overdue.length} detail={text.overdueBody} action={text.open} tone={overdue.length > 0 ? "warning" : "neutral"} />
-            <OperationalLink href={orchardHref("/orchard/harvest")} icon={CalendarClock} title={text.upcomingAction} value={upcoming.length} detail={text.upcomingDetail} action={text.open} tone="neutral" />
-            <OperationalLink href={orchardHref("/orchard/crops")} icon={MapIcon} title={text.plotAction} value={plots.length} detail={text.plotDetail} action={text.open} tone="neutral" />
+          <div className="absolute bottom-6 right-6 hidden rounded-2xl border border-white/15 bg-black/30 px-5 py-4 text-white backdrop-blur-md md:block">
+            <div className="grid grid-cols-2 gap-x-8 gap-y-3">
+              <HeroMetric label={text.plots} value={plots.length.toLocaleString(locale)} />
+              <HeroMetric label={text.area} value={`${totalArea.toLocaleString(locale)} m²`} />
+              <HeroMetric label={text.crops} value={crops.length.toLocaleString(locale)} />
+              <HeroMetric label={text.pending} value={pending.length.toLocaleString(locale)} />
+            </div>
           </div>
         </section>
 
-        <Card>
-          <CardHeader><CardTitle>{text.plotsTitle}</CardTitle><CardDescription>{text.plotsDescription}</CardDescription></CardHeader>
-          <CardContent>{loading ? <p className="py-10 text-center text-sm text-muted-foreground">{text.loading}</p> : plots.length === 0 ? <p className="py-10 text-center text-sm text-muted-foreground">{text.noPlots}</p> : <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{plots.map((plot) => <Card key={plot.id}><CardHeader className="pb-3"><div className="flex items-start justify-between gap-3"><CardTitle className="text-base">{plot.name}</CardTitle><Badge variant="outline">{statuses[lang][plot.status ?? ""] ?? plot.status ?? text.noStatus}</Badge></div><CardDescription>{plot.description || text.noDescription}</CardDescription></CardHeader><CardContent className="space-y-2 text-sm"><p><span className="text-muted-foreground">{text.type}:</span> {plot.plot_type}</p><p><span className="text-muted-foreground">{text.area}:</span> {Number(plot.size_sqm ?? 0).toLocaleString(locale)} m²</p><p><span className="text-muted-foreground">{text.soil}:</span> {plot.soil_type || text.noRecord}</p><p><span className="text-muted-foreground">{text.irrigation}:</span> {plot.irrigation_type || text.noRecord}</p></CardContent></Card>)}</div>}</CardContent>
-        </Card>
+        {error && <div className="mt-5 rounded-xl border border-destructive/40 bg-destructive/5 px-4 py-3 text-sm text-destructive">{text.loadError}: {error}</div>}
 
-        <Card>
-          <CardHeader><CardTitle>{text.cropsTitle}</CardTitle><CardDescription>{text.cropsDescription}</CardDescription></CardHeader>
-          <CardContent>{loading ? <p className="py-10 text-center text-sm text-muted-foreground">{text.loading}</p> : crops.length === 0 ? <div className="py-10 text-center"><Sprout className="mx-auto mb-3 h-9 w-9 text-muted-foreground" /><p className="text-sm text-muted-foreground">{text.noCrops}</p></div> : <div className="overflow-x-auto"><table className="w-full min-w-[760px] text-sm"><thead><tr className="border-b text-left text-xs text-muted-foreground"><th className="pb-3 pr-4 font-medium">{text.crop}</th><th className="pb-3 pr-4 font-medium">{text.sector}</th><th className="pb-3 pr-4 font-medium">{text.status}</th><th className="pb-3 pr-4 font-medium">{text.planted}</th><th className="pb-3 pr-4 font-medium">{text.harvest}</th><th className="pb-3 font-medium">{text.quantity}</th></tr></thead><tbody>{crops.map((crop) => <tr key={crop.id} className="border-b last:border-0"><td className="py-4 pr-4"><p className="font-medium">{cropNames[lang][crop.crop_name] ?? crop.crop_name}</p><p className="text-xs text-muted-foreground">{crop.variety || text.noRecord}</p></td><td className="py-4 pr-4">{plotById.get(crop.plot_id) ?? text.unknownSector}</td><td className="py-4 pr-4"><Badge variant="outline">{statuses[lang][crop.status ?? ""] ?? crop.status ?? text.noStatus}</Badge></td><td className="py-4 pr-4">{new Date(`${crop.planting_date}T12:00:00`).toLocaleDateString(locale)}</td><td className="py-4 pr-4">{crop.expected_harvest_date ? new Date(`${crop.expected_harvest_date}T12:00:00`).toLocaleDateString(locale) : text.noRecord}</td><td className="py-4">{Number(crop.quantity_planted ?? 0).toLocaleString(locale)} {crop.planting_unit || ""}</td></tr>)}</tbody></table></div>}</CardContent>
-        </Card>
-      </div>
+        <section className="mt-10">
+          <div className="mb-4 flex items-end justify-between gap-4"><div><p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">01</p><h2 className="mt-2 text-2xl font-medium tracking-tight">{text.fieldStatus}</h2></div></div>
+          <div className="grid gap-3 lg:grid-cols-3">
+            <ActionCard href={href("/orchard/harvest")} icon={AlertTriangle} title={text.overdue} value={overdue.length} detail={text.overdueDetail} warning={overdue.length > 0} />
+            <ActionCard href={href("/orchard/harvest")} icon={CalendarClock} title={text.upcoming} value={upcoming.length} detail={text.upcomingDetail} />
+            <ActionCard href={href("/orchard/crop-map")} icon={MapIcon} title={text.map} value={plots.length} detail={text.mapDetail} />
+          </div>
+        </section>
+
+        <section className="mt-14">
+          <div className="mb-5 flex items-end justify-between gap-4"><div><p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">02</p><h2 className="mt-2 text-2xl font-medium tracking-tight">{text.growing}</h2><p className="mt-1 text-sm text-muted-foreground">{text.growingDescription}</p></div><Link href={href("/orchard/crops")} className="hidden items-center gap-1 text-sm font-medium sm:inline-flex">{text.open}<ArrowRight className="h-4 w-4" /></Link></div>
+          {loading ? <div className="h-72 animate-pulse rounded-3xl bg-muted" /> : crops.length === 0 ? <div className="rounded-3xl border border-dashed py-16 text-center"><Sprout className="mx-auto mb-3 h-8 w-8 text-muted-foreground" /><p className="text-sm text-muted-foreground">{text.noCrops}</p></div> : <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{crops.slice(0, 6).map((crop) => <CropCard key={crop.id} crop={crop} lang={lang} locale={locale} plotName={plotById.get(crop.plot_id) ?? text.noRecord} text={text} />)}</div>}
+        </section>
+
+        <section className="mt-14 border-t pt-10">
+          <div className="mb-5"><p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">03</p><h2 className="mt-2 text-2xl font-medium tracking-tight">{text.plotsTitle}</h2><p className="mt-1 text-sm text-muted-foreground">{text.plotsDescription}</p></div>
+          {plots.length === 0 ? <p className="py-8 text-sm text-muted-foreground">{text.noPlots}</p> : <div className="divide-y">{plots.map((plot) => <div key={plot.id} className="grid gap-4 py-5 sm:grid-cols-[1.3fr_.7fr_.7fr_.7fr] sm:items-center"><div><div className="flex items-center gap-2"><p className="font-medium">{plot.name}</p><Badge variant="outline" className="rounded-full">{statuses[lang][plot.status ?? ""] ?? plot.status ?? text.noStatus}</Badge></div><p className="mt-1 line-clamp-1 text-sm text-muted-foreground">{plot.description || plot.plot_type}</p></div><SmallMeta label={text.area} value={`${Number(plot.size_sqm ?? 0).toLocaleString(locale)} m²`} /><SmallMeta label={text.soil} value={plot.soil_type || text.noRecord} /><SmallMeta label={text.irrigation} value={plot.irrigation_type || text.noRecord} /></div>)}</div>}
+        </section>
+
+        <p className="mt-10 text-[11px] text-muted-foreground">Reference photography used under the Unsplash License. Field evidence will replace reference imagery as Orchard photo records are added.</p>
+      </main>
     </AppLayout>
   )
 }
 
-function Metric({ title, value }: { title: string; value: string }) {
-  return <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">{title}</p><p className="mt-1 text-2xl font-semibold">{value}</p></CardContent></Card>
+function HeroMetric({ label, value }: { label: string; value: string }) {
+  return <div><p className="text-[10px] uppercase tracking-[0.16em] text-white/55">{label}</p><p className="mt-1 text-lg font-medium tabular-nums">{value}</p></div>
 }
 
-function OperationalLink({ href, icon: Icon, title, value, detail, action, tone }: { href: string; icon: typeof Leaf; title: string; value: number; detail: string; action: string; tone: "warning" | "neutral" }) {
-  return <Link href={href} className={`group rounded-lg border p-4 transition-colors hover:bg-muted/40 ${tone === "warning" ? "border-amber-300 bg-amber-50/40 dark:bg-amber-950/10" : "bg-card"}`}><div className="flex items-start justify-between gap-4"><div className="flex gap-3"><span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-muted"><Icon className="h-4 w-4" /></span><div><p className="font-medium">{title}</p><p className="mt-1 text-xs leading-5 text-muted-foreground">{detail}</p></div></div><span className="text-2xl font-semibold tabular-nums">{value}</span></div><span className="mt-4 inline-flex items-center gap-1 text-xs font-medium text-primary">{action}<ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" /></span></Link>
+function ActionCard({ href, icon: Icon, title, value, detail, warning = false }: { href: string; icon: typeof AlertTriangle; title: string; value: number; detail: string; warning?: boolean }) {
+  return <Link href={href} className={`group rounded-2xl border p-5 transition-all hover:-translate-y-0.5 hover:shadow-md ${warning ? "border-amber-400/40 bg-amber-500/5" : "bg-background"}`}><div className="flex items-start justify-between gap-5"><div><div className="mb-5 flex h-9 w-9 items-center justify-center rounded-full bg-muted"><Icon className="h-4 w-4" /></div><h3 className="font-medium">{title}</h3><p className="mt-1 max-w-sm text-sm leading-5 text-muted-foreground">{detail}</p></div><span className="text-3xl font-medium tabular-nums">{value}</span></div><span className="mt-5 inline-flex items-center gap-1 text-xs font-medium">Open<ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" /></span></Link>
+}
+
+function CropCard({ crop, lang, locale, plotName, text }: { crop: Crop; lang: "en" | "es"; locale: string; plotName: string; text: (typeof copy)["en"] | (typeof copy)["es"] }) {
+  return <article className="group overflow-hidden rounded-3xl border bg-background"><div className="relative aspect-[4/3] overflow-hidden bg-muted"><img src={cropPhoto(crop.crop_name)} alt="" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]" /><div className="absolute inset-0 bg-gradient-to-t from-black/55 via-transparent to-transparent" /><div className="absolute bottom-4 left-4 right-4 flex items-end justify-between gap-3 text-white"><div><p className="text-xl font-medium tracking-tight">{cropNames[lang][crop.crop_name] ?? crop.crop_name}</p><p className="mt-0.5 text-xs text-white/70">{crop.variety || plotName}</p></div><Badge className="border-white/20 bg-black/35 text-white backdrop-blur">{statuses[lang][crop.status ?? ""] ?? crop.status ?? text.noStatus}</Badge></div></div><div className="grid grid-cols-3 divide-x border-t"><SmallMeta className="p-4" label={text.planted} value={new Date(`${crop.planting_date}T12:00:00`).toLocaleDateString(locale, { day: "2-digit", month: "short" })} /><SmallMeta className="p-4" label={text.expected} value={crop.expected_harvest_date ? new Date(`${crop.expected_harvest_date}T12:00:00`).toLocaleDateString(locale, { day: "2-digit", month: "short" }) : text.noRecord} /><SmallMeta className="p-4" label={text.quantity} value={`${Number(crop.quantity_planted ?? 0).toLocaleString(locale)} ${crop.planting_unit || ""}`} /></div></article>
+}
+
+function SmallMeta({ label, value, className = "" }: { label: string; value: string; className?: string }) {
+  return <div className={className}><p className="text-[10px] uppercase tracking-[0.14em] text-muted-foreground">{label}</p><p className="mt-1 truncate text-sm font-medium">{value}</p></div>
 }
