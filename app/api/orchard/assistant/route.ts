@@ -1,33 +1,87 @@
-import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { getOpenAIApiKey, ORCHARD_AI_MODEL, orchardSkillsPrompt } from "@/lib/orchard-ai/config"
 
 const MODEL = ORCHARD_AI_MODEL
-const PROMPT_VERSION = "orchard-assistant-v2"
+const PROMPT_VERSION = "orchard-assistant-v3-stream"
 const MAX_QUESTION_LENGTH = 2000
 
-function extractOutputText(payload: unknown) {
-  if (!payload || typeof payload !== "object") return ""
-  const response = payload as { output_text?: unknown; output?: Array<{ content?: Array<{ type?: string; text?: string }> }> }
-  if (typeof response.output_text === "string") return response.output_text
-  return (response.output ?? [])
-    .flatMap((item) => item.content ?? [])
-    .filter((item) => item.type === "output_text" && typeof item.text === "string")
-    .map((item) => item.text as string)
-    .join("\n")
+type VisualContext = {
+  overdueTasks: Array<{ title: string; dueDate: string | null; priority: string | null; location: string | null }>
+  harvests: Array<{ crop: string; variety: string | null; date: string | null; status: string | null }>
+  nursery: Array<{ status: string | null; ready: number; transplanted: number; expectedReady: string | null; location: string | null }>
+  health: Array<{ cropId: string | null; issue: string; severity: string | null; date: string | null }>
+  careGaps: Array<{ crop: string; variety: string | null }>
+}
+
+function asRows(value: unknown): Record<string, unknown>[] {
+  return Array.isArray(value) ? value.filter((row): row is Record<string, unknown> => Boolean(row) && typeof row === "object") : []
+}
+
+function text(value: unknown) {
+  return typeof value === "string" ? value : null
+}
+
+function numberValue(value: unknown) {
+  return typeof value === "number" && Number.isFinite(value) ? value : 0
+}
+
+function buildVisualContext(snapshot: Record<string, unknown[]>): VisualContext {
+  const tasks = asRows(snapshot.tasks)
+  const crops = asRows(snapshot.crops)
+  const nursery = asRows(snapshot.nursery_batches)
+  const health = asRows(snapshot.health_logs)
+  const care = asRows(snapshot.care_logs)
+  const today = new Date().toISOString().slice(0, 10)
+  const completed = new Set(["done", "completed", "cancelled", "canceled"])
+  const caredCropIds = new Set(care.map((row) => text(row.crop_id)).filter(Boolean) as string[])
+
+  const overdueTasks = tasks
+    .filter((row) => {
+      const due = text(row.due_date)
+      const status = (text(row.status) ?? "").toLowerCase()
+      return Boolean(due && due < today && !completed.has(status))
+    })
+    .sort((a, b) => (text(a.due_date) ?? "").localeCompare(text(b.due_date) ?? ""))
+    .slice(0, 4)
+    .map((row) => ({ title: text(row.title) ?? "Untitled task", dueDate: text(row.due_date), priority: text(row.priority), location: text(row.location_name) }))
+
+  const harvests = crops
+    .filter((row) => Boolean(text(row.expected_harvest_date)))
+    .sort((a, b) => (text(a.expected_harvest_date) ?? "").localeCompare(text(b.expected_harvest_date) ?? ""))
+    .slice(0, 4)
+    .map((row) => ({ crop: text(row.crop_name) ?? "Crop", variety: text(row.variety), date: text(row.expected_harvest_date), status: text(row.status) }))
+
+  const nurseryRows = nursery
+    .filter((row) => numberValue(row.ready_count) > numberValue(row.transplanted_count) || (text(row.status) ?? "").toLowerCase().includes("ready"))
+    .slice(0, 4)
+    .map((row) => ({ status: text(row.status), ready: numberValue(row.ready_count), transplanted: numberValue(row.transplanted_count), expectedReady: text(row.expected_ready_date), location: text(row.location) }))
+
+  const healthRows = health
+    .slice(0, 4)
+    .map((row) => ({ cropId: text(row.crop_id), issue: text(row.pest_type) ?? text(row.disease_name) ?? "Health observation", severity: text(row.severity_level), date: text(row.observation_date) }))
+
+  const careGaps = crops
+    .filter((row) => {
+      const id = text(row.id)
+      return Boolean(id && !caredCropIds.has(id))
+    })
+    .slice(0, 6)
+    .map((row) => ({ crop: text(row.crop_name) ?? "Crop", variety: text(row.variety) }))
+
+  return { overdueTasks, harvests, nursery: nurseryRows, health: healthRows, careGaps }
 }
 
 export async function POST(request: Request) {
   const supabase = await createClient()
   const { data: authData } = await supabase.auth.getUser()
-  if (!authData.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  if (!authData.user) return Response.json({ error: "Unauthorized" }, { status: 401 })
 
   const body = await request.json().catch(() => null) as { question?: unknown } | null
   const question = typeof body?.question === "string" ? body.question.trim().slice(0, MAX_QUESTION_LENGTH) : ""
-  if (!question) return NextResponse.json({ error: "Question is required" }, { status: 400 })
+  if (!question) return Response.json({ error: "Question is required" }, { status: 400 })
 
   const apiKey = getOpenAIApiKey()
-  if (!apiKey) return NextResponse.json({ error: "Orchard AI is not configured: OPENAI_API_KEY is missing" }, { status: 503 })
+  if (!apiKey) return Response.json({ error: "Orchard AI is not configured: OPENAI_API_KEY is missing" }, { status: 503 })
 
   const sources = await Promise.all([
     supabase.from("orchard_game_plans").select("id,name,season,start_date,end_date,status,objective").limit(50),
@@ -51,12 +105,13 @@ export async function POST(request: Request) {
   const sourceCounts: Record<string, number> = {}
   for (let index = 0; index < sources.length; index += 1) {
     const result = sources[index]
-    if (result.error) return NextResponse.json({ error: `Could not read ${sourceNames[index]}` }, { status: 500 })
+    if (result.error) return Response.json({ error: `Could not read ${sourceNames[index]}` }, { status: 500 })
     const rows = result.data ?? []
     snapshot[sourceNames[index]] = rows
     sourceCounts[sourceNames[index]] = rows.length
   }
 
+  const visualContext = buildVisualContext(snapshot)
   const instructions = `You are the Orchard operations assistant inside Blackswan Facility Core.
 Use ONLY the authorized ORCHARD_SNAPSHOT supplied in the user input. Never invent rows, weather, agronomy facts, prices, yields, tasks, dates, or actions that are not present.
 
@@ -67,35 +122,90 @@ When evidence is insufficient, say exactly what is missing.
 Do not claim that an action was executed. Action proposals are handled by the separate approval workflow.
 Do not recommend pesticides, chemicals, dosages, or other safety-sensitive treatment instructions; instead surface the recorded health context and recommend review by the responsible operator/agronomist.
 Use concise operational English unless the user's question is Spanish, then answer in Spanish.
+Prefer a clear answer first, then short bullets when useful. Avoid long preambles.
 For factual claims, append one or more dataset labels in square brackets, such as [harvests], [crops], [tasks].
 Distinguish recorded facts from inferences. Label inferred conclusions as "Inference" or "Inferencia".`
 
-  try {
-    const openaiResponse = await fetch("https://api.openai.com/v1/responses", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: MODEL,
-        instructions,
-        input: `QUESTION:\n${question}\n\nORCHARD_SNAPSHOT:\n${JSON.stringify(snapshot)}`,
-        reasoning: { effort: "medium" },
-        max_output_tokens: 1800,
-      }),
-    })
-    const payload = await openaiResponse.json().catch(() => ({}))
-    if (!openaiResponse.ok) {
-      const errorMessage = typeof (payload as { error?: { message?: unknown } }).error?.message === "string" ? (payload as { error: { message: string } }).error.message : `OpenAI request failed (${openaiResponse.status})`
-      await supabase.from("orchard_ai_queries").insert({ question, model: MODEL, prompt_version: PROMPT_VERSION, source_counts: sourceCounts, status: "failed", error_message: errorMessage })
-      return NextResponse.json({ error: "Orchard AI could not answer right now" }, { status: 502 })
-    }
+  const openaiResponse = await fetch("https://api.openai.com/v1/responses", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      model: MODEL,
+      instructions,
+      input: `QUESTION:\n${question}\n\nORCHARD_SNAPSHOT:\n${JSON.stringify(snapshot)}`,
+      reasoning: { effort: "medium" },
+      max_output_tokens: 1800,
+      stream: true,
+    }),
+  })
 
-    const answer = extractOutputText(payload)
-    if (!answer) return NextResponse.json({ error: "Orchard AI returned an empty answer" }, { status: 502 })
-    await supabase.from("orchard_ai_queries").insert({ question, answer, model: MODEL, prompt_version: PROMPT_VERSION, source_counts: sourceCounts, status: "completed" })
-    return NextResponse.json({ answer, model: MODEL, sourceCounts })
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : "Unknown error"
+  if (!openaiResponse.ok || !openaiResponse.body) {
+    const payload = await openaiResponse.json().catch(() => ({}))
+    const errorMessage = typeof (payload as { error?: { message?: unknown } }).error?.message === "string" ? (payload as { error: { message: string } }).error.message : `OpenAI request failed (${openaiResponse.status})`
     await supabase.from("orchard_ai_queries").insert({ question, model: MODEL, prompt_version: PROMPT_VERSION, source_counts: sourceCounts, status: "failed", error_message: errorMessage })
-    return NextResponse.json({ error: "Orchard AI could not answer right now" }, { status: 502 })
+    return Response.json({ error: "Orchard AI could not answer right now" }, { status: 502 })
   }
+
+  const encoder = new TextEncoder()
+  const decoder = new TextDecoder()
+  const upstream = openaiResponse.body.getReader()
+  let answer = ""
+  let buffer = ""
+
+  const stream = new ReadableStream({
+    async start(controller) {
+      const send = (event: Record<string, unknown>) => controller.enqueue(encoder.encode(`${JSON.stringify(event)}\n`))
+      try {
+        send({ type: "meta", model: MODEL, sourceCounts, visualContext })
+        while (true) {
+          const { done, value } = await upstream.read()
+          if (done) break
+          buffer += decoder.decode(value, { stream: true })
+          const blocks = buffer.split("\n\n")
+          buffer = blocks.pop() ?? ""
+          for (const block of blocks) {
+            const dataLine = block.split("\n").find((line) => line.startsWith("data:"))
+            if (!dataLine) continue
+            const raw = dataLine.slice(5).trim()
+            if (!raw || raw === "[DONE]") continue
+            try {
+              const event = JSON.parse(raw) as { type?: string; delta?: string; error?: { message?: string } }
+              if (event.type === "response.output_text.delta" && typeof event.delta === "string") {
+                answer += event.delta
+                send({ type: "delta", delta: event.delta })
+              } else if (event.type === "error") {
+                throw new Error(event.error?.message || "OpenAI streaming error")
+              }
+            } catch (parseError) {
+              if (parseError instanceof SyntaxError) continue
+              throw parseError
+            }
+          }
+        }
+
+        if (!answer.trim()) throw new Error("Orchard AI returned an empty answer")
+        await supabase.from("orchard_ai_queries").insert({ question, answer, model: MODEL, prompt_version: PROMPT_VERSION, source_counts: sourceCounts, status: "completed" })
+        send({ type: "done" })
+        controller.close()
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : "Unknown error"
+        await supabase.from("orchard_ai_queries").insert({ question, model: MODEL, prompt_version: PROMPT_VERSION, source_counts: sourceCounts, status: "failed", error_message: errorMessage })
+        send({ type: "error", error: "Orchard AI could not answer right now" })
+        controller.close()
+      } finally {
+        upstream.releaseLock()
+      }
+    },
+    cancel() {
+      void upstream.cancel()
+    },
+  })
+
+  return new Response(stream, {
+    headers: {
+      "Content-Type": "application/x-ndjson; charset=utf-8",
+      "Cache-Control": "no-cache, no-transform",
+      "X-Accel-Buffering": "no",
+    },
+  })
 }
