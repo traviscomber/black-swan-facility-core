@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { getOpenAIApiKey, ORCHARD_AI_MODEL, orchardSkillsPrompt } from "@/lib/orchard-ai/config"
+import { orchardAiScopeLabel, resolveOrchardAiGamePlanScope, scopeOrchardAiSnapshot } from "@/lib/orchard-ai/game-plan-scope"
 
 const MODEL = ORCHARD_AI_MODEL
-const PROMPT_VERSION = "orchard-actions-v5-operations"
+const PROMPT_VERSION = "orchard-actions-v6-game-plan-scope"
 const MAX_INTENT_LENGTH = 2000
 const MAX_HISTORY_TURNS = 8
 const MAX_HISTORY_TEXT = 4000
@@ -83,7 +84,6 @@ function extractOutputText(payload: unknown) {
   if (typeof response.output_text === "string") return response.output_text
   return (response.output ?? []).flatMap((item) => item.content ?? []).filter((item) => item.type === "output_text" && typeof item.text === "string").map((item) => item.text as string).join("\n")
 }
-
 function clean(value: string | null) { return value?.trim() || null }
 function isIsoDate(value: string | null) { return value == null || /^\d{4}-\d{2}-\d{2}$/.test(value) }
 function cleanHistory(value: unknown): HistoryTurn[] {
@@ -97,6 +97,11 @@ function cleanHistory(value: unknown): HistoryTurn[] {
     return question && answer ? [{ question, answer }] : []
   })
 }
+function gamePlanFromReferer(request: Request) {
+  const referer = request.headers.get("referer")
+  if (!referer) return null
+  try { return new URL(referer).searchParams.get("game_plan") } catch { return null }
+}
 
 function validateProposal(
   proposal: ProposalShape,
@@ -104,7 +109,6 @@ function validateProposal(
 ) {
   if (proposal.action_type === "none") return null
   if (!proposal.summary.trim()) return "Proposal summary is required"
-
   if (proposal.action_type === "create_task") {
     if (!clean(proposal.title)) return "Task title is required"
     if (proposal.priority && !["baja", "media", "alta", "urgente"].includes(proposal.priority)) return "Invalid task priority"
@@ -192,9 +196,10 @@ export async function POST(request: Request) {
   const { data: authData } = await supabase.auth.getUser()
   if (!authData.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
-  const body = await request.json().catch(() => null) as { intent?: unknown; history?: unknown } | null
+  const body = await request.json().catch(() => null) as { intent?: unknown; history?: unknown; game_plan_id?: unknown } | null
   const intent = typeof body?.intent === "string" ? body.intent.trim().slice(0, MAX_INTENT_LENGTH) : ""
   const history = cleanHistory(body?.history)
+  const requestedGamePlanId = typeof body?.game_plan_id === "string" && body.game_plan_id.trim() ? body.game_plan_id.trim() : gamePlanFromReferer(request)
   if (!intent) return NextResponse.json({ error: "Intent is required" }, { status: 400 })
 
   const apiKey = getOpenAIApiKey()
@@ -207,7 +212,7 @@ export async function POST(request: Request) {
     supabase.from("orchard_plots").select("id,name,location_id,status,size_sqm").limit(100),
     supabase.from("orchard_beds").select("id,plot_id,name,code,status,area_sqm,length_m,width_m").eq("status", "active").limit(250),
     supabase.from("orchard_bed_allocations").select("id,bed_id,crop_succession_id,planned_start_date,planned_end_date,allocated_area_sqm,planned_plants").limit(500),
-    supabase.from("tasks").select("id,title,priority,status,due_date,location_id,estimated_minutes").eq("operational_area", "huerto_vinedo").limit(150),
+    supabase.from("tasks").select("id,title,priority,status,due_date,location_id,estimated_minutes,source_type,source_id").eq("operational_area", "huerto_vinedo").limit(150),
     supabase.from("orchard_succession_lifecycle").select("crop_succession_id,effective_status,planned_sow_date,planned_transplant_date,planned_first_harvest_date").limit(300),
     supabase.from("orchard_crops").select("id,plot_id,crop_name,variety,status,crop_succession_id,expected_harvest_date,yield_unit").limit(300),
     supabase.from("orchard_sales_channels").select("id,name,status,default_price_per_unit,default_unit,currency").eq("status", "active").limit(100),
@@ -219,12 +224,30 @@ export async function POST(request: Request) {
   const readError = plansResult.error ?? cyclesResult.error ?? successionsResult.error ?? plotsResult.error ?? bedsResult.error ?? allocationsResult.error ?? tasksResult.error ?? lifecycleResult.error ?? cropsResult.error ?? channelsResult.error ?? careResult.error ?? healthResult.error ?? harvestResult.error ?? commitmentsResult.error
   if (readError) return NextResponse.json({ error: "Could not read authorized Orchard context" }, { status: 500 })
 
-  const snapshot = { game_plans: plansResult.data ?? [], crop_cycles: cyclesResult.data ?? [], successions: successionsResult.data ?? [], plots: plotsResult.data ?? [], beds: bedsResult.data ?? [], allocations: allocationsResult.data ?? [], tasks: tasksResult.data ?? [], lifecycle: lifecycleResult.data ?? [], crops: cropsResult.data ?? [], sales_channels: channelsResult.data ?? [], care_logs: careResult.data ?? [], health_logs: healthResult.data ?? [], harvests: harvestResult.data ?? [], sales_commitments: commitmentsResult.data ?? [] }
+  const unscopedSnapshot: Record<string, unknown[]> = {
+    game_plans: plansResult.data ?? [], crop_cycles: cyclesResult.data ?? [], successions: successionsResult.data ?? [], plots: plotsResult.data ?? [], beds: bedsResult.data ?? [], allocations: allocationsResult.data ?? [], tasks: tasksResult.data ?? [], lifecycle: lifecycleResult.data ?? [], crops: cropsResult.data ?? [], sales_channels: channelsResult.data ?? [], care_logs: careResult.data ?? [], health_logs: healthResult.data ?? [], harvests: harvestResult.data ?? [], sales_commitments: commitmentsResult.data ?? [],
+  }
+  const scope = resolveOrchardAiGamePlanScope(unscopedSnapshot, requestedGamePlanId)
+  if (requestedGamePlanId && !scope) return NextResponse.json({ error: "Requested Game Plan is not accessible" }, { status: 400 })
+  const snapshot = scopeOrchardAiSnapshot(unscopedSnapshot, scope)
+  // Beds, plots and active sales channels are shared operational resources, not owned by one Game Plan.
+  snapshot.plots = unscopedSnapshot.plots
+  snapshot.beds = unscopedSnapshot.beds
+  snapshot.sales_channels = unscopedSnapshot.sales_channels
   const sourceCounts = Object.fromEntries(Object.entries(snapshot).map(([key, rows]) => [key, rows.length]))
+
+  const scopedPlans = snapshot.game_plans as Array<{ id: string }>
+  const scopedCycles = snapshot.crop_cycles as Array<{ id: string }>
+  const scopedSuccessions = snapshot.successions as Array<{ id: string }>
+  const scopedCrops = snapshot.crops as Array<{ id: string }>
   const ids = {
-    plans: new Set((plansResult.data ?? []).map((item) => item.id)), locations: new Set((plotsResult.data ?? []).map((item) => item.location_id).filter((id): id is string => typeof id === "string")),
-    cycles: new Set((cyclesResult.data ?? []).map((item) => item.id)), successions: new Set((successionsResult.data ?? []).map((item) => item.id)), beds: new Set((bedsResult.data ?? []).map((item) => item.id)),
-    crops: new Set((cropsResult.data ?? []).map((item) => item.id)), salesChannels: new Set((channelsResult.data ?? []).map((item) => item.id)),
+    plans: new Set(scopedPlans.map((item) => item.id)),
+    locations: new Set((plotsResult.data ?? []).map((item) => item.location_id).filter((locationId): locationId is string => typeof locationId === "string")),
+    cycles: new Set(scopedCycles.map((item) => item.id)),
+    successions: new Set(scopedSuccessions.map((item) => item.id)),
+    beds: new Set((bedsResult.data ?? []).map((item) => item.id)),
+    crops: new Set(scopedCrops.map((item) => item.id)),
+    salesChannels: new Set((channelsResult.data ?? []).map((item) => item.id)),
   }
 
   const nullableString = { anyOf: [{ type: "string" }, { type: "null" }] }
@@ -242,8 +265,11 @@ export async function POST(request: Request) {
     },
   }
 
+  const scopeLabel = orchardAiScopeLabel(scope)
   const instructions = `You propose ONE safe Orchard action for human approval inside Blackswan Facility Core.
 Use only ORCHARD_CONTEXT for factual claims and exact IDs. CONVERSATION_HISTORY is only for resolving references and intent. Never claim execution.
+ACTIVE_GAME_PLAN_SCOPE: ${scopeLabel}.
+${scope ? "All plan-owned entities in ORCHARD_CONTEXT are restricted to this Game Plan. Never select a cycle, succession, crop, harvest, care log, health observation or commitment from another Game Plan. Shared beds, plots and sales channels may be used as operational resources." : "No Game Plan filter is active; all authorized Orchard records may be considered."}
 
 Configured proposal skills:\n${orchardSkillsPrompt("proposal")}
 
@@ -252,16 +278,17 @@ Choose none for edit/delete/destructive actions, treatment/pesticide/chemical/do
 Health is observation-only: never populate treatment fields because this action does not support them.
 Care must record a user-described completed or planned operational activity; do not invent weather, temperature, humidity, hours, or observations.
 Harvest requires an exact crop_id, date, positive quantity, and unit. Do not infer quantities. A sales channel is optional and must be exact when used.
-Commercial commitments require an exact active sales_channel_id, explicit delivery dates, quantity and unit. Use crop_succession_id only when the user clearly refers to one current succession.
+Commercial commitments require an exact active sales_channel_id, explicit delivery dates, quantity and unit. ${scope ? "Because a Game Plan scope is active, crop_succession_id is required and must belong to that Game Plan." : "Use crop_succession_id only when the user clearly refers to one current succession."}
 For create_crop_cycle, game_plan_id must match game_plans. For create_succession, crop_cycle_id must match crop_cycles. For allocate_bed, bed_id must be active and crop_succession_id must match successions. For create_task, location_id must be null or match plots.
 Dates use YYYY-MM-DD. Populate irrelevant fields as null.`
   const conversation = history.length ? history.map((turn, index) => `TURN ${index + 1}\nUSER: ${turn.question}\nASSISTANT: ${turn.answer}`).join("\n\n") : "No prior turns."
 
   try {
-    const response = await fetch("https://api.openai.com/v1/responses", { method: "POST", headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" }, body: JSON.stringify({ model: MODEL, instructions, input: `CONVERSATION_HISTORY:\n${conversation}\n\nUSER_INTENT:\n${intent}\n\nORCHARD_CONTEXT:\n${JSON.stringify(snapshot)}`, reasoning: { effort: "medium" }, text: { format: { type: "json_schema", name: "orchard_action_proposal", schema, strict: true } }, max_output_tokens: 2200 }) })
+    const response = await fetch("https://api.openai.com/v1/responses", { method: "POST", headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" }, body: JSON.stringify({ model: MODEL, instructions, input: `CONVERSATION_HISTORY:\n${conversation}\n\nUSER_INTENT:\n${intent}\n\nACTIVE_GAME_PLAN_SCOPE:\n${scopeLabel}\n\nORCHARD_CONTEXT:\n${JSON.stringify(snapshot)}`, reasoning: { effort: "medium" }, text: { format: { type: "json_schema", name: "orchard_action_proposal", schema, strict: true } }, max_output_tokens: 2200 }) })
     const raw = await response.json().catch(() => ({}))
     if (!response.ok) return NextResponse.json({ error: "Orchard AI could not create a proposal" }, { status: 502 })
     const proposal = JSON.parse(extractOutputText(raw)) as ProposalShape
+    if (scope && proposal.action_type === "create_sales_commitment" && !proposal.crop_succession_id) return NextResponse.json({ error: "A scoped sales commitment must reference a succession in the active Game Plan" }, { status: 422 })
     const validationError = validateProposal(proposal, ids)
     if (validationError) return NextResponse.json({ error: validationError }, { status: 422 })
     if (proposal.action_type === "none") return NextResponse.json({ proposal: null, explanation: proposal.summary || proposal.rationale || "No safe action proposed.", model: MODEL, sourceCounts })
@@ -275,11 +302,14 @@ Dates use YYYY-MM-DD. Populate irrelevant fields as null.`
     else if (proposal.action_type === "log_care") payload = { crop_id: proposal.crop_id, activity_date: proposal.activity_date, activity_type: clean(proposal.activity_type), hours_spent: proposal.hours_spent, description: clean(proposal.description), weather_conditions: clean(proposal.weather_conditions), temperature_c: proposal.temperature_c, humidity_percent: proposal.humidity_percent, observations: clean(proposal.observations) }
     else if (proposal.action_type === "record_health_observation") payload = { crop_id: proposal.crop_id, observation_date: proposal.observation_date, pest_type: clean(proposal.pest_type), disease_name: clean(proposal.disease_name), severity_level: proposal.severity_level, affected_percentage: proposal.affected_percentage, notes: clean(proposal.notes) }
     else if (proposal.action_type === "record_harvest") payload = { crop_id: proposal.crop_id, crop_succession_id: proposal.crop_succession_id, harvest_date: proposal.harvest_date, quantity_harvested: proposal.quantity_harvested, harvest_unit: clean(proposal.harvest_unit), quality_rating: proposal.quality_rating, storage_method: clean(proposal.storage_method), storage_location: clean(proposal.storage_location), shelf_life_days: proposal.shelf_life_days, market_value_per_unit: proposal.market_value_per_unit, sales_channel_id: proposal.sales_channel_id, notes: clean(proposal.notes) }
-    else payload = { sales_channel_id: proposal.sales_channel_id, crop_succession_id: proposal.crop_succession_id, crop_name: clean(proposal.crop_name), variety: clean(proposal.variety), delivery_start: proposal.delivery_start, delivery_end: proposal.delivery_end, quantity: proposal.quantity, unit: clean(proposal.unit), price_per_unit: proposal.price_per_unit, currency: clean(proposal.currency) || "CLP", customer_reference: clean(proposal.customer_reference), notes: clean(proposal.notes) }
+    else {
+      const channel = (channelsResult.data ?? []).find((item) => item.id === proposal.sales_channel_id)
+      payload = { sales_channel_id: proposal.sales_channel_id, crop_succession_id: proposal.crop_succession_id, crop_name: clean(proposal.crop_name), variety: clean(proposal.variety), delivery_start: proposal.delivery_start, delivery_end: proposal.delivery_end, quantity: proposal.quantity, unit: clean(proposal.unit), price_per_unit: proposal.price_per_unit, currency: typeof channel?.currency === "string" ? channel.currency.trim().toUpperCase() : null, customer_reference: clean(proposal.customer_reference), notes: clean(proposal.notes) }
+    }
 
     const inserted = await supabase.from("orchard_ai_action_proposals").insert({ intent, action_type: proposal.action_type, summary: proposal.summary.trim(), rationale: clean(proposal.rationale), payload, model: MODEL, prompt_version: PROMPT_VERSION, source_counts: sourceCounts }).select("id,action_type,summary,rationale,payload,status,created_at").single()
     if (inserted.error) return NextResponse.json({ error: "Could not persist action proposal" }, { status: 500 })
-    return NextResponse.json({ proposal: inserted.data, model: MODEL, sourceCounts })
+    return NextResponse.json({ proposal: inserted.data, model: MODEL, sourceCounts, gamePlanScope: scope ? { id: scope.gamePlanId, label: scopeLabel } : null })
   } catch {
     return NextResponse.json({ error: "Orchard AI could not create a valid proposal" }, { status: 502 })
   }
