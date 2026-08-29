@@ -18,7 +18,7 @@ const MAX_HISTORY_TURNS = 8
 const copy = {
   en: {
     title: "Orchard AI", description: "A conversational operations copilot grounded in the Orchard records you are authorized to access.",
-    placeholder: "Ask about priorities, crops, nursery, harvests, workload, reports, or request a controlled action…", send: "Send", propose: "Propose action",
+    placeholder: "Ask about priorities, crops, nursery, harvests, workload, reports, or request a controlled action…", send: "Send", propose: "Propose action", actOnAnswer: "Act on this",
     grounded: "Grounded in authorized Orchard data", approval: "Writes require your approval", safety: "Safety-sensitive treatment instructions stay out of scope",
     answer: "Orchard AI", sources: "Data used", error: "Orchard AI could not complete the request.", proposal: "Action proposal",
     noChanges: "Nothing has been changed yet. Review the proposal before executing it.", approve: "Approve & execute", reject: "Reject", executed: "Executed", rejected: "Rejected",
@@ -30,7 +30,7 @@ const copy = {
   },
   es: {
     title: "IA de Orchard", description: "Un copiloto operacional conversacional basado en los registros de Orchard que estás autorizado a consultar.",
-    placeholder: "Pregunta por prioridades, cultivos, vivero, cosechas, reportes, carga de trabajo o solicita una acción controlada…", send: "Enviar", propose: "Proponer acción",
+    placeholder: "Pregunta por prioridades, cultivos, vivero, cosechas, reportes, carga de trabajo o solicita una acción controlada…", send: "Enviar", propose: "Proponer acción", actOnAnswer: "Actuar sobre esto",
     grounded: "Basado en datos autorizados de Orchard", approval: "Las escrituras requieren tu aprobación", safety: "Las instrucciones sensibles de tratamiento quedan fuera de alcance",
     answer: "IA de Orchard", sources: "Datos usados", error: "La IA de Orchard no pudo completar la solicitud.", proposal: "Propuesta de acción",
     noChanges: "Aún no se ha cambiado nada. Revisa la propuesta antes de ejecutarla.", approve: "Aprobar y ejecutar", reject: "Rechazar", executed: "Ejecutado", rejected: "Rechazado",
@@ -113,6 +113,12 @@ export default function OrchardAssistantPage() {
 
   function resetProposal() { setProposal(null); setProposalMessage(""); setExecution(null); setSourceCounts({}) }
 
+  function historyForSession(session: ChatSession | undefined, throughTurnId?: string): HistoryTurn[] {
+    if (!session) return []
+    const source = throughTurnId ? session.turns.slice(0, Math.max(0, session.turns.findIndex((turn) => turn.id === throughTurnId) + 1)) : session.turns
+    return source.filter((turn) => turn.question.trim() && turn.answer.trim()).slice(-MAX_HISTORY_TURNS).map((turn) => ({ question: turn.question, answer: turn.answer }))
+  }
+
   function startNewChat() {
     const session = createSession()
     setSessions((current) => [session, ...current].slice(0, 12))
@@ -157,11 +163,7 @@ export default function OrchardAssistantPage() {
     const sessionAtSubmit = sessions.find((item) => item.id === sessionId)
     if (!submittedQuestion || loading || proposalLoading || !sessionId || !sessionAtSubmit) return
 
-    const history: HistoryTurn[] = sessionAtSubmit.turns
-      .filter((turn) => turn.question.trim() && turn.answer.trim())
-      .slice(-MAX_HISTORY_TURNS)
-      .map((turn) => ({ question: turn.question, answer: turn.answer }))
-
+    const history = historyForSession(sessionAtSubmit)
     const turnId = `turn-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`
     const now = new Date().toISOString()
     setLoading(true)
@@ -231,14 +233,17 @@ export default function OrchardAssistantPage() {
   async function ask(event: FormEvent) { event.preventDefault(); await submitQuestion() }
   function onComposerKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); void submitQuestion() } }
 
-  async function proposeAction() {
-    const submittedQuestion = question.trim()
-    if (!submittedQuestion || loading || proposalLoading) return
+  async function requestProposal(intent: string, history: HistoryTurn[]) {
+    if (!intent.trim() || loading || proposalLoading) return
     setProposalLoading(true)
     setError("")
     resetProposal()
     try {
-      const response = await fetch("/api/orchard/actions/propose", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ intent: submittedQuestion }) })
+      const response = await fetch("/api/orchard/actions/propose", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ intent: intent.trim(), history }),
+      })
       const payload = await response.json() as ProposalResponse
       if (!response.ok) throw new Error(payload.error || text.error)
       setProposal(payload.proposal ?? null)
@@ -247,6 +252,20 @@ export default function OrchardAssistantPage() {
       setModel(payload.model ?? "")
     } catch (cause) { setError(cause instanceof Error ? cause.message : text.error) }
     finally { setProposalLoading(false) }
+  }
+
+  async function proposeAction() {
+    const session = sessions.find((item) => item.id === activeSessionId)
+    await requestProposal(question, historyForSession(session))
+  }
+
+  async function proposeFromTurn(turn: ChatTurn) {
+    const session = sessions.find((item) => item.id === activeSessionId)
+    if (!session || !turn.answer.trim()) return
+    const intent = language === "es"
+      ? `Propón una acción operacional segura basada en esta conversación y especialmente en la respuesta a: ${turn.question}`
+      : `Propose one safe operational action based on this conversation, especially the answer to: ${turn.question}`
+    await requestProposal(intent, historyForSession(session, turn.id))
   }
 
   async function decide(decision: "execute" | "reject") {
@@ -289,7 +308,7 @@ export default function OrchardAssistantPage() {
           <CardHeader className="border-b py-4"><div className="flex items-center justify-between gap-3"><div className="flex items-center gap-3"><Avatar role="assistant" /><div><CardTitle className="text-base">{text.answer}</CardTitle><CardDescription className="line-clamp-1">{activeSession?.title || text.grounded}</CardDescription></div></div>{turns.length > 0 && <Badge variant="secondary">{turns.length}</Badge>}</div></CardHeader>
           <CardContent className="flex flex-1 flex-col p-0">
             <div ref={scrollRef} className="max-h-[650px] flex-1 space-y-8 overflow-y-auto px-4 py-6 sm:px-6 lg:px-8">
-              {turns.length === 0 && !activeStreaming ? <div className="flex min-h-[390px] items-center justify-center"><div className="max-w-xl text-center"><div className="mx-auto flex h-16 w-16 items-center justify-center border bg-primary/5"><Bot className="h-8 w-8 text-primary" /></div><h2 className="mt-5 text-xl font-semibold">{text.ready}</h2><p className="mx-auto mt-2 max-w-lg text-sm leading-6 text-muted-foreground">{text.readyHelp}</p><div className="mt-5 flex flex-wrap justify-center gap-2">{text.examples.slice(0, 3).map((example) => <button key={example} onClick={() => setQuestion(example)} className="border bg-muted/10 px-3 py-2 text-xs transition-colors hover:bg-muted/30">{example}</button>)}</div></div></div> : turns.map((turn) => <ChatTurnView key={turn.id} turn={turn} sourcesLabel={text.sources} contextLabel={text.operationalContext} labels={text} streaming={activeStreaming && turn.id === streamingTurnId} />)}
+              {turns.length === 0 && !activeStreaming ? <div className="flex min-h-[390px] items-center justify-center"><div className="max-w-xl text-center"><div className="mx-auto flex h-16 w-16 items-center justify-center border bg-primary/5"><Bot className="h-8 w-8 text-primary" /></div><h2 className="mt-5 text-xl font-semibold">{text.ready}</h2><p className="mx-auto mt-2 max-w-lg text-sm leading-6 text-muted-foreground">{text.readyHelp}</p><div className="mt-5 flex flex-wrap justify-center gap-2">{text.examples.slice(0, 3).map((example) => <button key={example} onClick={() => setQuestion(example)} className="border bg-muted/10 px-3 py-2 text-xs transition-colors hover:bg-muted/30">{example}</button>)}</div></div></div> : turns.map((turn) => <ChatTurnView key={turn.id} turn={turn} sourcesLabel={text.sources} contextLabel={text.operationalContext} labels={text} streaming={activeStreaming && turn.id === streamingTurnId} actionLoading={proposalLoading} onPropose={() => void proposeFromTurn(turn)} />)}
               {error && <div className="ml-11 border border-destructive/40 bg-destructive/5 p-4 text-sm text-destructive">{error}</div>}
             </div>
             <div className="border-t bg-card/80 p-3 sm:p-4"><form onSubmit={ask} className="border bg-background p-2 focus-within:ring-1 focus-within:ring-ring"><Textarea rows={3} value={question} onKeyDown={onComposerKeyDown} onChange={(event) => setQuestion(event.target.value)} placeholder={text.placeholder} maxLength={2000} className="min-h-[78px] resize-none border-0 bg-transparent shadow-none focus-visible:ring-0" /><div className="flex flex-wrap items-center justify-between gap-2 border-t px-1 pt-2"><span className="px-2 text-[11px] text-muted-foreground">{text.enterHint}</span><div className="flex gap-2"><Button type="button" size="sm" variant="outline" disabled={loading || proposalLoading || !question.trim()} onClick={() => void proposeAction()}><Sparkles className="mr-2 h-4 w-4" />{proposalLoading ? "…" : text.propose}</Button><Button type="submit" size="sm" disabled={loading || proposalLoading || !question.trim()}><Send className="mr-2 h-4 w-4" />{activeStreaming ? "…" : text.send}</Button></div></div></form></div>
@@ -304,10 +323,10 @@ export default function OrchardAssistantPage() {
   </AppLayout>
 }
 
-function ChatTurnView({ turn, sourcesLabel, contextLabel, labels, streaming }: { turn: ChatTurn; sourcesLabel: string; contextLabel: string; labels: typeof copy.en | typeof copy.es; streaming: boolean }) {
+function ChatTurnView({ turn, sourcesLabel, contextLabel, labels, streaming, actionLoading, onPropose }: { turn: ChatTurn; sourcesLabel: string; contextLabel: string; labels: typeof copy.en | typeof copy.es; streaming: boolean; actionLoading: boolean; onPropose: () => void }) {
   return <div className="space-y-4">
     <div className="flex justify-end gap-3"><div className="max-w-[82%] bg-primary px-4 py-3 text-sm leading-6 text-primary-foreground">{turn.question}</div><Avatar role="user" /></div>
-    <div className="flex gap-3"><Avatar role="assistant" /><div className="min-w-0 max-w-[94%] flex-1"><div className="border bg-muted/15 px-4 py-4">{turn.answer ? <RichAnswer text={turn.answer} /> : streaming ? <StreamingDots /> : null}{streaming && turn.answer && <span className="ml-1 inline-block h-4 w-1 animate-pulse bg-primary align-middle" />}</div>{turn.visualContext && turn.answer && <VisualContextCards context={turn.visualContext} answer={turn.answer} label={contextLabel} labels={labels} />}<div className="mt-3 flex flex-wrap items-center gap-2">{streaming && <Badge variant="secondary" className="gap-1.5"><span className="h-1.5 w-1.5 animate-pulse rounded-full bg-primary" />{labels.live}</Badge>}{turn.model && <Badge variant="outline" className="font-normal">{turn.model}</Badge>}<span className="text-[11px] text-muted-foreground">{new Date(turn.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span></div>{!streaming && Object.keys(turn.sourceCounts).some((key) => turn.sourceCounts[key] > 0) && <div className="mt-3"><SourceCounts label={sourcesLabel} counts={turn.sourceCounts} /></div>}</div></div>
+    <div className="flex gap-3"><Avatar role="assistant" /><div className="min-w-0 max-w-[94%] flex-1"><div className="border bg-muted/15 px-4 py-4">{turn.answer ? <RichAnswer text={turn.answer} /> : streaming ? <StreamingDots /> : null}{streaming && turn.answer && <span className="ml-1 inline-block h-4 w-1 animate-pulse bg-primary align-middle" />}</div>{turn.visualContext && turn.answer && <VisualContextCards context={turn.visualContext} answer={turn.answer} label={contextLabel} labels={labels} />}<div className="mt-3 flex flex-wrap items-center gap-2">{streaming && <Badge variant="secondary" className="gap-1.5"><span className="h-1.5 w-1.5 animate-pulse rounded-full bg-primary" />{labels.live}</Badge>}{turn.model && <Badge variant="outline" className="font-normal">{turn.model}</Badge>}<span className="text-[11px] text-muted-foreground">{new Date(turn.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>{!streaming && turn.answer && <Button type="button" size="sm" variant="ghost" className="ml-auto h-8 min-h-8 px-2 text-xs" disabled={actionLoading} onClick={onPropose}><Sparkles className="mr-1.5 h-3.5 w-3.5" />{actionLoading ? "…" : labels.actOnAnswer}</Button>}</div>{!streaming && Object.keys(turn.sourceCounts).some((key) => turn.sourceCounts[key] > 0) && <div className="mt-3"><SourceCounts label={sourcesLabel} counts={turn.sourceCounts} /></div>}</div></div>
   </div>
 }
 
