@@ -22,6 +22,22 @@ type Allocation = { id: string; bed_id: string; crop_succession_id: string; plan
 type Succession = { id: string; crop_cycle_id: string; sequence_no: number; planned_sow_date: string; planned_transplant_date: string | null; planned_first_harvest_date: string | null; planned_last_harvest_date: string | null; planned_plants: number | null; planned_area_sqm: number | null; status: string }
 type Cycle = { id: string; crop_name: string; variety: string | null }
 
+const CROP_PHOTOS: Record<string, string> = {
+  tomato: "https://images.unsplash.com/photo-1592841200221-a6898f307baa?auto=format&fit=crop&w=1200&q=92",
+  lettuce: "https://images.unsplash.com/photo-1622206151226-18ca2c9ab4a1?auto=format&fit=crop&w=1200&q=92",
+  onion: "https://images.unsplash.com/photo-1508747703725-719777637510?auto=format&fit=crop&w=1200&q=92",
+  arugula: "https://images.unsplash.com/photo-1506806732259-39c2d0268443?auto=format&fit=crop&w=1200&q=92",
+  radish: "https://images.unsplash.com/photo-1582284540020-8acbe03f4924?auto=format&fit=crop&w=1200&q=92",
+  carrot: "https://images.unsplash.com/photo-1598170845058-32b9d6a5da37?auto=format&fit=crop&w=1200&q=92",
+  basil: "https://images.unsplash.com/photo-1600788886242-5c96aabe3757?auto=format&fit=crop&w=1200&q=92",
+}
+const FALLBACK_CROP_PHOTO = "https://images.unsplash.com/photo-1416879595882-3373a0480b5b?auto=format&fit=crop&w=1200&q=92"
+const PLOT_PHOTOS = [
+  "https://images.unsplash.com/photo-1500937386664-56d1dfef3854?auto=format&fit=crop&w=1600&q=92",
+  "https://images.unsplash.com/photo-1500382017468-9049fed747ef?auto=format&fit=crop&w=1600&q=92",
+  "https://images.unsplash.com/photo-1523348837708-15d4a09cfac2?auto=format&fit=crop&w=1600&q=92",
+]
+
 const copy = {
   en: {
     title: "Crop Map",
@@ -82,6 +98,8 @@ const copy = {
     deletePlot: "Delete this plot and all of its beds?",
     noPlots: "No plots yet. Create the first growing area.",
     noBeds: "No beds in this plot yet.",
+    spatialBoard: "Spatial occupancy board",
+    spatialBoardHelp: "See each growing area as a field block, with live occupancy and rotation context before you assign work.",
   },
   es: {
     title: "Mapa de Cultivos",
@@ -142,6 +160,8 @@ const copy = {
     deletePlot: "¿Eliminar este sector y todas sus camas?",
     noPlots: "Aún no hay sectores. Crea la primera zona de cultivo.",
     noBeds: "Aún no hay camas en este sector.",
+    spatialBoard: "Tablero espacial de ocupación",
+    spatialBoardHelp: "Lee cada zona de cultivo como un bloque de campo, con ocupación y contexto de rotación antes de asignar trabajo.",
   },
 } as const
 
@@ -160,6 +180,11 @@ function mondayOf(value: string) {
 }
 function dateLabel(value: string, locale: string) {
   return new Date(`${value}T12:00:00`).toLocaleDateString(locale, { month: "short", day: "numeric" })
+}
+function cropPhoto(name: string | undefined) {
+  const normalized = (name ?? "").toLowerCase()
+  const match = Object.keys(CROP_PHOTOS).find((key) => normalized.includes(key))
+  return match ? CROP_PHOTOS[match] : FALLBACK_CROP_PHOTO
 }
 
 export default function OrchardCropMapPage() {
@@ -228,6 +253,7 @@ export default function OrchardCropMapPage() {
     const cycle = cycleById.get(item.crop_cycle_id)
     return `${cycle?.crop_name ?? "Crop"}${cycle?.variety ? ` · ${cycle.variety}` : ""} #${item.sequence_no}`
   }
+  const cropNameForSuccession = (item: Succession) => cycleById.get(item.crop_cycle_id)?.crop_name ?? "Crop"
   const cropNameForAllocation = (allocation: Allocation) => {
     const succession = successionById.get(allocation.crop_succession_id)
     const cycle = succession ? cycleById.get(succession.crop_cycle_id) : null
@@ -329,27 +355,70 @@ export default function OrchardCropMapPage() {
           <Metric icon={<CalendarRange className="h-4 w-4" />} label={text.future} value={`${free30}/${activeBeds.length}`} detail={`${free60}/${activeBeds.length} ${text.free60.toLowerCase()}`} />
         </div>
 
-        <Card className={unallocated.length ? "border-amber-500/30" : undefined}>
+        <section className="space-y-3">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">{text.spatialBoard}</p>
+            <p className="mt-1 max-w-3xl text-sm text-muted-foreground">{text.spatialBoardHelp}</p>
+          </div>
+          <div className="grid gap-4 xl:grid-cols-3">
+            {plots.map((plot, plotIndex) => {
+              const plotBeds = beds.filter((bed) => bed.plot_id === plot.id)
+              const occupiedBeds = plotBeds.filter((bed) => isOccupied(bed.id, today)).length
+              return <Card key={plot.id} className="overflow-hidden border-white/10 bg-card/90">
+                <div className="relative h-40 overflow-hidden">
+                  <img src={PLOT_PHOTOS[plotIndex % PLOT_PHOTOS.length]} alt="" className="h-full w-full object-cover [filter:none] [opacity:1] transition-transform duration-500 hover:scale-[1.02]" />
+                  <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(6,9,7,0.08)_0%,rgba(6,9,7,0.84)_100%)]" />
+                  <div className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-3 p-4 text-white">
+                    <div><p className="text-lg font-semibold">{plot.name}</p><p className="text-xs text-white/70">{plot.plot_type}{plot.size_sqm != null ? ` · ${plot.size_sqm} m²` : ""}{plot.irrigation_type ? ` · ${plot.irrigation_type}` : ""}</p></div>
+                    <Badge className="border-white/15 bg-black/30 text-white backdrop-blur-sm">{occupiedBeds}/{plotBeds.length} occupied</Badge>
+                  </div>
+                </div>
+                <CardContent className="grid gap-2 p-3 sm:grid-cols-2">
+                  {plotBeds.length === 0 ? <div className="col-span-full rounded-lg border border-dashed p-4 text-sm text-muted-foreground">{text.noBeds}</div> : plotBeds.map((bed) => {
+                    const current = allocations.find((item) => item.bed_id === bed.id && item.planned_start_date <= today && item.planned_end_date >= today)
+                    const warning = rotationWarning(bed.id)
+                    return <div key={bed.id} onDragOver={(event) => { event.preventDefault(); event.dataTransfer.dropEffect = "move" }} onDrop={(event) => void dropOnBed(event, bed)} className={`relative overflow-hidden rounded-xl border p-3 transition-all ${current ? "border-primary/25 bg-primary/5" : draggingSuccession ? "border-dashed border-primary/50 bg-primary/5" : "bg-muted/10"}`}>
+                      {current && <img src={cropPhoto(cropNameForAllocation(current))} alt="" className="absolute inset-0 h-full w-full object-cover [filter:none] [opacity:1]" />}
+                      {current && <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(8,11,9,0.92)_0%,rgba(8,11,9,0.72)_58%,rgba(8,11,9,0.28)_100%)]" />}
+                      <div className={`relative ${current ? "text-white" : ""}`}>
+                        <div className="flex items-start justify-between gap-2"><div><p className="font-medium">{bed.name}{bed.code ? ` · ${bed.code}` : ""}</p><p className={`text-xs ${current ? "text-white/65" : "text-muted-foreground"}`}>{bedArea(bed).toFixed(1)} m² · {bed.status}</p></div>{warning && <AlertTriangle className="h-4 w-4 text-amber-400" />}</div>
+                        <div className="mt-5"><p className={`text-xs ${current ? "text-white/60" : "text-muted-foreground"}`}>{current ? cropNameForAllocation(current) : draggingSuccession ? text.drop : text.open}</p>{current && <p className="mt-1 text-[11px] text-white/70">{dateLabel(current.planned_start_date, locale)} → {dateLabel(current.planned_end_date, locale)}</p>}</div>
+                      </div>
+                    </div>
+                  })}
+                </CardContent>
+              </Card>
+            })}
+            {plots.length === 0 && <Card><CardContent className="p-6 text-sm text-muted-foreground">{text.noPlots}</CardContent></Card>}
+          </div>
+        </section>
+
+        <Card className={unallocated.length ? "overflow-hidden border-amber-500/30" : undefined}>
           <CardHeader><CardTitle>{text.unallocated}</CardTitle><CardDescription>{text.unallocatedHelp}</CardDescription></CardHeader>
-          <CardContent>{unallocated.length === 0 ? <div className="rounded-lg border border-dashed p-5 text-sm text-muted-foreground">{text.noQueue}</div> : <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">{unallocated.map((item) => { const dates = defaultDates(item); return <div key={item.id} draggable onDragStart={(event) => dragStart(event, item.id)} onDragEnd={() => setDraggingSuccession(null)} className="rounded-xl border p-4 transition-colors hover:bg-muted/20"><div className="flex items-start gap-3"><GripVertical className="mt-0.5 hidden h-5 w-5 text-muted-foreground md:block" /><div className="min-w-0 flex-1"><p className="font-semibold">{successionLabel(item)}</p><p className="mt-1 text-xs text-muted-foreground">{dateLabel(dates.start, locale)} → {dateLabel(dates.end, locale)}</p><div className="mt-2 flex flex-wrap gap-2">{item.planned_area_sqm != null && <Badge variant="outline">{item.planned_area_sqm} m²</Badge>}{item.planned_plants != null && <Badge variant="outline">{item.planned_plants} plants</Badge>}</div></div></div><Button className="mt-3 min-h-11 w-full md:w-auto" variant="outline" onClick={() => prepare(item)}>{text.place}</Button></div>})}</div>}</CardContent>
+          <CardContent>{unallocated.length === 0 ? <div className="rounded-lg border border-dashed p-5 text-sm text-muted-foreground">{text.noQueue}</div> : <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">{unallocated.map((item) => { const dates = defaultDates(item); const cropName = cropNameForSuccession(item); return <div key={item.id} draggable onDragStart={(event) => dragStart(event, item.id)} onDragEnd={() => setDraggingSuccession(null)} className="group relative min-h-48 overflow-hidden rounded-xl border border-white/10 bg-black text-white"><img src={cropPhoto(cropName)} alt="" className="absolute inset-0 h-full w-full object-cover [filter:none] [opacity:1] transition-transform duration-500 group-hover:scale-[1.02]" /><div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(7,10,8,0.94)_0%,rgba(7,10,8,0.74)_55%,rgba(7,10,8,0.18)_100%)]"/><div className="relative flex h-full min-h-48 flex-col justify-between p-4"><div className="flex items-start gap-3"><GripVertical className="mt-0.5 hidden h-5 w-5 text-white/50 md:block" /><div className="min-w-0 flex-1"><p className="text-lg font-semibold">{successionLabel(item)}</p><p className="mt-1 text-xs text-white/65">{dateLabel(dates.start, locale)} → {dateLabel(dates.end, locale)}</p><div className="mt-3 flex flex-wrap gap-2">{item.planned_area_sqm != null && <Badge className="border-white/15 bg-black/25 text-white">{item.planned_area_sqm} m²</Badge>}{item.planned_plants != null && <Badge className="border-white/15 bg-black/25 text-white">{item.planned_plants} plants</Badge>}</div></div></div><Button className="mt-6 w-full border-white/15 bg-white/10 text-white hover:bg-white/15 hover:text-white md:w-auto" variant="outline" onClick={() => prepare(item)}>{text.place}</Button></div></div>})}</div>}</CardContent>
         </Card>
 
         <Card>
           <CardHeader><CardTitle>{text.planner}</CardTitle><CardDescription>{text.plannerHelp}</CardDescription></CardHeader>
           <CardContent className="space-y-5">
             <div className="overflow-x-auto pb-2">
-              <div className="min-w-[980px]">
-                <div className="grid grid-cols-[220px_repeat(12,minmax(58px,1fr))] gap-1 border-b pb-2 text-xs text-muted-foreground"><div>Bed</div>{weeks.map((week) => <div key={week} className="text-center">{dateLabel(week, locale)}</div>)}</div>
+              <div className="min-w-[1040px]">
+                <div className="grid grid-cols-[240px_repeat(12,minmax(62px,1fr))] gap-1 border-b pb-2 text-xs text-muted-foreground"><div>Bed</div>{weeks.map((week) => <div key={week} className="text-center">{dateLabel(week, locale)}</div>)}</div>
                 <div className="divide-y">{activeBeds.map((bed) => {
                   const bedAllocations = allocations.filter((item) => item.bed_id === bed.id)
+                  const current = bedAllocations.find((item) => item.planned_start_date <= today && item.planned_end_date >= today)
                   const recent = historyForBed(bed.id)
                   const warning = rotationWarning(bed.id)
-                  return <div key={bed.id} className="grid grid-cols-[220px_repeat(12,minmax(58px,1fr))] gap-1 py-2" onDragOver={(event) => { event.preventDefault(); event.dataTransfer.dropEffect = "move" }} onDrop={(event) => void dropOnBed(event, bed)}>
-                    <div className="pr-3"><div className="flex items-center gap-2"><p className="font-medium">{plotById.get(bed.plot_id)?.name ? `${plotById.get(bed.plot_id)?.name} · ` : ""}{bed.name}</p>{warning && <AlertTriangle className="h-4 w-4 text-amber-600" />}</div><p className="mt-0.5 text-xs text-muted-foreground">{bedArea(bed).toFixed(1)} m² · {bed.orientation || bed.status}</p>{recent.length > 0 && <p className="mt-1 truncate text-[11px] text-muted-foreground">{text.history}: {recent.map(cropNameForAllocation).join(" → ")}</p>}</div>
+                  return <div key={bed.id} className="grid grid-cols-[240px_repeat(12,minmax(62px,1fr))] gap-1 py-2" onDragOver={(event) => { event.preventDefault(); event.dataTransfer.dropEffect = "move" }} onDrop={(event) => void dropOnBed(event, bed)}>
+                    <div className="relative mr-2 min-h-16 overflow-hidden rounded-lg border">
+                      {current && <img src={cropPhoto(cropNameForAllocation(current))} alt="" className="absolute inset-0 h-full w-full object-cover [filter:none] [opacity:1]" />}
+                      {current && <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(7,10,8,0.92)_0%,rgba(7,10,8,0.62)_100%)]" />}
+                      <div className={`relative p-2.5 ${current ? "text-white" : ""}`}><div className="flex items-center gap-2"><p className="font-medium">{plotById.get(bed.plot_id)?.name ? `${plotById.get(bed.plot_id)?.name} · ` : ""}{bed.name}</p>{warning && <AlertTriangle className="h-4 w-4 text-amber-500" />}</div><p className={`mt-0.5 text-xs ${current ? "text-white/65" : "text-muted-foreground"}`}>{bedArea(bed).toFixed(1)} m² · {bed.orientation || bed.status}</p>{recent.length > 0 && <p className={`mt-1 truncate text-[11px] ${current ? "text-white/60" : "text-muted-foreground"}`}>{text.history}: {recent.map(cropNameForAllocation).join(" → ")}</p>}</div>
+                    </div>
                     {weeks.map((week) => {
                       const weekEnd = addDays(week, 6)
                       const matches = bedAllocations.filter((item) => item.planned_start_date <= weekEnd && item.planned_end_date >= week)
-                      return <div key={week} className={`min-h-14 rounded-md border p-1 ${matches.length ? "bg-primary/10" : draggingSuccession ? "border-dashed bg-muted/20" : "bg-background"}`} title={matches.map((item) => `${successionLabel(successionById.get(item.crop_succession_id) as Succession)} · ${item.planned_start_date} → ${item.planned_end_date}`).join("\n")}>{matches.length === 0 ? <span className="flex h-full items-center justify-center text-[10px] text-muted-foreground">{draggingSuccession ? text.drop : text.open}</span> : matches.map((item) => <div key={item.id} className="truncate text-[10px] font-medium">{cropNameForAllocation(item)}</div>)}</div>
+                      return <div key={week} className={`relative min-h-16 overflow-hidden rounded-md border p-1 ${matches.length ? "border-primary/25" : draggingSuccession ? "border-dashed bg-muted/20" : "bg-background"}`} title={matches.map((item) => `${successionLabel(successionById.get(item.crop_succession_id) as Succession)} · ${item.planned_start_date} → ${item.planned_end_date}`).join("\n")}>{matches.length === 0 ? <span className="flex h-full items-center justify-center text-[10px] text-muted-foreground">{draggingSuccession ? text.drop : text.open}</span> : matches.map((item) => <div key={item.id} className="relative h-full min-h-14 overflow-hidden rounded"><img src={cropPhoto(cropNameForAllocation(item))} alt="" className="absolute inset-0 h-full w-full object-cover [filter:none] [opacity:1]"/><div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(6,9,7,0.12)_0%,rgba(6,9,7,0.82)_100%)]"/><div className="absolute inset-x-1 bottom-1 truncate text-[10px] font-semibold text-white">{cropNameForAllocation(item)}</div></div>)}</div>
                     })}
                   </div>
                 })}</div>
@@ -365,7 +434,7 @@ export default function OrchardCropMapPage() {
         </Card>
 
         <div className="grid gap-5 xl:grid-cols-2">
-          {plots.map((plot) => <Card key={plot.id}><CardHeader><div className="flex items-start justify-between gap-3"><div><CardTitle>{plot.name}</CardTitle><CardDescription>{plot.plot_type}{plot.size_sqm != null ? ` · ${plot.size_sqm} m²` : ""}{plot.irrigation_type ? ` · ${plot.irrigation_type}` : ""}</CardDescription></div><Button variant="ghost" size="icon" onClick={() => void remove("orchard_plots", plot.id, text.deletePlot)}><Trash2 className="h-4 w-4" /></Button></div></CardHeader><CardContent className="space-y-3">{beds.filter((bed) => bed.plot_id === plot.id).length === 0 ? <p className="text-sm text-muted-foreground">{text.noBeds}</p> : beds.filter((bed) => bed.plot_id === plot.id).map((bed) => { const rows = allocations.filter((item) => item.bed_id === bed.id).sort((a, b) => a.planned_start_date.localeCompare(b.planned_start_date)); return <div key={bed.id} className="rounded-lg border p-3"><div className="flex items-start justify-between gap-3"><div><p className="font-medium">{bed.name}{bed.code ? ` · ${bed.code}` : ""}</p><p className="text-xs text-muted-foreground">{bed.status} · {bedArea(bed).toFixed(1)} m²</p></div><Button variant="ghost" size="icon" onClick={() => void remove("orchard_beds", bed.id, text.deleteBed)}><Trash2 className="h-4 w-4" /></Button></div><div className="mt-3 space-y-2">{rows.length === 0 ? <div className="rounded-md border border-dashed p-3 text-xs text-muted-foreground">{text.open}</div> : rows.map((allocation) => { const succession = successionById.get(allocation.crop_succession_id); const capacityIssue = allocation.allocated_area_sqm != null && bedArea(bed) > 0 && allocation.allocated_area_sqm > bedArea(bed); return <div key={allocation.id} className="rounded-md bg-muted/30 p-3"><div className="flex items-start justify-between gap-2"><div><p className="text-sm font-medium">{succession ? successionLabel(succession) : "Crop"}</p><p className="text-xs text-muted-foreground">{allocation.planned_start_date} → {allocation.planned_end_date}</p>{capacityIssue && <p className="mt-1 flex items-center gap-1 text-xs text-amber-700"><AlertTriangle className="h-3 w-3" />{text.capacityWarning}</p>}</div><Button variant="ghost" size="icon" onClick={() => void remove("orchard_bed_allocations", allocation.id, text.deleteAllocation)}><Trash2 className="h-4 w-4" /></Button></div></div>})}</div></div> })}</CardContent></Card>)}
+          {plots.map((plot, plotIndex) => <Card key={plot.id} className="overflow-hidden"><div className="relative h-32 overflow-hidden"><img src={PLOT_PHOTOS[plotIndex % PLOT_PHOTOS.length]} alt="" className="h-full w-full object-cover [filter:none] [opacity:1]"/><div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(7,10,8,0.05)_0%,rgba(7,10,8,0.86)_100%)]"/><div className="absolute inset-x-0 bottom-0 flex items-end justify-between p-4 text-white"><div><p className="text-lg font-semibold">{plot.name}</p><p className="text-xs text-white/70">{plot.plot_type}{plot.size_sqm != null ? ` · ${plot.size_sqm} m²` : ""}{plot.irrigation_type ? ` · ${plot.irrigation_type}` : ""}</p></div><Button variant="ghost" size="icon" className="text-white hover:bg-white/10 hover:text-white" onClick={() => void remove("orchard_plots", plot.id, text.deletePlot)}><Trash2 className="h-4 w-4" /></Button></div></div><CardContent className="space-y-3 p-4">{beds.filter((bed) => bed.plot_id === plot.id).length === 0 ? <p className="text-sm text-muted-foreground">{text.noBeds}</p> : beds.filter((bed) => bed.plot_id === plot.id).map((bed) => { const rows = allocations.filter((item) => item.bed_id === bed.id).sort((a, b) => a.planned_start_date.localeCompare(b.planned_start_date)); return <div key={bed.id} className="rounded-lg border p-3"><div className="flex items-start justify-between gap-3"><div><p className="font-medium">{bed.name}{bed.code ? ` · ${bed.code}` : ""}</p><p className="text-xs text-muted-foreground">{bed.status} · {bedArea(bed).toFixed(1)} m²</p></div><Button variant="ghost" size="icon" onClick={() => void remove("orchard_beds", bed.id, text.deleteBed)}><Trash2 className="h-4 w-4" /></Button></div><div className="mt-3 grid gap-2 sm:grid-cols-2">{rows.length === 0 ? <div className="col-span-full rounded-md border border-dashed p-3 text-xs text-muted-foreground">{text.open}</div> : rows.map((allocation) => { const succession = successionById.get(allocation.crop_succession_id); const capacityIssue = allocation.allocated_area_sqm != null && bedArea(bed) > 0 && allocation.allocated_area_sqm > bedArea(bed); return <div key={allocation.id} className="group relative min-h-28 overflow-hidden rounded-md border"><img src={cropPhoto(cropNameForAllocation(allocation))} alt="" className="absolute inset-0 h-full w-full object-cover [filter:none] [opacity:1] transition-transform duration-500 group-hover:scale-[1.02]"/><div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(7,10,8,0.92)_0%,rgba(7,10,8,0.58)_100%)]"/><div className="relative flex h-full min-h-28 items-start justify-between gap-2 p-3 text-white"><div><p className="text-sm font-medium">{succession ? successionLabel(succession) : "Crop"}</p><p className="text-xs text-white/65">{allocation.planned_start_date} → {allocation.planned_end_date}</p>{capacityIssue && <p className="mt-2 flex items-center gap-1 text-xs text-amber-300"><AlertTriangle className="h-3 w-3" />{text.capacityWarning}</p>}</div><Button variant="ghost" size="icon" className="text-white hover:bg-white/10 hover:text-white" onClick={() => void remove("orchard_bed_allocations", allocation.id, text.deleteAllocation)}><Trash2 className="h-4 w-4" /></Button></div></div>})}</div></div> })}</CardContent></Card>)}
           {plots.length === 0 && <Card><CardContent className="p-6 text-sm text-muted-foreground">{text.noPlots}</CardContent></Card>}
         </div>
 
