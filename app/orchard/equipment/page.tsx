@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { AlertTriangle, CheckCircle2, MapPin, ShieldCheck, Wrench } from "lucide-react"
 import { createBrowserClient } from "@/lib/supabase/client"
 import { useLanguage } from "@/lib/hooks/use-language"
+import { ALL_GAME_PLANS, gamePlanScopeLabel, resolveRequestedGamePlanId, resolveSelectedGamePlan } from "@/lib/orchard/game-plan-scope"
 
 interface Equipment {
   id: string
@@ -20,6 +21,7 @@ interface Equipment {
   storage_location: string
   description: string
 }
+type GamePlan = { id: string; name: string; season: string | null }
 
 const hero = "https://images.unsplash.com/photo-1530124566582-a618bc2615dc?auto=format&fit=crop&w=2200&q=92"
 const equipmentPhoto = "https://images.unsplash.com/photo-1504148455328-c376907d081c?auto=format&fit=crop&w=1800&q=92"
@@ -35,7 +37,10 @@ function dueState(next: string | null) {
 
 export default function OrchardEquipmentPage() {
   const [equipment, setEquipment] = useState<Equipment[]>([])
+  const [plans, setPlans] = useState<GamePlan[]>([])
+  const [selectedPlanId, setSelectedPlanId] = useState<string>(ALL_GAME_PLANS)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const supabase = useMemo(() => createBrowserClient(), [])
   const { t } = useLanguage()
 
@@ -44,11 +49,24 @@ export default function OrchardEquipmentPage() {
   const fetchData = async () => {
     try {
       setLoading(true)
-      const { data } = await supabase.from("orchard_equipment").select("*").order("purchase_date", { ascending: false })
-      setEquipment((data || []) as Equipment[])
+      setError(null)
+      const [equipmentResult, planResult] = await Promise.all([
+        supabase.from("orchard_equipment").select("*").order("purchase_date", { ascending: false }),
+        supabase.from("orchard_game_plans").select("id,name,season").order("start_date", { ascending: false }),
+      ])
+      const firstError = equipmentResult.error ?? planResult.error
+      if (firstError) {
+        setError(firstError.message)
+        return
+      }
+      const planRows = (planResult.data || []) as GamePlan[]
+      setEquipment((equipmentResult.data || []) as Equipment[])
+      setPlans(planRows)
+      setSelectedPlanId(resolveRequestedGamePlanId(planRows, typeof window === "undefined" ? "" : window.location.search))
     } finally { setLoading(false) }
   }
 
+  const selectedPlan = resolveSelectedGamePlan(plans, selectedPlanId)
   const active = equipment.filter((item) => item.condition !== "broken")
   const overdue = equipment.filter((item) => dueState(item.next_maintenance_date) === "overdue")
   const unscheduled = equipment.filter((item) => !item.next_maintenance_date)
@@ -70,9 +88,13 @@ export default function OrchardEquipmentPage() {
         <h1 className="mt-3 text-4xl font-medium tracking-[-.035em] text-white! sm:text-5xl">{t("orchard.equipment")}</h1>
         <p className="mt-4 max-w-2xl text-sm leading-6 text-white/72">{t("orchard.equipment_description")}</p>
         <div className="mt-6 flex flex-wrap gap-2"><Badge className="border-white/15 bg-black/30 px-3 py-2 text-white">{active.length} active</Badge><Badge className="border-white/15 bg-black/30 px-3 py-2 text-white">{overdue.length} overdue maintenance</Badge><Badge className="border-white/15 bg-black/30 px-3 py-2 text-white">{readiness}% ready</Badge></div>
+        <div className="mt-4"><Badge variant="outline" className="border-white/25 bg-black/25 text-white">Shared infrastructure · context: {gamePlanScopeLabel(selectedPlan, "All Orchard")}</Badge></div>
       </div>
       <div className="absolute bottom-6 right-6 hidden grid-cols-2 gap-px bg-white/10 lg:grid"><HeroMetric icon={<Wrench className="h-4 w-4" />} label="Assets" value={String(equipment.length)} /><HeroMetric icon={<AlertTriangle className="h-4 w-4" />} label="Overdue" value={String(overdue.length)} /><HeroMetric icon={<ShieldCheck className="h-4 w-4" />} label="Ready" value={`${readiness}%`} /><HeroMetric icon={<MapPin className="h-4 w-4" />} label="Locations" value={String(locations.length)} /></div>
     </section>
+
+    {error && <Card className="border-destructive/60"><CardContent className="p-4 text-sm text-destructive">{error}</CardContent></Card>}
+    {selectedPlan && <Card><CardContent className="p-4"><p className="text-sm font-medium">Equipment is intentionally not filtered by Game Plan</p><p className="mt-1 text-xs leading-5 text-muted-foreground">The current schema records equipment as shared orchard infrastructure and has no succession, crop, bed-allocation or Game Plan ownership field. Hiding assets by season would invent a relationship that is not recorded.</p></CardContent></Card>}
 
     <section className="grid gap-6 xl:grid-cols-[1fr_380px]">
       <div className="space-y-6">
@@ -83,7 +105,7 @@ export default function OrchardEquipmentPage() {
       <div className="space-y-6">
         <Card><CardHeader><CardTitle>Readiness signals</CardTitle><CardDescription>Signals derived only from recorded condition and maintenance dates.</CardDescription></CardHeader><CardContent className="space-y-3"><Signal icon={<AlertTriangle className="h-4 w-4" />} label="Overdue maintenance" value={overdue.length} tone="risk" /><Signal icon={<CheckCircle2 className="h-4 w-4" />} label="Active equipment" value={active.length} /><Signal icon={<Wrench className="h-4 w-4" />} label="No service scheduled" value={unscheduled.length} /></CardContent></Card>
         <Card><CardHeader><CardTitle>Storage footprint</CardTitle><CardDescription>Where orchard assets are currently recorded.</CardDescription></CardHeader><CardContent className="space-y-3">{locations.length === 0 ? <p className="text-sm text-muted-foreground">No storage locations recorded.</p> : locations.map((location) => { const count = equipment.filter((item) => item.storage_location === location).length; return <div key={location} className="flex items-center justify-between border-b pb-3 last:border-b-0 last:pb-0"><div className="flex items-center gap-2"><MapPin className="h-4 w-4 text-muted-foreground" /><span className="text-sm font-medium">{location}</span></div><Badge variant="outline">{count}</Badge></div> })}</CardContent></Card>
-        <Card className="overflow-hidden"><div className="relative h-48"><img src={workshopPhoto} alt="Equipment maintenance workspace" className="h-full w-full object-cover opacity-100 [filter:none]" /><div className="absolute inset-0 bg-black/38" /><div className="absolute bottom-4 left-4 right-4 text-white"><ShieldCheck className="mb-2 h-5 w-5" /><p className="font-medium">Readiness before assignment</p><p className="mt-1 text-xs text-white/70">This cockpit exposes maintenance risk without inventing utilization or service history that is not recorded.</p></div></div></Card>
+        <Card className="overflow-hidden"><div className="relative h-48"><img src={workshopPhoto} alt="Equipment maintenance workspace" className="h-full w-full object-cover opacity-100 [filter:none]" /><div className="absolute inset-0 bg-black/38" /><div className="absolute bottom-4 left-4 right-4 text-white"><ShieldCheck className="mb-2 h-5 w-5" /><p className="font-medium">Readiness before assignment</p><p className="mt-1 text-xs text-white/70">This cockpit exposes maintenance state without inventing utilization or service history that is not recorded.</p></div></div></Card>
       </div>
     </section>
   </main></AppLayout>
