@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { usePathname } from "next/navigation"
+import { usePathname, useSearchParams } from "next/navigation"
 import {
   Activity,
   BadgeDollarSign,
@@ -237,8 +237,16 @@ function isActive(pathname: string, item: NavItem) {
 
 export function OrchardNavigation() {
   const pathname = internalPath(usePathname() || "/")
+  const searchParams = useSearchParams()
   const { language } = useLanguage()
   const locale = language === "es" ? "es" : "en"
+  const gamePlanId = searchParams.get("game_plan")
+  const scopedHref = (href: string) => {
+    const base = `/${language}${href}`
+    if (!gamePlanId) return base
+    const separator = base.includes("?") ? "&" : "?"
+    return `${base}${separator}game_plan=${encodeURIComponent(gamePlanId)}`
+  }
 
   return (
     <>
@@ -255,7 +263,7 @@ export function OrchardNavigation() {
             return (
               <Link
                 key={item.href}
-                href={`/${language}${item.href}`}
+                href={scopedHref(item.href)}
                 aria-current={active ? "page" : undefined}
                 className={cn(
                   "inline-flex min-h-10 shrink-0 items-center gap-2 px-3 text-sm font-medium transition-colors focus-visible:outline-none",
@@ -300,7 +308,7 @@ export function OrchardNavigation() {
                       return (
                         <Link
                           key={item.href}
-                          href={`/${language}${item.href}`}
+                          href={scopedHref(item.href)}
                           aria-current={active ? "page" : undefined}
                           className={cn(
                             "flex min-h-11 items-center gap-3 px-3 text-sm transition-colors",
