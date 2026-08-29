@@ -2,12 +2,13 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Activity, BarChart3, Bug, Hammer, LayoutDashboard, Leaf, Sprout, TestTube2 } from "lucide-react"
+import { Activity, BarChart3, Bug, CalendarRange, Hammer, LayoutDashboard, Leaf, Sprout, TestTube2 } from "lucide-react"
 import { useLanguage } from "@/lib/hooks/use-language"
 import { cn } from "@/lib/utils"
 
 const items = [
   { href: "/orchard", label: { en: "Overview", es: "Resumen" }, icon: LayoutDashboard },
+  { href: "/orchard/game-plan", label: { en: "Game Plan", es: "Plan" }, icon: CalendarRange },
   { href: "/orchard/crops", label: { en: "Crops", es: "Cultivos" }, icon: Sprout },
   { href: "/orchard/care", label: { en: "Care", es: "Cuidados" }, icon: Activity },
   { href: "/orchard/harvest", label: { en: "Harvest", es: "Cosecha" }, icon: Leaf },
