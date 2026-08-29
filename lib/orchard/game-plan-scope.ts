@@ -1,4 +1,4 @@
-export const ALL_GAME_PLANS = "all" as const
+export const ALL_GAME_PLANS: string = "all"
 
 export type GamePlanScopeId = string
 
