@@ -1,10 +1,10 @@
 "use client"
 
 import Link from "next/link"
+import type { ReactNode } from "react"
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { AlertTriangle, CheckCircle2, Clock3, RefreshCw, ShieldAlert, Sprout } from "lucide-react"
 import { AppLayout } from "@/components/app-layout"
-import { PageHeader } from "@/components/page-header"
 import { OrchardNavigation } from "@/components/orchard/orchard-navigation"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -12,261 +12,46 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { createBrowserClient } from "@/lib/supabase/client"
 import { useLanguage } from "@/lib/hooks/use-language"
 
-type Lifecycle = { crop_succession_id: string; crop_cycle_id: string; sequence_no: number; persisted_status: string; effective_status: string; planned_sow_date: string; planned_transplant_date: string | null; planned_first_harvest_date: string | null; planned_last_harvest_date: string | null; transplanted_count: number; first_planting_date: string | null; first_harvest_date: string | null; harvest_passes: number }
-type Succession = { id: string; crop_cycle_id: string; planned_plants: number | null; germination_rate_pct: number | null; seeds_per_plant: number | null; status: string }
-type Cycle = { id: string; crop_name: string; variety: string | null }
-type SeedLot = { id: string; crop_name: string; variety: string | null; lot_code: string | null; quantity_seeds: number; expiry_date: string | null }
-type Allocation = { id: string; bed_id: string; crop_succession_id: string; planned_start_date: string; planned_end_date: string; allocated_area_sqm: number | null }
-type Bed = { id: string; plot_id: string; name: string }
-type Plot = { id: string; name: string }
-type Pest = { id: string; crop_id: string; observation_date: string; pest_type: string | null; disease_name: string | null; severity_level: string | null; affected_percentage: number | null; treatment_applied: string | null; treatment_effectiveness: string | null }
-type Crop = { id: string; crop_succession_id: string | null; crop_name: string; variety: string | null; status: string; estimated_yield: number | null; actual_yield: number | null; yield_unit: string | null }
-type Task = { id: string; title: string; priority: string | null; status: string; due_date: string | null; estimated_minutes: number | null; source_id: string | null; source_type: string | null }
-type Assignment = { task_id: string; employee_id: string | null }
+type Lifecycle={crop_succession_id:string;crop_cycle_id:string;sequence_no:number;persisted_status:string;effective_status:string;planned_sow_date:string;planned_transplant_date:string|null;planned_first_harvest_date:string|null;planned_last_harvest_date:string|null;transplanted_count:number;first_planting_date:string|null;first_harvest_date:string|null;harvest_passes:number}
+type Succession={id:string;crop_cycle_id:string;planned_plants:number|null;germination_rate_pct:number|null;seeds_per_plant:number|null;status:string}
+type Cycle={id:string;crop_name:string;variety:string|null}
+type SeedLot={id:string;crop_name:string;variety:string|null;lot_code:string|null;quantity_seeds:number;expiry_date:string|null}
+type Allocation={id:string;bed_id:string;crop_succession_id:string;planned_start_date:string;planned_end_date:string;allocated_area_sqm:number|null}
+type Bed={id:string;plot_id:string;name:string}
+type Plot={id:string;name:string}
+type Pest={id:string;crop_id:string;observation_date:string;pest_type:string|null;disease_name:string|null;severity_level:string|null;affected_percentage:number|null;treatment_applied:string|null;treatment_effectiveness:string|null}
+type Crop={id:string;crop_succession_id:string|null;crop_name:string;variety:string|null;status:string;estimated_yield:number|null;actual_yield:number|null;yield_unit:string|null}
+type Task={id:string;title:string;priority:string|null;status:string;due_date:string|null;estimated_minutes:number|null;source_id:string|null;source_type:string|null}
+type Assignment={task_id:string;employee_id:string|null}
+type Decision={id:string;severity:"critical"|"attention"|"ready"|"watch";category:string;title:string;detail:string;rule:string;href:string}
+type Photo={src:string;alt:string}
+const image=(id:string,w=1800)=>`https://images.unsplash.com/photo-${id}?auto=format&fit=crop&q=92&w=${w}`
+const HERO:Photo={src:image("1457530378978-8bac673b8062",2200),alt:"Field rows viewed from above"}
+const CATEGORY_PHOTOS:Record<string,Photo>={Lifecycle:{src:image("1416879595882-3373a0480b5b"),alt:"Growing plants"},Harvest:{src:image("1471194402529-8e0f5a675de6"),alt:"Harvest ready vegetables"},Seeds:{src:image("1445282768818-728615cc910a"),alt:"Seeds and planting"},Beds:{src:image("1500382017468-9049fed747ef"),alt:"Field beds"},Rotation:{src:image("1523741543316-beb7fc7023d8"),alt:"Crop rows"},Health:{src:image("1464226184884-fa280b87c399"),alt:"Plant inspection"},Work:{src:image("1500937386664-56d1dfef3854"),alt:"Field work"},Performance:{src:image("1498579397066-22750a3cb424"),alt:"Productive crop"}}
+const FALLBACK:Photo={src:image("1488459716781-31db52582fe9"),alt:"Orchard field"}
+const copy={en:{title:"Decision Cockpit",description:"Deterministic operational exceptions from canonical Orchard data. Every signal exposes the exact rule that produced it; no AI judgment is used here.",refresh:"Refresh",critical:"Critical",attention:"Attention",ready:"Ready",watch:"Watch",total:"Open decisions",noDecisions:"No current rule-based exceptions.",rules:"Rules in force",rulesHelp:"These thresholds are explicit and reproducible, so operators can trust why an item appears.",loadError:"Could not load Orchard decision data",open:"Open",priority:"Priority queue",priorityHelp:"Act on critical exceptions first, then attention items. Ready and watch signals protect timing and opportunity."},es:{title:"Cockpit de Decisiones",description:"Excepciones operativas determinísticas desde datos canónicos de Orchard. Cada señal expone la regla exacta que la generó; aquí no se usa juicio de IA.",refresh:"Actualizar",critical:"Crítico",attention:"Atención",ready:"Listo",watch:"Vigilar",total:"Decisiones abiertas",noDecisions:"No hay excepciones actuales basadas en reglas.",rules:"Reglas activas",rulesHelp:"Los umbrales son explícitos y reproducibles para entender por qué aparece cada señal.",loadError:"No fue posible cargar los datos de decisiones",open:"Abrir",priority:"Cola de prioridad",priorityHelp:"Actúa primero sobre excepciones críticas y luego atención. Las señales listas y de vigilancia protegen timing y oportunidad."}} as const
+const dayMs=86400000;const isoToday=()=>new Date().toISOString().slice(0,10);const addDays=(v:string,d:number)=>{const x=new Date(`${v}T12:00:00`);x.setDate(x.getDate()+d);return x.toISOString().slice(0,10)};const daysFromToday=(v:string,t:string)=>Math.round((new Date(`${v}T12:00:00`).getTime()-new Date(`${t}T12:00:00`).getTime())/dayMs);const normalize=(v:string|null|undefined)=>(v??"").trim().toLowerCase();const cropKey=(crop:string,variety:string|null)=>`${normalize(crop)}::${normalize(variety)}`;const labelCrop=(crop:string,variety:string|null)=>`${crop}${variety?` · ${variety}`:""}`;const seedsNeeded=(s:Succession)=>s.planned_plants&&s.germination_rate_pct&&s.seeds_per_plant?Math.ceil(s.planned_plants*s.seeds_per_plant/(s.germination_rate_pct/100)):0
 
-type Decision = { id: string; severity: "critical" | "attention" | "ready" | "watch"; category: string; title: string; detail: string; rule: string; href: string }
-
-const copy = {
-  en: {
-    title: "Decision Engine",
-    description: "Deterministic operational exceptions from canonical Orchard data. Every alert shows the rule that produced it; no AI judgment is used here.",
-    refresh: "Refresh",
-    critical: "Critical",
-    attention: "Attention",
-    ready: "Ready",
-    watch: "Watch",
-    total: "Open decisions",
-    noDecisions: "No current rule-based exceptions.",
-    rules: "Rules in force",
-    rulesHelp: "These thresholds are explicit and reproducible, so operators can trust why an item appears.",
-    loadError: "Could not load Orchard decision data",
-    open: "Open",
-  },
-  es: {
-    title: "Motor de Decisiones",
-    description: "Excepciones operativas determinísticas desde datos canónicos de Orchard. Cada alerta muestra la regla que la generó; aquí no se usa juicio de IA.",
-    refresh: "Actualizar",
-    critical: "Crítico",
-    attention: "Atención",
-    ready: "Listo",
-    watch: "Vigilar",
-    total: "Decisiones abiertas",
-    noDecisions: "No hay excepciones actuales basadas en reglas.",
-    rules: "Reglas activas",
-    rulesHelp: "Los umbrales son explícitos y reproducibles para que el operador entienda por qué aparece cada alerta.",
-    loadError: "No fue posible cargar los datos de decisiones",
-    open: "Abrir",
-  },
-} as const
-
-const dayMs = 86400000
-const isoToday = () => new Date().toISOString().slice(0, 10)
-const addDays = (value: string, days: number) => { const d = new Date(`${value}T12:00:00`); d.setDate(d.getDate() + days); return d.toISOString().slice(0, 10) }
-const daysFromToday = (value: string, today: string) => Math.round((new Date(`${value}T12:00:00`).getTime() - new Date(`${today}T12:00:00`).getTime()) / dayMs)
-const normalize = (value: string | null | undefined) => (value ?? "").trim().toLowerCase()
-const cropKey = (crop: string, variety: string | null) => `${normalize(crop)}::${normalize(variety)}`
-const labelCrop = (crop: string, variety: string | null) => `${crop}${variety ? ` · ${variety}` : ""}`
-const seedsNeeded = (s: Succession) => s.planned_plants && s.germination_rate_pct && s.seeds_per_plant ? Math.ceil((s.planned_plants * s.seeds_per_plant) / (s.germination_rate_pct / 100)) : 0
-
-export default function OrchardDecisionEnginePage() {
-  const supabase = useMemo(() => createBrowserClient(), [])
-  const { language } = useLanguage()
-  const lang = language === "es" ? "es" : "en"
-  const text = copy[lang]
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [lifecycle, setLifecycle] = useState<Lifecycle[]>([])
-  const [successions, setSuccessions] = useState<Succession[]>([])
-  const [cycles, setCycles] = useState<Cycle[]>([])
-  const [seedLots, setSeedLots] = useState<SeedLot[]>([])
-  const [allocations, setAllocations] = useState<Allocation[]>([])
-  const [beds, setBeds] = useState<Bed[]>([])
-  const [plots, setPlots] = useState<Plot[]>([])
-  const [pests, setPests] = useState<Pest[]>([])
-  const [crops, setCrops] = useState<Crop[]>([])
-  const [tasks, setTasks] = useState<Task[]>([])
-  const [assignments, setAssignments] = useState<Assignment[]>([])
-
-  const load = useCallback(async () => {
-    setLoading(true)
-    setError(null)
-    const [lc, s, cy, seed, a, b, p, pe, c, t, ta] = await Promise.all([
-      supabase.from("orchard_succession_lifecycle").select("crop_succession_id,crop_cycle_id,sequence_no,persisted_status,effective_status,planned_sow_date,planned_transplant_date,planned_first_harvest_date,planned_last_harvest_date,transplanted_count,first_planting_date,first_harvest_date,harvest_passes"),
-      supabase.from("orchard_crop_successions").select("id,crop_cycle_id,planned_plants,germination_rate_pct,seeds_per_plant,status"),
-      supabase.from("orchard_crop_cycles").select("id,crop_name,variety"),
-      supabase.from("orchard_seed_lots").select("id,crop_name,variety,lot_code,quantity_seeds,expiry_date"),
-      supabase.from("orchard_bed_allocations").select("id,bed_id,crop_succession_id,planned_start_date,planned_end_date,allocated_area_sqm"),
-      supabase.from("orchard_beds").select("id,plot_id,name"),
-      supabase.from("orchard_plots").select("id,name"),
-      supabase.from("orchard_pest_logs").select("id,crop_id,observation_date,pest_type,disease_name,severity_level,affected_percentage,treatment_applied,treatment_effectiveness"),
-      supabase.from("orchard_crops").select("id,crop_succession_id,crop_name,variety,status,estimated_yield,actual_yield,yield_unit"),
-      supabase.from("tasks").select("id,title,priority,status,due_date,estimated_minutes,source_id,source_type").eq("operational_area", "huerto_vinedo"),
-      supabase.from("task_assignments").select("task_id,employee_id"),
-    ])
-    const queryError = lc.error ?? s.error ?? cy.error ?? seed.error ?? a.error ?? b.error ?? p.error ?? pe.error ?? c.error ?? t.error ?? ta.error
-    if (queryError) setError(`${text.loadError}: ${queryError.message}`)
-    else {
-      setLifecycle((lc.data ?? []) as Lifecycle[])
-      setSuccessions((s.data ?? []) as Succession[])
-      setCycles((cy.data ?? []) as Cycle[])
-      setSeedLots((seed.data ?? []) as SeedLot[])
-      setAllocations((a.data ?? []) as Allocation[])
-      setBeds((b.data ?? []) as Bed[])
-      setPlots((p.data ?? []) as Plot[])
-      setPests((pe.data ?? []) as Pest[])
-      setCrops((c.data ?? []) as Crop[])
-      setTasks((t.data ?? []) as Task[])
-      setAssignments((ta.data ?? []) as Assignment[])
-    }
-    setLoading(false)
-  }, [supabase, text.loadError])
-
-  useEffect(() => { void load() }, [load])
-
-  const decisions = useMemo<Decision[]>(() => {
-    const today = isoToday()
-    const next7 = addDays(today, 7)
-    const next14 = addDays(today, 14)
-    const cycleById = new Map(cycles.map((item) => [item.id, item]))
-    const successionById = new Map(successions.map((item) => [item.id, item]))
-    const lifecycleById = new Map(lifecycle.map((item) => [item.crop_succession_id, item]))
-    const bedById = new Map(beds.map((item) => [item.id, item]))
-    const plotById = new Map(plots.map((item) => [item.id, item]))
-    const cropById = new Map(crops.map((item) => [item.id, item]))
-    const assigned = new Set(assignments.filter((item) => item.employee_id).map((item) => item.task_id))
-    const result: Decision[] = []
-
-    const successionLabel = (id: string) => {
-      const succession = successionById.get(id)
-      const cycle = succession ? cycleById.get(succession.crop_cycle_id) : null
-      return succession && cycle ? `${labelCrop(cycle.crop_name, cycle.variety)} #${lifecycleById.get(id)?.sequence_no ?? ""}` : id
-    }
-
-    lifecycle.forEach((item) => {
-      const label = successionLabel(item.crop_succession_id)
-      if (item.effective_status === "planned" && item.planned_sow_date < today) {
-        result.push({ id: `late-sow-${item.crop_succession_id}`, severity: "critical", category: "Lifecycle", title: `${label}: sowing overdue`, detail: `${Math.abs(daysFromToday(item.planned_sow_date, today))} day(s) past planned sow date.`, rule: "Planned sow date is before today and lifecycle is still planned.", href: "/orchard/lifecycle" })
-      }
-      if (["nursery", "hardening", "sown"].includes(item.effective_status) && item.planned_transplant_date && item.planned_transplant_date < today && !item.first_planting_date) {
-        result.push({ id: `late-transplant-${item.crop_succession_id}`, severity: "attention", category: "Lifecycle", title: `${label}: transplant overdue`, detail: `${Math.abs(daysFromToday(item.planned_transplant_date, today))} day(s) past planned transplant date.`, rule: "Planned transplant date is before today and no field planting has been recorded.", href: "/orchard/nursery" })
-      }
-      if (item.effective_status === "harvest_ready") {
-        result.push({ id: `ready-harvest-${item.crop_succession_id}`, severity: "ready", category: "Harvest", title: `${label}: harvest window is open`, detail: item.planned_first_harvest_date ? `Planned first harvest: ${item.planned_first_harvest_date}.` : "Lifecycle indicates harvest readiness.", rule: "Effective lifecycle is harvest_ready and no harvest pass has advanced it to harvesting.", href: "/orchard/harvest" })
-      } else if (item.planned_first_harvest_date && item.planned_first_harvest_date >= today && item.planned_first_harvest_date <= next7 && item.harvest_passes === 0) {
-        result.push({ id: `harvest-soon-${item.crop_succession_id}`, severity: "watch", category: "Harvest", title: `${label}: harvest approaching`, detail: `${daysFromToday(item.planned_first_harvest_date, today)} day(s) until planned first harvest.`, rule: "First harvest is within the next 7 days and no harvest pass exists yet.", href: "/orchard/harvest" })
-      }
-    })
-
-    const requiredByCrop = new Map<string, { crop: string; variety: string | null; needed: number }>()
-    successions.filter((item) => !["completed", "cancelled", "harvesting"].includes(item.status)).forEach((item) => {
-      const cycle = cycleById.get(item.crop_cycle_id)
-      if (!cycle) return
-      const needed = seedsNeeded(item)
-      if (!needed) return
-      const key = cropKey(cycle.crop_name, cycle.variety)
-      const current = requiredByCrop.get(key)
-      requiredByCrop.set(key, { crop: cycle.crop_name, variety: cycle.variety, needed: (current?.needed ?? 0) + needed })
-    })
-    const stockByCrop = new Map<string, number>()
-    seedLots.forEach((lot) => {
-      if (lot.expiry_date && lot.expiry_date < today) return
-      const key = cropKey(lot.crop_name, lot.variety)
-      stockByCrop.set(key, (stockByCrop.get(key) ?? 0) + Math.max(0, lot.quantity_seeds ?? 0))
-    })
-    requiredByCrop.forEach((req, key) => {
-      const stock = stockByCrop.get(key) ?? 0
-      if (stock < req.needed) result.push({ id: `seed-${key}`, severity: stock === 0 ? "critical" : "attention", category: "Seeds", title: `${labelCrop(req.crop, req.variety)}: seed shortage`, detail: `${stock.toLocaleString()} available vs ${req.needed.toLocaleString()} estimated seeds required.`, rule: "Non-expired seed stock is below estimated requirement for active planned successions.", href: "/orchard/nursery" })
-    })
-
-    const allocationsByBed = new Map<string, Allocation[]>()
-    allocations.forEach((item) => allocationsByBed.set(item.bed_id, [...(allocationsByBed.get(item.bed_id) ?? []), item]))
-    allocationsByBed.forEach((items, bedId) => {
-      const ordered = [...items].sort((a, b) => a.planned_start_date.localeCompare(b.planned_start_date))
-      const bed = bedById.get(bedId)
-      const plot = bed ? plotById.get(bed.plot_id) : null
-      const bedLabel = bed ? `${plot?.name ? `${plot.name} · ` : ""}${bed.name}` : bedId
-      ordered.forEach((item, index) => {
-        if (item.planned_end_date >= today && item.planned_end_date <= next14) {
-          result.push({ id: `bed-free-${item.id}`, severity: "watch", category: "Beds", title: `${bedLabel}: bed becoming available`, detail: `Current allocation ends ${item.planned_end_date}.`, rule: "Allocation end date falls within the next 14 days.", href: "/orchard/crop-map" })
-        }
-        const next = ordered[index + 1]
-        if (!next) return
-        const currentSuccession = successionById.get(item.crop_succession_id)
-        const nextSuccession = successionById.get(next.crop_succession_id)
-        const currentCycle = currentSuccession ? cycleById.get(currentSuccession.crop_cycle_id) : null
-        const nextCycle = nextSuccession ? cycleById.get(nextSuccession.crop_cycle_id) : null
-        if (currentCycle && nextCycle && normalize(currentCycle.crop_name) === normalize(nextCycle.crop_name)) {
-          result.push({ id: `rotation-${item.id}-${next.id}`, severity: "attention", category: "Rotation", title: `${bedLabel}: repeated crop sequence`, detail: `${labelCrop(currentCycle.crop_name, currentCycle.variety)} is followed by ${labelCrop(nextCycle.crop_name, nextCycle.variety)}.`, rule: "Two consecutive allocations on the same bed use the same crop name. This is a rotation warning, not an agronomic disease-risk diagnosis.", href: "/orchard/crop-map" })
-        }
-      })
-    })
-
-    pests.forEach((item) => {
-      const severe = ["high", "critical"].includes(normalize(item.severity_level))
-      const effective = ["effective", "very_effective"].includes(normalize(item.treatment_effectiveness))
-      if (!severe || effective) return
-      const crop = cropById.get(item.crop_id)
-      result.push({ id: `health-${item.id}`, severity: normalize(item.severity_level) === "critical" ? "critical" : "attention", category: "Health", title: `${crop ? labelCrop(crop.crop_name, crop.variety) : "Crop"}: severe health issue`, detail: `${item.pest_type || item.disease_name || "Health observation"}${item.affected_percentage != null ? ` · ${item.affected_percentage}% affected` : ""}.`, rule: "Severity is high/critical and treatment effectiveness is not recorded as effective/very effective.", href: "/orchard/pests" })
-    })
-
-    const openTasks = tasks.filter((task) => !["done", "completed", "cancelled"].includes(normalize(task.status)))
-    openTasks.filter((task) => task.due_date && task.due_date < today).forEach((task) => {
-      result.push({ id: `task-overdue-${task.id}`, severity: ["urgent", "critical", "high"].includes(normalize(task.priority)) ? "critical" : "attention", category: "Work", title: `Overdue: ${task.title}`, detail: `Due ${task.due_date}${assigned.has(task.id) ? "" : " · unassigned"}.`, rule: "Open Orchard task has a due date before today.", href: "/orchard/work" })
-    })
-    openTasks.filter((task) => task.due_date && task.due_date >= today && task.due_date <= next7 && !assigned.has(task.id)).forEach((task) => {
-      result.push({ id: `task-unassigned-${task.id}`, severity: "attention", category: "Work", title: `Unassigned: ${task.title}`, detail: `Due ${task.due_date}.`, rule: "Open Orchard task is due within 7 days and has no employee assignment.", href: "/orchard/work" })
-    })
-    const workload = new Map<string, number>()
-    openTasks.filter((task) => task.due_date && task.due_date >= today && task.due_date <= next7).forEach((task) => workload.set(task.due_date!, (workload.get(task.due_date!) ?? 0) + (task.estimated_minutes ?? 0)))
-    workload.forEach((minutes, date) => {
-      if (minutes > 480) result.push({ id: `workload-${date}`, severity: "attention", category: "Work", title: `${date}: workload exceeds one person-day`, detail: `${Math.round(minutes / 60 * 10) / 10} estimated hours scheduled.`, rule: "Open Orchard tasks due on the same day total more than 480 estimated minutes.", href: "/orchard/work" })
-    })
-
-    crops.forEach((crop) => {
-      if (crop.estimated_yield == null || crop.actual_yield == null || crop.estimated_yield <= 0 || !crop.yield_unit) return
-      const ratio = crop.actual_yield / crop.estimated_yield
-      if (ratio < 0.8) result.push({ id: `yield-${crop.id}`, severity: ratio < 0.5 ? "critical" : "attention", category: "Performance", title: `${labelCrop(crop.crop_name, crop.variety)}: yield under target`, detail: `${crop.actual_yield} / ${crop.estimated_yield} ${crop.yield_unit} (${Math.round(ratio * 100)}%).`, rule: "Recorded actual yield is below 80% of estimated yield in the same crop yield unit.", href: "/orchard/harvest" })
-    })
-
-    const rank = { critical: 0, attention: 1, ready: 2, watch: 3 }
-    return result.sort((a, b) => rank[a.severity] - rank[b.severity] || a.category.localeCompare(b.category) || a.title.localeCompare(b.title))
-  }, [allocations, assignments, beds, crops, cycles, lifecycle, pests, plots, seedLots, successions, tasks])
-
-  const counts = decisions.reduce<Record<Decision["severity"], number>>((acc, item) => ({ ...acc, [item.severity]: acc[item.severity] + 1 }), { critical: 0, attention: 0, ready: 0, watch: 0 })
-  const rules = [
-    "Overdue sowing: planned sow date is before today while lifecycle remains planned.",
-    "Overdue transplant: planned transplant date is before today with no recorded field planting.",
-    "Harvest ready/soon: effective harvest readiness, or planned first harvest within 7 days with no harvest pass.",
-    "Seed shortage: non-expired lot stock is below calculated seed requirement for active successions.",
-    "Bed turnover: an allocation ends within 14 days; repeated crop names on consecutive allocations trigger a rotation warning.",
-    "Health: high/critical observation without effective/very effective treatment result.",
-    "Workload: overdue work, unassigned work due within 7 days, or more than 480 estimated minutes due on one day.",
-    "Yield: recorded actual yield is below 80% of estimated yield for the same crop record.",
-  ]
-
-  return <AppLayout>
-    <PageHeader title={text.title} description={text.description} actions={<Button variant="outline" onClick={() => void load()} disabled={loading}><RefreshCw className={`mr-2 h-4 w-4 ${loading ? "animate-spin" : ""}`} />{text.refresh}</Button>} />
-    <OrchardNavigation />
-    <div className="space-y-6 p-4 sm:p-8">
-      {error && <Card className="border-destructive/60"><CardContent className="p-4 text-sm text-destructive">{error}</CardContent></Card>}
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
-        <Metric label={text.total} value={decisions.length} icon={<ShieldAlert className="h-4 w-4" />} />
-        <Metric label={text.critical} value={counts.critical} icon={<AlertTriangle className="h-4 w-4" />} />
-        <Metric label={text.attention} value={counts.attention} icon={<Clock3 className="h-4 w-4" />} />
-        <Metric label={text.ready} value={counts.ready} icon={<CheckCircle2 className="h-4 w-4" />} />
-        <Metric label={text.watch} value={counts.watch} icon={<Sprout className="h-4 w-4" />} />
-      </div>
-      <div className="grid gap-6 xl:grid-cols-[1fr_360px]">
-        <Card>
-          <CardHeader><CardTitle>{text.total}</CardTitle><CardDescription>{text.description}</CardDescription></CardHeader>
-          <CardContent>{loading ? <p className="text-sm text-muted-foreground">Loading…</p> : decisions.length === 0 ? <p className="text-sm text-muted-foreground">{text.noDecisions}</p> : <div className="space-y-3">{decisions.map((item) => <div key={item.id} className="rounded-xl border p-4"><div className="flex flex-wrap items-start justify-between gap-3"><div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><Badge variant={item.severity === "critical" ? "destructive" : "outline"}>{item.severity}</Badge><Badge variant="secondary">{item.category}</Badge><h3 className="font-semibold">{item.title}</h3></div><p className="mt-2 text-sm">{item.detail}</p><p className="mt-2 text-xs text-muted-foreground"><span className="font-medium">Rule:</span> {item.rule}</p></div><Button asChild size="sm" variant="outline"><Link href={`/${language}${item.href}`}>{text.open}</Link></Button></div></div>)}</div>}</CardContent>
-        </Card>
-        <Card><CardHeader><CardTitle>{text.rules}</CardTitle><CardDescription>{text.rulesHelp}</CardDescription></CardHeader><CardContent><ol className="space-y-3 text-sm text-muted-foreground">{rules.map((rule, index) => <li key={rule} className="flex gap-3"><span className="font-mono text-xs text-foreground">{String(index + 1).padStart(2, "0")}</span><span>{rule}</span></li>)}</ol></CardContent></Card>
-      </div>
-    </div>
-  </AppLayout>
+export default function OrchardDecisionEnginePage(){
+ const supabase=useMemo(()=>createBrowserClient(),[]);const {language}=useLanguage();const lang=language==="es"?"es":"en";const text=copy[lang]
+ const [loading,setLoading]=useState(true);const [error,setError]=useState<string|null>(null);const [lifecycle,setLifecycle]=useState<Lifecycle[]>([]);const [successions,setSuccessions]=useState<Succession[]>([]);const [cycles,setCycles]=useState<Cycle[]>([]);const [seedLots,setSeedLots]=useState<SeedLot[]>([]);const [allocations,setAllocations]=useState<Allocation[]>([]);const [beds,setBeds]=useState<Bed[]>([]);const [plots,setPlots]=useState<Plot[]>([]);const [pests,setPests]=useState<Pest[]>([]);const [crops,setCrops]=useState<Crop[]>([]);const [tasks,setTasks]=useState<Task[]>([]);const [assignments,setAssignments]=useState<Assignment[]>([])
+ const load=useCallback(async()=>{setLoading(true);setError(null);const [lc,s,cy,seed,a,b,p,pe,c,t,ta]=await Promise.all([supabase.from("orchard_succession_lifecycle").select("crop_succession_id,crop_cycle_id,sequence_no,persisted_status,effective_status,planned_sow_date,planned_transplant_date,planned_first_harvest_date,planned_last_harvest_date,transplanted_count,first_planting_date,first_harvest_date,harvest_passes"),supabase.from("orchard_crop_successions").select("id,crop_cycle_id,planned_plants,germination_rate_pct,seeds_per_plant,status"),supabase.from("orchard_crop_cycles").select("id,crop_name,variety"),supabase.from("orchard_seed_lots").select("id,crop_name,variety,lot_code,quantity_seeds,expiry_date"),supabase.from("orchard_bed_allocations").select("id,bed_id,crop_succession_id,planned_start_date,planned_end_date,allocated_area_sqm"),supabase.from("orchard_beds").select("id,plot_id,name"),supabase.from("orchard_plots").select("id,name"),supabase.from("orchard_pest_logs").select("id,crop_id,observation_date,pest_type,disease_name,severity_level,affected_percentage,treatment_applied,treatment_effectiveness"),supabase.from("orchard_crops").select("id,crop_succession_id,crop_name,variety,status,estimated_yield,actual_yield,yield_unit"),supabase.from("tasks").select("id,title,priority,status,due_date,estimated_minutes,source_id,source_type").eq("operational_area","huerto_vinedo"),supabase.from("task_assignments").select("task_id,employee_id")]);const e=lc.error??s.error??cy.error??seed.error??a.error??b.error??p.error??pe.error??c.error??t.error??ta.error;if(e)setError(`${text.loadError}: ${e.message}`);else{setLifecycle((lc.data??[]) as Lifecycle[]);setSuccessions((s.data??[]) as Succession[]);setCycles((cy.data??[]) as Cycle[]);setSeedLots((seed.data??[]) as SeedLot[]);setAllocations((a.data??[]) as Allocation[]);setBeds((b.data??[]) as Bed[]);setPlots((p.data??[]) as Plot[]);setPests((pe.data??[]) as Pest[]);setCrops((c.data??[]) as Crop[]);setTasks((t.data??[]) as Task[]);setAssignments((ta.data??[]) as Assignment[])}setLoading(false)},[supabase,text.loadError]);useEffect(()=>{void load()},[load])
+ const decisions=useMemo<Decision[]>(()=>{const today=isoToday(),next7=addDays(today,7),next14=addDays(today,14);const cycleById=new Map(cycles.map(x=>[x.id,x])),successionById=new Map(successions.map(x=>[x.id,x])),lifecycleById=new Map(lifecycle.map(x=>[x.crop_succession_id,x])),bedById=new Map(beds.map(x=>[x.id,x])),plotById=new Map(plots.map(x=>[x.id,x])),cropById=new Map(crops.map(x=>[x.id,x])),assigned=new Set(assignments.filter(x=>x.employee_id).map(x=>x.task_id));const result:Decision[]=[];const successionLabel=(id:string)=>{const s=successionById.get(id),c=s?cycleById.get(s.crop_cycle_id):null;return s&&c?`${labelCrop(c.crop_name,c.variety)} #${lifecycleById.get(id)?.sequence_no??""}`:id}
+ lifecycle.forEach(x=>{const label=successionLabel(x.crop_succession_id);if(x.effective_status==="planned"&&x.planned_sow_date<today)result.push({id:`late-sow-${x.crop_succession_id}`,severity:"critical",category:"Lifecycle",title:`${label}: sowing overdue`,detail:`${Math.abs(daysFromToday(x.planned_sow_date,today))} day(s) past planned sow date.`,rule:"Planned sow date is before today and lifecycle is still planned.",href:"/orchard/lifecycle"});if(["nursery","hardening","sown"].includes(x.effective_status)&&x.planned_transplant_date&&x.planned_transplant_date<today&&!x.first_planting_date)result.push({id:`late-transplant-${x.crop_succession_id}`,severity:"attention",category:"Lifecycle",title:`${label}: transplant overdue`,detail:`${Math.abs(daysFromToday(x.planned_transplant_date,today))} day(s) past planned transplant date.`,rule:"Planned transplant date is before today and no field planting has been recorded.",href:"/orchard/nursery"});if(x.effective_status==="harvest_ready")result.push({id:`ready-harvest-${x.crop_succession_id}`,severity:"ready",category:"Harvest",title:`${label}: harvest window is open`,detail:x.planned_first_harvest_date?`Planned first harvest: ${x.planned_first_harvest_date}.`:"Lifecycle indicates harvest readiness.",rule:"Effective lifecycle is harvest_ready and no harvest pass has advanced it to harvesting.",href:"/orchard/harvest"});else if(x.planned_first_harvest_date&&x.planned_first_harvest_date>=today&&x.planned_first_harvest_date<=next7&&x.harvest_passes===0)result.push({id:`harvest-soon-${x.crop_succession_id}`,severity:"watch",category:"Harvest",title:`${label}: harvest approaching`,detail:`${daysFromToday(x.planned_first_harvest_date,today)} day(s) until planned first harvest.`,rule:"First harvest is within the next 7 days and no harvest pass exists yet.",href:"/orchard/harvest"})})
+ const required=new Map<string,{crop:string;variety:string|null;needed:number}>();successions.filter(x=>!["completed","cancelled","harvesting"].includes(x.status)).forEach(x=>{const c=cycleById.get(x.crop_cycle_id),needed=seedsNeeded(x);if(!c||!needed)return;const key=cropKey(c.crop_name,c.variety),cur=required.get(key);required.set(key,{crop:c.crop_name,variety:c.variety,needed:(cur?.needed??0)+needed})});const stock=new Map<string,number>();seedLots.forEach(l=>{if(l.expiry_date&&l.expiry_date<today)return;const key=cropKey(l.crop_name,l.variety);stock.set(key,(stock.get(key)??0)+Math.max(0,l.quantity_seeds??0))});required.forEach((req,key)=>{const available=stock.get(key)??0;if(available<req.needed)result.push({id:`seed-${key}`,severity:available===0?"critical":"attention",category:"Seeds",title:`${labelCrop(req.crop,req.variety)}: seed shortage`,detail:`${available.toLocaleString()} available vs ${req.needed.toLocaleString()} estimated seeds required.`,rule:"Non-expired seed stock is below estimated requirement for active planned successions.",href:"/orchard/nursery"})})
+ const byBed=new Map<string,Allocation[]>();allocations.forEach(x=>byBed.set(x.bed_id,[...(byBed.get(x.bed_id)??[]),x]));byBed.forEach((items,bedId)=>{const ordered=[...items].sort((a,b)=>a.planned_start_date.localeCompare(b.planned_start_date)),bed=bedById.get(bedId),plot=bed?plotById.get(bed.plot_id):null,bedLabel=bed?`${plot?.name?`${plot.name} · `:""}${bed.name}`:bedId;ordered.forEach((x,i)=>{if(x.planned_end_date>=today&&x.planned_end_date<=next14)result.push({id:`bed-free-${x.id}`,severity:"watch",category:"Beds",title:`${bedLabel}: bed becoming available`,detail:`Current allocation ends ${x.planned_end_date}.`,rule:"Allocation end date falls within the next 14 days.",href:"/orchard/crop-map"});const next=ordered[i+1];if(!next)return;const cs=successionById.get(x.crop_succession_id),ns=successionById.get(next.crop_succession_id),cc=cs?cycleById.get(cs.crop_cycle_id):null,nc=ns?cycleById.get(ns.crop_cycle_id):null;if(cc&&nc&&normalize(cc.crop_name)===normalize(nc.crop_name))result.push({id:`rotation-${x.id}-${next.id}`,severity:"attention",category:"Rotation",title:`${bedLabel}: repeated crop sequence`,detail:`${labelCrop(cc.crop_name,cc.variety)} is followed by ${labelCrop(nc.crop_name,nc.variety)}.`,rule:"Two consecutive allocations on the same bed use the same crop name. This is a rotation warning, not an agronomic disease-risk diagnosis.",href:"/orchard/crop-map"})})})
+ pests.forEach(x=>{const severe=["high","critical"].includes(normalize(x.severity_level)),effective=["effective","very_effective"].includes(normalize(x.treatment_effectiveness));if(!severe||effective)return;const crop=cropById.get(x.crop_id);result.push({id:`health-${x.id}`,severity:normalize(x.severity_level)==="critical"?"critical":"attention",category:"Health",title:`${crop?labelCrop(crop.crop_name,crop.variety):"Crop"}: severe health issue`,detail:`${x.pest_type||x.disease_name||"Health observation"}${x.affected_percentage!=null?` · ${x.affected_percentage}% affected`:""}.`,rule:"Severity is high/critical and treatment effectiveness is not recorded as effective/very effective.",href:"/orchard/pests"})})
+ const open=tasks.filter(x=>!["done","completed","cancelled","completada","cancelada"].includes(normalize(x.status)));open.filter(x=>x.due_date&&x.due_date<today).forEach(x=>result.push({id:`task-overdue-${x.id}`,severity:["urgent","critical","high","urgente","alta"].includes(normalize(x.priority))?"critical":"attention",category:"Work",title:`Overdue: ${x.title}`,detail:`Due ${x.due_date}${assigned.has(x.id)?"":" · unassigned"}.`,rule:"Open Orchard task has a due date before today.",href:"/orchard/work"}));open.filter(x=>x.due_date&&x.due_date>=today&&x.due_date<=next7&&!assigned.has(x.id)).forEach(x=>result.push({id:`task-unassigned-${x.id}`,severity:"attention",category:"Work",title:`Unassigned: ${x.title}`,detail:`Due ${x.due_date}.`,rule:"Open Orchard task is due within 7 days and has no employee assignment.",href:"/orchard/work"}));const workload=new Map<string,number>();open.filter(x=>x.due_date&&x.due_date>=today&&x.due_date<=next7).forEach(x=>workload.set(x.due_date!, (workload.get(x.due_date!)??0)+(x.estimated_minutes??0)));workload.forEach((minutes,date)=>{if(minutes>480)result.push({id:`workload-${date}`,severity:"attention",category:"Work",title:`${date}: workload exceeds one person-day`,detail:`${Math.round(minutes/60*10)/10} estimated hours scheduled.`,rule:"Open Orchard tasks due on the same day total more than 480 estimated minutes.",href:"/orchard/work"})})
+ crops.forEach(c=>{if(c.estimated_yield==null||c.actual_yield==null||c.estimated_yield<=0||!c.yield_unit)return;const ratio=c.actual_yield/c.estimated_yield;if(ratio<.8)result.push({id:`yield-${c.id}`,severity:ratio<.5?"critical":"attention",category:"Performance",title:`${labelCrop(c.crop_name,c.variety)}: yield under target`,detail:`${c.actual_yield} / ${c.estimated_yield} ${c.yield_unit} (${Math.round(ratio*100)}%).`,rule:"Recorded actual yield is below 80% of estimated yield in the same crop yield unit.",href:"/orchard/harvest"})})
+ const rank={critical:0,attention:1,ready:2,watch:3};return result.sort((a,b)=>rank[a.severity]-rank[b.severity]||a.category.localeCompare(b.category)||a.title.localeCompare(b.title))},[allocations,assignments,beds,crops,cycles,lifecycle,pests,plots,seedLots,successions,tasks])
+ const counts=decisions.reduce<Record<Decision["severity"],number>>((a,x)=>({...a,[x.severity]:a[x.severity]+1}),{critical:0,attention:0,ready:0,watch:0});const rules=["Overdue sowing or transplant from canonical lifecycle dates.","Harvest ready now, or approaching within seven days without a harvest pass.","Non-expired seed stock below calculated requirement for active successions.","Bed turnover within 14 days and repeated crop names on consecutive allocations.","High/critical health observation without effective treatment result.","Overdue or soon-due unassigned work, plus daily workload above 480 minutes.","Actual crop yield below 80% of estimated yield in the same recorded unit."]
+ return <AppLayout><OrchardNavigation/><main className="mx-auto w-full max-w-[1560px] space-y-10 px-4 pb-16 pt-4 sm:px-6 lg:px-8">
+  <section className="relative isolate min-h-[360px] overflow-hidden bg-neutral-950 sm:min-h-[420px]"><img src={HERO.src} alt={HERO.alt} className="absolute inset-0 h-full w-full object-cover opacity-100 [filter:none]"/><div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(0,0,0,.88)_0%,rgba(0,0,0,.44)_58%,rgba(0,0,0,.14)_100%)]"/><div className="relative flex min-h-[360px] max-w-3xl flex-col justify-end p-6 text-white sm:min-h-[420px] sm:p-10"><p className="text-xs uppercase tracking-[0.2em] text-white/60">Orchard · Decision Intelligence</p><h1 className="mt-3 text-4xl font-medium tracking-[-0.03em] sm:text-5xl">{text.title}</h1><p className="mt-4 max-w-2xl text-sm leading-6 text-white/75">{text.description}</p><div className="mt-6 flex flex-wrap gap-2"><Button onClick={()=>void load()} disabled={loading} className="bg-white text-black hover:bg-white/90"><RefreshCw className={`mr-2 h-4 w-4 ${loading?"animate-spin":""}`}/>{text.refresh}</Button><Badge className="border-white/20 bg-black/30 px-3 py-2 text-white">{decisions.length} {text.total.toLowerCase()}</Badge></div></div><div className="absolute bottom-6 right-6 hidden grid-cols-2 gap-px bg-white/10 lg:grid"><HeroMetric label={text.critical} value={counts.critical}/><HeroMetric label={text.attention} value={counts.attention}/><HeroMetric label={text.ready} value={counts.ready}/><HeroMetric label={text.watch} value={counts.watch}/></div></section>
+  {error&&<Card className="border-destructive/60"><CardContent className="p-4 text-sm text-destructive">{error}</CardContent></Card>}
+  <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5"><Metric label={text.total} value={decisions.length} icon={<ShieldAlert className="h-4 w-4"/>}/><Metric label={text.critical} value={counts.critical} icon={<AlertTriangle className="h-4 w-4"/>}/><Metric label={text.attention} value={counts.attention} icon={<Clock3 className="h-4 w-4"/>}/><Metric label={text.ready} value={counts.ready} icon={<CheckCircle2 className="h-4 w-4"/>}/><Metric label={text.watch} value={counts.watch} icon={<Sprout className="h-4 w-4"/>}/></section>
+  <section className="grid gap-6 xl:grid-cols-[1fr_360px]"><div><div className="mb-5"><p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">01 · {text.priority}</p><h2 className="mt-2">{text.total}</h2><p className="mt-1 text-sm text-muted-foreground">{text.priorityHelp}</p></div>{loading?<p className="text-sm text-muted-foreground">Loading…</p>:decisions.length===0?<div className="border border-dashed p-6 text-sm text-muted-foreground">{text.noDecisions}</div>:<div className="grid gap-4 md:grid-cols-2">{decisions.map(item=>{const photo=CATEGORY_PHOTOS[item.category]??FALLBACK;return <article key={item.id} className="overflow-hidden border bg-background"><div className="relative h-36 overflow-hidden"><img src={photo.src} alt={photo.alt} className="h-full w-full object-cover opacity-100 [filter:none]"/><div className="absolute inset-0 bg-[linear-gradient(0deg,rgba(0,0,0,.76)_0%,rgba(0,0,0,.08)_82%)]"/><div className="absolute inset-x-4 bottom-3"><div className="flex gap-2"><Badge variant={item.severity==="critical"?"destructive":"secondary"}>{item.severity}</Badge><Badge className="bg-black/40 text-white">{item.category}</Badge></div><h3 className="mt-2 line-clamp-2 font-medium text-white">{item.title}</h3></div></div><div className="p-4"><p className="text-sm leading-6">{item.detail}</p><div className="mt-4 border-t pt-3"><p className="text-[10px] uppercase tracking-[0.13em] text-muted-foreground">Rule</p><p className="mt-1 text-xs leading-5 text-muted-foreground">{item.rule}</p></div><Button asChild size="sm" className="mt-4 w-full" variant="outline"><Link href={`/${language}${item.href}`}>{text.open}</Link></Button></div></article>})}</div>}</div>
+   <Card className="h-fit"><CardHeader><CardTitle>{text.rules}</CardTitle><CardDescription>{text.rulesHelp}</CardDescription></CardHeader><CardContent><ol className="space-y-4 text-sm text-muted-foreground">{rules.map((r,i)=><li key={r} className="flex gap-3 border-b pb-4 last:border-0 last:pb-0"><span className="font-mono text-xs text-foreground">{String(i+1).padStart(2,"0")}</span><span>{r}</span></li>)}</ol></CardContent></Card></section>
+ </main></AppLayout>
 }
-
-function Metric({ label, value, icon }: { label: string; value: number; icon: React.ReactNode }) {
-  return <Card><CardContent className="flex items-center justify-between p-4"><div><p className="text-xs text-muted-foreground">{label}</p><p className="mt-1 text-2xl font-semibold">{value}</p></div><div className="rounded-lg border p-2 text-muted-foreground">{icon}</div></CardContent></Card>
-}
+function Metric({label,value,icon}:{label:string;value:number;icon:ReactNode}){return <Card><CardContent className="flex items-center justify-between p-4"><div><p className="text-xs text-muted-foreground">{label}</p><p className="mt-1 text-2xl font-semibold">{value}</p></div><div className="rounded-lg border p-2 text-muted-foreground">{icon}</div></CardContent></Card>}
+function HeroMetric({label,value}:{label:string;value:number}){return <div className="min-w-32 bg-black/45 px-5 py-4 text-white"><p className="text-[10px] uppercase tracking-[0.14em] text-white/55">{label}</p><p className="mt-1 text-2xl font-medium tabular-nums">{value}</p></div>}
