@@ -47,9 +47,9 @@ export default function OrchardLibraryPage(){
 
   const cycleById=useMemo(()=>new Map(cycles.map(c=>[c.id,c])),[cycles])
   const selected=successions.find(s=>s.id===selectedSuccession)??null
-  const selectedCycle=selected?cycleById.get(selected.crop_cycle_id)??null:null
-  const matchedCrop=selectedCycle?crops.find(c=>c.is_active&&c.crop_name.toLowerCase()===selectedCycle.crop_name.toLowerCase())??null:null
-  const matchedCultivar=selectedCycle?.variety&&matchedCrop?cultivars.find(v=>v.is_active&&v.crop_library_id===matchedCrop.id&&v.variety.toLowerCase()===selectedCycle.variety?.toLowerCase())??null:null:null
+  const selectedCycle=selected?(cycleById.get(selected.crop_cycle_id)??null):null
+  const matchedCrop=selectedCycle?(crops.find(c=>c.is_active&&c.crop_name.toLowerCase()===selectedCycle.crop_name.toLowerCase())??null):null
+  const matchedCultivar=selectedCycle?.variety&&matchedCrop?(cultivars.find(v=>v.is_active&&v.crop_library_id===matchedCrop.id&&v.variety.toLowerCase()===selectedCycle.variety?.toLowerCase())??null):null
   const verified=crops.filter(c=>c.provenance_type==="reference"&&c.source_name&&c.source_verified_at).length
   const observed=crops.filter(c=>c.provenance_type==="observed").length
   const reusable=successions.filter(s=>s.knowledge_applied_at).length
