@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 
-const FAO_ICC_CSV = "https://storage.googleapis.com/fao-datalab-caliper/Downloads/ICCv1.1/ICC11-core.csv"
-const SOURCE_PAGE = "https://www.fao.org/statistics/caliper/tools/download/en"
+const FAO_WCA_CSV = "https://stats.fao.org/caliper/download/WCA2020Crops/WCACROPS-core.csv"
+const SOURCE_PAGE = "https://www.fao.org/statistics/caliper/classifications/wca/en"
 
 function parseCsv(input: string) {
   const rows: string[][] = []
@@ -44,32 +44,44 @@ export async function GET(request: Request) {
   const limit = Number.isFinite(requestedLimit) ? Math.max(1, Math.min(150, requestedLimit)) : 80
 
   try {
-    const response = await fetch(FAO_ICC_CSV, { next: { revalidate: 86400 } })
-    if (!response.ok) return NextResponse.json({ error: `FAO catalog unavailable (${response.status})` }, { status: 502 })
+    const response = await fetch(FAO_WCA_CSV, { next: { revalidate: 86400 } })
+    if (!response.ok) return NextResponse.json({ error: `FAO crop list unavailable (${response.status})` }, { status: 502 })
     const rows = parseCsv(await response.text())
-    if (rows.length < 2) return NextResponse.json({ error: "FAO catalog returned no rows" }, { status: 502 })
+    if (rows.length < 2) return NextResponse.json({ error: "FAO crop list returned no rows" }, { status: 502 })
 
     const headers = rows[0].map(normalizeHeader)
-    const codeIndex = pickIndex(headers, ["code", "icc_code", "item_code"], ["code"])
-    const nameIndex = pickIndex(headers, ["title_en", "label_en", "name_en", "title", "label", "name"], ["title", "label", "name"])
-    const categoryIndex = pickIndex(headers, ["parent_title_en", "group_title_en", "class_title_en", "category"], ["parent", "group", "class", "category"])
-    if (nameIndex < 0) return NextResponse.json({ error: "FAO catalog schema changed", headers }, { status: 502 })
+    const codeIndex = pickIndex(headers, ["code", "notation", "item_code"], ["code", "notation"])
+    const commonNameIndex = pickIndex(headers, ["title_en", "label_en", "name_en", "common_name", "vernacular_name", "title", "label", "name"], ["vernacular", "common", "title_en", "label_en", "name_en"])
+    const scientificNameIndex = pickIndex(headers, ["scientific_name", "scientificname", "dwc_scientificname"], ["scientific"])
+    const iccIndex = pickIndex(headers, ["icc_1_1_code", "icc11_code", "icc_code"], ["icc_1_1", "icc11"])
+    if (commonNameIndex < 0) return NextResponse.json({ error: "FAO WCA crop-list schema changed", headers }, { status: 502 })
 
-    const items = rows.slice(1)
-      .map((row, index) => ({
-        externalId: (codeIndex >= 0 ? row[codeIndex] : "") || `icc-row-${index + 1}`,
-        name: row[nameIndex] || "",
-        category: categoryIndex >= 0 ? row[categoryIndex] || null : null,
-      }))
-      .filter((item) => item.name && (!query || `${item.name} ${item.category ?? ""} ${item.externalId}`.toLowerCase().includes(query)))
+    const seen = new Set<string>()
+    const allItems = rows.slice(1).flatMap((row, index) => {
+      const name = (row[commonNameIndex] ?? "").trim()
+      if (!name) return []
+      const key = name.toLowerCase()
+      if (seen.has(key)) return []
+      seen.add(key)
+      const scientificName = scientificNameIndex >= 0 ? (row[scientificNameIndex] ?? "").trim() || null : null
+      const iccCode = iccIndex >= 0 ? (row[iccIndex] ?? "").trim() || null : null
+      return [{
+        externalId: (codeIndex >= 0 ? (row[codeIndex] ?? "").trim() : "") || `wca-${index + 1}`,
+        name,
+        scientificName,
+        iccCode,
+      }]
+    })
+    const items = allItems
+      .filter((item) => !query || `${item.name} ${item.scientificName ?? ""} ${item.iccCode ?? ""} ${item.externalId}`.toLowerCase().includes(query))
       .slice(0, limit)
 
     return NextResponse.json({
-      source: { name: "FAO ICC 1.1", publisher: "Food and Agriculture Organization of the United Nations", sourcePage: SOURCE_PAGE, datasetUrl: FAO_ICC_CSV },
-      totalRows: Math.max(0, rows.length - 1),
+      source: { name: "FAO WCA 2020 Crop List", publisher: "Food and Agriculture Organization of the United Nations", sourcePage: SOURCE_PAGE, datasetUrl: FAO_WCA_CSV },
+      totalRows: allItems.length,
       items,
     })
   } catch (error) {
-    return NextResponse.json({ error: error instanceof Error ? error.message : "Could not load FAO crop catalog" }, { status: 502 })
+    return NextResponse.json({ error: error instanceof Error ? error.message : "Could not load FAO crop list" }, { status: 502 })
   }
 }
