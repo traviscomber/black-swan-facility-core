@@ -34,12 +34,39 @@ type Crop = {
   status: string | null
 }
 
+type CropPhoto = {
+  src: string
+  alt: string
+}
+
+const unsplash = (id: string, width = 1200) => `https://unsplash.com/photos/${id}/download?force=true&w=${width}`
+
 const PHOTOS = {
-  hero: "https://images.unsplash.com/photo-1566218246241-934ad8b38ea6?auto=format&fit=crop&q=82&w=1800",
-  roots: "https://images.unsplash.com/photo-1769082301052-6c6fb1c5f043?auto=format&fit=crop&q=80&w=1000",
-  seedlings: "https://images.unsplash.com/photo-1466692476868-aef1dfb1e735?auto=format&fit=crop&q=80&w=1000",
-  greens: "https://images.unsplash.com/photo-1744726010540-bf318d4a691f?auto=format&fit=crop&q=80&w=1000",
+  hero: {
+    src: unsplash("WHHbA0kU8Qg", 1800),
+    alt: "Rows of tomato plants growing inside a greenhouse",
+  },
+  seedling: {
+    src: "https://images.unsplash.com/photo-1466692476868-aef1dfb1e735?auto=format&fit=crop&q=80&w=1200",
+    alt: "Young seedlings growing in a garden",
+  },
 } as const
+
+const CROP_PHOTOS: Record<string, CropPhoto> = {
+  Tomato: { src: unsplash("WHHbA0kU8Qg"), alt: "Tomato plants growing inside a greenhouse" },
+  Lettuce: { src: unsplash("SXztF2mpCTA"), alt: "Fresh green lettuce growing in a raised garden bed" },
+  "Bell Pepper": { src: unsplash("ba4VaE46_7w"), alt: "Green bell pepper growing on the plant" },
+  Carrot: { src: unsplash("4yK8iDaWnm8"), alt: "Freshly harvested carrots held above a garden bed" },
+  Zucchini: { src: unsplash("n7x4UkfnJm4"), alt: "Zucchini plant flowering in a vegetable garden" },
+  Onion: { src: unsplash("e3F37BvB5Vg"), alt: "Onions growing in soil with green leaves" },
+  Basil: { src: unsplash("T4uyB67uZ40"), alt: "Fresh green basil plant" },
+  Parsley: { src: unsplash("WGZv8R05LSo"), alt: "Close view of fresh parsley leaves" },
+  Spinach: { src: unsplash("_38-XCxjXZ8"), alt: "Spinach growing in a home garden" },
+  Arugula: { src: unsplash("vlQ0g2jCgA4"), alt: "Arugula growing in a planter" },
+  Potato: { src: unsplash("R6jzDKIM-0c"), alt: "Fresh red potatoes after harvest" },
+  Beet: { src: unsplash("e2TZ2eUCURw"), alt: "Fresh beetroot harvest with leafy tops" },
+  Radish: { src: unsplash("jU2Vv-it18c"), alt: "Red radish growing in soil" },
+}
 
 const copy = {
   en: {
@@ -118,12 +145,8 @@ const cropNames: Record<"es" | "en", Record<string, string>> = {
   en: {},
 }
 
-function cropPhoto(name: string) {
-  const normalized = name.toLowerCase()
-  if (["carrot", "potato", "beet", "radish", "onion"].some((item) => normalized.includes(item))) return PHOTOS.roots
-  if (["lettuce", "spinach", "arugula", "parsley", "basil"].some((item) => normalized.includes(item))) return PHOTOS.greens
-  if (["seedling", "nursery"].some((item) => normalized.includes(item))) return PHOTOS.seedlings
-  return PHOTOS.hero
+function cropPhoto(name: string): CropPhoto | null {
+  return CROP_PHOTOS[name] ?? null
 }
 
 export default function OrchardPage() {
@@ -177,7 +200,7 @@ export default function OrchardPage() {
       <OrchardNavigation />
       <main className="mx-auto w-full max-w-[1560px] px-4 pb-12 pt-4 sm:px-6 sm:pt-6 lg:px-8">
         <section className="relative isolate min-h-[440px] overflow-hidden rounded-[28px] bg-neutral-950 sm:min-h-[500px]">
-          <img src={PHOTOS.hero} alt="Rows of tomato plants growing in a greenhouse" className="absolute inset-0 h-full w-full object-cover" />
+          <img src={PHOTOS.hero.src} alt={PHOTOS.hero.alt} className="absolute inset-0 h-full w-full object-cover" />
           <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/45 to-black/10" />
           <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-transparent to-black/10" />
           <div className="relative flex min-h-[440px] max-w-3xl flex-col justify-end p-6 text-white sm:min-h-[500px] sm:p-10 lg:p-14">
@@ -220,7 +243,7 @@ export default function OrchardPage() {
           {plots.length === 0 ? <p className="py-8 text-sm text-muted-foreground">{text.noPlots}</p> : <div className="divide-y">{plots.map((plot) => <div key={plot.id} className="grid gap-4 py-5 sm:grid-cols-[1.3fr_.7fr_.7fr_.7fr] sm:items-center"><div><div className="flex items-center gap-2"><p className="font-medium">{plot.name}</p><Badge variant="outline" className="rounded-full">{statuses[lang][plot.status ?? ""] ?? plot.status ?? text.noStatus}</Badge></div><p className="mt-1 line-clamp-1 text-sm text-muted-foreground">{plot.description || plot.plot_type}</p></div><SmallMeta label={text.area} value={`${Number(plot.size_sqm ?? 0).toLocaleString(locale)} m²`} /><SmallMeta label={text.soil} value={plot.soil_type || text.noRecord} /><SmallMeta label={text.irrigation} value={plot.irrigation_type || text.noRecord} /></div>)}</div>}
         </section>
 
-        <p className="mt-10 text-[11px] text-muted-foreground">Reference photography used under the Unsplash License. Field evidence will replace reference imagery as Orchard photo records are added.</p>
+        <p className="mt-10 text-[11px] text-muted-foreground">Reference photography used under the Unsplash License. Crop images are mapped by crop identity; unknown crops intentionally show a neutral botanical fallback instead of a misleading crop photo. Field evidence will replace reference imagery as Orchard photo records are added.</p>
       </main>
     </AppLayout>
   )
@@ -235,7 +258,9 @@ function ActionCard({ href, icon: Icon, title, value, detail, warning = false }:
 }
 
 function CropCard({ crop, lang, locale, plotName, text }: { crop: Crop; lang: "en" | "es"; locale: string; plotName: string; text: (typeof copy)["en"] | (typeof copy)["es"] }) {
-  return <article className="group overflow-hidden rounded-3xl border bg-background"><div className="relative aspect-[4/3] overflow-hidden bg-muted"><img src={cropPhoto(crop.crop_name)} alt="" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]" /><div className="absolute inset-0 bg-gradient-to-t from-black/55 via-transparent to-transparent" /><div className="absolute bottom-4 left-4 right-4 flex items-end justify-between gap-3 text-white"><div><p className="text-xl font-medium tracking-tight">{cropNames[lang][crop.crop_name] ?? crop.crop_name}</p><p className="mt-0.5 text-xs text-white/70">{crop.variety || plotName}</p></div><Badge className="border-white/20 bg-black/35 text-white backdrop-blur">{statuses[lang][crop.status ?? ""] ?? crop.status ?? text.noStatus}</Badge></div></div><div className="grid grid-cols-3 divide-x border-t"><SmallMeta className="p-4" label={text.planted} value={new Date(`${crop.planting_date}T12:00:00`).toLocaleDateString(locale, { day: "2-digit", month: "short" })} /><SmallMeta className="p-4" label={text.expected} value={crop.expected_harvest_date ? new Date(`${crop.expected_harvest_date}T12:00:00`).toLocaleDateString(locale, { day: "2-digit", month: "short" }) : text.noRecord} /><SmallMeta className="p-4" label={text.quantity} value={`${Number(crop.quantity_planted ?? 0).toLocaleString(locale)} ${crop.planting_unit || ""}`} /></div></article>
+  const photo = cropPhoto(crop.crop_name)
+
+  return <article className="group overflow-hidden rounded-3xl border bg-background"><div className="relative aspect-[4/3] overflow-hidden bg-muted">{photo ? <img src={photo.src} alt={photo.alt} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]" /> : <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-emerald-950/30 via-muted to-background"><Sprout className="h-12 w-12 text-muted-foreground/60" aria-hidden="true" /></div>}<div className="absolute inset-0 bg-gradient-to-t from-black/55 via-transparent to-transparent" /><div className="absolute bottom-4 left-4 right-4 flex items-end justify-between gap-3 text-white"><div><p className="text-xl font-medium tracking-tight">{cropNames[lang][crop.crop_name] ?? crop.crop_name}</p><p className="mt-0.5 text-xs text-white/70">{crop.variety || plotName}</p></div><Badge className="border-white/20 bg-black/35 text-white backdrop-blur">{statuses[lang][crop.status ?? ""] ?? crop.status ?? text.noStatus}</Badge></div></div><div className="grid grid-cols-3 divide-x border-t"><SmallMeta className="p-4" label={text.planted} value={new Date(`${crop.planting_date}T12:00:00`).toLocaleDateString(locale, { day: "2-digit", month: "short" })} /><SmallMeta className="p-4" label={text.expected} value={crop.expected_harvest_date ? new Date(`${crop.expected_harvest_date}T12:00:00`).toLocaleDateString(locale, { day: "2-digit", month: "short" }) : text.noRecord} /><SmallMeta className="p-4" label={text.quantity} value={`${Number(crop.quantity_planted ?? 0).toLocaleString(locale)} ${crop.planting_unit || ""}`} /></div></article>
 }
 
 function SmallMeta({ label, value, className = "" }: { label: string; value: string; className?: string }) {
