@@ -101,7 +101,7 @@ export default function OrchardQuickHarvestPage() {
     setSaving(false)
   }
 
-  return <AppLayout><PageHeader title={text.title} description={text.description} actions={<Button variant="outline" onClick={() => void load()} disabled={loading}><RefreshCw className="mr-2 h-4 w-4" />{text.refresh}</Button>} /><OrchardNavigation /><div className="mx-auto max-w-2xl space-y-4 p-3 pb-24 sm:p-6">
+  return <AppLayout><OrchardNavigation /><PageHeader title={text.title} description={text.description} actions={<Button variant="outline" onClick={() => void load()} disabled={loading}><RefreshCw className="mr-2 h-4 w-4" />{text.refresh}</Button>} /><div className="mx-auto max-w-2xl space-y-4 p-3 pb-24 sm:p-6">
     <div className="flex flex-wrap items-center justify-between gap-2"><Button asChild variant="ghost" className="min-h-11"><Link href={withGamePlanQuery(`/${language}/orchard/field`, selectedPlanId)}><ArrowLeft className="mr-2 h-4 w-4" />{text.back}</Link></Button><div className="rounded-full border px-3 py-1 text-xs text-muted-foreground">{text.scope}: <span className="font-medium text-foreground">{scopeLabel}</span></div></div>
     {error && <Card className="border-destructive/60"><CardContent className="p-4 text-sm text-destructive">{error}</CardContent></Card>}
     {success && <Card><CardContent className="flex items-center gap-2 p-4 text-sm font-medium"><Leaf className="h-4 w-4" />{success}</CardContent></Card>}
