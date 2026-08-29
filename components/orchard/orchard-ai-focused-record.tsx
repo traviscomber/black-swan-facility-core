@@ -35,7 +35,7 @@ export function OrchardAiFocusedRecord({ kind, children }: { kind: Kind; childre
     const config = configs[kind]
     async function load() {
       const result = await supabase.from(config.table).select(config.select).eq("id", entityId).maybeSingle()
-      if (!cancelled && !result.error && result.data) setRow(result.data as FocusRow)
+      if (!cancelled && !result.error && result.data) setRow(result.data as unknown as FocusRow)
     }
     void load()
     return () => { cancelled = true }
