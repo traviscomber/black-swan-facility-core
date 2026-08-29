@@ -3,12 +3,12 @@
 import { useState, useEffect } from "react"
 import { AppLayout } from "@/components/app-layout"
 import { PageHeader } from "@/components/page-header"
+import { OrchardNavigation } from "@/components/orchard/orchard-navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Plus, Leaf, TrendingUp, Trash2, Pencil, Search, Filter, Calendar } from "lucide-react"
+import { Leaf, TrendingUp, Search, Calendar } from "lucide-react"
 import { createBrowserClient } from "@/lib/supabase/client"
 import { useLanguage } from "@/lib/hooks/use-language"
 
@@ -146,16 +146,11 @@ export default function OrchardCropsPage() {
 
   return (
     <AppLayout>
+      <OrchardNavigation />
       <div className="space-y-6">
         <PageHeader
           title={t("orchard.crops")}
           description={t("orchard.description")}
-          actions={
-            <Button>
-              <Plus className="mr-2 h-4 w-4" />
-              {t("orchard.add_crop")}
-            </Button>
-          }
         />
 
         {/* Quick Stats */}
@@ -356,14 +351,6 @@ export default function OrchardCropsPage() {
                         </div>
                       </div>
 
-                      <div className="flex gap-2 ml-4">
-                        <Button variant="ghost" size="sm">
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button variant="ghost" size="sm">
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
                     </div>
                   </div>
                 ))}

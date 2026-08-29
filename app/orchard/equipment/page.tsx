@@ -3,10 +3,10 @@
 import { useState, useEffect } from "react"
 import { AppLayout } from "@/components/app-layout"
 import { PageHeader } from "@/components/page-header"
+import { OrchardNavigation } from "@/components/orchard/orchard-navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Plus, Wrench, AlertCircle, CheckCircle } from "lucide-react"
+import { Wrench, AlertCircle, CheckCircle } from "lucide-react"
 import { createBrowserClient } from "@/lib/supabase/client"
 import { useLanguage } from "@/lib/hooks/use-language"
 
@@ -75,16 +75,11 @@ export default function OrchardEquipmentPage() {
 
   return (
     <AppLayout>
+      <OrchardNavigation />
       <div className="space-y-6">
         <PageHeader
           title={t("orchard.equipment")}
           description={t("orchard.equipment_description")}
-          actions={
-            <Button>
-              <Plus className="mr-2 h-4 w-4" />
-              {t("orchard.equipment_name")}
-            </Button>
-          }
         />
 
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">

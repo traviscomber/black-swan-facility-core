@@ -33,6 +33,7 @@ const orchardSubItems = [
   { nameKey: "nav.orchard_health", href: "/orchard/pests", icon: "🐛" },
   { nameKey: "nav.orchard_soil", href: "/orchard/soil", icon: "🌍" },
   { nameKey: "nav.orchard_equipment", href: "/orchard/equipment", icon: "🔧" },
+  { nameKey: "nav.orchard_analytics", href: "/orchard/analytics", icon: "▥" },
 ]
 
 const vineyardSubItems = [

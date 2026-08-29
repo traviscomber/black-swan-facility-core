@@ -138,6 +138,7 @@ export const deTranslations: Record<string, string> = {
   'nav.orchard_health': 'Gesundheit & Schädlinge',
   'nav.orchard_soil': 'Boden',
   'nav.orchard_equipment': 'Ausrüstung',
+  'nav.orchard_analytics': 'Analysen',
   'nav.vineyard': 'Weinberg',
   'nav.vineyard_desc': 'Trauben- und Weinproduktion',
   'nav.vineyard_dashboard': 'Weinberg',
