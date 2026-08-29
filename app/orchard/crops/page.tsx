@@ -1,364 +1,39 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import type { FormEvent } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
+import { Plus, RefreshCw, Trash2 } from "lucide-react"
 import { AppLayout } from "@/components/app-layout"
 import { PageHeader } from "@/components/page-header"
 import { OrchardNavigation } from "@/components/orchard/orchard-navigation"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Leaf, TrendingUp, Search, Calendar } from "lucide-react"
+import { Textarea } from "@/components/ui/textarea"
 import { createBrowserClient } from "@/lib/supabase/client"
 import { useLanguage } from "@/lib/hooks/use-language"
 
-interface Crop {
-  id: string
-  plot_id: string
-  crop_name: string
-  scientific_name: string
-  crop_type: string
-  variety: string
-  planting_date: string
-  expected_harvest_date: string
-  actual_harvest_date: string | null
-  quantity_planted: number
-  planting_unit: string
-  status: string
-  spacing_cm: number
-  depth_cm: number
-  water_frequency: string
-  fertilizer_schedule: string
-  companion_plants: string
-  pest_control_methods: string
-  days_to_harvest: number
-  estimated_yield: number | null
-  actual_yield: number | null
-}
-
-interface Plot {
-  id: string
-  name: string
-}
+type Crop = { id: string; plot_id: string; crop_name: string; scientific_name: string | null; crop_type: string; variety: string | null; planting_date: string; expected_harvest_date: string | null; actual_harvest_date: string | null; quantity_planted: number | null; planting_unit: string | null; status: string; estimated_yield: number | null; actual_yield: number | null; yield_unit: string | null; spacing_cm: number | null; depth_cm: number | null; water_frequency: string | null; fertilizer_schedule: string | null; notes: string | null }
+type Plot = { id: string; name: string }
+const statuses = ["seedling", "growing", "mature", "harvested", "failed"]
+const copy = { en: { title: "Crops", description: "Create and maintain the live crop records that field care, health and harvest operations attach to.", newCrop: "New crop record", plot: "Plot", crop: "Crop", type: "Crop type", variety: "Variety", scientific: "Scientific name", planted: "Planting date", harvest: "Expected harvest", quantity: "Quantity planted", unit: "Unit", spacing: "Spacing (cm)", depth: "Depth (cm)", water: "Water frequency", yield: "Estimated yield", yieldUnit: "Yield unit", fertilizer: "Fertilizer schedule", notes: "Notes", create: "Create crop", refresh: "Refresh", loading: "Loading…", empty: "No operational crops yet.", saveError: "Could not save crop", delete: "Delete this crop and its related logs?", actualYield: "Actual yield", actualHarvest: "Actual harvest", status: "Status", save: "Save" }, es: { title: "Cultivos", description: "Crea y mantiene los registros vivos de cultivo a los que se conectan cuidados, sanidad y cosecha.", newCrop: "Nuevo registro", plot: "Sector", crop: "Cultivo", type: "Tipo", variety: "Variedad", scientific: "Nombre científico", planted: "Fecha de plantación", harvest: "Cosecha esperada", quantity: "Cantidad plantada", unit: "Unidad", spacing: "Distancia (cm)", depth: "Profundidad (cm)", water: "Frecuencia de riego", yield: "Rendimiento estimado", yieldUnit: "Unidad rendimiento", fertilizer: "Plan de fertilización", notes: "Notas", create: "Crear cultivo", refresh: "Actualizar", loading: "Cargando…", empty: "Aún no hay cultivos operativos.", saveError: "No fue posible guardar el cultivo", delete: "¿Eliminar este cultivo y sus registros relacionados?", actualYield: "Rendimiento real", actualHarvest: "Cosecha real", status: "Estado", save: "Guardar" } } as const
 
 export default function OrchardCropsPage() {
-  const [crops, setCrops] = useState<Crop[]>([])
-  const [filteredCrops, setFilteredCrops] = useState<Crop[]>([])
-  const [plots, setPlots] = useState<Plot[]>([])
-  const [loading, setLoading] = useState(true)
-  const [searchTerm, setSearchTerm] = useState("")
-  const [filterStatus, setFilterStatus] = useState("all")
-  const [filterPlot, setFilterPlot] = useState("all")
-  const supabase = createBrowserClient()
-  const { t } = useLanguage()
-
-  useEffect(() => {
-    fetchData()
-  }, [])
-
-  useEffect(() => {
-    applyFilters()
-  }, [crops, searchTerm, filterStatus, filterPlot])
-
-  const fetchData = async () => {
-    try {
-      setLoading(true)
-      // Fetch plots
-      const { data: plotsData, error: plotsError } = await supabase
-        .from("orchard_plots")
-        .select("id, name")
-        .order("name", { ascending: true })
-
-      if (plotsError) throw plotsError
-      setPlots(plotsData || [])
-
-      // Fetch crops
-      const { data: cropsData, error: cropsError } = await supabase
-        .from("orchard_crops")
-        .select("*")
-        .order("planting_date", { ascending: false })
-
-      if (cropsError) throw cropsError
-      setCrops(cropsData || [])
-    } catch (error) {
-      console.error("[v0] Error fetching crops data:", error)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const applyFilters = () => {
-    let filtered = crops
-
-    // Search filter
-    if (searchTerm) {
-      filtered = filtered.filter(
-        (crop) =>
-          crop.crop_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          crop.variety.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          crop.scientific_name.toLowerCase().includes(searchTerm.toLowerCase())
-      )
-    }
-
-    // Status filter
-    if (filterStatus !== "all") {
-      filtered = filtered.filter((crop) => crop.status === filterStatus)
-    }
-
-    // Plot filter
-    if (filterPlot !== "all") {
-      filtered = filtered.filter((crop) => crop.plot_id === filterPlot)
-    }
-
-    setFilteredCrops(filtered)
-  }
-
-  const getStatusColor = (status: string) => {
-    const statusColors: Record<string, string> = {
-      seedling: "bg-blue-100 text-blue-800",
-      growing: "bg-green-100 text-green-800",
-      mature: "bg-emerald-100 text-emerald-800",
-      harvested: "bg-gray-100 text-gray-800",
-    }
-    return statusColors[status] || "bg-gray-100 text-gray-800"
-  }
-
-  const getPlotName = (plotId: string) => {
-    return plots.find((p) => p.id === plotId)?.name || t("orchard.unknown")
-  }
-
-  const daysUntilHarvest = (expectedDate: string) => {
-    const today = new Date()
-    const harvest = new Date(expectedDate)
-    const diff = Math.ceil((harvest.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
-    return diff
-  }
-
-  if (loading) {
-    return (
-      <AppLayout>
-        <div className="flex items-center justify-center min-h-screen">
-          <p className="text-muted-foreground">{t("orchard.loading")}</p>
-        </div>
-      </AppLayout>
-    )
-  }
-
-  return (
-    <AppLayout>
-      <OrchardNavigation />
-      <div className="space-y-6">
-        <PageHeader
-          title={t("orchard.crops")}
-          description={t("orchard.description")}
-        />
-
-        {/* Quick Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                <Leaf className="h-4 w-4" />
-                {t("orchard.crops")}
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold">{crops.length}</div>
-              <p className="text-xs text-muted-foreground mt-1">Total</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                <TrendingUp className="h-4 w-4" />
-                Growing
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold">
-                {crops.filter((c) => c.status === "growing").length}
-              </div>
-              <p className="text-xs text-muted-foreground mt-1">Active crops</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                <Calendar className="h-4 w-4" />
-                Ready Soon
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold">
-                {crops.filter((c) => c.status !== "harvested" && daysUntilHarvest(c.expected_harvest_date) <= 7 && daysUntilHarvest(c.expected_harvest_date) > 0).length}
-              </div>
-              <p className="text-xs text-muted-foreground mt-1">Within 7 days</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                <Leaf className="h-4 w-4" />
-                Harvested
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold">
-                {crops.filter((c) => c.status === "harvested").length}
-              </div>
-              <p className="text-xs text-muted-foreground mt-1">Completed</p>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Filters */}
-        <div className="rounded-lg border border-secondary bg-card p-4 space-y-4">
-          <div className="grid gap-4 md:grid-cols-3">
-            <div>
-              <Input
-                placeholder={t("orchard.crop_name")}
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="bg-background"
-                icon={<Search className="h-4 w-4" />}
-              />
-            </div>
-            <div className="flex gap-4">
-              <Select value={filterStatus} onValueChange={setFilterStatus}>
-                <SelectTrigger className="w-[200px]">
-                  <SelectValue placeholder={t("orchard.filter_by_status")} />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">{t("orchard.all_status")}</SelectItem>
-                  <SelectItem value="seedling">Seedling</SelectItem>
-                  <SelectItem value="growing">Growing</SelectItem>
-                  <SelectItem value="mature">Mature</SelectItem>
-                  <SelectItem value="harvested">Harvested</SelectItem>
-                </SelectContent>
-              </Select>
-              <Select value={filterPlot} onValueChange={setFilterPlot}>
-                <SelectTrigger className="w-[200px]">
-                  <SelectValue placeholder={t("orchard.filter_by_plot")} />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">{t("orchard.all_plots")}</SelectItem>
-                  {plots.map((plot) => (
-                    <SelectItem key={plot.id} value={plot.id}>
-                      {plot.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-        </div>
-
-        {/* Crops Table */}
-        <Card>
-          <CardHeader>
-            <CardTitle>{t("orchard.crops")}</CardTitle>
-            <CardDescription>
-              {filteredCrops.length} of {crops.length} crops
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {filteredCrops.length === 0 ? (
-              <div className="text-center py-8">
-                <p className="text-muted-foreground">No crops found</p>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {filteredCrops.map((crop) => (
-                  <div
-                    key={crop.id}
-                    className="border rounded-lg p-4 hover:bg-accent/5 transition-colors"
-                  >
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-3 mb-2">
-                          <div>
-                            <h3 className="font-semibold text-lg">{crop.crop_name}</h3>
-                            <p className="text-sm text-muted-foreground italic">
-                              {crop.scientific_name}
-                            </p>
-                          </div>
-                          <Badge className={getStatusColor(crop.status)}>
-                            {crop.status}
-                          </Badge>
-                        </div>
-
-                        <div className="grid grid-cols-2 md:grid-cols-5 gap-3 text-sm mt-3">
-                          <div>
-                            <p className="text-muted-foreground">Plot</p>
-                            <p className="font-semibold text-xs">{getPlotName(crop.plot_id)}</p>
-                          </div>
-                          <div>
-                            <p className="text-muted-foreground">Variety</p>
-                            <p className="font-semibold">{crop.variety}</p>
-                          </div>
-                          <div>
-                            <p className="text-muted-foreground">Planted</p>
-                            <p className="font-semibold">
-                              {new Date(crop.planting_date).toLocaleDateString()}
-                            </p>
-                          </div>
-                          <div>
-                            <p className="text-muted-foreground">Harvest</p>
-                            <p className="font-semibold">
-                              {crop.status === "harvested"
-                                ? crop.actual_harvest_date
-                                  ? new Date(crop.actual_harvest_date).toLocaleDateString()
-                                  : "-"
-                                : `${daysUntilHarvest(crop.expected_harvest_date)} days`}
-                            </p>
-                          </div>
-                          <div>
-                            <p className="text-muted-foreground">Quantity</p>
-                            <p className="font-semibold">
-                              {crop.quantity_planted} {crop.planting_unit}
-                            </p>
-                          </div>
-                        </div>
-
-                        <div className="grid grid-cols-2 md:grid-cols-5 gap-3 text-sm mt-2">
-                          <div>
-                            <p className="text-muted-foreground">Spacing</p>
-                            <p className="font-semibold">{crop.spacing_cm} cm</p>
-                          </div>
-                          <div>
-                            <p className="text-muted-foreground">Water Freq.</p>
-                            <p className="font-semibold text-xs">{crop.water_frequency}</p>
-                          </div>
-                          <div>
-                            <p className="text-muted-foreground">Companions</p>
-                            <p className="font-semibold text-xs">{crop.companion_plants}</p>
-                          </div>
-                          <div>
-                            <p className="text-muted-foreground">Est. Yield</p>
-                            <p className="font-semibold">
-                              {crop.estimated_yield || "-"} kg
-                            </p>
-                          </div>
-                          <div>
-                            <p className="text-muted-foreground">Actual Yield</p>
-                            <p className="font-semibold">
-                              {crop.actual_yield || "-"} kg
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-    </AppLayout>
-  )
+  const supabase = useMemo(() => createBrowserClient(), [])
+  const { language } = useLanguage(); const text = copy[language === "es" ? "es" : "en"]
+  const [crops, setCrops] = useState<Crop[]>([]); const [plots, setPlots] = useState<Plot[]>([]); const [loading, setLoading] = useState(true); const [saving, setSaving] = useState(false); const [error, setError] = useState<string | null>(null)
+  const [form, setForm] = useState({ plot_id: "", crop_name: "", scientific_name: "", crop_type: "vegetable", variety: "", planting_date: "", expected_harvest_date: "", quantity_planted: "", planting_unit: "plants", spacing_cm: "", depth_cm: "", water_frequency: "", estimated_yield: "", yield_unit: "kg", fertilizer_schedule: "", notes: "" })
+  const loadData = useCallback(async () => { setLoading(true); const [c, p] = await Promise.all([supabase.from("orchard_crops").select("*").order("planting_date", { ascending: false }), supabase.from("orchard_plots").select("id, name").order("name")]); const e = c.error ?? p.error; if (e) setError(e.message); else { setCrops((c.data ?? []) as Crop[]); setPlots((p.data ?? []) as Plot[]) } setLoading(false) }, [supabase])
+  useEffect(() => { void loadData() }, [loadData])
+  async function createCrop(event: FormEvent) { event.preventDefault(); if (!form.plot_id || !form.crop_name || !form.crop_type || !form.planting_date) return; const n = (v: string) => v ? Number(v) : null; setSaving(true); const { error: e } = await supabase.from("orchard_crops").insert({ plot_id: form.plot_id, crop_name: form.crop_name.trim(), scientific_name: form.scientific_name.trim() || null, crop_type: form.crop_type.trim(), variety: form.variety.trim() || null, planting_date: form.planting_date, expected_harvest_date: form.expected_harvest_date || null, quantity_planted: n(form.quantity_planted), planting_unit: form.planting_unit || null, spacing_cm: n(form.spacing_cm), depth_cm: n(form.depth_cm), water_frequency: form.water_frequency.trim() || null, estimated_yield: n(form.estimated_yield), yield_unit: form.yield_unit || null, fertilizer_schedule: form.fertilizer_schedule.trim() || null, notes: form.notes.trim() || null }); if (e) setError(`${text.saveError}: ${e.message}`); else { setForm({ plot_id: "", crop_name: "", scientific_name: "", crop_type: "vegetable", variety: "", planting_date: "", expected_harvest_date: "", quantity_planted: "", planting_unit: "plants", spacing_cm: "", depth_cm: "", water_frequency: "", estimated_yield: "", yield_unit: "kg", fertilizer_schedule: "", notes: "" }); await loadData() } setSaving(false) }
+  async function updateCrop(crop: Crop, changes: Partial<Crop>) { setSaving(true); const { error: e } = await supabase.from("orchard_crops").update({ ...changes, updated_at: new Date().toISOString() }).eq("id", crop.id); if (e) setError(`${text.saveError}: ${e.message}`); else await loadData(); setSaving(false) }
+  async function remove(id: string) { if (!window.confirm(text.delete)) return; setSaving(true); const { error: e } = await supabase.from("orchard_crops").delete().eq("id", id); if (e) setError(`${text.saveError}: ${e.message}`); else await loadData(); setSaving(false) }
+  return <AppLayout><PageHeader title={text.title} description={text.description} actions={<Button variant="outline" onClick={() => void loadData()}><RefreshCw className="mr-2 h-4 w-4" />{text.refresh}</Button>} /><OrchardNavigation /><div className="space-y-6 p-4 sm:p-8">{error && <Card className="border-destructive/60"><CardContent className="p-4 text-sm text-destructive">{error}</CardContent></Card>}
+    <Card><CardHeader><CardTitle>{text.newCrop}</CardTitle></CardHeader><CardContent><form onSubmit={createCrop} className="grid gap-4 md:grid-cols-2 xl:grid-cols-4"><Field label={text.plot}><Select value={form.plot_id} onValueChange={(v) => setForm((f) => ({ ...f, plot_id: v }))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{plots.map((p) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent></Select></Field><Field label={text.crop}><Input value={form.crop_name} onChange={(e) => setForm((f) => ({ ...f, crop_name: e.target.value }))} required /></Field><Field label={text.type}><Input value={form.crop_type} onChange={(e) => setForm((f) => ({ ...f, crop_type: e.target.value }))} required /></Field><Field label={text.variety}><Input value={form.variety} onChange={(e) => setForm((f) => ({ ...f, variety: e.target.value }))} /></Field><Field label={text.scientific}><Input value={form.scientific_name} onChange={(e) => setForm((f) => ({ ...f, scientific_name: e.target.value }))} /></Field><Field label={text.planted}><Input type="date" value={form.planting_date} onChange={(e) => setForm((f) => ({ ...f, planting_date: e.target.value }))} required /></Field><Field label={text.harvest}><Input type="date" value={form.expected_harvest_date} onChange={(e) => setForm((f) => ({ ...f, expected_harvest_date: e.target.value }))} /></Field><Field label={text.quantity}><Input type="number" min="0" value={form.quantity_planted} onChange={(e) => setForm((f) => ({ ...f, quantity_planted: e.target.value }))} /></Field><Field label={text.unit}><Input value={form.planting_unit} onChange={(e) => setForm((f) => ({ ...f, planting_unit: e.target.value }))} /></Field><Field label={text.spacing}><Input type="number" min="0" step="0.1" value={form.spacing_cm} onChange={(e) => setForm((f) => ({ ...f, spacing_cm: e.target.value }))} /></Field><Field label={text.depth}><Input type="number" min="0" step="0.1" value={form.depth_cm} onChange={(e) => setForm((f) => ({ ...f, depth_cm: e.target.value }))} /></Field><Field label={text.water}><Input value={form.water_frequency} onChange={(e) => setForm((f) => ({ ...f, water_frequency: e.target.value }))} /></Field><Field label={text.yield}><Input type="number" min="0" step="0.1" value={form.estimated_yield} onChange={(e) => setForm((f) => ({ ...f, estimated_yield: e.target.value }))} /></Field><Field label={text.yieldUnit}><Input value={form.yield_unit} onChange={(e) => setForm((f) => ({ ...f, yield_unit: e.target.value }))} /></Field><div className="md:col-span-2"><Field label={text.fertilizer}><Textarea value={form.fertilizer_schedule} onChange={(e) => setForm((f) => ({ ...f, fertilizer_schedule: e.target.value }))} /></Field></div><div className="md:col-span-2"><Field label={text.notes}><Textarea value={form.notes} onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))} /></Field></div><div className="md:col-span-2 xl:col-span-4"><Button type="submit" disabled={saving || plots.length === 0}><Plus className="mr-2 h-4 w-4" />{text.create}</Button></div></form></CardContent></Card>
+    <Card><CardHeader><CardTitle>{text.title}</CardTitle></CardHeader><CardContent>{loading ? <p>{text.loading}</p> : crops.length === 0 ? <p className="text-sm text-muted-foreground">{text.empty}</p> : <div className="space-y-3">{crops.map((crop) => <div key={crop.id} className="rounded-lg border p-4"><div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between"><div><div className="flex flex-wrap gap-2"><p className="font-semibold">{crop.crop_name}{crop.variety ? ` · ${crop.variety}` : ""}</p><Badge variant="outline">{plots.find((p) => p.id === crop.plot_id)?.name ?? "—"}</Badge></div><p className="mt-1 text-sm text-muted-foreground">{crop.planting_date}{crop.expected_harvest_date ? ` → ${crop.expected_harvest_date}` : ""} · {crop.quantity_planted ?? "—"} {crop.planting_unit ?? ""}</p></div><div className="flex flex-wrap gap-2"><Select value={crop.status} onValueChange={(v) => void updateCrop(crop, { status: v })}><SelectTrigger className="w-[140px]"><SelectValue /></SelectTrigger><SelectContent>{statuses.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent></Select><Button variant="ghost" size="icon" onClick={() => void remove(crop.id)}><Trash2 className="h-4 w-4" /></Button></div></div><div className="mt-4 grid gap-3 border-t pt-4 sm:grid-cols-2 lg:grid-cols-4"><Field label={text.actualHarvest}><Input type="date" defaultValue={crop.actual_harvest_date ?? ""} onBlur={(e) => void updateCrop(crop, { actual_harvest_date: e.target.value || null })} /></Field><Field label={text.actualYield}><Input type="number" min="0" step="0.1" defaultValue={crop.actual_yield ?? ""} onBlur={(e) => void updateCrop(crop, { actual_yield: e.target.value ? Number(e.target.value) : null })} /></Field><div className="lg:col-span-2"><Field label={text.notes}><Textarea defaultValue={crop.notes ?? ""} onBlur={(e) => void updateCrop(crop, { notes: e.target.value || null })} /></Field></div></div></div>)}</div>}</CardContent></Card>
+  </div></AppLayout>
 }
+function Field({ label, children }: { label: string; children: React.ReactNode }) { return <div className="space-y-2"><Label>{label}</Label>{children}</div> }
