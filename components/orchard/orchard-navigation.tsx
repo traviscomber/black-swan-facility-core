@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Activity, BarChart3, Bot, Bug, CalendarDays, CalendarRange, ChartNoAxesCombined, GitBranch, Hammer, LayoutDashboard, Leaf, Map, Sprout, TestTube2 } from "lucide-react"
+import { Activity, BarChart3, Bot, Bug, CalendarDays, CalendarRange, ChartNoAxesCombined, GitBranch, Hammer, LayoutDashboard, Leaf, Map, ShieldAlert, Sprout, TestTube2 } from "lucide-react"
 import { useLanguage } from "@/lib/hooks/use-language"
 import { cn } from "@/lib/utils"
 
@@ -20,6 +20,7 @@ const items = [
   { href: "/orchard/soil", label: { en: "Soil", es: "Suelo" }, icon: TestTube2 },
   { href: "/orchard/equipment", label: { en: "Equipment", es: "Equipos" }, icon: Hammer },
   { href: "/orchard/performance", label: { en: "Plan vs Actual", es: "Plan vs Real" }, icon: ChartNoAxesCombined },
+  { href: "/orchard/decisions", label: { en: "Decisions", es: "Decisiones" }, icon: ShieldAlert },
   { href: "/orchard/analytics", label: { en: "Insights", es: "Análisis" }, icon: BarChart3 },
   { href: "/orchard/assistant", label: { en: "Orchard AI", es: "IA Orchard" }, icon: Bot },
 ] as const
