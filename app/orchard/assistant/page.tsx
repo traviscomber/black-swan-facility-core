@@ -1,8 +1,9 @@
 "use client"
 
+import Link from "next/link"
 import type { FormEvent, KeyboardEvent, ReactNode } from "react"
 import { useEffect, useMemo, useRef, useState } from "react"
-import { Bot, CalendarDays, CheckCircle2, ClipboardList, Database, HeartPulse, History, Plus, Send, ShieldCheck, Sparkles, Sprout, UserRound, Wheat, XCircle } from "lucide-react"
+import { ArrowUpRight, Bot, CalendarDays, CheckCircle2, ClipboardList, Database, HeartPulse, History, Plus, Send, ShieldCheck, Sparkles, Sprout, UserRound, Wheat, XCircle } from "lucide-react"
 import { AppLayout } from "@/components/app-layout"
 import { PageHeader } from "@/components/page-header"
 import { OrchardNavigation } from "@/components/orchard/orchard-navigation"
@@ -23,6 +24,7 @@ const copy = {
     answer: "Orchard AI", sources: "Data used", error: "Orchard AI could not complete the request.", proposal: "Action proposal",
     noChanges: "Nothing has been changed yet. Review the proposal before executing it.", approve: "Approve & execute", reject: "Reject", executed: "Executed", rejected: "Rejected",
     exactPayload: "Exact proposed payload", rationale: "Rationale", actionType: "Action type", proposalNone: "No safe action was proposed.", suggestions: "Try asking", actionTrace: "Action trace",
+    createdRecord: "Created record", openRecord: "Open in operations", recordId: "Record ID",
     ready: "Ready to work with your Orchard data", readyHelp: "Ask a question or choose a prompt. Follow-up questions keep the context of this conversation.",
     newChat: "New chat", recent: "Recent chats", enterHint: "Enter to send · Shift+Enter for a new line", noHistory: "No previous chats yet", live: "Live",
     operationalContext: "Operational context", overdue: "Overdue work", harvest: "Harvest outlook", nursery: "Nursery readiness", health: "Health signals", careGaps: "Care gaps",
@@ -35,6 +37,7 @@ const copy = {
     answer: "IA de Orchard", sources: "Datos usados", error: "La IA de Orchard no pudo completar la solicitud.", proposal: "Propuesta de acción",
     noChanges: "Aún no se ha cambiado nada. Revisa la propuesta antes de ejecutarla.", approve: "Aprobar y ejecutar", reject: "Rechazar", executed: "Ejecutado", rejected: "Rechazado",
     exactPayload: "Payload exacto propuesto", rationale: "Razón", actionType: "Tipo de acción", proposalNone: "No se propuso una acción segura.", suggestions: "Prueba preguntando", actionTrace: "Trazabilidad de acción",
+    createdRecord: "Registro creado", openRecord: "Abrir en operación", recordId: "ID del registro",
     ready: "Listo para trabajar con tus datos de Orchard", readyHelp: "Haz una pregunta o elige un prompt. Las preguntas de seguimiento conservan el contexto de esta conversación.",
     newChat: "Nuevo chat", recent: "Chats recientes", enterHint: "Enter para enviar · Shift+Enter para nueva línea", noHistory: "Aún no hay chats anteriores", live: "En vivo",
     operationalContext: "Contexto operacional", overdue: "Trabajo atrasado", harvest: "Próximas cosechas", nursery: "Preparación de vivero", health: "Señales sanitarias", careGaps: "Brechas de cuidado",
@@ -72,6 +75,13 @@ type HistoryTurn = { question: string; answer: string }
 const createSession = (): ChatSession => {
   const now = new Date().toISOString()
   return { id: `chat-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`, title: "New conversation", createdAt: now, updatedAt: now, turns: [] }
+}
+
+function actionDestination(actionType: string, entityId?: string) {
+  const suffix = entityId ? `?from=orchard-ai&entity=${encodeURIComponent(entityId)}` : "?from=orchard-ai"
+  if (actionType === "create_task") return `/orchard/work${suffix}`
+  if (actionType === "allocate_bed") return `/orchard/crop-map${suffix}`
+  return `/orchard/game-plan${suffix}`
 }
 
 export default function OrchardAssistantPage() {
@@ -370,7 +380,7 @@ export default function OrchardAssistantPage() {
         </Card>
 
         <aside className="order-3 space-y-4"><Card><CardHeader className="pb-3"><CardTitle className="text-sm">{text.suggestions}</CardTitle></CardHeader><CardContent className="space-y-2">{text.examples.map((example) => <button key={example} type="button" onClick={() => setQuestion(example)} className="group flex w-full items-start gap-3 border bg-muted/10 p-3 text-left text-sm leading-5 transition-colors hover:bg-muted/30"><Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-primary/70 transition-transform group-hover:scale-110" /><span>{example}</span></button>)}</CardContent></Card>
-          {(proposal || proposalMessage) && <Card><CardHeader><div className="flex items-start justify-between gap-3"><div><CardTitle className="text-base">{text.proposal}</CardTitle><CardDescription className="mt-1">{proposal ? text.noChanges : proposalMessage}</CardDescription></div>{proposal && <Badge variant={proposal.status === "pending" ? "secondary" : "outline"}>{proposal.status}</Badge>}</div></CardHeader><CardContent>{proposal ? <div className="space-y-4"><Info label={text.actionType} value={proposal.action_type.replaceAll("_", " ")} /><Info label="Summary" value={proposal.summary} />{proposal.rationale && <Info label={text.rationale} value={proposal.rationale} />}<details className="border"><summary className="cursor-pointer px-3 py-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">{text.exactPayload}</summary><pre className="overflow-x-auto border-t bg-muted/20 p-3 text-[11px] leading-5">{JSON.stringify(proposal.payload, null, 2)}</pre></details>{proposal.status === "pending" ? <div className="grid gap-2"><Button disabled={decisionLoading} onClick={() => void decide("execute")}><CheckCircle2 className="mr-2 h-4 w-4" />{text.approve}</Button><Button variant="outline" disabled={decisionLoading} onClick={() => void decide("reject")}><XCircle className="mr-2 h-4 w-4" />{text.reject}</Button></div> : execution && <div className="border p-3 text-sm"><p className="font-medium">{execution.status === "executed" ? text.executed : text.rejected}</p>{execution.entity_id && <p className="mt-1 break-all text-xs text-muted-foreground">ID: {execution.entity_id}</p>}</div>}{Object.keys(sourceCounts).length > 0 && <SourceCounts label={text.sources} counts={sourceCounts} />}</div> : <p className="text-sm text-muted-foreground">{proposalMessage}</p>}</CardContent></Card>}
+          {(proposal || proposalMessage) && <Card><CardHeader><div className="flex items-start justify-between gap-3"><div><CardTitle className="text-base">{text.proposal}</CardTitle><CardDescription className="mt-1">{proposal ? text.noChanges : proposalMessage}</CardDescription></div>{proposal && <Badge variant={proposal.status === "pending" ? "secondary" : "outline"}>{proposal.status}</Badge>}</div></CardHeader><CardContent>{proposal ? <div className="space-y-4"><Info label={text.actionType} value={proposal.action_type.replaceAll("_", " ")} /><Info label="Summary" value={proposal.summary} />{proposal.rationale && <Info label={text.rationale} value={proposal.rationale} />}<details className="border"><summary className="cursor-pointer px-3 py-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">{text.exactPayload}</summary><pre className="overflow-x-auto border-t bg-muted/20 p-3 text-[11px] leading-5">{JSON.stringify(proposal.payload, null, 2)}</pre></details>{proposal.status === "pending" ? <div className="grid gap-2"><Button disabled={decisionLoading} onClick={() => void decide("execute")}><CheckCircle2 className="mr-2 h-4 w-4" />{text.approve}</Button><Button variant="outline" disabled={decisionLoading} onClick={() => void decide("reject")}><XCircle className="mr-2 h-4 w-4" />{text.reject}</Button></div> : execution && <div className="space-y-3 border p-3 text-sm"><p className="font-medium">{execution.status === "executed" ? text.executed : text.rejected}</p>{execution.entity_id && <><p className="break-all text-xs text-muted-foreground">{text.recordId}: {execution.entity_id}</p><Button asChild size="sm" variant="outline" className="w-full justify-between"><Link href={actionDestination(proposal.action_type, execution.entity_id)}>{text.openRecord}<ArrowUpRight className="h-4 w-4" /></Link></Button></>}</div>}{Object.keys(sourceCounts).length > 0 && <SourceCounts label={text.sources} counts={sourceCounts} />}</div> : <p className="text-sm text-muted-foreground">{proposalMessage}</p>}</CardContent></Card>}
         </aside>
       </div>
     </div>
@@ -391,6 +401,7 @@ function InlineActionCard({ turn, labels, loading, decisionLoading, onDecide }: 
   const proposal = turn.proposal
   const executed = proposal.status === "executed"
   const rejected = proposal.status === "rejected"
+  const entityId = turn.execution?.entity_id
   return <div className="mt-4 border border-primary/30 bg-[linear-gradient(135deg,rgba(139,203,168,0.08),rgba(70,121,174,0.04))]">
     <div className="flex flex-wrap items-start justify-between gap-3 border-b px-4 py-3">
       <div><p className="text-[11px] font-medium uppercase tracking-[0.16em] text-muted-foreground">{labels.actionTrace}</p><p className="mt-1 text-sm font-semibold">{proposal.summary}</p></div>
@@ -400,7 +411,11 @@ function InlineActionCard({ turn, labels, loading, decisionLoading, onDecide }: 
       <div className="grid gap-3 sm:grid-cols-2"><Info label={labels.actionType} value={proposal.action_type.replaceAll("_", " ")} />{proposal.rationale && <Info label={labels.rationale} value={proposal.rationale} />}</div>
       <details className="border"><summary className="cursor-pointer px-3 py-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">{labels.exactPayload}</summary><pre className="overflow-x-auto border-t bg-muted/20 p-3 text-[11px] leading-5">{JSON.stringify(proposal.payload, null, 2)}</pre></details>
       {proposal.status === "pending" && <div className="flex flex-wrap gap-2"><Button size="sm" disabled={decisionLoading} onClick={() => onDecide("execute")}><CheckCircle2 className="mr-2 h-4 w-4" />{labels.approve}</Button><Button size="sm" variant="outline" disabled={decisionLoading} onClick={() => onDecide("reject")}><XCircle className="mr-2 h-4 w-4" />{labels.reject}</Button></div>}
-      {(executed || rejected) && <div className="flex items-center gap-2 border-t pt-3 text-sm"><span className={`flex h-7 w-7 items-center justify-center border ${executed ? "text-emerald-500" : "text-muted-foreground"}`}>{executed ? <CheckCircle2 className="h-4 w-4" /> : <XCircle className="h-4 w-4" />}</span><div><p className="font-medium">{executed ? labels.executed : labels.rejected}</p>{turn.execution?.entity_id && <p className="text-xs text-muted-foreground">ID: {turn.execution.entity_id}</p>}</div></div>}
+      {rejected && <div className="flex items-center gap-2 border-t pt-3 text-sm"><span className="flex h-7 w-7 items-center justify-center border text-muted-foreground"><XCircle className="h-4 w-4" /></span><p className="font-medium">{labels.rejected}</p></div>}
+      {executed && <div className="border border-emerald-500/30 bg-emerald-500/5 p-3">
+        <div className="flex items-start gap-3"><span className="flex h-8 w-8 shrink-0 items-center justify-center border border-emerald-500/30 text-emerald-500"><CheckCircle2 className="h-4 w-4" /></span><div className="min-w-0 flex-1"><p className="text-[11px] font-medium uppercase tracking-[0.16em] text-muted-foreground">{labels.createdRecord}</p><p className="mt-1 text-sm font-semibold">{labels.executed}</p>{entityId && <p className="mt-1 break-all text-[11px] text-muted-foreground">{labels.recordId}: {entityId}</p>}</div></div>
+        {entityId && <Button asChild size="sm" variant="outline" className="mt-3 w-full justify-between"><Link href={actionDestination(proposal.action_type, entityId)}>{labels.openRecord}<ArrowUpRight className="h-4 w-4" /></Link></Button>}
+      </div>}
       {turn.proposalSourceCounts && Object.keys(turn.proposalSourceCounts).some((key) => (turn.proposalSourceCounts?.[key] ?? 0) > 0) && <SourceCounts label={labels.sources} counts={turn.proposalSourceCounts} />}
     </div>
   </div>
