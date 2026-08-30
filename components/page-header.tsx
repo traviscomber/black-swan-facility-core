@@ -29,6 +29,7 @@ type OrchardHeroConfig = {
 
 const ORCHARD_HERO_IMAGES = {
   gamePlan: "https://images.unsplash.com/photo-1498579397066-22750a3cb424?auto=format&fit=crop&w=2200&q=92",
+  nursery: "https://images.unsplash.com/photo-1585320806297-9794b3e4eeae?auto=format&fit=crop&w=2200&q=92",
   cropMap: "https://images.unsplash.com/photo-1500382017468-9049fed747ef?auto=format&fit=crop&w=2200&q=92",
   autoPlace: "https://images.unsplash.com/photo-1416879595882-3373a0480b5b?auto=format&fit=crop&w=2200&q=92",
   observation: "https://images.unsplash.com/photo-1464226184884-fa280b87c399?auto=format&fit=crop&w=2200&q=92",
@@ -43,7 +44,6 @@ const ORCHARD_HERO_EXCLUSIONS = new Set([
   "/orchard/harvest",
   "/orchard/assistant",
   "/orchard/crops",
-  "/orchard/nursery",
   "/orchard/lifecycle",
   "/orchard/care",
   "/orchard/pests",
@@ -62,6 +62,10 @@ const ROUTE_HEROES: Array<{ match: (pathname: string) => boolean; config: Orchar
   {
     match: (pathname) => pathname === "/orchard/game-plan" || pathname.startsWith("/orchard/game-plan/"),
     config: { image: ORCHARD_HERO_IMAGES.gamePlan, kicker: "Season planning", signals: ["Crop cycles", "Succession cadence", "Harvest windows"] },
+  },
+  {
+    match: (pathname) => pathname === "/orchard/nursery" || pathname.startsWith("/orchard/nursery/"),
+    config: { image: ORCHARD_HERO_IMAGES.nursery, kicker: "Propagation nursery", signals: ["Seed lots", "Germination", "Transplant readiness"] },
   },
   {
     match: (pathname) => pathname === "/orchard/library/fao" || pathname.startsWith("/orchard/library/fao/"),
