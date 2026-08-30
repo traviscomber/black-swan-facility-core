@@ -19,6 +19,17 @@ import { ALL_GAME_PLANS, gamePlanScopeLabel, resolveRequestedGamePlanId, resolve
 type Status = "nueva" | "en_progreso" | "completada" | "cancelada"
 type Priority = "baja" | "media" | "alta" | "urgente"
 type WorkLocale = "en" | "es" | "de"
+type WorkForm = {
+  succession_id: string
+  source_type: string
+  title: string
+  description: string
+  category: string
+  due_date: string
+  priority: Priority
+  estimated_minutes: string
+  employee_id: string
+}
 type Task = { id: string; title: string; priority: Priority; status: Status; due_date: string | null; location_name: string | null; task_category: string | null; estimated_minutes: number | null; source_type: string | null; source_id: string | null; source_label: string | null }
 type Assignment = { task_id: string; employee_id: string | null }
 type Succession = { id: string; crop_cycle_id: string; sequence_no: number; planned_sow_date: string; planned_transplant_date: string | null; planned_first_harvest_date: string | null }
@@ -101,7 +112,7 @@ export default function OrchardWorkPage() {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [focusedEntity, setFocusedEntity] = useState<string | null>(null)
-  const [form, setForm] = useState({ succession_id: "none", source_type: "orchard_general", title: "", description: "", category: copy[language].general, due_date: "", priority: "media" as Priority, estimated_minutes: "60", employee_id: "none" })
+  const [form, setForm] = useState<WorkForm>({ succession_id: "none", source_type: "orchard_general", title: "", description: "", category: copy[language].general, due_date: "", priority: "media" as Priority, estimated_minutes: "60", employee_id: "none" })
 
   useEffect(() => { const params = new URLSearchParams(window.location.search); if (params.get("from") === "orchard-ai") setFocusedEntity(params.get("entity")) }, [])
 

@@ -24,7 +24,7 @@ type Allocation = { id: string; bed_id: string; crop_succession_id: string; plan
 type Succession = { id: string; crop_cycle_id: string; sequence_no: number; planned_sow_date: string; planned_transplant_date: string | null; planned_first_harvest_date: string | null; planned_last_harvest_date: string | null; planned_plants: number | null; planned_area_sqm: number | null; status: string }
 type Cycle = { id: string; game_plan_id: string; crop_name: string; variety: string | null }
 
-type Copy = typeof copy.en
+type Copy = (typeof copy)[keyof typeof copy]
 
 const CROP_PHOTOS: Record<string, string> = { tomato: "https://images.unsplash.com/photo-1592841200221-a6898f307baa?auto=format&fit=crop&w=1200&q=92", lettuce: "https://images.unsplash.com/photo-1622206151226-18ca2c9ab4a1?auto=format&fit=crop&w=1200&q=92", onion: "https://images.unsplash.com/photo-1508747703725-719777637510?auto=format&fit=crop&w=1200&q=92", arugula: "https://images.unsplash.com/photo-1506806732259-39c2d0268443?auto=format&fit=crop&w=1200&q=92", radish: "https://images.unsplash.com/photo-1582284540020-8acbe03f4924?auto=format&fit=crop&w=1200&q=92", carrot: "https://images.unsplash.com/photo-1598170845058-32b9d6a5da37?auto=format&fit=crop&w=1200&q=92", basil: "https://images.unsplash.com/photo-1600788886242-5c96aabe3757?auto=format&fit=crop&w=1200&q=92" }
 const FALLBACK_CROP_PHOTO = "https://images.unsplash.com/photo-1416879595882-3373a0480b5b?auto=format&fit=crop&w=1200&q=92"
