@@ -92,7 +92,7 @@ export default function EnergyManagementPage() {
                 </div>
                 <CardDescription>{text.fuelBody}</CardDescription>
               </CardHeader>
-              <CardContent><Button asChild><Link href="/combustibles">{text.openFuel}</Link></Button></CardContent>
+              <CardContent><Button asChild><Link href={`/${language}/combustibles`}>{text.openFuel}</Link></Button></CardContent>
             </Card>
 
             <Card>
