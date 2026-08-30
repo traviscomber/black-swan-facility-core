@@ -27,11 +27,8 @@ type OrchardHeroConfig = {
 }
 
 const ORCHARD_HERO_IMAGES = {
-  planning: "https://images.unsplash.com/photo-1416879595882-3373a0480b5b?auto=format&fit=crop&w=2200&q=92",
-  operations: "https://images.unsplash.com/photo-1500382017468-9049fed747ef?auto=format&fit=crop&w=2200&q=92",
   performance: "https://images.unsplash.com/photo-1592982537447-6f2a6a0c7f8c?auto=format&fit=crop&w=2200&q=92",
-  library: "https://images.unsplash.com/photo-1518977676601-b53f82aba655?auto=format&fit=crop&w=2200&q=92",
-  cropMap: "https://images.unsplash.com/photo-1523348837708-15d4a09cfac2?auto=format&fit=crop&w=2200&q=92",
+  cropMap: "https://unsplash.com/photos/x25GQ49K_JI/download?force=true&w=2200",
   seeds: "https://images.unsplash.com/photo-1586201375761-83865001e31c?auto=format&fit=crop&w=2200&q=92",
 } as const
 
@@ -53,20 +50,14 @@ const ORCHARD_HERO_EXCLUSIONS = new Set([
   "/orchard/health",
   "/orchard/notes",
   "/orchard/tasks",
-])
-
-const PLANNING_ROUTES = [
   "/orchard/library",
-  "/orchard/crop-map",
-  "/orchard/auto-place",
   "/orchard/fao",
   "/orchard/game-plans",
   "/orchard/crop-cycles",
   "/orchard/successions",
-  "/orchard/seeds",
   "/orchard/beds",
   "/orchard/plots",
-]
+])
 
 const OPERATIONS_ROUTES = [
   "/orchard/lifecycle",
@@ -83,10 +74,6 @@ const PERFORMANCE_ROUTES = [
 ]
 
 const ROUTE_HEROES: Array<{ match: (pathname: string) => boolean; config: OrchardHeroConfig }> = [
-  {
-    match: (pathname) => pathname === "/orchard/library" || pathname.startsWith("/orchard/library/"),
-    config: { image: ORCHARD_HERO_IMAGES.library, kicker: "Crop intelligence library", signals: ["Crop profiles", "Provenance", "Planning defaults"] },
-  },
   {
     match: (pathname) => pathname === "/orchard/crop-map" || pathname.startsWith("/orchard/crop-map/"),
     config: { image: ORCHARD_HERO_IMAGES.cropMap, kicker: "Spatial planning", signals: ["Beds", "Occupancy", "Rotation"] },
@@ -106,8 +93,7 @@ function orchardHeroForPath(rawPathname: string): OrchardHeroConfig | null {
   if (!pathname.startsWith("/orchard") || ORCHARD_HERO_EXCLUSIONS.has(pathname)) return null
   const specific = ROUTE_HEROES.find((item) => item.match(pathname))
   if (specific) return specific.config
-  if (PLANNING_ROUTES.some((route) => pathname === route || pathname.startsWith(`${route}/`))) return { image: ORCHARD_HERO_IMAGES.planning, kicker: "Planning system" }
-  if (OPERATIONS_ROUTES.some((route) => pathname === route || pathname.startsWith(`${route}/`))) return { image: ORCHARD_HERO_IMAGES.operations, kicker: "Field operations" }
+  if (OPERATIONS_ROUTES.some((route) => pathname === route || pathname.startsWith(`${route}/`))) return null
   if (PERFORMANCE_ROUTES.some((route) => pathname === route || pathname.startsWith(`${route}/`))) return { image: ORCHARD_HERO_IMAGES.performance, kicker: "Performance intelligence" }
   return null
 }
