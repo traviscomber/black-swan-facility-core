@@ -6,6 +6,7 @@ const faoRoute = readFileSync(new URL("../app/api/orchard/library/fao/route.ts",
 const faoSyncRoute = readFileSync(new URL("../app/api/orchard/library/fao/sync/route.ts", import.meta.url), "utf8")
 const faoPage = readFileSync(new URL("../app/orchard/library/fao/page.tsx", import.meta.url), "utf8")
 const orchardLibraryPage = readFileSync(new URL("../app/orchard/library/page.tsx", import.meta.url), "utf8")
+const orchardIntelCard = readFileSync(new URL("../components/orchard/black-swan-intelligence.tsx", import.meta.url), "utf8")
 const assistantRoute = readFileSync(new URL("../app/api/orchard/assistant/route.ts", import.meta.url), "utf8")
 const assistantScope = readFileSync(new URL("../lib/orchard-ai/game-plan-scope.ts", import.meta.url), "utf8")
 const identityMigration = readFileSync(new URL("../supabase/migrations/20260829153410_orchard_fao_reference_identity.sql", import.meta.url), "utf8")
@@ -74,15 +75,27 @@ test("canonical crop creation stays inside Fundo Corcovado instead of becoming a
   assert.doesNotMatch(orchardLibraryPage, /source\?"reference"/)
 })
 
-test("Orchard AI consumes scoped intelligence notes and preserves factual provenance", () => {
+test("Orchard AI reads Corcovado canonical profiles and succession history directly", () => {
+  assert.match(assistantRoute, /from\("orchard_crop_library"\)/)
+  assert.match(assistantRoute, /\.eq\("classification_scheme", "black_swan_canonical"\)/)
+  assert.match(assistantRoute, /\.eq\("classification_code", "fundo_corcovado"\)/)
+  assert.match(assistantRoute, /from\("orchard_cultivar_library"\)/)
+  assert.match(assistantRoute, /knowledge_source_snapshot/)
+  assert.match(assistantRoute, /black_swan_history_2024_25/)
+  assert.match(assistantRoute, /black_swan_history_2025_26/)
+  assert.match(assistantRoute, /right_censored or measurement_incomplete evidence as partial measurement/)
+  assert.match(assistantScope, /scoped\.canonical_crop_library/)
+  assert.match(assistantScope, /scoped\.canonical_cultivars/)
+  assert.match(assistantScope, /cropLibraryIds/)
+})
+
+test("Orchard AI preserves operator notes without letting them override canonical evidence", () => {
   assert.match(assistantRoute, /supabase\.from\("orchard_notes"\)/)
-  assert.match(assistantRoute, /crop_succession_id/)
+  assert.match(assistantRoute, /Notes may contain operator context, but they do not override canonical crop profiles/)
   assert.match(assistantRoute, /Use ONLY the authorized ORCHARD_SNAPSHOT/)
   assert.match(assistantRoute, /Distinguish recorded facts from inferences/)
   assert.match(assistantRoute, /Never invent rows, weather, agronomy facts, prices, yields, tasks, dates, or actions/)
   assert.match(assistantScope, /if \(snapshot\.notes\)/)
-  assert.match(assistantScope, /successionIds\.has\(successionId\)/)
-  assert.match(assistantScope, /cropIds\.has\(cropId\)/)
 })
 
 test("Orchard AI excludes legacy spatial placeholders from operational grounding", () => {
@@ -92,10 +105,21 @@ test("Orchard AI excludes legacy spatial placeholders from operational grounding
 
 test("Orchard AI keeps Game Plan boundaries around historical intelligence", () => {
   assert.match(assistantRoute, /The snapshot has already been filtered to this Game Plan/)
-  assert.match(assistantRoute, /Never infer, mention, compare, or use records from another Game Plan/)
+  assert.match(assistantRoute, /Never infer, mention, compare, or use operational records from another Game Plan/)
   assert.match(assistantScope, /scoped\.game_plans = gamePlans/)
   assert.match(assistantScope, /scoped\.crop_cycles = cropCycles/)
   assert.match(assistantScope, /scoped\.successions = successions/)
+})
+
+test("Corcovado intelligence card exposes evidence confidence and comparability", () => {
+  assert.match(orchardIntelCard, /Corcovado intelligence/)
+  assert.match(orchardIntelCard, /Inteligencia Corcovado/)
+  assert.match(orchardIntelCard, /Corcovado-Intelligenz/)
+  assert.match(orchardIntelCard, /Evidence confidence/)
+  assert.match(orchardIntelCard, /two real seasons/)
+  assert.match(orchardIntelCard, /Related profile — not equivalent/)
+  assert.match(orchardIntelCard, /No final performance conclusion/)
+  assert.match(orchardIntelCard, /isLimited/)
 })
 
 test("native workspace stays isolated and pinned to current stable Capacitor", () => {
