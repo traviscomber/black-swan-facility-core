@@ -27,6 +27,7 @@ import {
   Smartphone,
   Sprout,
   TestTube2,
+  UtensilsCrossed,
   WandSparkles,
 } from "lucide-react"
 import { useLanguage } from "@/lib/hooks/use-language"
@@ -55,6 +56,7 @@ const groups = [
     label: { en: "Planning", es: "Planificación", de: "Planung" },
     icon: PanelsTopLeft,
     items: [
+      { href: "/orchard/demand", label: { en: "Food Demand", es: "Demanda", de: "Lebensmittelbedarf" }, icon: UtensilsCrossed },
       { href: "/orchard/library", label: { en: "Crop Library", es: "Biblioteca", de: "Kulturbibliothek" }, icon: BookOpen },
       { href: "/orchard/library/fao", label: { en: "FAO Catalog", es: "Catálogo FAO", de: "FAO-Katalog" }, icon: Database },
       { href: "/orchard/crop-map", label: { en: "Crop Map", es: "Mapa", de: "Kulturkarte" }, icon: Map },
