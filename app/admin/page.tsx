@@ -1,5 +1,6 @@
+import Link from "next/link"
 import { AppLayout } from "@/components/app-layout"
-import { AdminOverview } from "@/components/admin-overview"
+import { AdminControlCard, AdminOverview } from "@/components/admin-overview"
 import { createClient } from "@/lib/supabase/server"
 
 export default async function AdminPage() {
@@ -49,6 +50,10 @@ export default async function AdminPage() {
         }}
         auditRecords={(approverAudit.count ?? 0) + (procurementAudit.count ?? 0) + (auditActions.count ?? 0)}
       />
+      <div className="grid gap-4 px-4 pb-8 md:grid-cols-2 md:px-8">
+        <Link href="/admin/access" className="group"><AdminControlCard kind="access" /></Link>
+        <Link href="/admin/it-control" className="group"><AdminControlCard kind="it" /></Link>
+      </div>
     </AppLayout>
   )
 }
