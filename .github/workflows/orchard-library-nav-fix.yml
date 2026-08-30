@@ -1,0 +1,47 @@
+name: Orchard library nav layout repair
+
+on:
+  push:
+    branches:
+      - fix/orchard-library-nav
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: ${{ !contains(github.event.head_commit.message, '[orchard-nav-fix]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/orchard-library-nav
+          fetch-depth: 0
+      - name: Make Orchard nav ordering independent of PageHeader DOM shape
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('components/orchard/orchard-navigation.tsx')
+          text = path.read_text()
+          old = 'main:has(> [data-slot="page-header"] + [data-orchard-navigation])'
+          new = 'main:has(> [data-orchard-navigation])'
+          count = text.count(old)
+          if count != 4:
+              raise SystemExit(f'Expected 4 Orchard nav ordering selectors, found {count}')
+          text = text.replace(old, new)
+          path.write_text(text)
+          PY
+      - name: Commit repair
+        shell: bash
+        run: |
+          if git diff --quiet; then
+            echo "No changes needed"
+            exit 0
+          fi
+          git config user.name "Orchard QA Bot"
+          git config user.email "n3uralia@gmail.com"
+          git add components/orchard/orchard-navigation.tsx
+          git commit -m "fix(orchard): stabilize library navigation layout [orchard-nav-fix]"
+          git push origin HEAD:fix/orchard-library-nav
