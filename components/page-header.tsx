@@ -29,8 +29,8 @@ type OrchardHeroConfig = {
 
 const ORCHARD_HERO_IMAGES = {
   gamePlan: "https://images.unsplash.com/photo-1498579397066-22750a3cb424?auto=format&fit=crop&w=2200&q=92",
-  cropMap: "https://images.unsplash.com/photo-1523348837708-15d4a09cfac2?auto=format&fit=crop&w=2200&q=92",
-  seeds: "https://images.unsplash.com/photo-1586201375761-83865001e31c?auto=format&fit=crop&w=2200&q=92",
+  cropMap: "https://images.unsplash.com/photo-1500382017468-9049fed747ef?auto=format&fit=crop&w=2200&q=92",
+  autoPlace: "https://images.unsplash.com/photo-1416879595882-3373a0480b5b?auto=format&fit=crop&w=2200&q=92",
   observation: "https://images.unsplash.com/photo-1464226184884-fa280b87c399?auto=format&fit=crop&w=2200&q=92",
   seasonClose: "https://images.unsplash.com/photo-1471194402529-8e0f5a675de6?auto=format&fit=crop&w=2200&q=92",
   traceability: "https://images.unsplash.com/photo-1500937386664-56d1dfef3854?auto=format&fit=crop&w=2200&q=92",
@@ -64,16 +64,20 @@ const ROUTE_HEROES: Array<{ match: (pathname: string) => boolean; config: Orchar
     config: { image: ORCHARD_HERO_IMAGES.gamePlan, kicker: "Season planning", signals: ["Crop cycles", "Succession cadence", "Harvest windows"] },
   },
   {
+    match: (pathname) => pathname === "/orchard/library/fao" || pathname.startsWith("/orchard/library/fao/"),
+    config: { kicker: "Reference catalog", signals: ["WCA 2020", "Botanical identity", "Reference sync"] },
+  },
+  {
+    match: (pathname) => pathname === "/orchard/library" || pathname.startsWith("/orchard/library/"),
+    config: { kicker: "Agronomic knowledge", signals: ["Profiles", "Provenance", "Planning defaults"], suppressFirstContentHero: true },
+  },
+  {
     match: (pathname) => pathname === "/orchard/crop-map/auto-place" || pathname.startsWith("/orchard/crop-map/auto-place/"),
-    config: { image: ORCHARD_HERO_IMAGES.cropMap, kicker: "Spatial allocation", signals: ["Beds", "Contiguity", "Rotation"], suppressFirstContentHero: true },
+    config: { image: ORCHARD_HERO_IMAGES.autoPlace, kicker: "Spatial allocation", signals: ["Contiguous beds", "Available area", "Rotation"], suppressFirstContentHero: true },
   },
   {
     match: (pathname) => pathname === "/orchard/crop-map" || pathname.startsWith("/orchard/crop-map/"),
-    config: { image: ORCHARD_HERO_IMAGES.cropMap, kicker: "Spatial planning", signals: ["Beds", "Occupancy", "Rotation"] },
-  },
-  {
-    match: (pathname) => pathname === "/orchard/seeds" || pathname.startsWith("/orchard/seeds/"),
-    config: { image: ORCHARD_HERO_IMAGES.seeds, kicker: "Seed inventory", signals: ["Lots", "Viability", "Sowing readiness"] },
+    config: { image: ORCHARD_HERO_IMAGES.cropMap, kicker: "Spatial planning", signals: ["Layout", "Occupancy", "Rotation"] },
   },
   {
     match: (pathname) => pathname === "/orchard/charts" || pathname.startsWith("/orchard/charts/"),
