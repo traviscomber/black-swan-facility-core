@@ -30,10 +30,28 @@ type Cycle = { id: string; game_plan_id: string }
 type Succession = { id: string; crop_cycle_id: string }
 type Allocation = { bed_id: string; crop_succession_id: string }
 type Bed = { id: string; plot_id: string }
+type SoilPhoto = { src: string; alt: string }
 
-const hero = "https://images.unsplash.com/photo-1464226184884-fa280b87c399?auto=format&fit=crop&w=2200&q=92"
-const soilPhoto = "https://images.unsplash.com/photo-1497250681960-ef046c08a56e?auto=format&fit=crop&w=1800&q=92"
-const compostPhoto = "https://images.unsplash.com/photo-1416879595882-3373a0480b5b?auto=format&fit=crop&w=1800&q=92"
+const unsplash = (id: string, width = 1800) => `https://unsplash.com/photos/${id}/download?force=true&w=${width}`
+const SOIL_PHOTOS = {
+  hero: { src: unsplash("q13Zq1Jufks", 2200), alt: "Hands planting seedlings directly into garden soil" },
+  compost: { src: unsplash("DgSiLYnc4Ok"), alt: "Agricultural compost pile ready for soil amendment" },
+  peat: { src: unsplash("LOX8GIH3HlI"), alt: "Dark organic growing medium prepared for planting" },
+  manure: { src: unsplash("6iG19RE7Nic"), alt: "Organic manure piles prepared for agricultural field application" },
+  liquid: { src: unsplash("cObAiqAJXHs"), alt: "Gardener applying a liquid input to growing plants" },
+  mulch: { src: unsplash("_rgjv1-QNaw"), alt: "Organic wood-chip mulch used as a soil amendment" },
+  soilWork: { src: unsplash("SI4hH-e76g8"), alt: "Person digging and incorporating material into a raised garden bed" },
+} satisfies Record<string, SoilPhoto>
+
+function amendmentPhoto(item: SoilAmendment): SoilPhoto {
+  const key = `${item.amendment_type} ${item.product_name} ${item.application_method}`.toLowerCase()
+  if (key.includes("compost")) return SOIL_PHOTOS.compost
+  if (key.includes("peat")) return SOIL_PHOTOS.peat
+  if (key.includes("manure")) return SOIL_PHOTOS.manure
+  if (key.includes("mulch")) return SOIL_PHOTOS.mulch
+  if (key.includes("fish") || key.includes("emulsion") || key.includes("foliar") || key.includes("liquid")) return SOIL_PHOTOS.liquid
+  return SOIL_PHOTOS.soilWork
+}
 
 export default function OrchardSoilPage() {
   const [amendments, setAmendments] = useState<SoilAmendment[]>([])
@@ -103,7 +121,7 @@ export default function OrchardSoilPage() {
 
   return <AppLayout><OrchardNavigation /><main className="mx-auto w-full max-w-[1560px] space-y-10 px-4 pb-16 pt-4 sm:px-6 lg:px-8">
     <section className="relative min-h-[380px] overflow-hidden bg-neutral-950">
-      <img src={hero} alt="Hands improving rich agricultural soil" className="absolute inset-0 h-full w-full object-cover opacity-100 [filter:none]" />
+      <img src={SOIL_PHOTOS.hero.src} alt={SOIL_PHOTOS.hero.alt} className="absolute inset-0 h-full w-full object-cover opacity-100 [filter:none]" />
       <div className="absolute inset-0" style={{ background: "linear-gradient(90deg,rgba(5,7,6,.92),rgba(5,7,6,.60) 56%,rgba(5,7,6,.16)),linear-gradient(0deg,rgba(5,7,6,.74),transparent 62%)" }} />
       <div className="relative flex min-h-[380px] max-w-3xl flex-col justify-end p-6 text-white sm:p-10">
         <p className="text-xs uppercase tracking-[.2em] text-emerald-200">Orchard · Soil intelligence</p>
@@ -121,12 +139,12 @@ export default function OrchardSoilPage() {
     <section className="grid gap-6 xl:grid-cols-[1fr_380px]">
       <div className="space-y-6">
         <div><p className="text-xs uppercase tracking-[.18em] text-muted-foreground">01</p><h2 className="mt-2">Amendment history</h2><p className="mt-1 text-sm text-muted-foreground">Every application stays tied to a plot, quantity, product and nutrient profile.</p></div>
-        {amendments.length === 0 ? <div className="border border-dashed p-8 text-sm text-muted-foreground">{t("orchard.no_amendments")}</div> : <div className="grid gap-4 md:grid-cols-2">{amendments.map((item, index) => <article key={item.id} className={`overflow-hidden border bg-background ${selectedPlan && planPlotIds.has(item.plot_id) ? "ring-1 ring-primary/35" : ""}`}><div className="relative h-44 overflow-hidden"><img src={index % 2 ? compostPhoto : soilPhoto} alt="Soil amendment work" className="h-full w-full object-cover opacity-100 [filter:none]" /><div className="absolute inset-0 bg-[linear-gradient(0deg,rgba(0,0,0,.76),rgba(0,0,0,.08)_70%)]" /><div className="absolute inset-x-4 bottom-4 text-white"><div className="flex flex-wrap gap-2"><Badge className="border-white/15 bg-black/35 text-white">{item.amendment_type}</Badge>{item.npk_ratio && <Badge variant="outline" className="border-white/20 bg-black/25 text-white">NPK {item.npk_ratio}</Badge>}{selectedPlan && planPlotIds.has(item.plot_id) && <Badge className="border-white/15 bg-white/15 text-white">In plan footprint</Badge>}</div><h3 className="mt-2 text-xl text-white!">{item.product_name}</h3><p className="mt-1 text-xs text-white/70">{plotName(item.plot_id)} · {new Date(`${item.application_date}T12:00:00`).toLocaleDateString()}</p></div></div><div className="grid grid-cols-2 gap-px bg-border sm:grid-cols-4"><Datum label="Quantity" value={`${item.quantity_kg} kg`} /><Datum label="Method" value={item.application_method || "—"} /><Datum label="Plot" value={plotName(item.plot_id)} /><Datum label="NPK" value={item.npk_ratio || "—"} /></div>{item.description && <p className="p-4 text-sm leading-6 text-muted-foreground">{item.description}</p>}</article>)}</div>}
+        {amendments.length === 0 ? <div className="border border-dashed p-8 text-sm text-muted-foreground">{t("orchard.no_amendments")}</div> : <div className="grid gap-4 md:grid-cols-2">{amendments.map((item) => { const photo = amendmentPhoto(item); return <article key={item.id} className={`overflow-hidden border bg-background ${selectedPlan && planPlotIds.has(item.plot_id) ? "ring-1 ring-primary/35" : ""}`}><div className="relative h-44 overflow-hidden"><img src={photo.src} alt={photo.alt} className="h-full w-full object-cover opacity-100 [filter:none]" /><div className="absolute inset-0 bg-[linear-gradient(0deg,rgba(0,0,0,.76),rgba(0,0,0,.08)_70%)]" /><div className="absolute inset-x-4 bottom-4 text-white"><div className="flex flex-wrap gap-2"><Badge className="border-white/15 bg-black/35 text-white">{item.amendment_type}</Badge>{item.npk_ratio && <Badge variant="outline" className="border-white/20 bg-black/25 text-white">NPK {item.npk_ratio}</Badge>}{selectedPlan && planPlotIds.has(item.plot_id) && <Badge className="border-white/15 bg-white/15 text-white">In plan footprint</Badge>}</div><h3 className="mt-2 text-xl text-white!">{item.product_name}</h3><p className="mt-1 text-xs text-white/70">{plotName(item.plot_id)} · {new Date(`${item.application_date}T12:00:00`).toLocaleDateString()}</p></div></div><div className="grid grid-cols-2 gap-px bg-border sm:grid-cols-4"><Datum label="Quantity" value={`${item.quantity_kg} kg`} /><Datum label="Method" value={item.application_method || "—"} /><Datum label="Plot" value={plotName(item.plot_id)} /><Datum label="NPK" value={item.npk_ratio || "—"} /></div>{item.description && <p className="p-4 text-sm leading-6 text-muted-foreground">{item.description}</p>}</article> })}</div>}
       </div>
 
       <div className="space-y-6">
         <Card><CardHeader><CardTitle>Plot amendment load</CardTitle><CardDescription>Where recorded soil inputs have been applied across the shared physical orchard.</CardDescription></CardHeader><CardContent className="space-y-4">{byPlot.length === 0 ? <p className="text-sm text-muted-foreground">No plot activity yet.</p> : byPlot.map((item) => { const share = totalKg > 0 ? Math.round((item.kg / totalKg) * 100) : 0; return <div key={item.plot.id}><div className="flex items-end justify-between gap-3"><div><p className="font-medium">{item.plot.name}{selectedPlan && planPlotIds.has(item.plot.id) ? " · plan footprint" : ""}</p><p className="text-xs text-muted-foreground">{item.rows.length} applications · {item.last ? new Date(`${item.last}T12:00:00`).toLocaleDateString() : "—"}</p></div><p className="text-sm font-medium">{item.kg.toFixed(1)} kg</p></div><div className="mt-2 h-2 bg-muted"><div className="h-full bg-foreground" style={{ width: `${share}%` }} /></div></div> })}</CardContent></Card>
-        <Card className="overflow-hidden"><div className="relative h-48"><img src={compostPhoto} alt="Healthy productive soil" className="h-full w-full object-cover opacity-100 [filter:none]" /><div className="absolute inset-0 bg-black/35" /><div className="absolute bottom-4 left-4 right-4 text-white"><Droplets className="mb-2 h-5 w-5" /><p className="font-medium">Soil record, not decoration</p><p className="mt-1 text-xs text-white/70">The value here is traceability by plot and amendment event; no synthetic soil scores are invented.</p></div></div></Card>
+        <Card className="overflow-hidden"><div className="relative h-48"><img src={SOIL_PHOTOS.soilWork.src} alt={SOIL_PHOTOS.soilWork.alt} className="h-full w-full object-cover opacity-100 [filter:none]" /><div className="absolute inset-0 bg-black/35" /><div className="absolute bottom-4 left-4 right-4 text-white"><Droplets className="mb-2 h-5 w-5" /><p className="font-medium">Soil record, not decoration</p><p className="mt-1 text-xs text-white/70">The value here is traceability by plot and amendment event; no synthetic soil scores are invented.</p></div></div></Card>
       </div>
     </section>
   </main></AppLayout>

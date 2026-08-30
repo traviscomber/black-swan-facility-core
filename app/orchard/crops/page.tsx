@@ -31,16 +31,22 @@ type Task = { id: string; title: string; status: string; due_date: string | null
 
 const statuses = ["seedling", "growing", "mature", "harvested", "failed"]
 const photo = (id: string) => `https://images.unsplash.com/${id}?auto=format&fit=crop&w=1800&q=92`
+const cropsHero = "https://unsplash.com/photos/WHHbA0kU8Qg/download?force=true&w=2200&q=95"
 const cropPhoto = (name: string) => {
-  const key = name.toLowerCase()
-  if (key.includes("tomato")) return photo("photo-1592924357228-91a4daadcfea")
-  if (key.includes("lettuce")) return photo("photo-1622206151226-18ca2c9ab4a1")
-  if (key.includes("radish")) return photo("photo-1582284540020-8acbe03f4924")
-  if (key.includes("onion")) return photo("photo-1508747703725-719777637510")
-  if (key.includes("carrot")) return photo("photo-1447175008436-054170c2e979")
-  if (key.includes("arugula") || key.includes("rocket")) return photo("photo-1501004318641-b39e6451bec6")
-  if (key.includes("spinach")) return photo("photo-1576045057995-568f588f82fb")
-  if (key.includes("basil")) return photo("photo-1618375569909-3c8616cf7733")
+  const key = name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+  if (key.includes("tomato") || key.includes("tomate")) return photo("photo-1592924357228-91a4daadcfea")
+  if (key.includes("lettuce") || key.includes("lechuga")) return photo("photo-1622206151226-18ca2c9ab4a1")
+  if (key.includes("radish") || key.includes("rabanito") || key.includes("rabano")) return photo("photo-1582284540020-8acbe03f4924")
+  if (key.includes("onion") || key.includes("cebolla")) return photo("photo-1508747703725-719777637510")
+  if (key.includes("carrot") || key.includes("zanahoria")) return photo("photo-1447175008436-054170c2e979")
+  if (key.includes("arugula") || key.includes("rocket") || key.includes("rucula")) return photo("photo-1603048719539-9ecb4aa395e3")
+  if (key.includes("spinach") || key.includes("espinaca")) return photo("photo-1576045057995-568f588f82fb")
+  if (key.includes("basil") || key.includes("albahaca")) return photo("photo-1618375569909-3c8616cf7733")
+  if (key.includes("parsley") || key.includes("perejil")) return photo("photo-1590759668628-05b0fc34bb70")
+  if (key.includes("potato") || key.includes("papa")) return photo("photo-1518977676601-b53f82aba655")
+  if (key.includes("beet") || key.includes("betarraga")) return photo("photo-1593105544559-ecb03bf76f82")
+  if (key.includes("pepper") || key.includes("pimenton")) return photo("photo-1563565375-f3fdfdbefa83")
+  if (key.includes("zucchini") || key.includes("zapallo italiano")) return photo("photo-1563252722-6434563a985d")
   return photo("photo-1416879595882-3373a0480b5b")
 }
 const localDateKey = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}` }
@@ -152,7 +158,7 @@ export default function OrchardCropsPage() {
     {error && <Card className="border-destructive/60"><CardContent className="p-4 text-sm text-destructive">{error}</CardContent></Card>}
     {selectedPlan && <Card><CardContent className="p-4 text-sm"><span className="font-medium">{text.scope}: {gamePlanScopeLabel(selectedPlan, selectedPlan.name)}</span><span className="ml-2 text-muted-foreground">{text.scopedHelp}</span></CardContent></Card>}
 
-    <section className="relative min-h-[340px] overflow-hidden bg-neutral-950 text-white"><img src={photo("photo-1464226184884-fa280b87c399")} alt="Healthy crops in active field operations" className="absolute inset-0 h-full w-full object-cover opacity-100 [filter:none]" /><div className="absolute inset-0" style={{background:"linear-gradient(90deg,rgba(5,8,7,.94),rgba(5,8,7,.66) 58%,rgba(5,8,7,.18)),linear-gradient(0deg,rgba(5,8,7,.72),rgba(5,8,7,.05) 60%)"}}/><div className="relative flex min-h-[340px] max-w-3xl flex-col justify-end p-6 sm:p-9"><p className="text-xs uppercase tracking-[.2em] text-white/60">Orchard · Operations</p><h2 className="mt-3 text-4xl font-medium tracking-[-.04em] sm:text-5xl">{text.command}</h2><p className="mt-4 max-w-2xl text-sm leading-6 text-white/70">{text.commandHelp}</p><div className="mt-6 grid max-w-2xl grid-cols-2 gap-px bg-white/10 sm:grid-cols-4"><HeroMetric label={text.active} value={activeCrops.length} /><HeroMetric label={text.mature} value={scopedCrops.filter((crop) => crop.status === "mature").length} /><HeroMetric label={text.healthObservations} value={highSeverityObservations} /><HeroMetric label={text.openWork} value={openTasks.length} /></div></div></section>
+    <section className="relative min-h-[340px] overflow-hidden bg-neutral-950 text-white"><img src={cropsHero} alt="Live vegetable crops growing in an active greenhouse" className="absolute inset-0 h-full w-full object-cover opacity-100 [filter:none]" /><div className="absolute inset-0" style={{background:"linear-gradient(90deg,rgba(5,8,7,.94),rgba(5,8,7,.66) 58%,rgba(5,8,7,.18)),linear-gradient(0deg,rgba(5,8,7,.72),rgba(5,8,7,.05) 60%)"}}/><div className="relative flex min-h-[340px] max-w-3xl flex-col justify-end p-6 sm:p-9"><p className="text-xs uppercase tracking-[.2em] text-white/60">Orchard · Operations</p><h2 className="mt-3 text-4xl font-medium tracking-[-.04em] sm:text-5xl">{text.command}</h2><p className="mt-4 max-w-2xl text-sm leading-6 text-white/70">{text.commandHelp}</p><div className="mt-6 grid max-w-2xl grid-cols-2 gap-px bg-white/10 sm:grid-cols-4"><HeroMetric label={text.active} value={activeCrops.length} /><HeroMetric label={text.mature} value={scopedCrops.filter((crop) => crop.status === "mature").length} /><HeroMetric label={text.healthObservations} value={highSeverityObservations} /><HeroMetric label={text.openWork} value={openTasks.length} /></div></div></section>
 
     <section><div className="mb-5"><p className="text-xs uppercase tracking-[.18em] text-muted-foreground">01</p><h2 className="mt-2">{text.fieldStatus}</h2><p className="mt-1 text-sm text-muted-foreground">{text.commandHelp}</p></div>{loading ? <p className="text-sm text-muted-foreground">{text.loading}</p> : scopedCrops.length === 0 ? <div className="border border-dashed p-6 text-sm text-muted-foreground">{text.empty}</div> : <div className="grid gap-5 lg:grid-cols-2 2xl:grid-cols-3">{scopedCrops.map((crop) => {
       const plot = plotById.get(crop.plot_id); const cropCare = scopedCare.filter((item) => item.crop_id === crop.id); const lastCare = cropCare[0] ?? null; const cropHealth = scopedHealth.filter((item) => item.crop_id === crop.id); const highSeverity = cropHealth.filter((item) => ["high", "critical"].includes(normalize(item.severity_level))); const cropTasks = crop.crop_succession_id ? openTasks.filter((task) => task.source_id === crop.crop_succession_id) : []; const nextTask = cropTasks.find((task) => task.due_date) ?? cropTasks[0] ?? null; const harvestDays = daysUntil(crop.expected_harvest_date); const allocation = crop.crop_succession_id ? scopedAllocations.find((item) => item.crop_succession_id === crop.crop_succession_id) : null; const bed = allocation ? bedById.get(allocation.bed_id) : null

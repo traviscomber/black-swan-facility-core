@@ -21,18 +21,19 @@ interface PageHeaderProps {
 }
 
 type OrchardHeroConfig = {
-  image: string
+  image?: string
   kicker: string
   signals?: readonly string[]
+  suppressFirstContentHero?: boolean
 }
 
 const ORCHARD_HERO_IMAGES = {
-  planning: "https://images.unsplash.com/photo-1416879595882-3373a0480b5b?auto=format&fit=crop&w=2200&q=92",
-  operations: "https://images.unsplash.com/photo-1500382017468-9049fed747ef?auto=format&fit=crop&w=2200&q=92",
-  performance: "https://images.unsplash.com/photo-1592982537447-6f2a6a0c7f8c?auto=format&fit=crop&w=2200&q=92",
-  library: "https://images.unsplash.com/photo-1518977676601-b53f82aba655?auto=format&fit=crop&w=2200&q=92",
-  cropMap: "https://images.unsplash.com/photo-1500076656116-558758c991c1?auto=format&fit=crop&w=2200&q=92",
-  seeds: "https://images.unsplash.com/photo-1586201375761-83865001e31c?auto=format&fit=crop&w=2200&q=92",
+  gamePlan: "https://images.unsplash.com/photo-1498579397066-22750a3cb424?auto=format&fit=crop&w=2200&q=92",
+  cropMap: "https://images.unsplash.com/photo-1500382017468-9049fed747ef?auto=format&fit=crop&w=2200&q=92",
+  autoPlace: "https://images.unsplash.com/photo-1416879595882-3373a0480b5b?auto=format&fit=crop&w=2200&q=92",
+  observation: "https://images.unsplash.com/photo-1464226184884-fa280b87c399?auto=format&fit=crop&w=2200&q=92",
+  seasonClose: "https://images.unsplash.com/photo-1471194402529-8e0f5a675de6?auto=format&fit=crop&w=2200&q=92",
+  traceability: "https://images.unsplash.com/photo-1500937386664-56d1dfef3854?auto=format&fit=crop&w=2200&q=92",
 } as const
 
 const ORCHARD_HERO_EXCLUSIONS = new Set([
@@ -41,59 +42,62 @@ const ORCHARD_HERO_EXCLUSIONS = new Set([
   "/orchard/work",
   "/orchard/harvest",
   "/orchard/assistant",
-  "/orchard/game-plan",
   "/orchard/crops",
   "/orchard/nursery",
-  "/orchard/charts",
-  "/orchard/analytics",
-  "/orchard/season-summary",
-  "/orchard/traceability",
-  "/orchard/reports",
-])
-
-const PLANNING_ROUTES = [
-  "/orchard/library",
-  "/orchard/crop-map",
-  "/orchard/auto-place",
-  "/orchard/fao",
-  "/orchard/game-plans",
-  "/orchard/crop-cycles",
-  "/orchard/successions",
-  "/orchard/seeds",
-  "/orchard/beds",
-  "/orchard/plots",
-]
-
-const OPERATIONS_ROUTES = [
   "/orchard/lifecycle",
   "/orchard/care",
   "/orchard/pests",
   "/orchard/soil",
   "/orchard/equipment",
+  "/orchard/commercial",
+  "/orchard/performance",
+  "/orchard/decisions",
   "/orchard/mobile",
   "/orchard/health",
   "/orchard/notes",
   "/orchard/tasks",
-]
-
-const PERFORMANCE_ROUTES = [
-  "/orchard/commercial",
-  "/orchard/performance",
-  "/orchard/decisions",
-]
+])
 
 const ROUTE_HEROES: Array<{ match: (pathname: string) => boolean; config: OrchardHeroConfig }> = [
   {
+    match: (pathname) => pathname === "/orchard/game-plan" || pathname.startsWith("/orchard/game-plan/"),
+    config: { image: ORCHARD_HERO_IMAGES.gamePlan, kicker: "Season planning", signals: ["Crop cycles", "Succession cadence", "Harvest windows"] },
+  },
+  {
+    match: (pathname) => pathname === "/orchard/library/fao" || pathname.startsWith("/orchard/library/fao/"),
+    config: { kicker: "Reference catalog", signals: ["WCA 2020", "Botanical identity", "Reference sync"] },
+  },
+  {
     match: (pathname) => pathname === "/orchard/library" || pathname.startsWith("/orchard/library/"),
-    config: { image: ORCHARD_HERO_IMAGES.library, kicker: "Crop intelligence library", signals: ["Crop profiles", "Provenance", "Planning defaults"] },
+    config: { kicker: "Agronomic knowledge", signals: ["Profiles", "Provenance", "Planning defaults"], suppressFirstContentHero: true },
+  },
+  {
+    match: (pathname) => pathname === "/orchard/crop-map/auto-place" || pathname.startsWith("/orchard/crop-map/auto-place/"),
+    config: { image: ORCHARD_HERO_IMAGES.autoPlace, kicker: "Spatial allocation", signals: ["Contiguous beds", "Available area", "Rotation"], suppressFirstContentHero: true },
   },
   {
     match: (pathname) => pathname === "/orchard/crop-map" || pathname.startsWith("/orchard/crop-map/"),
-    config: { image: ORCHARD_HERO_IMAGES.cropMap, kicker: "Spatial planning", signals: ["Beds", "Occupancy", "Rotation"] },
+    config: { image: ORCHARD_HERO_IMAGES.cropMap, kicker: "Spatial planning", signals: ["Layout", "Occupancy", "Rotation"] },
   },
   {
-    match: (pathname) => pathname === "/orchard/seeds" || pathname.startsWith("/orchard/seeds/"),
-    config: { image: ORCHARD_HERO_IMAGES.seeds, kicker: "Seed inventory", signals: ["Lots", "Viability", "Sowing readiness"] },
+    match: (pathname) => pathname === "/orchard/charts" || pathname.startsWith("/orchard/charts/"),
+    config: { kicker: "Operational analytics", signals: ["Datasets", "Metrics", "Saved views"], suppressFirstContentHero: true },
+  },
+  {
+    match: (pathname) => pathname === "/orchard/analytics" || pathname.startsWith("/orchard/analytics/"),
+    config: { image: ORCHARD_HERO_IMAGES.observation, kicker: "Field intelligence", signals: ["Observations", "Signals", "Notes"], suppressFirstContentHero: true },
+  },
+  {
+    match: (pathname) => pathname === "/orchard/season-summary" || pathname.startsWith("/orchard/season-summary/"),
+    config: { image: ORCHARD_HERO_IMAGES.seasonClose, kicker: "Season closeout", signals: ["Yield", "Harvest", "Operational record"], suppressFirstContentHero: true },
+  },
+  {
+    match: (pathname) => pathname === "/orchard/traceability" || pathname.startsWith("/orchard/traceability/"),
+    config: { image: ORCHARD_HERO_IMAGES.traceability, kicker: "Crop lineage", signals: ["Nursery", "Field", "Harvest"], suppressFirstContentHero: true },
+  },
+  {
+    match: (pathname) => pathname === "/orchard/reports" || pathname.startsWith("/orchard/reports/"),
+    config: { kicker: "Reporting layer", signals: ["Evidence", "Closeout", "Export"], suppressFirstContentHero: true },
   },
 ]
 
@@ -104,12 +108,7 @@ function internalPath(pathname: string) {
 function orchardHeroForPath(rawPathname: string): OrchardHeroConfig | null {
   const pathname = internalPath(rawPathname)
   if (!pathname.startsWith("/orchard") || ORCHARD_HERO_EXCLUSIONS.has(pathname)) return null
-  const specific = ROUTE_HEROES.find((item) => item.match(pathname))
-  if (specific) return specific.config
-  if (PLANNING_ROUTES.some((route) => pathname === route || pathname.startsWith(`${route}/`))) return { image: ORCHARD_HERO_IMAGES.planning, kicker: "Planning system" }
-  if (OPERATIONS_ROUTES.some((route) => pathname === route || pathname.startsWith(`${route}/`))) return { image: ORCHARD_HERO_IMAGES.operations, kicker: "Field operations" }
-  if (PERFORMANCE_ROUTES.some((route) => pathname === route || pathname.startsWith(`${route}/`))) return { image: ORCHARD_HERO_IMAGES.performance, kicker: "Performance intelligence" }
-  return null
+  return ROUTE_HEROES.find((item) => item.match(pathname))?.config ?? null
 }
 
 function renderIcon(icon: HeaderIcon | undefined) {
@@ -137,43 +136,57 @@ export function PageHeader({
   const resolvedActions = actions ?? action ?? children ?? (actionLabel && onAction ? <Button onClick={onAction}>{actionLabel}</Button> : null)
 
   if (orchardHero) {
+    const backgroundImage = orchardHero.image
+      ? `linear-gradient(90deg, rgba(10, 12, 10, 0.95) 0%, rgba(10, 12, 10, 0.80) 40%, rgba(10, 12, 10, 0.30) 72%, rgba(10, 12, 10, 0.10) 100%), linear-gradient(0deg, rgba(10, 12, 10, 0.70) 0%, rgba(10, 12, 10, 0.04) 62%), url("${orchardHero.image}")`
+      : "linear-gradient(115deg, rgba(12,16,13,1) 0%, rgba(25,34,28,1) 52%, rgba(41,48,43,1) 100%)"
+
     return (
-      <div
-        data-slot="page-header"
-        data-orchard-hero="true"
-        className="relative isolate min-h-[230px] overflow-hidden border-b border-white/10 md:min-h-[270px]"
-        style={{
-          backgroundImage: `linear-gradient(90deg, rgba(10, 12, 10, 0.95) 0%, rgba(10, 12, 10, 0.80) 40%, rgba(10, 12, 10, 0.30) 72%, rgba(10, 12, 10, 0.10) 100%), linear-gradient(0deg, rgba(10, 12, 10, 0.70) 0%, rgba(10, 12, 10, 0.04) 62%), url("${orchardHero.image}")`,
-          backgroundPosition: "center",
-          backgroundSize: "cover",
-          backgroundRepeat: "no-repeat",
-        }}
-      >
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_78%_36%,rgba(134,239,172,0.11),transparent_28%)]" />
-        <div className="relative z-10 mx-auto flex min-h-[230px] w-full max-w-[1560px] flex-col justify-end gap-5 px-4 py-7 md:min-h-[270px] md:flex-row md:items-end md:justify-between md:px-8 md:py-8">
-          <div className="min-w-0 max-w-3xl space-y-3">
-            <div className="flex items-center gap-2">
-              {backHref && (
-                <Button asChild variant="ghost" size="icon" className="-ml-2 h-8 w-8 text-white hover:bg-white/10 hover:text-white" aria-label="Back">
-                  <Link href={backHref}><ArrowLeft className="h-4 w-4" /></Link>
-                </Button>
+      <>
+        {orchardHero.suppressFirstContentHero && (
+          <style>{`
+            body:has([data-orchard-navigation]) main:has([data-slot="page-header"][data-orchard-suppress-first-hero="true"]) > div:not([data-slot]):not([class*="fixed"]) > section:first-of-type {
+              display: none !important;
+            }
+          `}</style>
+        )}
+        <div
+          data-slot="page-header"
+          data-orchard-hero="true"
+          data-orchard-suppress-first-hero={orchardHero.suppressFirstContentHero ? "true" : undefined}
+          className="relative isolate min-h-[230px] overflow-hidden border-b border-white/10 md:min-h-[270px]"
+          style={{
+            backgroundImage,
+            backgroundPosition: "center",
+            backgroundSize: "cover",
+            backgroundRepeat: "no-repeat",
+          }}
+        >
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_78%_36%,rgba(134,239,172,0.11),transparent_28%)]" />
+          <div className="relative z-10 mx-auto flex min-h-[230px] w-full max-w-[1560px] flex-col justify-end gap-5 px-4 py-7 md:min-h-[270px] md:flex-row md:items-end md:justify-between md:px-8 md:py-8">
+            <div className="min-w-0 max-w-3xl space-y-3">
+              <div className="flex items-center gap-2">
+                {backHref && (
+                  <Button asChild variant="ghost" size="icon" className="-ml-2 h-8 w-8 text-white hover:bg-white/10 hover:text-white" aria-label="Back">
+                    <Link href={backHref}><ArrowLeft className="h-4 w-4" /></Link>
+                  </Button>
+                )}
+                {icon && <span className="flex h-9 w-9 shrink-0 items-center justify-center border border-white/15 bg-black/25 text-emerald-200">{renderIcon(icon)}</span>}
+                <div className="min-w-0">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-emerald-200">Black Swan Facility Core · {orchardHero.kicker}</p>
+                  <h1 className="text-balance text-3xl font-semibold tracking-[-0.035em] text-white md:text-4xl">{title}</h1>
+                </div>
+              </div>
+              {description && <p className="max-w-2xl text-sm leading-6 text-white/72 md:text-[15px]">{description}</p>}
+              {orchardHero.signals && (
+                <div className="flex flex-wrap gap-2 pt-1">
+                  {orchardHero.signals.map((signal) => <span key={signal} className="border border-white/14 bg-black/25 px-3 py-1 text-[11px] font-medium tracking-wide text-white/78">{signal}</span>)}
+                </div>
               )}
-              {icon && <span className="flex h-9 w-9 shrink-0 items-center justify-center border border-white/15 bg-black/25 text-emerald-200">{renderIcon(icon)}</span>}
-              <div className="min-w-0">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-emerald-200">Black Swan Facility Core · {orchardHero.kicker}</p>
-                <h1 className="text-balance text-3xl font-semibold tracking-[-0.035em] text-white md:text-4xl">{title}</h1>
-              </div>
             </div>
-            {description && <p className="max-w-2xl text-sm leading-6 text-white/72 md:text-[15px]">{description}</p>}
-            {orchardHero.signals && (
-              <div className="flex flex-wrap gap-2 pt-1">
-                {orchardHero.signals.map((signal) => <span key={signal} className="border border-white/14 bg-black/25 px-3 py-1 text-[11px] font-medium tracking-wide text-white/78">{signal}</span>)}
-              </div>
-            )}
+            {resolvedActions && <div className="flex shrink-0 flex-wrap items-center gap-2">{resolvedActions}</div>}
           </div>
-          {resolvedActions && <div className="flex shrink-0 flex-wrap items-center gap-2">{resolvedActions}</div>}
         </div>
-      </div>
+      </>
     )
   }
 
