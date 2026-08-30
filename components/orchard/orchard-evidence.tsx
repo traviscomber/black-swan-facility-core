@@ -32,28 +32,13 @@ const allowedTypes = new Set(["image/jpeg", "image/png", "image/webp", "image/he
 const maxBytes = 6 * 1024 * 1024
 const copy = {
   en: {
-    title: "Field evidence",
-    add: "Add photo",
-    caption: "Caption (optional)",
-    empty: "No photos attached.",
-    tooLarge: "Photo must be 6 MB or smaller.",
-    invalidType: "Use JPEG, PNG, WebP, HEIC or HEIF.",
-    uploadError: "Could not upload photo",
-    removeError: "Could not remove photo",
-    deleteConfirm: "Delete this photo evidence?",
-    open: "Open photo",
+    title: "Field evidence", add: "Add photo", caption: "Caption (optional)", empty: "No photos attached.", tooLarge: "Photo must be 6 MB or smaller.", invalidType: "Use JPEG, PNG, WebP, HEIC or HEIF.", uploadError: "Could not upload photo", removeError: "Could not remove photo", deleteConfirm: "Delete this photo evidence?", open: "Open photo", unauthorized: "You must be signed in to upload evidence.", remove: "Remove photo",
   },
   es: {
-    title: "Evidencia de terreno",
-    add: "Agregar foto",
-    caption: "Descripción (opcional)",
-    empty: "No hay fotos adjuntas.",
-    tooLarge: "La foto debe pesar 6 MB o menos.",
-    invalidType: "Usa JPEG, PNG, WebP, HEIC o HEIF.",
-    uploadError: "No fue posible subir la foto",
-    removeError: "No fue posible eliminar la foto",
-    deleteConfirm: "¿Eliminar esta evidencia fotográfica?",
-    open: "Abrir foto",
+    title: "Evidencia de terreno", add: "Agregar foto", caption: "Descripción (opcional)", empty: "No hay fotos adjuntas.", tooLarge: "La foto debe pesar 6 MB o menos.", invalidType: "Usa JPEG, PNG, WebP, HEIC o HEIF.", uploadError: "No fue posible subir la foto", removeError: "No fue posible eliminar la foto", deleteConfirm: "¿Eliminar esta evidencia fotográfica?", open: "Abrir foto", unauthorized: "Debes iniciar sesión para subir evidencia.", remove: "Eliminar foto",
+  },
+  de: {
+    title: "Feldnachweise", add: "Foto hinzufügen", caption: "Beschreibung (optional)", empty: "Keine Fotos angehängt.", tooLarge: "Das Foto darf höchstens 6 MB groß sein.", invalidType: "Verwende JPEG, PNG, WebP, HEIC oder HEIF.", uploadError: "Foto konnte nicht hochgeladen werden", removeError: "Foto konnte nicht entfernt werden", deleteConfirm: "Diesen Fotobeleg löschen?", open: "Foto öffnen", unauthorized: "Du musst angemeldet sein, um Nachweise hochzuladen.", remove: "Foto entfernen",
   },
 } as const
 
@@ -65,7 +50,7 @@ function safeName(name: string) {
 export function OrchardEvidence({ cropId, careLogId, pestLogId }: Props) {
   const supabase = useMemo(() => createBrowserClient(), [])
   const { language } = useLanguage()
-  const text = copy[language === "es" ? "es" : "en"]
+  const text = copy[language]
   const [items, setItems] = useState<Array<Evidence & { signed_url?: string }>>([])
   const [caption, setCaption] = useState("")
   const [busy, setBusy] = useState(false)
@@ -101,7 +86,7 @@ export function OrchardEvidence({ cropId, careLogId, pestLogId }: Props) {
     setError(null)
     const auth = await supabase.auth.getUser()
     const userId = auth.data.user?.id
-    if (!userId) { setBusy(false); setError("Unauthorized"); return }
+    if (!userId) { setBusy(false); setError(text.unauthorized); return }
 
     const evidenceId = crypto.randomUUID()
     const path = `${userId}/${evidenceId}/${safeName(file.name)}`
@@ -174,7 +159,7 @@ export function OrchardEvidence({ cropId, careLogId, pestLogId }: Props) {
               <p className="line-clamp-2 text-sm">{item.caption || item.file_name}</p>
               <div className="flex gap-2">
                 {item.signed_url && <Button asChild variant="outline" size="sm"><a href={item.signed_url} target="_blank" rel="noreferrer"><ExternalLink className="mr-1.5 h-3.5 w-3.5" />{text.open}</a></Button>}
-                <Button variant="ghost" size="sm" onClick={() => void remove(item)} disabled={busy}><Trash2 className="h-3.5 w-3.5" /></Button>
+                <Button variant="ghost" size="sm" aria-label={text.remove} title={text.remove} onClick={() => void remove(item)} disabled={busy}><Trash2 className="h-3.5 w-3.5" /></Button>
               </div>
             </div>
           </div>)}

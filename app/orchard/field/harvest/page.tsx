@@ -27,6 +27,7 @@ type Plot = { id: string; name: string }
 const copy = {
   en: { title: "Quick Harvest", description: "Record a traceable harvest pass in seconds from the field.", back: "Field Mode", refresh: "Refresh", crop: "Crop", bed: "Bed allocation", noBed: "No linked bed", date: "Harvest date", quantity: "Quantity", unit: "Unit", lot: "Lot / reference", quality: "Quality 1–5", notes: "Notes", optional: "Optional trace details", save: "Record harvest", success: "Harvest recorded", loadError: "Could not load harvest context", saveError: "Could not record harvest", scope: "Game Plan scope", all: "All Orchard", scopeRequired: "This Game Plan view only accepts crops linked to one of its successions." },
   es: { title: "Cosecha Rápida", description: "Registra una pasada de cosecha trazable en segundos desde terreno.", back: "Modo Terreno", refresh: "Actualizar", crop: "Cultivo", bed: "Asignación de cama", noBed: "Sin cama vinculada", date: "Fecha de cosecha", quantity: "Cantidad", unit: "Unidad", lot: "Lote / referencia", quality: "Calidad 1–5", notes: "Notas", optional: "Detalles opcionales de trazabilidad", save: "Registrar cosecha", success: "Cosecha registrada", loadError: "No fue posible cargar el contexto de cosecha", saveError: "No fue posible registrar la cosecha", scope: "Alcance Game Plan", all: "Todo Orchard", scopeRequired: "Esta vista de Game Plan solo acepta cultivos ligados a una de sus sucesiones." },
+  de: { title: "Schnellernte", description: "Erfasse direkt im Feld in wenigen Sekunden einen rückverfolgbaren Erntedurchgang.", back: "Feldmodus", refresh: "Aktualisieren", crop: "Kultur", bed: "Beetzuordnung", noBed: "Kein verknüpftes Beet", date: "Erntedatum", quantity: "Menge", unit: "Einheit", lot: "Partie / Referenz", quality: "Qualität 1–5", notes: "Notizen", optional: "Optionale Rückverfolgungsdetails", save: "Ernte erfassen", success: "Ernte erfasst", loadError: "Erntekontext konnte nicht geladen werden", saveError: "Ernte konnte nicht erfasst werden", scope: "Game-Plan-Umfang", all: "Gesamter Orchard", scopeRequired: "Diese Game-Plan-Ansicht akzeptiert nur Kulturen, die mit einer Folge dieses Plans verknüpft sind." },
 } as const
 
 function todayKey() { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}` }
@@ -34,8 +35,7 @@ function todayKey() { const d = new Date(); return `${d.getFullYear()}-${String(
 export default function OrchardQuickHarvestPage() {
   const supabase = useMemo(() => createBrowserClient(), [])
   const { language } = useLanguage()
-  const lang = language === "es" ? "es" : "en"
-  const text = copy[lang]
+  const text = copy[language]
   const [plans, setPlans] = useState<GamePlan[]>([])
   const [selectedPlanId, setSelectedPlanId] = useState<string>(ALL_GAME_PLANS)
   const [cycles, setCycles] = useState<Cycle[]>([])

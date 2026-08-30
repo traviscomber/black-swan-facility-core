@@ -32,62 +32,63 @@ import {
 import { useLanguage } from "@/lib/hooks/use-language"
 import { cn } from "@/lib/utils"
 
+type OrchardLocale = "en" | "es" | "de"
 type NavItem = {
   href: string
-  label: { en: string; es: string }
+  label: Record<OrchardLocale, string>
   icon: typeof LayoutDashboard
   includeChildren?: boolean
 }
 
 const primaryItems: NavItem[] = [
-  { href: "/orchard", label: { en: "Overview", es: "Resumen" }, icon: LayoutDashboard },
-  { href: "/orchard/field", label: { en: "Field", es: "Terreno" }, icon: Smartphone, includeChildren: true },
-  { href: "/orchard/game-plan", label: { en: "Game Plan", es: "Plan" }, icon: CalendarRange },
-  { href: "/orchard/work", label: { en: "Work", es: "Trabajo" }, icon: CalendarDays },
-  { href: "/orchard/harvest", label: { en: "Harvest", es: "Cosecha" }, icon: Leaf },
-  { href: "/orchard/assistant", label: { en: "Orchard AI", es: "IA Orchard" }, icon: Bot },
+  { href: "/orchard", label: { en: "Overview", es: "Resumen", de: "Übersicht" }, icon: LayoutDashboard },
+  { href: "/orchard/field", label: { en: "Field", es: "Terreno", de: "Feld" }, icon: Smartphone, includeChildren: true },
+  { href: "/orchard/game-plan", label: { en: "Game Plan", es: "Plan", de: "Game Plan" }, icon: CalendarRange },
+  { href: "/orchard/work", label: { en: "Work", es: "Trabajo", de: "Arbeit" }, icon: CalendarDays },
+  { href: "/orchard/harvest", label: { en: "Harvest", es: "Cosecha", de: "Ernte" }, icon: Leaf },
+  { href: "/orchard/assistant", label: { en: "Orchard AI", es: "IA Orchard", de: "Orchard AI" }, icon: Bot },
 ]
 
 const groups = [
   {
     key: "planning",
-    label: { en: "Planning", es: "Planificación" },
+    label: { en: "Planning", es: "Planificación", de: "Planung" },
     icon: PanelsTopLeft,
     items: [
-      { href: "/orchard/library", label: { en: "Crop Library", es: "Biblioteca" }, icon: BookOpen },
-      { href: "/orchard/library/fao", label: { en: "FAO Catalog", es: "Catálogo FAO" }, icon: Database },
-      { href: "/orchard/crop-map", label: { en: "Crop Map", es: "Mapa" }, icon: Map },
-      { href: "/orchard/crop-map/auto-place", label: { en: "Auto-place", es: "Auto-ubicar" }, icon: WandSparkles },
-      { href: "/orchard/nursery", label: { en: "Seeds & Nursery", es: "Semillas" }, icon: Sprout },
+      { href: "/orchard/library", label: { en: "Crop Library", es: "Biblioteca", de: "Kulturbibliothek" }, icon: BookOpen },
+      { href: "/orchard/library/fao", label: { en: "FAO Catalog", es: "Catálogo FAO", de: "FAO-Katalog" }, icon: Database },
+      { href: "/orchard/crop-map", label: { en: "Crop Map", es: "Mapa", de: "Kulturkarte" }, icon: Map },
+      { href: "/orchard/crop-map/auto-place", label: { en: "Auto-place", es: "Auto-ubicar", de: "Auto-Platzierung" }, icon: WandSparkles },
+      { href: "/orchard/nursery", label: { en: "Seeds & Nursery", es: "Semillas", de: "Saatgut & Anzucht" }, icon: Sprout },
     ] satisfies NavItem[],
   },
   {
     key: "operations",
-    label: { en: "Operations", es: "Operación" },
+    label: { en: "Operations", es: "Operación", de: "Betrieb" },
     icon: Activity,
     items: [
-      { href: "/orchard/crops", label: { en: "Crops", es: "Cultivos" }, icon: Sprout },
-      { href: "/orchard/lifecycle", label: { en: "Lifecycle", es: "Ciclo" }, icon: GitBranch },
-      { href: "/orchard/care", label: { en: "Care", es: "Cuidados" }, icon: Activity },
-      { href: "/orchard/pests", label: { en: "Health", es: "Sanidad" }, icon: Bug },
-      { href: "/orchard/soil", label: { en: "Soil", es: "Suelo" }, icon: TestTube2 },
-      { href: "/orchard/equipment", label: { en: "Equipment", es: "Equipos" }, icon: Hammer },
-      { href: "/orchard/mobile", label: { en: "Mobile App", es: "App Móvil" }, icon: Smartphone },
+      { href: "/orchard/crops", label: { en: "Crops", es: "Cultivos", de: "Kulturen" }, icon: Sprout },
+      { href: "/orchard/lifecycle", label: { en: "Lifecycle", es: "Ciclo", de: "Lebenszyklus" }, icon: GitBranch },
+      { href: "/orchard/care", label: { en: "Care", es: "Cuidados", de: "Pflege" }, icon: Activity },
+      { href: "/orchard/pests", label: { en: "Health", es: "Sanidad", de: "Gesundheit" }, icon: Bug },
+      { href: "/orchard/soil", label: { en: "Soil", es: "Suelo", de: "Boden" }, icon: TestTube2 },
+      { href: "/orchard/equipment", label: { en: "Equipment", es: "Equipos", de: "Geräte" }, icon: Hammer },
+      { href: "/orchard/mobile", label: { en: "Mobile App", es: "App Móvil", de: "Mobile App" }, icon: Smartphone },
     ] satisfies NavItem[],
   },
   {
     key: "performance",
-    label: { en: "Performance", es: "Rendimiento" },
+    label: { en: "Performance", es: "Rendimiento", de: "Leistung" },
     icon: BarChart3,
     items: [
-      { href: "/orchard/commercial", label: { en: "Commercial", es: "Comercial" }, icon: BadgeDollarSign },
-      { href: "/orchard/performance", label: { en: "Plan vs Actual", es: "Plan vs Real" }, icon: ChartNoAxesCombined },
-      { href: "/orchard/decisions", label: { en: "Decisions", es: "Decisiones" }, icon: ShieldAlert },
-      { href: "/orchard/charts", label: { en: "Custom Charts", es: "Gráficos" }, icon: ChartSpline },
-      { href: "/orchard/analytics", label: { en: "Insights", es: "Análisis" }, icon: BarChart3 },
-      { href: "/orchard/season-summary", label: { en: "Season Summary", es: "Temporada" }, icon: Leaf },
-      { href: "/orchard/traceability", label: { en: "Traceability", es: "Trazabilidad" }, icon: Route },
-      { href: "/orchard/reports", label: { en: "Reports", es: "Reportes" }, icon: FileText },
+      { href: "/orchard/commercial", label: { en: "Commercial", es: "Comercial", de: "Vermarktung" }, icon: BadgeDollarSign },
+      { href: "/orchard/performance", label: { en: "Plan vs Actual", es: "Plan vs Real", de: "Plan vs. Ist" }, icon: ChartNoAxesCombined },
+      { href: "/orchard/decisions", label: { en: "Decisions", es: "Decisiones", de: "Entscheidungen" }, icon: ShieldAlert },
+      { href: "/orchard/charts", label: { en: "Custom Charts", es: "Gráficos", de: "Eigene Diagramme" }, icon: ChartSpline },
+      { href: "/orchard/analytics", label: { en: "Insights", es: "Análisis", de: "Einblicke" }, icon: BarChart3 },
+      { href: "/orchard/season-summary", label: { en: "Season Summary", es: "Temporada", de: "Saisonübersicht" }, icon: Leaf },
+      { href: "/orchard/traceability", label: { en: "Traceability", es: "Trazabilidad", de: "Rückverfolgbarkeit" }, icon: Route },
+      { href: "/orchard/reports", label: { en: "Reports", es: "Reportes", de: "Berichte" }, icon: FileText },
     ] satisfies NavItem[],
   },
 ] as const
@@ -239,7 +240,8 @@ export function OrchardNavigation() {
   const pathname = internalPath(usePathname() || "/")
   const searchParams = useSearchParams()
   const { language } = useLanguage()
-  const locale = language === "es" ? "es" : "en"
+  const locale: OrchardLocale = language
+  const navAria: Record<OrchardLocale, string> = { en: "Orchard navigation", es: "Navegación del huerto", de: "Orchard-Navigation" }
   const gamePlanId = searchParams.get("game_plan")
   const scopedHref = (href: string) => {
     const base = `/${language}${href}`
@@ -253,7 +255,7 @@ export function OrchardNavigation() {
       <style>{ORCHARD_BRAND_CSS}</style>
       <nav
         data-orchard-navigation
-        aria-label={locale === "es" ? "Navegación del huerto" : "Orchard navigation"}
+        aria-label={navAria[locale]}
         className="sticky top-0 z-[70] border-b border-border bg-background px-3 md:px-8"
       >
         <div className="mx-auto flex min-h-14 w-full max-w-[1560px] items-center gap-1 overflow-x-auto py-1.5 [scrollbar-width:none] sm:overflow-visible [&::-webkit-scrollbar]:hidden">
