@@ -35,6 +35,7 @@ test('decision cockpit uses concrete canonical objects and partial-source degrad
   assert.match(cockpit, /procurement_requests/)
   assert.match(cockpit, /from\('tasks'\)/)
   assert.match(cockpit, /from\('issues'\)/)
+  assert.match(cockpit, /href: `\/issues\/\$\{row\.id\}`/)
   assert.match(cockpit, /results\.some\(\(result\) => Boolean\(result\.error\)\)/)
   assert.match(cockpit, /next\.slice\(0, 8\)/)
 })
