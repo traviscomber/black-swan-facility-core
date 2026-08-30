@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation'
 import { translations } from './language-context'
 import { deTranslations } from './translations/de'
 import { shellTranslations } from './translations/shell'
+import { installRuntimeTranslationBridge } from './translations/runtime-bridge'
 import { LanguageContext, type Language } from './hooks/use-language'
 
 const ROUTE_LOCALES = ['en', 'es', 'de'] as const
@@ -40,16 +41,15 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
     localStorage.setItem('language', routeLocale)
     document.cookie = `site-locale=${routeLocale}; path=/; samesite=lax`
     document.documentElement.lang = routeLocale
+    document.documentElement.dir = 'ltr'
   }, [routeLocale])
+
+  useEffect(() => installRuntimeTranslationBridge(language), [language, pathname])
 
   const handleSetLanguage = (lang: Language) => {
     const nextPath = replaceLocalePrefix(pathname, lang)
     localStorage.setItem('language', lang)
     document.cookie = `site-locale=${lang}; path=/; samesite=lax`
-
-    // Bookings still contains a small legacy DOM-translation bridge for en/de.
-    // A full document navigation guarantees that switching back to Spanish
-    // starts from the canonical Spanish source instead of mutated DOM text.
     window.location.assign(nextPath)
   }
 
@@ -58,9 +58,9 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
     if (shellValue) return shellValue
 
     if (language === 'de') {
-      return deTranslations[key]
-        ?? (translations.en as Record<string, string>)[key]
-        ?? key
+      // Never leak English into /de. Missing German keys stay explicit so
+      // Polyglot/CI can catch the gap instead of silently shipping mixed UI.
+      return deTranslations[key] ?? key
     }
 
     const currentLang = translations[language]
