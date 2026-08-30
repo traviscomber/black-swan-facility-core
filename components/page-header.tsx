@@ -140,7 +140,7 @@ export function PageHeader({
       <>
         {orchardHero.suppressFirstContentHero && (
           <style>{`
-            body:has([data-orchard-navigation]) main:has(> [data-slot="page-header"][data-orchard-suppress-first-hero="true"] + [data-orchard-navigation]) > div:not([data-slot]):not([class*="fixed"]) > section:first-child {
+            body:has([data-orchard-navigation]) main:has([data-slot="page-header"][data-orchard-suppress-first-hero="true"]) > div:not([data-slot]):not([class*="fixed"]) > section:first-of-type {
               display: none !important;
             }
           `}</style>
