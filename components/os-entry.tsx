@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { BigPictureHome } from '@/components/big-picture-home'
 import { FieldAdminHome } from '@/components/field-admin-home'
+import { OsDecisionCockpit } from '@/components/os-decision-cockpit'
 import { OsHome } from '@/components/os-home'
 import { useOsPersona } from '@/lib/hooks/use-os-persona'
 import { useLanguage } from '@/lib/hooks/use-language'
@@ -31,7 +32,7 @@ export function OsEntry() {
           <Link href="/os?view=panorama" className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${panorama ? 'bg-background shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>{text.panorama}</Link>
         </div>
       </div>
-      {panorama ? <BigPictureHome /> : persona === 'field_admin' ? <FieldAdminHome /> : <OsHome />}
+      {panorama ? <BigPictureHome /> : persona === 'field_admin' ? <FieldAdminHome /> : <><OsDecisionCockpit /><OsHome /></>}
     </div>
   )
 }
