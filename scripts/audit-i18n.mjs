@@ -12,6 +12,9 @@ const rules = [
   // Advisory only: a raw locale comparison is not by itself a two-locale collapse.
   ['locale-es-comparison', /\blanguage\s*===\s*["']es["']/g],
   ['locale-en-comparison', /\blanguage\s*===\s*["']en["']/g],
+  // A locale comparison used directly as a two-way UI ternary is a real collapse.
+  ['binary-es-ternary', /\blanguage\s*===\s*["']es["']\s*\?[^\n;]{1,320}:[^\n;]{1,320}/g],
+  ['binary-en-ternary', /\blanguage\s*===\s*["']en["']\s*\?[^\n;]{1,320}:[^\n;]{1,320}/g],
   // Match only exact two-locale unions. Do not match the en|es prefix of en|es|de.
   ['binary-locale-union', /(?:Record<\s*(?:["']en["']\s*\|\s*["']es["']|["']es["']\s*\|\s*["']en["'])\s*>|Partial<Record<\s*(?:["']en["']\s*\|\s*["']es["']|["']es["']\s*\|\s*["']en["'])\s*>>)/g],
   ['binary-lang-normalizer', /\blang(?:uage)?\s*=\s*language\s*===\s*["'](?:en|es)["']\s*\?\s*["'](?:en|es)["']\s*:\s*["'](?:en|es)["']/g],
@@ -59,15 +62,36 @@ function visibleLiteralCount(source) {
   return jsxText + visibleProps
 }
 
+function objectAt(source, anchorIndex) {
+  const open = source.indexOf('{', anchorIndex)
+  if (open < 0 || open - anchorIndex > 500) return null
+  let depth = 0
+  let quote = null
+  let escaped = false
+  for (let index = open; index < source.length; index += 1) {
+    const char = source[index]
+    if (quote) {
+      if (escaped) { escaped = false; continue }
+      if (char === '\\') { escaped = true; continue }
+      if (char === quote) quote = null
+      continue
+    }
+    if (char === '"' || char === "'" || char === '`') { quote = char; continue }
+    if (char === '{') depth += 1
+    if (char === '}') {
+      depth -= 1
+      if (depth === 0) return source.slice(open, index + 1)
+    }
+  }
+  return null
+}
+
 function hasBinaryLocaleMap(source, index) {
-  // Copy catalogs can be large single objects. Inspect enough of the object body to
-  // see a later `de:` branch instead of misclassifying a valid en/es/de catalog.
-  const start = Math.max(0, index - 80)
-  const end = Math.min(source.length, index + 12000)
-  const window = source.slice(start, end)
-  const hasEn = /\ben\s*:\s*(?:\{|["'`])/.test(window)
-  const hasEs = /\bes\s*:\s*(?:\{|["'`])/.test(window)
-  const hasDe = /\bde\s*:\s*(?:\{|["'`])/.test(window)
+  const object = objectAt(source, index)
+  if (!object) return false
+  const hasEn = /\ben\s*:\s*(?:\{|["'`])/.test(object)
+  const hasEs = /\bes\s*:\s*(?:\{|["'`])/.test(object)
+  const hasDe = /\bde\s*:\s*(?:\{|["'`])/.test(object)
   return hasEn && hasEs && !hasDe
 }
 
@@ -133,6 +157,8 @@ console.log(`\n[binary-translation-catalogs] ${binaryCatalogs.length}`)
 for (const file of binaryCatalogs) console.log(`- ${file}`)
 
 const blockingRules = new Set([
+  'binary-es-ternary',
+  'binary-en-ternary',
   'binary-locale-union',
   'binary-lang-normalizer',
   'binary-locale-normalizer',
