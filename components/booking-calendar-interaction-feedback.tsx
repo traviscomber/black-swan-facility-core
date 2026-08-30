@@ -7,10 +7,12 @@ import type { Feedback } from "@/components/booking-calendar-model"
 import { useLanguage } from "@/lib/hooks/use-language"
 import { bookingCalendarInteractionCopy } from "@/lib/translations/booking-calendar-interactions"
 
+const dateLocales = { en: enUS, es, de } as const
+
 export function BookingCalendarInteractionFeedback({ feedback }: { feedback: Feedback | null }) {
   const { language } = useLanguage()
   const copy = bookingCalendarInteractionCopy[language]
-  const dateLocale = language === "de" ? de : language === "es" ? es : enUS
+  const dateLocale = dateLocales[language]
 
   return (
     <>
@@ -51,28 +53,13 @@ export function BookingCalendarInteractionFeedback({ feedback }: { feedback: Fee
       `}</style>
 
       {feedback && (
-        <div
-          role="status"
-          aria-live="polite"
-          aria-atomic="true"
-          className="pointer-events-none fixed left-1/2 top-20 z-[95] w-[min(460px,calc(100vw-2rem))] -translate-x-1/2 bg-[var(--surface-2)] px-4 py-3 text-[var(--text-primary)] shadow-none"
-          data-testid="booking-interaction-feedback"
-        >
+        <div role="status" aria-live="polite" aria-atomic="true" className="pointer-events-none fixed left-1/2 top-20 z-[95] w-[min(460px,calc(100vw-2rem))] -translate-x-1/2 bg-[var(--surface-2)] px-4 py-3 text-[var(--text-primary)] shadow-none" data-testid="booking-interaction-feedback">
           <div className="flex items-start gap-3">
-            {feedback.state === "valid"
-              ? <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-[var(--primary)]" />
-              : <AlertTriangle className={`mt-0.5 h-4 w-4 shrink-0 ${feedback.state === "warning" ? "text-[var(--status-warning)]" : "text-[var(--destructive)]"}`} />}
+            {feedback.state === "valid" ? <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-[var(--primary)]" /> : <AlertTriangle className={`mt-0.5 h-4 w-4 shrink-0 ${feedback.state === "warning" ? "text-[var(--status-warning)]" : "text-[var(--destructive)]"}`} />}
             <div className="min-w-0">
-              <p className="flex items-center gap-2 text-sm font-medium">
-                {feedback.mode === "create"
-                  ? <CalendarPlus2 className="h-4 w-4" />
-                  : <MoveHorizontal className="h-4 w-4" />}
-                {feedback.guestName}
-              </p>
+              <p className="flex items-center gap-2 text-sm font-medium">{feedback.mode === "create" ? <CalendarPlus2 className="h-4 w-4" /> : <MoveHorizontal className="h-4 w-4" />}{feedback.guestName}</p>
               <p className="mt-1 truncate text-xs text-[var(--text-secondary)]">{feedback.targetLabel}</p>
-              <p className="mt-1 text-xs text-[var(--text-muted)]">
-                {format(parseISO(feedback.checkIn), "dd MMM yyyy", { locale: dateLocale })} → {format(parseISO(feedback.checkOut), "dd MMM yyyy", { locale: dateLocale })} · {feedback.nights} {feedback.nights === 1 ? copy.night : copy.nights}
-              </p>
+              <p className="mt-1 text-xs text-[var(--text-muted)]">{format(parseISO(feedback.checkIn), "dd MMM yyyy", { locale: dateLocale })} → {format(parseISO(feedback.checkOut), "dd MMM yyyy", { locale: dateLocale })} · {feedback.nights} {feedback.nights === 1 ? copy.night : copy.nights}</p>
               <p className="mt-2 text-xs">{feedback.message}</p>
             </div>
           </div>
