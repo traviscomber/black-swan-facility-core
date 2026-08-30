@@ -1,6 +1,6 @@
 "use client"
 
-import { Database, History, ShieldCheck } from "lucide-react"
+import { Database, History, ShieldCheck, TriangleAlert } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 
 type LibraryLocale = "en" | "es" | "de"
@@ -25,43 +25,61 @@ export type BlackSwanCropIntel = {
 
 const copy = {
   en: {
-    title: "Black Swan intelligence",
-    realData: "Real BS data",
-    seasons: "seasons",
+    title: "Corcovado intelligence",
+    realData: "Canonical farm evidence",
+    seasons: "real seasons",
     harvests: "harvest records",
-    cultivars: "Tested cultivars",
-    window: "Harvest window",
-    measured: "Measured",
+    cultivars: "Cultivars used at Corcovado",
+    window: "Recorded harvest window",
+    measured: "Recorded output",
     complete: "Closed measurement window",
-    censored: "Measurement still partial",
-    harvestOnly: "Harvest evidence",
-    related: "Related profile",
+    censored: "Partial measurement window",
+    harvestOnly: "Harvest evidence only",
+    related: "Related profile — not equivalent",
+    confidence: "Evidence confidence",
+    high: "High · two real seasons",
+    medium: "Medium · one real season",
+    limited: "Limited · partial/related evidence",
+    signal: "Historical signal",
+    noFinalSignal: "No final performance conclusion",
   },
   es: {
-    title: "Inteligencia Black Swan",
-    realData: "Datos reales BS",
-    seasons: "temporadas",
+    title: "Inteligencia Corcovado",
+    realData: "Evidencia canónica del fundo",
+    seasons: "temporadas reales",
     harvests: "registros de cosecha",
-    cultivars: "Cultivares probados",
-    window: "Ventana de cosecha",
-    measured: "Medido",
+    cultivars: "Cultivares usados en Corcovado",
+    window: "Ventana de cosecha registrada",
+    measured: "Producción registrada",
     complete: "Ventana de medición cerrada",
-    censored: "Medición aún parcial",
-    harvestOnly: "Evidencia de cosecha",
-    related: "Perfil relacionado",
+    censored: "Ventana de medición parcial",
+    harvestOnly: "Sólo evidencia de cosecha",
+    related: "Perfil relacionado — no equivalente",
+    confidence: "Confianza de evidencia",
+    high: "Alta · dos temporadas reales",
+    medium: "Media · una temporada real",
+    limited: "Limitada · evidencia parcial/relacionada",
+    signal: "Señal histórica",
+    noFinalSignal: "Sin conclusión final de rendimiento",
   },
   de: {
-    title: "Black-Swan-Intelligenz",
-    realData: "Reale BS-Daten",
-    seasons: "Saisons",
+    title: "Corcovado-Intelligenz",
+    realData: "Kanonische Betriebsdaten",
+    seasons: "reale Saisons",
     harvests: "Ernteeinträge",
-    cultivars: "Erprobte Sorten",
-    window: "Erntefenster",
-    measured: "Gemessen",
+    cultivars: "In Corcovado eingesetzte Sorten",
+    window: "Erfasstes Erntefenster",
+    measured: "Erfasste Produktion",
     complete: "Messfenster abgeschlossen",
-    censored: "Messung noch unvollständig",
-    harvestOnly: "Erntenachweis",
-    related: "Verwandtes Profil",
+    censored: "Messfenster unvollständig",
+    harvestOnly: "Nur Erntenachweis",
+    related: "Verwandtes Profil — nicht gleichwertig",
+    confidence: "Evidenzvertrauen",
+    high: "Hoch · zwei reale Saisons",
+    medium: "Mittel · eine reale Saison",
+    limited: "Begrenzt · partielle/verwandte Evidenz",
+    signal: "Historisches Signal",
+    noFinalSignal: "Keine abschließende Leistungsbewertung",
   },
 } as const
 
@@ -87,13 +105,29 @@ function formatActual(values: Record<string, number>, lang: LibraryLocale) {
     .join(" · ") || "—"
 }
 
+function isLimited(season: BlackSwanSeasonIntel) {
+  return Boolean(season.comparability?.includes("related") || season.measurementStatus?.includes("right_censored") || season.measurementStatus?.includes("incomplete"))
+}
+
 function statusLabel(season: BlackSwanSeasonIntel, lang: LibraryLocale) {
   const text = copy[lang]
   if (season.comparability?.includes("related")) return text.related
-  if (season.measurementStatus?.includes("right_censored")) return text.censored
+  if (season.measurementStatus?.includes("right_censored") || season.measurementStatus?.includes("incomplete")) return text.censored
   if (season.measurementStatus?.includes("harvest_measurement_only")) return text.harvestOnly
   if (season.measurementStatus === "measurement_window_closed") return text.complete
   return text.realData
+}
+
+function confidenceLabel(intel: BlackSwanCropIntel, lang: LibraryLocale) {
+  const text = copy[lang]
+  if (intel.seasons.some(isLimited)) return text.limited
+  if (intel.seasons.length >= 2) return text.high
+  return text.medium
+}
+
+function humanSignal(value: string | null) {
+  if (!value) return null
+  return value.replaceAll("_", " ")
 }
 
 export function BlackSwanIntelligence({ intel, lang }: { intel: BlackSwanCropIntel | null; lang: LibraryLocale }) {
@@ -114,34 +148,45 @@ export function BlackSwanIntelligence({ intel, lang }: { intel: BlackSwanCropInt
       </div>
 
       <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
-        <span>{intel.seasons.length} {text.seasons}</span>
-        <span>·</span>
-        <span>{totalHarvests} {text.harvests}</span>
+        <span>{intel.seasons.length} {text.seasons}</span><span>·</span><span>{totalHarvests} {text.harvests}</span>
+      </div>
+
+      <div className="mt-3 rounded-lg border border-white/10 bg-background/35 p-2.5">
+        <p className="text-[10px] font-semibold uppercase tracking-[.14em] text-muted-foreground">{text.confidence}</p>
+        <p className="mt-1 text-xs font-medium">{confidenceLabel(intel, lang)}</p>
       </div>
 
       {intel.cultivars.length > 0 && (
         <div className="mt-3">
           <p className="text-[10px] font-semibold uppercase tracking-[.14em] text-muted-foreground">{text.cultivars}</p>
           <div className="mt-1 flex flex-wrap gap-1.5">
-            {intel.cultivars.slice(0, 4).map((cultivar) => <Badge key={cultivar} variant="secondary" className="text-[10px]">{cultivar}</Badge>)}
-            {intel.cultivars.length > 4 && <Badge variant="secondary" className="text-[10px]">+{intel.cultivars.length - 4}</Badge>}
+            {intel.cultivars.slice(0, 5).map((cultivar) => <Badge key={cultivar} variant="secondary" className="text-[10px]">{cultivar}</Badge>)}
+            {intel.cultivars.length > 5 && <Badge variant="secondary" className="text-[10px]">+{intel.cultivars.length - 5}</Badge>}
           </div>
         </div>
       )}
 
       <div className="mt-3 space-y-2">
-        {intel.seasons.map((season) => (
-          <div key={season.season} className="rounded-lg border border-white/10 bg-background/40 p-2.5">
-            <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-1.5 text-xs font-medium"><History className="h-3.5 w-3.5" />{season.season}</div>
-              <span className="text-[10px] text-muted-foreground">{statusLabel(season, lang)}</span>
+        {intel.seasons.map((season) => {
+          const signal = isLimited(season) ? null : humanSignal(season.signal)
+          return (
+            <div key={season.season} className="rounded-lg border border-white/10 bg-background/40 p-2.5">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-1.5 text-xs font-medium"><History className="h-3.5 w-3.5" />{season.season}</div>
+                <span className="text-right text-[10px] text-muted-foreground">{statusLabel(season, lang)}</span>
+              </div>
+              <div className="mt-2 grid gap-1 text-[11px] sm:grid-cols-2">
+                <div><span className="text-muted-foreground">{text.measured}: </span><span className="font-medium">{formatActual(season.actualByUnit, lang)}</span></div>
+                <div><span className="text-muted-foreground">{text.window}: </span><span className="font-medium">{formatDate(season.firstHarvest, lang)} – {formatDate(season.lastHarvest, lang)}</span></div>
+              </div>
+              <div className="mt-2 flex items-start gap-1.5 text-[10px]">
+                {isLimited(season) && <TriangleAlert className="mt-0.5 h-3 w-3 shrink-0 text-amber-500" />}
+                <span className="text-muted-foreground">{text.signal}: </span>
+                <span className="font-medium">{signal ?? text.noFinalSignal}</span>
+              </div>
             </div>
-            <div className="mt-2 grid gap-1 text-[11px] sm:grid-cols-2">
-              <div><span className="text-muted-foreground">{text.measured}: </span><span className="font-medium">{formatActual(season.actualByUnit, lang)}</span></div>
-              <div><span className="text-muted-foreground">{text.window}: </span><span className="font-medium">{formatDate(season.firstHarvest, lang)} – {formatDate(season.lastHarvest, lang)}</span></div>
-            </div>
-          </div>
-        ))}
+          )
+        })}
       </div>
     </div>
   )
