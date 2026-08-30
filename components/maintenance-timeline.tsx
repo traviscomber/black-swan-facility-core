@@ -25,6 +25,8 @@ const COPY = {
   de: { low: "Niedrig", normal: "Normal", high: "Hoch", urgent: "Dringend", pending: "Ausstehend", progress: "In Bearbeitung", completed: "Abgeschlossen", cancelled: "Storniert", empty: "Keine Instandhaltungsaufgaben geplant.", room: "Zimmer", bed: "Bett", overdue: "Überfällig", priority: "Priorität", markReady: "Als abgeschlossen markieren" },
 } as const
 
+const DATE_LOCALES = { en: enUS, es, de } as const
+
 function overdue(task: MaintTask): boolean {
   if (!task.scheduled_date || task.status === "completed" || task.status === "cancelled") return false
   const d = parseISO(task.scheduled_date)
@@ -34,7 +36,7 @@ function overdue(task: MaintTask): boolean {
 export function MaintenanceTimeline({ tasks, onStatusChange }: { tasks: MaintTask[]; onStatusChange?: (id: string, status: string) => void }) {
   const { language } = useLanguage()
   const copy = COPY[language]
-  const dateLocale = language === "de" ? de : language === "es" ? es : enUS
+  const dateLocale = DATE_LOCALES[language]
   const priorityConfig: Record<number, { label: string; color: string }> = {
     1: { label: copy.low, color: "text-muted-foreground" },
     2: { label: copy.normal, color: "text-blue-500" },
