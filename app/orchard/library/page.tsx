@@ -102,10 +102,8 @@ function southChilePriority(name:string){
   const index=SOUTH_CHILE_PRIORITY.findIndex(group=>group.some(alias=>key===alias||key.startsWith(`${alias},`)||key.startsWith(`${alias} (`)))
   return index===-1?SOUTH_CHILE_PRIORITY.length:index
 }
-function cropPhoto(name:string){
-  return NAMED_CROP_PHOTOS[normalizeCropName(name)] ?? null
-}
-
+function cropPhoto(name:string){return NAMED_CROP_PHOTOS[normalizeCropName(name)] ?? null}
+function cropInitial(name:string){return normalizeCropName(name).charAt(0).toUpperCase()}
 function recoverCropPhoto(e:React.SyntheticEvent<HTMLImageElement>){e.currentTarget.style.display="none"}
 
 export default function OrchardLibraryPage(){
@@ -114,7 +112,7 @@ export default function OrchardLibraryPage(){
   const [crops,setCrops]=useState<CropProfile[]>([]); const [cultivars,setCultivars]=useState<Cultivar[]>([])
   const [successions,setSuccessions]=useState<Succession[]>([]); const [cycles,setCycles]=useState<Cycle[]>([])
   const [cropForm,setCropForm]=useState(emptyCrop); const [cultivarForm,setCultivarForm]=useState(emptyCultivar)
-  const [selectedSuccession,setSelectedSuccession]=useState(""); const [saving,setSaving]=useState(false); const [error,setError]=useState<string|null>(null); const [notice,setNotice]=useState<string|null>(null)
+  const [selectedSuccession,setSelectedSuccession]=useState(""); const [catalogIndex,setCatalogIndex]=useState("CL"); const [saving,setSaving]=useState(false); const [error,setError]=useState<string|null>(null); const [notice,setNotice]=useState<string|null>(null)
 
   const load=useCallback(async()=>{
     const [a,b,s,c]=await Promise.all([
@@ -137,6 +135,10 @@ export default function OrchardLibraryPage(){
   const observed=crops.filter(c=>c.provenance_type==="observed").length
   const reusable=successions.filter(s=>s.knowledge_applied_at).length
   const orderedCrops=useMemo(()=>[...crops].sort((a,b)=>southChilePriority(a.crop_name)-southChilePriority(b.crop_name)||a.crop_name.localeCompare(b.crop_name)),[crops])
+  const chileCrops=useMemo(()=>orderedCrops.filter(c=>southChilePriority(c.crop_name)<SOUTH_CHILE_PRIORITY.length),[orderedCrops])
+  const restCrops=useMemo(()=>orderedCrops.filter(c=>southChilePriority(c.crop_name)===SOUTH_CHILE_PRIORITY.length).sort((a,b)=>a.crop_name.localeCompare(b.crop_name)),[orderedCrops])
+  const catalogLetters=useMemo(()=>Array.from(new Set(restCrops.map(c=>cropInitial(c.crop_name)).filter(letter=>/^[A-Z]$/.test(letter)))).sort(),[restCrops])
+  const visibleCrops=useMemo(()=>catalogIndex==="CL"?chileCrops:restCrops.filter(c=>cropInitial(c.crop_name)===catalogIndex),[catalogIndex,chileCrops,restCrops])
 
   async function addCrop(e:FormEvent){
     e.preventDefault(); if(!cropForm.crop_name.trim())return; setSaving(true);setError(null);setNotice(null)
@@ -178,7 +180,14 @@ export default function OrchardLibraryPage(){
       </div>
     </section>
 
-    {crops.length>0&&<section className="space-y-3"><div className="flex items-end justify-between gap-3"><div><p className="text-xs font-semibold uppercase tracking-[.18em] text-primary">{es?"Catálogo visual · prioridad Sur de Chile":"Visual catalog · Southern Chile priority"}</p><h2 className="text-xl font-semibold">{es?"Perfiles de cultivo":"Crop profiles"}</h2></div><p className="hidden text-sm text-muted-foreground md:block">{es?"Primero cultivos habituales del sur de Chile; luego el catálogo FAO en orden alfabético.":"Southern Chile staples first; the remaining FAO catalog follows alphabetically."}</p></div><div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{orderedCrops.map(c=><CropVisualCard key={c.id} crop={c} cultivars={cultivars.filter(v=>v.crop_library_id===c.id)} es={es}/>)}</div></section>}
+    {crops.length>0&&<section className="space-y-4"><div className="flex items-end justify-between gap-3"><div><p className="text-xs font-semibold uppercase tracking-[.18em] text-primary">{es?"Índice de cultivos":"Crop index"}</p><h2 className="text-xl font-semibold">{catalogIndex==="CL"?(es?"Prioridad Chile":"Chile priority"):`${es?"Cultivos":"Crops"} · ${catalogIndex}`}</h2></div><p className="hidden text-sm text-muted-foreground md:block">{es?"Chile primero; luego índice alfabético A–Z.":"Chile first; then the alphabetical A–Z index."}</p></div>
+      <div className="sticky top-0 z-20 -mx-1 flex gap-2 overflow-x-auto border-y border-white/10 bg-background/95 px-1 py-3 backdrop-blur supports-[backdrop-filter]:bg-background/80">
+        <Button size="sm" variant={catalogIndex==="CL"?"default":"outline"} className="shrink-0" onClick={()=>setCatalogIndex("CL")}>{es?"Chile":"Chile"}<span className="ml-2 text-[10px] opacity-70">{chileCrops.length}</span></Button>
+        {catalogLetters.map(letter=><Button key={letter} size="sm" variant={catalogIndex===letter?"default":"outline"} className="h-9 w-9 shrink-0 px-0" onClick={()=>setCatalogIndex(letter)}>{letter}</Button>)}
+      </div>
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{visibleCrops.map(c=><CropVisualCard key={c.id} crop={c} cultivars={cultivars.filter(v=>v.crop_library_id===c.id)} es={es}/>)}</div>
+      {visibleCrops.length===0&&<Card><CardContent className="p-8 text-center text-sm text-muted-foreground">{es?"No hay cultivos en esta sección del índice.":"There are no crops in this index section."}</CardContent></Card>}
+    </section>}
 
     <Card className="overflow-hidden border-primary/20"><CardHeader className="bg-primary/[.04]"><CardTitle className="flex items-center gap-2"><WandSparkles className="h-5 w-5"/>{es?"Aplicar conocimiento al plan":"Apply knowledge to a planned succession"}</CardTitle><CardDescription>{es?"Solo aplica valores agronómicos del cultivo/variedad coincidente y guarda un snapshot de procedencia. No cambia fechas, área ni plantas planificadas.":"Only applies agronomic defaults from the matching crop/cultivar and stores a provenance snapshot. Planned dates, area and plant counts are not changed."}</CardDescription></CardHeader><CardContent className="space-y-4 pt-6"><div className="grid gap-3 md:grid-cols-[2fr_1fr_1fr_auto]"><Field label={es?"Sucesión":"Succession"}><Select value={selectedSuccession} onValueChange={setSelectedSuccession}><SelectTrigger><SelectValue/></SelectTrigger><SelectContent>{successions.map(s=><SelectItem key={s.id} value={s.id}>{labelForSuccession(s)}</SelectItem>)}</SelectContent></Select></Field><Datum label={es?"Perfil cultivo":"Crop profile"} value={matchedCrop?.crop_name??(selected?"Not found":"—")}/><Datum label={es?"Perfil cultivar":"Cultivar profile"} value={matchedCultivar?.variety??(selectedCycle?.variety?"Not found":"Base crop")}/><div className="flex items-end"><Button className="w-full" disabled={saving||!selected||!matchedCrop} onClick={()=>void applyKnowledge()}><WandSparkles className="mr-2 h-4 w-4"/>{es?"Aplicar":"Apply"}</Button></div></div>{selected&&<div className="grid gap-2 rounded-xl border bg-muted/20 p-4 text-sm sm:grid-cols-5"><Datum label={es?"Madurez":"Maturity"} value={`${matchedCultivar?.days_to_maturity??matchedCrop?.days_to_maturity??selected.days_to_maturity??"—"}`}/><Datum label={es?"Espacio planta":"Plant spacing"} value={`${matchedCultivar?.plant_spacing_cm??matchedCrop?.plant_spacing_cm??selected.plant_spacing_cm??"—"} cm`}/><Datum label={es?"Espacio fila":"Row spacing"} value={`${matchedCultivar?.row_spacing_cm??matchedCrop?.row_spacing_cm??selected.row_spacing_cm??"—"} cm`}/><Datum label={es?"Germinación":"Germination"} value={`${matchedCultivar?.germination_rate_pct??matchedCrop?.germination_rate_pct??selected.germination_rate_pct??"—"}%`}/><Datum label={es?"Procedencia":"Provenance"} value={matchedCultivar?.provenance_type??matchedCrop?.provenance_type??"—"}/></div>}</CardContent></Card>
 
