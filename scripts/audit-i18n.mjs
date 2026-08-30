@@ -10,14 +10,11 @@ const ignored = [
 
 const rules = [
   // Advisory only: a raw locale comparison is not by itself a two-locale collapse.
-  // It may be one branch of an explicit en/es/de implementation, so blocking is
-  // handled by the structural rules below plus the page/catalog coverage audit.
   ['locale-es-comparison', /\blanguage\s*===\s*["']es["']/g],
   ['locale-en-comparison', /\blanguage\s*===\s*["']en["']/g],
   // Match only exact two-locale unions. Do not match the en|es prefix of en|es|de.
   ['binary-locale-union', /(?:Record<\s*(?:["']en["']\s*\|\s*["']es["']|["']es["']\s*\|\s*["']en["'])\s*>|Partial<Record<\s*(?:["']en["']\s*\|\s*["']es["']|["']es["']\s*\|\s*["']en["'])\s*>>)/g],
   ['binary-lang-normalizer', /\blang(?:uage)?\s*=\s*language\s*===\s*["'](?:en|es)["']\s*\?\s*["'](?:en|es)["']\s*:\s*["'](?:en|es)["']/g],
-  // Only flag locale formatters that demonstrably collapse to the other binary locale.
   ['binary-locale-normalizer', /\blocale\s*=\s*(?:lang|language)\s*===\s*["']es["']\s*\?\s*["']es-CL["']\s*:\s*["']en-US["']|\blocale\s*=\s*(?:lang|language)\s*===\s*["']en["']\s*\?\s*["']en-US["']\s*:\s*["']es-CL["']/g],
   ['legacy-deu-locale', /["']deu["']/g],
   ['english-fallback-in-de', /language\s*===\s*["']de["'][\s\S]{0,220}translations\.en/g],
@@ -63,8 +60,10 @@ function visibleLiteralCount(source) {
 }
 
 function hasBinaryLocaleMap(source, index) {
+  // Copy catalogs can be large single objects. Inspect enough of the object body to
+  // see a later `de:` branch instead of misclassifying a valid en/es/de catalog.
   const start = Math.max(0, index - 80)
-  const end = Math.min(source.length, index + 900)
+  const end = Math.min(source.length, index + 12000)
   const window = source.slice(start, end)
   const hasEn = /\ben\s*:\s*(?:\{|["'`])/.test(window)
   const hasEs = /\bes\s*:\s*(?:\{|["'`])/.test(window)
