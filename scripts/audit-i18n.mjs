@@ -51,10 +51,39 @@ function hasLocaleSignal(source) {
     || /\b(?:en|es|de)\s*:\s*\{/.test(source)
 }
 
-function explicitlySupportsGerman(source) {
+function sourceExplicitlySupportsGerman(source) {
   return /["']de["']\s*:|\bde\s*:|===\s*["']de["']|\bdeTranslations\b/.test(source)
     || /Record<\s*["']en["']\s*\|\s*["']es["']\s*\|\s*["']de["']/.test(source)
     || /Record<\s*["']de["']\s*\|\s*["']es["']\s*\|\s*["']en["']/.test(source)
+}
+
+function resolveImportFile(fromFile, specifier) {
+  let base
+  if (specifier.startsWith('@/')) base = specifier.slice(2)
+  else if (specifier.startsWith('.')) base = path.resolve(path.dirname(fromFile), specifier)
+  else return null
+
+  const normalized = base.replaceAll('\\', '/')
+  const candidates = path.extname(normalized)
+    ? [normalized]
+    : [...extensions].map((extension) => `${normalized}${extension}`).concat([...extensions].map((extension) => `${normalized}/index${extension}`))
+  return candidates.find((candidate) => fs.existsSync(candidate)) ?? null
+}
+
+function importedTranslationSupportsGerman(source, file) {
+  const importPattern = /from\s+["']([^"']*translations?[^"']*)["']/g
+  let match
+  while ((match = importPattern.exec(source))) {
+    const importedFile = resolveImportFile(file, match[1])
+    if (!importedFile || ignored.includes(importedFile)) continue
+    const importedSource = fs.readFileSync(importedFile, 'utf8')
+    if (sourceExplicitlySupportsGerman(importedSource)) return true
+  }
+  return false
+}
+
+function explicitlySupportsGerman(source, file) {
+  return sourceExplicitlySupportsGerman(source) || importedTranslationSupportsGerman(source, file)
 }
 
 function visibleLiteralCount(source) {
@@ -136,7 +165,7 @@ const pageCoverage = pageFiles.map((file) => {
   const source = fs.readFileSync(file, 'utf8')
   const literals = visibleLiteralCount(source)
   const localeSignal = hasLocaleSignal(source)
-  const explicitlyMentionsDe = explicitlySupportsGerman(source)
+  const explicitlyMentionsDe = explicitlySupportsGerman(source, file)
   return { file, literals, localeSignal, explicitlyMentionsDe }
 })
 
