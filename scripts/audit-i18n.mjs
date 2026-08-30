@@ -24,6 +24,7 @@ const rules = [
 ]
 
 const allowedBinaryFiles = new Set([
+  // Locale equality here only controls the selected-button visual variant.
   'components/language-switcher.tsx',
 ])
 
@@ -95,16 +96,23 @@ function hasBinaryLocaleMap(source, index) {
   return hasEn && hasEs && !hasDe
 }
 
+function ternaryHasGermanBranch(sample) {
+  return /\blanguage\s*===\s*["']de["']/.test(sample)
+}
+
 const allFiles = roots.flatMap(walk)
 const findings = []
 for (const file of allFiles) {
   if (ignored.includes(file)) continue
   const source = fs.readFileSync(file, 'utf8')
   for (const [rule, pattern] of rules) {
-    if (allowedBinaryFiles.has(file) && (rule === 'locale-es-comparison' || rule === 'locale-en-comparison')) continue
+    const isLocaleComparison = rule === 'locale-es-comparison' || rule === 'locale-en-comparison'
+    const isBinaryTernary = rule === 'binary-es-ternary' || rule === 'binary-en-ternary'
+    if (allowedBinaryFiles.has(file) && (isLocaleComparison || isBinaryTernary)) continue
     pattern.lastIndex = 0
     let match
     while ((match = pattern.exec(source))) {
+      if (isBinaryTernary && ternaryHasGermanBranch(match[0])) continue
       const line = source.slice(0, match.index).split('\n').length
       findings.push({ rule, file, line, sample: match[0].replace(/\s+/g, ' ').slice(0, 180) })
       if (match.index === pattern.lastIndex) pattern.lastIndex += 1
