@@ -32,15 +32,20 @@ type Task = { id: string; title: string; status: string; due_date: string | null
 const statuses = ["seedling", "growing", "mature", "harvested", "failed"]
 const photo = (id: string) => `https://images.unsplash.com/${id}?auto=format&fit=crop&w=1800&q=92`
 const cropPhoto = (name: string) => {
-  const key = name.toLowerCase()
-  if (key.includes("tomato")) return photo("photo-1592924357228-91a4daadcfea")
-  if (key.includes("lettuce")) return photo("photo-1622206151226-18ca2c9ab4a1")
-  if (key.includes("radish")) return photo("photo-1582284540020-8acbe03f4924")
-  if (key.includes("onion")) return photo("photo-1508747703725-719777637510")
-  if (key.includes("carrot")) return photo("photo-1447175008436-054170c2e979")
-  if (key.includes("arugula") || key.includes("rocket")) return photo("photo-1501004318641-b39e6451bec6")
-  if (key.includes("spinach")) return photo("photo-1576045057995-568f588f82fb")
-  if (key.includes("basil")) return photo("photo-1618375569909-3c8616cf7733")
+  const key = name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+  if (key.includes("tomato") || key.includes("tomate")) return photo("photo-1592924357228-91a4daadcfea")
+  if (key.includes("lettuce") || key.includes("lechuga")) return photo("photo-1622206151226-18ca2c9ab4a1")
+  if (key.includes("radish") || key.includes("rabanito") || key.includes("rabano")) return photo("photo-1582284540020-8acbe03f4924")
+  if (key.includes("onion") || key.includes("cebolla")) return photo("photo-1508747703725-719777637510")
+  if (key.includes("carrot") || key.includes("zanahoria")) return photo("photo-1447175008436-054170c2e979")
+  if (key.includes("arugula") || key.includes("rocket") || key.includes("rucula")) return photo("photo-1603048719539-9ecb4aa395e3")
+  if (key.includes("spinach") || key.includes("espinaca")) return photo("photo-1576045057995-568f588f82fb")
+  if (key.includes("basil") || key.includes("albahaca")) return photo("photo-1618375569909-3c8616cf7733")
+  if (key.includes("parsley") || key.includes("perejil")) return photo("photo-1590759668628-05b0fc34bb70")
+  if (key.includes("potato") || key.includes("papa")) return photo("photo-1518977676601-b53f82aba655")
+  if (key.includes("beet") || key.includes("betarraga")) return photo("photo-1593105544559-ecb03bf76f82")
+  if (key.includes("pepper") || key.includes("pimenton")) return photo("photo-1563565375-f3fdfdbefa83")
+  if (key.includes("zucchini") || key.includes("zapallo italiano")) return photo("photo-1563252722-6434563a985d")
   return photo("photo-1416879595882-3373a0480b5b")
 }
 const localDateKey = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}` }
