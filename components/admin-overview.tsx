@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { AlertTriangle, Box, Building2, FileClock, List, Users, Wrench } from "lucide-react"
+import { Activity, AlertTriangle, Box, Building2, FileClock, KeyRound, List, Users, Wrench } from "lucide-react"
 import { useLanguage } from "@/lib/hooks/use-language"
 import { PageHeader } from "@/components/page-header"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -43,6 +43,11 @@ const copy = {
     auditEmpty: "No hay eventos registrados actualmente.",
     auditActive: "Hay eventos registrados en las tablas de auditoría.",
     viewAudit: "Revisar auditoría",
+    accessTitle: "Administrar accesos y alcance",
+    accessDescription: "Roles, suspensión, departamentos, ubicaciones y permisos efectivos.",
+    itTitle: "Centro de control TI",
+    itDescription: "Jobs, vigencia, reintentos, RLS y perfiles leídos en vivo desde producción.",
+    open: "Abrir",
   },
   en: {
     title: "Administration and control",
@@ -65,6 +70,11 @@ const copy = {
     auditEmpty: "No events are currently recorded.",
     auditActive: "Audit events are present in the audit tables.",
     viewAudit: "Review audit",
+    accessTitle: "Manage access and scope",
+    accessDescription: "Roles, suspension, departments, locations and effective permissions.",
+    itTitle: "IT Control Center",
+    itDescription: "Jobs, freshness, retries, RLS and profiles read live from production.",
+    open: "Open",
   },
   de: {
     title: "Administration und Kontrolle",
@@ -87,6 +97,11 @@ const copy = {
     auditEmpty: "Derzeit sind keine Ereignisse erfasst.",
     auditActive: "In den Audit-Tabellen sind Ereignisse vorhanden.",
     viewAudit: "Audit prüfen",
+    accessTitle: "Zugriff und Umfang verwalten",
+    accessDescription: "Rollen, Sperrung, Abteilungen, Standorte und effektive Berechtigungen.",
+    itTitle: "IT-Kontrollzentrum",
+    itDescription: "Jobs, Aktualität, Wiederholungen, RLS und Profile live aus der Produktion.",
+    open: "Öffnen",
   },
 } as const
 
@@ -101,9 +116,13 @@ export function AdminOverview({ counts, auditRecords }: AdminOverviewProps) {
     [text.checklists, counts.checklists, "", List],
   ] as const
   const catalogs = [
-    [text.assetTypes, counts.assetTypes, "/admin/asset-types", List],
-    [text.locations, counts.locations, "/admin/locations", Building2],
-    [text.issueTypes, counts.issueTypes, "/admin/issue-types", AlertTriangle],
+    [text.assetTypes, counts.assetTypes, `/${language}/admin/asset-types`, List],
+    [text.locations, counts.locations, `/${language}/admin/locations`, Building2],
+    [text.issueTypes, counts.issueTypes, `/${language}/admin/issue-types`, AlertTriangle],
+  ] as const
+  const controlLinks = [
+    [text.accessTitle, text.accessDescription, `/${language}/admin/access`, KeyRound, "border-emerald-500/50 hover:border-emerald-500"],
+    [text.itTitle, text.itDescription, `/${language}/admin/it-control`, Activity, "border-sky-500/50 hover:border-sky-500"],
   ] as const
 
   return (
@@ -121,12 +140,25 @@ export function AdminOverview({ counts, auditRecords }: AdminOverviewProps) {
 
         <Card className={auditRecords === 0 ? "border-amber-500/50" : undefined}>
           <CardHeader><CardTitle className="flex items-center gap-2"><FileClock className="h-5 w-5" />{text.audit}</CardTitle><CardDescription>{text.auditDescription}</CardDescription></CardHeader>
-          <CardContent className="space-y-3"><div className="text-2xl font-semibold">{auditRecords}</div><p className="text-xs text-muted-foreground">{text.auditRecords}</p><p className="text-sm">{auditRecords === 0 ? text.auditEmpty : text.auditActive}</p><Link href="/admin/audit" className="inline-flex text-sm font-medium underline-offset-4 hover:underline">{text.viewAudit} →</Link></CardContent>
+          <CardContent className="space-y-3"><div className="text-2xl font-semibold">{auditRecords}</div><p className="text-xs text-muted-foreground">{text.auditRecords}</p><p className="text-sm">{auditRecords === 0 ? text.auditEmpty : text.auditActive}</p><Link href={`/${language}/admin/audit`} className="inline-flex text-sm font-medium underline-offset-4 hover:underline">{text.viewAudit} →</Link></CardContent>
         </Card>
 
         <section>
           <h2 className="mb-4 text-lg font-semibold">{text.catalogs}</h2>
           <div className="grid gap-4 md:grid-cols-3">{catalogs.map(([label, value, href, Icon]) => <Link key={href} href={href}><Card className="h-full transition-colors hover:border-foreground/30"><CardHeader className="flex flex-row items-center justify-between pb-2"><CardTitle className="text-sm font-medium">{label}</CardTitle><Icon className="h-4 w-4 text-muted-foreground" /></CardHeader><CardContent><div className="text-2xl font-semibold">{value}</div><p className="mt-2 text-sm text-muted-foreground">{text.manage} →</p></CardContent></Card></Link>)}</div>
+        </section>
+
+        <section className="grid gap-4 md:grid-cols-2">
+          {controlLinks.map(([title, description, href, Icon, className]) => (
+            <Link key={href} href={href}>
+              <Card className={`h-full transition-colors ${className}`}>
+                <CardContent className="flex items-center justify-between gap-4 p-4">
+                  <div className="flex items-center gap-3"><Icon className="h-5 w-5 text-muted-foreground" /><div><p className="text-sm font-medium">{title}</p><p className="text-xs text-muted-foreground">{description}</p></div></div>
+                  <span className="text-sm">{text.open} →</span>
+                </CardContent>
+              </Card>
+            </Link>
+          ))}
         </section>
       </div>
     </>
