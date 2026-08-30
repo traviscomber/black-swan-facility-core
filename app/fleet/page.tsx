@@ -1,7 +1,6 @@
 import { AppLayout } from '@/components/app-layout'
-import { PageHeader } from '@/components/page-header'
-import { Card, CardContent } from '@/components/ui/card'
-import { FleetRegistryConsole, type FleetRegistryRow } from '@/components/fleet-registry-console'
+import { FleetPageContent } from '@/components/fleet-page-content'
+import type { FleetRegistryRow } from '@/components/fleet-registry-console'
 import { createClient } from '@/lib/supabase/server'
 
 export const dynamic = 'force-dynamic'
@@ -13,19 +12,11 @@ export default async function FleetPage() {
     .select('id, code, name, vehicle_type, plate_number, vin, serial_number, operational_class, operational_subtype, suggested_operational_class, classification_status, fuel_tracking_enabled, maintenance_tracking_enabled, missing_fields')
     .order('name')
 
+  if (error) console.error('[fleet] registry load failed', error)
+
   return (
     <AppLayout>
-      <PageHeader
-        title="Flota y equipos"
-        description="Clasificación operacional, identidad, combustible y mantenimiento del parque móvil del Fundo Corcovado."
-      />
-      <div className="space-y-6 p-4 sm:p-8">
-        {error ? (
-          <Card className="border-destructive/50"><CardContent className="p-4 text-sm text-destructive">No fue posible cargar el registro de flota: {error.message}</CardContent></Card>
-        ) : (
-          <FleetRegistryConsole rows={(data ?? []) as FleetRegistryRow[]} />
-        )}
-      </div>
+      <FleetPageContent rows={(data ?? []) as FleetRegistryRow[]} hasError={Boolean(error)} />
     </AppLayout>
   )
 }
