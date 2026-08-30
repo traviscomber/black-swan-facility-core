@@ -25,34 +25,41 @@ const emptyCrop = { crop_name:"", scientific_name:"", crop_family:"", category:"
 const emptyCultivar = { crop_library_id:"", variety:"", days_to_maturity:"", nursery_days:"", plant_spacing_cm:"", row_spacing_cm:"", germination_rate_pct:"", seeds_per_plant:"", target_yield_per_sqm:"", notes:"", source_name:"", source_url:"" }
 const n = (value:string) => value === "" ? null : Number(value)
 
-const CROP_PHOTOS = [
-  "https://images.unsplash.com/photo-1540420773420-3366772f4999?auto=format&fit=crop&w=1400&q=92",
-  "https://images.unsplash.com/photo-1518977676601-b53f82aba655?auto=format&fit=crop&w=1400&q=92",
-  "https://images.unsplash.com/photo-1592924357228-91a4daadcfea?auto=format&fit=crop&w=1400&q=92",
-  "https://images.unsplash.com/photo-1447175008436-054170c2e979?auto=format&fit=crop&w=1400&q=92",
-  "https://images.unsplash.com/photo-1566385101042-1a0aa0c1268c?auto=format&fit=crop&w=1400&q=92",
-  "https://images.unsplash.com/photo-1515543904379-3d757afe72e4?auto=format&fit=crop&w=1400&q=92",
-]
-
+const CROP_FALLBACK_PHOTO = "https://images.unsplash.com/photo-1416879595882-3373a0480b5b?auto=format&fit=crop&w=1400&q=92"
 const NAMED_CROP_PHOTOS: Record<string,string> = {
   tomato: "https://images.unsplash.com/photo-1592924357228-91a4daadcfea?auto=format&fit=crop&w=1400&q=92",
+  tomate: "https://images.unsplash.com/photo-1592924357228-91a4daadcfea?auto=format&fit=crop&w=1400&q=92",
   lettuce: "https://images.unsplash.com/photo-1622206151226-18ca2c9ab4a1?auto=format&fit=crop&w=1400&q=92",
+  lechuga: "https://images.unsplash.com/photo-1622206151226-18ca2c9ab4a1?auto=format&fit=crop&w=1400&q=92",
   radish: "https://images.unsplash.com/photo-1582284540020-8acbe03f4924?auto=format&fit=crop&w=1400&q=92",
-  arugula: "https://images.unsplash.com/photo-1543362906-acfc16c67564?auto=format&fit=crop&w=1400&q=92",
-  onion: "https://images.unsplash.com/photo-1518977956815-dee006a0b13d?auto=format&fit=crop&w=1400&q=92",
+  rabano: "https://images.unsplash.com/photo-1582284540020-8acbe03f4924?auto=format&fit=crop&w=1400&q=92",
+  rabanito: "https://images.unsplash.com/photo-1582284540020-8acbe03f4924?auto=format&fit=crop&w=1400&q=92",
+  arugula: "https://images.unsplash.com/photo-1603048719539-9ecb4aa395e3?auto=format&fit=crop&w=1400&q=92",
+  rucula: "https://images.unsplash.com/photo-1603048719539-9ecb4aa395e3?auto=format&fit=crop&w=1400&q=92",
+  onion: "https://images.unsplash.com/photo-1508747703725-719777637510?auto=format&fit=crop&w=1400&q=92",
+  cebolla: "https://images.unsplash.com/photo-1508747703725-719777637510?auto=format&fit=crop&w=1400&q=92",
   carrot: "https://images.unsplash.com/photo-1447175008436-054170c2e979?auto=format&fit=crop&w=1400&q=92",
-  basil: "https://images.unsplash.com/photo-1618164436241-4473940d1f5c?auto=format&fit=crop&w=1400&q=92",
+  zanahoria: "https://images.unsplash.com/photo-1447175008436-054170c2e979?auto=format&fit=crop&w=1400&q=92",
+  basil: "https://images.unsplash.com/photo-1618375569909-3c8616cf7733?auto=format&fit=crop&w=1400&q=92",
+  albahaca: "https://images.unsplash.com/photo-1618375569909-3c8616cf7733?auto=format&fit=crop&w=1400&q=92",
+  parsley: "https://images.unsplash.com/photo-1590759668628-05b0fc34bb70?auto=format&fit=crop&w=1400&q=92",
+  perejil: "https://images.unsplash.com/photo-1590759668628-05b0fc34bb70?auto=format&fit=crop&w=1400&q=92",
   spinach: "https://images.unsplash.com/photo-1576045057995-568f588f82fb?auto=format&fit=crop&w=1400&q=92",
+  espinaca: "https://images.unsplash.com/photo-1576045057995-568f588f82fb?auto=format&fit=crop&w=1400&q=92",
   potato: "https://images.unsplash.com/photo-1518977676601-b53f82aba655?auto=format&fit=crop&w=1400&q=92",
+  papa: "https://images.unsplash.com/photo-1518977676601-b53f82aba655?auto=format&fit=crop&w=1400&q=92",
   beet: "https://images.unsplash.com/photo-1593105544559-ecb03bf76f82?auto=format&fit=crop&w=1400&q=92",
+  beetroot: "https://images.unsplash.com/photo-1593105544559-ecb03bf76f82?auto=format&fit=crop&w=1400&q=92",
+  betarraga: "https://images.unsplash.com/photo-1593105544559-ecb03bf76f82?auto=format&fit=crop&w=1400&q=92",
+  pepper: "https://images.unsplash.com/photo-1563565375-f3fdfdbefa83?auto=format&fit=crop&w=1400&q=92",
+  pimenton: "https://images.unsplash.com/photo-1563565375-f3fdfdbefa83?auto=format&fit=crop&w=1400&q=92",
+  zucchini: "https://images.unsplash.com/photo-1563252722-6434563a985d?auto=format&fit=crop&w=1400&q=92",
+  zapallo: "https://images.unsplash.com/photo-1563252722-6434563a985d?auto=format&fit=crop&w=1400&q=92",
 }
 
 function cropPhoto(name:string){
-  const key=name.trim().toLowerCase()
-  const named=Object.entries(NAMED_CROP_PHOTOS).find(([crop])=>key.includes(crop))?.[1]
-  if(named)return named
-  const index=[...key].reduce((sum,char)=>sum+char.charCodeAt(0),0)%CROP_PHOTOS.length
-  return CROP_PHOTOS[index]
+  const key=name.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"")
+  return Object.entries(NAMED_CROP_PHOTOS).find(([crop])=>key.includes(crop))?.[1] ?? CROP_FALLBACK_PHOTO
 }
 
 export default function OrchardLibraryPage(){
