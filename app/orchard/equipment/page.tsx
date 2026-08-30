@@ -10,125 +10,33 @@ import { createBrowserClient } from "@/lib/supabase/client"
 import { useLanguage } from "@/lib/hooks/use-language"
 import { ALL_GAME_PLANS, gamePlanScopeLabel, resolveRequestedGamePlanId, resolveSelectedGamePlan } from "@/lib/orchard/game-plan-scope"
 
-interface Equipment {
-  id: string
-  equipment_name: string
-  equipment_type: string
-  condition: string
-  purchase_date: string
-  last_maintenance_date: string | null
-  next_maintenance_date: string | null
-  storage_location: string
-  description: string
+interface Equipment { id:string;equipment_name:string;equipment_type:string;condition:string;purchase_date:string;last_maintenance_date:string|null;next_maintenance_date:string|null;storage_location:string;description:string }
+type GamePlan={id:string;name:string;season:string|null};type EquipmentPhoto={src:string;alt:string};type EquipmentLocale="en"|"es"|"de"
+
+const unsplash=(id:string,width=1800)=>`https://unsplash.com/photos/${id}/download?force=true&w=${width}`
+const EQUIPMENT_PHOTOS={hero:{src:unsplash("TsOeGUwWzWo",2200),alt:""},pruning:{src:unsplash("TsOeGUwWzWo"),alt:""},fork:{src:unsplash("eNMvmX0c_vQ"),alt:""},hose:{src:unsplash("JQ_2MkesNXg"),alt:""},wheelbarrow:{src:unsplash("kkbX4ZlldmU"),alt:""},tiller:{src:unsplash("eGGwx4Npbbo"),alt:""},workshop:{src:unsplash("TsOeGUwWzWo"),alt:""}} satisfies Record<string,EquipmentPhoto>
+function equipmentPhoto(item:Equipment):EquipmentPhoto{const key=`${item.equipment_type} ${item.equipment_name}`.toLowerCase();if(key.includes("pruning")||key.includes("shear"))return EQUIPMENT_PHOTOS.pruning;if(key.includes("fork"))return EQUIPMENT_PHOTOS.fork;if(key.includes("hose")||key.includes("irrigation")||key.includes("drip"))return EQUIPMENT_PHOTOS.hose;if(key.includes("wheelbarrow")||key.includes("transport"))return EQUIPMENT_PHOTOS.wheelbarrow;if(key.includes("tiller")||key.includes("cultivator")||key.includes("soil-preparation"))return EQUIPMENT_PHOTOS.tiller;return EQUIPMENT_PHOTOS.workshop}
+function dateKey(value:string|null){return value?new Date(`${value}T12:00:00`):null}
+function dueState(next:string|null){const d=dateKey(next);if(!d)return "unscheduled";const today=new Date();today.setHours(0,0,0,0);return d.getTime()<today.getTime()?"overdue":"scheduled"}
+
+const copy={
+ en:{title:"Equipment",description:"See shared Orchard equipment readiness, condition, maintenance timing and storage footprint without inventing seasonal ownership.",loading:"Loading…",heroEyebrow:"Orchard · Equipment readiness",active:"active",overdueMaintenance:"overdue maintenance",ready:"ready",shared:"Shared infrastructure",context:"context",all:"All Orchard",assets:"Assets",overdue:"Overdue",locations:"Locations",globalTitle:"Equipment is intentionally not filtered by Game Plan",globalHelp:"The current schema records equipment as shared orchard infrastructure and has no succession, crop, bed-allocation or Game Plan ownership field. Hiding assets by season would invent a relationship that is not recorded.",board:"Maintenance readiness board",boardHelp:"Equipment is ordered by recorded maintenance state. No undocumented due-soon window is applied.",empty:"No equipment recorded yet.",maintenanceOverdue:"Maintenance overdue",noStorage:"No storage location",purchased:"Purchased",lastService:"Last service",nextService:"Next service",status:"Status",never:"Never",unscheduled:"Unscheduled",scheduled:"Scheduled",signals:"Readiness signals",signalsHelp:"Signals derived only from recorded condition and maintenance dates.",activeEquipment:"Active equipment",noService:"No service scheduled",storage:"Storage footprint",storageHelp:"Where orchard assets are currently recorded.",noLocations:"No storage locations recorded.",readinessTitle:"Readiness before assignment",readinessHelp:"This cockpit exposes maintenance state without inventing utilization or service history that is not recorded.",heroAlt:"Pruning shears, gloves and gardening tools ready for orchard work",equipmentAlt:"Orchard equipment ready for work",workshopAlt:"Gardening tools prepared for maintenance work"},
+ es:{title:"Equipos",description:"Revisa disponibilidad, condición, mantenimiento y ubicación del equipamiento compartido de Orchard sin inventar propiedad por temporada.",loading:"Cargando…",heroEyebrow:"Orchard · Disponibilidad de equipos",active:"activos",overdueMaintenance:"mantenimientos vencidos",ready:"listos",shared:"Infraestructura compartida",context:"contexto",all:"Todo Orchard",assets:"Activos",overdue:"Vencidos",locations:"Ubicaciones",globalTitle:"Los equipos no se filtran por Game Plan de forma intencional",globalHelp:"El esquema actual registra los equipos como infraestructura compartida del huerto y no tiene un campo de propiedad por sucesión, cultivo, cama o Game Plan. Ocultarlos por temporada inventaría una relación que no está registrada.",board:"Tablero de disponibilidad y mantenimiento",boardHelp:"Los equipos se ordenan por el estado de mantenimiento registrado. No aplicamos una ventana de próximo vencimiento que no esté documentada.",empty:"Aún no hay equipos registrados.",maintenanceOverdue:"Mantenimiento vencido",noStorage:"Sin ubicación de almacenamiento",purchased:"Compra",lastService:"Último servicio",nextService:"Próximo servicio",status:"Estado",never:"Nunca",unscheduled:"Sin programar",scheduled:"Programado",signals:"Señales de disponibilidad",signalsHelp:"Señales derivadas solo de condición y fechas de mantenimiento registradas.",activeEquipment:"Equipos activos",noService:"Sin servicio programado",storage:"Huella de almacenamiento",storageHelp:"Dónde están registrados actualmente los activos de Orchard.",noLocations:"No hay ubicaciones de almacenamiento registradas.",readinessTitle:"Disponibilidad antes de asignar",readinessHelp:"Este cockpit expone el estado de mantenimiento sin inventar uso ni historial de servicio que no estén registrados.",heroAlt:"Tijeras de poda, guantes y herramientas listas para trabajar en el huerto",equipmentAlt:"Equipo de Orchard listo para trabajo",workshopAlt:"Herramientas de jardinería preparadas para mantenimiento"},
+ de:{title:"Geräte",description:"Prüfe Einsatzbereitschaft, Zustand, Wartungstermine und Lagerorte der gemeinsam genutzten Orchard-Geräte, ohne saisonale Eigentümerschaft zu erfinden.",loading:"Wird geladen…",heroEyebrow:"Orchard · Gerätebereitschaft",active:"aktiv",overdueMaintenance:"Wartungen überfällig",ready:"bereit",shared:"Gemeinsame Infrastruktur",context:"Kontext",all:"Gesamter Orchard",assets:"Geräte",overdue:"Überfällig",locations:"Lagerorte",globalTitle:"Geräte werden bewusst nicht nach Game Plan gefiltert",globalHelp:"Das aktuelle Schema erfasst Geräte als gemeinsam genutzte Orchard-Infrastruktur und enthält kein Eigentumsfeld für Folge, Kultur, Beetzuordnung oder Game Plan. Geräte nach Saison auszublenden würde eine nicht erfasste Beziehung erfinden.",board:"Wartungs- und Bereitschaftsübersicht",boardHelp:"Geräte werden nach dem erfassten Wartungsstatus sortiert. Es wird kein nicht dokumentiertes Bald-fällig-Fenster angewendet.",empty:"Noch keine Geräte erfasst.",maintenanceOverdue:"Wartung überfällig",noStorage:"Kein Lagerort",purchased:"Gekauft",lastService:"Letzte Wartung",nextService:"Nächste Wartung",status:"Status",never:"Nie",unscheduled:"Nicht geplant",scheduled:"Geplant",signals:"Bereitschaftssignale",signalsHelp:"Signale werden ausschließlich aus erfasstem Zustand und Wartungsterminen abgeleitet.",activeEquipment:"Aktive Geräte",noService:"Keine Wartung geplant",storage:"Lagerübersicht",storageHelp:"Wo Orchard-Geräte aktuell erfasst sind.",noLocations:"Keine Lagerorte erfasst.",readinessTitle:"Bereitschaft vor Zuweisung",readinessHelp:"Dieses Cockpit zeigt den Wartungsstatus, ohne nicht erfasste Nutzung oder Servicehistorie zu erfinden.",heroAlt:"Gartenscheren, Handschuhe und Werkzeuge für die Orchard-Arbeit",equipmentAlt:"Orchard-Gerät einsatzbereit",workshopAlt:"Gartenwerkzeuge für Wartungsarbeiten vorbereitet"}
+} as const
+const conditionLabels:Record<EquipmentLocale,Record<string,string>>={en:{good:"Good",fair:"Fair",poor:"Poor",broken:"Broken",new:"New"},es:{good:"Bueno",fair:"Regular",poor:"Deficiente",broken:"Averiado",new:"Nuevo"},de:{good:"Gut",fair:"Befriedigend",poor:"Schlecht",broken:"Defekt",new:"Neu"}}
+const dueLabels:Record<EquipmentLocale,Record<string,string>>={en:{overdue:"Overdue",scheduled:"Scheduled",unscheduled:"Unscheduled"},es:{overdue:"Vencido",scheduled:"Programado",unscheduled:"Sin programar"},de:{overdue:"Überfällig",scheduled:"Geplant",unscheduled:"Nicht geplant"}}
+const locales={en:"en-US",es:"es-CL",de:"de-DE"} as const
+
+export default function OrchardEquipmentPage(){
+ const[equipment,setEquipment]=useState<Equipment[]>([]),[plans,setPlans]=useState<GamePlan[]>([]),[selectedPlanId,setSelectedPlanId]=useState<string>(ALL_GAME_PLANS),[loading,setLoading]=useState(true),[error,setError]=useState<string|null>(null);const supabase=useMemo(()=>createBrowserClient(),[]);const{language}=useLanguage();const lang:EquipmentLocale=language;const text=copy[lang];const locale=locales[lang];const conditionLabel=(v:string)=>conditionLabels[lang][v]??v.replaceAll("_"," ");const stateLabel=(v:string)=>dueLabels[lang][v]??v.replaceAll("_"," ")
+ useEffect(()=>{void fetchData()},[])
+ const fetchData=async()=>{try{setLoading(true);setError(null);const[e,p]=await Promise.all([supabase.from("orchard_equipment").select("*").order("purchase_date",{ascending:false}),supabase.from("orchard_game_plans").select("id,name,season").order("start_date",{ascending:false})]);const first=e.error??p.error;if(first){setError(first.message);return}const rows=(p.data||[]) as GamePlan[];setEquipment((e.data||[]) as Equipment[]);setPlans(rows);setSelectedPlanId(resolveRequestedGamePlanId(rows,typeof window==="undefined"?"":window.location.search))}finally{setLoading(false)}}
+ const selectedPlan=resolveSelectedGamePlan(plans,selectedPlanId);const active=equipment.filter(item=>item.condition!=="broken");const overdue=equipment.filter(item=>dueState(item.next_maintenance_date)==="overdue");const unscheduled=equipment.filter(item=>!item.next_maintenance_date);const locations=[...new Set(equipment.map(item=>item.storage_location).filter(Boolean))];const readiness=equipment.length?Math.round(equipment.filter(item=>item.condition!=="broken"&&dueState(item.next_maintenance_date)!=="overdue").length/equipment.length*100):0;const ordered=[...equipment].sort((a,b)=>{const rank=(item:Equipment)=>({overdue:0,scheduled:1,unscheduled:2}[dueState(item.next_maintenance_date)]??3);return rank(a)-rank(b)})
+ if(loading)return <AppLayout><OrchardNavigation/><div className="flex min-h-[60vh] items-center justify-center"><p className="text-muted-foreground">{text.loading}</p></div></AppLayout>
+ return <AppLayout><OrchardNavigation/><main className="mx-auto w-full max-w-[1560px] space-y-10 px-4 pb-16 pt-4 sm:px-6 lg:px-8"><section className="relative min-h-[390px] overflow-hidden bg-neutral-950"><img src={EQUIPMENT_PHOTOS.hero.src} alt={text.heroAlt} className="absolute inset-0 h-full w-full object-cover opacity-100 [filter:none]"/><div className="absolute inset-0" style={{background:"linear-gradient(90deg,rgba(4,6,5,.94),rgba(4,6,5,.60) 55%,rgba(4,6,5,.18)),linear-gradient(0deg,rgba(4,6,5,.72),transparent 65%)"}}/><div className="relative flex min-h-[390px] max-w-3xl flex-col justify-end p-6 text-white sm:p-10"><p className="text-xs uppercase tracking-[.2em] text-emerald-200">{text.heroEyebrow}</p><h1 className="mt-3 text-4xl font-medium tracking-[-.035em] text-white! sm:text-5xl">{text.title}</h1><p className="mt-4 max-w-2xl text-sm leading-6 text-white/72">{text.description}</p><div className="mt-6 flex flex-wrap gap-2"><Badge className="border-white/15 bg-black/30 px-3 py-2 text-white">{active.length} {text.active}</Badge><Badge className="border-white/15 bg-black/30 px-3 py-2 text-white">{overdue.length} {text.overdueMaintenance}</Badge><Badge className="border-white/15 bg-black/30 px-3 py-2 text-white">{readiness}% {text.ready}</Badge></div><div className="mt-4"><Badge variant="outline" className="border-white/25 bg-black/25 text-white">{text.shared} · {text.context}: {gamePlanScopeLabel(selectedPlan,text.all)}</Badge></div></div><div className="absolute bottom-6 right-6 hidden grid-cols-2 gap-px bg-white/10 lg:grid"><HeroMetric icon={<Wrench className="h-4 w-4"/>} label={text.assets} value={String(equipment.length)}/><HeroMetric icon={<AlertTriangle className="h-4 w-4"/>} label={text.overdue} value={String(overdue.length)}/><HeroMetric icon={<ShieldCheck className="h-4 w-4"/>} label={text.ready} value={`${readiness}%`}/><HeroMetric icon={<MapPin className="h-4 w-4"/>} label={text.locations} value={String(locations.length)}/></div></section>{error&&<Card className="border-destructive/60"><CardContent className="p-4 text-sm text-destructive">{error}</CardContent></Card>}{selectedPlan&&<Card><CardContent className="p-4"><p className="text-sm font-medium">{text.globalTitle}</p><p className="mt-1 text-xs leading-5 text-muted-foreground">{text.globalHelp}</p></CardContent></Card>}
+ <section className="grid gap-6 xl:grid-cols-[1fr_380px]"><div className="space-y-6"><div><p className="text-xs uppercase tracking-[.18em] text-muted-foreground">01</p><h2 className="mt-2">{text.board}</h2><p className="mt-1 text-sm text-muted-foreground">{text.boardHelp}</p></div>{ordered.length===0?<div className="border border-dashed p-8 text-sm text-muted-foreground">{text.empty}</div>:<div className="grid gap-4 md:grid-cols-2">{ordered.map(item=>{const state=dueState(item.next_maintenance_date);const urgent=state==="overdue"||item.condition==="broken";const p=equipmentPhoto(item);return <article key={item.id} className="overflow-hidden border bg-background"><div className="relative h-44 overflow-hidden"><img src={p.src} alt={`${text.equipmentAlt}: ${item.equipment_name}`} className="h-full w-full object-cover opacity-100 [filter:none]"/><div className="absolute inset-0 bg-[linear-gradient(0deg,rgba(0,0,0,.78),rgba(0,0,0,.08)_70%)]"/><div className="absolute inset-x-4 bottom-4 text-white"><div className="flex flex-wrap gap-2"><Badge className="border-white/15 bg-black/35 text-white">{item.equipment_type}</Badge><Badge variant={urgent?"destructive":"outline"} className={urgent?"":"border-white/20 bg-black/25 text-white"}>{conditionLabel(item.condition)}</Badge>{state==="overdue"&&<Badge variant="destructive">{text.maintenanceOverdue}</Badge>}</div><h3 className="mt-2 text-xl text-white!">{item.equipment_name}</h3><p className="mt-1 text-xs text-white/70">{item.storage_location||text.noStorage}</p></div></div><div className="grid grid-cols-2 gap-px bg-border sm:grid-cols-4"><Datum label={text.purchased} value={dateKey(item.purchase_date)?.toLocaleDateString(locale)||"—"}/><Datum label={text.lastService} value={dateKey(item.last_maintenance_date)?.toLocaleDateString(locale)||text.never}/><Datum label={text.nextService} value={dateKey(item.next_maintenance_date)?.toLocaleDateString(locale)||text.unscheduled}/><Datum label={text.status} value={stateLabel(state)}/></div>{item.description&&<p className="p-4 text-sm leading-6 text-muted-foreground">{item.description}</p>}</article>})}</div>}</div><div className="space-y-6"><Card><CardHeader><CardTitle>{text.signals}</CardTitle><CardDescription>{text.signalsHelp}</CardDescription></CardHeader><CardContent className="space-y-3"><Signal icon={<AlertTriangle className="h-4 w-4"/>} label={text.overdueMaintenance} value={overdue.length} tone="risk"/><Signal icon={<CheckCircle2 className="h-4 w-4"/>} label={text.activeEquipment} value={active.length}/><Signal icon={<Wrench className="h-4 w-4"/>} label={text.noService} value={unscheduled.length}/></CardContent></Card><Card><CardHeader><CardTitle>{text.storage}</CardTitle><CardDescription>{text.storageHelp}</CardDescription></CardHeader><CardContent className="space-y-3">{locations.length===0?<p className="text-sm text-muted-foreground">{text.noLocations}</p>:locations.map(location=>{const count=equipment.filter(item=>item.storage_location===location).length;return <div key={location} className="flex items-center justify-between gap-3 border-b pb-3 last:border-b-0 last:pb-0"><div className="flex items-center gap-2"><MapPin className="h-4 w-4 text-muted-foreground"/><span className="text-sm font-medium">{location}</span></div><Badge variant="outline">{count}</Badge></div>})}</CardContent></Card><Card className="overflow-hidden"><div className="relative h-48"><img src={EQUIPMENT_PHOTOS.workshop.src} alt={text.workshopAlt} className="h-full w-full object-cover opacity-100 [filter:none]"/><div className="absolute inset-0 bg-black/38"/><div className="absolute bottom-4 left-4 right-4 text-white"><ShieldCheck className="mb-2 h-5 w-5"/><p className="font-medium">{text.readinessTitle}</p><p className="mt-1 text-xs text-white/70">{text.readinessHelp}</p></div></div></Card></div></section></main></AppLayout>
 }
-type GamePlan = { id: string; name: string; season: string | null }
-type EquipmentPhoto = { src: string; alt: string }
-
-const unsplash = (id: string, width = 1800) => `https://unsplash.com/photos/${id}/download?force=true&w=${width}`
-const EQUIPMENT_PHOTOS = {
-  hero: { src: unsplash("TsOeGUwWzWo", 2200), alt: "Pruning shears, gloves and gardening tools ready for orchard work" },
-  pruning: { src: unsplash("TsOeGUwWzWo"), alt: "Pruning shears beside gardening gloves" },
-  fork: { src: unsplash("eNMvmX0c_vQ"), alt: "Garden fork standing in cultivated soil" },
-  hose: { src: unsplash("JQ_2MkesNXg"), alt: "Garden hose on a hose cart beside green plants" },
-  wheelbarrow: { src: unsplash("kkbX4ZlldmU"), alt: "Wheelbarrow on grass ready for garden transport" },
-  tiller: { src: unsplash("eGGwx4Npbbo"), alt: "Small red garden tractor used for soil preparation" },
-  workshop: { src: unsplash("TsOeGUwWzWo"), alt: "Gardening tools prepared for maintenance work" },
-} satisfies Record<string, EquipmentPhoto>
-
-function equipmentPhoto(item: Equipment): EquipmentPhoto {
-  const key = `${item.equipment_type} ${item.equipment_name}`.toLowerCase()
-  if (key.includes("pruning") || key.includes("shear")) return EQUIPMENT_PHOTOS.pruning
-  if (key.includes("fork")) return EQUIPMENT_PHOTOS.fork
-  if (key.includes("hose") || key.includes("irrigation") || key.includes("drip")) return EQUIPMENT_PHOTOS.hose
-  if (key.includes("wheelbarrow") || key.includes("transport")) return EQUIPMENT_PHOTOS.wheelbarrow
-  if (key.includes("tiller") || key.includes("cultivator") || key.includes("soil-preparation")) return EQUIPMENT_PHOTOS.tiller
-  return EQUIPMENT_PHOTOS.workshop
-}
-
-function dateKey(value: string | null) { return value ? new Date(`${value}T12:00:00`) : null }
-function dueState(next: string | null) {
-  const d = dateKey(next)
-  if (!d) return "unscheduled"
-  const today = new Date(); today.setHours(0, 0, 0, 0)
-  return d.getTime() < today.getTime() ? "overdue" : "scheduled"
-}
-
-export default function OrchardEquipmentPage() {
-  const [equipment, setEquipment] = useState<Equipment[]>([])
-  const [plans, setPlans] = useState<GamePlan[]>([])
-  const [selectedPlanId, setSelectedPlanId] = useState<string>(ALL_GAME_PLANS)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const supabase = useMemo(() => createBrowserClient(), [])
-  const { t } = useLanguage()
-
-  useEffect(() => { void fetchData() }, [])
-
-  const fetchData = async () => {
-    try {
-      setLoading(true)
-      setError(null)
-      const [equipmentResult, planResult] = await Promise.all([
-        supabase.from("orchard_equipment").select("*").order("purchase_date", { ascending: false }),
-        supabase.from("orchard_game_plans").select("id,name,season").order("start_date", { ascending: false }),
-      ])
-      const firstError = equipmentResult.error ?? planResult.error
-      if (firstError) {
-        setError(firstError.message)
-        return
-      }
-      const planRows = (planResult.data || []) as GamePlan[]
-      setEquipment((equipmentResult.data || []) as Equipment[])
-      setPlans(planRows)
-      setSelectedPlanId(resolveRequestedGamePlanId(planRows, typeof window === "undefined" ? "" : window.location.search))
-    } finally { setLoading(false) }
-  }
-
-  const selectedPlan = resolveSelectedGamePlan(plans, selectedPlanId)
-  const active = equipment.filter((item) => item.condition !== "broken")
-  const overdue = equipment.filter((item) => dueState(item.next_maintenance_date) === "overdue")
-  const unscheduled = equipment.filter((item) => !item.next_maintenance_date)
-  const locations = [...new Set(equipment.map((item) => item.storage_location).filter(Boolean))]
-  const readiness = equipment.length ? Math.round((equipment.filter((item) => item.condition !== "broken" && dueState(item.next_maintenance_date) !== "overdue").length / equipment.length) * 100) : 0
-  const ordered = [...equipment].sort((a, b) => {
-    const rank = (item: Equipment) => ({ overdue: 0, scheduled: 1, unscheduled: 2 }[dueState(item.next_maintenance_date)] ?? 3)
-    return rank(a) - rank(b)
-  })
-
-  if (loading) return <AppLayout><OrchardNavigation /><div className="flex min-h-[60vh] items-center justify-center"><p className="text-muted-foreground">{t("orchard.loading")}</p></div></AppLayout>
-
-  return <AppLayout><OrchardNavigation /><main className="mx-auto w-full max-w-[1560px] space-y-10 px-4 pb-16 pt-4 sm:px-6 lg:px-8">
-    <section className="relative min-h-[390px] overflow-hidden bg-neutral-950">
-      <img src={EQUIPMENT_PHOTOS.hero.src} alt={EQUIPMENT_PHOTOS.hero.alt} className="absolute inset-0 h-full w-full object-cover opacity-100 [filter:none]" />
-      <div className="absolute inset-0" style={{ background: "linear-gradient(90deg,rgba(4,6,5,.94),rgba(4,6,5,.60) 55%,rgba(4,6,5,.18)),linear-gradient(0deg,rgba(4,6,5,.72),transparent 65%)" }} />
-      <div className="relative flex min-h-[390px] max-w-3xl flex-col justify-end p-6 text-white sm:p-10">
-        <p className="text-xs uppercase tracking-[.2em] text-emerald-200">Orchard · Equipment readiness</p>
-        <h1 className="mt-3 text-4xl font-medium tracking-[-.035em] text-white! sm:text-5xl">{t("orchard.equipment")}</h1>
-        <p className="mt-4 max-w-2xl text-sm leading-6 text-white/72">{t("orchard.equipment_description")}</p>
-        <div className="mt-6 flex flex-wrap gap-2"><Badge className="border-white/15 bg-black/30 px-3 py-2 text-white">{active.length} active</Badge><Badge className="border-white/15 bg-black/30 px-3 py-2 text-white">{overdue.length} overdue maintenance</Badge><Badge className="border-white/15 bg-black/30 px-3 py-2 text-white">{readiness}% ready</Badge></div>
-        <div className="mt-4"><Badge variant="outline" className="border-white/25 bg-black/25 text-white">Shared infrastructure · context: {gamePlanScopeLabel(selectedPlan, "All Orchard")}</Badge></div>
-      </div>
-      <div className="absolute bottom-6 right-6 hidden grid-cols-2 gap-px bg-white/10 lg:grid"><HeroMetric icon={<Wrench className="h-4 w-4" />} label="Assets" value={String(equipment.length)} /><HeroMetric icon={<AlertTriangle className="h-4 w-4" />} label="Overdue" value={String(overdue.length)} /><HeroMetric icon={<ShieldCheck className="h-4 w-4" />} label="Ready" value={`${readiness}%`} /><HeroMetric icon={<MapPin className="h-4 w-4" />} label="Locations" value={String(locations.length)} /></div>
-    </section>
-
-    {error && <Card className="border-destructive/60"><CardContent className="p-4 text-sm text-destructive">{error}</CardContent></Card>}
-    {selectedPlan && <Card><CardContent className="p-4"><p className="text-sm font-medium">Equipment is intentionally not filtered by Game Plan</p><p className="mt-1 text-xs leading-5 text-muted-foreground">The current schema records equipment as shared orchard infrastructure and has no succession, crop, bed-allocation or Game Plan ownership field. Hiding assets by season would invent a relationship that is not recorded.</p></CardContent></Card>}
-
-    <section className="grid gap-6 xl:grid-cols-[1fr_380px]">
-      <div className="space-y-6">
-        <div><p className="text-xs uppercase tracking-[.18em] text-muted-foreground">01</p><h2 className="mt-2">Maintenance readiness board</h2><p className="mt-1 text-sm text-muted-foreground">Equipment is ordered by recorded maintenance state. No undocumented “due soon” window is applied.</p></div>
-        {ordered.length === 0 ? <div className="border border-dashed p-8 text-sm text-muted-foreground">{t("orchard.no_equipment")}</div> : <div className="grid gap-4 md:grid-cols-2">{ordered.map((item) => { const state = dueState(item.next_maintenance_date); const urgent = state === "overdue" || item.condition === "broken"; const photo = equipmentPhoto(item); return <article key={item.id} className="overflow-hidden border bg-background"><div className="relative h-44 overflow-hidden"><img src={photo.src} alt={photo.alt} className="h-full w-full object-cover opacity-100 [filter:none]" /><div className="absolute inset-0 bg-[linear-gradient(0deg,rgba(0,0,0,.78),rgba(0,0,0,.08)_70%)]" /><div className="absolute inset-x-4 bottom-4 text-white"><div className="flex flex-wrap gap-2"><Badge className="border-white/15 bg-black/35 text-white">{item.equipment_type}</Badge><Badge variant={urgent ? "destructive" : "outline"} className={urgent ? "" : "border-white/20 bg-black/25 text-white"}>{item.condition}</Badge>{state === "overdue" && <Badge variant="destructive">Maintenance overdue</Badge>}</div><h3 className="mt-2 text-xl text-white!">{item.equipment_name}</h3><p className="mt-1 text-xs text-white/70">{item.storage_location || "No storage location"}</p></div></div><div className="grid grid-cols-2 gap-px bg-border sm:grid-cols-4"><Datum label="Purchased" value={dateKey(item.purchase_date)?.toLocaleDateString() || "—"} /><Datum label="Last service" value={dateKey(item.last_maintenance_date)?.toLocaleDateString() || "Never"} /><Datum label="Next service" value={dateKey(item.next_maintenance_date)?.toLocaleDateString() || "Unscheduled"} /><Datum label="Status" value={state.replaceAll("_", " ")} /></div>{item.description && <p className="p-4 text-sm leading-6 text-muted-foreground">{item.description}</p>}</article> })}</div>}
-      </div>
-
-      <div className="space-y-6">
-        <Card><CardHeader><CardTitle>Readiness signals</CardTitle><CardDescription>Signals derived only from recorded condition and maintenance dates.</CardDescription></CardHeader><CardContent className="space-y-3"><Signal icon={<AlertTriangle className="h-4 w-4" />} label="Overdue maintenance" value={overdue.length} tone="risk" /><Signal icon={<CheckCircle2 className="h-4 w-4" />} label="Active equipment" value={active.length} /><Signal icon={<Wrench className="h-4 w-4" />} label="No service scheduled" value={unscheduled.length} /></CardContent></Card>
-        <Card><CardHeader><CardTitle>Storage footprint</CardTitle><CardDescription>Where orchard assets are currently recorded.</CardDescription></CardHeader><CardContent className="space-y-3">{locations.length === 0 ? <p className="text-sm text-muted-foreground">No storage locations recorded.</p> : locations.map((location) => { const count = equipment.filter((item) => item.storage_location === location).length; return <div key={location} className="flex items-center justify-between gap-3 border-b pb-3 last:border-b-0 last:pb-0"><div className="flex items-center gap-2"><MapPin className="h-4 w-4 text-muted-foreground" /><span className="text-sm font-medium">{location}</span></div><Badge variant="outline">{count}</Badge></div> })}</CardContent></Card>
-        <Card className="overflow-hidden"><div className="relative h-48"><img src={EQUIPMENT_PHOTOS.workshop.src} alt={EQUIPMENT_PHOTOS.workshop.alt} className="h-full w-full object-cover opacity-100 [filter:none]" /><div className="absolute inset-0 bg-black/38" /><div className="absolute bottom-4 left-4 right-4 text-white"><ShieldCheck className="mb-2 h-5 w-5" /><p className="font-medium">Readiness before assignment</p><p className="mt-1 text-xs text-white/70">This cockpit exposes maintenance state without inventing utilization or service history that is not recorded.</p></div></div></Card>
-      </div>
-    </section>
-  </main></AppLayout>
-}
-
-function Datum({ label, value }: { label: string; value: string }) { return <div className="bg-background p-3"><p className="text-[10px] uppercase tracking-[.13em] text-muted-foreground">{label}</p><p className="mt-1 text-sm font-medium capitalize">{value}</p></div> }
-function Signal({ icon, label, value, tone }: { icon: React.ReactNode; label: string; value: number; tone?: "risk" }) { return <div className={`flex items-center justify-between border p-4 ${tone === "risk" && value > 0 ? "border-destructive/40 bg-destructive/5" : ""}`}><div className="flex items-center gap-2 text-sm">{icon}{label}</div><span className="text-xl font-medium tabular-nums">{value}</span></div> }
-function HeroMetric({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) { return <div className="min-w-36 bg-black/45 px-5 py-4 text-white"><div className="flex items-center gap-2 text-[10px] uppercase tracking-[.14em] text-white/55">{icon}{label}</div><p className="mt-1 text-2xl font-medium text-white">{value}</p></div> }
+function Datum({label,value}:{label:string;value:string}){return <div className="bg-background p-3"><p className="text-[10px] uppercase tracking-[.13em] text-muted-foreground">{label}</p><p className="mt-1 text-sm font-medium">{value}</p></div>}
+function Signal({icon,label,value,tone}:{icon:React.ReactNode;label:string;value:number;tone?:"risk"}){return <div className={`flex items-center justify-between border p-4 ${tone==="risk"&&value>0?"border-destructive/40 bg-destructive/5":""}`}><div className="flex items-center gap-2 text-sm">{icon}{label}</div><span className="text-xl font-medium tabular-nums">{value}</span></div>}
+function HeroMetric({icon,label,value}:{icon:React.ReactNode;label:string;value:string}){return <div className="min-w-36 bg-black/45 px-5 py-4 text-white"><div className="flex items-center gap-2 text-[10px] uppercase tracking-[.14em] text-white/55">{icon}{label}</div><p className="mt-1 text-2xl font-medium text-white">{value}</p></div>}
