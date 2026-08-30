@@ -14,18 +14,18 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
+import { calculateDemandScenarioMetrics } from "@/lib/orchard-ai/demand-intelligence"
+import type { DemandCrop, DemandCropCycle, DemandCropTarget, DemandHarvest, DemandReservation, DemandScenario } from "@/lib/orchard-ai/demand-intelligence"
 import { createBrowserClient } from "@/lib/supabase/client"
 import { useLanguage } from "@/lib/hooks/use-language"
 
 type Locale = "en" | "es" | "de"
-type Scenario = { id:string; name:string; start_date:string; end_date:string; status:"draft"|"active"|"archived"; resident_people:number; staff_people:number; manual_people:number; include_bookings:boolean; self_sufficiency_target_pct:number; waste_pct:number; notes:string|null }
-type CropTarget = { id:string; scenario_id:string; crop_name:string; consumption_kg_per_person_week:number; target_share_pct:number; notes:string|null }
-type Reservation = { check_in:string; check_out:string; num_guests:number|null; status:string|null }
-type CropCycle = { crop_name:string; target_harvest_date:string|null; target_quantity:number|null; target_unit:string|null; status:string|null }
-type Crop = { id:string; crop_name:string; expected_harvest_date:string|null; estimated_yield:number|null; actual_yield:number|null; yield_unit:string|null; status:string|null }
-type Harvest = { crop_id:string; harvest_date:string; quantity_harvested:number; harvest_unit:string }
-
-type DemandRow = { crop:string; demand:number; planned:number; forecast:number; harvested:number; supply:number; gap:number; coverage:number }
+type Scenario = DemandScenario & { status:"draft"|"active"|"archived"; notes:string|null }
+type CropTarget = DemandCropTarget & { id:string; notes:string|null }
+type Reservation = DemandReservation
+type CropCycle = DemandCropCycle
+type Crop = DemandCrop & { actual_yield:number|null }
+type Harvest = DemandHarvest
 
 const copy = {
   en:{title:"Food Demand & Self-Sufficiency",description:"Turn people-to-feed into crop demand, production targets and a visible path toward zero imported food.",refresh:"Refresh",scenario:"Scenario",newScenario:"New demand scenario",scenarioName:"Scenario name",start:"Start",end:"End",residents:"Residents",staff:"Staff",manual:"Manual / events",bookings:"Include bookings",target:"Self-sufficiency target %",waste:"Waste buffer %",notes:"Notes",create:"Create scenario",people:"People to feed",foodDemand:"Food demand",plannedSupply:"Planned supply",selfSufficiency:"Self-sufficiency",bookingPeople:"avg. from bookings",noBookings:"No future booking demand in this window",cropMix:"Crop demand mix",cropMixHelp:"Set weekly consumption per person. Demand is calculated for the scenario horizon and adjusted for waste and target share.",crop:"Crop",kgPersonWeek:"kg / person / week",share:"Target share %",addTarget:"Add crop target",demand:"Demand kg",planned:"Planned kg",forecast:"Forecast kg",harvested:"Harvested kg",importGap:"Import gap",coverage:"Coverage",action:"Action",addPlan:"Add to Game Plan",noTargets:"Add crop targets to start calculating demand.",assumption:"Demand uses average people over the scenario window. Booking occupancy is derived from overlapping reservation guest-days; residents, staff and manual/event headcount are added as constant demand.",draft:"Draft",active:"Active",archived:"Archived",weeks:"weeks",saveError:"Could not save demand planning data",loadError:"Could not load demand planning data",targetSaved:"Crop demand target saved."},
@@ -36,11 +36,6 @@ const copy = {
 const localeMap:Record<Locale,string>={en:"en-US",es:"es-CL",de:"de-DE"}
 const today=()=>new Date().toISOString().slice(0,10)
 const plusMonths=(months:number)=>{const d=new Date();d.setMonth(d.getMonth()+months);return d.toISOString().slice(0,10)}
-const daysBetween=(a:string,b:string)=>Math.max(1,Math.ceil((new Date(`${b}T12:00:00`).getTime()-new Date(`${a}T12:00:00`).getTime())/86400000))
-const overlaps=(aStart:string,aEnd:string,bStart:string,bEnd:string)=>aStart<bEnd&&aEnd>bStart
-const overlapDays=(aStart:string,aEnd:string,bStart:string,bEnd:string)=>{const s=Math.max(new Date(`${aStart}T12:00:00`).getTime(),new Date(`${bStart}T12:00:00`).getTime());const e=Math.min(new Date(`${aEnd}T12:00:00`).getTime(),new Date(`${bEnd}T12:00:00`).getTime());return Math.max(0,Math.ceil((e-s)/86400000))}
-const kg=(value:number)=>Number.isFinite(value)?value:0
-const isKg=(unit:string|null|undefined)=>!unit||unit.toLowerCase().startsWith("kg")
 
 export default function OrchardDemandPage(){
   const supabase=useMemo(()=>createBrowserClient(),[])
@@ -77,24 +72,7 @@ export default function OrchardDemandPage(){
     const r=await supabase.from("orchard_demand_crop_targets").upsert({scenario_id:selected.id,crop_name:targetForm.crop_name.trim(),consumption_kg_per_person_week:Number(targetForm.consumption)||0,target_share_pct:Number(targetForm.share)||100},{onConflict:"scenario_id,crop_name"});if(r.error)setError(r.error.message||text.saveError);else{setTargetForm({crop_name:"",consumption:"0.25",share:"100"});setNotice(text.targetSaved);await load()}setSaving(false)
   }
 
-  const metrics=useMemo(()=>{
-    if(!selected)return {days:0,weeks:0,bookingAvg:0,people:0,totalDemand:0,planned:0,self:0,rows:[] as DemandRow[]}
-    const days=daysBetween(selected.start_date,selected.end_date);const weeks=days/7
-    const bookingGuestDays=selected.include_bookings?reservations.reduce((sum,r)=>{if(!r.check_in||!r.check_out||!overlaps(r.check_in,r.check_out,selected.start_date,selected.end_date))return sum;const status=(r.status??"").toLowerCase();if(["cancelled","canceled","no_show"].includes(status))return sum;return sum+overlapDays(r.check_in,r.check_out,selected.start_date,selected.end_date)*Math.max(0,r.num_guests??0)},0):0
-    const bookingAvg=bookingGuestDays/days;const people=selected.resident_people+selected.staff_people+selected.manual_people+bookingAvg
-    const scenarioTargets=targets.filter(t=>t.scenario_id===selected.id)
-    const cropById=new Map(crops.map(c=>[c.id,c.crop_name]))
-    const rows=scenarioTargets.map<DemandRow>(t=>{
-      const demand=people*weeks*t.consumption_kg_per_person_week*(t.target_share_pct/100)*(1+selected.waste_pct/100)
-      const planned=cycles.filter(c=>c.crop_name.toLowerCase()===t.crop_name.toLowerCase()&&c.target_harvest_date&&c.target_harvest_date>=selected.start_date&&c.target_harvest_date<=selected.end_date&&isKg(c.target_unit)&&c.status!=="cancelled").reduce((sum,c)=>sum+kg(Number(c.target_quantity??0)),0)
-      const forecast=crops.filter(c=>c.crop_name.toLowerCase()===t.crop_name.toLowerCase()&&c.expected_harvest_date&&c.expected_harvest_date>=selected.start_date&&c.expected_harvest_date<=selected.end_date&&isKg(c.yield_unit)&&c.status!=="cancelled").reduce((sum,c)=>sum+kg(Number(c.estimated_yield??0)),0)
-      const harvested=harvests.filter(h=>(cropById.get(h.crop_id)??"").toLowerCase()===t.crop_name.toLowerCase()&&h.harvest_date>=selected.start_date&&h.harvest_date<=selected.end_date&&isKg(h.harvest_unit)).reduce((sum,h)=>sum+kg(Number(h.quantity_harvested??0)),0)
-      const supply=Math.max(planned,forecast,harvested);const gap=Math.max(0,demand-supply);const coverage=demand>0?Math.min(100,(supply/demand)*100):100
-      return {crop:t.crop_name,demand,planned,forecast,harvested,supply,gap,coverage}
-    }).sort((a,b)=>b.gap-a.gap)
-    const totalDemand=rows.reduce((s,r)=>s+r.demand,0);const planned=rows.reduce((s,r)=>s+r.supply,0);const self=totalDemand>0?Math.min(100,(planned/totalDemand)*100):0
-    return {days,weeks,bookingAvg,people,totalDemand,planned,self,rows}
-  },[selected,reservations,targets,cycles,crops,harvests])
+  const metrics=useMemo(()=>calculateDemandScenarioMetrics(selected,targets,reservations,cycles,crops,harvests),[selected,reservations,targets,cycles,crops,harvests])
 
   return <AppLayout><PageHeader title={text.title} description={text.description} actions={<Button variant="outline" onClick={()=>void load()} disabled={loading}><RefreshCw className={`mr-2 h-4 w-4 ${loading?"animate-spin":""}`}/>{text.refresh}</Button>}/><OrchardNavigation/><div className="space-y-6 p-3 pb-24 sm:p-8">
     {error?<Card className="border-destructive/40"><CardContent className="p-4 text-sm text-destructive">{error}</CardContent></Card>:null}{notice?<Card><CardContent className="p-4 text-sm">{notice}</CardContent></Card>:null}
