@@ -5,6 +5,7 @@ import { readFileSync } from "node:fs"
 const faoRoute = readFileSync(new URL("../app/api/orchard/library/fao/route.ts", import.meta.url), "utf8")
 const faoSyncRoute = readFileSync(new URL("../app/api/orchard/library/fao/sync/route.ts", import.meta.url), "utf8")
 const faoPage = readFileSync(new URL("../app/orchard/library/fao/page.tsx", import.meta.url), "utf8")
+const orchardLibraryPage = readFileSync(new URL("../app/orchard/library/page.tsx", import.meta.url), "utf8")
 const assistantRoute = readFileSync(new URL("../app/api/orchard/assistant/route.ts", import.meta.url), "utf8")
 const assistantScope = readFileSync(new URL("../lib/orchard-ai/game-plan-scope.ts", import.meta.url), "utf8")
 const identityMigration = readFileSync(new URL("../supabase/migrations/20260829153410_orchard_fao_reference_identity.sql", import.meta.url), "utf8")
@@ -55,6 +56,22 @@ test("bulk FAO sync is admin-only, audited, idempotent and preserves observed ag
   assert.doesNotMatch(faoSyncRoute, /days_to_maturity|target_yield_per_sqm|germination_rate_pct|plant_spacing_cm/)
   assert.match(syncMigration, /current_app_role\(\) = 'admin'/)
   assert.match(syncMigration, /orchard_reference_sync_runs/)
+})
+
+test("Fundo Corcovado library reads only the canonical Black Swan crop layer", () => {
+  assert.match(orchardLibraryPage, /CANONICAL_SCHEME = "black_swan_canonical"/)
+  assert.match(orchardLibraryPage, /CANONICAL_CODE = "fundo_corcovado"/)
+  assert.match(orchardLibraryPage, /\.eq\("classification_scheme",CANONICAL_SCHEME\)/)
+  assert.match(orchardLibraryPage, /\.eq\("classification_code",CANONICAL_CODE\)/)
+  assert.match(orchardLibraryPage, /Fundo Corcovado/)
+  assert.doesNotMatch(orchardLibraryPage, /Valdivia \/ Los Ríos|SOUTH_CHILE_PRIORITY|southChilePriority|chileRepresentativeScore/)
+})
+
+test("canonical crop creation stays inside Fundo Corcovado instead of becoming a reference profile", () => {
+  assert.match(orchardLibraryPage, /classification_scheme:CANONICAL_SCHEME/)
+  assert.match(orchardLibraryPage, /classification_code:CANONICAL_CODE/)
+  assert.match(orchardLibraryPage, /provenance_type:"manual"/)
+  assert.doesNotMatch(orchardLibraryPage, /source\?"reference"/)
 })
 
 test("Orchard AI consumes scoped intelligence notes and preserves factual provenance", () => {
