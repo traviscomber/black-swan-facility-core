@@ -29,7 +29,7 @@ type OrchardHeroConfig = {
 
 const ORCHARD_HERO_IMAGES = {
   gamePlan: "https://images.unsplash.com/photo-1498579397066-22750a3cb424?auto=format&fit=crop&w=2200&q=92",
-  nursery: "https://images.unsplash.com/photo-1585320806297-9794b3e4eeae?auto=format&fit=crop&w=2200&q=92",
+  nursery: "https://images.unsplash.com/photo-1776409061170-5c4bb26cdbab?auto=format&fit=crop&w=2200&q=92",
   referenceCatalog: "https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=2200&q=92",
   cropMap: "https://images.unsplash.com/photo-1500382017468-9049fed747ef?auto=format&fit=crop&w=2200&q=92",
   autoPlace: "https://images.unsplash.com/photo-1416879595882-3373a0480b5b?auto=format&fit=crop&w=2200&q=92",
