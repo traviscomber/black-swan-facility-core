@@ -1,280 +1,32 @@
 "use client"
 
+import { useEffect, useMemo, useState } from "react"
+import { Award, TrendingUp } from "lucide-react"
+import { Bar, BarChart, CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts"
 import { AppLayout } from "@/components/app-layout"
 import { PageHeader } from "@/components/page-header"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import {
-  BarChart,
-  Bar,
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-  ResponsiveContainer,
-} from "recharts"
-import { TrendingUp, Download, Award } from "lucide-react"
-import { useEffect, useState } from "react"
 import { createBrowserClient } from "@/lib/supabase/client"
+import { useLanguage } from "@/lib/hooks/use-language"
 
-interface BusinessPlanRecord {
-  year: number
-  month: string
-  business_unit: string
-  profit_loss: number
-  inventory_count: number
+type Plan={year:number;month:string;business_unit:string;profit_loss:number;inventory_count:number;purchase_amount:number|null;sales_amount:number|null}
+type ChartData={year:number;crianzaProfit:number;engordaProfit:number;cumulativeProfit:number;totalInventory:number;isMilestone:boolean}
+const COPY={
+ en:{loading:"Loading projections…",title:"Cattle business plan",description:"Registered projection for 2024–2031",initial:"Initial investment",initialDesc:"Recorded purchases in the first plan year",income:"Year 1 revenue",incomeDesc:"Recorded sales in the first plan year",profit:"Cumulative profit",profitDesc:"Through the last registered plan year",breakEven:"Break-even assumption",year4:"Year 4",march2027:"March 2027",animals:"500 animals",target:"Final target assumption",year8:"Year 8",dec2031:"December 2031",profitChart:"Cumulative profit · 8-year projection",profitChartDesc:"Projected profitability by year",year:"Year",cumulative:"Cumulative profit",unitChart:"Profit by business unit",unitChartDesc:"Breeding vs Fattening by year",breeding:"Breeding",fattening:"Fattening",milestone1:"Milestone 1: Break-even",milestone1Date:"Year 4, March 2027",milestone1Text:"500 participations/animals reached",milestone1Goal:"Assumption: cover fixed operating costs",milestone2:"Milestone 2: Financial target",milestone2Date:"Year 8, December 2031",milestone2Text:"CLP 140 million cumulative profit",milestone2Goal:"Assumption: reach target profitability",empty:"No business-plan records are available."},
+ es:{loading:"Cargando proyecciones…",title:"Plan de negocios ganadero",description:"Proyección registrada para 2024–2031",initial:"Inversión inicial",initialDesc:"Compras registradas en el primer año del plan",income:"Ingresos Año 1",incomeDesc:"Ventas registradas en el primer año del plan",profit:"Ganancia acumulada",profitDesc:"Hasta el último año registrado del plan",breakEven:"Supuesto de break-even",year4:"Año 4",march2027:"Marzo 2027",animals:"500 animales",target:"Supuesto de meta final",year8:"Año 8",dec2031:"Diciembre 2031",profitChart:"Ganancia acumulada · proyección 8 años",profitChartDesc:"Rentabilidad proyectada por año",year:"Año",cumulative:"Ganancia acumulada",unitChart:"Ganancias por unidad de negocio",unitChartDesc:"Crianza vs Engorda año a año",breeding:"Crianza",fattening:"Engorda",milestone1:"Hito 1: Break-even",milestone1Date:"Año 4, marzo 2027",milestone1Text:"500 participaciones/animales alcanzados",milestone1Goal:"Supuesto: cubrir costos fijos operacionales",milestone2:"Hito 2: Meta financiera",milestone2Date:"Año 8, diciembre 2031",milestone2Text:"CLP 140 millones de ganancia acumulada",milestone2Goal:"Supuesto: alcanzar rentabilidad objetivo",empty:"No hay registros disponibles para el plan de negocios."},
+ de:{loading:"Projektionen werden geladen…",title:"Geschäftsplan Rinderhaltung",description:"Erfasste Projektion für 2024–2031",initial:"Anfangsinvestition",initialDesc:"Erfasste Käufe im ersten Planjahr",income:"Umsatz Jahr 1",incomeDesc:"Erfasste Verkäufe im ersten Planjahr",profit:"Kumulierter Gewinn",profitDesc:"Bis zum letzten erfassten Planjahr",breakEven:"Break-even-Annahme",year4:"Jahr 4",march2027:"März 2027",animals:"500 Tiere",target:"Annahme zum Endziel",year8:"Jahr 8",dec2031:"Dezember 2031",profitChart:"Kumulierter Gewinn · 8-Jahres-Projektion",profitChartDesc:"Projizierte Rentabilität nach Jahr",year:"Jahr",cumulative:"Kumulierter Gewinn",unitChart:"Gewinn nach Geschäftseinheit",unitChartDesc:"Zucht vs Mast nach Jahr",breeding:"Zucht",fattening:"Mast",milestone1:"Meilenstein 1: Break-even",milestone1Date:"Jahr 4, März 2027",milestone1Text:"500 Beteiligungen/Tiere erreicht",milestone1Goal:"Annahme: fixe Betriebskosten decken",milestone2:"Meilenstein 2: Finanzziel",milestone2Date:"Jahr 8, Dezember 2031",milestone2Text:"CLP 140 Mio. kumulierter Gewinn",milestone2Goal:"Annahme: Zielrentabilität erreichen",empty:"Keine Geschäftsplan-Datensätze verfügbar."},
+} as const
+
+export default function CattleBusinessPlanPage(){
+ const{language}=useLanguage();const lang=(language in COPY?language:"en") as keyof typeof COPY;const c=COPY[lang];const locale=lang==="es"?"es-CL":lang==="de"?"de-DE":"en-US";const currency=useMemo(()=>new Intl.NumberFormat(locale,{style:"currency",currency:"CLP",maximumFractionDigits:0}),[locale]);const[data,setData]=useState<ChartData[]|null>(null);const[plans,setPlans]=useState<Plan[]>([]);const[loading,setLoading]=useState(true)
+ useEffect(()=>{void(async()=>{try{const supabase=createBrowserClient();const{data:rows,error}=await supabase.from("cattle_business_plan").select("year,month,business_unit,profit_loss,inventory_count,purchase_amount,sales_amount").order("year").order("month");if(error)throw error;const planRows=(rows??[]) as Plan[];setPlans(planRows);let cumulative=0;const yearly:Record<number,ChartData>={};for(const plan of planRows){cumulative+=Number(plan.profit_loss??0);if(!yearly[plan.year])yearly[plan.year]={year:plan.year,crianzaProfit:0,engordaProfit:0,cumulativeProfit:0,totalInventory:0,isMilestone:false};if(plan.business_unit==="Crianza")yearly[plan.year].crianzaProfit+=Number(plan.profit_loss??0);else yearly[plan.year].engordaProfit+=Number(plan.profit_loss??0);yearly[plan.year].totalInventory=Number(plan.inventory_count??0);yearly[plan.year].cumulativeProfit=cumulative;if((plan.year===2027&&plan.month==="Mar")||(plan.year===2031&&plan.month==="Dec"))yearly[plan.year].isMilestone=true}setData(Object.values(yearly))}catch(error){console.error("CATTLE_BUSINESS_PLAN_LOAD_FAILED",error);setData([])}finally{setLoading(false)}})()},[])
+ if(loading)return <AppLayout><div className="flex h-screen items-center justify-center"><p>{c.loading}</p></div></AppLayout>
+ const firstYear=plans.length?Math.min(...plans.map(p=>Number(p.year))):null;const firstYearRows=firstYear==null?[]:plans.filter(p=>Number(p.year)===firstYear);const initial=firstYearRows.reduce((s,p)=>s+Number(p.purchase_amount??0),0);const income=firstYearRows.reduce((s,p)=>s+Number(p.sales_amount??0),0);const last=data?.[data.length-1]
+ return <AppLayout><PageHeader title={c.title} description={c.description}/><div className="space-y-6 p-6">{!data?.length?<Card><CardContent className="py-12 text-center text-sm text-muted-foreground">{c.empty}</CardContent></Card>:<><div className="grid grid-cols-1 gap-4 md:grid-cols-5"><Metric title={c.initial} value={currency.format(initial)} help={c.initialDesc}/><Metric title={c.income} value={currency.format(income)} help={c.incomeDesc}/><Metric title={c.profit} value={currency.format(last?.cumulativeProfit??0)} help={c.profitDesc}/><Card><CardHeader className="pb-2"><CardTitle className="text-sm font-medium">{c.breakEven}</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold">{c.year4}</div><p className="mt-1 text-xs text-gray-500">{c.march2027}</p><Badge className="mt-2">{c.animals}</Badge></CardContent></Card><Card><CardHeader className="pb-2"><CardTitle className="text-sm font-medium">{c.target}</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold">140M CLP</div><p className="mt-1 text-xs text-gray-500">{c.dec2031}</p><Badge className="mt-2">{c.year8}</Badge></CardContent></Card></div>
+ <Card><CardHeader><CardTitle>{c.profitChart}</CardTitle><CardDescription>{c.profitChartDesc}</CardDescription></CardHeader><CardContent><ResponsiveContainer width="100%" height={300}><LineChart data={data}><CartesianGrid strokeDasharray="3 3"/><XAxis dataKey="year"/><YAxis/><Tooltip formatter={(value)=>currency.format(Number(value??0))} labelFormatter={(label)=>`${c.year} ${label}`}/><Legend/><Line type="monotone" dataKey="cumulativeProfit" name={c.cumulative} strokeWidth={2}/></LineChart></ResponsiveContainer></CardContent></Card>
+ <Card><CardHeader><CardTitle>{c.unitChart}</CardTitle><CardDescription>{c.unitChartDesc}</CardDescription></CardHeader><CardContent><ResponsiveContainer width="100%" height={300}><BarChart data={data}><CartesianGrid strokeDasharray="3 3"/><XAxis dataKey="year"/><YAxis/><Tooltip formatter={(value)=>currency.format(Number(value??0))}/><Legend/><Bar dataKey="crianzaProfit" stackId="a" name={c.breeding}/><Bar dataKey="engordaProfit" stackId="a" name={c.fattening}/></BarChart></ResponsiveContainer></CardContent></Card>
+ <div className="grid grid-cols-1 gap-4 md:grid-cols-2"><Milestone icon={<Award className="h-5 w-5"/>} title={c.milestone1} date={c.milestone1Date} text={c.milestone1Text} goal={c.milestone1Goal}/><Milestone icon={<TrendingUp className="h-5 w-5"/>} title={c.milestone2} date={c.milestone2Date} text={c.milestone2Text} goal={c.milestone2Goal}/></div></>}</div></AppLayout>
 }
-
-interface ChartData {
-  year: number
-  crianzaProfit: number
-  engordaProfit: number
-  cumulativeProfit: number
-  totalInventory: number
-  isMilestone: boolean
-  milestoneText: string
-}
-
-export default function CattleBusinessPlanPage() {
-  const [data, setData] = useState<ChartData[] | null>(null)
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    const fetchBusinessPlanData = async () => {
-      try {
-        const supabase = createBrowserClient()
-
-        const { data: plans, error } = await supabase
-          .from("cattle_business_plan")
-          .select("*")
-          .order("year")
-          .order("month")
-
-        if (error) throw error
-
-        // Calculate cumulative profits and organize by year
-        let cumulativeProfit = 0
-        const yearlyData: Record<number, ChartData> = {}
-
-        plans?.forEach((plan: BusinessPlanRecord) => {
-          cumulativeProfit += plan.profit_loss
-          const yearKey = plan.year
-
-          if (!yearlyData[yearKey]) {
-            yearlyData[yearKey] = {
-              year: yearKey,
-              crianzaProfit: 0,
-              engordaProfit: 0,
-              cumulativeProfit: 0,
-              totalInventory: 0,
-              isMilestone: false,
-              milestoneText: "",
-            }
-          }
-
-          if (plan.business_unit === "Crianza") {
-            yearlyData[yearKey].crianzaProfit += plan.profit_loss
-          } else {
-            yearlyData[yearKey].engordaProfit += plan.profit_loss
-          }
-          yearlyData[yearKey].totalInventory = plan.inventory_count
-          yearlyData[yearKey].cumulativeProfit = cumulativeProfit
-
-          if (plan.year === 2027 && plan.month === "Mar") {
-            yearlyData[yearKey].isMilestone = true
-            yearlyData[yearKey].milestoneText = "500 Animals Break-even"
-          }
-          if (plan.year === 2031 && plan.month === "Dec") {
-            yearlyData[yearKey].isMilestone = true
-            yearlyData[yearKey].milestoneText = "140M Pesos Target"
-          }
-        })
-
-        const chartData = Object.values(yearlyData)
-        setData(chartData)
-      } catch (error) {
-        console.error("Error fetching business plan:", error)
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    fetchBusinessPlanData()
-  }, [])
-
-  if (loading) {
-    return (
-      <AppLayout>
-        <div className="flex items-center justify-center h-screen">
-          <p>Cargando proyecciones...</p>
-        </div>
-      </AppLayout>
-    )
-  }
-
-  const lastYearData = data?.[data.length - 1]
-  const year4Data = data?.find((d) => d.year === 2027)
-
-  return (
-    <AppLayout>
-      <PageHeader title="Plan de Negocios Ganado" description="Proyecciones a 8 años (2024-2031)" />
-
-      <div className="space-y-6 p-6">
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium">Inversión Inicial</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">$262,200</div>
-              <p className="text-xs text-gray-500 mt-1">Compra de animales</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium">Ingresos Año 1</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">$262,200</div>
-              <p className="text-xs text-gray-500 mt-1">Ventas totales</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium">Ganancia Acumulada</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-green-600">
-                ${lastYearData?.cumulativeProfit?.toLocaleString() || 0}
-              </div>
-              <p className="text-xs text-gray-500 mt-1">A Diciembre 2031</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium">Break-even</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">Año 4</div>
-              <p className="text-xs text-gray-500 mt-1">Marzo 2027</p>
-              <Badge className="mt-2 bg-blue-100 text-blue-800">500 animales</Badge>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium">Meta Final</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-green-600">140M</div>
-              <p className="text-xs text-gray-500 mt-1">Pesos Diciembre 2031</p>
-              <Badge className="mt-2 bg-green-100 text-green-800">Año 8</Badge>
-            </CardContent>
-          </Card>
-        </div>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Ganancia Acumulada - Proyección 8 Años</CardTitle>
-            <CardDescription>Evolución de rentabilidad por año</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={data || []}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="year" />
-                <YAxis />
-                <Tooltip
-                  formatter={(value) => `$${value?.toLocaleString()}`}
-                  labelFormatter={(label) => `Año ${label}`}
-                />
-                <Legend />
-                <Line
-                  type="monotone"
-                  dataKey="cumulativeProfit"
-                  stroke="#10b981"
-                  name="Ganancia Acumulada"
-                  strokeWidth={2}
-                  dot={(props) => {
-                    const { cx, cy, payload } = props
-                    if (payload.isMilestone) {
-                      return <circle cx={cx} cy={cy} r={6} fill="#f59e0b" stroke="#d97706" strokeWidth={2} />
-                    }
-                    return <circle cx={cx} cy={cy} r={4} fill="#10b981" />
-                  }}
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Ganancias por Unidad de Negocio</CardTitle>
-            <CardDescription>Crianza vs Engorda año a año</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={data || []}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="year" />
-                <YAxis />
-                <Tooltip formatter={(value) => `$${value?.toLocaleString()}`} />
-                <Legend />
-                <Bar dataKey="crianzaProfit" stackId="a" fill="#3b82f6" name="Crianza" />
-                <Bar dataKey="engordaProfit" stackId="a" fill="#f97316" name="Engorda" />
-              </BarChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <Card className="border-blue-200 bg-blue-50">
-            <CardHeader>
-              <div className="flex items-center gap-2">
-                <Award className="w-5 h-5 text-blue-600" />
-                <CardTitle>Hito 1: Break-even</CardTitle>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-gray-700 mb-2">
-                <strong>Año 4, Marzo 2027</strong>
-              </p>
-              <p className="text-sm text-gray-600 mb-3">500 participaciones/animales alcanzados</p>
-              <p className="text-sm text-gray-600">Objetivo: Cubrir costos fijos operacionales ✓</p>
-            </CardContent>
-          </Card>
-
-          <Card className="border-green-200 bg-green-50">
-            <CardHeader>
-              <div className="flex items-center gap-2">
-                <TrendingUp className="w-5 h-5 text-green-600" />
-                <CardTitle>Hito 2: Meta Financiera</CardTitle>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-gray-700 mb-2">
-                <strong>Año 8, Diciembre 2031</strong>
-              </p>
-              <p className="text-sm text-gray-600 mb-3">140 millones de pesos ganancia acumulada</p>
-              <p className="text-sm text-gray-600">Objetivo: Alcanzar rentabilidad objetivo ✓</p>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Export button */}
-        <Button className="w-full">
-          <Download className="w-4 h-4 mr-2" />
-          Exportar Plan de Negocios
-        </Button>
-      </div>
-    </AppLayout>
-  )
-}
+function Metric({title,value,help}:{title:string;value:string;help:string}){return <Card><CardHeader className="pb-2"><CardTitle className="text-sm font-medium">{title}</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold">{value}</div><p className="mt-1 text-xs text-muted-foreground">{help}</p></CardContent></Card>}
+function Milestone({icon,title,date,text,goal}:{icon:React.ReactNode;title:string;date:string;text:string;goal:string}){return <Card><CardHeader><div className="flex items-center gap-2">{icon}<CardTitle>{title}</CardTitle></div></CardHeader><CardContent><p className="mb-2 text-sm"><strong>{date}</strong></p><p className="mb-3 text-sm text-muted-foreground">{text}</p><p className="text-sm text-muted-foreground">{goal}</p></CardContent></Card>}
