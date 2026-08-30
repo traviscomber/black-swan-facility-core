@@ -45,11 +45,28 @@ const copy = {
     safeguardTitle: "Operational standard",
     safeguardBody: "Capacity, production, consumption and solar-offset percentages will not be displayed until they come from verifiable equipment or records.",
   },
+  de: {
+    title: "Energie und elektrische Systeme",
+    description: "Status der Energieintegration auf Fundo Corcovado und Zugriff auf die derzeit verfügbaren Betriebsdaten.",
+    statusTitle: "Energietelemetrie ist noch nicht verbunden",
+    statusBody: "Die Produktionsdatenbank enthält derzeit keine Tabellen für Solarmodule, Gebäudeverbrauch oder Victron-Geräte. Die frühere Oberfläche fragte nicht vorhandene Strukturen ab und konnte einen leeren Betrieb so darstellen, als wäre er konfiguriert.",
+    available: "Verfügbar",
+    unavailable: "Nicht verbunden",
+    fuelTitle: "Kraftstoffverbrauch",
+    fuelBody: "Für Verbrauch, Fahrzeuge, Monatsübersichten und Anomalien liegen reale Betriebsdaten vor. Dies ist derzeit die verfügbare Energiequelle im System.",
+    openFuel: "Kraftstoffdaten öffnen",
+    telemetryTitle: "Solar- und Stromtelemetrie",
+    telemetryBody: "Es gibt keine produktiven Datenquellen für Solarerzeugung, Gebäudelast, Batterien, Wechselrichter oder Laderegler.",
+    integrationTitle: "Voraussetzungen für die Integration",
+    integrationBody: "Eine künftige Anbindung muss reale Geräte, Victron-VRM-Kennungen, zugeordnete Gebäude, Maßeinheiten, Abfragefrequenz, historische Aufbewahrung und Verantwortliche für die Validierung definieren.",
+    safeguardTitle: "Betriebsgrundsatz",
+    safeguardBody: "Kapazität, Produktion, Verbrauch und Solarabdeckungsanteile werden erst angezeigt, wenn sie aus überprüfbaren Geräten oder Datensätzen stammen.",
+  },
 } as const
 
 export default function EnergyManagementPage() {
   const { language } = useLanguage()
-  const text = copy[language === "es" ? "es" : "en"]
+  const text = copy[language]
 
   return (
     <EnergyPasswordGuard>
