@@ -70,6 +70,55 @@ const NAMED_CROP_PHOTOS: Record<string,string> = {
   "zapallo italiano": "https://upload.wikimedia.org/wikipedia/commons/d/d7/Zucchini_Plant.jpg",
 }
 
+const SOUTH_CHILE_CROP_PHOTOS: Record<string,string> = {
+  "potato, sweet": "https://commons.wikimedia.org/wiki/Special:FilePath/A_sweet_potato.jpg",
+  "pea, edible dry, for grain": "https://commons.wikimedia.org/wiki/Special:FilePath/Dried_Green_Peas.jpg",
+  "pea, harvested green": NAMED_CROP_PHOTOS.pea,
+  "beet, fodder (mangel)": "https://commons.wikimedia.org/wiki/Special:FilePath/Fodder_beet_(20043293272).jpg",
+  "beet, red": NAMED_CROP_PHOTOS.beet,
+  "beet, sugar": "https://commons.wikimedia.org/wiki/Special:FilePath/SugarBeet.jpg",
+  "beet, sugar for fodder": "https://commons.wikimedia.org/wiki/Special:FilePath/SugarBeet.jpg",
+  "beet, sugar for seeds": "https://commons.wikimedia.org/wiki/Special:FilePath/SugarBeet.jpg",
+  "red beet": NAMED_CROP_PHOTOS.beet,
+  "corn (maize) for cereals": "https://commons.wikimedia.org/wiki/Special:FilePath/Corn_field.jpg",
+  "corn (maize) for silage": "https://commons.wikimedia.org/wiki/Special:FilePath/A_maize_field.jpg",
+  "corn (sweet) for vegetable": "https://commons.wikimedia.org/wiki/Special:FilePath/Corn_on_the_cob_(sweet_corn).jpg",
+  "maize (corn)": "https://commons.wikimedia.org/wiki/Special:FilePath/Corn_field.jpg",
+  "maize (corn) for silage": "https://commons.wikimedia.org/wiki/Special:FilePath/A_maize_field.jpg",
+  "maize (hybrid)": "https://commons.wikimedia.org/wiki/Special:FilePath/Corn_field.jpg",
+  "maize, ordinary": "https://commons.wikimedia.org/wiki/Special:FilePath/Corn_field.jpg",
+  "beans, dry, edible, for grains": "https://commons.wikimedia.org/wiki/Special:FilePath/Dry_beans.jpg",
+  "beans, harvested green": "https://commons.wikimedia.org/wiki/Special:FilePath/Green_beans.jpg",
+  "carrot, edible": NAMED_CROP_PHOTOS.carrot,
+  "carrot, for fodder": NAMED_CROP_PHOTOS.carrot,
+  "onion, dry": NAMED_CROP_PHOTOS.onion,
+  "onion, green": "https://commons.wikimedia.org/wiki/Special:FilePath/Spring_onion.jpg",
+  "cabbage (red, white, savoy)": "https://commons.wikimedia.org/wiki/Special:FilePath/Savoy_Cabbage.jpg",
+  "cabbage, chinese": "https://commons.wikimedia.org/wiki/Special:FilePath/Napa_Cabbage.jpg",
+  "cabbage, for fodder": NAMED_CROP_PHOTOS.cabbage,
+  broccoli: "https://commons.wikimedia.org/wiki/Special:FilePath/Broccoli_vegetable.jpg",
+  brocoli: "https://commons.wikimedia.org/wiki/Special:FilePath/Broccoli_vegetable.jpg",
+  cauliflower: "https://commons.wikimedia.org/wiki/Special:FilePath/Cauliflower_in_home_garden.jpg",
+  coliflor: "https://commons.wikimedia.org/wiki/Special:FilePath/Cauliflower_in_home_garden.jpg",
+  "garlic, dry": "https://commons.wikimedia.org/wiki/Special:FilePath/Garlic_bulbs.jpg",
+  "garlic, green": "https://commons.wikimedia.org/wiki/Special:FilePath/Green_garlic.jpg",
+  garlic: "https://commons.wikimedia.org/wiki/Special:FilePath/Garlic_bulbs.jpg",
+  ajo: "https://commons.wikimedia.org/wiki/Special:FilePath/Garlic_bulbs.jpg",
+  chard: "https://commons.wikimedia.org/wiki/Special:FilePath/SwissChard.jpg",
+  acelga: "https://commons.wikimedia.org/wiki/Special:FilePath/SwissChard.jpg",
+  leek: "https://commons.wikimedia.org/wiki/Special:FilePath/Packaged_vegetable_leek.jpg",
+  puerro: "https://commons.wikimedia.org/wiki/Special:FilePath/Packaged_vegetable_leek.jpg",
+  coriander: "https://commons.wikimedia.org/wiki/Special:FilePath/Coriander_leaves.jpg",
+  cilantro: "https://commons.wikimedia.org/wiki/Special:FilePath/Coriander_leaves.jpg",
+  kale: "https://commons.wikimedia.org/wiki/Special:FilePath/Kale_(Green_Vegetable).jpg",
+  cale: "https://commons.wikimedia.org/wiki/Special:FilePath/Kale_(Green_Vegetable).jpg",
+  "pumpkin, edible": "https://commons.wikimedia.org/wiki/Special:FilePath/Pumpkin_vegetable.jpg",
+  "pumpkin, for fodder": "https://commons.wikimedia.org/wiki/Special:FilePath/Pumpkin_vegetable.jpg",
+  pumpkin: "https://commons.wikimedia.org/wiki/Special:FilePath/Pumpkin_vegetable.jpg",
+  zapallo: "https://commons.wikimedia.org/wiki/Special:FilePath/Pumpkin_vegetable.jpg",
+  "sweet pepper": NAMED_CROP_PHOTOS["bell pepper"],
+}
+
 const SOUTH_CHILE_PRIORITY: string[][] = [
   ["potato", "papa"],
   ["pea", "arveja"],
@@ -102,7 +151,10 @@ function southChilePriority(name:string){
   const index=SOUTH_CHILE_PRIORITY.findIndex(group=>group.some(alias=>key===alias||key.startsWith(`${alias},`)||key.startsWith(`${alias} (`)))
   return index===-1?SOUTH_CHILE_PRIORITY.length:index
 }
-function cropPhoto(name:string){return NAMED_CROP_PHOTOS[normalizeCropName(name)] ?? null}
+function cropPhoto(name:string){
+  const key=normalizeCropName(name)
+  return SOUTH_CHILE_CROP_PHOTOS[key] ?? NAMED_CROP_PHOTOS[key] ?? null
+}
 function cropInitial(name:string){return normalizeCropName(name).charAt(0).toUpperCase()}
 function recoverCropPhoto(e:React.SyntheticEvent<HTMLImageElement>){e.currentTarget.style.display="none"}
 
