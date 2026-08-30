@@ -45,6 +45,26 @@ const workspaceMeta = {
     es: ['Proveedores externos de eventos', 'Inventario canónico respaldado por proveedores para servicios externos de eventos, estado de cumplimiento, preferencia e historial de contrataciones.'],
     de: ['Externe Eventanbieter', 'Kanonischer, lieferantengestützter Bestand externer Eventdienstleister mit Compliance-Status, Präferenz und Einsatzhistorie.'],
   },
+  'front-door': {
+    en: ['Sales & Marketing', 'The Foundation front door: approved educational material from events, prepared for controlled public disclosure and outreach.'],
+    es: ['Ventas y marketing', 'La puerta de entrada de la Fundación: material educativo aprobado proveniente de eventos, preparado para difusión pública controlada y relacionamiento.'],
+    de: ['Vertrieb und Marketing', 'Der öffentliche Einstieg der Stiftung: freigegebene Bildungsinhalte aus Veranstaltungen, vorbereitet für kontrollierte Veröffentlichung und Ansprache.'],
+  },
+  imports: {
+    en: ['Canonical Imports', 'Review-first employee and inventory source batches. Santi’s source files remain required before any entity allocation is applied.'],
+    es: ['Importaciones canónicas', 'Lotes de origen de personal e inventario con revisión previa. Los archivos fuente de Santi siguen siendo obligatorios antes de aplicar cualquier asignación de entidad.'],
+    de: ['Kanonische Importe', 'Quellbatches für Personal und Inventar mit Prüfung vor der Übernahme. Santis Quelldateien bleiben Voraussetzung, bevor Entitätszuordnungen angewendet werden.'],
+  },
+  intercompany: {
+    en: ['Intercompany', 'Rules and audit readiness across legal entities. Commercial terms remain incomplete until approved agreements provide lease amounts, tax treatment and references.'],
+    es: ['Intercompañía', 'Reglas y preparación para auditoría entre entidades legales. Las condiciones comerciales permanecen incompletas hasta que acuerdos aprobados definan arriendos, tratamiento tributario y referencias.'],
+    de: ['Intercompany', 'Regeln und Audit-Bereitschaft über Rechtseinheiten hinweg. Kommerzielle Bedingungen bleiben unvollständig, bis genehmigte Vereinbarungen Mietbeträge, steuerliche Behandlung und Referenzen festlegen.'],
+  },
+  'orchard-kitchen': {
+    en: ['Orchard & Kitchen', 'One shared Corporación operating workspace for orchard and kitchen costs, purchases, suppliers and approved allocations.'],
+    es: ['Huerto y cocina', 'Un espacio operativo compartido de la Corporación para costos, compras, proveedores y asignaciones aprobadas del huerto y la cocina.'],
+    de: ['Obstgarten und Küche', 'Ein gemeinsamer Betriebsarbeitsbereich der Corporación für Kosten, Einkäufe, Lieferanten und genehmigte Zuordnungen von Obstgarten und Küche.'],
+  },
 } as const
 
 async function accessToken() {
