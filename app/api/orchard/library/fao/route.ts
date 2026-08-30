@@ -4,6 +4,50 @@ import { createClient } from "@/lib/supabase/server"
 const FAO_WCA_CSV = "https://stats.fao.org/caliper/download/WCA2020Crops/WCACROPS-core.csv"
 const SOURCE_PAGE = "https://www.fao.org/statistics/caliper/classifications/wca/en"
 
+const SEARCH_ALIASES: Record<string, string[]> = {
+  manzana: ["apple", "apples", "malus"],
+  manzanas: ["apple", "apples", "malus"],
+  pera: ["pear", "pears", "pyrus"],
+  peras: ["pear", "pears", "pyrus"],
+  tomate: ["tomato", "tomatoes", "solanum lycopersicum"],
+  tomates: ["tomato", "tomatoes", "solanum lycopersicum"],
+  papa: ["potato", "potatoes", "solanum tuberosum"],
+  papas: ["potato", "potatoes", "solanum tuberosum"],
+  patata: ["potato", "potatoes", "solanum tuberosum"],
+  cebolla: ["onion", "onions", "allium cepa"],
+  cebollas: ["onion", "onions", "allium cepa"],
+  zanahoria: ["carrot", "carrots", "daucus carota"],
+  zanahorias: ["carrot", "carrots", "daucus carota"],
+  lechuga: ["lettuce", "lettuces", "lactuca sativa"],
+  espinaca: ["spinach", "spinaches", "spinacia oleracea"],
+  albahaca: ["basil", "ocimum basilicum"],
+  perejil: ["parsley", "petroselinum crispum"],
+  rucula: ["arugula", "rocket", "eruca vesicaria"],
+  rabano: ["radish", "radishes", "raphanus sativus"],
+  betarraga: ["beet", "beetroot", "beta vulgaris"],
+  remolacha: ["beet", "beetroot", "beta vulgaris"],
+  pimenton: ["pepper", "peppers", "capsicum"],
+  frutilla: ["strawberry", "strawberries", "fragaria"],
+  fresa: ["strawberry", "strawberries", "fragaria"],
+  uva: ["grape", "grapes", "vitis vinifera"],
+  durazno: ["peach", "peaches", "prunus persica"],
+  melocoton: ["peach", "peaches", "prunus persica"],
+  limon: ["lemon", "lemons", "citrus limon"],
+  naranja: ["orange", "oranges", "citrus sinensis"],
+  palta: ["avocado", "avocados", "persea americana"],
+  aguacate: ["avocado", "avocados", "persea americana"],
+  maiz: ["maize", "corn", "zea mays"],
+  trigo: ["wheat", "triticum"],
+  arroz: ["rice", "oryza sativa"],
+  poroto: ["bean", "beans", "phaseolus"],
+  porotos: ["bean", "beans", "phaseolus"],
+  frejol: ["bean", "beans", "phaseolus"],
+  frijol: ["bean", "beans", "phaseolus"],
+  arveja: ["pea", "peas", "pisum sativum"],
+  zapallo: ["squash", "pumpkin", "cucurbita"],
+  pepino: ["cucumber", "cucumis sativus"],
+}
+
 function parseCsv(input: string) {
   const rows: string[][] = []
   let row: string[] = []
@@ -27,6 +71,12 @@ function parseCsv(input: string) {
 }
 
 function normalizeHeader(value: string) { return value.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "") }
+function normalizeSearch(value: string) { return value.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "") }
+function queryTerms(value: string) {
+  const normalized = normalizeSearch(value)
+  if (!normalized) return []
+  return Array.from(new Set([normalized, ...(SEARCH_ALIASES[normalized] ?? [])].map(normalizeSearch)))
+}
 function pickIndex(headers: string[], exact: string[], contains: string[]) {
   for (const candidate of exact) { const i = headers.indexOf(candidate); if (i >= 0) return i }
   for (const candidate of contains) { const i = headers.findIndex((header) => header.includes(candidate)); if (i >= 0) return i }
@@ -43,7 +93,8 @@ export async function GET(request: Request) {
   if (!authData.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
   const url = new URL(request.url)
-  const query = (url.searchParams.get("q") ?? "").trim().toLowerCase()
+  const rawQuery = url.searchParams.get("q") ?? ""
+  const searchTerms = queryTerms(rawQuery)
   const requestedLimit = Number(url.searchParams.get("limit") ?? 80)
   const limit = Number.isFinite(requestedLimit) ? Math.max(1, Math.min(150, requestedLimit)) : 80
 
@@ -77,13 +128,18 @@ export async function GET(request: Request) {
       return [{ externalId: (codeIndex >= 0 ? (row[codeIndex] ?? "").trim() : "") || `wca-${index + 1}`, name, scientificName, iccCode }]
     })
     const items = allItems
-      .filter((item) => !query || `${item.name} ${item.scientificName ?? ""} ${item.iccCode ?? ""} ${item.externalId}`.toLowerCase().includes(query))
+      .filter((item) => {
+        if (!searchTerms.length) return true
+        const haystack = normalizeSearch(`${item.name} ${item.scientificName ?? ""} ${item.iccCode ?? ""} ${item.externalId}`)
+        return searchTerms.some((term) => haystack.includes(term))
+      })
       .slice(0, limit)
 
     return NextResponse.json({
       source: { name: "FAO WCA 2020 Crop List", publisher: "Food and Agriculture Organization of the United Nations", sourcePage: SOURCE_PAGE, datasetUrl: FAO_WCA_CSV },
       totalRows: allItems.length,
       items,
+      search: { query: rawQuery, terms: searchTerms },
     })
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : "Could not load FAO crop list" }, { status: 502 })
