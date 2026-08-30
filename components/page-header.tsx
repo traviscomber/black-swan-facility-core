@@ -31,7 +31,7 @@ const ORCHARD_HERO_IMAGES = {
   operations: "https://images.unsplash.com/photo-1500382017468-9049fed747ef?auto=format&fit=crop&w=2200&q=92",
   performance: "https://images.unsplash.com/photo-1592982537447-6f2a6a0c7f8c?auto=format&fit=crop&w=2200&q=92",
   library: "https://images.unsplash.com/photo-1518977676601-b53f82aba655?auto=format&fit=crop&w=2200&q=92",
-  cropMap: "https://images.unsplash.com/photo-1500076656116-558758c991c1?auto=format&fit=crop&w=2200&q=92",
+  cropMap: "https://images.unsplash.com/photo-1523348837708-15d4a09cfac2?auto=format&fit=crop&w=2200&q=92",
   seeds: "https://images.unsplash.com/photo-1586201375761-83865001e31c?auto=format&fit=crop&w=2200&q=92",
 } as const
 
