@@ -37,7 +37,7 @@ const copy = {
 } as const
 
 const image = (id: string, width = 1800) => `https://images.unsplash.com/${id}?auto=format&fit=crop&w=${width}&q=92`
-const CARE_HERO = image("photo-1464226184884-fa280b87c399", 2200)
+const CARE_HERO = "https://images.unsplash.com/photo-1598512752271-33f913a5af13?auto=format&fit=crop&w=2200&q=92"
 const GENERIC_CROP_PHOTO = image("photo-1416879595882-3373a0480b5b")
 const CROP_PHOTOS: Array<{ match: string[]; src: string }> = [
   { match: ["tomato", "tomate"], src: image("photo-1592924357228-91a4daadcfea") },
@@ -57,7 +57,7 @@ const cropPhoto = (name: string) => {
   const key = name.trim().toLowerCase()
   return CROP_PHOTOS.find(({ match }) => match.some((term) => key.includes(term)))?.src ?? GENERIC_CROP_PHOTO
 }
-function localDateKey() { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}` }
+function localDateKey() { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}` }
 const titleize = (value: string) => value.replaceAll("_", " ").replace(/\b\w/g, (letter) => letter.toUpperCase())
 
 export default function OrchardCarePage() {
@@ -126,7 +126,7 @@ export default function OrchardCarePage() {
 
   return <AppLayout><OrchardNavigation /><main className="mx-auto w-full max-w-[1560px] space-y-8 px-4 pb-20 pt-4 sm:px-6 lg:px-8">
     <section className="relative min-h-[360px] overflow-hidden bg-neutral-950 text-white sm:min-h-[420px]">
-      <img src={CARE_HERO} alt="Hands tending a productive crop row" className="absolute inset-0 h-full w-full object-cover opacity-100 [filter:none]" />
+      <img src={CARE_HERO} alt="Hands tending crops during field care" className="absolute inset-0 h-full w-full object-cover opacity-100 [filter:none]" />
       <div className="absolute inset-0" style={{ background: "linear-gradient(90deg,rgba(5,8,7,.9) 0%,rgba(5,8,7,.62) 54%,rgba(5,8,7,.18) 100%),linear-gradient(0deg,rgba(5,8,7,.72),rgba(5,8,7,.05) 62%)" }} />
       <div className="relative flex min-h-[360px] max-w-3xl flex-col justify-end p-6 sm:min-h-[420px] sm:p-10"><p className="text-xs uppercase tracking-[.2em] text-emerald-200">Orchard · Operations</p><h1 className="mt-3 text-4xl font-medium tracking-[-.03em] sm:text-5xl">{text.title}</h1><p className="mt-4 max-w-2xl text-sm leading-6 text-white/75">{text.description}</p><div className="mt-6 flex flex-wrap gap-2"><Button onClick={() => void load()} disabled={loading} className="bg-white text-black hover:bg-white/90"><RefreshCw className={`mr-2 h-4 w-4 ${loading ? "animate-spin" : ""}`} />{text.refresh}</Button><Badge className="border-white/20 bg-black/30 px-3 py-2 text-white">{scopedLogs.length} {text.total.toLowerCase()}</Badge><Badge className="border-white/20 bg-black/30 px-3 py-2 text-white">{text.scope}: {scopeLabel}</Badge></div></div>
       <div className="absolute bottom-6 right-6 hidden grid-cols-2 gap-px bg-white/10 lg:grid"><HeroMetric label={text.total} value={scopedLogs.length} /><HeroMetric label={text.today} value={todayCount} /><HeroMetric label={text.active} value={activeCrops} /><HeroMetric label={text.withCare} value={lastByCrop.size} /></div>
