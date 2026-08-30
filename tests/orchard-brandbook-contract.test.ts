@@ -60,9 +60,12 @@ test("Orchard navigation preserves accessible names when mobile labels are visua
 })
 
 test("Orchard analytics and charts expose accessible names for their form controls", async () => {
-  for (const page of ["app/orchard/analytics/page.tsx", "app/orchard/charts/page.tsx"]) {
-    const source = await readFile(page, "utf8")
-    assert.match(source, /aria-label="Game Plan"/)
+  const analytics = await readFile("app/orchard/analytics/page.tsx", "utf8")
+  const charts = await readFile("app/orchard/charts/page.tsx", "utf8")
+
+  assert.match(analytics, /SelectTrigger aria-label=\{text\.context\}/)
+  assert.match(charts, /SelectTrigger aria-label="Game Plan"/)
+  for (const source of [analytics, charts]) {
     assert.match(source, /labelFieldControl/)
     assert.match(source, /"aria-label":label/)
   }
