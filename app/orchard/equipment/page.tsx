@@ -24,8 +24,20 @@ interface Equipment {
 type GamePlan = { id: string; name: string; season: string | null }
 
 const hero = "https://images.unsplash.com/photo-1530124566582-a618bc2615dc?auto=format&fit=crop&w=2200&q=92"
-const equipmentPhoto = "https://images.unsplash.com/photo-1504148455328-c376907d081c?auto=format&fit=crop&w=1800&q=92"
+const pruningPhoto = "https://images.unsplash.com/photo-1523301551780-cd17359a95d0?auto=format&fit=crop&w=1800&q=92"
+const irrigationPhoto = "https://images.unsplash.com/photo-1752775312083-1cefe2f93358?auto=format&fit=crop&w=1800&q=92"
+const tillerPhoto = "https://images.unsplash.com/photo-1768664355346-8c925e4c4e61?auto=format&fit=crop&w=1800&q=92"
+const wheelbarrowPhoto = "https://images.unsplash.com/photo-1719763462298-dfd3ae24febc?auto=format&fit=crop&w=1800&q=92"
 const workshopPhoto = "https://images.unsplash.com/photo-1581578731548-c64695cc6952?auto=format&fit=crop&w=1800&q=92"
+
+function equipmentPhoto(item: Equipment) {
+  const key = `${item.equipment_type} ${item.equipment_name}`.toLowerCase()
+  if (key.includes("irrigation") || key.includes("hose") || key.includes("drip")) return irrigationPhoto
+  if (key.includes("transport") || key.includes("wheelbarrow")) return wheelbarrowPhoto
+  if (key.includes("soil-preparation") || key.includes("tiller") || key.includes("cultivator")) return tillerPhoto
+  if (key.includes("maintenance") || key.includes("pruning") || key.includes("shear") || key.includes("hand-tools") || key.includes("fork")) return pruningPhoto
+  return workshopPhoto
+}
 
 function dateKey(value: string | null) { return value ? new Date(`${value}T12:00:00`) : null }
 function dueState(next: string | null) {
@@ -99,7 +111,7 @@ export default function OrchardEquipmentPage() {
     <section className="grid gap-6 xl:grid-cols-[1fr_380px]">
       <div className="space-y-6">
         <div><p className="text-xs uppercase tracking-[.18em] text-muted-foreground">01</p><h2 className="mt-2">Maintenance readiness board</h2><p className="mt-1 text-sm text-muted-foreground">Equipment is ordered by recorded maintenance state. No undocumented “due soon” window is applied.</p></div>
-        {ordered.length === 0 ? <div className="border border-dashed p-8 text-sm text-muted-foreground">{t("orchard.no_equipment")}</div> : <div className="grid gap-4 md:grid-cols-2">{ordered.map((item, index) => { const state = dueState(item.next_maintenance_date); const urgent = state === "overdue" || item.condition === "broken"; return <article key={item.id} className="overflow-hidden border bg-background"><div className="relative h-44 overflow-hidden"><img src={index % 2 ? workshopPhoto : equipmentPhoto} alt="Orchard equipment" className="h-full w-full object-cover opacity-100 [filter:none]" /><div className="absolute inset-0 bg-[linear-gradient(0deg,rgba(0,0,0,.78),rgba(0,0,0,.08)_70%)]" /><div className="absolute inset-x-4 bottom-4 text-white"><div className="flex flex-wrap gap-2"><Badge className="border-white/15 bg-black/35 text-white">{item.equipment_type}</Badge><Badge variant={urgent ? "destructive" : "outline"} className={urgent ? "" : "border-white/20 bg-black/25 text-white"}>{item.condition}</Badge>{state === "overdue" && <Badge variant="destructive">Maintenance overdue</Badge>}</div><h3 className="mt-2 text-xl text-white!">{item.equipment_name}</h3><p className="mt-1 text-xs text-white/70">{item.storage_location || "No storage location"}</p></div></div><div className="grid grid-cols-2 gap-px bg-border sm:grid-cols-4"><Datum label="Purchased" value={dateKey(item.purchase_date)?.toLocaleDateString() || "—"} /><Datum label="Last service" value={dateKey(item.last_maintenance_date)?.toLocaleDateString() || "Never"} /><Datum label="Next service" value={dateKey(item.next_maintenance_date)?.toLocaleDateString() || "Unscheduled"} /><Datum label="Status" value={state.replaceAll("_", " ")} /></div>{item.description && <p className="p-4 text-sm leading-6 text-muted-foreground">{item.description}</p>}</article> })}</div>}
+        {ordered.length === 0 ? <div className="border border-dashed p-8 text-sm text-muted-foreground">{t("orchard.no_equipment")}</div> : <div className="grid gap-4 md:grid-cols-2">{ordered.map((item) => { const state = dueState(item.next_maintenance_date); const urgent = state === "overdue" || item.condition === "broken"; return <article key={item.id} className="overflow-hidden border bg-background"><div className="relative h-44 overflow-hidden"><img src={equipmentPhoto(item)} alt={`${item.equipment_name} · ${item.equipment_type}`} className="h-full w-full object-cover opacity-100 [filter:none]" /><div className="absolute inset-0 bg-[linear-gradient(0deg,rgba(0,0,0,.78),rgba(0,0,0,.08)_70%)]" /><div className="absolute inset-x-4 bottom-4 text-white"><div className="flex flex-wrap gap-2"><Badge className="border-white/15 bg-black/35 text-white">{item.equipment_type}</Badge><Badge variant={urgent ? "destructive" : "outline"} className={urgent ? "" : "border-white/20 bg-black/25 text-white"}>{item.condition}</Badge>{state === "overdue" && <Badge variant="destructive">Maintenance overdue</Badge>}</div><h3 className="mt-2 text-xl text-white!">{item.equipment_name}</h3><p className="mt-1 text-xs text-white/70">{item.storage_location || "No storage location"}</p></div></div><div className="grid grid-cols-2 gap-px bg-border sm:grid-cols-4"><Datum label="Purchased" value={dateKey(item.purchase_date)?.toLocaleDateString() || "—"} /><Datum label="Last service" value={dateKey(item.last_maintenance_date)?.toLocaleDateString() || "Never"} /><Datum label="Next service" value={dateKey(item.next_maintenance_date)?.toLocaleDateString() || "Unscheduled"} /><Datum label="Status" value={state.replaceAll("_", " ")} /></div>{item.description && <p className="p-4 text-sm leading-6 text-muted-foreground">{item.description}</p>}</article> })}</div>}
       </div>
 
       <div className="space-y-6">
