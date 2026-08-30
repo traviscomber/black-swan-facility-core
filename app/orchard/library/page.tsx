@@ -27,30 +27,42 @@ const n = (value:string) => value === "" ? null : Number(value)
 
 const AGRONOMIC_LIBRARY_PHOTO = "https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=2200&q=92"
 const NAMED_CROP_PHOTOS: Record<string,string> = {
+  potato: "https://images.unsplash.com/photo-1741003188234-1d031351168c?auto=format&fit=crop&w=1400&q=92",
+  papa: "https://images.unsplash.com/photo-1741003188234-1d031351168c?auto=format&fit=crop&w=1400&q=92",
+  pea: "https://images.unsplash.com/photo-1751828374210-76f0be8c0078?auto=format&fit=crop&w=1400&q=92",
+  peas: "https://images.unsplash.com/photo-1751828374210-76f0be8c0078?auto=format&fit=crop&w=1400&q=92",
+  arveja: "https://images.unsplash.com/photo-1751828374210-76f0be8c0078?auto=format&fit=crop&w=1400&q=92",
+  lettuce: "https://images.unsplash.com/photo-1744726006750-92d75906551b?auto=format&fit=crop&w=1400&q=92",
+  lechuga: "https://images.unsplash.com/photo-1744726006750-92d75906551b?auto=format&fit=crop&w=1400&q=92",
+  beet: "https://images.unsplash.com/photo-1593105544559-ecb03bf76f82?auto=format&fit=crop&w=1400&q=92",
+  beetroot: "https://images.unsplash.com/photo-1593105544559-ecb03bf76f82?auto=format&fit=crop&w=1400&q=92",
+  betarraga: "https://images.unsplash.com/photo-1593105544559-ecb03bf76f82?auto=format&fit=crop&w=1400&q=92",
+  corn: "https://images.unsplash.com/photo-1649251037566-6881b4956615?auto=format&fit=crop&w=1400&q=92",
+  maize: "https://images.unsplash.com/photo-1649251037566-6881b4956615?auto=format&fit=crop&w=1400&q=92",
+  choclo: "https://images.unsplash.com/photo-1649251037566-6881b4956615?auto=format&fit=crop&w=1400&q=92",
+  bean: "https://images.unsplash.com/photo-1768408122856-6870d5e784ca?auto=format&fit=crop&w=1400&q=92",
+  beans: "https://images.unsplash.com/photo-1768408122856-6870d5e784ca?auto=format&fit=crop&w=1400&q=92",
+  "green bean": "https://images.unsplash.com/photo-1768408122856-6870d5e784ca?auto=format&fit=crop&w=1400&q=92",
+  poroto: "https://images.unsplash.com/photo-1768408122856-6870d5e784ca?auto=format&fit=crop&w=1400&q=92",
+  carrot: "https://images.unsplash.com/photo-1447175008436-054170c2e979?auto=format&fit=crop&w=1400&q=92",
+  zanahoria: "https://images.unsplash.com/photo-1447175008436-054170c2e979?auto=format&fit=crop&w=1400&q=92",
+  onion: "https://images.unsplash.com/photo-1770402457020-cd1e6e542dd5?auto=format&fit=crop&w=1400&q=92",
+  cebolla: "https://images.unsplash.com/photo-1770402457020-cd1e6e542dd5?auto=format&fit=crop&w=1400&q=92",
+  cabbage: "https://images.unsplash.com/photo-1769441071410-40528743a0ac?auto=format&fit=crop&w=1400&q=92",
+  repollo: "https://images.unsplash.com/photo-1769441071410-40528743a0ac?auto=format&fit=crop&w=1400&q=92",
   tomato: "https://images.unsplash.com/photo-1592924357228-91a4daadcfea?auto=format&fit=crop&w=1400&q=92",
   tomate: "https://images.unsplash.com/photo-1592924357228-91a4daadcfea?auto=format&fit=crop&w=1400&q=92",
-  lettuce: "https://images.unsplash.com/photo-1622206151226-18ca2c9ab4a1?auto=format&fit=crop&w=1400&q=92",
-  lechuga: "https://images.unsplash.com/photo-1622206151226-18ca2c9ab4a1?auto=format&fit=crop&w=1400&q=92",
   radish: "https://images.unsplash.com/photo-1589753014594-0676c69bbcbe?auto=format&fit=crop&w=1400&q=92",
   rabano: "https://images.unsplash.com/photo-1589753014594-0676c69bbcbe?auto=format&fit=crop&w=1400&q=92",
   rabanito: "https://images.unsplash.com/photo-1589753014594-0676c69bbcbe?auto=format&fit=crop&w=1400&q=92",
   arugula: "https://plus.unsplash.com/premium_photo-1776974164156-5fe46613bdaa?auto=format&fit=crop&w=1400&q=92",
   rucula: "https://plus.unsplash.com/premium_photo-1776974164156-5fe46613bdaa?auto=format&fit=crop&w=1400&q=92",
-  onion: "https://images.unsplash.com/photo-1741517480900-8bee5b4f48df?auto=format&fit=crop&w=1400&q=92",
-  cebolla: "https://images.unsplash.com/photo-1741517480900-8bee5b4f48df?auto=format&fit=crop&w=1400&q=92",
-  carrot: "https://images.unsplash.com/photo-1447175008436-054170c2e979?auto=format&fit=crop&w=1400&q=92",
-  zanahoria: "https://images.unsplash.com/photo-1447175008436-054170c2e979?auto=format&fit=crop&w=1400&q=92",
   basil: "https://images.unsplash.com/photo-1744044021853-ee40e35c9177?auto=format&fit=crop&w=1400&q=92",
   albahaca: "https://images.unsplash.com/photo-1744044021853-ee40e35c9177?auto=format&fit=crop&w=1400&q=92",
   parsley: "https://images.unsplash.com/photo-1720354390554-84df8f2a7199?auto=format&fit=crop&w=1400&q=92",
   perejil: "https://images.unsplash.com/photo-1720354390554-84df8f2a7199?auto=format&fit=crop&w=1400&q=92",
   spinach: "https://images.unsplash.com/photo-1576045057995-568f588f82fb?auto=format&fit=crop&w=1400&q=92",
   espinaca: "https://images.unsplash.com/photo-1576045057995-568f588f82fb?auto=format&fit=crop&w=1400&q=92",
-  potato: "https://images.unsplash.com/photo-1518977676601-b53f82aba655?auto=format&fit=crop&w=1400&q=92",
-  papa: "https://images.unsplash.com/photo-1518977676601-b53f82aba655?auto=format&fit=crop&w=1400&q=92",
-  beet: "https://images.unsplash.com/photo-1593105544559-ecb03bf76f82?auto=format&fit=crop&w=1400&q=92",
-  beetroot: "https://images.unsplash.com/photo-1593105544559-ecb03bf76f82?auto=format&fit=crop&w=1400&q=92",
-  betarraga: "https://images.unsplash.com/photo-1593105544559-ecb03bf76f82?auto=format&fit=crop&w=1400&q=92",
   "bell pepper": "https://cdn.mos.cms.futurecdn.net/drByGsZtfKirRfapJQ2B2C.jpg",
   pimenton: "https://cdn.mos.cms.futurecdn.net/drByGsZtfKirRfapJQ2B2C.jpg",
   zucchini: "https://upload.wikimedia.org/wikipedia/commons/d/d7/Zucchini_Plant.jpg",
@@ -91,10 +103,7 @@ function southChilePriority(name:string){
   return index===-1?SOUTH_CHILE_PRIORITY.length:index
 }
 function cropPhoto(name:string){
-  const key=normalizeCropName(name)
-  if(NAMED_CROP_PHOTOS[key])return NAMED_CROP_PHOTOS[key]
-  const alias=Object.keys(NAMED_CROP_PHOTOS).sort((a,b)=>b.length-a.length).find(crop=>key.startsWith(`${crop},`)||key.startsWith(`${crop} (`))
-  return alias?NAMED_CROP_PHOTOS[alias]:null
+  return NAMED_CROP_PHOTOS[normalizeCropName(name)] ?? null
 }
 
 function recoverCropPhoto(e:React.SyntheticEvent<HTMLImageElement>){e.currentTarget.style.display="none"}
