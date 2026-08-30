@@ -208,7 +208,7 @@ export default function OrchardLibraryPage(){
   }),[orderedCrops])
   const chileCropIds=useMemo(()=>new Set(chileCrops.map(c=>c.id)),[chileCrops])
   const restCrops=useMemo(()=>orderedCrops.filter(c=>!chileCropIds.has(c.id)).sort((a,b)=>a.crop_name.localeCompare(b.crop_name)),[orderedCrops,chileCropIds])
-  const catalogLetters=useMemo(()=>Array.from(new Set(restCrops.map(c=>cropInitial(c.crop_name)).filter(letter=>/^[A-Z]$/.test(letter)))).sort(),[restCrops])
+  const catalogLetters=useMemo(()=>Array.from(new Set(restCrops.map(c=>cropInitial(c.crop_name)).filter(letter=>/^[A-Z]$/.test(letter)))).sort((a,b)=>a==="W"?1:b==="W"?-1:a.localeCompare(b)),[restCrops])
   const visibleCrops=useMemo(()=>catalogIndex==="CL"?chileCrops:restCrops.filter(c=>cropInitial(c.crop_name)===catalogIndex),[catalogIndex,chileCrops,restCrops])
 
   async function addCrop(e:FormEvent){
