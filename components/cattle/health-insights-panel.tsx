@@ -1,163 +1,21 @@
 'use client'
 
+import { AlertTriangle, CheckCircle2, Lightbulb } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { AlertTriangle, TrendingDown, Lightbulb, CheckCircle2, Clock } from 'lucide-react'
+import { useLanguage } from '@/lib/hooks/use-language'
 
-export function HealthInsightsPanel() {
-  return (
-    <div className="space-y-4">
-      {/* Hallazgos Principales */}
-      <Card className="border-primary bg-card">
-        <CardHeader className="pb-3">
-          <div className="flex items-center gap-2">
-            <AlertTriangle className="h-5 w-5 text-primary" />
-            <CardTitle className="text-lg text-foreground">Hallazgos Principales</CardTitle>
-          </div>
-          <CardDescription>Análisis de 17 animales Angus - Valdivia, 23-01-2026</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="space-y-2 text-sm">
-            <p className="font-semibold text-foreground">Grupo 1: 8 Vacas</p>
-            <ul className="ml-4 space-y-1 text-muted-foreground list-disc text-xs">
-              <li>75% movilización grasa (BHB 0.43-0.67)</li>
-              <li>87.5% deficiencia proteica (76-122 g/L)</li>
-              <li>100% hipomagnesemia (0.48-0.75)</li>
-              <li>1 vaca con infección inespecífica</li>
-            </ul>
+const COPY={
+ en:{title:'Historical reference',description:'Snapshot documented for 17 Angus animals in Valdivia on 23 Jan 2026. This is a historical reference, not a live diagnosis.',scope:'Recorded snapshot',group1:'Group 1 · 8 cows',group2:'Group 2 · 9 heifers',items1:['75% had BHB values in the documented 0.43–0.67 range.','87.5% had total-protein values documented in the source range 76–122 g/L.','100% had magnesium values in the documented 0.48–0.75 range.','One animal had a nonspecific infection notation in the historical source.'],items2:['77.8% had BHB values in the documented 0.38–0.64 range.','88.9% had total-protein values documented in the source range 64–97 g/L.','100% had magnesium values in the documented 0.54–0.68 range.','One animal had a nonspecific infection notation in the historical source.'],interpretation:'Interpretation boundary',interpretationText:'The historical source included nutritional and metabolic interpretations. This interface does not reproduce them as diagnoses. A veterinarian must validate clinical meaning against the original laboratory ranges, animal condition and current records.',season:'Seasonal note',seasonText:'November–December is late spring to early summer in Valdivia, not austral winter. Any historical explanation that attributes NOV–DEC findings to winter conditions should be treated as unverified until the source report is reviewed.',next:'Operational use',nextText:'Use the live biometric records and current veterinary protocol for decisions. Historical percentages are context only and must not drive treatment automatically.',comparison:'Historical group comparison',parameter:'Parameter',cows:'Cows (8)',heifers:'Heifers (9)',bhb:'Average BHB',protein:'Average protein',mg:'Average Mg',infection:'Nonspecific infection notation'},
+ es:{title:'Referencia histórica',description:'Snapshot documentado para 17 animales Angus en Valdivia el 23 ene 2026. Es una referencia histórica, no un diagnóstico vigente.',scope:'Snapshot registrado',group1:'Grupo 1 · 8 vacas',group2:'Grupo 2 · 9 vaquillas',items1:['75% tuvo valores BHB dentro del rango documentado 0,43–0,67.','87,5% tuvo valores de proteína total dentro del rango documentado 76–122 g/L.','100% tuvo valores de magnesio dentro del rango documentado 0,48–0,75.','Un animal tenía una anotación de infección inespecífica en la fuente histórica.'],items2:['77,8% tuvo valores BHB dentro del rango documentado 0,38–0,64.','88,9% tuvo valores de proteína total dentro del rango documentado 64–97 g/L.','100% tuvo valores de magnesio dentro del rango documentado 0,54–0,68.','Un animal tenía una anotación de infección inespecífica en la fuente histórica.'],interpretation:'Límite de interpretación',interpretationText:'La fuente histórica incluía interpretaciones nutricionales y metabólicas. Esta interfaz no las reproduce como diagnósticos. Un veterinario debe validar el significado clínico contra rangos del laboratorio original, condición animal y registros actuales.',season:'Nota estacional',seasonText:'Noviembre–diciembre corresponde a fines de primavera e inicio de verano en Valdivia, no a invierno austral. Cualquier explicación histórica que atribuya hallazgos de NOV–DIC al invierno debe tratarse como no verificada hasta revisar el informe fuente.',next:'Uso operativo',nextText:'Para decisiones utiliza los registros biométricos vigentes y el protocolo veterinario actual. Los porcentajes históricos son sólo contexto y no deben activar tratamientos automáticamente.',comparison:'Comparación histórica por grupo',parameter:'Parámetro',cows:'Vacas (8)',heifers:'Vaquillas (9)',bhb:'BHB promedio',protein:'Proteína promedio',mg:'Mg promedio',infection:'Anotación de infección inespecífica'},
+ de:{title:'Historische Referenz',description:'Dokumentierter Snapshot für 17 Angus-Tiere in Valdivia am 23. Jan. 2026. Historische Referenz, keine aktuelle Diagnose.',scope:'Erfasster Snapshot',group1:'Gruppe 1 · 8 Kühe',group2:'Gruppe 2 · 9 Färsen',items1:['75 % hatten BHB-Werte im dokumentierten Bereich 0,43–0,67.','87,5 % hatten Gesamtproteinwerte im dokumentierten Bereich 76–122 g/L.','100 % hatten Magnesiumwerte im dokumentierten Bereich 0,48–0,75.','Bei einem Tier war in der historischen Quelle eine unspezifische Infektion vermerkt.'],items2:['77,8 % hatten BHB-Werte im dokumentierten Bereich 0,38–0,64.','88,9 % hatten Gesamtproteinwerte im dokumentierten Bereich 64–97 g/L.','100 % hatten Magnesiumwerte im dokumentierten Bereich 0,54–0,68.','Bei einem Tier war in der historischen Quelle eine unspezifische Infektion vermerkt.'],interpretation:'Interpretationsgrenze',interpretationText:'Die historische Quelle enthielt ernährungs- und stoffwechselbezogene Interpretationen. Diese Oberfläche gibt sie nicht als Diagnosen wieder. Die klinische Bedeutung muss tierärztlich anhand der ursprünglichen Laborbereiche, des Tierzustands und aktueller Datensätze validiert werden.',season:'Saisonaler Hinweis',seasonText:'November–Dezember ist in Valdivia spätes Frühjahr bis früher Sommer, nicht australischer Winter. Historische Erklärungen, die NOV–DEZ-Befunde Winterbedingungen zuschreiben, gelten bis zur Prüfung des Quellberichts als nicht verifiziert.',next:'Operative Nutzung',nextText:'Für Entscheidungen aktuelle biometrische Datensätze und das geltende tierärztliche Protokoll verwenden. Historische Prozentwerte sind nur Kontext und dürfen Behandlungen nicht automatisch auslösen.',comparison:'Historischer Gruppenvergleich',parameter:'Parameter',cows:'Kühe (8)',heifers:'Färsen (9)',bhb:'BHB-Durchschnitt',protein:'Protein-Durchschnitt',mg:'Mg-Durchschnitt',infection:'Vermerk unspezifische Infektion'},
+} as const
 
-            <p className="font-semibold text-foreground mt-3">Grupo 2: 9 Vaquillas</p>
-            <ul className="ml-4 space-y-1 text-muted-foreground list-disc text-xs">
-              <li>77.8% movilización grasa (BHB 0.38-0.64)</li>
-              <li>88.9% deficiencia proteica (64-97 g/L)</li>
-              <li>100% hipomagnesemia (0.54-0.68)</li>
-              <li>1 vaquilla con infección inespecífica</li>
-            </ul>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Causas Raíz */}
-      <Card className="border-destructive bg-card">
-        <CardHeader className="pb-3">
-          <div className="flex items-center gap-2">
-            <TrendingDown className="h-5 w-5 text-destructive" />
-            <CardTitle className="text-lg text-foreground">Causa Raíz</CardTitle>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-2 text-sm">
-            <p className="font-semibold text-foreground">Síndrome de Desnutrición Energético-Proteica Invernal</p>
-            <p className="text-muted-foreground ml-4 text-xs mt-2">
-              Durante NOV-DIC 2025 (invierno austral), los animales no recibieron suficiente energía y proteína, forzando sus cuerpos a quemar reservas de grasa. El magnesio bajo los expone a riesgo de tetania hipomagnésemica.
-            </p>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Acciones Inmediatas */}
-      <Card className="border-primary bg-card">
-        <CardHeader className="pb-3">
-          <div className="flex items-center gap-2">
-            <Clock className="h-5 w-5 text-primary" />
-            <CardTitle className="text-lg text-foreground">Acciones Inmediatas</CardTitle>
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="space-y-2">
-            <div className="p-3 bg-secondary rounded border border-border">
-              <p className="font-semibold text-foreground text-sm">1. Magnesio Suplementado</p>
-              <p className="text-muted-foreground text-xs mt-1">50-60g Mg/día en invierno (pastas, bloques, polvo)</p>
-            </div>
-            <div className="p-3 bg-secondary rounded border border-border">
-              <p className="font-semibold text-foreground text-sm">2. Proteína Degradable Ruminal</p>
-              <p className="text-muted-foreground text-xs mt-1">Habas, alfalfa henificada, leguminosas (30-40% PC)</p>
-            </div>
-            <div className="p-3 bg-secondary rounded border border-border">
-              <p className="font-semibold text-foreground text-sm">3. Suplementación Energética</p>
-              <p className="text-muted-foreground text-xs mt-1">Grano especialmente en últimas 8 semanas de gestación</p>
-            </div>
-            <div className="p-3 bg-secondary rounded border border-border">
-              <p className="font-semibold text-foreground text-sm">4. Monitoreo Clínico</p>
-              <p className="text-muted-foreground text-xs mt-1">Muestreos de sangre cada 4 semanas en otoño-invierno</p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Plan Preventivo 2026 */}
-      <Card className="border-primary bg-card">
-        <CardHeader className="pb-3">
-          <div className="flex items-center gap-2">
-            <CheckCircle2 className="h-5 w-5 text-primary" />
-            <CardTitle className="text-lg text-foreground">Plan Preventivo para Próximo Invierno (2026)</CardTitle>
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="space-y-3 text-xs">
-            <div className="pb-3 border-b border-border">
-              <p className="font-semibold text-foreground">Marzo-Abril: Preparación</p>
-              <p className="text-muted-foreground mt-1">Reservar 30% más forraje. Producir ensilaje de buena calidad.</p>
-            </div>
-            <div className="pb-3 border-b border-border">
-              <p className="font-semibold text-foreground">Mayo-Junio: Monitoreo</p>
-              <p className="text-muted-foreground mt-1">Análisis de 5-8 animales cada 4 semanas. Revisar condición corporal.</p>
-            </div>
-            <div className="pb-3 border-b border-border">
-              <p className="font-semibold text-foreground">Julio-Agosto: Crítico</p>
-              <p className="text-muted-foreground mt-1">Máxima suplementación proteica y energética. Monitoreo quincenal.</p>
-            </div>
-            <div>
-              <p className="font-semibold text-foreground">Septiembre-Octubre: Transición</p>
-              <p className="text-muted-foreground mt-1">Reducir suplementación según disponibilidad de pasto.</p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Resumen Comparativo */}
-      <Card className="border-primary bg-card">
-        <CardHeader className="pb-3">
-          <div className="flex items-center gap-2">
-            <Lightbulb className="h-5 w-5 text-primary" />
-            <CardTitle className="text-lg text-foreground">Comparación por Grupo</CardTitle>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="overflow-x-auto">
-            <table className="w-full text-xs">
-              <thead>
-                <tr className="border-b border-border">
-                  <th className="text-left p-2 font-semibold text-foreground">Parámetro</th>
-                  <th className="text-left p-2 font-semibold text-foreground">Vacas (8)</th>
-                  <th className="text-left p-2 font-semibold text-foreground">Vaquillas (9)</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr className="border-b border-border">
-                  <td className="p-2 font-semibold text-foreground">BHB Promedio</td>
-                  <td className="p-2 text-muted-foreground">0.56</td>
-                  <td className="p-2 text-muted-foreground">0.51</td>
-                </tr>
-                <tr className="border-b border-border">
-                  <td className="p-2 font-semibold text-foreground">Proteína Promedio</td>
-                  <td className="p-2 text-muted-foreground">84 g/L</td>
-                  <td className="p-2 text-muted-foreground">74 g/L</td>
-                </tr>
-                <tr className="border-b border-border">
-                  <td className="p-2 font-semibold text-foreground">Mg Promedio</td>
-                  <td className="p-2 text-muted-foreground">0.63</td>
-                  <td className="p-2 text-muted-foreground">0.59</td>
-                </tr>
-                <tr>
-                  <td className="p-2 font-semibold text-foreground">Infecciones</td>
-                  <td className="p-2 text-muted-foreground">1/8 (12.5%)</td>
-                  <td className="p-2 text-muted-foreground">1/9 (11.1%)</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
-  )
+export function HealthInsightsPanel(){
+ const{language}=useLanguage();const lang=(language in COPY?language:'en') as keyof typeof COPY;const c=COPY[lang]
+ return <div className="space-y-4"><Card><CardHeader className="pb-3"><div className="flex items-center gap-2"><Lightbulb className="h-5 w-5 text-primary"/><CardTitle className="text-lg">{c.title}</CardTitle></div><CardDescription>{c.description}</CardDescription></CardHeader><CardContent className="grid gap-4 md:grid-cols-2"><HistoricalGroup title={c.group1} items={c.items1}/><HistoricalGroup title={c.group2} items={c.items2}/></CardContent></Card>
+ <Card className="border-amber-300"><CardHeader className="pb-3"><div className="flex items-center gap-2"><AlertTriangle className="h-5 w-5"/><CardTitle className="text-lg">{c.interpretation}</CardTitle></div></CardHeader><CardContent className="space-y-3 text-sm text-muted-foreground"><p>{c.interpretationText}</p><div className="rounded-md border p-3"><p className="font-medium text-foreground">{c.season}</p><p className="mt-1">{c.seasonText}</p></div></CardContent></Card>
+ <Card><CardHeader className="pb-3"><div className="flex items-center gap-2"><CheckCircle2 className="h-5 w-5 text-primary"/><CardTitle className="text-lg">{c.next}</CardTitle></div></CardHeader><CardContent><p className="text-sm text-muted-foreground">{c.nextText}</p></CardContent></Card>
+ <Card><CardHeader><CardTitle className="text-lg">{c.comparison}</CardTitle></CardHeader><CardContent className="overflow-x-auto"><table className="w-full text-xs"><thead><tr className="border-b"><th className="p-2 text-left">{c.parameter}</th><th className="p-2 text-left">{c.cows}</th><th className="p-2 text-left">{c.heifers}</th></tr></thead><tbody><Row label={c.bhb} a="0.56" b="0.51"/><Row label={c.protein} a="84 g/L" b="74 g/L"/><Row label={c.mg} a="0.63" b="0.59"/><Row label={c.infection} a="1/8 (12.5%)" b="1/9 (11.1%)"/></tbody></table></CardContent></Card></div>
 }
+function HistoricalGroup({title,items}:{title:string;items:readonly string[]}){return <div className="rounded-md border p-4"><p className="font-semibold">{title}</p><ul className="mt-2 list-disc space-y-1 pl-5 text-xs text-muted-foreground">{items.map(item=><li key={item}>{item}</li>)}</ul></div>}
+function Row({label,a,b}:{label:string;a:string;b:string}){return <tr className="border-b last:border-0"><td className="p-2 font-medium">{label}</td><td className="p-2 text-muted-foreground">{a}</td><td className="p-2 text-muted-foreground">{b}</td></tr>}
