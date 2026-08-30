@@ -97,10 +97,9 @@ function hasBinaryLocaleMap(source, index) {
 }
 
 function ternaryHasGermanBranch(source, index) {
-  // Inspect the surrounding expression rather than only the regex match. Nested
-  // trilingual ternaries can be longer than the binary match window or contain
-  // template syntax that truncates the match before the explicit German branch.
-  const sample = source.slice(index, index + 900)
+  // Inspect both sides of the match. A valid nested ternary may test German
+  // before the Spanish/English branch (de ? de : es ? es : en) or after it.
+  const sample = source.slice(Math.max(0, index - 500), index + 900)
   return /\blanguage\s*===\s*["']de["']/.test(sample)
 }
 
