@@ -9,12 +9,16 @@ const ignored = [
 ]
 
 const rules = [
-  ['binary-es-locale', /\blanguage\s*===\s*["']es["']/g],
-  ['binary-en-locale', /\blanguage\s*===\s*["']en["']/g],
-  ['binary-locale-union', /(?:Record|Partial<Record)<\s*["'](?:en|es)["']\s*\|\s*["'](?:en|es)["']/g],
+  // Advisory only: a raw locale comparison is not by itself a two-locale collapse.
+  // It may be one branch of an explicit en/es/de implementation, so blocking is
+  // handled by the structural rules below plus the page/catalog coverage audit.
+  ['locale-es-comparison', /\blanguage\s*===\s*["']es["']/g],
+  ['locale-en-comparison', /\blanguage\s*===\s*["']en["']/g],
+  // Match only exact two-locale unions. Do not match the en|es prefix of en|es|de.
+  ['binary-locale-union', /(?:Record<\s*(?:["']en["']\s*\|\s*["']es["']|["']es["']\s*\|\s*["']en["'])\s*>|Partial<Record<\s*(?:["']en["']\s*\|\s*["']es["']|["']es["']\s*\|\s*["']en["'])\s*>>)/g],
   ['binary-lang-normalizer', /\blang(?:uage)?\s*=\s*language\s*===\s*["'](?:en|es)["']\s*\?\s*["'](?:en|es)["']\s*:\s*["'](?:en|es)["']/g],
-  ['binary-locale-normalizer', /\blocale\s*=\s*(?:lang|language)\s*===\s*["'](?:en|es)["']\s*\?[^\n;]+:[^\n;]+/g],
-  ['binary-locale-map', /(?:label|labels|copy|text|messages|translations|statuses|names)\s*[:=][\s\S]{0,120}\ben\s*:\s*["'`][\s\S]{0,260}\bes\s*:\s*["'`]/g],
+  // Only flag locale formatters that demonstrably collapse to the other binary locale.
+  ['binary-locale-normalizer', /\blocale\s*=\s*(?:lang|language)\s*===\s*["']es["']\s*\?\s*["']es-CL["']\s*:\s*["']en-US["']|\blocale\s*=\s*(?:lang|language)\s*===\s*["']en["']\s*\?\s*["']en-US["']\s*:\s*["']es-CL["']/g],
   ['legacy-deu-locale', /["']deu["']/g],
   ['english-fallback-in-de', /language\s*===\s*["']de["'][\s\S]{0,220}translations\.en/g],
 ]
@@ -46,10 +50,26 @@ function hasLocaleSignal(source) {
     || /\b(?:en|es|de)\s*:\s*\{/.test(source)
 }
 
+function explicitlySupportsGerman(source) {
+  return /["']de["']\s*:|\bde\s*:|===\s*["']de["']|\bdeTranslations\b/.test(source)
+    || /Record<\s*["']en["']\s*\|\s*["']es["']\s*\|\s*["']de["']/.test(source)
+    || /Record<\s*["']de["']\s*\|\s*["']es["']\s*\|\s*["']en["']/.test(source)
+}
+
 function visibleLiteralCount(source) {
   const jsxText = countMatches(source, />\s*([A-Za-zÁÉÍÓÚÜÑáéíóúüñÄÖÜäöüß][^<>{}\n]{1,160})\s*</g)
   const visibleProps = countMatches(source, /\b(?:title|description|label|placeholder|aria-label|aria-description|alt|helperText|emptyText|message)\s*=\s*["'][A-Za-zÁÉÍÓÚÜÑáéíóúüñÄÖÜäöüß][^"']{1,180}["']/g)
   return jsxText + visibleProps
+}
+
+function hasBinaryLocaleMap(source, index) {
+  const start = Math.max(0, index - 80)
+  const end = Math.min(source.length, index + 900)
+  const window = source.slice(start, end)
+  const hasEn = /\ben\s*:\s*(?:\{|["'`])/.test(window)
+  const hasEs = /\bes\s*:\s*(?:\{|["'`])/.test(window)
+  const hasDe = /\bde\s*:\s*(?:\{|["'`])/.test(window)
+  return hasEn && hasEs && !hasDe
 }
 
 const allFiles = roots.flatMap(walk)
@@ -58,7 +78,7 @@ for (const file of allFiles) {
   if (ignored.includes(file)) continue
   const source = fs.readFileSync(file, 'utf8')
   for (const [rule, pattern] of rules) {
-    if (allowedBinaryFiles.has(file) && (rule === 'binary-es-locale' || rule === 'binary-en-locale')) continue
+    if (allowedBinaryFiles.has(file) && (rule === 'locale-es-comparison' || rule === 'locale-en-comparison')) continue
     pattern.lastIndex = 0
     let match
     while ((match = pattern.exec(source))) {
@@ -67,6 +87,14 @@ for (const file of allFiles) {
       if (match.index === pattern.lastIndex) pattern.lastIndex += 1
     }
   }
+
+  const localeMapAnchor = /(?:label|labels|copy|text|messages|translations|statuses|names)\s*[:=]/g
+  let mapMatch
+  while ((mapMatch = localeMapAnchor.exec(source))) {
+    if (!hasBinaryLocaleMap(source, mapMatch.index)) continue
+    const line = source.slice(0, mapMatch.index).split('\n').length
+    findings.push({ rule: 'binary-locale-map', file, line, sample: source.slice(mapMatch.index, mapMatch.index + 180).replace(/\s+/g, ' ') })
+  }
 }
 
 const pageFiles = walk('app').filter((file) => /\/(?:page|layout)\.(?:tsx|jsx|ts|js)$/.test(file))
@@ -74,7 +102,7 @@ const pageCoverage = pageFiles.map((file) => {
   const source = fs.readFileSync(file, 'utf8')
   const literals = visibleLiteralCount(source)
   const localeSignal = hasLocaleSignal(source)
-  const explicitlyMentionsDe = /["']de["']\s*:|\bde\s*:|===\s*["']de["']|\bdeTranslations\b/.test(source)
+  const explicitlyMentionsDe = explicitlySupportsGerman(source)
   return { file, literals, localeSignal, explicitlyMentionsDe }
 })
 
@@ -106,8 +134,6 @@ console.log(`\n[binary-translation-catalogs] ${binaryCatalogs.length}`)
 for (const file of binaryCatalogs) console.log(`- ${file}`)
 
 const blockingRules = new Set([
-  'binary-es-locale',
-  'binary-en-locale',
   'binary-locale-union',
   'binary-lang-normalizer',
   'binary-locale-normalizer',
