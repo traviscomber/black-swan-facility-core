@@ -41,6 +41,8 @@ export function scopeOrchardAiSnapshot(
     return Boolean(cycleId && cycleIds.has(cycleId))
   })
   const successionIds = new Set(successions.map((row) => id(row.id)).filter((value): value is string => Boolean(value)))
+  const cropLibraryIds = new Set(successions.map((row) => id(row.crop_library_id)).filter((value): value is string => Boolean(value)))
+  const cultivarLibraryIds = new Set(successions.map((row) => id(row.cultivar_library_id)).filter((value): value is string => Boolean(value)))
   const crops = rows(snapshot.crops).filter((row) => {
     const successionId = id(row.crop_succession_id)
     return Boolean(successionId && successionIds.has(successionId))
@@ -50,6 +52,15 @@ export function scopeOrchardAiSnapshot(
   scoped.game_plans = gamePlans
   scoped.crop_cycles = cropCycles
   scoped.successions = successions
+  if (snapshot.canonical_crop_library) scoped.canonical_crop_library = rows(snapshot.canonical_crop_library).filter((row) => {
+    const libraryId = id(row.id)
+    return Boolean(libraryId && cropLibraryIds.has(libraryId))
+  })
+  if (snapshot.canonical_cultivars) scoped.canonical_cultivars = rows(snapshot.canonical_cultivars).filter((row) => {
+    const cultivarId = id(row.id)
+    const libraryId = id(row.crop_library_id)
+    return Boolean((cultivarId && cultivarLibraryIds.has(cultivarId)) || (libraryId && cropLibraryIds.has(libraryId)))
+  })
   if (snapshot.lifecycle) scoped.lifecycle = rows(snapshot.lifecycle).filter((row) => {
     const successionId = id(row.crop_succession_id)
     const cycleId = id(row.crop_cycle_id)
