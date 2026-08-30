@@ -24,6 +24,13 @@ interface DayAvailability {
   conflictsWith?: string
 }
 
+const DATE_LOCALES = { en: enUS, es, de } as const
+const PICKER_COPY = {
+  en: { previousMonth: "Previous month", nextMonth: "Next month", loading: "Loading" },
+  es: { previousMonth: "Mes anterior", nextMonth: "Mes siguiente", loading: "Cargando" },
+  de: { previousMonth: "Vorheriger Monat", nextMonth: "Nächster Monat", loading: "Wird geladen" },
+} as const
+
 export function AvailabilityCalendarPicker({
   bedId,
   onDateRangeSelect,
@@ -33,7 +40,8 @@ export function AvailabilityCalendarPicker({
 }: AvailabilityCalendarPickerProps) {
   const { language } = useLanguage()
   const copy = addReservationCopy[language]
-  const dateLocale = language === "de" ? de : language === "es" ? es : enUS
+  const pickerCopy = PICKER_COPY[language]
+  const dateLocale = DATE_LOCALES[language]
   const weekDays = [copy.sun, copy.mon, copy.tue, copy.wed, copy.thu, copy.fri, copy.sat]
   const [currentMonth, setCurrentMonth] = useState(new Date())
   const [checkIn, setCheckIn] = useState<Date | null>(currentCheckIn ? parseISO(currentCheckIn) : null)
@@ -111,9 +119,9 @@ export function AvailabilityCalendarPicker({
   return (
     <div className="w-full max-w-md space-y-4 rounded-lg border bg-white p-4 dark:bg-slate-950">
       <div className="flex items-center justify-between">
-        <button type="button" onClick={() => setCurrentMonth(addDays(currentMonth, -32))} className="rounded p-1 hover:bg-slate-100 dark:hover:bg-slate-800" aria-label={language === "de" ? "Vorheriger Monat" : language === "es" ? "Mes anterior" : "Previous month"}><ChevronLeft className="h-4 w-4" /></button>
+        <button type="button" onClick={() => setCurrentMonth(addDays(currentMonth, -32))} className="rounded p-1 hover:bg-slate-100 dark:hover:bg-slate-800" aria-label={pickerCopy.previousMonth}><ChevronLeft className="h-4 w-4" /></button>
         <h3 className="text-sm font-semibold">{format(currentMonth, "MMMM yyyy", { locale: dateLocale })}</h3>
-        <button type="button" onClick={() => setCurrentMonth(addDays(currentMonth, 32))} className="rounded p-1 hover:bg-slate-100 dark:hover:bg-slate-800" aria-label={language === "de" ? "Nächster Monat" : language === "es" ? "Mes siguiente" : "Next month"}><ChevronRight className="h-4 w-4" /></button>
+        <button type="button" onClick={() => setCurrentMonth(addDays(currentMonth, 32))} className="rounded p-1 hover:bg-slate-100 dark:hover:bg-slate-800" aria-label={pickerCopy.nextMonth}><ChevronRight className="h-4 w-4" /></button>
       </div>
 
       <div className="grid grid-cols-3 gap-2 text-xs">
@@ -165,7 +173,7 @@ export function AvailabilityCalendarPicker({
       {(checkIn || checkOut) && (
         <Button variant="outline" size="sm" onClick={() => { setCheckIn(null); setCheckOut(null) }} className="w-full">{copy.clearSelection}</Button>
       )}
-      {loading && <span className="sr-only">Loading</span>}
+      {loading && <span className="sr-only">{pickerCopy.loading}</span>}
     </div>
   )
 }
