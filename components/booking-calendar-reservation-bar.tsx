@@ -11,7 +11,7 @@ import {
   type BookingCalendarBed,
   type BookingCalendarReservation,
 } from "@/components/booking-calendar-model"
-import { useLanguage } from "@/lib/hooks/use-language"
+import { useLanguage, type Language } from "@/lib/hooks/use-language"
 import { bookingSourceDescription } from "@/lib/translations/booking-calendar-interactions"
 
 type Geometry = { left: number; width: number }
@@ -33,6 +33,12 @@ type BookingCalendarReservationBarProps = {
   onPointerCancel: (event: React.PointerEvent<HTMLButtonElement>) => void
   onKeyDown: (event: React.KeyboardEvent<HTMLButtonElement>, reservation: BookingCalendarReservation, bed: BookingCalendarBed) => void
   onClick: (reservation: BookingCalendarReservation, bed: BookingCalendarBed) => void
+}
+
+const ARIA_LABEL: Record<Language, (guest: string, checkIn: string, checkOut: string, source: string) => string> = {
+  en: (guest, checkIn, checkOut, source) => `${guest}. ${checkIn} to ${checkOut}. Source ${source}.`,
+  es: (guest, checkIn, checkOut, source) => `${guest}. ${checkIn} a ${checkOut}. Origen ${source}.`,
+  de: (guest, checkIn, checkOut, source) => `${guest}. ${checkIn} bis ${checkOut}. Quelle ${source}.`,
 }
 
 export function BookingCalendarReservationBar({
@@ -65,11 +71,7 @@ export function BookingCalendarReservationBar({
   const policy = bookingSourcePolicy(reservation.source)
   const disabled = pending || policy === "external-read-only" || !futureEditable(reservation)
   const sourceLabel = bookingSourceDescription(reservation.source, policy, language)
-  const ariaLabel = language === "de"
-    ? `${reservation.guest_name}. ${reservation.check_in} bis ${reservation.check_out}. Quelle ${sourceLabel}.`
-    : language === "en"
-      ? `${reservation.guest_name}. ${reservation.check_in} to ${reservation.check_out}. Source ${sourceLabel}.`
-      : `${reservation.guest_name}. ${reservation.check_in} a ${reservation.check_out}. Origen ${sourceLabel}.`
+  const ariaLabel = ARIA_LABEL[language](reservation.guest_name, reservation.check_in, reservation.check_out, sourceLabel)
 
   return (
     <button
