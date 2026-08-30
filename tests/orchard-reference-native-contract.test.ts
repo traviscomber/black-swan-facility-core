@@ -85,6 +85,11 @@ test("Orchard AI consumes scoped intelligence notes and preserves factual proven
   assert.match(assistantScope, /cropIds\.has\(cropId\)/)
 })
 
+test("Orchard AI excludes legacy spatial placeholders from operational grounding", () => {
+  assert.match(assistantRoute, /from\("orchard_plots"\).*\.neq\("status", "abandoned"\)/)
+  assert.match(assistantRoute, /from\("orchard_beds"\).*\.neq\("status", "out_of_service"\)/)
+})
+
 test("Orchard AI keeps Game Plan boundaries around historical intelligence", () => {
   assert.match(assistantRoute, /The snapshot has already been filtered to this Game Plan/)
   assert.match(assistantRoute, /Never infer, mention, compare, or use records from another Game Plan/)
