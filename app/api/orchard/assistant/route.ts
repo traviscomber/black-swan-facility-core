@@ -3,10 +3,11 @@ import { getOpenAIApiKey, ORCHARD_AI_MODEL, orchardSkillsPrompt } from "@/lib/or
 import { orchardAiScopeLabel, resolveOrchardAiGamePlanScope, scopeOrchardAiSnapshot } from "@/lib/orchard-ai/game-plan-scope"
 
 const MODEL = ORCHARD_AI_MODEL
-const PROMPT_VERSION = "orchard-assistant-v5-game-plan-scope"
+const PROMPT_VERSION = "orchard-assistant-v6-locale-aware"
 const MAX_QUESTION_LENGTH = 2000
 const MAX_HISTORY_TURNS = 8
 
+type Locale = "en" | "es" | "de"
 type HistoryTurn = { question: string; answer: string }
 type VisualContext = {
   overdueTasks: Array<{ title: string; dueDate: string | null; priority: string | null; location: string | null }>
@@ -16,9 +17,14 @@ type VisualContext = {
   careGaps: Array<{ crop: string; variety: string | null }>
 }
 
-function asRows(value: unknown): Record<string, unknown>[] {
-  return Array.isArray(value) ? value.filter((row): row is Record<string, unknown> => Boolean(row) && typeof row === "object") : []
-}
+const localeCopy = {
+  en: { unauthorized: "Unauthorized", questionRequired: "Question is required", notConfigured: "Orchard AI is not configured: OPENAI_API_KEY is missing", inaccessiblePlan: "Requested Game Plan is not accessible", answerError: "Orchard AI could not answer right now", emptyAnswer: "Orchard AI returned an empty answer", unknownError: "Unknown error", untitledTask: "Untitled task", crop: "Crop", healthObservation: "Health observation", inference: "Inference" },
+  es: { unauthorized: "No autorizado", questionRequired: "La pregunta es obligatoria", notConfigured: "Orchard AI no está configurado: falta OPENAI_API_KEY", inaccessiblePlan: "El Game Plan solicitado no está disponible", answerError: "Orchard AI no pudo responder en este momento", emptyAnswer: "Orchard AI devolvió una respuesta vacía", unknownError: "Error desconocido", untitledTask: "Tarea sin título", crop: "Cultivo", healthObservation: "Observación sanitaria", inference: "Inferencia" },
+  de: { unauthorized: "Nicht autorisiert", questionRequired: "Eine Frage ist erforderlich", notConfigured: "Orchard AI ist nicht konfiguriert: OPENAI_API_KEY fehlt", inaccessiblePlan: "Der angeforderte Game Plan ist nicht zugänglich", answerError: "Orchard AI konnte die Anfrage gerade nicht beantworten", emptyAnswer: "Orchard AI hat eine leere Antwort zurückgegeben", unknownError: "Unbekannter Fehler", untitledTask: "Unbenannte Aufgabe", crop: "Kultur", healthObservation: "Gesundheitsbeobachtung", inference: "Schlussfolgerung" },
+} as const
+
+function normalizeLocale(value: unknown): Locale { return value === "es" || value === "de" ? value : "en" }
+function asRows(value: unknown): Record<string, unknown>[] { return Array.isArray(value) ? value.filter((row): row is Record<string, unknown> => Boolean(row) && typeof row === "object") : [] }
 function text(value: unknown) { return typeof value === "string" ? value : null }
 function numberValue(value: unknown) { return typeof value === "number" && Number.isFinite(value) ? value : 0 }
 function localDateKey() { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}` }
@@ -26,60 +32,35 @@ function cleanHistory(value: unknown): HistoryTurn[] {
   if (!Array.isArray(value)) return []
   return value.slice(-MAX_HISTORY_TURNS).map((item) => {
     const row = item && typeof item === "object" ? item as Record<string, unknown> : {}
-    return {
-      question: typeof row.question === "string" ? row.question.trim().slice(0, MAX_QUESTION_LENGTH) : "",
-      answer: typeof row.answer === "string" ? row.answer.trim().slice(0, 6000) : "",
-    }
+    return { question: typeof row.question === "string" ? row.question.trim().slice(0, MAX_QUESTION_LENGTH) : "", answer: typeof row.answer === "string" ? row.answer.trim().slice(0, 6000) : "" }
   }).filter((item) => item.question && item.answer)
 }
-function gamePlanFromReferer(request: Request) {
-  const referer = request.headers.get("referer")
-  if (!referer) return null
-  try { return new URL(referer).searchParams.get("game_plan") } catch { return null }
-}
+function gamePlanFromReferer(request: Request) { const referer = request.headers.get("referer"); if (!referer) return null; try { return new URL(referer).searchParams.get("game_plan") } catch { return null } }
 
-function buildVisualContext(snapshot: Record<string, unknown[]>): VisualContext {
-  const tasks = asRows(snapshot.tasks)
-  const crops = asRows(snapshot.crops)
-  const nursery = asRows(snapshot.nursery_batches)
-  const health = asRows(snapshot.health_logs)
-  const care = asRows(snapshot.care_logs)
-  const today = localDateKey()
-  const completed = new Set(["done", "completed", "cancelled", "canceled"])
-  const caredCropIds = new Set(care.map((row) => text(row.crop_id)).filter(Boolean) as string[])
-
-  const overdueTasks = tasks.filter((row) => {
-    const due = text(row.due_date); const status = (text(row.status) ?? "").toLowerCase()
-    return Boolean(due && due < today && !completed.has(status))
-  }).sort((a, b) => (text(a.due_date) ?? "").localeCompare(text(b.due_date) ?? "")).slice(0, 4)
-    .map((row) => ({ title: text(row.title) ?? "Untitled task", dueDate: text(row.due_date), priority: text(row.priority), location: text(row.location_name) }))
-
-  const harvests = crops.filter((row) => Boolean(text(row.expected_harvest_date)))
-    .sort((a, b) => (text(a.expected_harvest_date) ?? "").localeCompare(text(b.expected_harvest_date) ?? "")).slice(0, 4)
-    .map((row) => ({ crop: text(row.crop_name) ?? "Crop", variety: text(row.variety), date: text(row.expected_harvest_date), status: text(row.status) }))
-
-  const nurseryRows = nursery.filter((row) => numberValue(row.ready_count) > numberValue(row.transplanted_count) || (text(row.status) ?? "").toLowerCase().includes("ready"))
-    .slice(0, 4).map((row) => ({ status: text(row.status), ready: numberValue(row.ready_count), transplanted: numberValue(row.transplanted_count), expectedReady: text(row.expected_ready_date), location: text(row.location) }))
-
-  const healthRows = health.slice(0, 4).map((row) => ({ cropId: text(row.crop_id), issue: text(row.pest_type) ?? text(row.disease_name) ?? "Health observation", severity: text(row.severity_level), date: text(row.observation_date) }))
-  const careGaps = crops.filter((row) => { const cropId = text(row.id); return Boolean(cropId && !caredCropIds.has(cropId)) }).slice(0, 6)
-    .map((row) => ({ crop: text(row.crop_name) ?? "Crop", variety: text(row.variety) }))
+function buildVisualContext(snapshot: Record<string, unknown[]>, locale: Locale): VisualContext {
+  const labels = localeCopy[locale]
+  const tasks = asRows(snapshot.tasks); const crops = asRows(snapshot.crops); const nursery = asRows(snapshot.nursery_batches); const health = asRows(snapshot.health_logs); const care = asRows(snapshot.care_logs)
+  const today = localDateKey(); const completed = new Set(["done", "completed", "cancelled", "canceled"]); const caredCropIds = new Set(care.map((row) => text(row.crop_id)).filter(Boolean) as string[])
+  const overdueTasks = tasks.filter((row) => { const due = text(row.due_date); const status = (text(row.status) ?? "").toLowerCase(); return Boolean(due && due < today && !completed.has(status)) }).sort((a, b) => (text(a.due_date) ?? "").localeCompare(text(b.due_date) ?? "")).slice(0, 4).map((row) => ({ title: text(row.title) ?? labels.untitledTask, dueDate: text(row.due_date), priority: text(row.priority), location: text(row.location_name) }))
+  const harvests = crops.filter((row) => Boolean(text(row.expected_harvest_date))).sort((a, b) => (text(a.expected_harvest_date) ?? "").localeCompare(text(b.expected_harvest_date) ?? "")).slice(0, 4).map((row) => ({ crop: text(row.crop_name) ?? labels.crop, variety: text(row.variety), date: text(row.expected_harvest_date), status: text(row.status) }))
+  const nurseryRows = nursery.filter((row) => numberValue(row.ready_count) > numberValue(row.transplanted_count) || (text(row.status) ?? "").toLowerCase().includes("ready")).slice(0, 4).map((row) => ({ status: text(row.status), ready: numberValue(row.ready_count), transplanted: numberValue(row.transplanted_count), expectedReady: text(row.expected_ready_date), location: text(row.location) }))
+  const healthRows = health.slice(0, 4).map((row) => ({ cropId: text(row.crop_id), issue: text(row.pest_type) ?? text(row.disease_name) ?? labels.healthObservation, severity: text(row.severity_level), date: text(row.observation_date) }))
+  const careGaps = crops.filter((row) => { const cropId = text(row.id); return Boolean(cropId && !caredCropIds.has(cropId)) }).slice(0, 6).map((row) => ({ crop: text(row.crop_name) ?? labels.crop, variety: text(row.variety) }))
   return { overdueTasks, harvests, nursery: nurseryRows, health: healthRows, careGaps }
 }
 
 export async function POST(request: Request) {
   const supabase = await createClient()
+  const body = await request.json().catch(() => null) as { question?: unknown; history?: unknown; game_plan_id?: unknown; locale?: unknown } | null
+  const locale = normalizeLocale(body?.locale); const labels = localeCopy[locale]
   const { data: authData } = await supabase.auth.getUser()
-  if (!authData.user) return Response.json({ error: "Unauthorized" }, { status: 401 })
-
-  const body = await request.json().catch(() => null) as { question?: unknown; history?: unknown; game_plan_id?: unknown } | null
+  if (!authData.user) return Response.json({ error: labels.unauthorized }, { status: 401 })
   const question = typeof body?.question === "string" ? body.question.trim().slice(0, MAX_QUESTION_LENGTH) : ""
   const history = cleanHistory(body?.history)
   const requestedGamePlanId = typeof body?.game_plan_id === "string" && body.game_plan_id.trim() ? body.game_plan_id.trim() : gamePlanFromReferer(request)
-  if (!question) return Response.json({ error: "Question is required" }, { status: 400 })
-
+  if (!question) return Response.json({ error: labels.questionRequired }, { status: 400 })
   const apiKey = getOpenAIApiKey()
-  if (!apiKey) return Response.json({ error: "Orchard AI is not configured: OPENAI_API_KEY is missing" }, { status: 503 })
+  if (!apiKey) return Response.json({ error: labels.notConfigured }, { status: 503 })
 
   const sources = await Promise.all([
     supabase.from("orchard_game_plans").select("id,name,season,start_date,end_date,status,objective").limit(50),
@@ -106,16 +87,18 @@ export async function POST(request: Request) {
   const unscopedSnapshot: Record<string, unknown[]> = {}
   for (let index = 0; index < sources.length; index += 1) {
     const result = sources[index]
-    if (result.error) return Response.json({ error: `Could not read ${sourceNames[index]}` }, { status: 500 })
+    if (result.error) return Response.json({ error: `${labels.answerError}: ${sourceNames[index]}` }, { status: 500 })
     unscopedSnapshot[sourceNames[index]] = result.data ?? []
   }
 
   const scope = resolveOrchardAiGamePlanScope(unscopedSnapshot, requestedGamePlanId)
-  if (requestedGamePlanId && !scope) return Response.json({ error: "Requested Game Plan is not accessible" }, { status: 400 })
+  if (requestedGamePlanId && !scope) return Response.json({ error: labels.inaccessiblePlan }, { status: 400 })
   const snapshot = scopeOrchardAiSnapshot(unscopedSnapshot, scope)
   const sourceCounts = Object.fromEntries(sourceNames.map((name) => [name, snapshot[name]?.length ?? 0]))
-  const visualContext = buildVisualContext(snapshot)
+  const visualContext = buildVisualContext(snapshot, locale)
   const scopeLabel = orchardAiScopeLabel(scope)
+  const languageInstruction = locale === "es" ? "Respond entirely in Spanish (es)." : locale === "de" ? "Respond entirely in German (de)." : "Respond entirely in English (en)."
+  const inferenceLabel = labels.inference
 
   const instructions = `You are the Orchard operations assistant inside Blackswan Facility Core.
 Use ONLY the authorized ORCHARD_SNAPSHOT supplied in the current user input for factual claims. The CONVERSATION_HISTORY is context for follow-up references, not an independent factual source.
@@ -129,24 +112,24 @@ You may calculate deterministic totals, compare dates, identify missing links, s
 When evidence is insufficient, say exactly what is missing.
 Do not claim that an action was executed. Action proposals are handled by the separate approval workflow.
 Do not recommend pesticides, chemicals, dosages, or other safety-sensitive treatment instructions; instead surface recorded health context and recommend review by the responsible operator/agronomist.
-Use concise operational English unless the user's question is Spanish, then answer in Spanish.
+${languageInstruction} The selected UI locale is ${locale}; do not switch languages based on the wording of the question or previous turns.
 Resolve pronouns and follow-up questions from CONVERSATION_HISTORY when possible.
 Prefer a clear answer first, then short bullets when useful. Avoid long preambles.
 For factual claims, append one or more dataset labels in square brackets, such as [harvests], [crops], [tasks], [sales_commitments], [lifecycle].
-Distinguish recorded facts from inferences. Label inferred conclusions as "Inference" or "Inferencia".`
+Distinguish recorded facts from inferences. Prefix inferred conclusions with "${inferenceLabel}".`
 
   const conversation = history.length ? history.map((turn, index) => `TURN ${index + 1}\nUSER: ${turn.question}\nASSISTANT: ${turn.answer}`).join("\n\n") : "No prior turns."
   const openaiResponse = await fetch("https://api.openai.com/v1/responses", {
     method: "POST",
     headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ model: MODEL, instructions, input: `CONVERSATION_HISTORY:\n${conversation}\n\nQUESTION:\n${question}\n\nACTIVE_GAME_PLAN_SCOPE:\n${scopeLabel}\n\nORCHARD_SNAPSHOT:\n${JSON.stringify(snapshot)}`, reasoning: { effort: "medium" }, max_output_tokens: 2200, stream: true }),
+    body: JSON.stringify({ model: MODEL, instructions, input: `CONVERSATION_HISTORY:\n${conversation}\n\nQUESTION:\n${question}\n\nSELECTED_LOCALE:\n${locale}\n\nACTIVE_GAME_PLAN_SCOPE:\n${scopeLabel}\n\nORCHARD_SNAPSHOT:\n${JSON.stringify(snapshot)}`, reasoning: { effort: "medium" }, max_output_tokens: 2200, stream: true }),
   })
 
   if (!openaiResponse.ok || !openaiResponse.body) {
     const payload = await openaiResponse.json().catch(() => ({}))
     const errorMessage = typeof (payload as { error?: { message?: unknown } }).error?.message === "string" ? (payload as { error: { message: string } }).error.message : `OpenAI request failed (${openaiResponse.status})`
     await supabase.from("orchard_ai_queries").insert({ question, model: MODEL, prompt_version: PROMPT_VERSION, source_counts: sourceCounts, status: "failed", error_message: errorMessage })
-    return Response.json({ error: "Orchard AI could not answer right now" }, { status: 502 })
+    return Response.json({ error: labels.answerError }, { status: 502 })
   }
 
   const encoder = new TextEncoder(); const decoder = new TextDecoder(); const upstream = openaiResponse.body.getReader(); let answer = ""; let buffer = ""
@@ -168,13 +151,13 @@ Distinguish recorded facts from inferences. Label inferred conclusions as "Infer
             } catch (parseError) { if (parseError instanceof SyntaxError) continue; throw parseError }
           }
         }
-        if (!answer.trim()) throw new Error("Orchard AI returned an empty answer")
+        if (!answer.trim()) throw new Error(labels.emptyAnswer)
         await supabase.from("orchard_ai_queries").insert({ question, answer, model: MODEL, prompt_version: PROMPT_VERSION, source_counts: sourceCounts, status: "completed" })
         send({ type: "done" }); controller.close()
       } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : "Unknown error"
+        const errorMessage = error instanceof Error ? error.message : labels.unknownError
         await supabase.from("orchard_ai_queries").insert({ question, model: MODEL, prompt_version: PROMPT_VERSION, source_counts: sourceCounts, status: "failed", error_message: errorMessage })
-        send({ type: "error", error: "Orchard AI could not answer right now" }); controller.close()
+        send({ type: "error", error: labels.answerError }); controller.close()
       } finally { upstream.releaseLock() }
     }, cancel() { void upstream.cancel() },
   })
