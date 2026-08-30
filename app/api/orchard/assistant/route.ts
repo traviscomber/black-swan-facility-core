@@ -1,9 +1,11 @@
 import { createClient } from "@/lib/supabase/server"
 import { getOpenAIApiKey, ORCHARD_AI_MODEL, orchardSkillsPrompt } from "@/lib/orchard-ai/config"
+import { buildOrchardDemandIntelligence } from "@/lib/orchard-ai/demand-intelligence"
+import type { DemandCrop, DemandCropCycle, DemandCropTarget, DemandHarvest, DemandReservation, DemandScenario } from "@/lib/orchard-ai/demand-intelligence"
 import { orchardAiScopeLabel, resolveOrchardAiGamePlanScope, scopeOrchardAiSnapshot } from "@/lib/orchard-ai/game-plan-scope"
 
 const MODEL = ORCHARD_AI_MODEL
-const PROMPT_VERSION = "orchard-assistant-v6-locale-aware"
+const PROMPT_VERSION = "orchard-assistant-v7-demand-intelligence"
 const MAX_QUESTION_LENGTH = 2000
 const MAX_HISTORY_TURNS = 8
 
@@ -19,7 +21,7 @@ type VisualContext = {
 
 const localeCopy = {
   en: { unauthorized: "Unauthorized", questionRequired: "Question is required", notConfigured: "Orchard AI is not configured: OPENAI_API_KEY is missing", inaccessiblePlan: "Requested Game Plan is not accessible", answerError: "Orchard AI could not answer right now", emptyAnswer: "Orchard AI returned an empty answer", unknownError: "Unknown error", untitledTask: "Untitled task", crop: "Crop", healthObservation: "Health observation", inference: "Inference" },
-  es: { unauthorized: "No autorizado", questionRequired: "La pregunta es obligatoria", notConfigured: "Orchard AI no está configurado: falta OPENAI_API_KEY", inaccessiblePlan: "El Game Plan solicitado no está disponible", answerError: "Orchard AI no pudo responder en este momento", emptyAnswer: "Orchard AI devolvió una respuesta vacía", unknownError: "Error desconocido", untitledTask: "Tarea sin título", crop: "Cultivo", healthObservation: "Observación sanitaria", inference: "Inferencia" },
+  es: { unauthorized: "No autorizado", questionRequired: "La pregunta es obligatoria", notConfigured: "Orchard AI no está configurado: falta OPENAI_API_KEY", inaccessiblePlan: "El Game Plan solicitado no está disponible", answerError: "Orchard AI no pudo responder en este momento", emptyAnswer: "La IA de Orchard devolvió una respuesta vacía", unknownError: "Error desconocido", untitledTask: "Tarea sin título", crop: "Cultivo", healthObservation: "Observación sanitaria", inference: "Inferencia" },
   de: { unauthorized: "Nicht autorisiert", questionRequired: "Eine Frage ist erforderlich", notConfigured: "Orchard AI ist nicht konfiguriert: OPENAI_API_KEY fehlt", inaccessiblePlan: "Der angeforderte Game Plan ist nicht zugänglich", answerError: "Orchard AI konnte die Anfrage gerade nicht beantworten", emptyAnswer: "Orchard AI hat eine leere Antwort zurückgegeben", unknownError: "Unbekannter Fehler", untitledTask: "Unbenannte Aufgabe", crop: "Kultur", healthObservation: "Gesundheitsbeobachtung", inference: "Schlussfolgerung" },
 } as const
 
@@ -81,9 +83,12 @@ export async function POST(request: Request) {
     supabase.from("orchard_sales_channels").select("id,name,channel_type,status,default_price_per_unit,default_unit,currency").limit(100),
     supabase.from("orchard_notes").select("crop_id,crop_succession_id,plot_id,bed_id,note_type,title,body,observed_at").order("observed_at", { ascending: false }).limit(150),
     supabase.from("tasks").select("id,title,priority,status,due_date,location_name,task_category,estimated_minutes,source_type,source_id,source_label").eq("operational_area", "huerto_vinedo").limit(250),
+    supabase.from("orchard_demand_scenarios").select("id,name,start_date,end_date,status,resident_people,staff_people,manual_people,include_bookings,self_sufficiency_target_pct,waste_pct,notes").limit(50),
+    supabase.from("orchard_demand_crop_targets").select("id,scenario_id,crop_name,consumption_kg_per_person_week,target_share_pct,notes").limit(250),
+    supabase.from("reservations").select("check_in,check_out,num_guests,status").limit(500),
   ])
 
-  const sourceNames = ["game_plans","crop_cycles","successions","lifecycle","plots","beds","bed_allocations","seed_lots","nursery_batches","crops","care_logs","health_logs","harvests","revenue_targets","sales_commitments","sales_channels","notes","tasks"]
+  const sourceNames = ["game_plans","crop_cycles","successions","lifecycle","plots","beds","bed_allocations","seed_lots","nursery_batches","crops","care_logs","health_logs","harvests","revenue_targets","sales_commitments","sales_channels","notes","tasks","demand_scenarios","demand_crop_targets","reservations"]
   const unscopedSnapshot: Record<string, unknown[]> = {}
   for (let index = 0; index < sources.length; index += 1) {
     const result = sources[index]
@@ -94,7 +99,19 @@ export async function POST(request: Request) {
   const scope = resolveOrchardAiGamePlanScope(unscopedSnapshot, requestedGamePlanId)
   if (requestedGamePlanId && !scope) return Response.json({ error: labels.inaccessiblePlan }, { status: 400 })
   const snapshot = scopeOrchardAiSnapshot(unscopedSnapshot, scope)
-  const sourceCounts = Object.fromEntries(sourceNames.map((name) => [name, snapshot[name]?.length ?? 0]))
+  const demandIntelligence = buildOrchardDemandIntelligence(
+    snapshot.demand_scenarios as DemandScenario[],
+    snapshot.demand_crop_targets as DemandCropTarget[],
+    snapshot.reservations as DemandReservation[],
+    snapshot.crop_cycles as DemandCropCycle[],
+    snapshot.crops as DemandCrop[],
+    snapshot.harvests as DemandHarvest[],
+  )
+  snapshot.foodDemand = demandIntelligence.foodDemand
+  snapshot.occupancyForecast = demandIntelligence.occupancyForecast
+  snapshot.selfSufficiency = demandIntelligence.selfSufficiency
+  snapshot.importGaps = demandIntelligence.importGaps
+  const sourceCounts = Object.fromEntries(Object.entries(snapshot).map(([name, rows]) => [name, rows.length]))
   const visualContext = buildVisualContext(snapshot, locale)
   const scopeLabel = orchardAiScopeLabel(scope)
   const languageInstruction = locale === "es" ? "Respond entirely in Spanish (es)." : locale === "de" ? "Respond entirely in German (de)." : "Respond entirely in English (en)."
@@ -103,11 +120,13 @@ export async function POST(request: Request) {
   const instructions = `You are the Orchard operations assistant inside Blackswan Facility Core.
 Use ONLY the authorized ORCHARD_SNAPSHOT supplied in the current user input for factual claims. The CONVERSATION_HISTORY is context for follow-up references, not an independent factual source.
 ACTIVE_GAME_PLAN_SCOPE: ${scopeLabel}.
-${scope ? "The snapshot has already been filtered to this Game Plan. Never infer, mention, compare, or use records from another Game Plan unless the user explicitly leaves this scope and starts a new request without a Game Plan scope." : "No Game Plan filter is active; the snapshot contains all authorized Orchard records."}
+${scope ? "The snapshot has already been filtered to this Game Plan. Never infer, mention, compare, or use records from another Game Plan unless the user explicitly leaves this scope and starts a new request without a Game Plan scope. Demand scenarios and reservations are shared demand inputs, while planned/forecast/harvested supply inside foodDemand/importGaps is computed only from this Game Plan." : "No Game Plan filter is active; the snapshot contains all authorized Orchard records."}
 Never invent rows, weather, agronomy facts, prices, yields, tasks, dates, or actions that are not present.
 
 Configured read skill:\n${orchardSkillsPrompt("read")}
 
+The deterministic planning signals foodDemand, occupancyForecast, selfSufficiency and importGaps are authoritative derived views built from the same calculation used by the Demand planner UI. Use them for questions about people to feed, demand in kg, planned kg, forecast kg, harvested kg, coverage, self-sufficiency, imports and demand windows. Do not recalculate these metrics differently.
+When asked what to plant now to reduce imports in a future month, first identify importGaps whose scenario window covers that month, rank the relevant crop gaps, then use crop_cycles, successions, lifecycle, crops, beds, seed_lots and nursery_batches to determine what is already planned and what evidence exists for timing. If exact agronomic lead time or maturity evidence is absent, state that missing evidence instead of inventing a sowing date.
 You may calculate deterministic totals, compare dates, identify missing links, summarize risks, connect plan-to-execution-to-harvest-to-commercial outcomes, and explain operational context.
 When evidence is insufficient, say exactly what is missing.
 Do not claim that an action was executed. Action proposals are handled by the separate approval workflow.
@@ -115,7 +134,7 @@ Do not recommend pesticides, chemicals, dosages, or other safety-sensitive treat
 ${languageInstruction} The selected UI locale is ${locale}; do not switch languages based on the wording of the question or previous turns.
 Resolve pronouns and follow-up questions from CONVERSATION_HISTORY when possible.
 Prefer a clear answer first, then short bullets when useful. Avoid long preambles.
-For factual claims, append one or more dataset labels in square brackets, such as [harvests], [crops], [tasks], [sales_commitments], [lifecycle].
+For factual claims, append one or more dataset labels in square brackets, including [foodDemand], [occupancyForecast], [selfSufficiency] or [importGaps] when those signals support the claim.
 Distinguish recorded facts from inferences. Prefix inferred conclusions with "${inferenceLabel}".`
 
   const conversation = history.length ? history.map((turn, index) => `TURN ${index + 1}\nUSER: ${turn.question}\nASSISTANT: ${turn.answer}`).join("\n\n") : "No prior turns."

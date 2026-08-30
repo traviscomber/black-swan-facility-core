@@ -1,10 +1,12 @@
 import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { getOpenAIApiKey, ORCHARD_AI_MODEL, orchardSkillsPrompt } from "@/lib/orchard-ai/config"
+import { buildOrchardDemandIntelligence } from "@/lib/orchard-ai/demand-intelligence"
+import type { DemandCrop, DemandCropCycle, DemandCropTarget, DemandHarvest, DemandReservation, DemandScenario } from "@/lib/orchard-ai/demand-intelligence"
 import { orchardAiScopeLabel, resolveOrchardAiGamePlanScope, scopeOrchardAiSnapshot } from "@/lib/orchard-ai/game-plan-scope"
 
 const MODEL = ORCHARD_AI_MODEL
-const PROMPT_VERSION = "orchard-actions-v6-game-plan-scope"
+const PROMPT_VERSION = "orchard-actions-v7-demand-intelligence"
 const MAX_INTENT_LENGTH = 2000
 const MAX_HISTORY_TURNS = 8
 const MAX_HISTORY_TEXT = 4000
@@ -205,27 +207,30 @@ export async function POST(request: Request) {
   const apiKey = getOpenAIApiKey()
   if (!apiKey) return NextResponse.json({ error: "Orchard AI is not configured: OPENAI_API_KEY is missing" }, { status: 503 })
 
-  const [plansResult, cyclesResult, successionsResult, plotsResult, bedsResult, allocationsResult, tasksResult, lifecycleResult, cropsResult, channelsResult, careResult, healthResult, harvestResult, commitmentsResult] = await Promise.all([
+  const [plansResult, cyclesResult, successionsResult, plotsResult, bedsResult, allocationsResult, tasksResult, lifecycleResult, cropsResult, channelsResult, careResult, healthResult, harvestResult, commitmentsResult, demandScenariosResult, demandTargetsResult, reservationsResult] = await Promise.all([
     supabase.from("orchard_game_plans").select("id,name,season,start_date,end_date,status,objective").limit(50),
-    supabase.from("orchard_crop_cycles").select("id,game_plan_id,crop_name,variety,cycle_type,planned_start_date,target_harvest_date,status").limit(150),
+    supabase.from("orchard_crop_cycles").select("id,game_plan_id,crop_name,variety,cycle_type,planned_start_date,target_harvest_date,status,target_quantity,target_unit").limit(150),
     supabase.from("orchard_crop_successions").select("id,crop_cycle_id,sequence_no,planned_sow_date,planned_transplant_date,planned_first_harvest_date,planned_last_harvest_date,planned_plants,planned_area_sqm,status").neq("status", "cancelled").limit(300),
     supabase.from("orchard_plots").select("id,name,location_id,status,size_sqm").limit(100),
     supabase.from("orchard_beds").select("id,plot_id,name,code,status,area_sqm,length_m,width_m").eq("status", "active").limit(250),
     supabase.from("orchard_bed_allocations").select("id,bed_id,crop_succession_id,planned_start_date,planned_end_date,allocated_area_sqm,planned_plants").limit(500),
     supabase.from("tasks").select("id,title,priority,status,due_date,location_id,estimated_minutes,source_type,source_id").eq("operational_area", "huerto_vinedo").limit(150),
     supabase.from("orchard_succession_lifecycle").select("crop_succession_id,effective_status,planned_sow_date,planned_transplant_date,planned_first_harvest_date").limit(300),
-    supabase.from("orchard_crops").select("id,plot_id,crop_name,variety,status,crop_succession_id,expected_harvest_date,yield_unit").limit(300),
+    supabase.from("orchard_crops").select("id,plot_id,crop_name,variety,status,crop_succession_id,expected_harvest_date,estimated_yield,yield_unit").limit(300),
     supabase.from("orchard_sales_channels").select("id,name,status,default_price_per_unit,default_unit,currency").eq("status", "active").limit(100),
     supabase.from("orchard_care_logs").select("id,crop_id,activity_date,activity_type,hours_spent").order("activity_date", { ascending: false }).limit(120),
     supabase.from("orchard_pest_logs").select("id,crop_id,observation_date,pest_type,disease_name,severity_level,affected_percentage").order("observation_date", { ascending: false }).limit(120),
     supabase.from("orchard_harvest_records").select("id,crop_id,crop_succession_id,harvest_date,quantity_harvested,harvest_unit,sales_channel_id").order("harvest_date", { ascending: false }).limit(120),
     supabase.from("orchard_sales_commitments").select("id,sales_channel_id,crop_succession_id,crop_name,variety,delivery_start,delivery_end,quantity,unit,status").order("delivery_start").limit(120),
+    supabase.from("orchard_demand_scenarios").select("id,name,start_date,end_date,status,resident_people,staff_people,manual_people,include_bookings,self_sufficiency_target_pct,waste_pct,notes").limit(50),
+    supabase.from("orchard_demand_crop_targets").select("id,scenario_id,crop_name,consumption_kg_per_person_week,target_share_pct,notes").limit(250),
+    supabase.from("reservations").select("check_in,check_out,num_guests,status").limit(500),
   ])
-  const readError = plansResult.error ?? cyclesResult.error ?? successionsResult.error ?? plotsResult.error ?? bedsResult.error ?? allocationsResult.error ?? tasksResult.error ?? lifecycleResult.error ?? cropsResult.error ?? channelsResult.error ?? careResult.error ?? healthResult.error ?? harvestResult.error ?? commitmentsResult.error
+  const readError = plansResult.error ?? cyclesResult.error ?? successionsResult.error ?? plotsResult.error ?? bedsResult.error ?? allocationsResult.error ?? tasksResult.error ?? lifecycleResult.error ?? cropsResult.error ?? channelsResult.error ?? careResult.error ?? healthResult.error ?? harvestResult.error ?? commitmentsResult.error ?? demandScenariosResult.error ?? demandTargetsResult.error ?? reservationsResult.error
   if (readError) return NextResponse.json({ error: "Could not read authorized Orchard context" }, { status: 500 })
 
   const unscopedSnapshot: Record<string, unknown[]> = {
-    game_plans: plansResult.data ?? [], crop_cycles: cyclesResult.data ?? [], successions: successionsResult.data ?? [], plots: plotsResult.data ?? [], beds: bedsResult.data ?? [], allocations: allocationsResult.data ?? [], tasks: tasksResult.data ?? [], lifecycle: lifecycleResult.data ?? [], crops: cropsResult.data ?? [], sales_channels: channelsResult.data ?? [], care_logs: careResult.data ?? [], health_logs: healthResult.data ?? [], harvests: harvestResult.data ?? [], sales_commitments: commitmentsResult.data ?? [],
+    game_plans: plansResult.data ?? [], crop_cycles: cyclesResult.data ?? [], successions: successionsResult.data ?? [], plots: plotsResult.data ?? [], beds: bedsResult.data ?? [], allocations: allocationsResult.data ?? [], tasks: tasksResult.data ?? [], lifecycle: lifecycleResult.data ?? [], crops: cropsResult.data ?? [], sales_channels: channelsResult.data ?? [], care_logs: careResult.data ?? [], health_logs: healthResult.data ?? [], harvests: harvestResult.data ?? [], sales_commitments: commitmentsResult.data ?? [], demand_scenarios: demandScenariosResult.data ?? [], demand_crop_targets: demandTargetsResult.data ?? [], reservations: reservationsResult.data ?? [],
   }
   const scope = resolveOrchardAiGamePlanScope(unscopedSnapshot, requestedGamePlanId)
   if (requestedGamePlanId && !scope) return NextResponse.json({ error: "Requested Game Plan is not accessible" }, { status: 400 })
@@ -234,6 +239,18 @@ export async function POST(request: Request) {
   snapshot.plots = unscopedSnapshot.plots
   snapshot.beds = unscopedSnapshot.beds
   snapshot.sales_channels = unscopedSnapshot.sales_channels
+  const demandIntelligence = buildOrchardDemandIntelligence(
+    snapshot.demand_scenarios as DemandScenario[],
+    snapshot.demand_crop_targets as DemandCropTarget[],
+    snapshot.reservations as DemandReservation[],
+    snapshot.crop_cycles as DemandCropCycle[],
+    snapshot.crops as DemandCrop[],
+    snapshot.harvests as DemandHarvest[],
+  )
+  snapshot.foodDemand = demandIntelligence.foodDemand
+  snapshot.occupancyForecast = demandIntelligence.occupancyForecast
+  snapshot.selfSufficiency = demandIntelligence.selfSufficiency
+  snapshot.importGaps = demandIntelligence.importGaps
   const sourceCounts = Object.fromEntries(Object.entries(snapshot).map(([key, rows]) => [key, rows.length]))
 
   const scopedPlans = snapshot.game_plans as Array<{ id: string }>
@@ -266,15 +283,20 @@ export async function POST(request: Request) {
   }
 
   const scopeLabel = orchardAiScopeLabel(scope)
+  const currentDate = new Date().toISOString().slice(0, 10)
   const instructions = `You propose ONE safe Orchard action for human approval inside Blackswan Facility Core.
 Use only ORCHARD_CONTEXT for factual claims and exact IDs. CONVERSATION_HISTORY is only for resolving references and intent. Never claim execution.
+CURRENT_DATE: ${currentDate}.
 ACTIVE_GAME_PLAN_SCOPE: ${scopeLabel}.
-${scope ? "All plan-owned entities in ORCHARD_CONTEXT are restricted to this Game Plan. Never select a cycle, succession, crop, harvest, care log, health observation or commitment from another Game Plan. Shared beds, plots and sales channels may be used as operational resources." : "No Game Plan filter is active; all authorized Orchard records may be considered."}
+${scope ? "All plan-owned entities in ORCHARD_CONTEXT are restricted to this Game Plan. Never select a cycle, succession, crop, harvest, care log, health observation or commitment from another Game Plan. Shared beds, plots, sales channels, demand scenarios and reservations may be used as operational resources; demand supply metrics are calculated using only this Game Plan." : "No Game Plan filter is active; all authorized Orchard records may be considered."}
 
 Configured proposal skills:\n${orchardSkillsPrompt("proposal")}
 
+The deterministic planning signals foodDemand, occupancyForecast, selfSufficiency and importGaps are authoritative derived views from the Demand planner. Never recalculate them differently.
+For a demand-driven create_crop_cycle, use an exact crop and importGapKg from importGaps as evidence. target_quantity may equal the relevant remaining importGapKg and target_unit may be kg when that is the user's explicit goal. The proposed game_plan_id must be the active accessible Game Plan. If the user explicitly says to plant/start now, planned_start_date may be CURRENT_DATE. Never invent variety, area, maturity, sow/transplant timing or a target harvest date; use null for optional unknown fields and choose none when a required date cannot be grounded in the user's request or current context.
+If the user asks to reduce imports in a named future month, prefer a gap whose demand scenario window covers that month. Explain the scenario, gap kg and coverage in the rationale. Do not claim a crop can mature by that month unless lifecycle/succession evidence in ORCHARD_CONTEXT supports it.
 Allowed actions: create_task, create_game_plan, create_crop_cycle, create_succession, allocate_bed, log_care, record_health_observation, record_harvest, create_sales_commitment, or none.
-Choose none for edit/delete/destructive actions, treatment/pesticide/chemical/dosage instructions, treatment writes, or when exact current IDs/dates/quantities are missing.
+Choose none for edit/delete/destructive actions, treatment/pesticide/chemical/dosage instructions, treatment writes, or when exact current IDs/dates/quantities required by the chosen action are missing.
 Health is observation-only: never populate treatment fields because this action does not support them.
 Care must record a user-described completed or planned operational activity; do not invent weather, temperature, humidity, hours, or observations.
 Harvest requires an exact crop_id, date, positive quantity, and unit. Do not infer quantities. A sales channel is optional and must be exact when used.
