@@ -96,7 +96,11 @@ function hasBinaryLocaleMap(source, index) {
   return hasEn && hasEs && !hasDe
 }
 
-function ternaryHasGermanBranch(sample) {
+function ternaryHasGermanBranch(source, index) {
+  // Inspect the surrounding expression rather than only the regex match. Nested
+  // trilingual ternaries can be longer than the binary match window or contain
+  // template syntax that truncates the match before the explicit German branch.
+  const sample = source.slice(index, index + 900)
   return /\blanguage\s*===\s*["']de["']/.test(sample)
 }
 
@@ -112,7 +116,7 @@ for (const file of allFiles) {
     pattern.lastIndex = 0
     let match
     while ((match = pattern.exec(source))) {
-      if (isBinaryTernary && ternaryHasGermanBranch(match[0])) continue
+      if (isBinaryTernary && ternaryHasGermanBranch(source, match.index)) continue
       const line = source.slice(0, match.index).split('\n').length
       findings.push({ rule, file, line, sample: match[0].replace(/\s+/g, ' ').slice(0, 180) })
       if (match.index === pattern.lastIndex) pattern.lastIndex += 1
