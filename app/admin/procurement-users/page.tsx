@@ -86,11 +86,12 @@ async function provisionUsers(formData: FormData) {
       })
       if (error) throw error
     }
-    redirect(resultPath(locale, "success"))
   } catch (error) {
     console.error("[procurement-users] provisioning failed", error)
     redirect(resultPath(locale, "error", "failed"))
   }
+
+  redirect(resultPath(locale, "success"))
 }
 
 export default async function ProcurementUsersPage({ searchParams }: PageProps) {
