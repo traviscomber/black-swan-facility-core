@@ -6,6 +6,8 @@ const assetObject = readFileSync(new URL("../app/inventory/[id]/page.tsx", impor
 const purchaseIndex = readFileSync(new URL("../app/procurement/requests/page.tsx", import.meta.url), "utf8")
 const purchaseObject = readFileSync(new URL("../app/procurement/requests/[id]/page.tsx", import.meta.url), "utf8")
 const purchaseObjectView = readFileSync(new URL("../components/procurement-request-object-view.tsx", import.meta.url), "utf8")
+const issueObject = readFileSync(new URL("../app/issues/[id]/page.tsx", import.meta.url), "utf8")
+const issueObjectView = readFileSync(new URL("../components/issue-object-view.tsx", import.meta.url), "utf8")
 
 test("asset object connects canonical maintenance, issues, custody and movement context", () => {
   assert.match(assetObject, /Objeto · Activo/)
@@ -48,4 +50,20 @@ test("purchase object follows request through sourcing, order, receiving and inv
   assert.doesNotMatch(purchaseObject, /\.insert\(/)
   assert.doesNotMatch(purchaseObject, /\.update\(/)
   assert.doesNotMatch(purchaseObject, /\.delete\(/)
+})
+
+test("issue object follows only observed canonical relationships", () => {
+  assert.match(issueObjectView, /Objeto · Incidencia/)
+  assert.match(issueObject, /from\('issues'\)/)
+  assert.match(issueObject, /issue_task_assignments/)
+  assert.match(issueObject, /from\('maintenance_tasks'\)/)
+  assert.match(issueObject, /from\('assets'\)/)
+  assert.match(issueObject, /from\('reservations'\)/)
+  assert.match(issueObject, /issue\.related_item_type === 'reservation'/)
+  assert.match(issueObjectView, /No se agregan vínculos inferidos/)
+  assert.match(issueObjectView, /href={`\/inventory\/\$\{asset\.id\}`}/)
+  assert.match(issueObjectView, /href={`\/bookings\/reservations\/\$\{reservation\.id\}`}/)
+  assert.doesNotMatch(issueObject, /\.insert\(/)
+  assert.doesNotMatch(issueObject, /\.update\(/)
+  assert.doesNotMatch(issueObject, /\.delete\(/)
 })
