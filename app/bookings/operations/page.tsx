@@ -2,7 +2,8 @@
 
 import type React from "react"
 import { useCallback, useEffect, useMemo, useState } from "react"
-import { addDays, format, startOfDay } from "date-fns"
+import { addDays, format, parseISO, startOfDay } from "date-fns"
+import { de, enUS, es } from "date-fns/locale"
 import {
   AlertTriangle,
   BedDouble,
@@ -37,10 +38,15 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
+import { useLanguage } from "@/lib/hooks/use-language"
 import { createClient } from "@/lib/supabase/client"
+import { translateBookingOperationsValue } from "@/lib/translations/booking-operations"
 
 const LABEL_WIDTH = 330
 const ZOOM_OPTIONS = [7, 14, 21, 30] as const
+const DATE_LOCALES = { en: enUS, es, de } as const
+const INTL_LOCALES = { en: "en-US", es: "es-CL", de: "de-DE" } as const
+const DAY_ABBR = { en: "d", es: "d", de: "T" } as const
 
 type Location = { id: string; name: string }
 type Room = {
@@ -233,16 +239,8 @@ function iso(date: Date) {
   return format(date, "yyyy-MM-dd")
 }
 
-function formatClp(value: number) {
-  return new Intl.NumberFormat("es-CL", {
-    style: "currency",
-    currency: "CLP",
-    maximumFractionDigits: 0,
-  }).format(value)
-}
-
 function normalizeName(value: string | null | undefined) {
-  return (value ?? "").trim().toLocaleLowerCase("es-CL")
+  return (value ?? "").trim().toLowerCase()
 }
 
 function roomReady(status: string | null | undefined) {
@@ -251,6 +249,25 @@ function roomReady(status: string | null | undefined) {
 
 export default function BookingOperationsTimelinePage() {
   const supabase = useMemo(() => createClient(), [])
+  const { language } = useLanguage()
+  const tr = useCallback((value: string) => translateBookingOperationsValue(value, language), [language])
+  const dateLocale = DATE_LOCALES[language]
+  const intlLocale = INTL_LOCALES[language]
+  const numberFormatter = useMemo(() => new Intl.NumberFormat(intlLocale), [intlLocale])
+  const currencyFormatter = useMemo(() => new Intl.NumberFormat(intlLocale, {
+    style: "currency",
+    currency: "CLP",
+    maximumFractionDigits: 0,
+  }), [intlLocale])
+  const dateTimeFormatter = useMemo(() => new Intl.DateTimeFormat(intlLocale, {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }), [intlLocale])
+  const formatCount = useCallback((value: number) => numberFormatter.format(value), [numberFormatter])
+  const formatClp = useCallback((value: number) => currencyFormatter.format(value), [currencyFormatter])
+  const formatStayDate = useCallback((value: string) => format(parseISO(value), "dd MMM yyyy", { locale: dateLocale }), [dateLocale])
+  const formatDateTime = useCallback((value: string) => dateTimeFormatter.format(new Date(value)), [dateTimeFormatter])
+
   const [rangeDays, setRangeDays] = useState<(typeof ZOOM_OPTIONS)[number]>(21)
   const dayWidth = rangeDays <= 7 ? 128 : rangeDays <= 14 ? 104 : rangeDays <= 21 ? 92 : 72
   const [startDate, setStartDate] = useState(startOfDay(new Date()))
@@ -317,7 +334,8 @@ export default function BookingOperationsTimelinePage() {
       || hospitalityResult.error
 
     if (firstError) {
-      setError(firstError.message)
+      console.error("[booking-operations] timeline load failed", firstError)
+      setError(tr("No fue posible cargar el timeline."))
     } else {
       const nextBeds = (bedsResult.data ?? []) as unknown as Bed[]
       setBeds(nextBeds)
@@ -328,7 +346,7 @@ export default function BookingOperationsTimelinePage() {
       setExpandedRooms((current) => current.size ? current : new Set(nextBeds.map((bed) => bed.room_id)))
     }
     setLoading(false)
-  }, [endDate, startDate, supabase])
+  }, [endDate, startDate, supabase, tr])
 
   const loadOperations = useCallback(async (reservationId: string) => {
     setOperationsLoading(true)
@@ -336,15 +354,19 @@ export default function BookingOperationsTimelinePage() {
     try {
       const response = await fetch(`/api/bookings/${reservationId}/operations`, { cache: "no-store" })
       const payload = await response.json()
-      if (!response.ok) throw new Error(payload.error ?? "No fue posible cargar las operaciones de la reserva")
+      if (!response.ok) {
+        console.error("[booking-operations] reservation operations load failed", payload.error)
+        throw new Error(tr("No fue posible cargar las operaciones de la reserva"))
+      }
       setOperations(payload as BookingOperations)
     } catch (loadError) {
+      console.error("[booking-operations] reservation operations request failed", loadError)
       setOperations(null)
-      setOperationsError(loadError instanceof Error ? loadError.message : "No fue posible cargar las operaciones")
+      setOperationsError(tr("No fue posible cargar las operaciones"))
     } finally {
       setOperationsLoading(false)
     }
-  }, [])
+  }, [tr])
 
   useEffect(() => { void loadData() }, [loadData])
   useEffect(() => {
@@ -374,17 +396,18 @@ export default function BookingOperationsTimelinePage() {
           .filter((bed) => bed.room.location)
           .map((bed) => [bed.room.location!.id, bed.room.location!]),
       ).values(),
-    ).sort((a, b) => a.name.localeCompare(b.name)),
-    [beds],
+    ).sort((a, b) => a.name.localeCompare(b.name, intlLocale)),
+    [beds, intlLocale],
   )
 
   const hierarchy = useMemo<LocationGroup[]>(() => {
-    const term = search.trim().toLowerCase()
+    const term = search.trim().toLocaleLowerCase(intlLocale)
     const locationMap = new Map<string, LocationGroup>()
     beds.forEach((bed) => {
       const location = bed.room.location
       if (!location || (locationId !== "all" && location.id !== locationId)) return
-      const haystack = `${location.name} ${bed.room.room_number} ${bed.room.room_type ?? ""} ${bed.bed_number} ${bed.bed_type ?? ""} ${ROOM_STATUS_LABELS[bed.room.operational_status] ?? bed.room.operational_status}`.toLowerCase()
+      const roomStatus = tr(ROOM_STATUS_LABELS[bed.room.operational_status] ?? bed.room.operational_status)
+      const haystack = `${location.name} ${bed.room.room_number} ${bed.room.room_type ?? ""} ${bed.bed_number} ${bed.bed_type ?? ""} ${roomStatus}`.toLocaleLowerCase(intlLocale)
       if (term && !haystack.includes(term)) return
       const locationGroup = locationMap.get(location.id) ?? { location, rooms: [] }
       let roomGroup = locationGroup.rooms.find((item) => item.room.id === bed.room_id)
@@ -398,10 +421,10 @@ export default function BookingOperationsTimelinePage() {
     return Array.from(locationMap.values())
       .map((group) => ({
         ...group,
-        rooms: group.rooms.sort((a, b) => a.room.room_number.localeCompare(b.room.room_number)),
+        rooms: group.rooms.sort((a, b) => a.room.room_number.localeCompare(b.room.room_number, intlLocale)),
       }))
-      .sort((a, b) => a.location.name.localeCompare(b.location.name))
-  }, [beds, locationId, search])
+      .sort((a, b) => a.location.name.localeCompare(b.location.name, intlLocale))
+  }, [beds, intlLocale, locationId, search, tr])
 
   const hospitalityForReservation = useCallback(
     (reservation: Reservation) => hospitality.filter((request) => request.reservation_id
@@ -474,6 +497,11 @@ export default function BookingOperationsTimelinePage() {
     if (selected) await loadOperations(selected.id)
   }
 
+  function reportActionError(scope: string, actionError: unknown) {
+    console.error(`[booking-operations] ${scope} failed`, actionError)
+    toast.error(tr("No fue posible completar la acción."))
+  }
+
   async function transitionReservation(action: "confirm" | "checkout") {
     if (!selected) return
     setSavingAction(true)
@@ -482,13 +510,13 @@ export default function BookingOperationsTimelinePage() {
       p_action: action,
     })
     if (rpcError) {
-      toast.error(rpcError.message)
+      reportActionError(`reservation ${action}`, rpcError)
     } else {
       const nextReservation = data as Reservation | null
       const nextStatus = nextReservation?.status ?? (action === "confirm" ? "confirmed" : "checked_out")
       const nextArrivalStatus = nextReservation?.arrival_status
         ?? (action === "checkout" ? "checked_out" : selected.arrival_status)
-      toast.success(action === "confirm" ? "Reserva confirmada" : "Check-out registrado")
+      toast.success(action === "confirm" ? tr("Estado de reserva actualizado") : tr("Check-out registrado"))
       setSelected((current) => current
         ? { ...current, status: nextStatus, arrival_status: nextArrivalStatus }
         : current)
@@ -504,16 +532,16 @@ export default function BookingOperationsTimelinePage() {
       p_reservation_id: selected.id,
     })
     if (rpcError) {
-      toast.error(rpcError.message)
+      reportActionError("check in", rpcError)
     } else {
       const result = (data as { result?: string } | null)?.result
       if (result === "checked_in") {
-        toast.success("Check-in registrado")
+        toast.success(tr("Check-in registrado"))
         setSelected((current) => current
           ? { ...current, status: "checked_in", arrival_status: "checked_in" }
           : current)
       } else {
-        toast.warning("La habitación aún no está lista. La llegada quedó en cola.")
+        toast.warning(tr("La habitación aún no está lista. La llegada quedó en cola."))
         setSelected((current) => current
           ? { ...current, status: "waiting_for_room", arrival_status: "waiting_for_room" }
           : current)
@@ -531,9 +559,9 @@ export default function BookingOperationsTimelinePage() {
       p_room_id: roomId,
       p_status: status,
     })
-    if (rpcError) toast.error(rpcError.message)
+    if (rpcError) reportActionError("room status update", rpcError)
     else {
-      toast.success("Estado operativo actualizado")
+      toast.success(tr("Estado operativo actualizado"))
       await refreshSelected()
     }
     setSavingAction(false)
@@ -542,7 +570,7 @@ export default function BookingOperationsTimelinePage() {
   async function markReservationReady() {
     if (!selected) return
     if (selectedIsCheckedIn || selectedIsClosed) {
-      toast.info(selectedIsCheckedIn ? "El huésped ya está alojado." : "La estadía ya está cerrada.")
+      toast.info(tr(selectedIsCheckedIn ? "El huésped ya está alojado." : "La estadía ya está cerrada."))
       return
     }
     setSavingAction(true)
@@ -551,9 +579,9 @@ export default function BookingOperationsTimelinePage() {
       p_reason: "Verificación física desde centro de operaciones",
     })
     if (rpcError) {
-      toast.error(rpcError.message)
+      reportActionError("mark reservation ready", rpcError)
     } else {
-      toast.success("Habitación lista para entrada")
+      toast.success(tr("Habitación lista para entrada"))
       setSelected((current) => current
         ? { ...current, arrival_status: "ready_for_checkin" }
         : current)
@@ -575,9 +603,9 @@ export default function BookingOperationsTimelinePage() {
       priority: taskType === "turnover" ? "high" : "medium",
       notes,
     })
-    if (insertError) toast.error(insertError.message)
+    if (insertError) reportActionError("create housekeeping task", insertError)
     else {
-      toast.success("Tarea de housekeeping creada")
+      toast.success(tr("Tarea de housekeeping creada"))
       await refreshSelected()
     }
     setSavingAction(false)
@@ -586,7 +614,7 @@ export default function BookingOperationsTimelinePage() {
   async function updateHousekeepingStatus(taskId: string, status: "in_progress" | "completed") {
     const task = selectedHousekeeping.find((item) => item.id === taskId)
     if (!task?.assigned_to) {
-      toast.error("Asigna un responsable antes de iniciar o completar esta tarea de Housekeeping.")
+      toast.error(tr("Asigna un encargado antes de iniciar o completar esta acción."))
       return
     }
 
@@ -598,9 +626,9 @@ export default function BookingOperationsTimelinePage() {
       p_notes: null,
       p_quality_score: null,
     })
-    if (rpcError) toast.error(rpcError.message)
+    if (rpcError) reportActionError("update housekeeping task", rpcError)
     else {
-      toast.success(status === "completed" ? "Tarea completada" : "Tarea iniciada")
+      toast.success(tr(status === "completed" ? "Tarea completada" : "Tarea iniciada"))
       await refreshSelected()
     }
     setSavingAction(false)
@@ -622,9 +650,9 @@ export default function BookingOperationsTimelinePage() {
       priority: "medium",
       status: "pending",
     })
-    if (insertError) toast.error(insertError.message)
+    if (insertError) reportActionError("create hospitality request", insertError)
     else {
-      toast.success("Solicitud de hospitalidad creada")
+      toast.success(tr("Solicitud de hospitalidad creada"))
       await refreshSelected()
     }
     setSavingAction(false)
@@ -633,7 +661,7 @@ export default function BookingOperationsTimelinePage() {
   async function updateHospitalityStatus(requestId: string, status: "in_progress" | "completed") {
     const request = selectedHospitality.find((item) => item.id === requestId)
     if (!request?.assigned_to) {
-      toast.error("Asigna un responsable antes de iniciar o completar esta solicitud de Hospitality.")
+      toast.error(tr("Asigna un encargado antes de iniciar o completar esta acción."))
       return
     }
 
@@ -654,9 +682,9 @@ export default function BookingOperationsTimelinePage() {
       p_guest_confirmed: false,
       p_satisfaction_score: null,
     })
-    if (rpcError) toast.error(rpcError.message)
+    if (rpcError) reportActionError("update hospitality request", rpcError)
     else {
-      toast.success(status === "completed" ? "Solicitud completada" : "Solicitud en curso")
+      toast.success(tr(status === "completed" ? "Solicitud completada" : "Solicitud en curso"))
       await refreshSelected()
     }
     setSavingAction(false)
@@ -665,8 +693,8 @@ export default function BookingOperationsTimelinePage() {
   return (
     <AppLayout>
       <PageHeader
-        title="Reservas y operación de hospitalidad"
-        description="Timeline único por propiedad, habitación y cama para reservas, estado operativo, housekeeping, atención al huésped, pagos y bloqueos."
+        title={tr("Reservas y operación de hospitalidad")}
+        description={tr("Timeline único por propiedad, habitación y cama para reservas, estado operativo, housekeeping, atención al huésped, pagos y bloqueos.")}
         actions={(
           <Button onClick={() => {
             setPreselectedBed(null)
@@ -674,19 +702,19 @@ export default function BookingOperationsTimelinePage() {
             setPreselectedCheckOut(null)
             setReservationDialogOpen(true)
           }}>
-            <Plus className="mr-2 h-4 w-4" />Nueva reserva
+            <Plus className="mr-2 h-4 w-4" />{tr("Nueva reserva")}
           </Button>
         )}
       />
 
       <div className="space-y-4 p-4 md:p-6">
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
-          <Metric icon={<LogIn />} label="Llegadas hoy" value={metrics.arrivals} />
-          <Metric icon={<LogOut />} label="Salidas hoy" value={metrics.departures} />
-          <Metric icon={<BedDouble />} label="Ocupadas hoy" value={metrics.occupied} />
-          <Metric icon={<DoorOpen />} label="Habitaciones no listas" value={metrics.roomsNotReady} />
-          <Metric icon={<Sparkles />} label="Limpiezas pendientes" value={metrics.pendingHousekeeping} />
-          <Metric icon={<ConciergeBell />} label="Solicitudes abiertas" value={metrics.pendingHospitality} />
+          <Metric icon={<LogIn />} label={tr("Llegadas hoy")} value={formatCount(metrics.arrivals)} />
+          <Metric icon={<LogOut />} label={tr("Salidas hoy")} value={formatCount(metrics.departures)} />
+          <Metric icon={<BedDouble />} label={tr("Ocupadas hoy")} value={formatCount(metrics.occupied)} />
+          <Metric icon={<DoorOpen />} label={tr("Habitaciones no listas")} value={formatCount(metrics.roomsNotReady)} />
+          <Metric icon={<Sparkles />} label={tr("Limpiezas pendientes")} value={formatCount(metrics.pendingHousekeeping)} />
+          <Metric icon={<ConciergeBell />} label={tr("Solicitudes abiertas")} value={formatCount(metrics.pendingHospitality)} />
         </div>
 
         <Card>
@@ -696,21 +724,21 @@ export default function BookingOperationsTimelinePage() {
                 variant="outline"
                 size="icon"
                 onClick={() => setStartDate(addDays(startDate, -7))}
-                aria-label="Retroceder siete días"
+                aria-label={tr("Retroceder siete días")}
               >
                 <ChevronLeft className="h-4 w-4" />
               </Button>
-              <Button variant="outline" onClick={() => setStartDate(startOfDay(new Date()))}>Hoy</Button>
+              <Button variant="outline" onClick={() => setStartDate(startOfDay(new Date()))}>{tr("Hoy")}</Button>
               <Button
                 variant="outline"
                 size="icon"
                 onClick={() => setStartDate(addDays(startDate, 7))}
-                aria-label="Avanzar siete días"
+                aria-label={tr("Avanzar siete días")}
               >
                 <ChevronRight className="h-4 w-4" />
               </Button>
               <span className="ml-1 text-sm font-medium">
-                {format(startDate, "dd MMM")} – {format(addDays(endDate, -1), "dd MMM yyyy")}
+                {format(startDate, "dd MMM", { locale: dateLocale })} – {format(addDays(endDate, -1), "dd MMM yyyy", { locale: dateLocale })}
               </span>
               <div className="ml-2 flex rounded-md border p-1">
                 {ZOOM_OPTIONS.map((days) => (
@@ -720,7 +748,7 @@ export default function BookingOperationsTimelinePage() {
                     variant={rangeDays === days ? "secondary" : "ghost"}
                     onClick={() => setRangeDays(days)}
                   >
-                    {days}d
+                    {formatCount(days)}{DAY_ABBR[language]}
                   </Button>
                 ))}
               </div>
@@ -731,9 +759,9 @@ export default function BookingOperationsTimelinePage() {
                 value={locationId}
                 onChange={(event: React.ChangeEvent<HTMLSelectElement>) => setLocationId(event.target.value)}
                 className="h-10 rounded-md border bg-background px-3 text-sm"
-                aria-label="Filtrar por propiedad"
+                aria-label={tr("Filtrar por propiedad")}
               >
-                <option value="all">Todas las propiedades</option>
+                <option value="all">{tr("Todas las propiedades")}</option>
                 {locations.map((location) => (
                   <option key={location.id} value={location.id}>{location.name}</option>
                 ))}
@@ -743,7 +771,7 @@ export default function BookingOperationsTimelinePage() {
                 <Input
                   value={search}
                   onChange={(event: React.ChangeEvent<HTMLInputElement>) => setSearch(event.target.value)}
-                  placeholder="Buscar propiedad, habitación, cama o estado"
+                  placeholder={tr("Buscar propiedad, habitación, cama o estado")}
                   className="pl-9"
                 />
               </div>
@@ -751,7 +779,7 @@ export default function BookingOperationsTimelinePage() {
                 variant="outline"
                 size="icon"
                 onClick={() => void loadData()}
-                aria-label="Actualizar calendario"
+                aria-label={tr("Actualizar calendario")}
               >
                 <RefreshCw className="h-4 w-4" />
               </Button>
@@ -761,7 +789,7 @@ export default function BookingOperationsTimelinePage() {
 
         {error && (
           <div className="rounded-lg border border-destructive/40 bg-destructive/5 p-4 text-sm text-destructive">
-            No fue posible cargar el timeline: {error}
+            {error}
           </div>
         )}
 
@@ -803,18 +831,18 @@ export default function BookingOperationsTimelinePage() {
             type="button"
             className="absolute inset-0 bg-black/40"
             onClick={() => setSelected(null)}
-            aria-label="Cerrar panel"
+            aria-label={tr("Cerrar panel")}
           />
           <aside className="relative z-10 flex h-full w-full max-w-xl flex-col border-l bg-background shadow-2xl">
             <div className="flex items-start justify-between border-b p-5">
               <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">Operación de estadía</p>
+                <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">{tr("Operación de estadía")}</p>
                 <h2 className="mt-1 text-xl font-semibold">{selected.guest_name}</h2>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  {selectedRoom?.location?.name ?? "Sin ubicación"} · {selectedRoom?.room_number ?? "Sin habitación"} · Cama {selected.bed?.bed_number ?? "—"}
+                  {selectedRoom?.location?.name ?? tr("Sin ubicación")} · {selectedRoom?.room_number ?? tr("Sin habitación")} · {tr(`Cama ${selected.bed?.bed_number ?? "—"}`)}
                 </p>
               </div>
-              <Button variant="ghost" size="icon" onClick={() => setSelected(null)}>
+              <Button variant="ghost" size="icon" onClick={() => setSelected(null)} aria-label={tr("Cerrar panel")}>
                 <X className="h-4 w-4" />
               </Button>
             </div>
@@ -822,64 +850,64 @@ export default function BookingOperationsTimelinePage() {
             <div className="flex-1 space-y-6 overflow-y-auto p-5">
               <div className="flex flex-wrap gap-2">
                 <Badge>
-                  {RESERVATION_LABELS[selected.arrival_status ?? selected.status]
+                  {tr(RESERVATION_LABELS[selected.arrival_status ?? selected.status]
                     ?? RESERVATION_LABELS[selected.status]
-                    ?? selected.status}
+                    ?? selected.status)}
                 </Badge>
-                <Badge variant="outline">Pago: {selected.payment_status ?? "sin registrar"}</Badge>
-                <Badge variant="outline">Origen: {selected.source ?? "interno"}</Badge>
+                <Badge variant="outline">{tr("Pago")}: {selected.payment_status ?? tr("sin registrar")}</Badge>
+                <Badge variant="outline">{tr("Origen")}: {selected.source ?? tr("interno")}</Badge>
                 {selectedRoom && (
                   <Badge
                     variant="outline"
                     className={ROOM_STATUS_CLASSES[selectedRoomStatus ?? ""] ?? ""}
                   >
-                    {ROOM_STATUS_LABELS[selectedRoomStatus ?? ""]
+                    {tr(ROOM_STATUS_LABELS[selectedRoomStatus ?? ""]
                       ?? selectedRoomStatus
-                      ?? "Sin estado"}
+                      ?? "Sin estado")}
                   </Badge>
                 )}
                 {selectedHousekeeping.length > 0 && (
                   <Badge variant="secondary" className="gap-1">
-                    <Sparkles className="h-3 w-3" />{selectedHousekeeping.length} housekeeping
+                    <Sparkles className="h-3 w-3" />{formatCount(selectedHousekeeping.length)} Housekeeping
                   </Badge>
                 )}
                 {selectedHospitality.length > 0 && (
                   <Badge variant="secondary" className="gap-1">
-                    <ConciergeBell className="h-3 w-3" />{selectedHospitality.length} hospitality
+                    <ConciergeBell className="h-3 w-3" />{formatCount(selectedHospitality.length)} Hospitality
                   </Badge>
                 )}
               </div>
 
               <div className="grid gap-3 sm:grid-cols-2">
-                <Info label="Check-in" value={selected.check_in} />
-                <Info label="Check-out" value={selected.check_out} />
-                <Info label="Huéspedes" value={String(selected.num_guests ?? 1)} />
-                <Info label="Monto" value={formatClp(Number(selected.total_amount ?? 0))} />
+                <Info label="Check-in" value={formatStayDate(selected.check_in)} />
+                <Info label="Check-out" value={formatStayDate(selected.check_out)} />
+                <Info label={tr("Huéspedes")} value={formatCount(selected.num_guests ?? 1)} />
+                <Info label={tr("Monto")} value={formatClp(Number(selected.total_amount ?? 0))} />
               </div>
               {selected.special_requests && (
-                <Info label="Solicitudes especiales" value={selected.special_requests} />
+                <Info label={tr("Solicitudes especiales")} value={selected.special_requests} />
               )}
 
-              <ActionSection title="Preparación de habitación" icon={<DoorOpen className="h-4 w-4" />}>
+              <ActionSection title={tr("Preparación de habitación")} icon={<DoorOpen className="h-4 w-4" />}>
                 <div className="col-span-full rounded-lg border p-4">
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
-                      <p className="font-medium">Estado operativo actual</p>
+                      <p className="font-medium">{tr("Estado operativo actual")}</p>
                       <p className="mt-1 text-xs text-muted-foreground">
-                        {selectedIsCheckedIn
+                        {tr(selectedIsCheckedIn
                           ? "El huésped ya está alojado. La habitación queda ocupada durante la estadía."
                           : selectedIsClosed
                             ? "La estadía está cerrada. Gestiona la habitación desde Limpieza."
-                            : "Antes de la entrada, Santiago puede certificar físicamente que la habitación está lista."}
+                            : "Antes de la entrada, Santiago puede certificar físicamente que la habitación está lista.")}
                       </p>
                     </div>
                     <Badge
                       variant="outline"
                       className={ROOM_STATUS_CLASSES[selectedRoomStatus ?? ""] ?? ""}
                     >
-                      {ROOM_STATUS_LABELS[selectedRoomStatus ?? ""]
+                      {tr(ROOM_STATUS_LABELS[selectedRoomStatus ?? ""]
                         ?? selectedRoomStatus
-                        ?? "Sin estado"}
+                        ?? "Sin estado")}
                     </Badge>
                   </div>
                   {!selectedIsCheckedIn && !selectedIsClosed && (
@@ -890,7 +918,7 @@ export default function BookingOperationsTimelinePage() {
                         onClick={() => void setRoomStatus("cleaning")}
                         disabled={savingAction}
                       >
-                        En limpieza
+                        {tr("En limpieza")}
                       </Button>
                       <Button
                         size="sm"
@@ -898,21 +926,21 @@ export default function BookingOperationsTimelinePage() {
                         onClick={() => void setRoomStatus("clean_pending_inspection")}
                         disabled={savingAction}
                       >
-                        Pendiente inspección
+                        {tr("Pendiente inspección")}
                       </Button>
                       <Button
                         size="sm"
                         onClick={() => void markReservationReady()}
                         disabled={savingAction}
                       >
-                        <CheckCircle2 className="mr-2 h-4 w-4" />Marcar lista para entrada
+                        <CheckCircle2 className="mr-2 h-4 w-4" />{tr("Marcar lista para entrada")}
                       </Button>
                     </div>
                   )}
                 </div>
               </ActionSection>
 
-              {operationsLoading && <Empty text="Cargando operaciones vinculadas…" />}
+              {operationsLoading && <Empty text={tr("Cargando operaciones vinculadas…")} />}
               {operationsError && (
                 <div className="rounded-lg border border-destructive/40 bg-destructive/5 p-4 text-sm text-destructive">
                   {operationsError}
@@ -922,26 +950,26 @@ export default function BookingOperationsTimelinePage() {
                     className="ml-3"
                     onClick={() => void loadOperations(selected.id)}
                   >
-                    Reintentar
+                    {tr("Reintentar")}
                   </Button>
                 </div>
               )}
               {operations && (
                 <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-                  <Info label="Operaciones" value={String(operations.summary.totalOperations)} />
-                  <Info label="Servicios / cargos" value={String(operations.summary.extrasCount)} />
-                  <Info label="Monto extras" value={formatClp(operations.summary.extrasAmount)} />
+                  <Info label={tr("Operaciones")} value={formatCount(operations.summary.totalOperations)} />
+                  <Info label={tr("Servicios / cargos")} value={formatCount(operations.summary.extrasCount)} />
+                  <Info label={tr("Monto extras")} value={formatClp(operations.summary.extrasAmount)} />
                 </div>
               )}
 
-              <ActionSection title="Servicios y cargos" icon={<PackagePlus className="h-4 w-4" />}>
+              <ActionSection title={tr("Servicios y cargos")} icon={<PackagePlus className="h-4 w-4" />}>
                 {!operations || operations.extras.length === 0
-                  ? <Empty text={operations?.catalog.length === 0 ? "No hay servicios cargados y el catálogo aún está vacío." : "No hay servicios cargados a esta reserva."} />
+                  ? <Empty text={tr(operations?.catalog.length === 0 ? "No hay servicios cargados y el catálogo aún está vacío." : "No hay servicios cargados a esta reserva.")} />
                   : operations.extras.map((extra) => (
                     <OperationCard
                       key={extra.id}
                       title={extra.name}
-                      subtitle={`${extra.quantity} ${extra.unit} × ${formatClp(Number(extra.unit_price))}`}
+                      subtitle={`${formatCount(extra.quantity)} ${extra.unit} × ${formatClp(Number(extra.unit_price))}`}
                       status={formatClp(Number(extra.total_amount ?? extra.quantity * extra.unit_price))}
                       description={extra.notes}
                       actions={null}
@@ -949,50 +977,50 @@ export default function BookingOperationsTimelinePage() {
                   ))}
               </ActionSection>
 
-              <ActionSection title="Solicitudes históricas del huésped" icon={<Users className="h-4 w-4" />}>
+              <ActionSection title={tr("Solicitudes históricas del huésped")} icon={<Users className="h-4 w-4" />}>
                 {!operations || operations.guestRequests.length === 0
-                  ? <Empty text="No hay solicitudes históricas vinculadas." />
+                  ? <Empty text={tr("No hay solicitudes históricas vinculadas.")} />
                   : operations.guestRequests.map((request) => (
                     <OperationCard
                       key={request.id}
                       title={request.request_type}
-                      subtitle={request.created_at ? new Date(request.created_at).toLocaleString("es-CL") : "Sin fecha"}
-                      status={request.status ?? "sin estado"}
+                      subtitle={request.created_at ? formatDateTime(request.created_at) : tr("Sin fecha")}
+                      status={request.status ?? tr("sin estado")}
                       description={request.description}
                       actions={null}
                     />
                   ))}
               </ActionSection>
 
-              <ActionSection title="Incidencias vinculadas" icon={<AlertTriangle className="h-4 w-4" />}>
+              <ActionSection title={tr("Incidencias vinculadas")} icon={<AlertTriangle className="h-4 w-4" />}>
                 {!operations || operations.issues.length === 0
-                  ? <Empty text="No hay incidencias vinculadas a esta reserva." />
+                  ? <Empty text={tr("No hay incidencias vinculadas a esta reserva.")} />
                   : operations.issues.map((issue) => (
                     <OperationCard
                       key={issue.id}
-                      title={issue.title ?? issue.category ?? "Incidencia"}
-                      subtitle={`${issue.priority ?? issue.severity ?? "prioridad no registrada"}${issue.created_at ? ` · ${new Date(issue.created_at).toLocaleString("es-CL")}` : ""}`}
-                      status={issue.status ?? "sin estado"}
+                      title={issue.title ?? issue.category ?? tr("Incidencia")}
+                      subtitle={`${issue.priority ?? issue.severity ?? tr("prioridad no registrada")}${issue.created_at ? ` · ${formatDateTime(issue.created_at)}` : ""}`}
+                      status={issue.status ?? tr("sin estado")}
                       description={issue.description}
                       actions={null}
                     />
                   ))}
               </ActionSection>
 
-              <ActionSection title="Housekeeping activo" icon={<Sparkles className="h-4 w-4" />}>
+              <ActionSection title={tr("Housekeeping activo")} icon={<Sparkles className="h-4 w-4" />}>
                 {selectedHousekeeping.length === 0
-                  ? <Empty text="No hay tareas abiertas asociadas a esta reserva." />
+                  ? <Empty text={tr("No hay tareas abiertas asociadas a esta reserva.")} />
                   : selectedHousekeeping.map((task) => (
                     <OperationCard
                       key={task.id}
-                      title={HOUSEKEEPING_TYPE_LABELS[task.task_type] ?? task.task_type}
-                      subtitle={`${task.reservation_id ? "Vinculada a reserva" : "Histórica por habitación"} · Prioridad ${task.priority ?? "normal"}`}
-                      status={HOUSEKEEPING_STATUS_LABELS[task.status] ?? task.status}
+                      title={tr(HOUSEKEEPING_TYPE_LABELS[task.task_type] ?? task.task_type)}
+                      subtitle={`${tr(task.reservation_id ? "Vinculada a reserva" : "Histórica por habitación")} · ${tr(`Prioridad ${task.priority ?? "normal"}`)}`}
+                      status={tr(HOUSEKEEPING_STATUS_LABELS[task.status] ?? task.status)}
                       description={task.notes}
                       actions={(
                         <>
                           {!task.assigned_to && (
-                            <span className="self-center text-xs text-amber-600">Asigna un responsable para ejecutar la tarea.</span>
+                            <span className="self-center text-xs text-amber-600">{tr("Asigna un encargado antes de iniciar o completar esta acción.")}</span>
                           )}
                           {["pending", "assigned"].includes(task.status) && (
                             <Button
@@ -1001,7 +1029,7 @@ export default function BookingOperationsTimelinePage() {
                               onClick={() => void updateHousekeepingStatus(task.id, "in_progress")}
                               disabled={savingAction || !task.assigned_to}
                             >
-                              <PlayCircle className="mr-2 h-4 w-4" />Iniciar
+                              <PlayCircle className="mr-2 h-4 w-4" />{tr("Iniciar")}
                             </Button>
                           )}
                           {task.status === "in_progress" && (
@@ -1010,7 +1038,7 @@ export default function BookingOperationsTimelinePage() {
                               onClick={() => void updateHousekeepingStatus(task.id, "completed")}
                               disabled={savingAction || !task.assigned_to}
                             >
-                              <CheckCircle2 className="mr-2 h-4 w-4" />Completar
+                              <CheckCircle2 className="mr-2 h-4 w-4" />{tr("Completar")}
                             </Button>
                           )}
                         </>
@@ -1019,20 +1047,20 @@ export default function BookingOperationsTimelinePage() {
                   ))}
               </ActionSection>
 
-              <ActionSection title="Solicitudes activas de Hospitality" icon={<ConciergeBell className="h-4 w-4" />}>
+              <ActionSection title={tr("Solicitudes activas de Hospitality")} icon={<ConciergeBell className="h-4 w-4" />}>
                 {selectedHospitality.length === 0
-                  ? <Empty text="No hay solicitudes abiertas asociadas a esta reserva." />
+                  ? <Empty text={tr("No hay solicitudes abiertas asociadas a esta reserva.")} />
                   : selectedHospitality.map((request) => (
                     <OperationCard
                       key={request.id}
                       title={request.request_type}
-                      subtitle={`${request.category} · ${request.tablet_device_id ? "Tablet de huésped" : "Registro interno"}`}
-                      status={HOSPITALITY_STATUS_LABELS[request.status] ?? request.status}
+                      subtitle={`${request.category} · ${tr(request.tablet_device_id ? "Tablet de huésped" : "Registro interno")}`}
+                      status={tr(HOSPITALITY_STATUS_LABELS[request.status] ?? request.status)}
                       description={request.description}
                       actions={(
                         <>
                           {!request.assigned_to && (
-                            <span className="self-center text-xs text-amber-600">Asigna un responsable para ejecutar la solicitud.</span>
+                            <span className="self-center text-xs text-amber-600">{tr("Asigna un encargado antes de iniciar o completar esta acción.")}</span>
                           )}
                           {["pending", "assigned"].includes(request.status) && (
                             <Button
@@ -1041,7 +1069,7 @@ export default function BookingOperationsTimelinePage() {
                               onClick={() => void updateHospitalityStatus(request.id, "in_progress")}
                               disabled={savingAction || !request.assigned_to}
                             >
-                              Poner en curso
+                              {tr("Poner en curso")}
                             </Button>
                           )}
                           {request.status === "in_progress" && (
@@ -1050,7 +1078,7 @@ export default function BookingOperationsTimelinePage() {
                               onClick={() => void updateHospitalityStatus(request.id, "completed")}
                               disabled={savingAction || !request.assigned_to}
                             >
-                              <CheckCircle2 className="mr-2 h-4 w-4" />Completar
+                              <CheckCircle2 className="mr-2 h-4 w-4" />{tr("Completar")}
                             </Button>
                           )}
                         </>
@@ -1059,11 +1087,11 @@ export default function BookingOperationsTimelinePage() {
                   ))}
               </ActionSection>
 
-              <ActionSection title="Reserva y estadía" icon={<CalendarDays className="h-4 w-4" />}>
+              <ActionSection title={tr("Reserva y estadía")} icon={<CalendarDays className="h-4 w-4" />}>
                 {selected.status === "pending" && (
                   <ActionButton
                     icon={<CalendarDays />}
-                    label="Confirmar reserva"
+                    label={tr("Confirmar reserva")}
                     onClick={() => void transitionReservation("confirm")}
                     disabled={savingAction}
                   />
@@ -1071,7 +1099,7 @@ export default function BookingOperationsTimelinePage() {
                 {["confirmed", "waiting_for_room", "ready_for_checkin"].includes(selected.status) && (
                   <ActionButton
                     icon={<LogIn />}
-                    label={roomReady(selectedRoomStatus) ? "Registrar check-in" : "Registrar llegada y enviar a cola"}
+                    label={tr(roomReady(selectedRoomStatus) ? "Registrar check-in" : "Registrar llegada y enviar a cola")}
                     onClick={() => void checkInOrQueue()}
                     disabled={savingAction}
                   />
@@ -1079,20 +1107,20 @@ export default function BookingOperationsTimelinePage() {
                 {["checked_in", "checked-in"].includes(selected.status) && (
                   <ActionButton
                     icon={<LogOut />}
-                    label="Registrar check-out"
+                    label={tr("Registrar check-out")}
                     onClick={() => void transitionReservation("checkout")}
                     disabled={savingAction}
                   />
                 )}
                 <div className="col-span-full rounded-lg border border-dashed p-3 text-xs leading-5 text-muted-foreground">
-                  El estado de pago se deriva del ledger financiero. Registra pagos, reversos y ajustes desde el flujo financiero; esta pantalla no puede fabricar un estado de pago manual.
+                  {tr("El estado de pago se deriva del ledger financiero. Registra pagos, reversos y ajustes desde el flujo financiero; esta pantalla no puede fabricar un estado de pago manual.")}
                 </div>
               </ActionSection>
 
-              <ActionSection title="Crear Housekeeping" icon={<Sparkles className="h-4 w-4" />}>
+              <ActionSection title={tr("Crear Housekeeping")} icon={<Sparkles className="h-4 w-4" />}>
                 <ActionButton
                   icon={<Sparkles />}
-                  label="Generar limpieza de salida"
+                  label={tr("Generar limpieza de salida")}
                   onClick={() => void createHousekeepingTask(
                     "turnover",
                     `Limpieza posterior al check-out de ${selected.guest_name}, reserva ${selected.id}.`,
@@ -1101,7 +1129,7 @@ export default function BookingOperationsTimelinePage() {
                 />
                 <ActionButton
                   icon={<DoorOpen />}
-                  label="Preparar habitación"
+                  label={tr("Preparar habitación")}
                   onClick={() => void createHousekeepingTask(
                     "room_preparation",
                     `Preparar habitación para ${selected.guest_name}, reserva ${selected.id}.`,
@@ -1110,7 +1138,7 @@ export default function BookingOperationsTimelinePage() {
                 />
                 <ActionButton
                   icon={<Wrench />}
-                  label="Crear inspección operativa"
+                  label={tr("Crear inspección operativa")}
                   onClick={() => void createHousekeepingTask(
                     "inspection",
                     `Revisión operativa asociada a la reserva ${selected.id}.`,
@@ -1119,10 +1147,10 @@ export default function BookingOperationsTimelinePage() {
                 />
               </ActionSection>
 
-              <ActionSection title="Crear Hospitality" icon={<ConciergeBell className="h-4 w-4" />}>
+              <ActionSection title={tr("Crear Hospitality")} icon={<ConciergeBell className="h-4 w-4" />}>
                 <ActionButton
                   icon={<ConciergeBell />}
-                  label="Solicitud del huésped"
+                  label={tr("Solicitud del huésped")}
                   onClick={() => void createHospitalityRequest(
                     "guest_request",
                     `Solicitud operativa para ${selected.guest_name}, reserva ${selected.id}.`,
@@ -1131,7 +1159,7 @@ export default function BookingOperationsTimelinePage() {
                 />
                 <ActionButton
                   icon={<Users />}
-                  label="Recepción o traslado"
+                  label={tr("Recepción o traslado")}
                   onClick={() => void createHospitalityRequest(
                     "arrival_coordination",
                     `Coordinar recepción o traslado de ${selected.guest_name} para el ${selected.check_in}.`,
@@ -1140,7 +1168,7 @@ export default function BookingOperationsTimelinePage() {
                 />
                 <ActionButton
                   icon={<BedDouble />}
-                  label="Amenidad o preparación especial"
+                  label={tr("Amenidad o preparación especial")}
                   onClick={() => void createHospitalityRequest(
                     "room_amenity",
                     `Preparación especial para ${selected.guest_name}. ${selected.special_requests ?? "Sin detalle adicional."}`,

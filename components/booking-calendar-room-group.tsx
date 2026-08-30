@@ -17,7 +17,7 @@ import {
   type BookingCalendarReservation,
   type Validation,
 } from "@/components/booking-calendar-model"
-import { useLanguage } from "@/lib/hooks/use-language"
+import { useLanguage, type Language } from "@/lib/hooks/use-language"
 import { translateBookingOperationsValue } from "@/lib/translations/booking-operations"
 
 type CreateState = { bedId: string; first: number; last: number; state: "valid" | "invalid" }
@@ -54,6 +54,18 @@ type BookingCalendarRoomGroupProps = {
   housekeepingForReservation: (reservation: BookingCalendarReservation) => BookingCalendarHousekeeping[]
   hospitalityForReservation: (reservation: BookingCalendarReservation) => BookingCalendarHospitality[]
   geometry: (start: string, end: string) => Geometry
+}
+
+const BED_COUNT: Record<Language, (count: number) => string> = {
+  en: (count) => `${count} ${count === 1 ? "bed" : "beds"}`,
+  es: (count) => `${count} ${count === 1 ? "cama" : "camas"}`,
+  de: (count) => `${count} ${count === 1 ? "Bett" : "Betten"}`,
+}
+
+const CREATE_RESERVATION: Record<Language, (room: string, bed: string, date: string) => string> = {
+  en: (room, bed, date) => `Create reservation in ${room}, bed ${bed}, on ${date}`,
+  es: (room, bed, date) => `Crear reserva en ${room}, cama ${bed}, el ${date}`,
+  de: (room, bed, date) => `Reservierung in ${room}, Bett ${bed}, am ${date} erstellen`,
 }
 
 export function BookingCalendarRoomGroup({
@@ -95,18 +107,8 @@ export function BookingCalendarRoomGroup({
   const roomHospitality = hospitality.filter((request) => request.room_id === roomGroup.room.id)
   const readinessClass = ROOM_STATUS_CLASSES[roomGroup.room.operational_status]
     ?? "border-border bg-muted text-muted-foreground"
-
-  const bedCountLabel = language === "de"
-    ? `${roomGroup.beds.length} ${roomGroup.beds.length === 1 ? "Bett" : "Betten"}`
-    : language === "en"
-      ? `${roomGroup.beds.length} ${roomGroup.beds.length === 1 ? "bed" : "beds"}`
-      : `${roomGroup.beds.length} ${roomGroup.beds.length === 1 ? "cama" : "camas"}`
-
-  const createReservationLabel = (bedNumber: string, date: Date) => {
-    if (language === "de") return `Reservierung in ${roomGroup.room.room_number}, Bett ${bedNumber}, am ${iso(date)} erstellen`
-    if (language === "en") return `Create reservation in ${roomGroup.room.room_number}, bed ${bedNumber}, on ${iso(date)}`
-    return `Crear reserva en ${roomGroup.room.room_number}, cama ${bedNumber}, el ${iso(date)}`
-  }
+  const bedCountLabel = BED_COUNT[language](roomGroup.beds.length)
+  const createReservationLabel = (bedNumber: string, date: Date) => CREATE_RESERVATION[language](roomGroup.room.room_number, bedNumber, iso(date))
 
   return (
     <div data-booking-room-id={roomGroup.room.id}>

@@ -1,8 +1,6 @@
 import Link from "next/link"
-import { Activity, KeyRound } from "lucide-react"
 import { AppLayout } from "@/components/app-layout"
-import { AdminOverview } from "@/components/admin-overview"
-import { Card, CardContent } from "@/components/ui/card"
+import { AdminControlCard, AdminOverview } from "@/components/admin-overview"
 import { createClient } from "@/lib/supabase/server"
 
 export default async function AdminPage() {
@@ -53,34 +51,8 @@ export default async function AdminPage() {
         auditRecords={(approverAudit.count ?? 0) + (procurementAudit.count ?? 0) + (auditActions.count ?? 0)}
       />
       <div className="grid gap-4 px-4 pb-8 md:grid-cols-2 md:px-8">
-        <Link href="/admin/access">
-          <Card className="h-full border-emerald-500/50 transition-colors hover:border-emerald-500">
-            <CardContent className="flex items-center justify-between gap-4 p-4">
-              <div className="flex items-center gap-3">
-                <KeyRound className="h-5 w-5 text-muted-foreground" />
-                <div>
-                  <p className="text-sm font-medium">Administrar accesos y alcance</p>
-                  <p className="text-xs text-muted-foreground">Roles, suspensión, departamentos, ubicaciones y permisos efectivos.</p>
-                </div>
-              </div>
-              <span className="text-sm">Abrir →</span>
-            </CardContent>
-          </Card>
-        </Link>
-        <Link href="/admin/it-control">
-          <Card className="h-full border-sky-500/50 transition-colors hover:border-sky-500">
-            <CardContent className="flex items-center justify-between gap-4 p-4">
-              <div className="flex items-center gap-3">
-                <Activity className="h-5 w-5 text-muted-foreground" />
-                <div>
-                  <p className="text-sm font-medium">IT Control Center</p>
-                  <p className="text-xs text-muted-foreground">Jobs, freshness, retries, RLS y perfiles leídos en vivo desde producción.</p>
-                </div>
-              </div>
-              <span className="text-sm">Abrir →</span>
-            </CardContent>
-          </Card>
-        </Link>
+        <Link href="/admin/access" className="group"><AdminControlCard kind="access" /></Link>
+        <Link href="/admin/it-control" className="group"><AdminControlCard kind="it" /></Link>
       </div>
     </AppLayout>
   )

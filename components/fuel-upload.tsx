@@ -25,7 +25,7 @@ const copy = {
     noFile: 'Seleccione un archivo antes de validar.',
     noRecords: 'No se encontraron registros válidos en el archivo.',
     unknownError: 'Error desconocido',
-    success: (records: number, anomalies: number) => `${records} registros fueron analizados y ${anomalies} posibles anomalías fueron detectadas. Ningún registro fue guardado.`,
+    success: (records: number, anomalies: number) => `${records.toLocaleString('es-CL')} registros fueron analizados y ${anomalies.toLocaleString('es-CL')} posibles anomalías fueron detectadas. Ningún registro fue guardado.`,
     previewTitle: 'Resultado de validación',
     records: 'registros analizados',
     total: 'litros totales declarados',
@@ -41,17 +41,36 @@ const copy = {
     noFile: 'Select a file before validating.',
     noRecords: 'No valid records were found in the file.',
     unknownError: 'Unknown error',
-    success: (records: number, anomalies: number) => `${records} records were analyzed and ${anomalies} possible anomalies were detected. No records were saved.`,
+    success: (records: number, anomalies: number) => `${records.toLocaleString('en-US')} records were analyzed and ${anomalies.toLocaleString('en-US')} possible anomalies were detected. No records were saved.`,
     previewTitle: 'Validation result',
     records: 'records analyzed',
     total: 'declared total liters',
     safeguard: 'Persisting an import requires a separate review, confirmation and duplicate-control workflow.',
   },
+  de: {
+    title: 'Kraftstoffbericht validieren',
+    description: 'Die Datei wird lokal ausgewertet und mit registrierten Fahrzeugen und Personen abgeglichen. Diese Aktion speichert keine Daten in Supabase.',
+    choose: 'Datei auswählen',
+    validating: 'Wird validiert…',
+    validate: 'Datei validieren',
+    formats: 'Unterstützte Formate: CSV und Excel (.xlsx, .xls).',
+    noFile: 'Wählen Sie vor der Validierung eine Datei aus.',
+    noRecords: 'In der Datei wurden keine gültigen Datensätze gefunden.',
+    unknownError: 'Unbekannter Fehler',
+    success: (records: number, anomalies: number) => `${records.toLocaleString('de-DE')} Datensätze wurden analysiert und ${anomalies.toLocaleString('de-DE')} mögliche Anomalien erkannt. Es wurden keine Datensätze gespeichert.`,
+    previewTitle: 'Validierungsergebnis',
+    records: 'Datensätze analysiert',
+    total: 'deklarierte Liter gesamt',
+    safeguard: 'Für das dauerhafte Speichern eines Imports ist ein separater Ablauf für Prüfung, Bestätigung und Duplikatkontrolle erforderlich.',
+  },
 } as const
+
+const locales = { es: 'es-CL', en: 'en-US', de: 'de-DE' } as const
 
 export function FuelUploadComponent({ onRecordsLoaded, onAnomaliesDetected }: FuelUploadProps) {
   const { language } = useLanguage()
-  const text = copy[language === 'es' ? 'es' : 'en']
+  const text = copy[language]
+  const locale = locales[language]
   const inputRef = useRef<HTMLInputElement>(null)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [isLoading, setIsLoading] = useState(false)
@@ -124,7 +143,7 @@ export function FuelUploadComponent({ onRecordsLoaded, onAnomaliesDetected }: Fu
           <div className="rounded-lg border p-4">
             <p className="font-medium">{text.previewTitle}</p>
             <p className="mt-2 text-sm text-muted-foreground">
-              {parsedRecords.length.toLocaleString(language === 'es' ? 'es-CL' : 'en-US')} {text.records} · {parsedRecords.reduce((sum, record) => sum + Number(record.liters || 0), 0).toLocaleString(language === 'es' ? 'es-CL' : 'en-US', { maximumFractionDigits: 2 })} {text.total}
+              {parsedRecords.length.toLocaleString(locale)} {text.records} · {parsedRecords.reduce((sum, record) => sum + Number(record.liters || 0), 0).toLocaleString(locale, { maximumFractionDigits: 2 })} {text.total}
             </p>
             <p className="mt-3 text-xs text-muted-foreground">{text.safeguard}</p>
           </div>

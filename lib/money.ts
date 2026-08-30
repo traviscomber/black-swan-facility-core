@@ -5,10 +5,10 @@ export function roundClp(value: number) {
   return Math.round(value)
 }
 
-export function formatClp(value: number | string | null | undefined) {
+export function formatClp(value: number | string | null | undefined, locale = "es-CL") {
   const amount = typeof value === "string" ? Number(value) : Number(value ?? 0)
 
-  return new Intl.NumberFormat("es-CL", {
+  return new Intl.NumberFormat(locale, {
     style: "currency",
     currency: DEFAULT_CURRENCY,
     currencyDisplay: "symbol",

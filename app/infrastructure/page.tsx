@@ -9,68 +9,41 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { createBrowserClient } from "@/lib/supabase/client"
+import { useLanguage } from "@/lib/hooks/use-language"
 
 type Infra = { id:string; name:string; category:string; status:string|null; priority:string|null; next_inspection:string|null; last_inspection:string|null; location_id:string|null }
 type Inspection = { id:string; infrastructure_id:string; condition:string; status:string; inspected_at:string; next_inspection:string|null; findings:string|null }
+const LOCALES = { en:"en-US", es:"es-CL", de:"de-DE" } as const
+const COPY = {
+  en:{ title:"Properties and infrastructure", description:"Technical inventory, inspections, documents and maintenance associated with Fundo Corcovado.", refresh:"Refresh", loadError:"Infrastructure data could not be loaded.", technical:"Technical items", planned:"Planned", overdue:"Overdue inspections", documents:"Documents", incidents:"Open incidents", maintenance:"Open maintenance", dataQuality:"Data quality", dataQualityDetail:"categories differ only by letter case. The view groups them but does not modify production records.", inventory:"Technical inventory", inventoryDetail:"Buildings, networks, water, energy, connectivity and other registered systems.", element:"Item", category:"Category", state:"Status", priority:"Priority", lastInspection:"Last inspection", nextInspection:"Next inspection", loading:"Loading infrastructure…", noRecord:"No record", unscheduled:"Not scheduled", recent:"Recent inspections", recentDetail:"Canonical history and findings linked to each infrastructure item.", noInspections:"No inspections have been registered yet.", unavailable:"Infrastructure unavailable", noState:"No status" },
+  es:{ title:"Propiedades e Infraestructura", description:"Inventario técnico, inspecciones, documentos y mantenimiento asociado a Fundo Corcovado.", refresh:"Actualizar", loadError:"No fue posible cargar infraestructura.", technical:"Elementos técnicos", planned:"Planificados", overdue:"Inspecciones vencidas", documents:"Documentos", incidents:"Incidencias abiertas", maintenance:"Mantenciones abiertas", dataQuality:"Calidad de datos", dataQualityDetail:"categorías difieren solo por mayúsculas/minúsculas. La vista las agrupa, pero no modifica los registros productivos.", inventory:"Inventario técnico", inventoryDetail:"Edificios, redes, agua, energía, conectividad y otros sistemas registrados.", element:"Elemento", category:"Categoría", state:"Estado", priority:"Prioridad", lastInspection:"Última inspección", nextInspection:"Próxima inspección", loading:"Cargando infraestructura…", noRecord:"Sin registro", unscheduled:"Sin programar", recent:"Inspecciones recientes", recentDetail:"Historial canónico y hallazgos vinculados a cada elemento de infraestructura.", noInspections:"Todavía no existen inspecciones registradas.", unavailable:"Infraestructura no disponible", noState:"Sin estado" },
+  de:{ title:"Immobilien und Infrastruktur", description:"Technisches Inventar, Inspektionen, Dokumente und zugehörige Instandhaltung von Fundo Corcovado.", refresh:"Aktualisieren", loadError:"Infrastrukturdaten konnten nicht geladen werden.", technical:"Technische Elemente", planned:"Geplant", overdue:"Überfällige Inspektionen", documents:"Dokumente", incidents:"Offene Vorfälle", maintenance:"Offene Instandhaltung", dataQuality:"Datenqualität", dataQualityDetail:"Kategorien unterscheiden sich nur durch Groß-/Kleinschreibung. Die Ansicht gruppiert sie, ändert aber keine Produktionsdaten.", inventory:"Technisches Inventar", inventoryDetail:"Gebäude, Netze, Wasser, Energie, Konnektivität und andere erfasste Systeme.", element:"Element", category:"Kategorie", state:"Status", priority:"Priorität", lastInspection:"Letzte Inspektion", nextInspection:"Nächste Inspektion", loading:"Infrastruktur wird geladen…", noRecord:"Kein Eintrag", unscheduled:"Nicht geplant", recent:"Letzte Inspektionen", recentDetail:"Kanonischer Verlauf und Befunde zu jedem Infrastrukturelement.", noInspections:"Noch keine Inspektionen erfasst.", unavailable:"Infrastruktur nicht verfügbar", noState:"Kein Status" },
+} as const
+const LABELS = {
+  en:{ active:"Active", operational:"Operational", planned:"Planned", inactive:"Inactive", maintenance:"Maintenance", low:"Low", normal:"Normal", medium:"Medium", high:"High", critical:"Critical", good:"Good", fair:"Fair", poor:"Poor" },
+  es:{ active:"Activo", operational:"Operativo", planned:"Planificado", inactive:"Inactivo", maintenance:"En mantenimiento", low:"Baja", normal:"Normal", medium:"Media", high:"Alta", critical:"Crítica", good:"Bueno", fair:"Regular", poor:"Deficiente" },
+  de:{ active:"Aktiv", operational:"Betriebsbereit", planned:"Geplant", inactive:"Inaktiv", maintenance:"In Instandhaltung", low:"Niedrig", normal:"Normal", medium:"Mittel", high:"Hoch", critical:"Kritisch", good:"Gut", fair:"Ausreichend", poor:"Schlecht" },
+} as const
+const normalize=(value:string)=>value.trim().toLowerCase()
 
-const normalize = (value:string) => value.trim().toLowerCase()
-const label = (value:string|null) => value ? value.replaceAll("_", " ") : "Sin estado"
-
-export default function InfrastructurePage() {
-  const supabase = useMemo(() => createBrowserClient(), [])
-  const [items,setItems]=useState<Infra[]>([])
-  const [inspections,setInspections]=useState<Inspection[]>([])
-  const [docs,setDocs]=useState(0)
-  const [incidents,setIncidents]=useState(0)
-  const [tasks,setTasks]=useState(0)
-  const [loading,setLoading]=useState(true)
-  const [error,setError]=useState<string|null>(null)
-
-  const load = useCallback(async()=>{
-    setLoading(true); setError(null)
-    const [infra, insp, docCount, incidentCount, taskCount] = await Promise.all([
-      supabase.from("infrastructure_plans").select("id,name,category,status,priority,next_inspection,last_inspection,location_id").order("name"),
-      supabase.from("infrastructure_inspections").select("id,infrastructure_id,condition,status,inspected_at,next_inspection,findings").order("inspected_at",{ascending:false}).limit(20),
-      supabase.from("infrastructure_documents").select("id",{count:"exact",head:true}),
-      supabase.from("incidents").select("id",{count:"exact",head:true}).not("infrastructure_id","is",null).neq("status","closed"),
-      supabase.from("maintenance_tasks").select("id",{count:"exact",head:true}).not("infrastructure_id","is",null).neq("status","completed"),
-    ])
-    const e=infra.error||insp.error||docCount.error||incidentCount.error||taskCount.error
-    if(e){setError(e.message);setItems([]);setInspections([])} else {
-      setItems((infra.data??[]) as Infra[]); setInspections((insp.data??[]) as Inspection[]); setDocs(docCount.count??0); setIncidents(incidentCount.count??0); setTasks(taskCount.count??0)
-    }
-    setLoading(false)
-  },[supabase])
+export default function InfrastructurePage(){
+  const {language}=useLanguage(); const lang=(language in COPY?language:"en") as keyof typeof COPY; const copy=COPY[lang]; const locale=LOCALES[lang]
+  const supabase=useMemo(()=>createBrowserClient(),[]); const [items,setItems]=useState<Infra[]>([]); const [inspections,setInspections]=useState<Inspection[]>([]); const [docs,setDocs]=useState(0); const [incidents,setIncidents]=useState(0); const [tasks,setTasks]=useState(0); const [loading,setLoading]=useState(true); const [error,setError]=useState(false)
+  const label=(value:string|null)=>value ? (LABELS[lang][normalize(value) as keyof (typeof LABELS)[typeof lang]] ?? value.replaceAll("_"," ")) : copy.noState
+  const date=(value:string|null)=>value ? new Intl.DateTimeFormat(locale,{dateStyle:"medium",timeZone:"America/Santiago"}).format(new Date(`${value}T12:00:00`)) : null
+  const load=useCallback(async()=>{ setLoading(true); setError(false); const [infra,insp,docCount,incidentCount,taskCount]=await Promise.all([
+    supabase.from("infrastructure_plans").select("id,name,category,status,priority,next_inspection,last_inspection,location_id").order("name"),
+    supabase.from("infrastructure_inspections").select("id,infrastructure_id,condition,status,inspected_at,next_inspection,findings").order("inspected_at",{ascending:false}).limit(20),
+    supabase.from("infrastructure_documents").select("id",{count:"exact",head:true}), supabase.from("incidents").select("id",{count:"exact",head:true}).not("infrastructure_id","is",null).neq("status","closed"), supabase.from("maintenance_tasks").select("id",{count:"exact",head:true}).not("infrastructure_id","is",null).neq("status","completed"),
+  ]); const e=infra.error||insp.error||docCount.error||incidentCount.error||taskCount.error; if(e){console.error("infrastructure load failed",e);setError(true);setItems([]);setInspections([])}else{setItems((infra.data??[]) as Infra[]);setInspections((insp.data??[]) as Inspection[]);setDocs(docCount.count??0);setIncidents(incidentCount.count??0);setTasks(taskCount.count??0)}setLoading(false)},[supabase])
   useEffect(()=>{void load()},[load])
-
-  const categories = new Map<string,Set<string>>()
-  items.forEach(i=>{const key=normalize(i.category); if(!categories.has(key)) categories.set(key,new Set()); categories.get(key)!.add(i.category)})
-  const duplicatedCategories=[...categories.values()].filter(v=>v.size>1).length
-  const overdue=items.filter(i=>i.next_inspection && i.next_inspection < new Date().toISOString().slice(0,10)).length
-  const planned=items.filter(i=>normalize(i.status??"")==="planned").length
-
-  return <AppLayout>
-    <PageHeader title="Propiedades e Infraestructura" description="Inventario técnico, inspecciones, documentos y mantenimiento asociado a Fundo Corcovado." actions={<Button variant="outline" onClick={()=>void load()}><RefreshCw className="mr-2 h-4 w-4"/>Actualizar</Button>}/>
-    <div className="space-y-6 p-4 sm:p-8">
-      {error && <Card className="border-destructive/60"><CardContent className="p-4 text-sm text-destructive">No fue posible cargar infraestructura: {error}</CardContent></Card>}
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-6">
-        <Metric title="Elementos técnicos" value={items.length} icon={<Building2 className="h-4 w-4"/>}/>
-        <Metric title="Planificados" value={planned}/>
-        <Metric title="Inspecciones vencidas" value={overdue} alert={overdue>0}/>
-        <Metric title="Documentos" value={docs} icon={<FileText className="h-4 w-4"/>}/>
-        <Metric title="Incidencias abiertas" value={incidents} alert={incidents>0} icon={<AlertTriangle className="h-4 w-4"/>}/>
-        <Metric title="Mantenciones abiertas" value={tasks} alert={tasks>0} icon={<Wrench className="h-4 w-4"/>}/>
-      </div>
-
-      {duplicatedCategories>0 && <Card className="border-amber-300"><CardHeader><CardTitle className="text-base">Calidad de datos</CardTitle><CardDescription>Se detectaron {duplicatedCategories} categorías duplicadas solo por mayúsculas/minúsculas. La vista las agrupa, pero no modifica los registros productivos.</CardDescription></CardHeader></Card>}
-
-      <Card><CardHeader><CardTitle>Inventario técnico</CardTitle><CardDescription>Edificios, redes, agua, energía, conectividad y otros sistemas registrados.</CardDescription></CardHeader><CardContent><div className="overflow-x-auto rounded-lg border"><Table><TableHeader><TableRow><TableHead>Elemento</TableHead><TableHead>Categoría</TableHead><TableHead>Estado</TableHead><TableHead>Prioridad</TableHead><TableHead>Última inspección</TableHead><TableHead>Próxima inspección</TableHead></TableRow></TableHeader><TableBody>
-        {loading?<TableRow><TableCell colSpan={6} className="py-10 text-center text-muted-foreground">Cargando infraestructura…</TableCell></TableRow>:items.map(i=><TableRow key={i.id}><TableCell className="font-medium">{i.name}</TableCell><TableCell>{i.category}</TableCell><TableCell><Badge variant="outline">{label(i.status)}</Badge></TableCell><TableCell>{label(i.priority)}</TableCell><TableCell>{i.last_inspection??"Sin registro"}</TableCell><TableCell className={i.next_inspection&&i.next_inspection<new Date().toISOString().slice(0,10)?"text-destructive font-medium":""}>{i.next_inspection??"Sin programar"}</TableCell></TableRow>)}
-      </TableBody></Table></div></CardContent></Card>
-
-      <Card><CardHeader><div className="flex items-center gap-2"><ShieldCheck className="h-5 w-5"/><CardTitle>Inspecciones recientes</CardTitle></div><CardDescription>Historial canónico y hallazgos vinculados a cada elemento de infraestructura.</CardDescription></CardHeader><CardContent>{inspections.length===0?<p className="py-8 text-center text-sm text-muted-foreground">Todavía no existen inspecciones registradas.</p>:<div className="space-y-3">{inspections.map(x=>{const item=items.find(i=>i.id===x.infrastructure_id);return <div key={x.id} className="rounded-lg border p-4"><div className="flex flex-wrap items-center justify-between gap-2"><p className="font-medium">{item?.name??"Infraestructura no disponible"}</p><Badge variant="outline">{label(x.condition)}</Badge></div><p className="mt-1 text-xs text-muted-foreground">{new Intl.DateTimeFormat("es-CL",{dateStyle:"medium",timeStyle:"short",timeZone:"America/Santiago"}).format(new Date(x.inspected_at))}</p>{x.findings&&<p className="mt-2 text-sm">{x.findings}</p>}</div>})}</div>}</CardContent></Card>
-    </div>
-  </AppLayout>
+  const categories=new Map<string,Set<string>>(); items.forEach(i=>{const key=normalize(i.category);if(!categories.has(key))categories.set(key,new Set());categories.get(key)!.add(i.category)}); const duplicatedCategories=[...categories.values()].filter(v=>v.size>1).length; const today=new Date().toISOString().slice(0,10); const overdue=items.filter(i=>i.next_inspection&&i.next_inspection<today).length; const planned=items.filter(i=>normalize(i.status??"")==="planned").length
+  return <AppLayout><PageHeader title={copy.title} description={copy.description} actions={<Button variant="outline" onClick={()=>void load()}><RefreshCw className="mr-2 h-4 w-4"/>{copy.refresh}</Button>}/><div className="space-y-6 p-4 sm:p-8">
+    {error&&<Card className="border-destructive/60"><CardContent className="p-4 text-sm text-destructive">{copy.loadError}</CardContent></Card>}
+    <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-6"><Metric title={copy.technical} value={items.length} icon={<Building2 className="h-4 w-4"/>} locale={locale}/><Metric title={copy.planned} value={planned} locale={locale}/><Metric title={copy.overdue} value={overdue} alert={overdue>0} locale={locale}/><Metric title={copy.documents} value={docs} icon={<FileText className="h-4 w-4"/>} locale={locale}/><Metric title={copy.incidents} value={incidents} alert={incidents>0} icon={<AlertTriangle className="h-4 w-4"/>} locale={locale}/><Metric title={copy.maintenance} value={tasks} alert={tasks>0} icon={<Wrench className="h-4 w-4"/>} locale={locale}/></div>
+    {duplicatedCategories>0&&<Card className="border-amber-300"><CardHeader><CardTitle className="text-base">{copy.dataQuality}</CardTitle><CardDescription>{new Intl.NumberFormat(locale).format(duplicatedCategories)} {copy.dataQualityDetail}</CardDescription></CardHeader></Card>}
+    <Card><CardHeader><CardTitle>{copy.inventory}</CardTitle><CardDescription>{copy.inventoryDetail}</CardDescription></CardHeader><CardContent><div className="overflow-x-auto rounded-lg border"><Table><TableHeader><TableRow><TableHead>{copy.element}</TableHead><TableHead>{copy.category}</TableHead><TableHead>{copy.state}</TableHead><TableHead>{copy.priority}</TableHead><TableHead>{copy.lastInspection}</TableHead><TableHead>{copy.nextInspection}</TableHead></TableRow></TableHeader><TableBody>{loading?<TableRow><TableCell colSpan={6} className="py-10 text-center text-muted-foreground">{copy.loading}</TableCell></TableRow>:items.map(i=><TableRow key={i.id}><TableCell className="font-medium">{i.name}</TableCell><TableCell>{i.category}</TableCell><TableCell><Badge variant="outline">{label(i.status)}</Badge></TableCell><TableCell>{label(i.priority)}</TableCell><TableCell>{date(i.last_inspection)??copy.noRecord}</TableCell><TableCell className={i.next_inspection&&i.next_inspection<today?"text-destructive font-medium":""}>{date(i.next_inspection)??copy.unscheduled}</TableCell></TableRow>)}</TableBody></Table></div></CardContent></Card>
+    <Card><CardHeader><div className="flex items-center gap-2"><ShieldCheck className="h-5 w-5"/><CardTitle>{copy.recent}</CardTitle></div><CardDescription>{copy.recentDetail}</CardDescription></CardHeader><CardContent>{inspections.length===0?<p className="py-8 text-center text-sm text-muted-foreground">{copy.noInspections}</p>:<div className="space-y-3">{inspections.map(x=>{const item=items.find(i=>i.id===x.infrastructure_id);return <div key={x.id} className="rounded-lg border p-4"><div className="flex flex-wrap items-center justify-between gap-2"><p className="font-medium">{item?.name??copy.unavailable}</p><Badge variant="outline">{label(x.condition)}</Badge></div><p className="mt-1 text-xs text-muted-foreground">{new Intl.DateTimeFormat(locale,{dateStyle:"medium",timeStyle:"short",timeZone:"America/Santiago"}).format(new Date(x.inspected_at))}</p>{x.findings&&<p className="mt-2 text-sm">{x.findings}</p>}</div>})}</div>}</CardContent></Card>
+  </div></AppLayout>
 }
-
-function Metric({title,value,alert=false,icon}:{title:string;value:number;alert?:boolean;icon?:React.ReactNode}){return <Card className={alert?"border-amber-300":undefined}><CardHeader className="pb-2"><CardTitle className="flex items-center gap-2 text-sm font-medium text-muted-foreground">{icon}{title}</CardTitle></CardHeader><CardContent className="text-3xl font-semibold">{value.toLocaleString("es-CL")}</CardContent></Card>}
+function Metric({title,value,alert=false,icon,locale}:{title:string;value:number;alert?:boolean;icon?:React.ReactNode;locale:string}){return <Card className={alert?"border-amber-300":undefined}><CardHeader className="pb-2"><CardTitle className="flex items-center gap-2 text-sm font-medium text-muted-foreground">{icon}{title}</CardTitle></CardHeader><CardContent className="text-3xl font-semibold">{new Intl.NumberFormat(locale).format(value)}</CardContent></Card>}

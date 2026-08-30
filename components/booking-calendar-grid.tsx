@@ -63,6 +63,8 @@ type BookingCalendarGridProps = {
   geometry: (start: string, end: string) => Geometry
 }
 
+const DATE_LOCALES = { en: enUS, es, de } as const
+
 export function BookingCalendarGrid({
   hierarchy,
   housekeeping,
@@ -101,7 +103,7 @@ export function BookingCalendarGrid({
 }: BookingCalendarGridProps) {
   const { language } = useLanguage()
   const tr = (value: string) => translateBookingOperationsValue(value, language)
-  const dateLocale = language === "de" ? de : language === "es" ? es : enUS
+  const dateLocale = DATE_LOCALES[language]
 
   return (
     <>

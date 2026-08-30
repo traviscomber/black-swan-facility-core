@@ -35,6 +35,7 @@ const copy = {
     description: "Registro operativo de cuarteles y antecedentes técnicos del Fundo Corcovado.",
     photos: "Fotos",
     loadError: "No fue posible cargar el viñedo",
+    loading: "Cargando…",
     retry: "Reintentar",
     plots: "Cuarteles registrados",
     area: "Superficie declarada",
@@ -60,6 +61,7 @@ const copy = {
     description: "Operational records for vineyard blocks and technical information at Fundo Corcovado.",
     photos: "Photos",
     loadError: "The vineyard could not be loaded",
+    loading: "Loading…",
     retry: "Retry",
     plots: "Registered blocks",
     area: "Declared area",
@@ -80,19 +82,48 @@ const copy = {
     noRecord: "Not recorded",
     plantsPerHa: "vines/ha",
   },
+  de: {
+    title: "Weinberg",
+    description: "Betriebsdaten zu Weinbergsblöcken und technischen Angaben auf Fundo Corcovado.",
+    photos: "Fotos",
+    loadError: "Der Weinberg konnte nicht geladen werden",
+    loading: "Wird geladen…",
+    retry: "Erneut versuchen",
+    plots: "Registrierte Blöcke",
+    area: "Erfasste Fläche",
+    varieties: "Registrierte Rebsorten",
+    active: "Aktive Blöcke",
+    emptyTitle: "Es sind keine Weinbergsblöcke registriert.",
+    emptyBody: "Das Modul ist für reale Versuche oder Pflanzungen vorbereitet. Sortenempfehlungen werden nicht als bestehende Produktion dargestellt.",
+    sectionTitle: "Weinbergsblöcke",
+    sectionDescription: "Es werden nur vorhandene Supabase-Datensätze angezeigt. Ertrag und Produktion erscheinen, sobald bestätigte Erntedaten vorliegen.",
+    noLocation: "Standort nicht erfasst",
+    noStatus: "Kein Status",
+    variety: "Rebsorte",
+    plantedYear: "Pflanzjahr",
+    soil: "Boden",
+    drainage: "Drainage",
+    density: "Pflanzdichte",
+    trellis: "Erziehungssystem",
+    noRecord: "Nicht erfasst",
+    plantsPerHa: "Reben/ha",
+  },
 } as const
 
-const statuses: Record<"es" | "en", Record<string, string>> = {
+const statuses: Record<"es" | "en" | "de", Record<string, string>> = {
   es: { active: "Activo", inactive: "Inactivo", planned: "Planificado", establishment: "En establecimiento" },
   en: { active: "Active", inactive: "Inactive", planned: "Planned", establishment: "Establishment" },
+  de: { active: "Aktiv", inactive: "Inaktiv", planned: "Geplant", establishment: "In Etablierung" },
 }
+
+const locales = { es: "es-CL", en: "en-US", de: "de-DE" } as const
 
 export default function VineyardPage() {
   const supabase = useMemo(() => createBrowserClient(), [])
   const { language } = useLanguage()
-  const lang = language === "es" ? "es" : "en"
+  const lang = language
   const text = copy[lang]
-  const locale = lang === "es" ? "es-CL" : "en-US"
+  const locale = locales[lang]
   const [plots, setPlots] = useState<VineyardPlot[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -139,7 +170,7 @@ export default function VineyardPage() {
         <Card>
           <CardHeader><CardTitle>{text.sectionTitle}</CardTitle><CardDescription>{text.sectionDescription}</CardDescription></CardHeader>
           <CardContent>
-            {loading ? <p className="py-12 text-center text-sm text-muted-foreground">Cargando…</p> : plots.length === 0 ? <div className="py-12 text-center"><Grape className="mx-auto mb-3 h-10 w-10 text-muted-foreground" /><p className="font-medium">{text.emptyTitle}</p><p className="mx-auto mt-1 max-w-xl text-sm text-muted-foreground">{text.emptyBody}</p></div> : <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{plots.map((plot) => <Card key={plot.id}><CardHeader className="pb-3"><div className="flex items-start justify-between gap-3"><CardTitle className="text-base">{plot.name}</CardTitle><Badge variant="outline">{statuses[lang][plot.status ?? ""] ?? plot.status ?? text.noStatus}</Badge></div><CardDescription>{plot.location || text.noLocation}</CardDescription></CardHeader><CardContent className="space-y-2 text-sm"><p><span className="text-muted-foreground">{text.variety}:</span> {plot.vine_variety || text.noRecord}</p><p><span className="text-muted-foreground">{text.area}:</span> {Number(plot.area_hectares ?? 0).toLocaleString(locale, { maximumFractionDigits: 2 })} ha</p><p><span className="text-muted-foreground">{text.plantedYear}:</span> {plot.planted_year ?? text.noRecord}</p><p><span className="text-muted-foreground">{text.soil}:</span> {plot.soil_type || text.noRecord}</p><p><span className="text-muted-foreground">{text.drainage}:</span> {plot.drainage_quality || text.noRecord}</p><p><span className="text-muted-foreground">{text.density}:</span> {plot.vine_density_per_hectare ? `${plot.vine_density_per_hectare.toLocaleString(locale)} ${text.plantsPerHa}` : text.noRecord}</p><p><span className="text-muted-foreground">{text.trellis}:</span> {plot.trellis_system || text.noRecord}</p></CardContent></Card>)}</div>}
+            {loading ? <p className="py-12 text-center text-sm text-muted-foreground">{text.loading}</p> : plots.length === 0 ? <div className="py-12 text-center"><Grape className="mx-auto mb-3 h-10 w-10 text-muted-foreground" /><p className="font-medium">{text.emptyTitle}</p><p className="mx-auto mt-1 max-w-xl text-sm text-muted-foreground">{text.emptyBody}</p></div> : <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{plots.map((plot) => <Card key={plot.id}><CardHeader className="pb-3"><div className="flex items-start justify-between gap-3"><CardTitle className="text-base">{plot.name}</CardTitle><Badge variant="outline">{statuses[lang][plot.status ?? ""] ?? plot.status ?? text.noStatus}</Badge></div><CardDescription>{plot.location || text.noLocation}</CardDescription></CardHeader><CardContent className="space-y-2 text-sm"><p><span className="text-muted-foreground">{text.variety}:</span> {plot.vine_variety || text.noRecord}</p><p><span className="text-muted-foreground">{text.area}:</span> {Number(plot.area_hectares ?? 0).toLocaleString(locale, { maximumFractionDigits: 2 })} ha</p><p><span className="text-muted-foreground">{text.plantedYear}:</span> {plot.planted_year ?? text.noRecord}</p><p><span className="text-muted-foreground">{text.soil}:</span> {plot.soil_type || text.noRecord}</p><p><span className="text-muted-foreground">{text.drainage}:</span> {plot.drainage_quality || text.noRecord}</p><p><span className="text-muted-foreground">{text.density}:</span> {plot.vine_density_per_hectare ? `${plot.vine_density_per_hectare.toLocaleString(locale)} ${text.plantsPerHa}` : text.noRecord}</p><p><span className="text-muted-foreground">{text.trellis}:</span> {plot.trellis_system || text.noRecord}</p></CardContent></Card>)}</div>}
           </CardContent>
         </Card>
       </div>

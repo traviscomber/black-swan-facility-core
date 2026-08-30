@@ -13,394 +13,59 @@ import { Play, Activity, Clock, CheckCircle, XCircle, Zap } from "lucide-react"
 import { executeAgent } from "./actions"
 import { useEffect, useState } from "react"
 
-function getAgentIcon(type: string) {
-  const iconMap: Record<string, any> = {
-    maintenance: Clock,
-    issue_resolution: Activity,
-    documentation: CheckCircle,
-    communication: Zap,
-    execution: Play,
-  }
-  return iconMap[type] || Activity
-}
+type Locale = "en" | "es" | "de"
+const localeMap: Record<Locale, string> = { en: "en-US", es: "es-CL", de: "de-DE" }
+const copy = {
+  en: { title: "AI operations", description: "Operational agents, executions and logs.", loading: "Loading AI operations…", setupTitle: "AI Operations setup required", setupBody: "The AI Operations system must be initialized before agents can run.", setupInstructions: "Setup instructions", step1: "Open the Scripts section in the deployment environment.", step2: "Run the schema script:", step3: "Refresh this page after the script completes.", creates: "This creates", createAgents: "AI agents table", createExecutions: "Agent execution tracking", createMemory: "Agent memory", createRules: "Automation rules", createLogs: "Operation logs", refresh: "Refresh page", activeAgents: "Active agents", running: "running operations", totalExecutions: "Total executions", allTime: "all time", successful: "Successful", successRate: "success rate", failed: "Failed", requireAttention: "require attention", agents: "AI agents", lastRun: "Last run", runNow: "Run now", recent: "Recent executions", agent: "Agent", status: "Status", duration: "Duration", started: "Started", unknown: "Unknown", noExecutions: "No executions yet.", logs: "Operation logs", level: "Level", message: "Message", time: "Time", noLogs: "No logs yet.", never: "Never", active: "Active", paused: "Paused", disabled: "Disabled", runningStatus: "Running", completed: "Completed", failedStatus: "Failed" },
+  es: { title: "Operaciones de IA", description: "Agentes operativos, ejecuciones y registros.", loading: "Cargando operaciones de IA…", setupTitle: "Configuración de Operaciones de IA requerida", setupBody: "El sistema de Operaciones de IA debe inicializarse antes de ejecutar agentes.", setupInstructions: "Instrucciones de configuración", step1: "Abre la sección Scripts en el entorno de despliegue.", step2: "Ejecuta el script de esquema:", step3: "Actualiza esta página cuando finalice el script.", creates: "Esto crea", createAgents: "Tabla de agentes de IA", createExecutions: "Seguimiento de ejecuciones", createMemory: "Memoria de agentes", createRules: "Reglas de automatización", createLogs: "Registros operativos", refresh: "Actualizar página", activeAgents: "Agentes activos", running: "operaciones en ejecución", totalExecutions: "Ejecuciones totales", allTime: "histórico", successful: "Exitosas", successRate: "tasa de éxito", failed: "Fallidas", requireAttention: "requieren atención", agents: "Agentes de IA", lastRun: "Última ejecución", runNow: "Ejecutar ahora", recent: "Ejecuciones recientes", agent: "Agente", status: "Estado", duration: "Duración", started: "Inicio", unknown: "Desconocido", noExecutions: "Aún no hay ejecuciones.", logs: "Registros operativos", level: "Nivel", message: "Mensaje", time: "Hora", noLogs: "Aún no hay registros.", never: "Nunca", active: "Activo", paused: "Pausado", disabled: "Deshabilitado", runningStatus: "En ejecución", completed: "Completado", failedStatus: "Fallido" },
+  de: { title: "KI-Betrieb", description: "Operative Agenten, Ausführungen und Protokolle.", loading: "KI-Betrieb wird geladen…", setupTitle: "Einrichtung für KI-Betrieb erforderlich", setupBody: "Das KI-Betriebssystem muss initialisiert werden, bevor Agenten ausgeführt werden können.", setupInstructions: "Einrichtungsanleitung", step1: "Öffnen Sie den Bereich Scripts in der Deployment-Umgebung.", step2: "Führen Sie das Schema-Skript aus:", step3: "Aktualisieren Sie diese Seite nach Abschluss des Skripts.", creates: "Dadurch werden erstellt", createAgents: "Tabelle der KI-Agenten", createExecutions: "Ausführungsverfolgung", createMemory: "Agentenspeicher", createRules: "Automatisierungsregeln", createLogs: "Betriebsprotokolle", refresh: "Seite aktualisieren", activeAgents: "Aktive Agenten", running: "laufende Operationen", totalExecutions: "Ausführungen gesamt", allTime: "gesamt", successful: "Erfolgreich", successRate: "Erfolgsquote", failed: "Fehlgeschlagen", requireAttention: "erfordern Aufmerksamkeit", agents: "KI-Agenten", lastRun: "Letzte Ausführung", runNow: "Jetzt ausführen", recent: "Letzte Ausführungen", agent: "Agent", status: "Status", duration: "Dauer", started: "Gestartet", unknown: "Unbekannt", noExecutions: "Noch keine Ausführungen.", logs: "Betriebsprotokolle", level: "Stufe", message: "Meldung", time: "Zeit", noLogs: "Noch keine Protokolle.", never: "Nie", active: "Aktiv", paused: "Pausiert", disabled: "Deaktiviert", runningStatus: "Läuft", completed: "Abgeschlossen", failedStatus: "Fehlgeschlagen" },
+} as const
 
-function getAgentColor(type: string) {
-  const colorMap: Record<string, string> = {
-    maintenance: "bg-blue-50 text-blue-700 border-blue-200",
-    issue_resolution: "bg-red-50 text-red-700 border-red-200",
-    documentation: "bg-green-50 text-green-700 border-green-200",
-    communication: "bg-yellow-50 text-yellow-700 border-yellow-200",
-    execution: "bg-purple-50 text-purple-700 border-purple-200",
-  }
-  return colorMap[type] || "bg-gray-50 text-gray-700 border-gray-200"
-}
-
-function getStatusColor(status: string) {
-  switch (status) {
-    case "active":
-      return "bg-green-50 text-green-700 border-green-200"
-    case "paused":
-      return "bg-yellow-50 text-yellow-700 border-yellow-200"
-    case "disabled":
-      return "bg-gray-50 text-gray-700 border-gray-200"
-    case "running":
-      return "bg-blue-50 text-blue-700 border-blue-200"
-    case "completed":
-      return "bg-green-50 text-green-700 border-green-200"
-    case "failed":
-      return "bg-red-50 text-red-700 border-red-200"
-    default:
-      return "bg-gray-50 text-gray-700 border-gray-200"
-  }
-}
-
-function formatDate(dateString: string | null) {
-  if (!dateString) return "Never"
-  return new Date(dateString).toLocaleString("en-US", {
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  })
-}
+function getAgentIcon(type: string) { const iconMap: Record<string, any> = { maintenance: Clock, issue_resolution: Activity, documentation: CheckCircle, communication: Zap, execution: Play }; return iconMap[type] || Activity }
+function getAgentColor(type: string) { return ({ maintenance: "bg-blue-50 text-blue-700 border-blue-200", issue_resolution: "bg-red-50 text-red-700 border-red-200", documentation: "bg-green-50 text-green-700 border-green-200", communication: "bg-yellow-50 text-yellow-700 border-yellow-200", execution: "bg-purple-50 text-purple-700 border-purple-200" } as Record<string, string>)[type] || "bg-gray-50 text-gray-700 border-gray-200" }
+function getStatusColor(status: string) { return ({ active: "bg-green-50 text-green-700 border-green-200", paused: "bg-yellow-50 text-yellow-700 border-yellow-200", disabled: "bg-gray-50 text-gray-700 border-gray-200", running: "bg-blue-50 text-blue-700 border-blue-200", completed: "bg-green-50 text-green-700 border-green-200", failed: "bg-red-50 text-red-700 border-red-200" } as Record<string, string>)[status] || "bg-gray-50 text-gray-700 border-gray-200" }
 
 export default function AIOperationsPage() {
-  const { t } = useLanguage()
+  const { language } = useLanguage()
+  const lang = language as Locale
+  const text = copy[lang]
+  const locale = localeMap[lang]
+  const date = new Intl.DateTimeFormat(locale, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })
   const [agents, setAgents] = useState<AIAgent[]>([])
   const [executions, setExecutions] = useState<AIAgentExecution[]>([])
   const [logs, setLogs] = useState<AIOperationLog[]>([])
   const [loading, setLoading] = useState(true)
   const [setupRequired, setSetupRequired] = useState(false)
-  const [stats, setStats] = useState({
-    totalExecutions: 0,
-    successfulExecutions: 0,
-    failedExecutions: 0,
-    activeAgents: 0,
-  })
-
-  useEffect(() => {
-    loadData()
-  }, [])
+  const [stats, setStats] = useState({ totalExecutions: 0, successfulExecutions: 0, failedExecutions: 0, activeAgents: 0 })
 
   async function loadData() {
     const supabase = createClient()
-
-    // Fetch AI agents
     const { data: agentsData, error: agentsError } = await supabase.from("ai_agents").select("*").order("created_at")
-
-    // If tables don't exist, show setup screen
-    if (agentsError && agentsError.code === "PGRST116") {
-      setSetupRequired(true)
-      setLoading(false)
-      return
-    }
-
-    // Fetch recent executions
-    const { data: executionsData } = await supabase
-      .from("ai_agent_executions")
-      .select("*, ai_agents(name)")
-      .order("created_at", { ascending: false })
-      .limit(10)
-
-    // Fetch recent logs
-    const { data: logsData } = await supabase
-      .from("ai_operation_logs")
-      .select("*, ai_agents(name)")
-      .order("created_at", { ascending: false })
-      .limit(20)
-
-    setAgents(agentsData || [])
-    setExecutions(executionsData || [])
-    setLogs(logsData || [])
-
-    // Calculate stats
-    const totalExecutions = executionsData?.length || 0
-    const successfulExecutions = executionsData?.filter((e) => e.status === "completed").length || 0
-    const failedExecutions = executionsData?.filter((e) => e.status === "failed").length || 0
-    const activeAgents = agentsData?.filter((a) => a.status === "active").length || 0
-
-    setStats({ totalExecutions, successfulExecutions, failedExecutions, activeAgents })
+    if (agentsError && agentsError.code === "PGRST116") { setSetupRequired(true); setLoading(false); return }
+    const [{ data: executionsData }, { data: logsData }] = await Promise.all([
+      supabase.from("ai_agent_executions").select("*, ai_agents(name)").order("created_at", { ascending: false }).limit(10),
+      supabase.from("ai_operation_logs").select("*, ai_agents(name)").order("created_at", { ascending: false }).limit(20),
+    ])
+    setAgents(agentsData || []); setExecutions(executionsData || []); setLogs(logsData || [])
+    setStats({ totalExecutions: executionsData?.length || 0, successfulExecutions: executionsData?.filter((item) => item.status === "completed").length || 0, failedExecutions: executionsData?.filter((item) => item.status === "failed").length || 0, activeAgents: agentsData?.filter((item) => item.status === "active").length || 0 })
     setLoading(false)
   }
 
-  async function handleExecuteAgent(agentId: string) {
-    await executeAgent(agentId)
-    loadData() // Reload data after execution
-  }
+  useEffect(() => { void loadData() }, [])
+  async function handleExecuteAgent(agentId: string) { await executeAgent(agentId); await loadData() }
+  const formatDate = (value: string | null) => value ? date.format(new Date(value)) : text.never
+  const statusLabel = (status: string) => status === "active" ? text.active : status === "paused" ? text.paused : status === "disabled" ? text.disabled : status === "running" ? text.runningStatus : status === "completed" ? text.completed : status === "failed" ? text.failedStatus : status
 
-  if (loading) {
-    return (
-      <AppLayout>
-        <PageHeader title={t('pages.ai_operations')} description={t('pages.ai_operations_desc')} />
-        <div className="p-4 md:p-6">
-          <div className="text-center text-sm text-gray-600">{t('common.loading')}</div>
-        </div>
-      </AppLayout>
-    )
-  }
+  if (loading) return <AppLayout><PageHeader title={text.title} description={text.description} /><div className="p-4 md:p-6"><div className="text-center text-sm text-gray-600">{text.loading}</div></div></AppLayout>
+  if (setupRequired) return <AppLayout><PageHeader title={text.title} description={text.description} /><div className="p-4 md:p-6"><Card className="border-yellow-200 bg-yellow-50"><CardHeader><CardTitle className="flex items-center gap-2 text-yellow-900"><Activity className="h-5 w-5" />{text.setupTitle}</CardTitle></CardHeader><CardContent className="space-y-4"><p className="text-sm text-yellow-800">{text.setupBody}</p><div className="rounded-lg border border-yellow-300 bg-white p-4"><h3 className="mb-2 text-sm font-semibold text-gray-900">{text.setupInstructions}</h3><ol className="space-y-2 text-sm text-gray-700"><li>1. {text.step1}</li><li>2. {text.step2} <code className="rounded bg-gray-100 px-1.5 py-0.5 font-mono text-xs">005_create_ai_operations_schema.sql</code></li><li>3. {text.step3}</li></ol></div><div className="rounded-lg border border-gray-200 bg-gray-50 p-4"><h3 className="mb-2 text-sm font-semibold text-gray-900">{text.creates}</h3><ul className="space-y-1 text-xs text-gray-600"><li>• {text.createAgents}</li><li>• {text.createExecutions}</li><li>• {text.createMemory}</li><li>• {text.createRules}</li><li>• {text.createLogs}</li></ul></div><Button variant="outline" className="w-full bg-transparent" onClick={() => window.location.reload()}>{text.refresh}</Button></CardContent></Card></div></AppLayout>
 
-  if (setupRequired) {
-    return (
-      <AppLayout>
-        <PageHeader title={t('pages.ai_operations')} description={t('pages.ai_operations_desc')} />
-
-        <div className="p-4 md:p-6">
-          <Card className="border-yellow-200 bg-yellow-50">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-yellow-900">
-                <Activity className="h-5 w-5" />
-                AI Operations Setup Required
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <p className="text-sm text-yellow-800">
-                The AI Operations system needs to be initialized. Run the SQL setup script to create the required
-                database tables.
-              </p>
-
-              <div className="rounded-lg border border-yellow-300 bg-white p-4">
-                <h3 className="mb-2 text-sm font-semibold text-gray-900">Setup Instructions:</h3>
-                <ol className="space-y-2 text-sm text-gray-700">
-                  <li className="flex gap-2">
-                    <span className="font-semibold">1.</span>
-                    <span>Navigate to the Scripts section in your v0 preview</span>
-                  </li>
-                  <li className="flex gap-2">
-                    <span className="font-semibold">2.</span>
-                    <span>
-                      Run the script:{" "}
-                      <code className="rounded bg-gray-100 px-1.5 py-0.5 text-xs font-mono">
-                        005_create_ai_operations_schema.sql
-                      </code>
-                    </span>
-                  </li>
-                  <li className="flex gap-2">
-                    <span className="font-semibold">3.</span>
-                    <span>Refresh this page after the script completes</span>
-                  </li>
-                </ol>
-              </div>
-
-              <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
-                <h3 className="mb-2 text-sm font-semibold text-gray-900">What will be created:</h3>
-                <ul className="space-y-1 text-xs text-gray-600">
-                  <li>• AI Agents table (5 autonomous agents)</li>
-                  <li>• Agent Executions tracking</li>
-                  <li>• Agent Memory system</li>
-                  <li>• Automation Rules engine</li>
-                  <li>• Operation Logs</li>
-                </ul>
-              </div>
-
-              <Button variant="outline" className="w-full bg-transparent" onClick={() => window.location.reload()}>
-                Refresh Page
-              </Button>
-            </CardContent>
-          </Card>
-        </div>
-      </AppLayout>
-    )
-  }
-
-  return (
-      <AppLayout>
-        <PageHeader title={t('pages.ai_operations')} description={t('pages.ai_operations_desc')} />
-
-      <div className="p-4 md:p-6">
-        <div className="space-y-4 md:space-y-6">
-          {/* Stats Overview */}
-          <div className="grid gap-3 md:grid-cols-4 md:gap-4">
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium">Active Agents</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{stats.activeAgents}</div>
-                <p className="mt-1 text-xs text-gray-600">Running operations</p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium">Total Executions</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{stats.totalExecutions}</div>
-                <p className="mt-1 text-xs text-gray-600">All time</p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium flex items-center gap-2">
-                  <CheckCircle className="h-4 w-4 text-green-600" />
-                  Successful
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{stats.successfulExecutions}</div>
-                <p className="mt-1 text-xs text-gray-600">
-                  {stats.totalExecutions > 0
-                    ? Math.round((stats.successfulExecutions / stats.totalExecutions) * 100)
-                    : 0}
-                  % success rate
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium flex items-center gap-2">
-                  <XCircle className="h-4 w-4 text-red-600" />
-                  Failed
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{stats.failedExecutions}</div>
-                <p className="mt-1 text-xs text-gray-600">Require attention</p>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* AI Agents */}
-          <div>
-            <h2 className="mb-3 text-sm font-semibold text-black md:text-base">AI Agents</h2>
-            <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
-              {agents?.map((agent: AIAgent) => {
-                const Icon = getAgentIcon(agent.type)
-                return (
-                  <Card key={agent.id} className="border-gray-100">
-                    <CardHeader className="pb-3">
-                      <div className="flex items-start justify-between">
-                        <div className="flex items-center gap-2">
-                          <div className={`rounded-lg p-2 ${getAgentColor(agent.type)}`}>
-                            <Icon className="h-4 w-4" />
-                          </div>
-                          <div>
-                            <CardTitle className="text-sm">{agent.name}</CardTitle>
-                            <Badge variant="outline" className={`mt-1 text-xs ${getStatusColor(agent.status)}`}>
-                              {agent.status}
-                            </Badge>
-                          </div>
-                        </div>
-                      </div>
-                    </CardHeader>
-                    <CardContent className="space-y-3 pb-4">
-                      <p className="text-xs text-gray-600">{agent.description}</p>
-                      <div className="flex items-center justify-between text-xs">
-                        <span className="text-gray-500">Last run:</span>
-                        <span className="font-medium text-gray-700">{formatDate(agent.last_run)}</span>
-                      </div>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="w-full h-8 text-xs bg-transparent"
-                        onClick={() => handleExecuteAgent(agent.id)}
-                      >
-                        <Play className="mr-1 h-3 w-3" />
-                        Run Now
-                      </Button>
-                    </CardContent>
-                  </Card>
-                )
-              })}
-            </div>
-          </div>
-
-          {/* Recent Executions */}
-          <div>
-            <h2 className="mb-3 text-sm font-semibold text-black md:text-base">Recent Executions</h2>
-            <Card className="border-gray-100">
-              <CardContent className="p-0">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="text-xs">Agent</TableHead>
-                      <TableHead className="text-xs">Status</TableHead>
-                      <TableHead className="text-xs">Duration</TableHead>
-                      <TableHead className="text-xs">Started</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {executions && executions.length > 0 ? (
-                      executions.map((exec: any) => (
-                        <TableRow key={exec.id}>
-                          <TableCell className="text-xs font-medium">{exec.ai_agents?.name || "Unknown"}</TableCell>
-                          <TableCell>
-                            <Badge variant="outline" className={`text-xs ${getStatusColor(exec.status)}`}>
-                              {exec.status}
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="text-xs">{exec.duration_ms ? `${exec.duration_ms}ms` : "-"}</TableCell>
-                          <TableCell className="text-xs text-gray-600">{formatDate(exec.created_at)}</TableCell>
-                        </TableRow>
-                      ))
-                    ) : (
-                      <TableRow>
-                        <TableCell colSpan={4} className="text-center text-xs text-gray-500">
-                          No executions yet
-                        </TableCell>
-                      </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Operation Logs */}
-          <div>
-            <h2 className="mb-3 text-sm font-semibold text-black md:text-base">Operation Logs</h2>
-            <Card className="border-gray-100">
-              <CardContent className="p-0">
-                <div className="max-h-96 overflow-y-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead className="text-xs">Level</TableHead>
-                        <TableHead className="text-xs">Agent</TableHead>
-                        <TableHead className="text-xs">Message</TableHead>
-                        <TableHead className="text-xs">Time</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {logs && logs.length > 0 ? (
-                        logs.map((log: any) => (
-                          <TableRow key={log.id}>
-                            <TableCell>
-                              <Badge
-                                variant="outline"
-                                className={`text-xs ${
-                                  log.log_level === "error"
-                                    ? "bg-red-50 text-red-700"
-                                    : log.log_level === "warn"
-                                      ? "bg-yellow-50 text-yellow-700"
-                                      : "bg-gray-50 text-gray-700"
-                                }`}
-                              >
-                                {log.log_level}
-                              </Badge>
-                            </TableCell>
-                            <TableCell className="text-xs">{log.ai_agents?.name || "-"}</TableCell>
-                            <TableCell className="max-w-md text-xs">{log.message}</TableCell>
-                            <TableCell className="text-xs text-gray-600">{formatDate(log.created_at)}</TableCell>
-                          </TableRow>
-                        ))
-                      ) : (
-                        <TableRow>
-                          <TableCell colSpan={4} className="text-center text-xs text-gray-500">
-                            No logs yet
-                          </TableCell>
-                        </TableRow>
-                      )}
-                    </TableBody>
-                  </Table>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-      </div>
-    </AppLayout>
-  )
+  const successRate = stats.totalExecutions > 0 ? Math.round((stats.successfulExecutions / stats.totalExecutions) * 100) : 0
+  return <AppLayout><PageHeader title={text.title} description={text.description} /><div className="p-4 md:p-6"><div className="space-y-4 md:space-y-6">
+    <div className="grid gap-3 md:grid-cols-4 md:gap-4"><Metric title={text.activeAgents} value={stats.activeAgents.toLocaleString(locale)} detail={text.running} /><Metric title={text.totalExecutions} value={stats.totalExecutions.toLocaleString(locale)} detail={text.allTime} /><Metric title={text.successful} value={stats.successfulExecutions.toLocaleString(locale)} detail={`${successRate.toLocaleString(locale)}% ${text.successRate}`} /><Metric title={text.failed} value={stats.failedExecutions.toLocaleString(locale)} detail={text.requireAttention} /></div>
+    <section><h2 className="mb-3 text-sm font-semibold text-black md:text-base">{text.agents}</h2><div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">{agents.map((agent) => { const Icon = getAgentIcon(agent.type); return <Card key={agent.id} className="border-gray-100"><CardHeader className="pb-3"><div className="flex items-start justify-between"><div className="flex items-center gap-2"><div className={`rounded-lg p-2 ${getAgentColor(agent.type)}`}><Icon className="h-4 w-4" /></div><div><CardTitle className="text-sm">{agent.name}</CardTitle><Badge variant="outline" className={`mt-1 text-xs ${getStatusColor(agent.status)}`}>{statusLabel(agent.status)}</Badge></div></div></div></CardHeader><CardContent className="space-y-3 pb-4"><p className="text-xs text-gray-600">{agent.description}</p><div className="flex items-center justify-between text-xs"><span className="text-gray-500">{text.lastRun}:</span><span className="font-medium text-gray-700">{formatDate(agent.last_run)}</span></div><Button size="sm" variant="outline" className="h-8 w-full bg-transparent text-xs" onClick={() => void handleExecuteAgent(agent.id)}><Play className="mr-1 h-3 w-3" />{text.runNow}</Button></CardContent></Card> })}</div></section>
+    <section><h2 className="mb-3 text-sm font-semibold text-black md:text-base">{text.recent}</h2><Card className="border-gray-100"><CardContent className="p-0"><Table><TableHeader><TableRow><TableHead className="text-xs">{text.agent}</TableHead><TableHead className="text-xs">{text.status}</TableHead><TableHead className="text-xs">{text.duration}</TableHead><TableHead className="text-xs">{text.started}</TableHead></TableRow></TableHeader><TableBody>{executions.length ? executions.map((exec: any) => <TableRow key={exec.id}><TableCell className="text-xs font-medium">{exec.ai_agents?.name || text.unknown}</TableCell><TableCell><Badge variant="outline" className={`text-xs ${getStatusColor(exec.status)}`}>{statusLabel(exec.status)}</Badge></TableCell><TableCell className="text-xs">{exec.duration_ms ? `${exec.duration_ms.toLocaleString(locale)} ms` : "—"}</TableCell><TableCell className="text-xs text-gray-600">{formatDate(exec.created_at)}</TableCell></TableRow>) : <TableRow><TableCell colSpan={4} className="text-center text-xs text-gray-500">{text.noExecutions}</TableCell></TableRow>}</TableBody></Table></CardContent></Card></section>
+    <section><h2 className="mb-3 text-sm font-semibold text-black md:text-base">{text.logs}</h2><Card className="border-gray-100"><CardContent className="p-0"><div className="max-h-96 overflow-y-auto"><Table><TableHeader><TableRow><TableHead className="text-xs">{text.level}</TableHead><TableHead className="text-xs">{text.agent}</TableHead><TableHead className="text-xs">{text.message}</TableHead><TableHead className="text-xs">{text.time}</TableHead></TableRow></TableHeader><TableBody>{logs.length ? logs.map((log: any) => <TableRow key={log.id}><TableCell><Badge variant="outline" className={`text-xs ${log.log_level === "error" ? "bg-red-50 text-red-700" : log.log_level === "warn" ? "bg-yellow-50 text-yellow-700" : "bg-gray-50 text-gray-700"}`}>{log.log_level}</Badge></TableCell><TableCell className="text-xs">{log.ai_agents?.name || "—"}</TableCell><TableCell className="max-w-md text-xs">{log.message}</TableCell><TableCell className="text-xs text-gray-600">{formatDate(log.created_at)}</TableCell></TableRow>) : <TableRow><TableCell colSpan={4} className="text-center text-xs text-gray-500">{text.noLogs}</TableCell></TableRow>}</TableBody></Table></div></CardContent></Card></section>
+  </div></div></AppLayout>
 }
+
+function Metric({ title, value, detail }: { title: string; value: string; detail: string }) { return <Card><CardHeader className="pb-2"><CardTitle className="text-sm font-medium">{title}</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold">{value}</div><p className="mt-1 text-xs text-gray-600">{detail}</p></CardContent></Card> }

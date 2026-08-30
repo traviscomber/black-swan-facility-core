@@ -5,340 +5,68 @@ import { EnergyPasswordGuard } from "@/components/energy-password-guard"
 import { AppLayout } from "@/components/app-layout"
 import { PageHeader } from "@/components/page-header"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { useLanguage } from "@/lib/hooks/use-language"
 import { Check, AlertCircle, Copy, ArrowRight } from "lucide-react"
 
-const steps = [
-  {
-    number: 1,
-    title: "Enable VRM Portal & Generate API Token",
-    description: "Register your Cerbo GX on Victron's cloud platform",
-    details: [
-      "Create account at https://vrm.victronenergy.com",
-      "Link your Cerbo GX installation",
-      "Navigate to Settings → API Access",
-      'Click "Generate Token"',
-      "Copy and save your API token securely",
-    ],
-  },
-  {
-    number: 2,
-    title: "Configure MQTT on Cerbo GX",
-    description: "Enable real-time data streaming",
-    details: [
-      "Access Cerbo GX web interface (http://<cerbo-ip>)",
-      "Go to Settings → Services → dbus-mqtt",
-      "Enable dbus-mqtt service",
-      "Set MQTT broker (default: 127.0.0.1:1883)",
-      "Optionally configure authentication",
-    ],
-  },
-  {
-    number: 3,
-    title: "Setup Node-RED Integration",
-    description: "Process data from Cerbo GX",
-    details: [
-      "Cerbo GX comes with Node-RED pre-installed",
-      "Access at http://<cerbo-ip>:1880",
-      "Create MQTT input node connected to Cerbo broker",
-      "Add JSON parsing and filtering nodes",
-      "Connect to InfluxDB or local data store",
-    ],
-  },
-  {
-    number: 4,
-    title: "Deploy Monitoring Stack",
-    description: "Store and visualize data",
-    details: [
-      "Run Docker Compose (InfluxDB + Grafana)",
-      "Import pre-built dashboards",
-      "Configure Grafana data source to InfluxDB",
-      "Set up alert rules for critical values",
-      "Access dashboard at http://localhost:3000",
-    ],
-  },
-  {
-    number: 5,
-    title: "Verify System Integration",
-    description: "Test all data flows",
-    details: [
-      "Check MQTT topics receiving data",
-      "Verify InfluxDB has historical data",
-      "Confirm Grafana dashboard displays values",
-      "Test alert notifications",
-      "Monitor system performance",
-    ],
-  },
-]
+const COPY = {
+  en: { title: "Victron setup guide", description: "Complete integration and configuration steps", architecture: "System architecture", architectureDetail: "Data flow from Victron hardware to cloud and dashboards", scriptTitle: "Python VRM API client", scriptDetail: "Example script for fetching data from Victron VRM", scriptIntro: "Run this script on any system with Python 3.7+ to continuously fetch and log data from your Victron installation via the VRM API.", copied: "Copied", copy: "Copy", install: "Install required package", troubleshooting: "Troubleshooting", troubleshootingDetail: "Common issues and solutions", mqttQuestion: "MQTT not connecting?", mqttAnswer: "Verify dbus-mqtt is enabled in Cerbo GX settings. Check that the firewall allows port 1883. Use mosquitto_sub to test connectivity.", apiQuestion: "VRM API returning 401 errors?", apiAnswer: "Verify that the API token is valid and has not expired. Check the Authorization header format.", grafanaQuestion: "Grafana not showing data?", grafanaAnswer: "Ensure the InfluxDB data source is configured correctly. Verify Node-RED is writing data to InfluxDB and check InfluxDB logs for errors.", historyQuestion: "Missing data points in historical view?", historyAnswer: "Data retention depends on the InfluxDB configuration. Review the retention policy and consider a 30-day policy for monthly reports." },
+  es: { title: "Guía de configuración Victron", description: "Pasos completos de integración y configuración", architecture: "Arquitectura del sistema", architectureDetail: "Flujo de datos desde el hardware Victron hasta la nube y los tableros", scriptTitle: "Cliente Python para VRM API", scriptDetail: "Script de ejemplo para obtener datos desde Victron VRM", scriptIntro: "Ejecuta este script en cualquier sistema con Python 3.7+ para obtener y registrar continuamente datos de la instalación Victron mediante VRM API.", copied: "Copiado", copy: "Copiar", install: "Instala el paquete requerido", troubleshooting: "Resolución de problemas", troubleshootingDetail: "Problemas frecuentes y sus soluciones", mqttQuestion: "¿MQTT no conecta?", mqttAnswer: "Verifica que dbus-mqtt esté habilitado en la configuración de Cerbo GX. Revisa que el firewall permita el puerto 1883 y usa mosquitto_sub para probar conectividad.", apiQuestion: "¿VRM API responde con errores 401?", apiAnswer: "Verifica que el token API sea válido y no haya expirado. Revisa el formato del encabezado Authorization.", grafanaQuestion: "¿Grafana no muestra datos?", grafanaAnswer: "Confirma que la fuente de datos InfluxDB esté configurada correctamente. Verifica que Node-RED esté escribiendo en InfluxDB y revisa los logs de InfluxDB.", historyQuestion: "¿Faltan puntos de datos en la vista histórica?", historyAnswer: "La retención depende de la configuración de InfluxDB. Revisa la política de retención y considera 30 días para reportes mensuales." },
+  de: { title: "Victron-Einrichtungsleitfaden", description: "Vollständige Integrations- und Konfigurationsschritte", architecture: "Systemarchitektur", architectureDetail: "Datenfluss von der Victron-Hardware bis zur Cloud und zu Dashboards", scriptTitle: "Python-Client für die VRM API", scriptDetail: "Beispielskript zum Abrufen von Daten aus Victron VRM", scriptIntro: "Führe dieses Skript auf einem System mit Python 3.7+ aus, um Daten der Victron-Installation kontinuierlich über die VRM API abzurufen und zu protokollieren.", copied: "Kopiert", copy: "Kopieren", install: "Erforderliches Paket installieren", troubleshooting: "Fehlerbehebung", troubleshootingDetail: "Häufige Probleme und Lösungen", mqttQuestion: "MQTT verbindet sich nicht?", mqttAnswer: "Prüfe, ob dbus-mqtt in den Cerbo-GX-Einstellungen aktiviert ist. Stelle sicher, dass Port 1883 durch die Firewall erlaubt ist, und teste die Verbindung mit mosquitto_sub.", apiQuestion: "VRM API liefert 401-Fehler?", apiAnswer: "Prüfe, ob das API-Token gültig und nicht abgelaufen ist. Kontrolliere das Format des Authorization-Headers.", grafanaQuestion: "Grafana zeigt keine Daten?", grafanaAnswer: "Stelle sicher, dass die InfluxDB-Datenquelle korrekt konfiguriert ist. Prüfe, ob Node-RED Daten in InfluxDB schreibt, und kontrolliere die InfluxDB-Logs.", historyQuestion: "Fehlen Datenpunkte in der historischen Ansicht?", historyAnswer: "Die Datenaufbewahrung hängt von der InfluxDB-Konfiguration ab. Prüfe die Aufbewahrungsrichtlinie und erwäge 30 Tage für Monatsberichte." },
+} as const
+const STEPS = {
+  en: [
+    ["Enable VRM Portal & Generate API Token", "Register your Cerbo GX on Victron's cloud platform", ["Create account at https://vrm.victronenergy.com", "Link your Cerbo GX installation", "Navigate to Settings → API Access", "Click Generate Token", "Copy and save your API token securely"]],
+    ["Configure MQTT on Cerbo GX", "Enable real-time data streaming", ["Access Cerbo GX web interface (http://<cerbo-ip>)", "Go to Settings → Services → dbus-mqtt", "Enable dbus-mqtt service", "Set MQTT broker (default: 127.0.0.1:1883)", "Optionally configure authentication"]],
+    ["Set up Node-RED integration", "Process data from Cerbo GX", ["Cerbo GX comes with Node-RED pre-installed", "Access at http://<cerbo-ip>:1880", "Create MQTT input node connected to Cerbo broker", "Add JSON parsing and filtering nodes", "Connect to InfluxDB or local data store"]],
+    ["Deploy monitoring stack", "Store and visualize data", ["Run Docker Compose (InfluxDB + Grafana)", "Import pre-built dashboards", "Configure Grafana data source to InfluxDB", "Set up alert rules for critical values", "Access dashboard at http://localhost:3000"]],
+    ["Verify system integration", "Test all data flows", ["Check MQTT topics receiving data", "Verify InfluxDB has historical data", "Confirm Grafana dashboard displays values", "Test alert notifications", "Monitor system performance"]],
+  ],
+  es: [
+    ["Habilitar VRM Portal y generar token API", "Registra Cerbo GX en la plataforma cloud de Victron", ["Crear una cuenta en https://vrm.victronenergy.com", "Vincular la instalación Cerbo GX", "Ir a Settings → API Access", "Seleccionar Generate Token", "Copiar y guardar el token API de forma segura"]],
+    ["Configurar MQTT en Cerbo GX", "Habilita el streaming de datos en tiempo real", ["Acceder a la interfaz web de Cerbo GX (http://<cerbo-ip>)", "Ir a Settings → Services → dbus-mqtt", "Habilitar el servicio dbus-mqtt", "Configurar el broker MQTT (por defecto: 127.0.0.1:1883)", "Configurar autenticación si corresponde"]],
+    ["Configurar integración Node-RED", "Procesa los datos provenientes de Cerbo GX", ["Cerbo GX incluye Node-RED preinstalado", "Acceder en http://<cerbo-ip>:1880", "Crear un nodo de entrada MQTT conectado al broker de Cerbo", "Agregar nodos de parseo JSON y filtrado", "Conectar a InfluxDB o almacenamiento local"]],
+    ["Desplegar stack de monitoreo", "Almacena y visualiza los datos", ["Ejecutar Docker Compose (InfluxDB + Grafana)", "Importar dashboards preconfigurados", "Configurar InfluxDB como fuente de datos en Grafana", "Definir reglas de alerta para valores críticos", "Acceder al dashboard en http://localhost:3000"]],
+    ["Verificar integración del sistema", "Prueba todos los flujos de datos", ["Comprobar recepción de datos en los tópicos MQTT", "Verificar datos históricos en InfluxDB", "Confirmar valores en el dashboard de Grafana", "Probar notificaciones de alerta", "Monitorear rendimiento del sistema"]],
+  ],
+  de: [
+    ["VRM Portal aktivieren und API-Token erzeugen", "Cerbo GX auf der Victron-Cloud-Plattform registrieren", ["Konto unter https://vrm.victronenergy.com erstellen", "Cerbo-GX-Installation verknüpfen", "Zu Settings → API Access wechseln", "Generate Token auswählen", "API-Token sicher kopieren und speichern"]],
+    ["MQTT auf Cerbo GX konfigurieren", "Echtzeit-Datenstreaming aktivieren", ["Cerbo-GX-Weboberfläche öffnen (http://<cerbo-ip>)", "Zu Settings → Services → dbus-mqtt wechseln", "dbus-mqtt-Dienst aktivieren", "MQTT-Broker setzen (Standard: 127.0.0.1:1883)", "Optional Authentifizierung konfigurieren"]],
+    ["Node-RED-Integration einrichten", "Daten vom Cerbo GX verarbeiten", ["Cerbo GX enthält Node-RED vorinstalliert", "Unter http://<cerbo-ip>:1880 öffnen", "MQTT-Eingangsknoten mit dem Cerbo-Broker verbinden", "JSON-Parsing- und Filterknoten hinzufügen", "Mit InfluxDB oder lokalem Datenspeicher verbinden"]],
+    ["Monitoring-Stack bereitstellen", "Daten speichern und visualisieren", ["Docker Compose (InfluxDB + Grafana) ausführen", "Vorgefertigte Dashboards importieren", "InfluxDB als Grafana-Datenquelle konfigurieren", "Alarmregeln für kritische Werte einrichten", "Dashboard unter http://localhost:3000 öffnen"]],
+    ["Systemintegration prüfen", "Alle Datenflüsse testen", ["Eingehende Daten in MQTT-Topics prüfen", "Historische Daten in InfluxDB prüfen", "Werte im Grafana-Dashboard bestätigen", "Alarmbenachrichtigungen testen", "Systemleistung überwachen"]],
+  ],
+} as const
 
 const pythonScript = `#!/usr/bin/env python3
 # VRM API Data Fetcher - Runs on your Cerbo GX or local server
-
 import requests
 import json
 from datetime import datetime, timedelta
 import time
-
-# Configuration
 VRM_ENDPOINT = "https://vrmapi.victronenergy.com/v2"
 INSTALLATION_ID = "YOUR_INSTALLATION_ID"
 API_TOKEN = "YOUR_API_TOKEN"
-POLL_INTERVAL = 300  # 5 minutes
-
-# Headers
-headers = {
-    "X-Authorization": f"Bearer {API_TOKEN}",
-    "Content-Type": "application/json"
-}
-
+POLL_INTERVAL = 300
+headers = {"X-Authorization": f"Bearer {API_TOKEN}", "Content-Type": "application/json"}
 def fetch_device_data():
-    """Fetch current device data from VRM"""
     try:
-        response = requests.get(
-            f"{VRM_ENDPOINT}/installations/{INSTALLATION_ID}/devices",
-            headers=headers,
-            timeout=10
-        )
+        response = requests.get(f"{VRM_ENDPOINT}/installations/{INSTALLATION_ID}/devices", headers=headers, timeout=10)
         response.raise_for_status()
         return response.json()
     except requests.exceptions.RequestException as e:
         print(f"Error fetching device data: {e}")
         return None
-
-def fetch_historical_data(days=1):
-    """Fetch historical energy data"""
-    try:
-        end_date = datetime.now()
-        start_date = end_date - timedelta(days=days)
-        
-        response = requests.get(
-            f"{VRM_ENDPOINT}/installations/{INSTALLATION_ID}/logdata",
-            headers=headers,
-            params={
-                "start": int(start_date.timestamp()),
-                "end": int(end_date.timestamp())
-            },
-            timeout=10
-        )
-        response.raise_for_status()
-        return response.json()
-    except requests.exceptions.RequestException as e:
-        print(f"Error fetching historical data: {e}")
-        return None
-
-def process_data(raw_data):
-    """Process VRM API data for local storage/visualization"""
-    if not raw_data:
-        return None
-    
-    processed = {
-        "timestamp": datetime.now().isoformat(),
-        "devices": {},
-        "summary": {
-            "total_solar_power": 0,
-            "total_consumption": 0,
-            "battery_soc": 0,
-            "system_status": "operational"
-        }
-    }
-    
-    for device in raw_data.get('records', []):
-        device_id = device.get('id')
-        device_type = device.get('deviceType')
-        
-        processed['devices'][device_id] = {
-            "name": device.get('name'),
-            "type": device_type,
-            "soc": device.get('current_battery_soc'),
-            "power": device.get('current_power'),
-            "voltage": device.get('voltage'),
-            "current": device.get('current')
-        }
-        
-        if device_type == "SolarCharger":
-            processed['summary']['total_solar_power'] += device.get('current_power', 0)
-        elif device_type == "InverterRS":
-            processed['summary']['total_consumption'] += abs(device.get('current_power', 0))
-        elif device_type == "Battery":
-            processed['summary']['battery_soc'] = device.get('current_battery_soc', 0)
-    
-    return processed`
+`
 
 export default function VictronSetup() {
-  const [activeStep, setActiveStep] = useState(1)
-  const [copiedCode, setCopiedCode] = useState<string | null>(null)
-
-  const copyToClipboard = (text: string, id: string) => {
-    navigator.clipboard.writeText(text)
-    setCopiedCode(id)
-    setTimeout(() => setCopiedCode(null), 2000)
-  }
-
-  return (
-    <EnergyPasswordGuard>
-      <AppLayout>
-        <div className="space-y-6 p-4 sm:p-6">
-          <PageHeader title="Victron Setup Guide" description="Complete integration and configuration steps" />
-          <div className="mx-auto max-w-7xl">
-            {/* System Architecture Overview */}
-            <Card className="bg-card border-border mb-8">
-              <CardHeader>
-                <CardTitle>System Architecture</CardTitle>
-                <CardDescription>Data flow from Victron hardware to cloud and dashboards</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between p-4 bg-accent rounded-lg">
-                    <div className="text-sm font-mono text-foreground">Cerbo GX + MPPT + Batteries</div>
-                    <ArrowRight className="w-5 h-5 text-primary" />
-                    <div className="text-sm font-mono text-foreground">MQTT Broker</div>
-                  </div>
-                  <div className="flex items-center justify-between p-4 bg-accent rounded-lg">
-                    <div className="text-sm font-mono text-foreground">MQTT Broker</div>
-                    <ArrowRight className="w-5 h-5 text-primary" />
-                    <div className="text-sm font-mono text-foreground">Node-RED</div>
-                  </div>
-                  <div className="flex items-center justify-between p-4 bg-accent rounded-lg">
-                    <div className="text-sm font-mono text-foreground">Node-RED</div>
-                    <ArrowRight className="w-5 h-5 text-primary" />
-                    <div className="text-sm font-mono text-foreground">InfluxDB + Grafana</div>
-                  </div>
-                  <div className="flex items-center justify-between p-4 bg-accent rounded-lg">
-                    <div className="text-sm font-mono text-foreground">VRM API</div>
-                    <ArrowRight className="w-5 h-5 text-primary" />
-                    <div className="text-sm font-mono text-foreground">Cloud Dashboard</div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Setup Steps */}
-            <div className="space-y-6 mb-8">
-              {steps.map((step) => (
-                <Card
-                  key={step.number}
-                  className={`bg-card border-border cursor-pointer transition-all ${
-                    activeStep === step.number ? "ring-2 ring-primary" : ""
-                  }`}
-                  onClick={() => setActiveStep(step.number)}
-                >
-                  <CardHeader>
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-center gap-3">
-                        <div
-                          className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold text-white ${
-                            activeStep === step.number ? "bg-primary" : "bg-muted"
-                          }`}
-                        >
-                          {activeStep === step.number ? <Check className="w-5 h-5" /> : step.number}
-                        </div>
-                        <div>
-                          <h2 className="text-lg font-semibold text-foreground">{step.title}</h2>
-                          <p className="text-sm text-muted-foreground">{step.description}</p>
-                        </div>
-                      </div>
-                    </div>
-                  </CardHeader>
-
-                  {activeStep === step.number && (
-                    <CardContent>
-                      <ul className="space-y-2">
-                        {step.details.map((detail, idx) => (
-                          <li key={idx} className="flex items-start gap-3 text-sm text-foreground">
-                            <div className="w-2 h-2 rounded-full bg-primary mt-2 flex-shrink-0"></div>
-                            {detail}
-                          </li>
-                        ))}
-                      </ul>
-                    </CardContent>
-                  )}
-                </Card>
-              ))}
-            </div>
-
-            {/* Python Script Example */}
-            <Card className="bg-card border-border mb-8">
-              <CardHeader>
-                <CardTitle>Python VRM API Client</CardTitle>
-                <CardDescription>Example script for fetching data from Victron VRM</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <p className="text-sm text-muted-foreground">
-                  Run this script on any system with Python 3.7+ to continuously fetch and log data from your Victron
-                  installation via the VRM API.
-                </p>
-
-                <div className="bg-accent/50 rounded-lg p-4 border border-border">
-                  <div className="flex items-center justify-between mb-3">
-                    <p className="text-xs font-semibold text-foreground">vrm_data_fetcher.py</p>
-                    <button
-                      onClick={() => copyToClipboard(pythonScript, "python")}
-                      className="flex items-center gap-1 px-2 py-1 text-xs bg-primary text-primary-foreground rounded hover:bg-primary/90"
-                    >
-                      {copiedCode === "python" ? (
-                        <>
-                          <Check className="w-3 h-3" /> Copied
-                        </>
-                      ) : (
-                        <>
-                          <Copy className="w-3 h-3" /> Copy
-                        </>
-                      )}
-                    </button>
-                  </div>
-                  <pre className="bg-background rounded p-3 text-xs font-mono text-foreground overflow-x-auto max-h-80">
-                    {pythonScript}
-                  </pre>
-                </div>
-
-                <div className="bg-blue-500/10 border border-blue-500/50 rounded-lg p-4 flex gap-3">
-                  <AlertCircle className="w-5 h-5 text-blue-400 flex-shrink-0 mt-0.5" />
-                  <p className="text-sm text-foreground">
-                    Install required package: <code className="bg-background px-1 rounded">pip install requests</code>
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Troubleshooting */}
-            <Card className="bg-card border-border">
-              <CardHeader>
-                <CardTitle>Troubleshooting</CardTitle>
-                <CardDescription>Common issues and solutions</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div>
-                  <p className="font-semibold text-foreground mb-2">MQTT not connecting?</p>
-                  <p className="text-sm text-muted-foreground">
-                    Verify dbus-mqtt is enabled on Cerbo GX settings. Check firewall allows port 1883. Use
-                    <code className="bg-background px-1 rounded">mosquitto_sub</code> to test connectivity.
-                  </p>
-                </div>
-                <div className="border-t border-border pt-4">
-                  <p className="font-semibold text-foreground mb-2">VRM API returning 401 errors?</p>
-                  <p className="text-sm text-muted-foreground">
-                    Verify your API token is valid and not expired. Check Authorization header format:
-                    <code className="bg-background px-1 rounded">Bearer YOUR_TOKEN_HERE</code>
-                  </p>
-                </div>
-                <div className="border-t border-border pt-4">
-                  <p className="font-semibold text-foreground mb-2">Grafana not showing data?</p>
-                  <p className="text-sm text-muted-foreground">
-                    Ensure InfluxDB data source is configured correctly. Verify Node-RED is writing data to InfluxDB.
-                    Check InfluxDB logs for errors.
-                  </p>
-                </div>
-                <div className="border-t border-border pt-4">
-                  <p className="font-semibold text-foreground mb-2">Missing data points in historical view?</p>
-                  <p className="text-sm text-muted-foreground">
-                    Data retention is limited by InfluxDB configuration. Check retention policy in InfluxDB settings.
-                    Consider using 30-day retention for monthly reports.
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-      </AppLayout>
-    </EnergyPasswordGuard>
-  )
+  const { language } = useLanguage(); const lang = (language in COPY ? language : "en") as keyof typeof COPY; const copy = COPY[lang]; const steps = STEPS[lang]
+  const [activeStep, setActiveStep] = useState(1); const [copiedCode, setCopiedCode] = useState<string | null>(null)
+  const copyToClipboard = (text: string, id: string) => { navigator.clipboard.writeText(text); setCopiedCode(id); setTimeout(() => setCopiedCode(null), 2000) }
+  const flows = [["Cerbo GX + MPPT + Batteries", "MQTT Broker"], ["MQTT Broker", "Node-RED"], ["Node-RED", "InfluxDB + Grafana"], ["VRM API", "Cloud Dashboard"]]
+  return <EnergyPasswordGuard><AppLayout><div className="space-y-6 p-4 sm:p-6"><PageHeader title={copy.title} description={copy.description} /><div className="mx-auto max-w-7xl">
+    <Card className="mb-8 bg-card"><CardHeader><CardTitle>{copy.architecture}</CardTitle><CardDescription>{copy.architectureDetail}</CardDescription></CardHeader><CardContent><div className="space-y-4">{flows.map(([from,to]) => <div key={`${from}-${to}`} className="flex items-center justify-between rounded-lg bg-accent p-4"><div className="text-sm font-mono">{from}</div><ArrowRight className="h-5 w-5 text-primary" /><div className="text-sm font-mono">{to}</div></div>)}</div></CardContent></Card>
+    <div className="mb-8 space-y-6">{steps.map((step,index) => <Card key={index} className={`cursor-pointer transition-all ${activeStep === index + 1 ? "ring-2 ring-primary" : ""}`} onClick={() => setActiveStep(index + 1)}><CardHeader><div className="flex items-start gap-3"><div className={`flex h-10 w-10 items-center justify-center rounded-full font-semibold text-white ${activeStep === index + 1 ? "bg-primary" : "bg-muted"}`}>{activeStep === index + 1 ? <Check className="h-5 w-5" /> : index + 1}</div><div><h2 className="text-lg font-semibold">{step[0]}</h2><p className="text-sm text-muted-foreground">{step[1]}</p></div></div></CardHeader>{activeStep === index + 1 && <CardContent><ul className="space-y-2">{step[2].map((detail) => <li key={detail} className="flex items-start gap-3 text-sm"><span className="mt-2 h-2 w-2 shrink-0 rounded-full bg-primary" />{detail}</li>)}</ul></CardContent>}</Card>)}</div>
+    <Card className="mb-8"><CardHeader><CardTitle>{copy.scriptTitle}</CardTitle><CardDescription>{copy.scriptDetail}</CardDescription></CardHeader><CardContent className="space-y-4"><p className="text-sm text-muted-foreground">{copy.scriptIntro}</p><div className="rounded-lg border bg-accent/50 p-4"><div className="mb-3 flex items-center justify-between"><p className="text-xs font-semibold">vrm_data_fetcher.py</p><button onClick={() => copyToClipboard(pythonScript,"python")} className="flex items-center gap-1 rounded bg-primary px-2 py-1 text-xs text-primary-foreground">{copiedCode === "python" ? <><Check className="h-3 w-3" />{copy.copied}</> : <><Copy className="h-3 w-3" />{copy.copy}</>}</button></div><pre className="max-h-80 overflow-x-auto rounded bg-background p-3 text-xs font-mono">{pythonScript}</pre></div><div className="flex gap-3 rounded-lg border border-blue-500/50 bg-blue-500/10 p-4"><AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-blue-400" /><p className="text-sm">{copy.install}: <code className="rounded bg-background px-1">pip install requests</code></p></div></CardContent></Card>
+    <Card><CardHeader><CardTitle>{copy.troubleshooting}</CardTitle><CardDescription>{copy.troubleshootingDetail}</CardDescription></CardHeader><CardContent className="space-y-4">{[[copy.mqttQuestion,copy.mqttAnswer],[copy.apiQuestion,copy.apiAnswer],[copy.grafanaQuestion,copy.grafanaAnswer],[copy.historyQuestion,copy.historyAnswer]].map(([q,a],i) => <div key={q} className={i ? "border-t pt-4" : ""}><p className="mb-2 font-semibold">{q}</p><p className="text-sm text-muted-foreground">{a}</p></div>)}</CardContent></Card>
+  </div></div></AppLayout></EnergyPasswordGuard>
 }

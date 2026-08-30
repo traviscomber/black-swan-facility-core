@@ -31,11 +31,74 @@ export const bookingOperationsExact: Record<BookingOperationsTargetLocale, Recor
   },
 }
 
+const bookingOperationsPanelCopy: Record<BookingOperationsTargetLocale, Record<string, string>> = {
+  en: {
+    "No fue posible cargar el timeline.": "Could not load the operations timeline.",
+    "No fue posible completar la acción.": "The action could not be completed.",
+    "El huésped ya está alojado.": "The guest is already checked in.",
+    "La estadía ya está cerrada.": "The stay is already closed.",
+    "Habitación lista para entrada": "Room ready for check-in",
+    "Cerrar panel": "Close panel",
+    "Operación de estadía": "Stay operations",
+    "Pago": "Payment",
+    "sin registrar": "not recorded",
+    "Origen": "Source",
+    "interno": "internal",
+    "Huéspedes": "Guests",
+    "Monto": "Amount",
+    "Solicitudes especiales": "Special requests",
+    "Estado operativo actual": "Current operational status",
+    "El huésped ya está alojado. La habitación queda ocupada durante la estadía.": "The guest is checked in. The room remains occupied for the duration of the stay.",
+    "La estadía está cerrada. Gestiona la habitación desde Limpieza.": "The stay is closed. Manage the room from Housekeeping.",
+    "Antes de la entrada, Santiago puede certificar físicamente que la habitación está lista.": "Before check-in, Santiago can physically verify that the room is ready.",
+    "Marcar lista para entrada": "Mark ready for check-in",
+    "Cargando operaciones vinculadas…": "Loading linked operations…",
+    "Reintentar": "Retry",
+    "Operaciones": "Operations",
+    "Servicios / cargos": "Services / charges",
+    "Monto extras": "Extra charges",
+    "Servicios y cargos": "Services and charges",
+    "No hay servicios cargados y el catálogo aún está vacío.": "No services have been added and the catalog is still empty.",
+    "No hay servicios cargados a esta reserva.": "No services have been added to this reservation.",
+    "El estado de pago se deriva del ledger financiero. Registra pagos, reversos y ajustes desde el flujo financiero; esta pantalla no puede fabricar un estado de pago manual.": "Payment status is derived from the financial ledger. Record payments, reversals and adjustments in the finance workflow; this screen cannot create a manual payment status.",
+  },
+  de: {
+    "No fue posible cargar el timeline.": "Die Betriebszeitleiste konnte nicht geladen werden.",
+    "No fue posible completar la acción.": "Die Aktion konnte nicht abgeschlossen werden.",
+    "El huésped ya está alojado.": "Der Gast ist bereits eingecheckt.",
+    "La estadía ya está cerrada.": "Der Aufenthalt ist bereits abgeschlossen.",
+    "Habitación lista para entrada": "Zimmer bereit zum Check-in",
+    "Cerrar panel": "Panel schließen",
+    "Operación de estadía": "Aufenthaltsbetrieb",
+    "Pago": "Zahlung",
+    "sin registrar": "nicht erfasst",
+    "Origen": "Quelle",
+    "interno": "intern",
+    "Huéspedes": "Gäste",
+    "Monto": "Betrag",
+    "Solicitudes especiales": "Sonderwünsche",
+    "Estado operativo actual": "Aktueller Betriebsstatus",
+    "El huésped ya está alojado. La habitación queda ocupada durante la estadía.": "Der Gast ist eingecheckt. Das Zimmer bleibt während des Aufenthalts belegt.",
+    "La estadía está cerrada. Gestiona la habitación desde Limpieza.": "Der Aufenthalt ist abgeschlossen. Verwalte das Zimmer über Housekeeping.",
+    "Antes de la entrada, Santiago puede certificar físicamente que la habitación está lista.": "Vor dem Check-in kann Santiago vor Ort bestätigen, dass das Zimmer bereit ist.",
+    "Marcar lista para entrada": "Als bereit zum Check-in markieren",
+    "Cargando operaciones vinculadas…": "Verknüpfte Vorgänge werden geladen…",
+    "Reintentar": "Erneut versuchen",
+    "Operaciones": "Vorgänge",
+    "Servicios / cargos": "Leistungen / Gebühren",
+    "Monto extras": "Zusatzbetrag",
+    "Servicios y cargos": "Leistungen und Gebühren",
+    "No hay servicios cargados y el catálogo aún está vacío.": "Es wurden keine Leistungen hinzugefügt und der Katalog ist noch leer.",
+    "No hay servicios cargados a esta reserva.": "Dieser Reservierung wurden keine Leistungen hinzugefügt.",
+    "El estado de pago se deriva del ledger financiero. Registra pagos, reversos y ajustes desde el flujo financiero; esta pantalla no puede fabricar un estado de pago manual.": "Der Zahlungsstatus wird aus dem Finanzledger abgeleitet. Zahlungen, Stornos und Anpassungen werden im Finanzworkflow erfasst; auf dieser Seite kann kein manueller Zahlungsstatus erzeugt werden.",
+  },
+}
+
 export const bookingOperationsEsDate: Record<string, string> = { Fri: "Vie", Sat: "Sáb", Sun: "Dom", Mon: "Lun", Tue: "Mar", Wed: "Mié", Thu: "Jue" }
 
 export function translateBookingOperationsValue(value: string, locale: Language) {
   if (locale === "es") return bookingOperationsEsDate[value] ?? value
-  const exact = bookingOperationsExact[locale][value]
+  const exact = bookingOperationsExact[locale][value] ?? bookingOperationsPanelCopy[locale][value]
   if (exact) return exact
   if (locale === "de") {
     return value

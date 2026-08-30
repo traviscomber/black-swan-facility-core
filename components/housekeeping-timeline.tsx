@@ -27,10 +27,12 @@ const COPY = {
   de: { pending: "Ausstehend", progress: "In Bearbeitung", completed: "Abgeschlossen", skipped: "Übersprungen", noDate: "Ohne Datum", today: "Heute", tomorrow: "Morgen", empty: "Keine Housekeeping-Aufgaben geplant.", room: "Zimmer", bed: "Bett", departure: "Abreise", estimated: "Min. geschätzt", markReady: "Als bereit markieren" },
 } as const
 
+const DATE_LOCALES = { en: enUS, es, de } as const
+
 export function HousekeepingTimeline({ tasks, onStatusChange }: { tasks: HKTask[]; onStatusChange?: (id: string, status: string) => void }) {
   const { language } = useLanguage()
   const copy = COPY[language]
-  const dateLocale = language === "de" ? de : language === "es" ? es : enUS
+  const dateLocale = DATE_LOCALES[language]
   const statusConfig: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
     pending: { label: copy.pending, variant: "secondary" },
     in_progress: { label: copy.progress, variant: "outline" },

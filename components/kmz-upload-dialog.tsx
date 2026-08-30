@@ -80,11 +80,37 @@ const copy = {
     failureBody: "Review the file and try again.",
     safety: "If the database record fails, the uploaded file is removed automatically to avoid unreferenced storage objects.",
   },
+  de: {
+    title: "GIS-Ebene hinzufügen",
+    description: "Laden Sie eine validierte KMZ- oder KML-Datei hoch, um sie der Betriebskarte hinzuzufügen. Die Ebene wird erst nach erfolgreicher Registrierung sichtbar.",
+    name: "Name der Ebene",
+    namePlaceholder: "Beispiel: Grundstücksgrenze 2026",
+    file: "KMZ- oder KML-Datei",
+    choose: "Datei auswählen",
+    noFile: "Keine Datei ausgewählt",
+    help: "Zulässige Formate: .kmz und .kml. Maximale Größe: 20 MB.",
+    descriptionLabel: "Optionale Beschreibung",
+    descriptionPlaceholder: "Quelle, Datum, Verantwortliche oder Umfang der Ebene angeben.",
+    cancel: "Abbrechen",
+    upload: "Ebene speichern",
+    uploading: "Wird gespeichert…",
+    invalidType: "Nicht unterstütztes Format",
+    invalidTypeBody: "Wählen Sie eine .kmz- oder .kml-Datei aus.",
+    tooLarge: "Datei ist zu groß",
+    tooLargeBody: "Die Datei überschreitet die Grenze von 20 MB.",
+    noSelection: "Datei erforderlich",
+    noSelectionBody: "Wählen Sie vor dem Speichern eine Datei aus.",
+    success: "GIS-Ebene registriert",
+    successBody: (name: string) => `${name} wurde der Karte hinzugefügt.`,
+    failure: "Ebene konnte nicht gespeichert werden",
+    failureBody: "Prüfen Sie die Datei und versuchen Sie es erneut.",
+    safety: "Wenn der Datenbankeintrag fehlschlägt, wird die hochgeladene Datei automatisch entfernt, damit keine nicht referenzierten Speicherobjekte zurückbleiben.",
+  },
 } as const
 
 export function KmzUploadDialog({ open, onOpenChange, onUploadSuccess }: KmzUploadDialogProps) {
   const { language } = useLanguage()
-  const text = copy[language === "es" ? "es" : "en"]
+  const text = copy[language]
   const [loading, setLoading] = useState(false)
   const [kmzName, setKmzName] = useState("")
   const [kmzFile, setKmzFile] = useState<File | null>(null)

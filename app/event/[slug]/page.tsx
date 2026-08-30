@@ -7,231 +7,35 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
+import { useLanguage } from '@/lib/hooks/use-language'
 
 const eventPortalApi = process.env.NEXT_PUBLIC_BLACK_SWAN_EVENT_PORTAL_API_URL
 
-type Portal = {
-  portal_id: string
-  slug: string
-  headline: string
-  black_swan_intro?: string | null
-  event_description?: string | null
-  event: { name: string; start_date: string; end_date: string; location_name?: string | null }
-  program?: unknown[]
-  practical_info?: Record<string, unknown>
-  capacity?: number | null
-  places_remaining?: number | null
-  allow_companions?: boolean
-  max_companions?: number
-  commercial_model: string
-  ticket_price?: number | null
-  currency: string
-}
+type Portal = { portal_id:string;slug:string;headline:string;black_swan_intro?:string|null;event_description?:string|null;event:{name:string;start_date:string;end_date:string;location_name?:string|null};program?:unknown[];practical_info?:Record<string,unknown>;capacity?:number|null;places_remaining?:number|null;allow_companions?:boolean;max_companions?:number;commercial_model:string;ticket_price?:number|null;currency:string }
+type RegistrationResult = { registration_id:string; registration_status:'confirmed'|'waitlist'|string; payment_status:string; checkin_token?:string|null }
+type GuestOpportunity = { id:string;confidence:number;reason:string;status:string;my_status:string;counterpart_status:string;counterpart_name:string;counterpart_intent:string }
+type GuestDiscovery = { network_id:string;my_intents:Array<{id:string;intent_type:string;summary:string;privacy:string;status:string}>;opportunities:GuestOpportunity[] }
+const COPY={
+ en:{serviceMissing:'Event portal service is not configured.',invalidAccess:'Invitation or passcode is not valid.',openError:'Unable to open event.',registrationFailed:'Registration failed.',registrationRequired:'Confirmed registration required.',discoveryEnable:'Unable to enable Discovery.',sessionMissing:'Discovery session was not issued.',discoveryLoad:'Unable to load Discovery.',intentError:'Unable to create Discovery intent.',discoveryEnabled:'Discovery is enabled for this event. Your intent stays inside this event network.',respondError:'Unable to respond to opportunity.',acceptedMessage:'Interest recorded. Identity is revealed only if the other participant also accepts.',declinedMessage:'Opportunity declined.',privateEvent:'Private event',enterCode:'Enter the access code supplied by the hosting Member.',accessCode:'Access code',opening:'Opening…',openInvitation:'Open invitation',privateInvitation:'Black Swan · Private Invitation',date:'Date',location:'Location',registration:'Registration',inviteOnly:'Invite only',placesRemaining:'places remaining',waitlistAvailable:'Waitlist available',about:'About Black Swan',programme:'Programme',participation:'Participation',paymentLater:'Payment details will be confirmed after registration.',waitlist:'You are on the waitlist',confirmed:'Registration confirmed',register:'Register',waitlistDetail:'Your place is not confirmed yet. Black Swan will contact you if capacity becomes available.',confirmedDetail:'Your registration is linked to this event and its hosting Member. Keep your check-in pass for arrival.',noAccount:'No Black Swan account is required.',checkinPass:'Guest check-in pass',checkinDetail:'Present this QR at arrival. Entry is still subject to the hosting Member being on ground.',noPass:'Waitlist registrations do not receive an access pass until promoted to confirmed.',fullName:'Full name',email:'Email',phone:'WhatsApp / phone',company:'Company / organisation',diet:'Dietary preferences',allergies:'Allergies',companions:'Companion names, one per line',consentData:'I consent to Black Swan processing my registration data for this event.',consentMarketing:'I would like to receive future Black Swan event and educational updates.',registering:'Registering…',joinWaitlist:'Join waitlist',confirmRegistration:'Confirm registration',meetPeople:'Meet relevant people at this event',discoveryDetail:'Optional Discovery. Tell Black Swan what you are looking for, can offer, or want to explore. Matching is limited to this event and introductions require mutual interest.',optIn:'Opt-in only',seek:'I am looking for…',offer:'I can offer…',interest:'I am exploring…',incognito:'Incognito — reveal only on mutual interest',networkOnly:'Event network only',summaryPlaceholder:'Example: I would like to meet someone working on regenerative vineyard irrigation.',optionalContext:'Optional context',enableDiscovery:'Enable Discovery for this event',yourOpportunities:'Your event opportunities',noOpportunities:'No opportunities yet. Black Swan will surface them when relevant participants align.',interested:'Interested',notNow:'Not now',waiting:'Waiting for mutual interest'},
+ es:{serviceMissing:'El servicio del portal de eventos no está configurado.',invalidAccess:'La invitación o código de acceso no es válido.',openError:'No fue posible abrir el evento.',registrationFailed:'No fue posible completar la inscripción.',registrationRequired:'Se requiere una inscripción confirmada.',discoveryEnable:'No fue posible habilitar Discovery.',sessionMissing:'No se generó una sesión Discovery.',discoveryLoad:'No fue posible cargar Discovery.',intentError:'No fue posible crear la intención Discovery.',discoveryEnabled:'Discovery está habilitado para este evento. Tu intención permanece dentro de esta red del evento.',respondError:'No fue posible responder a la oportunidad.',acceptedMessage:'Interés registrado. La identidad se revela solo si la otra persona también acepta.',declinedMessage:'Oportunidad rechazada.',privateEvent:'Evento privado',enterCode:'Ingresa el código de acceso entregado por el Member anfitrión.',accessCode:'Código de acceso',opening:'Abriendo…',openInvitation:'Abrir invitación',privateInvitation:'Black Swan · Invitación privada',date:'Fecha',location:'Ubicación',registration:'Inscripción',inviteOnly:'Solo invitación',placesRemaining:'cupos disponibles',waitlistAvailable:'Lista de espera disponible',about:'Sobre Black Swan',programme:'Programa',participation:'Participación',paymentLater:'Los detalles de pago se confirmarán después de la inscripción.',waitlist:'Estás en lista de espera',confirmed:'Inscripción confirmada',register:'Inscribirse',waitlistDetail:'Tu cupo todavía no está confirmado. Black Swan te contactará si se libera capacidad.',confirmedDetail:'Tu inscripción está vinculada a este evento y a su Member anfitrión. Conserva tu pase de check-in para la llegada.',noAccount:'No se requiere una cuenta Black Swan.',checkinPass:'Pase de check-in',checkinDetail:'Presenta este QR al llegar. El ingreso sigue sujeto a que el Member anfitrión esté presente.',noPass:'Las inscripciones en lista de espera no reciben pase hasta ser confirmadas.',fullName:'Nombre completo',email:'Correo',phone:'WhatsApp / teléfono',company:'Empresa / organización',diet:'Preferencias alimentarias',allergies:'Alergias',companions:'Nombres de acompañantes, uno por línea',consentData:'Autorizo a Black Swan a procesar mis datos de inscripción para este evento.',consentMarketing:'Quiero recibir futuras novedades de eventos y educación de Black Swan.',registering:'Inscribiendo…',joinWaitlist:'Unirse a lista de espera',confirmRegistration:'Confirmar inscripción',meetPeople:'Conoce personas relevantes en este evento',discoveryDetail:'Discovery es opcional. Indica qué buscas, qué puedes ofrecer o qué quieres explorar. El matching se limita a este evento y las presentaciones requieren interés mutuo.',optIn:'Solo opt-in',seek:'Estoy buscando…',offer:'Puedo ofrecer…',interest:'Estoy explorando…',incognito:'Incógnito — revelar solo con interés mutuo',networkOnly:'Solo red del evento',summaryPlaceholder:'Ejemplo: Quiero conocer a alguien trabajando en riego regenerativo para viñedos.',optionalContext:'Contexto opcional',enableDiscovery:'Habilitar Discovery para este evento',yourOpportunities:'Tus oportunidades del evento',noOpportunities:'Todavía no hay oportunidades. Black Swan las mostrará cuando existan participantes relevantes alineados.',interested:'Me interesa',notNow:'Ahora no',waiting:'Esperando interés mutuo'},
+ de:{serviceMissing:'Der Event-Portal-Dienst ist nicht konfiguriert.',invalidAccess:'Einladung oder Zugangscode ist ungültig.',openError:'Das Ereignis konnte nicht geöffnet werden.',registrationFailed:'Die Registrierung konnte nicht abgeschlossen werden.',registrationRequired:'Eine bestätigte Registrierung ist erforderlich.',discoveryEnable:'Discovery konnte nicht aktiviert werden.',sessionMissing:'Es wurde keine Discovery-Sitzung erstellt.',discoveryLoad:'Discovery konnte nicht geladen werden.',intentError:'Die Discovery-Absicht konnte nicht erstellt werden.',discoveryEnabled:'Discovery ist für dieses Ereignis aktiviert. Deine Absicht bleibt innerhalb dieses Event-Netzwerks.',respondError:'Auf die Gelegenheit konnte nicht geantwortet werden.',acceptedMessage:'Interesse erfasst. Die Identität wird nur offengelegt, wenn die andere Person ebenfalls akzeptiert.',declinedMessage:'Gelegenheit abgelehnt.',privateEvent:'Privates Ereignis',enterCode:'Gib den Zugangscode des gastgebenden Members ein.',accessCode:'Zugangscode',opening:'Wird geöffnet…',openInvitation:'Einladung öffnen',privateInvitation:'Black Swan · Private Einladung',date:'Datum',location:'Standort',registration:'Registrierung',inviteOnly:'Nur auf Einladung',placesRemaining:'Plätze verfügbar',waitlistAvailable:'Warteliste verfügbar',about:'Über Black Swan',programme:'Programm',participation:'Teilnahme',paymentLater:'Zahlungsdetails werden nach der Registrierung bestätigt.',waitlist:'Du bist auf der Warteliste',confirmed:'Registrierung bestätigt',register:'Registrieren',waitlistDetail:'Dein Platz ist noch nicht bestätigt. Black Swan kontaktiert dich, wenn Kapazität frei wird.',confirmedDetail:'Deine Registrierung ist mit diesem Ereignis und dem gastgebenden Member verknüpft. Bewahre deinen Check-in-Pass für die Ankunft auf.',noAccount:'Ein Black-Swan-Konto ist nicht erforderlich.',checkinPass:'Gast-Check-in-Pass',checkinDetail:'Zeige diesen QR-Code bei der Ankunft. Der Eintritt setzt weiterhin voraus, dass der gastgebende Member vor Ort ist.',noPass:'Registrierungen auf der Warteliste erhalten erst nach Bestätigung einen Zugangspass.',fullName:'Vollständiger Name',email:'E-Mail',phone:'WhatsApp / Telefon',company:'Unternehmen / Organisation',diet:'Ernährungspräferenzen',allergies:'Allergien',companions:'Namen der Begleitpersonen, eine pro Zeile',consentData:'Ich stimme der Verarbeitung meiner Registrierungsdaten für dieses Ereignis durch Black Swan zu.',consentMarketing:'Ich möchte zukünftige Informationen zu Black-Swan-Events und Bildungsangeboten erhalten.',registering:'Registrierung läuft…',joinWaitlist:'Warteliste beitreten',confirmRegistration:'Registrierung bestätigen',meetPeople:'Relevante Personen bei diesem Ereignis kennenlernen',discoveryDetail:'Discovery ist optional. Beschreibe, wonach du suchst, was du anbieten kannst oder was du erkunden möchtest. Matching ist auf dieses Ereignis begrenzt und Vorstellungen erfordern gegenseitiges Interesse.',optIn:'Nur Opt-in',seek:'Ich suche…',offer:'Ich kann anbieten…',interest:'Ich erkunde…',incognito:'Inkognito — nur bei gegenseitigem Interesse offenlegen',networkOnly:'Nur Event-Netzwerk',summaryPlaceholder:'Beispiel: Ich möchte jemanden kennenlernen, der an regenerativer Weinbergbewässerung arbeitet.',optionalContext:'Optionaler Kontext',enableDiscovery:'Discovery für dieses Ereignis aktivieren',yourOpportunities:'Deine Event-Gelegenheiten',noOpportunities:'Noch keine Gelegenheiten. Black Swan zeigt sie, wenn relevante Teilnehmende übereinstimmen.',interested:'Interessiert',notNow:'Jetzt nicht',waiting:'Warten auf gegenseitiges Interesse'},
+} as const
+const LOCALES={en:'en-US',es:'es-CL',de:'de-DE'} as const
 
-type RegistrationResult = {
-  registration_id: string
-  registration_status: 'confirmed' | 'waitlist' | string
-  payment_status: string
-  checkin_token?: string | null
-}
-
-type GuestOpportunity = {
-  id: string
-  confidence: number
-  reason: string
-  status: string
-  my_status: string
-  counterpart_status: string
-  counterpart_name: string
-  counterpart_intent: string
-}
-
-type GuestDiscovery = {
-  network_id: string
-  my_intents: Array<{ id: string; intent_type: string; summary: string; privacy: string; status: string }>
-  opportunities: GuestOpportunity[]
-}
-
-function money(value: number | null | undefined, currency: string) {
-  if (value == null) return null
-  return new Intl.NumberFormat('en', { style: 'currency', currency }).format(value)
-}
-
-export default function EventGuestPage() {
-  const params = useParams<{ slug: string }>()
-  const searchParams = useSearchParams()
-  const slug = params.slug
-  const [access, setAccess] = useState('')
-  const [portal, setPortal] = useState<Portal | null>(null)
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [registration, setRegistration] = useState<RegistrationResult | null>(null)
-  const [registeredEmail, setRegisteredEmail] = useState('')
-  const [discoverySession, setDiscoverySession] = useState('')
-  const [discovery, setDiscovery] = useState<GuestDiscovery | null>(null)
-  const [discoveryMessage, setDiscoveryMessage] = useState<string | null>(null)
-
-  const initialAccess = useMemo(() => searchParams.get('access') || '', [searchParams])
-
-  async function unlock(secret: string) {
-    if (!eventPortalApi) { setError('Event portal service is not configured.'); return }
-    if (!secret) return
-    setLoading(true); setError(null)
-    try {
-      const response = await fetch(`${eventPortalApi}/v1/events/${encodeURIComponent(slug)}?access=${encodeURIComponent(secret)}`, { cache: 'no-store' })
-      const result = await response.json().catch(() => ({}))
-      if (!response.ok) throw new Error(result?.error?.message || 'Invitation or passcode is not valid.')
-      setAccess(secret)
-      setPortal(result.data as Portal)
-      sessionStorage.setItem(`black-swan-event:${slug}`, secret)
-      if (window.location.search) window.history.replaceState({}, '', window.location.pathname)
-    } catch (e) { setPortal(null); setError(e instanceof Error ? e.message : 'Unable to open event.') }
-    finally { setLoading(false) }
-  }
-
-  useEffect(() => {
-    const stored = typeof window !== 'undefined' ? sessionStorage.getItem(`black-swan-event:${slug}`) || '' : ''
-    const secret = initialAccess || stored
-    if (secret) void unlock(secret)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [slug, initialAccess])
-
-  async function register(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-    if (!eventPortalApi || !portal || !access) return
-    setLoading(true); setError(null)
-    const data = new FormData(event.currentTarget)
-    const email = String(data.get('email') || '').trim()
-    const companions = String(data.get('companions') || '').split('\n').map((v) => v.trim()).filter(Boolean).map((full_name) => ({ full_name }))
-    try {
-      const response = await fetch(`${eventPortalApi}/v1/events/${encodeURIComponent(slug)}/register`, {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({
-          access,
-          full_name: data.get('full_name'),
-          email,
-          phone: data.get('phone'),
-          company_name: data.get('company_name'),
-          dietary_preferences: data.get('dietary_preferences'),
-          allergies: data.get('allergies'),
-          companions,
-          consent_data_processing: data.get('consent_data_processing') === 'on',
-          consent_marketing: data.get('consent_marketing') === 'on',
-        }),
-      })
-      const result = await response.json().catch(() => ({}))
-      if (!response.ok) throw new Error(result?.error?.message || 'Registration failed.')
-      setRegistration(result.data as RegistrationResult)
-      setRegisteredEmail(email)
-      event.currentTarget.reset()
-    } catch (e) { setError(e instanceof Error ? e.message : 'Registration failed.') }
-    finally { setLoading(false) }
-  }
-
-  async function ensureDiscoverySession() {
-    if (!eventPortalApi || !registration || !registeredEmail) throw new Error('Confirmed registration required.')
-    if (discoverySession) return discoverySession
-    const response = await fetch(`${eventPortalApi}/v1/events/${encodeURIComponent(slug)}/discovery/session`, {
-      method: 'POST', headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ access, registration_id: registration.registration_id, email: registeredEmail }),
-    })
-    const result = await response.json().catch(() => ({}))
-    if (!response.ok) throw new Error(result?.error?.message || 'Unable to enable Discovery.')
-    const token = String(result?.data?.session_token || '')
-    if (!token) throw new Error('Discovery session was not issued.')
-    setDiscoverySession(token)
-    sessionStorage.setItem(`black-swan-discovery:${registration.registration_id}`, token)
-    return token
-  }
-
-  async function loadDiscovery(token = discoverySession) {
-    if (!eventPortalApi || !token) return
-    const response = await fetch(`${eventPortalApi}/v1/events/${encodeURIComponent(slug)}/discovery`, {
-      method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ session_token: token }),
-    })
-    const result = await response.json().catch(() => ({}))
-    if (!response.ok) throw new Error(result?.error?.message || 'Unable to load Discovery.')
-    setDiscovery(result.data as GuestDiscovery)
-  }
-
-  async function createGuestIntent(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault(); setLoading(true); setError(null); setDiscoveryMessage(null)
-    const form = new FormData(event.currentTarget)
-    try {
-      const token = await ensureDiscoverySession()
-      const response = await fetch(`${eventPortalApi}/v1/events/${encodeURIComponent(slug)}/discovery/intents`, {
-        method: 'POST', headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({
-          session_token: token,
-          intent_type: form.get('intent_type'),
-          summary: form.get('summary'),
-          details: form.get('details') || null,
-          privacy: form.get('privacy') || 'incognito',
-        }),
-      })
-      const result = await response.json().catch(() => ({}))
-      if (!response.ok) throw new Error(result?.error?.message || 'Unable to create Discovery intent.')
-      setDiscoveryMessage('Discovery is enabled for this event. Your intent stays inside this event network.')
-      event.currentTarget.reset()
-      await loadDiscovery(token)
-    } catch (e) { setError(e instanceof Error ? e.message : 'Unable to enable Discovery.') }
-    finally { setLoading(false) }
-  }
-
-  async function respondOpportunity(opportunityId: string, decision: 'accepted' | 'declined') {
-    if (!eventPortalApi || !discoverySession) return
-    setLoading(true); setError(null); setDiscoveryMessage(null)
-    try {
-      const response = await fetch(`${eventPortalApi}/v1/events/${encodeURIComponent(slug)}/discovery/opportunities/${opportunityId}`, {
-        method: 'POST', headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ session_token: discoverySession, decision }),
-      })
-      const result = await response.json().catch(() => ({}))
-      if (!response.ok) throw new Error(result?.error?.message || 'Unable to respond to opportunity.')
-      setDiscoveryMessage(decision === 'accepted' ? 'Interest recorded. Identity is revealed only if the other participant also accepts.' : 'Opportunity declined.')
-      await loadDiscovery(discoverySession)
-    } catch (e) { setError(e instanceof Error ? e.message : 'Unable to respond to opportunity.') }
-    finally { setLoading(false) }
-  }
-
-  if (!portal) return (
-    <main className="min-h-screen bg-background px-6 py-16 text-foreground"><div className="mx-auto max-w-md space-y-6"><div className="space-y-2"><p className="text-xs uppercase tracking-[0.24em] text-muted-foreground">Black Swan</p><h1 className="text-3xl font-normal">Private event</h1><p className="text-sm text-muted-foreground">Enter the access code supplied by the hosting Member.</p></div><Card><CardContent className="pt-6"><form className="space-y-4" onSubmit={(e) => { e.preventDefault(); const form = new FormData(e.currentTarget); void unlock(String(form.get('access') || '')) }}><Input name="access" type="password" placeholder="Access code" required /><Button className="w-full" disabled={loading}>{loading ? 'Opening…' : 'Open invitation'}</Button>{error && <p className="text-sm text-destructive">{error}</p>}</form></CardContent></Card></div></main>
-  )
-
-  return (
-    <main className="min-h-screen bg-background px-6 py-14 text-foreground">
-      <div className="mx-auto max-w-4xl space-y-10">
-        <header className="space-y-4"><p className="text-xs uppercase tracking-[0.28em] text-muted-foreground">Black Swan · Private Invitation</p><h1 className="max-w-3xl text-4xl font-normal tracking-tight md:text-6xl">{portal.headline}</h1>{portal.event_description && <p className="max-w-2xl text-lg text-muted-foreground">{portal.event_description}</p>}</header>
-
-        <div className="grid gap-4 md:grid-cols-3"><Card><CardHeader><CardDescription>Date</CardDescription><CardTitle className="text-lg">{portal.event.start_date}{portal.event.end_date !== portal.event.start_date ? ` — ${portal.event.end_date}` : ''}</CardTitle></CardHeader></Card><Card><CardHeader><CardDescription>Location</CardDescription><CardTitle className="text-lg">{portal.event.location_name || 'Black Swan'}</CardTitle></CardHeader></Card><Card><CardHeader><CardDescription>Registration</CardDescription><CardTitle className="text-lg">{portal.places_remaining == null ? 'Invite only' : portal.places_remaining > 0 ? `${portal.places_remaining} places remaining` : 'Waitlist available'}</CardTitle></CardHeader></Card></div>
-
-        {portal.black_swan_intro && <section className="max-w-3xl space-y-3"><h2 className="text-2xl font-normal">About Black Swan</h2><p className="leading-7 text-muted-foreground">{portal.black_swan_intro}</p></section>}
-        {Array.isArray(portal.program) && portal.program.length > 0 && <section className="space-y-4"><h2 className="text-2xl font-normal">Programme</h2><div className="space-y-2">{portal.program.map((item, index) => <Card key={index}><CardContent className="pt-6 text-sm">{typeof item === 'string' ? item : JSON.stringify(item)}</CardContent></Card>)}</div></section>}
-        {portal.commercial_model !== 'free' && <Card><CardHeader><CardTitle>Participation</CardTitle><CardDescription>{portal.ticket_price != null ? money(portal.ticket_price, portal.currency) : 'Payment details will be confirmed after registration.'}</CardDescription></CardHeader></Card>}
-
-        <Card><CardHeader><CardTitle>{registration ? (registration.registration_status === 'waitlist' ? 'You are on the waitlist' : 'Registration confirmed') : 'Register'}</CardTitle><CardDescription>{registration ? (registration.registration_status === 'waitlist' ? 'Your place is not confirmed yet. Black Swan will contact you if capacity becomes available.' : 'Your registration is linked to this event and its hosting Member. Keep your check-in pass for arrival.') : 'No Black Swan account is required.'}</CardDescription></CardHeader>{registration ? <CardContent>{registration.registration_status === 'confirmed' && registration.checkin_token ? <div className="flex flex-col items-center gap-4 rounded-md border p-6 text-center"><div className="bg-white p-3"><QRCode value={`black-swan-checkin:${registration.checkin_token}`} size={180} /></div><div><p className="text-sm font-medium">Guest check-in pass</p><p className="mt-1 max-w-md text-xs text-muted-foreground">Present this QR at arrival. Entry is still subject to the hosting Member being on ground.</p></div></div> : <p className="text-sm text-muted-foreground">Waitlist registrations do not receive an access pass until promoted to confirmed.</p>}</CardContent> : <CardContent><form className="grid gap-4 md:grid-cols-2" onSubmit={register}><Input name="full_name" placeholder="Full name" required /><Input name="email" type="email" placeholder="Email" required /><Input name="phone" placeholder="WhatsApp / phone" /><Input name="company_name" placeholder="Company / organisation" /><Input name="dietary_preferences" placeholder="Dietary preferences" /><Input name="allergies" placeholder="Allergies" />{portal.allow_companions && <textarea name="companions" className="min-h-24 rounded-md border bg-background p-3 text-sm md:col-span-2" placeholder={`Companion names, one per line (maximum ${portal.max_companions || 0})`} />}<label className="flex gap-2 text-sm md:col-span-2"><input type="checkbox" name="consent_data_processing" required /> I consent to Black Swan processing my registration data for this event.</label><label className="flex gap-2 text-sm md:col-span-2"><input type="checkbox" name="consent_marketing" /> I would like to receive future Black Swan event and educational updates.</label><div className="md:col-span-2"><Button disabled={loading}>{loading ? 'Registering…' : portal.places_remaining === 0 ? 'Join waitlist' : 'Confirm registration'}</Button></div>{error && <p className="text-sm text-destructive md:col-span-2">{error}</p>}</form></CardContent>}</Card>
-
-        {registration?.registration_status === 'confirmed' && <Card>
-          <CardHeader><div className="flex flex-wrap items-center justify-between gap-3"><div><CardTitle>Meet relevant people at this event</CardTitle><CardDescription>Optional Discovery. Tell Black Swan what you are looking for, can offer, or want to explore. Matching is limited to this event and introductions require mutual interest.</CardDescription></div><Badge variant="outline">Opt-in only</Badge></div></CardHeader>
-          <CardContent className="space-y-5">
-            <form onSubmit={createGuestIntent} className="grid gap-3 md:grid-cols-2">
-              <select name="intent_type" className="h-10 rounded-md border bg-background px-3 text-sm"><option value="seek">I am looking for…</option><option value="offer">I can offer…</option><option value="interest">I am exploring…</option></select>
-              <select name="privacy" className="h-10 rounded-md border bg-background px-3 text-sm"><option value="incognito">Incognito — reveal only on mutual interest</option><option value="network_only">Event network only</option></select>
-              <Input name="summary" required minLength={5} maxLength={500} className="md:col-span-2" placeholder="Example: I would like to meet someone working on regenerative vineyard irrigation." />
-              <textarea name="details" className="min-h-20 rounded-md border bg-background p-3 text-sm md:col-span-2" placeholder="Optional context" />
-              <div className="md:col-span-2"><Button disabled={loading}>Enable Discovery for this event</Button></div>
-            </form>
-            {discoveryMessage && <p className="text-sm text-muted-foreground">{discoveryMessage}</p>}
-            {discovery && <div className="space-y-3">
-              <p className="text-sm font-medium">Your event opportunities</p>
-              {discovery.opportunities.length === 0 ? <p className="text-sm text-muted-foreground">No opportunities yet. Black Swan will surface them when relevant participants align.</p> : discovery.opportunities.map((opportunity) => <div key={opportunity.id} className="rounded-md border p-4"><div className="flex flex-col justify-between gap-3 md:flex-row"><div className="space-y-2"><div className="flex gap-2"><Badge variant="secondary">{Math.round(Number(opportunity.confidence || 0) * 100)}%</Badge><Badge variant="outline">{opportunity.status}</Badge></div><p className="font-medium">{opportunity.counterpart_name}</p><p className="text-sm">{opportunity.counterpart_intent}</p><p className="text-sm text-muted-foreground">{opportunity.reason}</p></div>{opportunity.status === 'pending' && opportunity.my_status === 'pending' && <div className="flex gap-2"><Button size="sm" disabled={loading} onClick={() => void respondOpportunity(opportunity.id, 'accepted')}>Interested</Button><Button size="sm" variant="outline" disabled={loading} onClick={() => void respondOpportunity(opportunity.id, 'declined')}>Not now</Button></div>}{opportunity.status === 'pending' && opportunity.my_status === 'accepted' && <Badge variant="outline">Waiting for mutual interest</Badge>}</div></div>)}
-            </div>}
-          </CardContent>
-        </Card>}
-
-        {error && <p className="text-sm text-destructive">{error}</p>}
-      </div>
-    </main>
-  )
+export default function EventGuestPage(){
+ const {language}=useLanguage();const lang=(language in COPY?language:'en') as keyof typeof COPY;const copy=COPY[lang];const locale=LOCALES[lang]
+ const params=useParams<{slug:string}>();const searchParams=useSearchParams();const slug=params.slug;const [access,setAccess]=useState('');const [portal,setPortal]=useState<Portal|null>(null);const [loading,setLoading]=useState(false);const [error,setError]=useState<string|null>(null);const [registration,setRegistration]=useState<RegistrationResult|null>(null);const [registeredEmail,setRegisteredEmail]=useState('');const [discoverySession,setDiscoverySession]=useState('');const [discovery,setDiscovery]=useState<GuestDiscovery|null>(null);const [discoveryMessage,setDiscoveryMessage]=useState<string|null>(null);const initialAccess=useMemo(()=>searchParams.get('access')||'',[searchParams]);const number=useMemo(()=>new Intl.NumberFormat(locale),[locale]);const money=(value:number|null|undefined,currency:string)=>value==null?null:new Intl.NumberFormat(locale,{style:'currency',currency}).format(value);const date=(value:string)=>new Intl.DateTimeFormat(locale,{dateStyle:'medium'}).format(new Date(`${value}T12:00:00`))
+ async function unlock(secret:string){if(!eventPortalApi){setError(copy.serviceMissing);return}if(!secret)return;setLoading(true);setError(null);try{const response=await fetch(`${eventPortalApi}/v1/events/${encodeURIComponent(slug)}?access=${encodeURIComponent(secret)}`,{cache:'no-store'});const result=await response.json().catch(()=>({}));if(!response.ok)throw new Error('invalid');setAccess(secret);setPortal(result.data as Portal);sessionStorage.setItem(`black-swan-event:${slug}`,secret);if(window.location.search)window.history.replaceState({},'',window.location.pathname)}catch(e){console.error('event unlock failed',e);setPortal(null);setError(copy.invalidAccess)}finally{setLoading(false)}}
+ useEffect(()=>{const stored=typeof window!=='undefined'?sessionStorage.getItem(`black-swan-event:${slug}`)||'':'';const secret=initialAccess||stored;if(secret)void unlock(secret)},[slug,initialAccess])
+ async function register(event:FormEvent<HTMLFormElement>){event.preventDefault();if(!eventPortalApi||!portal||!access)return;setLoading(true);setError(null);const data=new FormData(event.currentTarget);const email=String(data.get('email')||'').trim();const companions=String(data.get('companions')||'').split('\n').map(v=>v.trim()).filter(Boolean).map(full_name=>({full_name}));try{const response=await fetch(`${eventPortalApi}/v1/events/${encodeURIComponent(slug)}/register`,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({access,full_name:data.get('full_name'),email,phone:data.get('phone'),company_name:data.get('company_name'),dietary_preferences:data.get('dietary_preferences'),allergies:data.get('allergies'),companions,consent_data_processing:data.get('consent_data_processing')==='on',consent_marketing:data.get('consent_marketing')==='on'})});const result=await response.json().catch(()=>({}));if(!response.ok)throw new Error('registration');setRegistration(result.data as RegistrationResult);setRegisteredEmail(email);event.currentTarget.reset()}catch(e){console.error('event registration failed',e);setError(copy.registrationFailed)}finally{setLoading(false)}}
+ async function ensureDiscoverySession(){if(!eventPortalApi||!registration||!registeredEmail)throw new Error(copy.registrationRequired);if(discoverySession)return discoverySession;const response=await fetch(`${eventPortalApi}/v1/events/${encodeURIComponent(slug)}/discovery/session`,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({access,registration_id:registration.registration_id,email:registeredEmail})});const result=await response.json().catch(()=>({}));if(!response.ok)throw new Error(copy.discoveryEnable);const token=String(result?.data?.session_token||'');if(!token)throw new Error(copy.sessionMissing);setDiscoverySession(token);sessionStorage.setItem(`black-swan-discovery:${registration.registration_id}`,token);return token}
+ async function loadDiscovery(token=discoverySession){if(!eventPortalApi||!token)return;const response=await fetch(`${eventPortalApi}/v1/events/${encodeURIComponent(slug)}/discovery`,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({session_token:token})});const result=await response.json().catch(()=>({}));if(!response.ok)throw new Error(copy.discoveryLoad);setDiscovery(result.data as GuestDiscovery)}
+ async function createGuestIntent(event:FormEvent<HTMLFormElement>){event.preventDefault();setLoading(true);setError(null);setDiscoveryMessage(null);const form=new FormData(event.currentTarget);try{const token=await ensureDiscoverySession();const response=await fetch(`${eventPortalApi}/v1/events/${encodeURIComponent(slug)}/discovery/intents`,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({session_token:token,intent_type:form.get('intent_type'),summary:form.get('summary'),details:form.get('details')||null,privacy:form.get('privacy')||'incognito'})});if(!response.ok)throw new Error(copy.intentError);setDiscoveryMessage(copy.discoveryEnabled);event.currentTarget.reset();await loadDiscovery(token)}catch(e){console.error('event discovery intent failed',e);setError(copy.discoveryEnable)}finally{setLoading(false)}}
+ async function respondOpportunity(opportunityId:string,decision:'accepted'|'declined'){if(!eventPortalApi||!discoverySession)return;setLoading(true);setError(null);setDiscoveryMessage(null);try{const response=await fetch(`${eventPortalApi}/v1/events/${encodeURIComponent(slug)}/discovery/opportunities/${opportunityId}`,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({session_token:discoverySession,decision})});if(!response.ok)throw new Error(copy.respondError);setDiscoveryMessage(decision==='accepted'?copy.acceptedMessage:copy.declinedMessage);await loadDiscovery(discoverySession)}catch(e){console.error('event discovery response failed',e);setError(copy.respondError)}finally{setLoading(false)}}
+ if(!portal)return <main className="min-h-screen bg-background px-6 py-16 text-foreground"><div className="mx-auto max-w-md space-y-6"><div className="space-y-2"><p className="text-xs uppercase tracking-[0.24em] text-muted-foreground">Black Swan</p><h1 className="text-3xl font-normal">{copy.privateEvent}</h1><p className="text-sm text-muted-foreground">{copy.enterCode}</p></div><Card><CardContent className="pt-6"><form className="space-y-4" onSubmit={e=>{e.preventDefault();const form=new FormData(e.currentTarget);void unlock(String(form.get('access')||''))}}><Input name="access" type="password" placeholder={copy.accessCode} required/><Button className="w-full" disabled={loading}>{loading?copy.opening:copy.openInvitation}</Button>{error&&<p className="text-sm text-destructive">{error}</p>}</form></CardContent></Card></div></main>
+ return <main className="min-h-screen bg-background px-6 py-14 text-foreground"><div className="mx-auto max-w-4xl space-y-10"><header className="space-y-4"><p className="text-xs uppercase tracking-[0.28em] text-muted-foreground">{copy.privateInvitation}</p><h1 className="max-w-3xl text-4xl font-normal tracking-tight md:text-6xl">{portal.headline}</h1>{portal.event_description&&<p className="max-w-2xl text-lg text-muted-foreground">{portal.event_description}</p>}</header>
+ <div className="grid gap-4 md:grid-cols-3"><Card><CardHeader><CardDescription>{copy.date}</CardDescription><CardTitle className="text-lg">{date(portal.event.start_date)}{portal.event.end_date!==portal.event.start_date?` — ${date(portal.event.end_date)}`:''}</CardTitle></CardHeader></Card><Card><CardHeader><CardDescription>{copy.location}</CardDescription><CardTitle className="text-lg">{portal.event.location_name||'Black Swan'}</CardTitle></CardHeader></Card><Card><CardHeader><CardDescription>{copy.registration}</CardDescription><CardTitle className="text-lg">{portal.places_remaining==null?copy.inviteOnly:portal.places_remaining>0?`${number.format(portal.places_remaining)} ${copy.placesRemaining}`:copy.waitlistAvailable}</CardTitle></CardHeader></Card></div>
+ {portal.black_swan_intro&&<section className="max-w-3xl space-y-3"><h2 className="text-2xl font-normal">{copy.about}</h2><p className="leading-7 text-muted-foreground">{portal.black_swan_intro}</p></section>}{Array.isArray(portal.program)&&portal.program.length>0&&<section className="space-y-4"><h2 className="text-2xl font-normal">{copy.programme}</h2><div className="space-y-2">{portal.program.map((item,index)=><Card key={index}><CardContent className="pt-6 text-sm">{typeof item==='string'?item:JSON.stringify(item)}</CardContent></Card>)}</div></section>}{portal.commercial_model!=='free'&&<Card><CardHeader><CardTitle>{copy.participation}</CardTitle><CardDescription>{portal.ticket_price!=null?money(portal.ticket_price,portal.currency):copy.paymentLater}</CardDescription></CardHeader></Card>}
+ <Card><CardHeader><CardTitle>{registration?(registration.registration_status==='waitlist'?copy.waitlist:copy.confirmed):copy.register}</CardTitle><CardDescription>{registration?(registration.registration_status==='waitlist'?copy.waitlistDetail:copy.confirmedDetail):copy.noAccount}</CardDescription></CardHeader>{registration?<CardContent>{registration.registration_status==='confirmed'&&registration.checkin_token?<div className="flex flex-col items-center gap-4 rounded-md border p-6 text-center"><div className="bg-white p-3"><QRCode value={`black-swan-checkin:${registration.checkin_token}`} size={180}/></div><div><p className="text-sm font-medium">{copy.checkinPass}</p><p className="mt-1 max-w-md text-xs text-muted-foreground">{copy.checkinDetail}</p></div></div>:<p className="text-sm text-muted-foreground">{copy.noPass}</p>}</CardContent>:<CardContent><form className="grid gap-4 md:grid-cols-2" onSubmit={register}><Input name="full_name" placeholder={copy.fullName} required/><Input name="email" type="email" placeholder={copy.email} required/><Input name="phone" placeholder={copy.phone}/><Input name="company_name" placeholder={copy.company}/><Input name="dietary_preferences" placeholder={copy.diet}/><Input name="allergies" placeholder={copy.allergies}/>{portal.allow_companions&&<textarea name="companions" className="min-h-24 rounded-md border bg-background p-3 text-sm md:col-span-2" placeholder={`${copy.companions} (${portal.max_companions||0})`}/>}<label className="flex gap-2 text-sm md:col-span-2"><input type="checkbox" name="consent_data_processing" required/>{copy.consentData}</label><label className="flex gap-2 text-sm md:col-span-2"><input type="checkbox" name="consent_marketing"/>{copy.consentMarketing}</label><div className="md:col-span-2"><Button disabled={loading}>{loading?copy.registering:portal.places_remaining===0?copy.joinWaitlist:copy.confirmRegistration}</Button></div>{error&&<p className="text-sm text-destructive md:col-span-2">{error}</p>}</form></CardContent>}</Card>
+ {registration?.registration_status==='confirmed'&&<Card><CardHeader><div className="flex flex-wrap items-center justify-between gap-3"><div><CardTitle>{copy.meetPeople}</CardTitle><CardDescription>{copy.discoveryDetail}</CardDescription></div><Badge variant="outline">{copy.optIn}</Badge></div></CardHeader><CardContent className="space-y-5"><form onSubmit={createGuestIntent} className="grid gap-3 md:grid-cols-2"><select name="intent_type" className="h-10 rounded-md border bg-background px-3 text-sm"><option value="seek">{copy.seek}</option><option value="offer">{copy.offer}</option><option value="interest">{copy.interest}</option></select><select name="privacy" className="h-10 rounded-md border bg-background px-3 text-sm"><option value="incognito">{copy.incognito}</option><option value="network_only">{copy.networkOnly}</option></select><Input name="summary" required minLength={5} maxLength={500} className="md:col-span-2" placeholder={copy.summaryPlaceholder}/><textarea name="details" className="min-h-20 rounded-md border bg-background p-3 text-sm md:col-span-2" placeholder={copy.optionalContext}/><div className="md:col-span-2"><Button disabled={loading}>{copy.enableDiscovery}</Button></div></form>{discoveryMessage&&<p className="text-sm text-muted-foreground">{discoveryMessage}</p>}{discovery&&<div className="space-y-3"><p className="text-sm font-medium">{copy.yourOpportunities}</p>{discovery.opportunities.length===0?<p className="text-sm text-muted-foreground">{copy.noOpportunities}</p>:discovery.opportunities.map(opportunity=><div key={opportunity.id} className="rounded-md border p-4"><div className="flex flex-col justify-between gap-3 md:flex-row"><div className="space-y-2"><div className="flex gap-2"><Badge variant="secondary">{number.format(Math.round(Number(opportunity.confidence||0)*100))}%</Badge><Badge variant="outline">{opportunity.status}</Badge></div><p className="font-medium">{opportunity.counterpart_name}</p><p className="text-sm">{opportunity.counterpart_intent}</p><p className="text-sm text-muted-foreground">{opportunity.reason}</p></div>{opportunity.status==='pending'&&opportunity.my_status==='pending'&&<div className="flex gap-2"><Button size="sm" disabled={loading} onClick={()=>void respondOpportunity(opportunity.id,'accepted')}>{copy.interested}</Button><Button size="sm" variant="outline" disabled={loading} onClick={()=>void respondOpportunity(opportunity.id,'declined')}>{copy.notNow}</Button></div>}{opportunity.status==='pending'&&opportunity.my_status==='accepted'&&<Badge variant="outline">{copy.waiting}</Badge>}</div></div>)}</div>}</CardContent></Card>}{error&&<p className="text-sm text-destructive">{error}</p>}</div></main>
 }

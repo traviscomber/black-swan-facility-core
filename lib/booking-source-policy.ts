@@ -18,8 +18,26 @@ const EDITABLE_SOURCES = new Set([
 
 const EXTERNAL_READ_ONLY_PATTERN = /(ical|airbnb|booking(?:\.|_)?com|expedia|vrbo|agoda|trip(?:\.|_)?com|ota|channel(?:_|-)?manager)/i
 
+const POLICY_COPY: Record<Language, Record<BookingSourcePolicy, string>> = {
+  en: {
+    "external-read-only": "Synced reservation: room or date changes must be made in the source channel.",
+    review: "Unclassified source: the system will validate again and may require approval.",
+    editable: "Reservation can be edited from the calendar.",
+  },
+  es: {
+    "external-read-only": "Reserva sincronizada: los cambios de habitación o fechas deben realizarse en el canal de origen.",
+    review: "Origen no clasificado: el sistema volverá a validar y puede requerir aprobación.",
+    editable: "Reserva editable desde el calendario.",
+  },
+  de: {
+    "external-read-only": "Synchronisierte Reservierung: Zimmer- oder Datumsänderungen müssen im Ursprungskanal vorgenommen werden.",
+    review: "Nicht klassifizierte Quelle: Das System validiert erneut und kann eine Freigabe erfordern.",
+    editable: "Reservierung kann im Kalender bearbeitet werden.",
+  },
+}
+
 export function normalizeBookingSource(source: string | null | undefined) {
-  return (source ?? "").trim().toLocaleLowerCase("es-CL")
+  return (source ?? "").trim().toLowerCase()
 }
 
 export function bookingSourcePolicy(source: string | null | undefined): BookingSourcePolicy {
@@ -30,25 +48,5 @@ export function bookingSourcePolicy(source: string | null | undefined): BookingS
 }
 
 export function bookingSourcePolicyLabel(source: string | null | undefined, language: Language = "es") {
-  const policy = bookingSourcePolicy(source)
-
-  if (language === "de") {
-    if (policy === "external-read-only") return "Synchronisierte Reservierung: Zimmer- oder Datumsänderungen müssen im Ursprungskanal vorgenommen werden."
-    if (policy === "review") return "Nicht klassifizierte Quelle: Das System validiert erneut und kann eine Freigabe erfordern."
-    return "Reservierung kann im Kalender bearbeitet werden."
-  }
-
-  if (language === "en") {
-    if (policy === "external-read-only") return "Synced reservation: room or date changes must be made in the source channel."
-    if (policy === "review") return "Unclassified source: the system will validate again and may require approval."
-    return "Reservation can be edited from the calendar."
-  }
-
-  if (policy === "external-read-only") {
-    return "Reserva sincronizada: los cambios de habitación o fechas deben realizarse en el canal de origen."
-  }
-  if (policy === "review") {
-    return "Origen no clasificado: el sistema volverá a validar y puede requerir aprobación."
-  }
-  return "Reserva editable desde el calendario."
+  return POLICY_COPY[language][bookingSourcePolicy(source)]
 }

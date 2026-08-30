@@ -106,11 +106,45 @@ const copy = {
     deleteError: "Unable to delete the location. It may still be in use.",
     invalidCoordinates: "The entered coordinates are invalid.",
   },
+  de: {
+    title: "Standortverwaltung",
+    description: "Zentraler Katalog der Betriebsbereiche und Standorte auf Fundo Corcovado.",
+    add: "Standort hinzufügen",
+    total: "Standorte registriert",
+    georeferenced: "mit Koordinaten",
+    loading: "Standorte werden geladen…",
+    empty: "Es sind keine Standorte registriert.",
+    name: "Name",
+    descriptionLabel: "Beschreibung",
+    coordinates: "Koordinaten",
+    status: "Status",
+    actions: "Aktionen",
+    active: "Aktiv",
+    inactive: "Inaktiv",
+    noCoordinates: "Keine Koordinaten",
+    addTitle: "Standort hinzufügen",
+    editTitle: "Standort bearbeiten",
+    dialogDescription: "Koordinaten sind optional und müssen einen gültigen Punkt auf dem Gelände darstellen.",
+    latitude: "Breitengrad",
+    longitude: "Längengrad",
+    cancel: "Abbrechen",
+    save: "Speichern",
+    saving: "Wird gespeichert…",
+    deleteTitle: "Standort löschen",
+    deleteDescription: "Diese Aktion kann Anlagen, Störungen oder andere verknüpfte Datensätze betreffen. Nur fortfahren, wenn der Standort nicht verwendet wird.",
+    delete: "Löschen",
+    loadError: "Standorte konnten nicht geladen werden.",
+    saveSuccess: "Standort gespeichert",
+    saveError: "Standort konnte nicht gespeichert werden.",
+    deleteSuccess: "Standort gelöscht",
+    deleteError: "Der Standort konnte nicht gelöscht werden. Er wird möglicherweise noch verwendet.",
+    invalidCoordinates: "Die eingegebenen Koordinaten sind ungültig.",
+  },
 } as const
 
 export default function LocationsAdminPage() {
   const { language } = useLanguage()
-  const text = copy[language === "es" ? "es" : "en"]
+  const text = copy[language]
   const { toast } = useToast()
   const [locations, setLocations] = useState<Location[]>([])
   const [loading, setLoading] = useState(true)

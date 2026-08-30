@@ -33,6 +33,7 @@ const COPY = {
     checkout: "Verificar salida y usar Preparar salida antes de cerrar la estadía.",
     done: "Estadía cerrada. Verificar tareas posteriores a la salida.",
     upcomingDetail: "Revisar preparación antes del día de llegada.",
+    bed: "Cama",
   },
   en: {
     arrives_today: "ARRIVES TODAY",
@@ -48,6 +49,7 @@ const COPY = {
     checkout: "Verify departure and use Prepare checkout before closing the stay.",
     done: "Stay closed. Verify post-checkout tasks.",
     upcomingDetail: "Review room preparation before arrival day.",
+    bed: "Bed",
   },
   de: {
     arrives_today: "ANKUNFT HEUTE",
@@ -63,8 +65,11 @@ const COPY = {
     checkout: "Abreise prüfen und vor dem Abschluss ‚Abreise vorbereiten‘ verwenden.",
     done: "Aufenthalt abgeschlossen. Aufgaben nach der Abreise prüfen.",
     upcomingDetail: "Zimmerbereitschaft vor dem Anreisetag prüfen.",
+    bed: "Bett",
   },
 } as const
+
+const LOCALES = { en: "en-US", es: "es-CL", de: "de-DE" } as const
 
 function chileDate() {
   const parts = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Santiago", year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(new Date())
@@ -87,8 +92,13 @@ function getStayState(reservation: Reservation): StayState {
 export function GuestStayStatusStrip() {
   const supabase = useMemo(() => createClient(), [])
   const { language } = useLanguage()
-  const locale = language === "en" || language === "de" ? language : "es"
-  const copy = COPY[locale]
+  const copy = COPY[language]
+  const dateFormatter = useMemo(() => new Intl.DateTimeFormat(LOCALES[language], {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    timeZone: "America/Santiago",
+  }), [language])
   const [reservationId, setReservationId] = useState<string | null>(null)
   const [reservation, setReservation] = useState<Reservation | null>(null)
 
@@ -135,6 +145,8 @@ export function GuestStayStatusStrip() {
             : copy.upcomingDetail
   const Icon = state === "not_ready" ? AlertTriangle : state === "checked_out" ? CheckCircle2 : state === "leaves_today" ? LogOut : state === "arrives_today" ? DoorOpen : BedDouble
   const warning = state === "not_ready" || state === "leaves_today"
+  const checkIn = dateFormatter.format(new Date(`${reservation.check_in}T12:00:00`))
+  const checkOut = dateFormatter.format(new Date(`${reservation.check_out}T12:00:00`))
 
   return (
     <section className="border-b border-border bg-card px-4 py-3 md:px-6">
@@ -145,12 +157,12 @@ export function GuestStayStatusStrip() {
             <div className="flex flex-wrap items-center gap-2">
               <span className={`text-xs font-semibold tracking-[0.14em] ${warning ? "text-amber-500" : "text-primary"}`}>{copy[state]}</span>
               <span className="text-sm font-medium text-foreground">{reservation.guest_name}</span>
-              <span className="text-xs text-muted-foreground">{reservation.room?.room_number ?? "—"}{reservation.bed?.bed_number ? ` · Cama ${reservation.bed.bed_number}` : ""}</span>
+              <span className="text-xs text-muted-foreground">{reservation.room?.room_number ?? "—"}{reservation.bed?.bed_number ? ` · ${copy.bed} ${reservation.bed.bed_number}` : ""}</span>
             </div>
             <p className="mt-1 text-xs text-muted-foreground"><span className="font-medium text-foreground">{copy.next}:</span> {detail}</p>
           </div>
         </div>
-        <div className="text-xs text-muted-foreground">{reservation.check_in} → {reservation.check_out}</div>
+        <div className="text-xs text-muted-foreground">{checkIn} → {checkOut}</div>
       </div>
     </section>
   )

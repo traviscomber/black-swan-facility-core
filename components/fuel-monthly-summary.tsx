@@ -23,7 +23,7 @@ const copy = {
     totalSpend: 'Gasto verificado',
     anomalies: 'Anomalías detectadas',
     critical: 'de severidad alta',
-    alert: (count: number) => `Se detectaron ${count} anomalías de severidad alta. Deben revisarse antes de confirmar nuevos consumos.`,
+    alert: (count: number) => `Se detectaron ${count.toLocaleString('es-CL')} anomalías de severidad alta. Deben revisarse antes de confirmar nuevos consumos.`,
     monthly: 'Resumen mensual verificado',
     month: 'Mes',
     records: 'Registros',
@@ -49,7 +49,7 @@ const copy = {
     totalSpend: 'Verified spend',
     anomalies: 'Detected anomalies',
     critical: 'high-severity',
-    alert: (count: number) => `${count} high-severity anomalies were detected. They must be reviewed before confirming new consumption.`,
+    alert: (count: number) => `${count.toLocaleString('en-US')} high-severity anomalies were detected. They must be reviewed before confirming new consumption.`,
     monthly: 'Verified monthly summary',
     month: 'Month',
     records: 'Records',
@@ -67,18 +67,47 @@ const copy = {
     unknown: 'Unknown',
     noData: 'There are no verified fuel records available for operational KPIs yet.',
   },
+  de: {
+    verifiedOnly: 'Kennzahlen werden ausschließlich aus verifizierten Datensätzen berechnet.',
+    pendingExcluded: (count: number) => `${count.toLocaleString('de-DE')} ausstehende Datensätze wurden von Litern, Kosten und Durchschnittswerten ausgeschlossen.`,
+    totalRecords: 'Verifizierte Datensätze',
+    totalLiters: 'Verifizierte Liter',
+    totalSpend: 'Verifizierte Ausgaben',
+    anomalies: 'Erkannte Anomalien',
+    critical: 'mit hoher Schwere',
+    alert: (count: number) => `${count.toLocaleString('de-DE')} Anomalien mit hoher Schwere wurden erkannt. Sie müssen vor der Bestätigung neuer Verbräuche geprüft werden.`,
+    monthly: 'Verifizierte Monatsübersicht',
+    month: 'Monat',
+    records: 'Datensätze',
+    liters: 'Liter',
+    cost: 'Kosten CLP',
+    costLiter: 'CLP/L',
+    types: 'Kraftstoffarten',
+    detected: 'Erkannte Anomalien',
+    type: 'Typ',
+    description: 'Beschreibung',
+    severity: 'Schweregrad',
+    status: 'Geprüft',
+    yes: 'Ja',
+    no: 'Nein',
+    unknown: 'Unbekannt',
+    noData: 'Es liegen noch keine verifizierten Kraftstoffdatensätze für betriebliche Kennzahlen vor.',
+  },
 } as const
 
 const severityLabels = {
   es: { high: 'Alta', medium: 'Media', low: 'Baja' },
   en: { high: 'High', medium: 'Medium', low: 'Low' },
+  de: { high: 'Hoch', medium: 'Mittel', low: 'Niedrig' },
 } as const
+
+const locales = { es: 'es-CL', en: 'en-US', de: 'de-DE' } as const
 
 export function MonthlySummaryTab({ records, anomalies, pendingCount = 0 }: MonthlySummaryTabProps) {
   const { language } = useLanguage()
-  const lang = language === 'es' ? 'es' : 'en'
+  const lang = language
   const text = copy[lang]
-  const locale = lang === 'es' ? 'es-CL' : 'en-US'
+  const locale = locales[lang]
   const monthlyData = new Map<string, any>()
 
   records.forEach((record: any) => {
@@ -102,6 +131,7 @@ export function MonthlySummaryTab({ records, anomalies, pendingCount = 0 }: Mont
   const totalLiters = records.reduce((sum: number, record: any) => sum + Number(record.liters || 0), 0)
   const totalCost = records.reduce((sum: number, record: any) => sum + Number(record.cost_pesos || 0), 0)
   const currency = new Intl.NumberFormat(locale, { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 })
+  const monthFormatter = new Intl.DateTimeFormat(locale, { month: 'long', year: 'numeric' })
 
   return (
     <div className="space-y-6">
@@ -124,7 +154,7 @@ export function MonthlySummaryTab({ records, anomalies, pendingCount = 0 }: Mont
       <Card>
         <CardHeader><CardTitle>{text.monthly}</CardTitle></CardHeader>
         <CardContent>
-          {months.length === 0 ? <p className="py-10 text-center text-sm text-muted-foreground">{text.noData}</p> : <div className="overflow-x-auto"><Table><TableHeader><TableRow><TableHead>{text.month}</TableHead><TableHead className="text-right">{text.records}</TableHead><TableHead className="text-right">{text.liters}</TableHead><TableHead className="text-right">{text.cost}</TableHead><TableHead className="text-right">{text.costLiter}</TableHead><TableHead>{text.types}</TableHead></TableRow></TableHeader><TableBody>{months.map((month: any) => { const costPerLiter = month.totalLiters > 0 ? month.totalCost / month.totalLiters : 0; return <TableRow key={month.month}><TableCell className="font-medium">{month.month}</TableCell><TableCell className="text-right">{month.recordCount.toLocaleString(locale)}</TableCell><TableCell className="text-right">{month.totalLiters.toLocaleString(locale, { maximumFractionDigits: 2 })} L</TableCell><TableCell className="text-right">{currency.format(month.totalCost)}</TableCell><TableCell className="text-right">{currency.format(costPerLiter)}</TableCell><TableCell><div className="flex flex-wrap gap-1">{Object.entries(month.fuelTypes).map(([type, liters]: [string, any]) => <Badge key={type} variant="outline" className="text-xs">{type}: {Number(liters).toLocaleString(locale, { maximumFractionDigits: 1 })} L</Badge>)}</div></TableCell></TableRow> })}</TableBody></Table></div>}
+          {months.length === 0 ? <p className="py-10 text-center text-sm text-muted-foreground">{text.noData}</p> : <div className="overflow-x-auto"><Table><TableHeader><TableRow><TableHead>{text.month}</TableHead><TableHead className="text-right">{text.records}</TableHead><TableHead className="text-right">{text.liters}</TableHead><TableHead className="text-right">{text.cost}</TableHead><TableHead className="text-right">{text.costLiter}</TableHead><TableHead>{text.types}</TableHead></TableRow></TableHeader><TableBody>{months.map((month: any) => { const costPerLiter = month.totalLiters > 0 ? month.totalCost / month.totalLiters : 0; const monthLabel = monthFormatter.format(new Date(`${month.month}-15T12:00:00`)); return <TableRow key={month.month}><TableCell className="font-medium capitalize">{monthLabel}</TableCell><TableCell className="text-right">{month.recordCount.toLocaleString(locale)}</TableCell><TableCell className="text-right">{month.totalLiters.toLocaleString(locale, { maximumFractionDigits: 2 })} L</TableCell><TableCell className="text-right">{currency.format(month.totalCost)}</TableCell><TableCell className="text-right">{currency.format(costPerLiter)}</TableCell><TableCell><div className="flex flex-wrap gap-1">{Object.entries(month.fuelTypes).map(([type, liters]: [string, any]) => <Badge key={type} variant="outline" className="text-xs">{type}: {Number(liters).toLocaleString(locale, { maximumFractionDigits: 1 })} L</Badge>)}</div></TableCell></TableRow> })}</TableBody></Table></div>}
         </CardContent>
       </Card>
 

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { PageHeader } from "@/components/page-header"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -10,6 +10,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Plus, Grape, TrendingUp, Trash2, Pencil, Search, Calendar } from "lucide-react"
 import { createBrowserClient } from "@/lib/supabase/client"
 import { useLanguage } from "@/lib/hooks/use-language"
+
+type Locale = "en" | "es" | "de"
 
 interface Vine {
   id: string
@@ -28,306 +30,84 @@ interface Vine {
   notes: string
 }
 
-interface Plot {
-  id: string
-  name: string
-}
+interface Plot { id: string; name: string }
+
+const localeMap: Record<Locale, string> = { en: "en-US", es: "es-CL", de: "de-DE" }
+const copy = {
+  en: { title: "Vine management", description: "Track individual vines, varieties and health.", add: "Add vine", total: "Total vines", all: "all vines", productive: "Productive", productiveHelp: "over 3 years old", healthy: "Healthy", healthyHelp: "in good condition", attention: "Needs attention", attentionHelp: "maintenance required", search: "Search vines…", filterPlot: "Filter by plot", allPlots: "All plots", section: "Vines", of: "of", empty: "No vines found.", unknownPlot: "Unknown plot", plot: "Plot", age: "Age", years: "years", grafted: "Grafted", lastPruned: "Last pruned", variety: "Variety", rootstock: "Rootstock", disease: "Disease history", none: "None", position: "Position", row: "Row", col: "Col", never: "Never", today: "Today", daysAgo: (days: number) => `${days} days ago`, loading: "Loading vines…", edit: "Edit vine", delete: "Delete vine", stressed: "Stressed", diseased: "Diseased", recovering: "Recovering", other: "Other" },
+  es: { title: "Manejo de vides", description: "Controla vides individuales, variedades y estado sanitario.", add: "Agregar vid", total: "Total de vides", all: "vides registradas", productive: "Productivas", productiveHelp: "más de 3 años", healthy: "Sanas", healthyHelp: "en buen estado", attention: "Requieren atención", attentionHelp: "requieren manejo", search: "Buscar vides…", filterPlot: "Filtrar por cuartel", allPlots: "Todos los cuarteles", section: "Vides", of: "de", empty: "No se encontraron vides.", unknownPlot: "Cuartel desconocido", plot: "Cuartel", age: "Edad", years: "años", grafted: "Injertada", lastPruned: "Última poda", variety: "Variedad", rootstock: "Portainjerto", disease: "Historial sanitario", none: "Sin registros", position: "Posición", row: "Fila", col: "Col.", never: "Nunca", today: "Hoy", daysAgo: (days: number) => `hace ${days} días`, loading: "Cargando vides…", edit: "Editar vid", delete: "Eliminar vid", stressed: "Estresada", diseased: "Enferma", recovering: "En recuperación", other: "Otro" },
+  de: { title: "Rebenmanagement", description: "Einzelne Reben, Sorten und Gesundheitszustand verwalten.", add: "Rebe hinzufügen", total: "Reben gesamt", all: "erfasste Reben", productive: "Ertragsfähig", productiveHelp: "älter als 3 Jahre", healthy: "Gesund", healthyHelp: "in gutem Zustand", attention: "Handlungsbedarf", attentionHelp: "Pflege erforderlich", search: "Reben suchen…", filterPlot: "Nach Parzelle filtern", allPlots: "Alle Parzellen", section: "Reben", of: "von", empty: "Keine Reben gefunden.", unknownPlot: "Unbekannte Parzelle", plot: "Parzelle", age: "Alter", years: "Jahre", grafted: "Veredelt", lastPruned: "Letzter Schnitt", variety: "Sorte", rootstock: "Unterlage", disease: "Krankheitshistorie", none: "Keine Einträge", position: "Position", row: "Reihe", col: "Spalte", never: "Nie", today: "Heute", daysAgo: (days: number) => `vor ${days} Tagen`, loading: "Reben werden geladen…", edit: "Rebe bearbeiten", delete: "Rebe löschen", stressed: "Gestresst", diseased: "Erkrankt", recovering: "In Erholung", other: "Sonstiges" },
+} as const
 
 export default function VineyardVinesPage() {
   const [vines, setVines] = useState<Vine[]>([])
-  const [filteredVines, setFilteredVines] = useState<Vine[]>([])
   const [plots, setPlots] = useState<Plot[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
-  const [filterStatus, setFilterStatus] = useState("all")
   const [filterPlot, setFilterPlot] = useState("all")
-  const supabase = createBrowserClient()
-  const { t } = useLanguage()
+  const supabase = useMemo(() => createBrowserClient(), [])
+  const { language } = useLanguage()
+  const lang = language as Locale
+  const text = copy[lang]
+  const locale = localeMap[lang]
 
   useEffect(() => {
-    fetchData()
-  }, [])
-
-  useEffect(() => {
-    applyFilters()
-  }, [vines, searchTerm, filterStatus, filterPlot])
-
-  const fetchData = async () => {
-    try {
-      setLoading(true)
-      const { data: plotsData, error: plotsError } = await supabase
-        .from("vineyard_plots")
-        .select("id, name")
-        .order("name", { ascending: true })
-
-      if (plotsError) throw plotsError
-      setPlots(plotsData || [])
-
-      const { data: vinesData, error: vinesError } = await supabase
-        .from("vineyard_vines")
-        .select("*")
-        .order("created_at", { ascending: false })
-
-      if (vinesError) throw vinesError
-      setVines(vinesData || [])
-    } catch (error) {
-      console.error("[v0] Error fetching vines data:", error)
-    } finally {
-      setLoading(false)
+    const fetchData = async () => {
+      try {
+        setLoading(true)
+        const [plotsResult, vinesResult] = await Promise.all([
+          supabase.from("vineyard_plots").select("id, name").order("name", { ascending: true }),
+          supabase.from("vineyard_vines").select("*").order("created_at", { ascending: false }),
+        ])
+        if (plotsResult.error) throw plotsResult.error
+        if (vinesResult.error) throw vinesResult.error
+        setPlots(plotsResult.data || [])
+        setVines(vinesResult.data || [])
+      } catch (error) {
+        console.error("[v0] Error fetching vines data:", error)
+      } finally {
+        setLoading(false)
+      }
     }
+    void fetchData()
+  }, [supabase])
+
+  const filteredVines = useMemo(() => {
+    const term = searchTerm.trim().toLowerCase()
+    return vines.filter((vine) => {
+      const matchesSearch = !term || vine.vine_number.toLowerCase().includes(term) || vine.variety.toLowerCase().includes(term) || vine.rootstock.toLowerCase().includes(term)
+      return matchesSearch && (filterPlot === "all" || vine.plot_id === filterPlot)
+    })
+  }, [filterPlot, searchTerm, vines])
+
+  const statusColor = (health: string) => ({ healthy: "bg-green-100 text-green-800", stressed: "bg-yellow-100 text-yellow-800", diseased: "bg-red-100 text-red-800", recovering: "bg-blue-100 text-blue-800" }[health] || "bg-gray-100 text-gray-800")
+  const statusLabel = (health: string) => health === "healthy" ? text.healthy : health === "stressed" ? text.stressed : health === "diseased" ? text.diseased : health === "recovering" ? text.recovering : text.other
+  const plotName = (plotId: string) => plots.find((plot) => plot.id === plotId)?.name || text.unknownPlot
+  const daysSincePruning = (value: string) => {
+    if (!value) return text.never
+    const diff = Math.floor((Date.now() - new Date(value).getTime()) / 86400000)
+    return diff > 0 ? text.daysAgo(diff) : text.today
   }
 
-  const applyFilters = () => {
-    let filtered = vines
+  if (loading) return <div className="flex min-h-screen items-center justify-center"><p className="text-muted-foreground">{text.loading}</p></div>
 
-    if (searchTerm) {
-      filtered = filtered.filter(
-        (vine) =>
-          vine.vine_number.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          vine.variety.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          vine.rootstock.toLowerCase().includes(searchTerm.toLowerCase())
-      )
-    }
+  return <div className="space-y-6">
+    <PageHeader title={text.title} description={text.description} actions={<Button><Plus className="mr-2 h-4 w-4" />{text.add}</Button>} />
+    <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
+      <Metric icon={<Grape className="h-4 w-4" />} title={text.total} value={vines.length.toLocaleString(locale)} detail={text.all} />
+      <Metric icon={<TrendingUp className="h-4 w-4" />} title={text.productive} value={vines.filter((vine) => vine.age_years > 3).length.toLocaleString(locale)} detail={text.productiveHelp} />
+      <Metric icon={<Grape className="h-4 w-4" />} title={text.healthy} value={vines.filter((vine) => vine.health_status === "healthy").length.toLocaleString(locale)} detail={text.healthyHelp} />
+      <Metric icon={<Calendar className="h-4 w-4" />} title={text.attention} value={vines.filter((vine) => vine.health_status !== "healthy").length.toLocaleString(locale)} detail={text.attentionHelp} />
+    </div>
+    <div className="space-y-4 rounded-lg border border-secondary bg-card p-4"><div className="grid gap-4 md:grid-cols-3"><Input placeholder={text.search} value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} className="bg-background" icon={<Search className="h-4 w-4" />} /><Select value={filterPlot} onValueChange={setFilterPlot}><SelectTrigger className="bg-background"><SelectValue placeholder={text.filterPlot} /></SelectTrigger><SelectContent><SelectItem value="all">{text.allPlots}</SelectItem>{plots.map((plot) => <SelectItem key={plot.id} value={plot.id}>{plot.name}</SelectItem>)}</SelectContent></Select></div></div>
+    <Card><CardHeader><CardTitle>{text.section}</CardTitle><CardDescription>{filteredVines.length.toLocaleString(locale)} {text.of} {vines.length.toLocaleString(locale)}</CardDescription></CardHeader><CardContent>
+      {filteredVines.length === 0 ? <div className="py-8 text-center text-muted-foreground">{text.empty}</div> : <div className="space-y-3">{filteredVines.map((vine) => <div key={vine.id} className="rounded-lg border p-4 transition-colors hover:bg-accent/5"><div className="flex items-start justify-between"><div className="flex-1"><div className="mb-2 flex items-center gap-3"><div><h3 className="text-lg font-semibold">{vine.vine_number}</h3><p className="text-sm text-muted-foreground">{vine.variety} • {vine.rootstock}</p></div><Badge className={statusColor(vine.health_status)}>{statusLabel(vine.health_status)}</Badge></div>
+        <div className="mt-3 grid grid-cols-2 gap-3 text-sm md:grid-cols-4"><Info label={text.plot} value={plotName(vine.plot_id)} /><Info label={text.age} value={`${vine.age_years.toLocaleString(locale)} ${text.years}`} /><Info label={text.grafted} value={String(vine.grafted_year)} /><Info label={text.lastPruned} value={daysSincePruning(vine.last_pruned_date)} /></div>
+        <div className="mt-2 grid grid-cols-2 gap-3 text-sm md:grid-cols-4"><Info label={text.variety} value={vine.variety} /><Info label={text.rootstock} value={vine.rootstock} /><Info label={text.disease} value={vine.disease_history || text.none} /><Info label={text.position} value={`${text.row} ${vine.position_row.toLocaleString(locale)}, ${text.col} ${vine.position_col.toLocaleString(locale)}`} /></div>
+      </div><div className="ml-4 flex gap-2"><Button variant="ghost" size="sm" aria-label={text.edit}><Pencil className="h-4 w-4" /></Button><Button variant="ghost" size="sm" aria-label={text.delete}><Trash2 className="h-4 w-4" /></Button></div></div></div>)}</div>}
+    </CardContent></Card>
+  </div>
+}
 
-    if (filterPlot !== "all") {
-      filtered = filtered.filter((vine) => vine.plot_id === filterPlot)
-    }
-
-    setFilteredVines(filtered)
-  }
-
-  const getStatusColor = (health: string) => {
-    const healthColors: Record<string, string> = {
-      healthy: "bg-green-100 text-green-800",
-      stressed: "bg-yellow-100 text-yellow-800",
-      diseased: "bg-red-100 text-red-800",
-      recovering: "bg-blue-100 text-blue-800",
-    }
-    return healthColors[health] || "bg-gray-100 text-gray-800"
-  }
-
-  const getHealthColor = (health: string) => {
-    const healthColors: Record<string, string> = {
-      healthy: "bg-green-100 text-green-800",
-      stressed: "bg-yellow-100 text-yellow-800",
-      diseased: "bg-red-100 text-red-800",
-      recovering: "bg-blue-100 text-blue-800",
-    }
-    return healthColors[health] || "bg-gray-100 text-gray-800"
-  }
-
-  const getPlotName = (plotId: string) => {
-    return plots.find((p) => p.id === plotId)?.name || "Unknown Plot"
-  }
-
-  const daysSincePruning = (lastPrunedDate: string) => {
-    if (!lastPrunedDate) return "Never"
-    const today = new Date()
-    const lastPruning = new Date(lastPrunedDate)
-    const diff = Math.floor((today.getTime() - lastPruning.getTime()) / (1000 * 60 * 60 * 24))
-    return diff > 0 ? `${diff} days ago` : "Today"
-  }
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <p className="text-muted-foreground">{t("vineyard.loading") || "Loading..."}</p>
-      </div>
-    )
-  }
-
-  return (
-    <div className="space-y-6">
-        <PageHeader
-          title={t("vineyard.vines") || "Vine Management"}
-          description={t("vineyard.vines_description") || "Track and manage individual vines and their health"}
-          actions={
-            <Button>
-              <Plus className="mr-2 h-4 w-4" />
-              {t("vineyard.add_vine") || "Add Vine"}
-            </Button>
-          }
-        />
-
-        {/* Quick Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                <Grape className="h-4 w-4" />
-                {t("vineyard.total_vines") || "Total Vines"}
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold">{vines.length}</div>
-              <p className="text-xs text-muted-foreground mt-1">All vines</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                <TrendingUp className="h-4 w-4" />
-                Productive
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold">
-                {vines.filter((v) => v.age_years > 3).length}
-              </div>
-              <p className="text-xs text-muted-foreground mt-1">Over 3 years old</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                <Grape className="h-4 w-4" />
-                Healthy
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold">
-                {vines.filter((v) => v.health_status === "healthy").length}
-              </div>
-              <p className="text-xs text-muted-foreground mt-1">Good condition</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                <Calendar className="h-4 w-4" />
-                Needs Attention
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold">
-                {vines.filter((v) => v.health_status !== "healthy").length}
-              </div>
-              <p className="text-xs text-muted-foreground mt-1">Maintenance needed</p>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Filters */}
-        <div className="rounded-lg border border-secondary bg-card p-4 space-y-4">
-          <div className="grid gap-4 md:grid-cols-3">
-            <div>
-              <Input
-                placeholder={t("vineyard.search") || "Search vines..."}
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="bg-background"
-                icon={<Search className="h-4 w-4" />}
-              />
-            </div>
-            <Select value={filterPlot} onValueChange={setFilterPlot}>
-              <SelectTrigger className="bg-background">
-                <SelectValue placeholder="Filter by plot" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Plots</SelectItem>
-                {plots.map((plot) => (
-                  <SelectItem key={plot.id} value={plot.id}>
-                    {plot.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-
-        {/* Vines Table */}
-        <Card>
-          <CardHeader>
-            <CardTitle>{t("vineyard.vines") || "Vines"}</CardTitle>
-            <CardDescription>
-              {filteredVines.length} of {vines.length} vines
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {filteredVines.length === 0 ? (
-              <div className="text-center py-8">
-                <p className="text-muted-foreground">No vines found</p>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {filteredVines.map((vine) => (
-                  <div
-                    key={vine.id}
-                    className="border rounded-lg p-4 hover:bg-accent/5 transition-colors"
-                  >
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-3 mb-2">
-                          <div>
-                            <h3 className="font-semibold text-lg">{vine.vine_number}</h3>
-                            <p className="text-sm text-muted-foreground">
-                              {vine.variety} • {vine.rootstock}
-                            </p>
-                          </div>
-                          <Badge className={getHealthColor(vine.health_status)}>
-                            {vine.health_status}
-                          </Badge>
-                        </div>
-
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm mt-3">
-                          <div>
-                            <p className="text-muted-foreground">Plot</p>
-                            <p className="font-semibold text-xs">{getPlotName(vine.plot_id)}</p>
-                          </div>
-                          <div>
-                            <p className="text-muted-foreground">Age</p>
-                            <p className="font-semibold">{vine.age_years} years</p>
-                          </div>
-                          <div>
-                            <p className="text-muted-foreground">Grafted</p>
-                            <p className="font-semibold">{vine.grafted_year}</p>
-                          </div>
-                          <div>
-                            <p className="text-muted-foreground">Last Pruned</p>
-                            <p className="font-semibold">{daysSincePruning(vine.last_pruned_date)}</p>
-                          </div>
-                        </div>
-
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm mt-2">
-                          <div>
-                            <p className="text-muted-foreground">Variety</p>
-                            <p className="font-semibold text-xs">{vine.variety}</p>
-                          </div>
-                          <div>
-                            <p className="text-muted-foreground">Rootstock</p>
-                            <p className="font-semibold text-xs">{vine.rootstock}</p>
-                          </div>
-                          <div>
-                            <p className="text-muted-foreground">Disease History</p>
-                            <p className="font-semibold text-xs">{vine.disease_history || "None"}</p>
-                          </div>
-                          <div>
-                            <p className="text-muted-foreground">Position</p>
-                            <p className="font-semibold text-xs">
-                              Row {vine.position_row}, Col {vine.position_col}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="flex gap-2 ml-4">
-                        <Button variant="ghost" size="sm">
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button variant="ghost" size="sm">
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-    )
-  }
+function Metric({ icon, title, value, detail }: { icon: React.ReactNode; title: string; value: string; detail: string }) { return <Card><CardHeader className="pb-2"><CardTitle className="flex items-center gap-2 text-sm font-medium text-muted-foreground">{icon}{title}</CardTitle></CardHeader><CardContent><div className="text-3xl font-bold">{value}</div><p className="mt-1 text-xs text-muted-foreground">{detail}</p></CardContent></Card> }
+function Info({ label, value }: { label: string; value: string }) { return <div><p className="text-xs text-muted-foreground">{label}</p><p className="font-semibold">{value}</p></div> }

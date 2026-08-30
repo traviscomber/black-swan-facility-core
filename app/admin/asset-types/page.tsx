@@ -108,11 +108,46 @@ const copy = {
     deleteSuccess: "Asset type deleted",
     deleteError: "Unable to delete the type. It may still be in use.",
   },
+  de: {
+    title: "Infrastruktur-Anlagentypen",
+    description: "Zentraler Katalog für Internet-, Wasser- und Strominfrastruktur.",
+    configured: "Typen konfiguriert",
+    add: "Typ hinzufügen",
+    loading: "Katalog wird geladen…",
+    empty: "Es sind keine Anlagentypen registriert.",
+    name: "Name",
+    category: "Kategorie",
+    descriptionLabel: "Beschreibung",
+    status: "Status",
+    actions: "Aktionen",
+    active: "Aktiv",
+    inactive: "Inaktiv",
+    editTitle: "Anlagentyp bearbeiten",
+    addTitle: "Anlagentyp hinzufügen",
+    dialogDescription: "Aktive Typen erscheinen in den Auswahlfeldern für Infrastruktur.",
+    namePlaceholder: "Beispiel: WLAN-Zugangspunkt",
+    descriptionPlaceholder: "Kurze betriebliche Beschreibung",
+    activeHelp: "In der Anlagenauswahl sichtbar",
+    cancel: "Abbrechen",
+    save: "Speichern",
+    saving: "Wird gespeichert…",
+    deleteTitle: "Anlagentyp löschen",
+    deleteDescription: "Diese Aktion kann bestehende Verknüpfungen betreffen. Nur fortfahren, wenn der Typ nicht verwendet wird.",
+    delete: "Löschen",
+    internet: "Internet",
+    water: "Wasser",
+    electricity: "Strom",
+    loadError: "Anlagentypen konnten nicht geladen werden.",
+    saveSuccess: "Anlagentyp gespeichert",
+    saveError: "Anlagentyp konnte nicht gespeichert werden.",
+    deleteSuccess: "Anlagentyp gelöscht",
+    deleteError: "Der Typ konnte nicht gelöscht werden. Er wird möglicherweise noch verwendet.",
+  },
 } as const
 
 export default function AssetTypesPage() {
   const { language } = useLanguage()
-  const text = copy[language === "es" ? "es" : "en"]
+  const text = copy[language]
   const { toast } = useToast()
   const [assetTypes, setAssetTypes] = useState<AssetType[]>([])
   const [loading, setLoading] = useState(true)

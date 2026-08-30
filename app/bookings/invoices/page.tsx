@@ -11,7 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { createClient } from "@/lib/supabase/client"
 import { formatClp } from "@/lib/money"
-import { useLanguage } from "@/lib/hooks/use-language"
+import { useLanguage, type Language } from "@/lib/hooks/use-language"
 import { fillInvoiceCopy, invoiceCopy } from "@/lib/translations/invoices"
 
 type AppRole = "admin" | "approver" | "operator" | "viewer" | null
@@ -30,6 +30,8 @@ interface Invoice {
   status: string
 }
 
+const LOCALES: Record<Language, string> = { en: "en-US", es: "es-CL", de: "de-DE" }
+
 function getStatusClass(status: string) {
   switch (status) {
     case "paid": return "bg-emerald-100 text-emerald-800"
@@ -43,7 +45,7 @@ function getStatusClass(status: string) {
 export default function InvoicesPage() {
   const { language } = useLanguage()
   const copy = invoiceCopy[language]
-  const locale = language === "de" ? "de-DE" : language === "en" ? "en-US" : "es-CL"
+  const locale = LOCALES[language]
   const paymentStatusLabels: Record<string, string> = { pending: copy.pending, partial: copy.partial, paid: copy.paid, overdue: copy.overdue }
   const [invoices, setInvoices] = useState<Invoice[]>([])
   const [loading, setLoading] = useState(true)
@@ -69,10 +71,10 @@ export default function InvoicesPage() {
     try {
       const response = await fetch("/api/bookings/invoices")
       const data = (await response.json()) as Invoice[] | { error?: string }
-      if (!response.ok) throw new Error(!Array.isArray(data) ? data.error : copy.loadFailed)
+      if (!response.ok) throw new Error(copy.loadFailed)
       setInvoices(Array.isArray(data) ? data : [])
-    } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : copy.loadFailed)
+    } catch {
+      setError(copy.loadFailed)
       setInvoices([])
     } finally {
       setLoading(false)
@@ -83,12 +85,11 @@ export default function InvoicesPage() {
     if (!confirm(fillInvoiceCopy(copy.deleteConfirm, { number: invoice.invoice_number }))) return
     try {
       const response = await fetch(`/api/bookings/invoices/${invoice.id}`, { method: "DELETE" })
-      const data = (await response.json()) as { error?: string }
-      if (!response.ok) throw new Error(data.error ?? copy.deleteFailed)
+      if (!response.ok) throw new Error(copy.deleteFailed)
       setInvoices((current) => current.filter((item) => item.id !== invoice.id))
       toast.success(copy.deleted)
-    } catch (deleteError) {
-      toast.error(deleteError instanceof Error ? deleteError.message : copy.deleteFailed)
+    } catch {
+      toast.error(copy.deleteFailed)
     }
   }
 
@@ -135,7 +136,7 @@ export default function InvoicesPage() {
                         <p className="mt-1 truncate text-sm">{invoice.customer_name}</p>
                         <p className="text-xs text-muted-foreground">{copy.issued} {formatDate(invoice.invoice_date)} · {copy.due} {formatDate(invoice.due_date)}</p>
                       </div>
-                      <div className="md:text-right"><p className="font-semibold">{formatClp(invoice.total_amount)}</p>{balance > 0 && <p className="text-xs text-muted-foreground">{copy.balance} {formatClp(balance)}</p>}</div>
+                      <div className="md:text-right"><p className="font-semibold">{formatClp(invoice.total_amount, locale)}</p>{balance > 0 && <p className="text-xs text-muted-foreground">{copy.balance} {formatClp(balance, locale)}</p>}</div>
                       <div className="flex justify-end gap-2">
                         <Button size="icon" variant="outline" onClick={() => { setSelectedInvoice(invoice); setEditorOpen(true) }} aria-label={`${copy.view} ${invoice.invoice_number}`}><Eye className="h-4 w-4" /></Button>
                         {canEdit && <Button size="icon" variant="outline" onClick={() => { setSelectedInvoice(invoice); setEditorOpen(true) }} aria-label={`${copy.edit} ${invoice.invoice_number}`}><Edit className="h-4 w-4" /></Button>}

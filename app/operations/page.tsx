@@ -1,81 +1,64 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { ChevronLeft, ChevronRight, Plus, MapPin, Truck, Calendar, Clock, Zap } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
+import { ChevronLeft, ChevronRight, Plus, MapPin, Truck, Clock } from 'lucide-react'
+import { addMonths, eachDayOfInterval, endOfMonth, format, isSameDay, isSameMonth, startOfMonth, subMonths } from 'date-fns'
+import { de, enUS, es } from 'date-fns/locale'
 import { AppLayout } from '@/components/app-layout'
+import { OperationFormDialog } from '@/components/operations/operation-form-dialog'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { useLanguage } from '@/lib/hooks/use-language'
 import { createBrowserClient } from '@/lib/supabase/client'
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths } from 'date-fns'
-import { es } from 'date-fns/locale'
-import { OperationFormDialog } from '@/components/operations/operation-form-dialog'
 
-interface Operation {
-  id: string
-  operation_code: string
-  title: string
-  operation_type: string
-  vehicle_id: string
-  start_date: string
-  end_date: string
-  status: string
-  distance_km: number
-  duration_hours: number
-  month: string
-}
+interface Operation { id: string; operation_code: string; title: string; operation_type: string; vehicle_id: string; start_date: string; end_date: string; status: string; distance_km: number; duration_hours: number; month: string }
+interface Vehicle { id: string; name: string; vehicle_type: string; code: string }
 
-interface Vehicle {
-  id: string
-  name: string
-  vehicle_type: string
-  code: string
-}
+const DATE_LOCALES = { en: enUS, es, de } as const
+const INTL_LOCALES = { en: 'en-US', es: 'es-CL', de: 'de-DE' } as const
+const WEEKDAYS = {
+  en: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
+  es: ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'],
+  de: ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'],
+} as const
+const COPY = {
+  en: { title: 'Monthly operations', subtitle: 'Track trips and operations by month', total: 'Total operations', distance: 'Total distance', hours: 'Hours', vehicles: 'Vehicles', allVehicles: 'All vehicles', new: 'New operation', newShort: 'New', more: 'more', monthOps: 'Monthly operations', registered: 'operations recorded', loading: 'Loading operations...', empty: 'No operations this month', details: 'View details →' },
+  es: { title: 'Operaciones mensuales', subtitle: 'Seguimiento de viajes y operaciones por mes', total: 'Total operaciones', distance: 'Distancia total', hours: 'Horas', vehicles: 'Vehículos', allVehicles: 'Todos los vehículos', new: 'Nueva operación', newShort: 'Nueva', more: 'más', monthOps: 'Operaciones del mes', registered: 'operaciones registradas', loading: 'Cargando operaciones...', empty: 'No hay operaciones en este mes', details: 'Ver detalles →' },
+  de: { title: 'Monatliche Einsätze', subtitle: 'Fahrten und Einsätze nach Monat verfolgen', total: 'Einsätze gesamt', distance: 'Gesamtdistanz', hours: 'Stunden', vehicles: 'Fahrzeuge', allVehicles: 'Alle Fahrzeuge', new: 'Neuer Einsatz', newShort: 'Neu', more: 'weitere', monthOps: 'Einsätze des Monats', registered: 'Einsätze erfasst', loading: 'Einsätze werden geladen...', empty: 'Keine Einsätze in diesem Monat', details: 'Details anzeigen →' },
+} as const
+const STATUS_COPY = {
+  en: { completed: 'Completed', in_progress: 'In progress', planned: 'Planned', cancelled: 'Cancelled' },
+  es: { completed: 'Completada', in_progress: 'En curso', planned: 'Planificada', cancelled: 'Cancelada' },
+  de: { completed: 'Abgeschlossen', in_progress: 'In Bearbeitung', planned: 'Geplant', cancelled: 'Storniert' },
+} as const
 
 export default function OperationsPage() {
+  const { language } = useLanguage()
+  const copy = COPY[language]
+  const dateLocale = DATE_LOCALES[language]
+  const number = useMemo(() => new Intl.NumberFormat(INTL_LOCALES[language], { maximumFractionDigits: 1 }), [language])
   const [currentMonth, setCurrentMonth] = useState(new Date())
   const [operations, setOperations] = useState<Operation[]>([])
   const [vehicles, setVehicles] = useState<Vehicle[]>([])
   const [selectedVehicle, setSelectedVehicle] = useState<string>('all')
   const [loading, setLoading] = useState(true)
   const [showFormDialog, setShowFormDialog] = useState(false)
-  const supabase = createBrowserClient()
+  const supabase = useMemo(() => createBrowserClient(), [])
+  const daysInMonth = useMemo(() => eachDayOfInterval({ start: startOfMonth(currentMonth), end: endOfMonth(currentMonth) }), [currentMonth])
 
-  const monthStart = startOfMonth(currentMonth)
-  const monthEnd = endOfMonth(currentMonth)
-  const daysInMonth = eachDayOfInterval({ start: monthStart, end: monthEnd })
-
-  useEffect(() => {
-    loadData()
-  }, [currentMonth, selectedVehicle])
+  useEffect(() => { void loadData() }, [currentMonth, selectedVehicle])
 
   async function loadData() {
     try {
       setLoading(true)
       const monthStr = format(currentMonth, 'yyyy-MM-01')
-
-      let query = supabase
-        .from('operations')
-        .select('*')
-        .eq('month', monthStr)
-        .order('start_date', { ascending: false })
-
-      if (selectedVehicle !== 'all') {
-        query = query.eq('vehicle_id', selectedVehicle)
-      }
-
-      const { data: opsData, error: opsError } = await query
-
-      if (opsError) throw opsError
-
-      const { data: vehiclesData, error: vehiclesError } = await supabase
-        .from('vehicles')
-        .select('*')
-        .eq('status', 'active')
-
-      if (vehiclesError) throw vehiclesError
-
-      setOperations(opsData || [])
-      setVehicles(vehiclesData || [])
+      let query = supabase.from('operations').select('*').eq('month', monthStr).order('start_date', { ascending: false })
+      if (selectedVehicle !== 'all') query = query.eq('vehicle_id', selectedVehicle)
+      const [operationsResult, vehiclesResult] = await Promise.all([query, supabase.from('vehicles').select('*').eq('status', 'active')])
+      if (operationsResult.error) throw operationsResult.error
+      if (vehiclesResult.error) throw vehiclesResult.error
+      setOperations(operationsResult.data || [])
+      setVehicles(vehiclesResult.data || [])
     } catch (error) {
       console.error('Error loading operations:', error)
     } finally {
@@ -83,270 +66,38 @@ export default function OperationsPage() {
     }
   }
 
-  function getOperationsForDay(day: Date) {
-    return operations.filter(op => {
-      const opDate = new Date(op.start_date)
-      return isSameDay(opDate, day)
-    })
-  }
-
-  function getStatusColor(status: string) {
-    switch (status) {
-      case 'completed':
-        return 'bg-emerald-500/20 text-emerald-300'
-      case 'in_progress':
-        return 'bg-blue-500/20 text-blue-300'
-      case 'planned':
-        return 'bg-yellow-500/20 text-yellow-300'
-      case 'cancelled':
-        return 'bg-red-500/20 text-red-300'
-      default:
-        return 'bg-gray-500/20 text-gray-300'
-    }
-  }
-
-  function getVehicleIcon(type: string) {
-    return type === 'drone' ? '🚁' : type === 'tractor' ? '🚜' : '🚗'
-  }
-
-  const monthlyStats = {
-    totalOperations: operations.length,
-    totalDistance: operations.reduce((sum, op) => sum + (op.distance_km || 0), 0),
-    totalHours: operations.reduce((sum, op) => sum + (op.duration_hours || 0), 0),
-    activeVehicles: new Set(operations.map(op => op.vehicle_id)).size,
-  }
+  const getOperationsForDay = (day: Date) => operations.filter((operation) => isSameDay(new Date(operation.start_date), day))
+  const getStatusColor = (status: string) => status === 'completed' ? 'bg-emerald-500/20 text-emerald-300' : status === 'in_progress' ? 'bg-blue-500/20 text-blue-300' : status === 'planned' ? 'bg-yellow-500/20 text-yellow-300' : status === 'cancelled' ? 'bg-red-500/20 text-red-300' : 'bg-gray-500/20 text-gray-300'
+  const getVehicleIcon = (type: string) => type === 'drone' ? '🚁' : type === 'tractor' ? '🚜' : '🚗'
+  const monthlyStats = { totalOperations: operations.length, totalDistance: operations.reduce((sum, operation) => sum + (operation.distance_km || 0), 0), totalHours: operations.reduce((sum, operation) => sum + (operation.duration_hours || 0), 0), activeVehicles: new Set(operations.map((operation) => operation.vehicle_id)).size }
 
   return (
     <AppLayout>
       <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold text-accent">Operaciones Mensuales</h1>
-          <p className="text-muted-foreground">Seguimiento de viajes y operaciones por mes</p>
-        </div>
-
-        {/* Statistics Cards */}
+        <div><h1 className="text-3xl font-bold text-accent">{copy.title}</h1><p className="text-muted-foreground">{copy.subtitle}</p></div>
         <div className="grid gap-4 sm:grid-cols-4">
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Total Operaciones</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-accent">{monthlyStats.totalOperations}</div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-1">
-                <MapPin className="h-3 w-3" /> Distancia Total
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-accent">{monthlyStats.totalDistance.toFixed(0)} km</div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-1">
-                <Clock className="h-3 w-3" /> Horas
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-accent">{monthlyStats.totalHours.toFixed(1)} h</div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-1">
-                <Truck className="h-3 w-3" /> Vehículos
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-accent">{monthlyStats.activeVehicles}</div>
-            </CardContent>
-          </Card>
+          <Metric title={copy.total} value={number.format(monthlyStats.totalOperations)} />
+          <Metric title={copy.distance} value={`${number.format(monthlyStats.totalDistance)} km`} icon={<MapPin className="h-3 w-3" />} />
+          <Metric title={copy.hours} value={`${number.format(monthlyStats.totalHours)} h`} icon={<Clock className="h-3 w-3" />} />
+          <Metric title={copy.vehicles} value={number.format(monthlyStats.activeVehicles)} icon={<Truck className="h-3 w-3" />} />
         </div>
-
-        {/* Month Navigation and Filters - Responsive */}
         <Card>
-          <CardHeader className="p-3 md:p-6">
-            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-              <div className="flex items-center justify-between md:justify-start gap-2 md:gap-4">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}
-                  className="h-8 w-8"
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                </Button>
-                <h2 className="text-base md:text-xl font-semibold">
-                  {format(currentMonth, 'MMMM yyyy', { locale: es })}
-                </h2>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}
-                  className="h-8 w-8"
-                >
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
-              </div>
-
-              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
-                <select
-                  value={selectedVehicle}
-                  onChange={(e) => setSelectedVehicle(e.target.value)}
-                  className="px-3 py-2 bg-input border border-border rounded-md text-sm"
-                >
-                  <option value="all">Todos los vehículos</option>
-                  {vehicles.map((v) => (
-                    <option key={v.id} value={v.id}>
-                      {v.name} ({v.code})
-                    </option>
-                  ))}
-                </select>
-
-                <Button 
-                  size="sm" 
-                  className="gap-2 w-full sm:w-auto"
-                  onClick={() => setShowFormDialog(true)}
-                >
-                  <Plus className="h-4 w-4" />
-                  <span className="hidden sm:inline">Nueva Operación</span>
-                  <span className="sm:hidden">Nueva</span>
-                </Button>
-              </div>
-            </div>
-          </CardHeader>
-
-          <CardContent className="p-3 md:p-6 pt-0 md:pt-0">
-            {/* Calendar Grid - Responsive with better styling */}
-            <div className="space-y-4">
-              {/* Day headers */}
-              <div className="grid grid-cols-7 gap-2 md:gap-3">
-                {['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sab'].map((day) => (
-                  <div key={day} className="text-center font-bold text-sm md:text-base text-accent py-2 border-b-2 border-accent/30">
-                    {day}
-                  </div>
-                ))}
-              </div>
-
-              {/* Calendar cells */}
-              <div className="grid grid-cols-7 gap-2 md:gap-3 auto-rows-max">
-                {daysInMonth.map((day) => {
-                  const dayOps = getOperationsForDay(day)
-                  const isCurrentMonth = isSameMonth(day, currentMonth)
-                  const isToday = isSameDay(day, new Date())
-
-                  return (
-                    <div
-                      key={day.toString()}
-                      className={`rounded-lg border-2 transition-all hover:shadow-lg cursor-pointer ${
-                        isToday
-                          ? 'border-accent bg-accent/20'
-                          : isCurrentMonth
-                            ? 'border-border bg-card hover:bg-card/80'
-                            : 'border-muted/20 bg-muted/10 text-muted-foreground'
-                      } ${dayOps.length > 0 ? 'ring-2 ring-accent/30' : ''}`}
-                      style={{ minHeight: '120px', padding: '12px' }}
-                    >
-                      {/* Day number */}
-                      <div className={`text-sm md:text-base font-bold mb-2 ${isToday ? 'text-accent' : 'text-foreground'}`}>
-                        {format(day, 'd')}
-                      </div>
-
-                      {/* Operations list */}
-                      <div className="space-y-1">
-                        {dayOps.slice(0, 2).map((op) => (
-                          <div
-                            key={op.id}
-                            className={`text-xs rounded px-2 py-1 truncate flex items-center gap-1 ${getStatusColor(op.status)} hover:opacity-90 transition-opacity`}
-                            title={op.title || ''}
-                          >
-                            <span className="flex-shrink-0">{getVehicleIcon(vehicles.find((v) => v.id === op.vehicle_id)?.vehicle_type || '')}</span>
-                            <span className="flex-1 truncate">{op.title}</span>
-                          </div>
-                        ))}
-
-                        {/* More operations indicator */}
-                        {dayOps.length > 2 && (
-                          <div className="text-xs px-2 py-1 text-accent font-semibold">
-                            +{dayOps.length - 2} más
-                          </div>
-                        )}
-
-                        {/* Operations count badge */}
-                        {dayOps.length > 0 && (
-                          <div className="text-xs text-muted-foreground pt-1 border-t border-border/30">
-                            {dayOps.length} op{dayOps.length !== 1 ? 's' : ''}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
-          </CardContent>
+          <CardHeader className="p-3 md:p-6"><div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <div className="flex items-center justify-between gap-2 md:justify-start md:gap-4"><Button variant="ghost" size="sm" onClick={() => setCurrentMonth(subMonths(currentMonth, 1))} className="h-8 w-8"><ChevronLeft className="h-4 w-4" /></Button><h2 className="text-base font-semibold capitalize md:text-xl">{format(currentMonth, 'MMMM yyyy', { locale: dateLocale })}</h2><Button variant="ghost" size="sm" onClick={() => setCurrentMonth(addMonths(currentMonth, 1))} className="h-8 w-8"><ChevronRight className="h-4 w-4" /></Button></div>
+            <div className="flex flex-col items-stretch gap-2 sm:flex-row sm:items-center"><select value={selectedVehicle} onChange={(event) => setSelectedVehicle(event.target.value)} className="rounded-md border border-border bg-input px-3 py-2 text-sm"><option value="all">{copy.allVehicles}</option>{vehicles.map((vehicle) => <option key={vehicle.id} value={vehicle.id}>{vehicle.name} ({vehicle.code})</option>)}</select><Button size="sm" className="w-full gap-2 sm:w-auto" onClick={() => setShowFormDialog(true)}><Plus className="h-4 w-4" /><span className="hidden sm:inline">{copy.new}</span><span className="sm:hidden">{copy.newShort}</span></Button></div>
+          </div></CardHeader>
+          <CardContent className="p-3 pt-0 md:p-6 md:pt-0"><div className="space-y-4"><div className="grid grid-cols-7 gap-2 md:gap-3">{WEEKDAYS[language].map((day) => <div key={day} className="border-b-2 border-accent/30 py-2 text-center text-sm font-bold text-accent md:text-base">{day}</div>)}</div><div className="grid auto-rows-max grid-cols-7 gap-2 md:gap-3">{daysInMonth.map((day) => {
+            const dayOps = getOperationsForDay(day); const current = isSameMonth(day, currentMonth); const today = isSameDay(day, new Date())
+            return <div key={day.toString()} className={`cursor-pointer rounded-lg border-2 transition-all hover:shadow-lg ${today ? 'border-accent bg-accent/20' : current ? 'border-border bg-card hover:bg-card/80' : 'border-muted/20 bg-muted/10 text-muted-foreground'} ${dayOps.length > 0 ? 'ring-2 ring-accent/30' : ''}`} style={{ minHeight: '120px', padding: '12px' }}><div className={`mb-2 text-sm font-bold md:text-base ${today ? 'text-accent' : 'text-foreground'}`}>{format(day, 'd')}</div><div className="space-y-1">{dayOps.slice(0, 2).map((operation) => <div key={operation.id} className={`flex items-center gap-1 truncate rounded px-2 py-1 text-xs ${getStatusColor(operation.status)}`} title={operation.title || ''}><span>{getVehicleIcon(vehicles.find((vehicle) => vehicle.id === operation.vehicle_id)?.vehicle_type || '')}</span><span className="flex-1 truncate">{operation.title}</span></div>)}{dayOps.length > 2 && <div className="px-2 py-1 text-xs font-semibold text-accent">+{number.format(dayOps.length - 2)} {copy.more}</div>}{dayOps.length > 0 && <div className="border-t border-border/30 pt-1 text-xs text-muted-foreground">{number.format(dayOps.length)} op</div>}</div></div>
+          })}</div></div></CardContent>
         </Card>
-
-        {/* Operations List */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Operaciones del Mes</CardTitle>
-            <CardDescription>{operations.length} operaciones registradas</CardDescription>
-          </CardHeader>
-
-          <CardContent>
-            {loading ? (
-              <div className="text-center py-8 text-muted-foreground">Cargando operaciones...</div>
-            ) : operations.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">No hay operaciones en este mes</div>
-            ) : (
-              <div className="space-y-2">
-                {operations.map((op) => (
-                  <div
-                    key={op.id}
-                    className="flex items-center justify-between p-3 bg-secondary/40 rounded-lg hover:bg-secondary/60 transition-colors cursor-pointer"
-                  >
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className={`text-xs px-2 py-1 rounded ${getStatusColor(op.status)}`}>
-                          {op.status}
-                        </span>
-                        <h3 className="font-semibold text-accent truncate">{op.title}</h3>
-                        <span className="text-xs text-muted-foreground">{op.operation_code}</span>
-                      </div>
-                      <div className="flex items-center gap-4 mt-1 text-xs text-muted-foreground">
-                        <span>{format(new Date(op.start_date), 'HH:mm')}</span>
-                        {op.distance_km && <span>{op.distance_km.toFixed(1)} km</span>}
-                        {op.duration_hours && <span>{op.duration_hours.toFixed(1)}h</span>}
-                      </div>
-                    </div>
-
-                    <Button variant="ghost" size="sm">
-                      Ver Detalles →
-                    </Button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+        <Card><CardHeader><CardTitle>{copy.monthOps}</CardTitle><CardDescription>{number.format(operations.length)} {copy.registered}</CardDescription></CardHeader><CardContent>{loading ? <div className="py-8 text-center text-muted-foreground">{copy.loading}</div> : operations.length === 0 ? <div className="py-8 text-center text-muted-foreground">{copy.empty}</div> : <div className="space-y-2">{operations.map((operation) => <div key={operation.id} className="flex cursor-pointer items-center justify-between rounded-lg bg-secondary/40 p-3 transition-colors hover:bg-secondary/60"><div className="min-w-0 flex-1"><div className="flex items-center gap-2"><span className={`rounded px-2 py-1 text-xs ${getStatusColor(operation.status)}`}>{STATUS_COPY[language][operation.status as keyof typeof STATUS_COPY.en] ?? operation.status}</span><h3 className="truncate font-semibold text-accent">{operation.title}</h3><span className="text-xs text-muted-foreground">{operation.operation_code}</span></div><div className="mt-1 flex items-center gap-4 text-xs text-muted-foreground"><span>{format(new Date(operation.start_date), 'HH:mm')}</span>{operation.distance_km ? <span>{number.format(operation.distance_km)} km</span> : null}{operation.duration_hours ? <span>{number.format(operation.duration_hours)} h</span> : null}</div></div><Button variant="ghost" size="sm">{copy.details}</Button></div>)}</div>}</CardContent></Card>
       </div>
-
-      <OperationFormDialog 
-        open={showFormDialog} 
-        onOpenChange={setShowFormDialog}
-        vehicles={vehicles}
-        onOperationCreated={() => {
-          setShowFormDialog(false)
-          loadData()
-        }}
-      />
+      <OperationFormDialog open={showFormDialog} onOpenChange={setShowFormDialog} vehicles={vehicles} onOperationCreated={() => { setShowFormDialog(false); void loadData() }} />
     </AppLayout>
   )
+}
+
+function Metric({ title, value, icon }: { title: string; value: string; icon?: React.ReactNode }) {
+  return <Card><CardHeader className="pb-2"><CardTitle className="flex items-center gap-1 text-sm font-medium text-muted-foreground">{icon}{title}</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold text-accent">{value}</div></CardContent></Card>
 }

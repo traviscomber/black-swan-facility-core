@@ -9,239 +9,30 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { createBrowserClient } from "@/lib/supabase/client"
+import { useLanguage } from "@/lib/hooks/use-language"
 
-interface Location {
-  id: string
-  name: string
-  description: string | null
-  latitude: number | null
-  longitude: number | null
-  is_active: boolean | null
-  facility_type: string | null
-  rooms?: { count: number }[]
+type Location={id:string;name:string;description:string|null;latitude:number|null;longitude:number|null;is_active:boolean|null;facility_type:string|null;rooms?:{count:number}[]}
+type InfrastructurePlan={id:string;name:string;category:string;status:string|null;priority:string|null;next_inspection:string|null;location_id:string|null;location?:{name:string}|null;photos?:{count:number}[]}
+const COPY={
+ en:{eyebrow:"Infrastructure · Fundo Corcovado",title:"Properties and infrastructure",description:"Directory of physical locations and technical register for networks, water, electricity, connectivity and other operational systems.",register:"Register location",classTitle:"Classification requires normalization",classText:(a:number,b:number)=>`${a} of ${b} locations are marked “rental”, although names include offices, laundry, access, gardens and storage. The interface does not correct those records automatically.`,unassignedTitle:"Infrastructure without linked location",unassignedText:(a:number,b:number)=>`${a} of ${b} technical items have no linked location. They remain visible so the data gap is not hidden.`,error:"The operation could not be completed.",retry:"Retry",locations:"Locations",activeLocations:"Active locations",withRooms:"With rooms",technical:"Technical items",high:"High priority",photos:"Technical photos",edit:"Edit",newLocation:"New location",name:"Name",type:"Type",descriptionLabel:"Description",latitude:"Latitude",longitude:"Longitude",saving:"Saving…",save:"Save",cancel:"Cancel",operationalLocations:"Operational locations",operationalDesc:"Houses, offices, access points, storage, gardens and service areas.",searchLocation:"Search location",loadingProperties:"Loading properties…",noLocations:"No locations match the current search.",unclassified:"Unclassified",noDescription:"No operational description.",rooms:(n:number)=>`${n} configured room${n===1?"":"s"}`,noCoordinates:"No coordinates",active:"Active",inactive:"Inactive",deactivate:"Deactivate",activate:"Activate",technicalRegister:"Technical infrastructure register",technicalDesc:(a:number,b:number)=>`${a} items, ${b} registered connections. Inspection dates are shown only when available.`,searchTechnical:"Search by name, category or location",element:"Item",category:"Category",location:"Location",status:"Status",priority:"Priority",nextInspection:"Next inspection",support:"Support",loadingInfra:"Loading infrastructure…",noInfra:"No items match the current search.",noLocation:"No location",noStatus:"No status",noPriority:"No priority",notRecorded:"Not recorded",network:"Network",missingCoordinates:(n:number)=>`${n} locations have no registered coordinates.`,types:{rental:"Accommodation / inherited classification",storage:"Storage",laundry:"Laundry",garden:"Gardens and outdoors",office:"Office",utility:"Utilities and infrastructure",parking:"Parking or access",other:"Other"},statuses:{active:"Active",operational:"Operational",planned:"Planned",inactive:"Inactive",maintenance:"Under maintenance"},priorities:{low:"Low",normal:"Normal",medium:"Medium",high:"High",critical:"Critical"}},
+ es:{eyebrow:"Infraestructura · Fundo Corcovado",title:"Propiedades e infraestructura",description:"Directorio de ubicaciones físicas y registro técnico de redes, agua, electricidad, conectividad y otros sistemas operativos.",register:"Registrar ubicación",classTitle:"Clasificación pendiente de normalización",classText:(a:number,b:number)=>`${a} de ${b} ubicaciones están marcadas como “rental”, aunque los nombres incluyen oficinas, lavandería, acceso, jardín y almacenamiento. La interfaz no corrige esos datos automáticamente.`,unassignedTitle:"Infraestructura sin ubicación asociada",unassignedText:(a:number,b:number)=>`${a} de ${b} elementos técnicos no tienen una ubicación vinculada. Se mantienen visibles para no ocultar la brecha de datos.`,error:"No fue posible completar la operación.",retry:"Reintentar",locations:"Ubicaciones",activeLocations:"Ubicaciones activas",withRooms:"Con habitaciones",technical:"Elementos técnicos",high:"Alta prioridad",photos:"Fotos técnicas",edit:"Editar",newLocation:"Nueva ubicación",name:"Nombre",type:"Tipo",descriptionLabel:"Descripción",latitude:"Latitud",longitude:"Longitud",saving:"Guardando…",save:"Guardar",cancel:"Cancelar",operationalLocations:"Ubicaciones operativas",operationalDesc:"Casas, oficinas, accesos, almacenamiento, jardines y áreas de servicio.",searchLocation:"Buscar ubicación",loadingProperties:"Cargando propiedades…",noLocations:"No hay ubicaciones para la búsqueda actual.",unclassified:"Sin clasificar",noDescription:"Sin descripción operativa.",rooms:(n:number)=>`${n} habitación${n===1?"":"es"} configurada${n===1?"":"s"}`,noCoordinates:"Sin coordenadas",active:"Activa",inactive:"Inactiva",deactivate:"Desactivar",activate:"Activar",technicalRegister:"Registro técnico de infraestructura",technicalDesc:(a:number,b:number)=>`${a} elementos, ${b} conexiones registradas. Las fechas de inspección se muestran sólo cuando existen.`,searchTechnical:"Buscar por nombre, categoría o ubicación",element:"Elemento",category:"Categoría",location:"Ubicación",status:"Estado",priority:"Prioridad",nextInspection:"Inspección siguiente",support:"Soporte",loadingInfra:"Cargando infraestructura…",noInfra:"No hay elementos para la búsqueda actual.",noLocation:"Sin ubicación",noStatus:"Sin estado",noPriority:"Sin prioridad",notRecorded:"No registrada",network:"Red",missingCoordinates:(n:number)=>`${n} ubicaciones no tienen coordenadas registradas.`,types:{rental:"Hospedaje / clasificación heredada",storage:"Almacenamiento",laundry:"Lavandería",garden:"Jardines y exteriores",office:"Oficina",utility:"Servicios e infraestructura",parking:"Estacionamiento o acceso",other:"Otro"},statuses:{active:"Activo",operational:"Operativo",planned:"Planificado",inactive:"Inactivo",maintenance:"En mantenimiento"},priorities:{low:"Baja",normal:"Normal",medium:"Media",high:"Alta",critical:"Crítica"}},
+ de:{eyebrow:"Infrastruktur · Fundo Corcovado",title:"Liegenschaften und Infrastruktur",description:"Verzeichnis physischer Standorte und technisches Register für Netze, Wasser, Strom, Konnektivität und weitere Betriebssysteme.",register:"Standort erfassen",classTitle:"Klassifizierung muss normalisiert werden",classText:(a:number,b:number)=>`${a} von ${b} Standorten sind als „rental“ markiert, obwohl Namen Büros, Wäscherei, Zugänge, Gärten und Lager umfassen. Die Oberfläche korrigiert diese Daten nicht automatisch.`,unassignedTitle:"Infrastruktur ohne verknüpften Standort",unassignedText:(a:number,b:number)=>`${a} von ${b} technischen Elementen haben keinen verknüpften Standort. Sie bleiben sichtbar, damit die Datenlücke nicht verborgen wird.`,error:"Der Vorgang konnte nicht abgeschlossen werden.",retry:"Erneut versuchen",locations:"Standorte",activeLocations:"Aktive Standorte",withRooms:"Mit Zimmern",technical:"Technische Elemente",high:"Hohe Priorität",photos:"Technische Fotos",edit:"Bearbeiten",newLocation:"Neuer Standort",name:"Name",type:"Typ",descriptionLabel:"Beschreibung",latitude:"Breitengrad",longitude:"Längengrad",saving:"Speichern…",save:"Speichern",cancel:"Abbrechen",operationalLocations:"Operative Standorte",operationalDesc:"Häuser, Büros, Zugänge, Lager, Gärten und Servicebereiche.",searchLocation:"Standort suchen",loadingProperties:"Liegenschaften werden geladen…",noLocations:"Keine Standorte für die aktuelle Suche.",unclassified:"Nicht klassifiziert",noDescription:"Keine operative Beschreibung.",rooms:(n:number)=>`${n} konfigurierte Zimmer`,noCoordinates:"Keine Koordinaten",active:"Aktiv",inactive:"Inaktiv",deactivate:"Deaktivieren",activate:"Aktivieren",technicalRegister:"Technisches Infrastrukturregister",technicalDesc:(a:number,b:number)=>`${a} Elemente, ${b} registrierte Verbindungen. Inspektionsdaten werden nur angezeigt, wenn vorhanden.`,searchTechnical:"Nach Name, Kategorie oder Standort suchen",element:"Element",category:"Kategorie",location:"Standort",status:"Status",priority:"Priorität",nextInspection:"Nächste Inspektion",support:"Unterstützung",loadingInfra:"Infrastruktur wird geladen…",noInfra:"Keine Elemente für die aktuelle Suche.",noLocation:"Kein Standort",noStatus:"Kein Status",noPriority:"Keine Priorität",notRecorded:"Nicht erfasst",network:"Netz",missingCoordinates:(n:number)=>`${n} Standorte haben keine erfassten Koordinaten.`,types:{rental:"Unterkunft / übernommene Klassifizierung",storage:"Lager",laundry:"Wäscherei",garden:"Gärten und Außenbereiche",office:"Büro",utility:"Versorgung und Infrastruktur",parking:"Parkplatz oder Zugang",other:"Sonstiges"},statuses:{active:"Aktiv",operational:"Betriebsbereit",planned:"Geplant",inactive:"Inaktiv",maintenance:"In Wartung"},priorities:{low:"Niedrig",normal:"Normal",medium:"Mittel",high:"Hoch",critical:"Kritisch"}},
+} as const
+
+export default function PropertyManagementPage(){
+ const{language}=useLanguage();const lang=(language in COPY?language:"en") as keyof typeof COPY;const c=COPY[lang];const locale=lang==="es"?"es-CL":lang==="de"?"de-DE":"en-US";const nf=useMemo(()=>new Intl.NumberFormat(locale),[locale]);const df=useMemo(()=>new Intl.DateTimeFormat(locale,{dateStyle:"medium",timeZone:"America/Santiago"}),[locale]);const supabase=useMemo(()=>createBrowserClient(),[])
+ const[locations,setLocations]=useState<Location[]>([]);const[infrastructure,setInfrastructure]=useState<InfrastructurePlan[]>([]);const[connectionCount,setConnectionCount]=useState(0);const[loading,setLoading]=useState(true);const[error,setError]=useState(false);const[search,setSearch]=useState("");const[infrastructureSearch,setInfrastructureSearch]=useState("");const[editing,setEditing]=useState<Location|null>(null);const[creating,setCreating]=useState(false);const[saving,setSaving]=useState(false);const[form,setForm]=useState({name:"",description:"",facility_type:"other",latitude:"",longitude:""})
+ const loadData=useCallback(async()=>{setLoading(true);setError(false);const[locationsResult,infrastructureResult,connectionsResult]=await Promise.all([supabase.from("locations").select("id, name, description, latitude, longitude, is_active, facility_type, rooms(count)").order("name"),supabase.from("infrastructure_plans").select("id, name, category, status, priority, next_inspection, location_id, locations(name), infrastructure_photos(count)").order("name"),supabase.from("infrastructure_connections").select("id",{count:"exact",head:true})]);const loadError=locationsResult.error||infrastructureResult.error||connectionsResult.error;if(loadError){console.error("PROPERTY_MANAGEMENT_LOAD_FAILED",loadError);setError(true);setLocations([]);setInfrastructure([]);setConnectionCount(0)}else{setLocations((locationsResult.data??[]) as Location[]);setInfrastructure((infrastructureResult.data??[]).map((item:any)=>({...item,location:item.locations,photos:item.infrastructure_photos})) as InfrastructurePlan[]);setConnectionCount(connectionsResult.count??0)}setLoading(false)},[supabase]);useEffect(()=>{void loadData()},[loadData])
+ const filteredLocations=useMemo(()=>{const term=search.trim().toLocaleLowerCase(locale);return locations.filter(location=>!term||location.name.toLocaleLowerCase(locale).includes(term)||location.description?.toLocaleLowerCase(locale).includes(term)||location.facility_type?.toLocaleLowerCase(locale).includes(term))},[locations,search,locale]);const filteredInfrastructure=useMemo(()=>{const term=infrastructureSearch.trim().toLocaleLowerCase(locale);return infrastructure.filter(item=>!term||item.name.toLocaleLowerCase(locale).includes(term)||item.category.toLocaleLowerCase(locale).includes(term)||item.location?.name.toLocaleLowerCase(locale).includes(term))},[infrastructure,infrastructureSearch,locale])
+ const activeLocations=locations.filter(l=>l.is_active).length;const withCoordinates=locations.filter(l=>l.latitude!=null&&l.longitude!=null).length;const withRooms=locations.filter(l=>Number(l.rooms?.[0]?.count??0)>0).length;const rentalClassified=locations.filter(l=>l.facility_type==="rental").length;const classificationWarning=locations.length>0&&rentalClassified/locations.length>=.8;const unassignedInfrastructure=infrastructure.filter(i=>!i.location_id).length;const highPriority=infrastructure.filter(i=>i.priority==="high"||i.priority==="critical").length;const photoCount=infrastructure.reduce((sum,i)=>sum+Number(i.photos?.[0]?.count??0),0)
+ const beginCreate=()=>{setEditing(null);setForm({name:"",description:"",facility_type:"other",latitude:"",longitude:""});setCreating(true)};const beginEdit=(location:Location)=>{setCreating(false);setEditing(location);setForm({name:location.name,description:location.description??"",facility_type:location.facility_type??"other",latitude:location.latitude?.toString()??"",longitude:location.longitude?.toString()??""})};const closeForm=()=>{setCreating(false);setEditing(null)}
+ const saveLocation=async()=>{if(!form.name.trim())return;setSaving(true);setError(false);const payload={name:form.name.trim(),description:form.description.trim()||null,facility_type:form.facility_type,latitude:form.latitude?Number(form.latitude):null,longitude:form.longitude?Number(form.longitude):null,is_active:editing?.is_active??true,updated_at:new Date().toISOString()};const result=editing?await supabase.from("locations").update(payload).eq("id",editing.id):await supabase.from("locations").insert(payload);if(result.error){console.error("PROPERTY_MANAGEMENT_SAVE_FAILED",result.error);setError(true)}else{closeForm();await loadData()}setSaving(false)};const toggleActive=async(location:Location)=>{const{error:updateError}=await supabase.from("locations").update({is_active:!location.is_active,updated_at:new Date().toISOString()}).eq("id",location.id);if(updateError){console.error("PROPERTY_MANAGEMENT_STATUS_FAILED",updateError);setError(true)}else await loadData()}
+ const typeLabel=(v:string|null)=>(c.types as Record<string,string>)[v??"other"]??v??c.unclassified;const statusLabel=(v:string|null)=>(c.statuses as Record<string,string>)[v??""]??v??c.noStatus;const priorityLabel=(v:string|null)=>(c.priorities as Record<string,string>)[v??""]??v??c.noPriority
+ return <AppLayout><div className="space-y-6 p-4 md:p-6"><div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between"><div><p className="mb-1 text-xs font-semibold uppercase tracking-[0.16em] text-primary">{c.eyebrow}</p><h1 className="text-3xl font-semibold tracking-tight">{c.title}</h1><p className="mt-1 max-w-3xl text-sm text-muted-foreground">{c.description}</p></div><Button onClick={beginCreate}><Plus className="mr-2 h-4 w-4"/>{c.register}</Button></div>
+ {classificationWarning&&<Card className="border-amber-300"><CardContent className="flex gap-3 p-4"><AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600"/><div><p className="font-medium">{c.classTitle}</p><p className="mt-1 text-sm text-muted-foreground">{c.classText(rentalClassified,locations.length)}</p></div></CardContent></Card>}{unassignedInfrastructure>0&&!loading&&<Card className="border-amber-300"><CardContent className="flex gap-3 p-4"><AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600"/><div><p className="font-medium">{c.unassignedTitle}</p><p className="mt-1 text-sm text-muted-foreground">{c.unassignedText(unassignedInfrastructure,infrastructure.length)}</p></div></CardContent></Card>}{error&&<Card className="border-destructive/50"><CardContent className="flex items-center justify-between gap-4 p-4"><p className="text-sm text-destructive">{c.error}</p><Button variant="outline" size="sm" onClick={()=>void loadData()}><RefreshCw className="mr-2 h-4 w-4"/>{c.retry}</Button></CardContent></Card>}
+ <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-6"><Metric title={c.locations} value={locations.length} nf={nf}/><Metric title={c.activeLocations} value={activeLocations} nf={nf}/><Metric title={c.withRooms} value={withRooms} nf={nf}/><Metric title={c.technical} value={infrastructure.length} nf={nf}/><Metric title={c.high} value={highPriority} alert={highPriority>0} nf={nf}/><Metric title={c.photos} value={photoCount} nf={nf}/></div>
+ {(creating||editing)&&<Card><CardHeader><CardTitle>{editing?`${c.edit} ${editing.name}`:c.newLocation}</CardTitle></CardHeader><CardContent className="grid gap-4 md:grid-cols-2"><label className="text-sm font-medium">{c.name}<Input className="mt-1" value={form.name} onChange={e=>setForm(current=>({...current,name:e.target.value}))}/></label><label className="text-sm font-medium">{c.type}<select className="mt-1 w-full rounded-md border bg-background px-3 py-2 text-sm" value={form.facility_type} onChange={e=>setForm(current=>({...current,facility_type:e.target.value}))}>{Object.entries(c.types).map(([value,label])=><option key={value} value={value}>{label}</option>)}</select></label><label className="text-sm font-medium md:col-span-2">{c.descriptionLabel}<Input className="mt-1" value={form.description} onChange={e=>setForm(current=>({...current,description:e.target.value}))}/></label><label className="text-sm font-medium">{c.latitude}<Input className="mt-1" type="number" step="any" value={form.latitude} onChange={e=>setForm(current=>({...current,latitude:e.target.value}))}/></label><label className="text-sm font-medium">{c.longitude}<Input className="mt-1" type="number" step="any" value={form.longitude} onChange={e=>setForm(current=>({...current,longitude:e.target.value}))}/></label><div className="flex gap-2 md:col-span-2"><Button onClick={()=>void saveLocation()} disabled={saving||!form.name.trim()}>{saving?c.saving:c.save}</Button><Button variant="outline" onClick={closeForm}>{c.cancel}</Button></div></CardContent></Card>}
+ <Card><CardHeader><CardTitle className="text-base">{c.operationalLocations}</CardTitle><CardDescription>{c.operationalDesc}</CardDescription></CardHeader><CardContent className="space-y-4"><div className="relative max-w-xl"><Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"/><Input className="pl-9" placeholder={c.searchLocation} value={search} onChange={e=>setSearch(e.target.value)}/></div>{loading?<p className="py-10 text-center text-sm text-muted-foreground">{c.loadingProperties}</p>:filteredLocations.length===0?<p className="py-10 text-center text-sm text-muted-foreground">{c.noLocations}</p>:<div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{filteredLocations.map(location=>{const roomCount=Number(location.rooms?.[0]?.count??0);return <Card key={location.id} className={!location.is_active?"opacity-65":undefined}><CardHeader className="pb-3"><div className="flex items-start justify-between gap-3"><div><CardTitle className="text-base">{location.name}</CardTitle><p className="mt-1 text-xs text-muted-foreground">{typeLabel(location.facility_type)}</p></div><Button variant="ghost" size="sm" onClick={()=>beginEdit(location)} aria-label={`${c.edit} ${location.name}`}><Pencil className="h-4 w-4"/></Button></div></CardHeader><CardContent className="space-y-3 text-sm"><p className="min-h-10 text-muted-foreground">{location.description||c.noDescription}</p><div className="flex items-center gap-2"><Building2 className="h-4 w-4 text-muted-foreground"/><span>{c.rooms(roomCount)}</span></div><div className="flex items-center gap-2"><MapPin className="h-4 w-4 text-muted-foreground"/><span>{location.latitude!=null&&location.longitude!=null?`${location.latitude}, ${location.longitude}`:c.noCoordinates}</span></div><div className="flex items-center justify-between border-t pt-3"><span className={location.is_active?"font-medium":"text-muted-foreground"}>{location.is_active?c.active:c.inactive}</span><Button variant="outline" size="sm" onClick={()=>void toggleActive(location)}>{location.is_active?c.deactivate:c.activate}</Button></div></CardContent></Card>})}</div>}</CardContent></Card>
+ <Card><CardHeader><CardTitle className="text-base">{c.technicalRegister}</CardTitle><CardDescription>{c.technicalDesc(infrastructure.length,connectionCount)}</CardDescription></CardHeader><CardContent className="space-y-4"><div className="relative max-w-xl"><Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"/><Input className="pl-9" placeholder={c.searchTechnical} value={infrastructureSearch} onChange={e=>setInfrastructureSearch(e.target.value)}/></div><div className="overflow-x-auto rounded-lg border"><Table><TableHeader><TableRow><TableHead>{c.element}</TableHead><TableHead>{c.category}</TableHead><TableHead>{c.location}</TableHead><TableHead>{c.status}</TableHead><TableHead>{c.priority}</TableHead><TableHead>{c.nextInspection}</TableHead><TableHead>{c.support}</TableHead></TableRow></TableHeader><TableBody>{loading?<TableRow><TableCell colSpan={7} className="py-10 text-center text-muted-foreground">{c.loadingInfra}</TableCell></TableRow>:filteredInfrastructure.length===0?<TableRow><TableCell colSpan={7} className="py-10 text-center text-muted-foreground">{c.noInfra}</TableCell></TableRow>:filteredInfrastructure.map(item=>{const photos=Number(item.photos?.[0]?.count??0);return <TableRow key={item.id}><TableCell className="font-medium"><div className="flex items-center gap-2"><Wrench className="h-4 w-4 text-muted-foreground"/>{item.name}</div></TableCell><TableCell>{item.category}</TableCell><TableCell>{item.location?.name??<span className="text-amber-700">{c.noLocation}</span>}</TableCell><TableCell><Badge variant="outline">{statusLabel(item.status)}</Badge></TableCell><TableCell>{priorityLabel(item.priority)}</TableCell><TableCell>{item.next_inspection?df.format(new Date(`${item.next_inspection}T12:00:00-04:00`)):c.notRecorded}</TableCell><TableCell><div className="flex items-center gap-3 text-xs text-muted-foreground"><span className="inline-flex items-center gap-1"><Camera className="h-3.5 w-3.5"/>{nf.format(photos)}</span>{connectionCount>0&&<span className="inline-flex items-center gap-1"><Link2 className="h-3.5 w-3.5"/>{c.network}</span>}</div></TableCell></TableRow>})}</TableBody></Table></div></CardContent></Card>{withCoordinates<locations.length&&<p className="text-xs text-muted-foreground">{c.missingCoordinates(locations.length-withCoordinates)}</p>}</div></AppLayout>
 }
-
-interface InfrastructurePlan {
-  id: string
-  name: string
-  category: string
-  status: string | null
-  priority: string | null
-  next_inspection: string | null
-  location_id: string | null
-  location?: { name: string } | null
-  photos?: { count: number }[]
-}
-
-const TYPE_LABELS: Record<string, string> = {
-  rental: "Hospedaje / clasificación heredada",
-  storage: "Almacenamiento",
-  laundry: "Lavandería",
-  garden: "Jardines y exteriores",
-  office: "Oficina",
-  utility: "Servicios e infraestructura",
-  parking: "Estacionamiento o acceso",
-  other: "Otro",
-}
-
-const STATUS_LABELS: Record<string, string> = {
-  active: "Activo",
-  operational: "Operativo",
-  planned: "Planificado",
-  inactive: "Inactivo",
-  maintenance: "En mantenimiento",
-}
-
-const PRIORITY_LABELS: Record<string, string> = {
-  low: "Baja",
-  normal: "Normal",
-  medium: "Media",
-  high: "Alta",
-  critical: "Crítica",
-}
-
-export default function PropertyManagementPage() {
-  const supabase = useMemo(() => createBrowserClient(), [])
-  const [locations, setLocations] = useState<Location[]>([])
-  const [infrastructure, setInfrastructure] = useState<InfrastructurePlan[]>([])
-  const [connectionCount, setConnectionCount] = useState(0)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [search, setSearch] = useState("")
-  const [infrastructureSearch, setInfrastructureSearch] = useState("")
-  const [editing, setEditing] = useState<Location | null>(null)
-  const [creating, setCreating] = useState(false)
-  const [saving, setSaving] = useState(false)
-  const [form, setForm] = useState({ name: "", description: "", facility_type: "other", latitude: "", longitude: "" })
-
-  const loadData = useCallback(async () => {
-    setLoading(true)
-    setError(null)
-    const [locationsResult, infrastructureResult, connectionsResult] = await Promise.all([
-      supabase.from("locations").select("id, name, description, latitude, longitude, is_active, facility_type, rooms(count)").order("name"),
-      supabase.from("infrastructure_plans").select("id, name, category, status, priority, next_inspection, location_id, locations(name), infrastructure_photos(count)").order("name"),
-      supabase.from("infrastructure_connections").select("id", { count: "exact", head: true }),
-    ])
-
-    const loadError = locationsResult.error || infrastructureResult.error || connectionsResult.error
-    if (loadError) {
-      setError(loadError.message)
-      setLocations([])
-      setInfrastructure([])
-      setConnectionCount(0)
-    } else {
-      setLocations((locationsResult.data ?? []) as Location[])
-      setInfrastructure((infrastructureResult.data ?? []).map((item: any) => ({
-        ...item,
-        location: item.locations,
-        photos: item.infrastructure_photos,
-      })) as InfrastructurePlan[])
-      setConnectionCount(connectionsResult.count ?? 0)
-    }
-    setLoading(false)
-  }, [supabase])
-
-  useEffect(() => { void loadData() }, [loadData])
-
-  const filteredLocations = useMemo(() => {
-    const term = search.trim().toLowerCase()
-    return locations.filter((location) => !term || location.name.toLowerCase().includes(term) || location.description?.toLowerCase().includes(term) || location.facility_type?.toLowerCase().includes(term))
-  }, [locations, search])
-
-  const filteredInfrastructure = useMemo(() => {
-    const term = infrastructureSearch.trim().toLowerCase()
-    return infrastructure.filter((item) => !term || item.name.toLowerCase().includes(term) || item.category.toLowerCase().includes(term) || item.location?.name.toLowerCase().includes(term))
-  }, [infrastructure, infrastructureSearch])
-
-  const activeLocations = locations.filter((location) => location.is_active).length
-  const withCoordinates = locations.filter((location) => location.latitude != null && location.longitude != null).length
-  const withRooms = locations.filter((location) => Number(location.rooms?.[0]?.count ?? 0) > 0).length
-  const rentalClassified = locations.filter((location) => location.facility_type === "rental").length
-  const classificationWarning = locations.length > 0 && rentalClassified / locations.length >= 0.8
-  const unassignedInfrastructure = infrastructure.filter((item) => !item.location_id).length
-  const highPriority = infrastructure.filter((item) => item.priority === "high" || item.priority === "critical").length
-  const photoCount = infrastructure.reduce((sum, item) => sum + Number(item.photos?.[0]?.count ?? 0), 0)
-
-  const beginCreate = () => {
-    setEditing(null)
-    setForm({ name: "", description: "", facility_type: "other", latitude: "", longitude: "" })
-    setCreating(true)
-  }
-
-  const beginEdit = (location: Location) => {
-    setCreating(false)
-    setEditing(location)
-    setForm({
-      name: location.name,
-      description: location.description ?? "",
-      facility_type: location.facility_type ?? "other",
-      latitude: location.latitude?.toString() ?? "",
-      longitude: location.longitude?.toString() ?? "",
-    })
-  }
-
-  const closeForm = () => {
-    setCreating(false)
-    setEditing(null)
-  }
-
-  const saveLocation = async () => {
-    if (!form.name.trim()) return
-    setSaving(true)
-    setError(null)
-    const payload = {
-      name: form.name.trim(),
-      description: form.description.trim() || null,
-      facility_type: form.facility_type,
-      latitude: form.latitude ? Number(form.latitude) : null,
-      longitude: form.longitude ? Number(form.longitude) : null,
-      is_active: editing?.is_active ?? true,
-      updated_at: new Date().toISOString(),
-    }
-    const result = editing
-      ? await supabase.from("locations").update(payload).eq("id", editing.id)
-      : await supabase.from("locations").insert(payload)
-
-    if (result.error) setError(result.error.message)
-    else {
-      closeForm()
-      await loadData()
-    }
-    setSaving(false)
-  }
-
-  const toggleActive = async (location: Location) => {
-    const { error: updateError } = await supabase.from("locations").update({ is_active: !location.is_active, updated_at: new Date().toISOString() }).eq("id", location.id)
-    if (updateError) setError(updateError.message)
-    else await loadData()
-  }
-
-  return (
-    <AppLayout>
-      <div className="space-y-6 p-4 md:p-6">
-        <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-          <div>
-            <p className="mb-1 text-xs font-semibold uppercase tracking-[0.16em] text-primary">Infraestructura · Fundo Corcovado</p>
-            <h1 className="text-3xl font-semibold tracking-tight">Propiedades e infraestructura</h1>
-            <p className="mt-1 max-w-3xl text-sm text-muted-foreground">Directorio de ubicaciones físicas y registro técnico de redes, agua, electricidad, conectividad y otros sistemas operativos.</p>
-          </div>
-          <Button onClick={beginCreate}><Plus className="mr-2 h-4 w-4" />Registrar ubicación</Button>
-        </div>
-
-        {classificationWarning && <Card className="border-amber-300"><CardContent className="flex gap-3 p-4"><AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" /><div><p className="font-medium">Clasificación pendiente de normalización</p><p className="mt-1 text-sm text-muted-foreground">{rentalClassified} de {locations.length} ubicaciones están marcadas como “rental”, aunque los nombres incluyen oficinas, lavandería, acceso, jardín y almacenamiento. La interfaz no corrige esos datos automáticamente.</p></div></CardContent></Card>}
-
-        {unassignedInfrastructure > 0 && !loading && <Card className="border-amber-300"><CardContent className="flex gap-3 p-4"><AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" /><div><p className="font-medium">Infraestructura sin ubicación asociada</p><p className="mt-1 text-sm text-muted-foreground">{unassignedInfrastructure} de {infrastructure.length} elementos técnicos no tienen una ubicación vinculada. Se mantienen visibles para no ocultar la brecha de datos.</p></div></CardContent></Card>}
-
-        {error && <Card className="border-destructive/50"><CardContent className="flex items-center justify-between gap-4 p-4"><p className="text-sm text-destructive">No fue posible completar la operación: {error}</p><Button variant="outline" size="sm" onClick={() => void loadData()}><RefreshCw className="mr-2 h-4 w-4" />Reintentar</Button></CardContent></Card>}
-
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-6">
-          <Metric title="Ubicaciones" value={locations.length} />
-          <Metric title="Ubicaciones activas" value={activeLocations} />
-          <Metric title="Con habitaciones" value={withRooms} />
-          <Metric title="Elementos técnicos" value={infrastructure.length} />
-          <Metric title="Alta prioridad" value={highPriority} alert={highPriority > 0} />
-          <Metric title="Fotos técnicas" value={photoCount} />
-        </div>
-
-        {(creating || editing) && <Card><CardHeader><CardTitle>{editing ? `Editar ${editing.name}` : "Nueva ubicación"}</CardTitle></CardHeader><CardContent className="grid gap-4 md:grid-cols-2">
-          <label className="text-sm font-medium">Nombre<Input className="mt-1" value={form.name} onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))} /></label>
-          <label className="text-sm font-medium">Tipo<select className="mt-1 w-full rounded-md border bg-background px-3 py-2 text-sm" value={form.facility_type} onChange={(event) => setForm((current) => ({ ...current, facility_type: event.target.value }))}>{Object.entries(TYPE_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
-          <label className="text-sm font-medium md:col-span-2">Descripción<Input className="mt-1" value={form.description} onChange={(event) => setForm((current) => ({ ...current, description: event.target.value }))} /></label>
-          <label className="text-sm font-medium">Latitud<Input className="mt-1" type="number" step="any" value={form.latitude} onChange={(event) => setForm((current) => ({ ...current, latitude: event.target.value }))} /></label>
-          <label className="text-sm font-medium">Longitud<Input className="mt-1" type="number" step="any" value={form.longitude} onChange={(event) => setForm((current) => ({ ...current, longitude: event.target.value }))} /></label>
-          <div className="flex gap-2 md:col-span-2"><Button onClick={() => void saveLocation()} disabled={saving || !form.name.trim()}>{saving ? "Guardando…" : "Guardar"}</Button><Button variant="outline" onClick={closeForm}>Cancelar</Button></div>
-        </CardContent></Card>}
-
-        <Card>
-          <CardHeader><CardTitle className="text-base">Ubicaciones operativas</CardTitle><CardDescription>Casas, oficinas, accesos, almacenamiento, jardines y áreas de servicio.</CardDescription></CardHeader>
-          <CardContent className="space-y-4">
-            <div className="relative max-w-xl"><Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><Input className="pl-9" placeholder="Buscar ubicación" value={search} onChange={(event) => setSearch(event.target.value)} /></div>
-            {loading ? <p className="py-10 text-center text-sm text-muted-foreground">Cargando propiedades…</p> : filteredLocations.length === 0 ? <p className="py-10 text-center text-sm text-muted-foreground">No hay ubicaciones para la búsqueda actual.</p> : <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{filteredLocations.map((location) => {
-              const roomCount = Number(location.rooms?.[0]?.count ?? 0)
-              return <Card key={location.id} className={!location.is_active ? "opacity-65" : undefined}><CardHeader className="pb-3"><div className="flex items-start justify-between gap-3"><div><CardTitle className="text-base">{location.name}</CardTitle><p className="mt-1 text-xs text-muted-foreground">{TYPE_LABELS[location.facility_type ?? "other"] ?? location.facility_type ?? "Sin clasificar"}</p></div><Button variant="ghost" size="sm" onClick={() => beginEdit(location)} aria-label={`Editar ${location.name}`}><Pencil className="h-4 w-4" /></Button></div></CardHeader><CardContent className="space-y-3 text-sm"><p className="min-h-10 text-muted-foreground">{location.description || "Sin descripción operativa."}</p><div className="flex items-center gap-2"><Building2 className="h-4 w-4 text-muted-foreground" /><span>{roomCount} habitación{roomCount === 1 ? "" : "es"} configurada{roomCount === 1 ? "" : "s"}</span></div><div className="flex items-center gap-2"><MapPin className="h-4 w-4 text-muted-foreground" /><span>{location.latitude != null && location.longitude != null ? `${location.latitude}, ${location.longitude}` : "Sin coordenadas"}</span></div><div className="flex items-center justify-between border-t pt-3"><span className={location.is_active ? "font-medium" : "text-muted-foreground"}>{location.is_active ? "Activa" : "Inactiva"}</span><Button variant="outline" size="sm" onClick={() => void toggleActive(location)}>{location.is_active ? "Desactivar" : "Activar"}</Button></div></CardContent></Card>
-            })}</div>}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader><CardTitle className="text-base">Registro técnico de infraestructura</CardTitle><CardDescription>{infrastructure.length} elementos, {connectionCount} conexiones registradas. Las fechas de inspección se muestran solo cuando existen.</CardDescription></CardHeader>
-          <CardContent className="space-y-4">
-            <div className="relative max-w-xl"><Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><Input className="pl-9" placeholder="Buscar por nombre, categoría o ubicación" value={infrastructureSearch} onChange={(event) => setInfrastructureSearch(event.target.value)} /></div>
-            <div className="overflow-x-auto rounded-lg border"><Table><TableHeader><TableRow><TableHead>Elemento</TableHead><TableHead>Categoría</TableHead><TableHead>Ubicación</TableHead><TableHead>Estado</TableHead><TableHead>Prioridad</TableHead><TableHead>Inspección siguiente</TableHead><TableHead>Soporte</TableHead></TableRow></TableHeader><TableBody>
-              {loading ? <TableRow><TableCell colSpan={7} className="py-10 text-center text-muted-foreground">Cargando infraestructura…</TableCell></TableRow> : filteredInfrastructure.length === 0 ? <TableRow><TableCell colSpan={7} className="py-10 text-center text-muted-foreground">No hay elementos para la búsqueda actual.</TableCell></TableRow> : filteredInfrastructure.map((item) => {
-                const photos = Number(item.photos?.[0]?.count ?? 0)
-                return <TableRow key={item.id}><TableCell className="font-medium"><div className="flex items-center gap-2"><Wrench className="h-4 w-4 text-muted-foreground" />{item.name}</div></TableCell><TableCell>{item.category}</TableCell><TableCell>{item.location?.name ?? <span className="text-amber-700">Sin ubicación</span>}</TableCell><TableCell><Badge variant="outline">{STATUS_LABELS[item.status ?? ""] ?? item.status ?? "Sin estado"}</Badge></TableCell><TableCell>{PRIORITY_LABELS[item.priority ?? ""] ?? item.priority ?? "Sin prioridad"}</TableCell><TableCell>{item.next_inspection ? new Intl.DateTimeFormat("es-CL", { timeZone: "America/Santiago" }).format(new Date(`${item.next_inspection}T12:00:00`)) : "No registrada"}</TableCell><TableCell><div className="flex items-center gap-3 text-xs text-muted-foreground"><span className="inline-flex items-center gap-1"><Camera className="h-3.5 w-3.5" />{photos}</span>{connectionCount > 0 && <span className="inline-flex items-center gap-1"><Link2 className="h-3.5 w-3.5" />Red</span>}</div></TableCell></TableRow>
-              })}
-            </TableBody></Table></div>
-          </CardContent>
-        </Card>
-
-        {withCoordinates < locations.length && <p className="text-xs text-muted-foreground">{locations.length - withCoordinates} ubicaciones no tienen coordenadas registradas.</p>}
-      </div>
-    </AppLayout>
-  )
-}
-
-function Metric({ title, value, alert = false }: { title: string; value: number; alert?: boolean }) {
-  return <Card className={alert ? "border-amber-300" : undefined}><CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">{title}</CardTitle></CardHeader><CardContent><div className="text-3xl font-semibold">{value.toLocaleString("es-CL")}</div></CardContent></Card>
-}
+function Metric({title,value,alert=false,nf}:{title:string;value:number;alert?:boolean;nf:Intl.NumberFormat}){return <Card className={alert?"border-amber-300":undefined}><CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">{title}</CardTitle></CardHeader><CardContent><div className="text-3xl font-semibold">{nf.format(value)}</div></CardContent></Card>}

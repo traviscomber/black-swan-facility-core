@@ -1,119 +1,36 @@
 "use client"
 
+import { useCallback, useEffect, useMemo, useState } from "react"
+import { Pencil, Plus, Star } from "lucide-react"
+import { AddSupplierDialog } from "@/components/add-supplier-dialog"
 import { AppLayout } from "@/components/app-layout"
+import { DeleteSupplierButton } from "@/components/delete-supplier-button"
+import { EditSupplierDialog } from "@/components/edit-supplier-dialog"
 import { PageHeader } from "@/components/page-header"
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { useLanguage } from "@/lib/hooks/use-language"
 import { createBrowserClient } from "@/lib/supabase/client"
-import { Plus, Pencil, Star } from "lucide-react"
-import { useCallback, useEffect, useMemo, useState } from "react"
-import { AddSupplierDialog } from "@/components/add-supplier-dialog"
-import { EditSupplierDialog } from "@/components/edit-supplier-dialog"
-import { DeleteSupplierButton } from "@/components/delete-supplier-button"
 
-interface Supplier {
-  id: string
-  name: string
-  contact_name: string | null
-  email: string | null
-  phone: string | null
-  rut: string | null
-  address: string | null
-  commune: string | null
-  region: string | null
-  category: string | null
-  website: string | null
-  source_url: string | null
-  coverage_notes: string | null
-  notes: string | null
-  rating: number
-  is_active: boolean
+interface Supplier { id:string; name:string; contact_name:string|null; email:string|null; phone:string|null; rut:string|null; address:string|null; commune:string|null; region:string|null; category:string|null; website:string|null; source_url:string|null; coverage_notes:string|null; notes:string|null; rating:number; is_active:boolean }
+const LOCALES={en:"en-US",es:"es-CL",de:"de-DE"} as const
+const COPY={
+ en:{title:"Suppliers",description:"Supplier directory, contacts, and recorded evaluations.",add:"Add supplier",loadError:"Suppliers could not be loaded.",registered:"Registered suppliers",activeSuppliers:"Active suppliers",average:"Average rating",directory:"Supplier directory",directoryDetail:"Canonical supplier data used for procurement and sourcing.",company:"Company",category:"Category",contact:"Contact",email:"Email",phone:"Phone",location:"Location",rating:"Rating",status:"Status",actions:"Actions",loading:"Loading suppliers…",noCategory:"No category",active:"Active",inactive:"Inactive",edit:"Edit",empty:"No suppliers are registered."},
+ es:{title:"Proveedores",description:"Directorio, contacto y evaluación registrada de proveedores.",add:"Agregar proveedor",loadError:"No fue posible cargar los proveedores.",registered:"Proveedores registrados",activeSuppliers:"Proveedores activos",average:"Evaluación promedio",directory:"Directorio de proveedores",directoryDetail:"Datos canónicos registrados para compras y abastecimiento.",company:"Empresa",category:"Categoría",contact:"Contacto",email:"Correo",phone:"Teléfono",location:"Ubicación",rating:"Evaluación",status:"Estado",actions:"Acciones",loading:"Cargando proveedores…",noCategory:"Sin categoría",active:"Activo",inactive:"Inactivo",edit:"Editar",empty:"No hay proveedores registrados."},
+ de:{title:"Lieferanten",description:"Lieferantenverzeichnis, Kontakte und erfasste Bewertungen.",add:"Lieferant hinzufügen",loadError:"Lieferanten konnten nicht geladen werden.",registered:"Erfasste Lieferanten",activeSuppliers:"Aktive Lieferanten",average:"Durchschnittsbewertung",directory:"Lieferantenverzeichnis",directoryDetail:"Kanonische Lieferantendaten für Beschaffung und Sourcing.",company:"Unternehmen",category:"Kategorie",contact:"Kontakt",email:"E-Mail",phone:"Telefon",location:"Standort",rating:"Bewertung",status:"Status",actions:"Aktionen",loading:"Lieferanten werden geladen…",noCategory:"Keine Kategorie",active:"Aktiv",inactive:"Inaktiv",edit:"Bearbeiten",empty:"Keine Lieferanten erfasst."}
+} as const
+
+export default function SuppliersPage(){
+ const {language}=useLanguage();const copy=COPY[language];const number=useMemo(()=>new Intl.NumberFormat(LOCALES[language],{maximumFractionDigits:1}),[language]);const supabase=useMemo(()=>createBrowserClient(),[])
+ const [suppliers,setSuppliers]=useState<Supplier[]>([]);const [loading,setLoading]=useState(true);const [error,setError]=useState<string|null>(null);const [showAddDialog,setShowAddDialog]=useState(false);const [editingSupplier,setEditingSupplier]=useState<Supplier|null>(null)
+ const loadSuppliers=useCallback(async()=>{setLoading(true);setError(null);const {data,error:loadError}=await supabase.from("suppliers").select("id,name,contact_name,email,phone,rut,address,commune,region,category,website,source_url,coverage_notes,notes,rating,is_active").order("name");if(loadError){console.error("[procurement-suppliers] load failed",loadError);setError(copy.loadError);setSuppliers([])}else setSuppliers((data??[]).map(supplier=>({...supplier,rating:Number(supplier.rating??0),is_active:Boolean(supplier.is_active)})));setLoading(false)},[copy.loadError,supabase]);useEffect(()=>{void loadSuppliers()},[loadSuppliers])
+ const activeCount=suppliers.filter(s=>s.is_active).length;const avgRating=suppliers.length>0?suppliers.reduce((sum,s)=>sum+s.rating,0)/suppliers.length:0;const getRatingColor=(rating:number)=>rating>=4.5?"text-green-500":rating>=3.5?"text-yellow-500":"text-red-500"
+ return <AppLayout><PageHeader title={copy.title} description={copy.description} actions={<Button onClick={()=>setShowAddDialog(true)}><Plus className="mr-2 h-4 w-4"/>{copy.add}</Button>}/><div className="space-y-6 p-4 sm:p-8">
+  {error&&<Card className="border-destructive/50"><CardContent className="p-4 text-sm text-destructive">{error}</CardContent></Card>}
+  <div className="grid gap-4 md:grid-cols-3"><Metric title={copy.registered} value={number.format(suppliers.length)}/><Metric title={copy.activeSuppliers} value={number.format(activeCount)}/><Card><CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">{copy.average}</CardTitle></CardHeader><CardContent><div className="flex items-center gap-2"><div className="text-3xl font-bold text-accent">{number.format(avgRating)}</div><Star className={`h-5 w-5 ${getRatingColor(avgRating)}`} fill="currentColor"/></div></CardContent></Card></div>
+  <Card><CardHeader><CardTitle>{copy.directory}</CardTitle><CardDescription>{copy.directoryDetail}</CardDescription></CardHeader><CardContent><div className="overflow-x-auto rounded-lg border border-secondary"><Table><TableHeader><TableRow><TableHead>{copy.company}</TableHead><TableHead>{copy.category}</TableHead><TableHead>{copy.contact}</TableHead><TableHead>{copy.email}</TableHead><TableHead>{copy.phone}</TableHead><TableHead>{copy.location}</TableHead><TableHead>{copy.rating}</TableHead><TableHead>{copy.status}</TableHead><TableHead className="text-right">{copy.actions}</TableHead></TableRow></TableHeader><TableBody>{loading?<TableRow><TableCell colSpan={9} className="py-8 text-center text-muted-foreground">{copy.loading}</TableCell></TableRow>:suppliers.length>0?suppliers.map(supplier=><TableRow key={supplier.id}><TableCell><p className="font-medium">{supplier.name}</p>{supplier.rut&&<p className="text-xs text-muted-foreground">RUT {supplier.rut}</p>}</TableCell><TableCell className="text-sm">{supplier.category||copy.noCategory}</TableCell><TableCell>{supplier.contact_name||"—"}</TableCell><TableCell className="text-sm">{supplier.email||"—"}</TableCell><TableCell className="text-sm">{supplier.phone||"—"}</TableCell><TableCell className="text-sm">{[supplier.commune,supplier.region].filter(Boolean).join(", ")||"—"}</TableCell><TableCell><div className="flex items-center gap-1"><span className={getRatingColor(supplier.rating)}>{number.format(supplier.rating)}</span><Star className={`h-4 w-4 ${getRatingColor(supplier.rating)}`} fill="currentColor"/></div></TableCell><TableCell><Badge variant={supplier.is_active?"default":"secondary"}>{supplier.is_active?copy.active:copy.inactive}</Badge></TableCell><TableCell className="text-right"><div className="flex items-center justify-end gap-2"><Button variant="ghost" size="sm" onClick={()=>setEditingSupplier(supplier)} aria-label={`${copy.edit} ${supplier.name}`}><Pencil className="h-4 w-4"/></Button><DeleteSupplierButton supplierId={supplier.id} supplierName={supplier.name} onDeleted={loadSuppliers}/></div></TableCell></TableRow>):<TableRow><TableCell colSpan={9} className="py-8 text-center text-muted-foreground">{copy.empty}</TableCell></TableRow>}</TableBody></Table></div></CardContent></Card>
+ </div><AddSupplierDialog open={showAddDialog} onOpenChange={setShowAddDialog} onSupplierAdded={()=>{void loadSuppliers();setShowAddDialog(false)}}/>{editingSupplier&&<EditSupplierDialog supplier={editingSupplier} open={Boolean(editingSupplier)} onOpenChange={open=>!open&&setEditingSupplier(null)} onSupplierUpdated={()=>{void loadSuppliers();setEditingSupplier(null)}}/>}</AppLayout>
 }
-
-export default function SuppliersPage() {
-  const supabase = useMemo(() => createBrowserClient(), [])
-  const [suppliers, setSuppliers] = useState<Supplier[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [showAddDialog, setShowAddDialog] = useState(false)
-  const [editingSupplier, setEditingSupplier] = useState<Supplier | null>(null)
-
-  const loadSuppliers = useCallback(async () => {
-    setLoading(true)
-    setError(null)
-    const { data, error: loadError } = await supabase
-      .from("suppliers")
-      .select("id,name,contact_name,email,phone,rut,address,commune,region,category,website,source_url,coverage_notes,notes,rating,is_active")
-      .order("name")
-
-    if (loadError) {
-      setError(loadError.message)
-      setSuppliers([])
-    } else {
-      setSuppliers((data ?? []).map((supplier) => ({ ...supplier, rating: Number(supplier.rating ?? 0), is_active: Boolean(supplier.is_active) })))
-    }
-    setLoading(false)
-  }, [supabase])
-
-  useEffect(() => { void loadSuppliers() }, [loadSuppliers])
-
-  const activeCount = suppliers.filter((supplier) => supplier.is_active).length
-  const avgRating = suppliers.length > 0 ? suppliers.reduce((sum, supplier) => sum + supplier.rating, 0) / suppliers.length : 0
-
-  const getRatingColor = (rating: number) => {
-    if (rating >= 4.5) return "text-green-500"
-    if (rating >= 3.5) return "text-yellow-500"
-    return "text-red-500"
-  }
-
-  return (
-    <AppLayout>
-      <PageHeader
-        title="Proveedores"
-        description="Directorio, contacto y evaluación registrada de proveedores."
-        actions={<Button onClick={() => setShowAddDialog(true)}><Plus className="mr-2 h-4 w-4" />Agregar proveedor</Button>}
-      />
-
-      <div className="space-y-6 p-4 sm:p-8">
-        {error && <Card className="border-destructive/50"><CardContent className="p-4 text-sm text-destructive">No fue posible cargar proveedores: {error}</CardContent></Card>}
-
-        <div className="grid gap-4 md:grid-cols-3">
-          <Card><CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Proveedores registrados</CardTitle></CardHeader><CardContent><div className="text-3xl font-bold text-accent">{suppliers.length}</div></CardContent></Card>
-          <Card><CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Proveedores activos</CardTitle></CardHeader><CardContent><div className="text-3xl font-bold text-accent">{activeCount}</div></CardContent></Card>
-          <Card><CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Evaluación promedio</CardTitle></CardHeader><CardContent><div className="flex items-center gap-2"><div className="text-3xl font-bold text-accent">{avgRating.toFixed(1)}</div><Star className={`h-5 w-5 ${getRatingColor(avgRating)}`} fill="currentColor" /></div></CardContent></Card>
-        </div>
-
-        <Card>
-          <CardHeader><CardTitle>Directorio de proveedores</CardTitle><CardDescription>Datos canónicos registrados para compras y abastecimiento.</CardDescription></CardHeader>
-          <CardContent>
-            <div className="overflow-x-auto rounded-lg border border-secondary">
-              <Table>
-                <TableHeader><TableRow><TableHead>Empresa</TableHead><TableHead>Categoría</TableHead><TableHead>Contacto</TableHead><TableHead>Correo</TableHead><TableHead>Teléfono</TableHead><TableHead>Ubicación</TableHead><TableHead>Evaluación</TableHead><TableHead>Estado</TableHead><TableHead className="text-right">Acciones</TableHead></TableRow></TableHeader>
-                <TableBody>
-                  {loading ? <TableRow><TableCell colSpan={9} className="py-8 text-center text-muted-foreground">Cargando proveedores…</TableCell></TableRow> : suppliers.length > 0 ? suppliers.map((supplier) => (
-                    <TableRow key={supplier.id}>
-                      <TableCell><p className="font-medium">{supplier.name}</p>{supplier.rut && <p className="text-xs text-muted-foreground">RUT {supplier.rut}</p>}</TableCell>
-                      <TableCell className="text-sm">{supplier.category || "Sin categoría"}</TableCell>
-                      <TableCell>{supplier.contact_name || "-"}</TableCell>
-                      <TableCell className="text-sm">{supplier.email || "-"}</TableCell>
-                      <TableCell className="text-sm">{supplier.phone || "-"}</TableCell>
-                      <TableCell className="text-sm">{[supplier.commune, supplier.region].filter(Boolean).join(", ") || "-"}</TableCell>
-                      <TableCell><div className="flex items-center gap-1"><span className={getRatingColor(supplier.rating)}>{supplier.rating.toFixed(1)}</span><Star className={`h-4 w-4 ${getRatingColor(supplier.rating)}`} fill="currentColor" /></div></TableCell>
-                      <TableCell><Badge variant={supplier.is_active ? "default" : "secondary"}>{supplier.is_active ? "Activo" : "Inactivo"}</Badge></TableCell>
-                      <TableCell className="text-right"><div className="flex items-center justify-end gap-2"><Button variant="ghost" size="sm" onClick={() => setEditingSupplier(supplier)} aria-label={`Editar ${supplier.name}`}><Pencil className="h-4 w-4" /></Button><DeleteSupplierButton supplierId={supplier.id} supplierName={supplier.name} onDeleted={loadSuppliers} /></div></TableCell>
-                    </TableRow>
-                  )) : <TableRow><TableCell colSpan={9} className="py-8 text-center text-muted-foreground">No hay proveedores registrados.</TableCell></TableRow>}
-                </TableBody>
-              </Table>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      <AddSupplierDialog open={showAddDialog} onOpenChange={setShowAddDialog} onSupplierAdded={() => { void loadSuppliers(); setShowAddDialog(false) }} />
-      {editingSupplier && <EditSupplierDialog supplier={editingSupplier} open={Boolean(editingSupplier)} onOpenChange={(open) => !open && setEditingSupplier(null)} onSupplierUpdated={() => { void loadSuppliers(); setEditingSupplier(null) }} />}
-    </AppLayout>
-  )
-}
+function Metric({title,value}:{title:string;value:string}){return <Card><CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">{title}</CardTitle></CardHeader><CardContent><div className="text-3xl font-bold text-accent">{value}</div></CardContent></Card>}

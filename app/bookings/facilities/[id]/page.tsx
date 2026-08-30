@@ -14,323 +14,41 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useToast } from "@/hooks/use-toast"
+import { useLanguage } from "@/lib/hooks/use-language"
 
-interface Location {
-  id: string
-  name: string
-  description: string | null
+interface Location { id:string; name:string; description:string|null }
+interface Room { id:string; room_number:string; room_type:string; capacity:number; rate_per_night:number; status:string; floor:string|null; amenities:string[]|null; notes:string|null }
+interface Bed { id:string; bed_number:string; bed_type:string; room_id:string; is_available:boolean; notes:string|null }
+const LOCALES={en:"en-US",es:"es-CL",de:"de-DE"} as const
+const COPY={
+ en:{loadFacility:"Facility could not be loaded",loadRooms:"Rooms could not be loaded",loadBeds:"Beds could not be loaded",duplicateRoom:"Duplicate room",duplicateRoomDetail:"A room with that number or name already exists in this facility.",createdRoom:"Room created",createdRoomDetail:"was registered in",facilityFallback:"the facility",createRoomError:"Room could not be created",validateRoom:"Room could not be validated",updateRoomError:"Room could not be updated",updatedRoom:"Room updated",cannotDelete:"Cannot delete",cannotDeleteDetail:"The room still contains beds. Remove them first.",deleteRoomConfirm:"Delete",deleteRoomError:"Room could not be deleted",validateBed:"Bed could not be validated",duplicateBed:"Duplicate bed",duplicateBedDetail:"A bed with that name or number already exists in the room.",addBedError:"Bed could not be added",bedAdded:"Bed added",updateBedError:"Bed could not be updated",bedUpdated:"Bed updated",deleteBedConfirm:"Delete",deleteBedError:"Bed could not be deleted",loading:"Loading facility…",notFound:"Facility not found.",backFacilities:"Back to facilities",defaultDescription:"Rooms and beds available in this facility.",addRoom:"Add room",noRooms:"No rooms",noRoomsDetail:"Register the first accommodation unit in this facility.",capacity:"capacity",edit:"Edit",delete:"Delete",rate:"Rate",state:"Status",floor:"Floor",notRecorded:"Not recorded",beds:"Beds",noBeds:"No beds registered.",addRoomTo:"Add room to",editRoom:"Edit room",addBed:"Add bed",editBed:"Edit bed",roomDialogDetail:"Define capacity, rate, status and operational attributes.",roomNumber:"Number or name",type:"Type",nightRate:"Rate/night",amenities:"Amenities",amenitiesPlaceholder:"WiFi, private bathroom, kitchen",notes:"Notes",cancel:"Cancel",save:"Save",bedDialogDetail:"Identify the bed within the room.",bedNumber:"Name or number",available:"Available",occupied:"Occupied",maintenance:"Maintenance",blocked:"Blocked"},
+ es:{loadFacility:"No fue posible cargar la instalación",loadRooms:"No fue posible cargar las habitaciones",loadBeds:"No fue posible cargar las camas",duplicateRoom:"Habitación duplicada",duplicateRoomDetail:"Ya existe una habitación con ese número o nombre en esta instalación.",createdRoom:"Habitación creada",createdRoomDetail:"quedó registrada en",facilityFallback:"la instalación",createRoomError:"No fue posible crear la habitación",validateRoom:"No fue posible validar la habitación",updateRoomError:"No fue posible actualizar la habitación",updatedRoom:"Habitación actualizada",cannotDelete:"No se puede eliminar",cannotDeleteDetail:"La habitación todavía contiene camas. Retíralas primero.",deleteRoomConfirm:"Eliminar",deleteRoomError:"No fue posible eliminar la habitación",validateBed:"No fue posible validar la cama",duplicateBed:"Cama duplicada",duplicateBedDetail:"Ya existe una cama con ese nombre o número en la habitación.",addBedError:"No fue posible agregar la cama",bedAdded:"Cama agregada",updateBedError:"No fue posible actualizar la cama",bedUpdated:"Cama actualizada",deleteBedConfirm:"Eliminar",deleteBedError:"No fue posible eliminar la cama",loading:"Cargando instalación…",notFound:"No se encontró la instalación.",backFacilities:"Volver a instalaciones",defaultDescription:"Habitaciones y camas disponibles en esta instalación.",addRoom:"Agregar habitación",noRooms:"Sin habitaciones",noRoomsDetail:"Registra la primera unidad alojable de esta instalación.",capacity:"capacidad",edit:"Editar",delete:"Eliminar",rate:"Tarifa",state:"Estado",floor:"Piso",notRecorded:"No registrado",beds:"Camas",noBeds:"Sin camas registradas.",addRoomTo:"Agregar habitación a",editRoom:"Editar habitación",addBed:"Agregar cama",editBed:"Editar cama",roomDialogDetail:"Define capacidad, tarifa, estado y atributos operativos.",roomNumber:"Número o nombre",type:"Tipo",nightRate:"Tarifa/noche",amenities:"Amenities",amenitiesPlaceholder:"WiFi, baño privado, cocina",notes:"Notas",cancel:"Cancelar",save:"Guardar",bedDialogDetail:"Identifica la cama dentro de la habitación.",bedNumber:"Nombre o número",available:"Disponible",occupied:"Ocupada",maintenance:"Mantenimiento",blocked:"Bloqueada"},
+ de:{loadFacility:"Einrichtung konnte nicht geladen werden",loadRooms:"Zimmer konnten nicht geladen werden",loadBeds:"Betten konnten nicht geladen werden",duplicateRoom:"Doppeltes Zimmer",duplicateRoomDetail:"Ein Zimmer mit dieser Nummer oder diesem Namen existiert bereits in dieser Einrichtung.",createdRoom:"Zimmer erstellt",createdRoomDetail:"wurde erfasst in",facilityFallback:"der Einrichtung",createRoomError:"Zimmer konnte nicht erstellt werden",validateRoom:"Zimmer konnte nicht validiert werden",updateRoomError:"Zimmer konnte nicht aktualisiert werden",updatedRoom:"Zimmer aktualisiert",cannotDelete:"Löschen nicht möglich",cannotDeleteDetail:"Das Zimmer enthält noch Betten. Entferne sie zuerst.",deleteRoomConfirm:"Löschen",deleteRoomError:"Zimmer konnte nicht gelöscht werden",validateBed:"Bett konnte nicht validiert werden",duplicateBed:"Doppeltes Bett",duplicateBedDetail:"Ein Bett mit diesem Namen oder dieser Nummer existiert bereits im Zimmer.",addBedError:"Bett konnte nicht hinzugefügt werden",bedAdded:"Bett hinzugefügt",updateBedError:"Bett konnte nicht aktualisiert werden",bedUpdated:"Bett aktualisiert",deleteBedConfirm:"Löschen",deleteBedError:"Bett konnte nicht gelöscht werden",loading:"Einrichtung wird geladen…",notFound:"Einrichtung nicht gefunden.",backFacilities:"Zurück zu Einrichtungen",defaultDescription:"Verfügbare Zimmer und Betten in dieser Einrichtung.",addRoom:"Zimmer hinzufügen",noRooms:"Keine Zimmer",noRoomsDetail:"Erfasse die erste Unterkunftseinheit dieser Einrichtung.",capacity:"Kapazität",edit:"Bearbeiten",delete:"Löschen",rate:"Tarif",state:"Status",floor:"Etage",notRecorded:"Nicht erfasst",beds:"Betten",noBeds:"Keine Betten erfasst.",addRoomTo:"Zimmer hinzufügen zu",editRoom:"Zimmer bearbeiten",addBed:"Bett hinzufügen",editBed:"Bett bearbeiten",roomDialogDetail:"Kapazität, Tarif, Status und operative Attribute definieren.",roomNumber:"Nummer oder Name",type:"Typ",nightRate:"Tarif/Nacht",amenities:"Ausstattung",amenitiesPlaceholder:"WiFi, eigenes Bad, Küche",notes:"Notizen",cancel:"Abbrechen",save:"Speichern",bedDialogDetail:"Bett innerhalb des Zimmers identifizieren.",bedNumber:"Name oder Nummer",available:"Verfügbar",occupied:"Belegt",maintenance:"Instandhaltung",blocked:"Blockiert"},
+} as const
+const ROOM_STATUS={available:"available",occupied:"occupied",maintenance:"maintenance",blocked:"blocked"} as const
+function parseAmenities(value:FormDataEntryValue|null){return String(value??"").split(",").map(item=>item.trim()).filter(Boolean)}
+
+export default function LocationDetailPage(){
+ const {language}=useLanguage();const lang=(language in COPY?language:"en") as keyof typeof COPY;const copy=COPY[lang];const locale=LOCALES[lang]
+ const params=useParams<{id:string}>();const locationId=params.id;const supabase=useMemo(()=>createBrowserClient(),[]);const {toast}=useToast();const [location,setLocation]=useState<Location|null>(null);const [rooms,setRooms]=useState<Room[]>([]);const [beds,setBeds]=useState<Bed[]>([]);const [loading,setLoading]=useState(true);const [isAddRoomDialogOpen,setIsAddRoomDialogOpen]=useState(false);const [editingRoom,setEditingRoom]=useState<Room|null>(null);const [selectedRoomForBed,setSelectedRoomForBed]=useState<string|null>(null);const [editingBed,setEditingBed]=useState<Bed|null>(null)
+ const money=useMemo(()=>new Intl.NumberFormat(locale,{style:"currency",currency:"CLP",maximumFractionDigits:0}),[locale]);const number=useMemo(()=>new Intl.NumberFormat(locale),[locale])
+ const statusLabel=(status:string)=>status in ROOM_STATUS?copy[status as keyof typeof ROOM_STATUS]:status
+ const loadLocationData=useCallback(async()=>{setLoading(true);const[locationResult,roomsResult]=await Promise.all([supabase.from("locations").select("id,name,description").eq("id",locationId).single(),supabase.from("rooms").select("id,room_number,room_type,capacity,rate_per_night,status,floor,amenities,notes").eq("location_id",locationId).order("room_number")]);if(locationResult.error){console.error("facility load failed",locationResult.error);toast({variant:"destructive",title:copy.loadFacility});setLocation(null);setRooms([]);setBeds([]);setLoading(false);return}setLocation(locationResult.data);if(roomsResult.error){console.error("facility rooms load failed",roomsResult.error);toast({variant:"destructive",title:copy.loadRooms});setRooms([]);setBeds([]);setLoading(false);return}const nextRooms=roomsResult.data??[];setRooms(nextRooms);if(!nextRooms.length){setBeds([]);setLoading(false);return}const{data:bedData,error:bedError}=await supabase.from("beds").select("id,bed_number,bed_type,room_id,is_available,notes").in("room_id",nextRooms.map(room=>room.id)).order("bed_number");if(bedError){console.error("facility beds load failed",bedError);toast({variant:"destructive",title:copy.loadBeds});setBeds([])}else setBeds(bedData??[]);setLoading(false)},[copy.loadBeds,copy.loadFacility,copy.loadRooms,locationId,supabase,toast])
+ useEffect(()=>{void loadLocationData()},[loadLocationData])
+ async function handleAddRoom(event:React.FormEvent<HTMLFormElement>){event.preventDefault();const formData=new FormData(event.currentTarget);const roomNumber=String(formData.get("room_number")??"").trim();const roomType=String(formData.get("room_type")??"").trim();if(!roomNumber||!roomType)return;try{const{data:existingRoom,error:checkError}=await supabase.from("rooms").select("id").eq("location_id",locationId).eq("room_number",roomNumber).maybeSingle();if(checkError)throw checkError;if(existingRoom){toast({variant:"destructive",title:copy.duplicateRoom,description:copy.duplicateRoomDetail});return}const{error}=await supabase.from("rooms").insert({location_id:locationId,room_number:roomNumber,room_type:roomType,capacity:Number(formData.get("capacity")??1),rate_per_night:Number(formData.get("rate_per_night")??0),status:String(formData.get("status")??"available"),floor:String(formData.get("floor")??"").trim()||null,amenities:parseAmenities(formData.get("amenities")),notes:String(formData.get("notes")??"").trim()||null});if(error)throw error;setIsAddRoomDialogOpen(false);toast({title:copy.createdRoom,description:`${roomNumber} ${copy.createdRoomDetail} ${location?.name??copy.facilityFallback}.`});await loadLocationData()}catch(error){console.error("room create failed",error);toast({variant:"destructive",title:copy.createRoomError})}}
+ async function handleEditRoom(event:React.FormEvent<HTMLFormElement>){event.preventDefault();if(!editingRoom)return;const formData=new FormData(event.currentTarget);const roomNumber=String(formData.get("room_number")??"").trim();const{data:duplicate,error:duplicateError}=await supabase.from("rooms").select("id").eq("location_id",locationId).eq("room_number",roomNumber).neq("id",editingRoom.id).maybeSingle();if(duplicateError){console.error("room validation failed",duplicateError);toast({variant:"destructive",title:copy.validateRoom});return}if(duplicate){toast({variant:"destructive",title:copy.duplicateRoom,description:copy.duplicateRoomDetail});return}const{error}=await supabase.from("rooms").update({room_number:roomNumber,room_type:String(formData.get("room_type")??""),capacity:Number(formData.get("capacity")??1),rate_per_night:Number(formData.get("rate_per_night")??0),status:String(formData.get("status")??"available"),floor:String(formData.get("floor")??"").trim()||null,amenities:parseAmenities(formData.get("amenities")),notes:String(formData.get("notes")??"").trim()||null}).eq("id",editingRoom.id);if(error){console.error("room update failed",error);toast({variant:"destructive",title:copy.updateRoomError});return}setEditingRoom(null);toast({title:copy.updatedRoom});await loadLocationData()}
+ async function handleDeleteRoom(room:Room){if(beds.some(bed=>bed.room_id===room.id)){toast({variant:"destructive",title:copy.cannotDelete,description:copy.cannotDeleteDetail});return}if(!window.confirm(`${copy.deleteRoomConfirm} ${room.room_number}?`))return;const{error}=await supabase.from("rooms").delete().eq("id",room.id);if(error){console.error("room delete failed",error);toast({variant:"destructive",title:copy.deleteRoomError});return}await loadLocationData()}
+ async function handleAddBed(event:React.FormEvent<HTMLFormElement>){event.preventDefault();if(!selectedRoomForBed)return;const formData=new FormData(event.currentTarget);const bedNumber=String(formData.get("bed_number")??"").trim();const bedType=String(formData.get("bed_type")??"").trim();if(!bedNumber||!bedType)return;const{data:duplicate,error:duplicateError}=await supabase.from("beds").select("id").eq("room_id",selectedRoomForBed).eq("bed_number",bedNumber).maybeSingle();if(duplicateError){console.error("bed validation failed",duplicateError);toast({variant:"destructive",title:copy.validateBed});return}if(duplicate){toast({variant:"destructive",title:copy.duplicateBed,description:copy.duplicateBedDetail});return}const{error}=await supabase.from("beds").insert({room_id:selectedRoomForBed,bed_number:bedNumber,bed_type:bedType,is_available:true,notes:String(formData.get("notes")??"").trim()||null});if(error){console.error("bed create failed",error);toast({variant:"destructive",title:copy.addBedError});return}setSelectedRoomForBed(null);toast({title:copy.bedAdded});await loadLocationData()}
+ async function handleEditBed(event:React.FormEvent<HTMLFormElement>){event.preventDefault();if(!editingBed)return;const formData=new FormData(event.currentTarget);const bedNumber=String(formData.get("bed_number")??"").trim();const{data:duplicate,error:duplicateError}=await supabase.from("beds").select("id").eq("room_id",editingBed.room_id).eq("bed_number",bedNumber).neq("id",editingBed.id).maybeSingle();if(duplicateError){console.error("bed validation failed",duplicateError);toast({variant:"destructive",title:copy.validateBed});return}if(duplicate){toast({variant:"destructive",title:copy.duplicateBed,description:copy.duplicateBedDetail});return}const{error}=await supabase.from("beds").update({bed_number:bedNumber,bed_type:String(formData.get("bed_type")??""),notes:String(formData.get("notes")??"").trim()||null}).eq("id",editingBed.id);if(error){console.error("bed update failed",error);toast({variant:"destructive",title:copy.updateBedError});return}setEditingBed(null);toast({title:copy.bedUpdated});await loadLocationData()}
+ async function handleDeleteBed(bed:Bed){if(!window.confirm(`${copy.deleteBedConfirm} ${bed.bed_number}?`))return;const{error}=await supabase.from("beds").delete().eq("id",bed.id);if(error){console.error("bed delete failed",error);toast({variant:"destructive",title:copy.deleteBedError});return}await loadLocationData()}
+ if(loading)return <div className="flex min-h-64 items-center justify-center text-sm text-muted-foreground">{copy.loading}</div>;if(!location)return <div className="space-y-4 p-6 text-center"><p>{copy.notFound}</p><Button variant="outline" asChild><Link href="/bookings/locations">{copy.backFacilities}</Link></Button></div>
+ return <div className="flex-1 overflow-auto p-4 sm:p-6"><div className="space-y-6"><div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between"><div className="flex items-start gap-3"><Button variant="outline" size="icon" asChild><Link href="/bookings/locations"><ArrowLeft className="h-4 w-4"/></Link></Button><div><h1 className="text-2xl font-bold sm:text-3xl">{location.name}</h1><p className="mt-1 text-muted-foreground">{location.description||copy.defaultDescription}</p></div></div><Button onClick={()=>setIsAddRoomDialogOpen(true)}><Plus className="mr-2 h-4 w-4"/>{copy.addRoom}</Button></div>
+ {rooms.length===0?<Card><CardContent className="flex flex-col items-center justify-center py-12"><Home className="mb-4 h-10 w-10 text-muted-foreground"/><h3 className="font-semibold">{copy.noRooms}</h3><p className="mb-4 mt-1 text-sm text-muted-foreground">{copy.noRoomsDetail}</p><Button onClick={()=>setIsAddRoomDialogOpen(true)}><Plus className="mr-2 h-4 w-4"/>{copy.addRoom}</Button></CardContent></Card>:<div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">{rooms.map(room=>{const roomBeds=beds.filter(bed=>bed.room_id===room.id);return <Card key={room.id}><CardHeader><div className="flex items-start justify-between gap-3"><div><CardTitle className="flex items-center gap-2"><Home className="h-5 w-5 text-primary"/>{room.room_number}</CardTitle><CardDescription>{room.room_type} · {copy.capacity} {number.format(room.capacity)}</CardDescription></div><div className="flex gap-1"><Button size="icon" variant="ghost" onClick={()=>setEditingRoom(room)} aria-label={`${copy.edit} ${room.room_number}`}><Pencil className="h-4 w-4"/></Button><Button size="icon" variant="ghost" onClick={()=>void handleDeleteRoom(room)} aria-label={`${copy.delete} ${room.room_number}`}><Trash2 className="h-4 w-4"/></Button></div></div></CardHeader><CardContent className="space-y-4"><div className="grid grid-cols-2 gap-3 text-sm"><Info label={copy.rate} value={money.format(room.rate_per_night)}/><Info label={copy.state} value={statusLabel(room.status)}/><Info label={copy.floor} value={room.floor||copy.notRecorded}/><Info label={copy.beds} value={number.format(roomBeds.length)}/></div>{room.amenities?.length?<p className="text-xs text-muted-foreground">{room.amenities.join(" · ")}</p>:null}<div className="border-t pt-4"><div className="mb-3 flex items-center justify-between"><h4 className="flex items-center gap-2 font-semibold"><BedIcon className="h-4 w-4"/>{copy.beds}</h4><Button size="sm" variant="outline" onClick={()=>setSelectedRoomForBed(room.id)}><Plus className="h-3.5 w-3.5"/></Button></div>{roomBeds.length===0?<p className="py-2 text-center text-sm text-muted-foreground">{copy.noBeds}</p>:<div className="space-y-2">{roomBeds.map(bed=><div key={bed.id} className="flex items-center justify-between rounded-md bg-muted/40 p-2"><div><p className="text-sm font-medium">{bed.bed_number}</p><p className="text-xs text-muted-foreground">{bed.bed_type}</p></div><div className="flex gap-1"><Button size="icon" variant="ghost" className="h-7 w-7" onClick={()=>setEditingBed(bed)}><Pencil className="h-3.5 w-3.5"/></Button><Button size="icon" variant="ghost" className="h-7 w-7" onClick={()=>void handleDeleteBed(bed)}><Trash2 className="h-3.5 w-3.5"/></Button></div></div>)}</div>}</div></CardContent></Card>})}</div>}</div>
+ <RoomDialog open={isAddRoomDialogOpen} onOpenChange={setIsAddRoomDialogOpen} title={`${copy.addRoomTo} ${location.name}`} onSubmit={handleAddRoom} copy={copy}/><RoomDialog open={Boolean(editingRoom)} onOpenChange={open=>!open&&setEditingRoom(null)} title={copy.editRoom} room={editingRoom} onSubmit={handleEditRoom} copy={copy}/><BedDialog open={Boolean(selectedRoomForBed)} onOpenChange={open=>!open&&setSelectedRoomForBed(null)} title={copy.addBed} onSubmit={handleAddBed} copy={copy}/><BedDialog open={Boolean(editingBed)} onOpenChange={open=>!open&&setEditingBed(null)} title={copy.editBed} bed={editingBed} onSubmit={handleEditBed} copy={copy}/></div>
 }
 
-interface Room {
-  id: string
-  room_number: string
-  room_type: string
-  capacity: number
-  rate_per_night: number
-  status: string
-  floor: string | null
-  amenities: string[] | null
-  notes: string | null
-}
-
-interface Bed {
-  id: string
-  bed_number: string
-  bed_type: string
-  room_id: string
-  is_available: boolean
-  notes: string | null
-}
-
-function errorMessage(error: unknown) {
-  return error instanceof Error ? error.message : "Unexpected error"
-}
-
-function parseAmenities(value: FormDataEntryValue | null) {
-  return String(value ?? "")
-    .split(",")
-    .map((item) => item.trim())
-    .filter(Boolean)
-}
-
-export default function LocationDetailPage() {
-  const params = useParams<{ id: string }>()
-  const locationId = params.id
-  const supabase = useMemo(() => createBrowserClient(), [])
-  const { toast } = useToast()
-
-  const [location, setLocation] = useState<Location | null>(null)
-  const [rooms, setRooms] = useState<Room[]>([])
-  const [beds, setBeds] = useState<Bed[]>([])
-  const [loading, setLoading] = useState(true)
-
-  const [isAddRoomDialogOpen, setIsAddRoomDialogOpen] = useState(false)
-  const [editingRoom, setEditingRoom] = useState<Room | null>(null)
-  const [selectedRoomForBed, setSelectedRoomForBed] = useState<string | null>(null)
-  const [editingBed, setEditingBed] = useState<Bed | null>(null)
-
-  const loadLocationData = useCallback(async () => {
-    setLoading(true)
-    const [locationResult, roomsResult] = await Promise.all([
-      supabase.from("locations").select("id,name,description").eq("id", locationId).single(),
-      supabase.from("rooms").select("id,room_number,room_type,capacity,rate_per_night,status,floor,amenities,notes").eq("location_id", locationId).order("room_number"),
-    ])
-
-    if (locationResult.error) {
-      toast({ variant: "destructive", title: "No fue posible cargar la instalación", description: locationResult.error.message })
-      setLocation(null)
-      setRooms([])
-      setBeds([])
-      setLoading(false)
-      return
-    }
-
-    setLocation(locationResult.data)
-    if (roomsResult.error) {
-      toast({ variant: "destructive", title: "No fue posible cargar las habitaciones", description: roomsResult.error.message })
-      setRooms([])
-      setBeds([])
-      setLoading(false)
-      return
-    }
-
-    const nextRooms = roomsResult.data ?? []
-    setRooms(nextRooms)
-    if (nextRooms.length === 0) {
-      setBeds([])
-      setLoading(false)
-      return
-    }
-
-    const { data: bedData, error: bedError } = await supabase
-      .from("beds")
-      .select("id,bed_number,bed_type,room_id,is_available,notes")
-      .in("room_id", nextRooms.map((room) => room.id))
-      .order("bed_number")
-
-    if (bedError) {
-      toast({ variant: "destructive", title: "No fue posible cargar las camas", description: bedError.message })
-      setBeds([])
-    } else {
-      setBeds(bedData ?? [])
-    }
-    setLoading(false)
-  }, [locationId, supabase, toast])
-
-  useEffect(() => { void loadLocationData() }, [loadLocationData])
-
-  async function handleAddRoom(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-    const formData = new FormData(event.currentTarget)
-    const roomNumber = String(formData.get("room_number") ?? "").trim()
-    const roomType = String(formData.get("room_type") ?? "").trim()
-    if (!roomNumber || !roomType) return
-
-    try {
-      const { data: existingRoom, error: checkError } = await supabase
-        .from("rooms")
-        .select("id")
-        .eq("location_id", locationId)
-        .eq("room_number", roomNumber)
-        .maybeSingle()
-      if (checkError) throw checkError
-      if (existingRoom) {
-        toast({ variant: "destructive", title: "Habitación duplicada", description: "Ya existe una habitación con ese número o nombre en esta instalación." })
-        return
-      }
-
-      const { error } = await supabase.from("rooms").insert({
-        location_id: locationId,
-        room_number: roomNumber,
-        room_type: roomType,
-        capacity: Number(formData.get("capacity") ?? 1),
-        rate_per_night: Number(formData.get("rate_per_night") ?? 0),
-        status: String(formData.get("status") ?? "available"),
-        floor: String(formData.get("floor") ?? "").trim() || null,
-        amenities: parseAmenities(formData.get("amenities")),
-        notes: String(formData.get("notes") ?? "").trim() || null,
-      })
-      if (error) throw error
-      setIsAddRoomDialogOpen(false)
-      toast({ title: "Habitación creada", description: `${roomNumber} quedó registrada en ${location?.name ?? "la instalación"}.` })
-      await loadLocationData()
-    } catch (error) {
-      toast({ variant: "destructive", title: "No fue posible crear la habitación", description: errorMessage(error) })
-    }
-  }
-
-  async function handleEditRoom(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-    if (!editingRoom) return
-    const formData = new FormData(event.currentTarget)
-    const roomNumber = String(formData.get("room_number") ?? "").trim()
-
-    const { data: duplicate, error: duplicateError } = await supabase
-      .from("rooms")
-      .select("id")
-      .eq("location_id", locationId)
-      .eq("room_number", roomNumber)
-      .neq("id", editingRoom.id)
-      .maybeSingle()
-    if (duplicateError) {
-      toast({ variant: "destructive", title: "No fue posible validar la habitación", description: duplicateError.message })
-      return
-    }
-    if (duplicate) {
-      toast({ variant: "destructive", title: "Habitación duplicada", description: "Ya existe una habitación con ese número o nombre en esta instalación." })
-      return
-    }
-
-    const { error } = await supabase
-      .from("rooms")
-      .update({
-        room_number: roomNumber,
-        room_type: String(formData.get("room_type") ?? ""),
-        capacity: Number(formData.get("capacity") ?? 1),
-        rate_per_night: Number(formData.get("rate_per_night") ?? 0),
-        status: String(formData.get("status") ?? "available"),
-        floor: String(formData.get("floor") ?? "").trim() || null,
-        amenities: parseAmenities(formData.get("amenities")),
-        notes: String(formData.get("notes") ?? "").trim() || null,
-      })
-      .eq("id", editingRoom.id)
-
-    if (error) {
-      toast({ variant: "destructive", title: "No fue posible actualizar la habitación", description: error.message })
-      return
-    }
-    setEditingRoom(null)
-    toast({ title: "Habitación actualizada" })
-    await loadLocationData()
-  }
-
-  async function handleDeleteRoom(room: Room) {
-    if (beds.some((bed) => bed.room_id === room.id)) {
-      toast({ variant: "destructive", title: "No se puede eliminar", description: "La habitación todavía contiene camas. Retíralas primero." })
-      return
-    }
-    if (!window.confirm(`¿Eliminar ${room.room_number}?`)) return
-    const { error } = await supabase.from("rooms").delete().eq("id", room.id)
-    if (error) {
-      toast({ variant: "destructive", title: "No fue posible eliminar la habitación", description: error.message })
-      return
-    }
-    await loadLocationData()
-  }
-
-  async function handleAddBed(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-    if (!selectedRoomForBed) return
-    const formData = new FormData(event.currentTarget)
-    const bedNumber = String(formData.get("bed_number") ?? "").trim()
-    const bedType = String(formData.get("bed_type") ?? "").trim()
-    if (!bedNumber || !bedType) return
-
-    const { data: duplicate, error: duplicateError } = await supabase.from("beds").select("id").eq("room_id", selectedRoomForBed).eq("bed_number", bedNumber).maybeSingle()
-    if (duplicateError) {
-      toast({ variant: "destructive", title: "No fue posible validar la cama", description: duplicateError.message })
-      return
-    }
-    if (duplicate) {
-      toast({ variant: "destructive", title: "Cama duplicada", description: "Ya existe una cama con ese nombre o número en la habitación." })
-      return
-    }
-
-    const { error } = await supabase.from("beds").insert({ room_id: selectedRoomForBed, bed_number: bedNumber, bed_type: bedType, is_available: true, notes: String(formData.get("notes") ?? "").trim() || null })
-    if (error) {
-      toast({ variant: "destructive", title: "No fue posible agregar la cama", description: error.message })
-      return
-    }
-    setSelectedRoomForBed(null)
-    toast({ title: "Cama agregada" })
-    await loadLocationData()
-  }
-
-  async function handleEditBed(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-    if (!editingBed) return
-    const formData = new FormData(event.currentTarget)
-    const bedNumber = String(formData.get("bed_number") ?? "").trim()
-    const { data: duplicate, error: duplicateError } = await supabase.from("beds").select("id").eq("room_id", editingBed.room_id).eq("bed_number", bedNumber).neq("id", editingBed.id).maybeSingle()
-    if (duplicateError) {
-      toast({ variant: "destructive", title: "No fue posible validar la cama", description: duplicateError.message })
-      return
-    }
-    if (duplicate) {
-      toast({ variant: "destructive", title: "Cama duplicada", description: "Ya existe una cama con ese nombre o número en la habitación." })
-      return
-    }
-
-    const { error } = await supabase.from("beds").update({ bed_number: bedNumber, bed_type: String(formData.get("bed_type") ?? ""), notes: String(formData.get("notes") ?? "").trim() || null }).eq("id", editingBed.id)
-    if (error) {
-      toast({ variant: "destructive", title: "No fue posible actualizar la cama", description: error.message })
-      return
-    }
-    setEditingBed(null)
-    toast({ title: "Cama actualizada" })
-    await loadLocationData()
-  }
-
-  async function handleDeleteBed(bed: Bed) {
-    if (!window.confirm(`¿Eliminar ${bed.bed_number}?`)) return
-    const { error } = await supabase.from("beds").delete().eq("id", bed.id)
-    if (error) {
-      toast({ variant: "destructive", title: "No fue posible eliminar la cama", description: error.message })
-      return
-    }
-    await loadLocationData()
-  }
-
-  if (loading) return <div className="flex min-h-64 items-center justify-center text-sm text-muted-foreground">Cargando instalación…</div>
-  if (!location) return <div className="space-y-4 p-6 text-center"><p>No se encontró la instalación.</p><Button variant="outline" asChild><Link href="/bookings/locations">Volver a instalaciones</Link></Button></div>
-
-  return (
-    <div className="flex-1 overflow-auto p-4 sm:p-6">
-      <div className="space-y-6">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-          <div className="flex items-start gap-3">
-            <Button variant="outline" size="icon" asChild><Link href="/bookings/locations"><ArrowLeft className="h-4 w-4" /></Link></Button>
-            <div><h1 className="text-2xl font-bold sm:text-3xl">{location.name}</h1><p className="mt-1 text-muted-foreground">{location.description || "Habitaciones y camas disponibles en esta instalación."}</p></div>
-          </div>
-          <Button onClick={() => setIsAddRoomDialogOpen(true)}><Plus className="mr-2 h-4 w-4" />Agregar habitación</Button>
-        </div>
-
-        {rooms.length === 0 ? (
-          <Card><CardContent className="flex flex-col items-center justify-center py-12"><Home className="mb-4 h-10 w-10 text-muted-foreground" /><h3 className="font-semibold">Sin habitaciones</h3><p className="mb-4 mt-1 text-sm text-muted-foreground">Registra la primera unidad alojable de esta instalación.</p><Button onClick={() => setIsAddRoomDialogOpen(true)}><Plus className="mr-2 h-4 w-4" />Agregar habitación</Button></CardContent></Card>
-        ) : (
-          <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-            {rooms.map((room) => {
-              const roomBeds = beds.filter((bed) => bed.room_id === room.id)
-              return (
-                <Card key={room.id}>
-                  <CardHeader><div className="flex items-start justify-between gap-3"><div><CardTitle className="flex items-center gap-2"><Home className="h-5 w-5 text-primary" />{room.room_number}</CardTitle><CardDescription>{room.room_type} · capacidad {room.capacity}</CardDescription></div><div className="flex gap-1"><Button size="icon" variant="ghost" onClick={() => setEditingRoom(room)} aria-label={`Editar ${room.room_number}`}><Pencil className="h-4 w-4" /></Button><Button size="icon" variant="ghost" onClick={() => void handleDeleteRoom(room)} aria-label={`Eliminar ${room.room_number}`}><Trash2 className="h-4 w-4" /></Button></div></div></CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="grid grid-cols-2 gap-3 text-sm"><Info label="Tarifa" value={new Intl.NumberFormat("es-CL", { style: "currency", currency: "CLP", maximumFractionDigits: 0 }).format(room.rate_per_night)} /><Info label="Estado" value={room.status} /><Info label="Piso" value={room.floor || "No registrado"} /><Info label="Camas" value={String(roomBeds.length)} /></div>
-                    {room.amenities?.length ? <p className="text-xs text-muted-foreground">{room.amenities.join(" · ")}</p> : null}
-                    <div className="border-t pt-4"><div className="mb-3 flex items-center justify-between"><h4 className="flex items-center gap-2 font-semibold"><BedIcon className="h-4 w-4" />Camas</h4><Button size="sm" variant="outline" onClick={() => setSelectedRoomForBed(room.id)}><Plus className="h-3.5 w-3.5" /></Button></div>{roomBeds.length === 0 ? <p className="py-2 text-center text-sm text-muted-foreground">Sin camas registradas.</p> : <div className="space-y-2">{roomBeds.map((bed) => <div key={bed.id} className="flex items-center justify-between rounded-md bg-muted/40 p-2"><div><p className="text-sm font-medium">{bed.bed_number}</p><p className="text-xs text-muted-foreground">{bed.bed_type}</p></div><div className="flex gap-1"><Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setEditingBed(bed)}><Pencil className="h-3.5 w-3.5" /></Button><Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => void handleDeleteBed(bed)}><Trash2 className="h-3.5 w-3.5" /></Button></div></div>)}</div>}</div>
-                  </CardContent>
-                </Card>
-              )
-            })}
-          </div>
-        )}
-      </div>
-
-      <RoomDialog open={isAddRoomDialogOpen} onOpenChange={setIsAddRoomDialogOpen} title={`Agregar habitación a ${location.name}`} onSubmit={handleAddRoom} />
-      <RoomDialog open={Boolean(editingRoom)} onOpenChange={(open) => !open && setEditingRoom(null)} title="Editar habitación" room={editingRoom} onSubmit={handleEditRoom} />
-      <BedDialog open={Boolean(selectedRoomForBed)} onOpenChange={(open) => !open && setSelectedRoomForBed(null)} title="Agregar cama" onSubmit={handleAddBed} />
-      <BedDialog open={Boolean(editingBed)} onOpenChange={(open) => !open && setEditingBed(null)} title="Editar cama" bed={editingBed} onSubmit={handleEditBed} />
-    </div>
-  )
-}
-
-function RoomDialog({ open, onOpenChange, title, room, onSubmit }: { open: boolean; onOpenChange: (open: boolean) => void; title: string; room?: Room | null; onSubmit: React.FormEventHandler<HTMLFormElement> }) {
-  return <Dialog open={open} onOpenChange={onOpenChange}><DialogContent className="max-w-2xl"><form onSubmit={onSubmit}><DialogHeader><DialogTitle>{title}</DialogTitle><DialogDescription>Define capacidad, tarifa, estado y atributos operativos.</DialogDescription></DialogHeader><div className="grid gap-4 py-4"><div className="grid gap-4 sm:grid-cols-2"><Field label="Número o nombre"><Input name="room_number" defaultValue={room?.room_number ?? ""} required /></Field><Field label="Tipo"><Select name="room_type" defaultValue={room?.room_type ?? "suite"}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="suite">Suite</SelectItem><SelectItem value="cabin">Cabin</SelectItem><SelectItem value="bungalow">Bungalow</SelectItem><SelectItem value="dorm">Dorm</SelectItem><SelectItem value="studio">Studio</SelectItem></SelectContent></Select></Field></div><div className="grid gap-4 sm:grid-cols-3"><Field label="Capacidad"><Input name="capacity" type="number" min="1" defaultValue={room?.capacity ?? 2} required /></Field><Field label="Tarifa/noche"><Input name="rate_per_night" type="number" min="0" step="1" defaultValue={room?.rate_per_night ?? 0} required /></Field><Field label="Piso"><Input name="floor" defaultValue={room?.floor ?? ""} /></Field></div><Field label="Estado"><Select name="status" defaultValue={room?.status ?? "available"}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="available">Available</SelectItem><SelectItem value="occupied">Occupied</SelectItem><SelectItem value="maintenance">Maintenance</SelectItem><SelectItem value="blocked">Blocked</SelectItem></SelectContent></Select></Field><Field label="Amenities"><Input name="amenities" defaultValue={room?.amenities?.join(", ") ?? ""} placeholder="WiFi, baño privado, cocina" /></Field><Field label="Notas"><Textarea name="notes" defaultValue={room?.notes ?? ""} rows={2} /></Field></div><DialogFooter><Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button><Button type="submit">Guardar</Button></DialogFooter></form></DialogContent></Dialog>
-}
-
-function BedDialog({ open, onOpenChange, title, bed, onSubmit }: { open: boolean; onOpenChange: (open: boolean) => void; title: string; bed?: Bed | null; onSubmit: React.FormEventHandler<HTMLFormElement> }) {
-  return <Dialog open={open} onOpenChange={onOpenChange}><DialogContent><form onSubmit={onSubmit}><DialogHeader><DialogTitle>{title}</DialogTitle><DialogDescription>Identifica la cama dentro de la habitación.</DialogDescription></DialogHeader><div className="space-y-4 py-4"><Field label="Nombre o número"><Input name="bed_number" defaultValue={bed?.bed_number ?? ""} required /></Field><Field label="Tipo"><Select name="bed_type" defaultValue={bed?.bed_type ?? "Single"}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="Single">Single</SelectItem><SelectItem value="Double">Double</SelectItem><SelectItem value="Queen">Queen</SelectItem><SelectItem value="King">King</SelectItem><SelectItem value="Bunk_top">Bunk (Top)</SelectItem><SelectItem value="Bunk_bottom">Bunk (Bottom)</SelectItem></SelectContent></Select></Field><Field label="Notas"><Textarea name="notes" defaultValue={bed?.notes ?? ""} rows={2} /></Field></div><DialogFooter><Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button><Button type="submit">Guardar</Button></DialogFooter></form></DialogContent></Dialog>
-}
-
-function Field({ label, children }: { label: string; children: React.ReactNode }) { return <div className="space-y-1.5"><Label>{label}</Label>{children}</div> }
-function Info({ label, value }: { label: string; value: string }) { return <div><p className="text-xs text-muted-foreground">{label}</p><p className="font-medium">{value}</p></div> }
+type Copy=typeof COPY[keyof typeof COPY]
+function RoomDialog({open,onOpenChange,title,room,onSubmit,copy}:{open:boolean;onOpenChange:(open:boolean)=>void;title:string;room?:Room|null;onSubmit:React.FormEventHandler<HTMLFormElement>;copy:Copy}){return <Dialog open={open} onOpenChange={onOpenChange}><DialogContent className="max-w-2xl"><form onSubmit={onSubmit}><DialogHeader><DialogTitle>{title}</DialogTitle><DialogDescription>{copy.roomDialogDetail}</DialogDescription></DialogHeader><div className="grid gap-4 py-4"><div className="grid gap-4 sm:grid-cols-2"><Field label={copy.roomNumber}><Input name="room_number" defaultValue={room?.room_number??""} required/></Field><Field label={copy.type}><Select name="room_type" defaultValue={room?.room_type??"suite"}><SelectTrigger><SelectValue/></SelectTrigger><SelectContent><SelectItem value="suite">Suite</SelectItem><SelectItem value="cabin">Cabin</SelectItem><SelectItem value="bungalow">Bungalow</SelectItem><SelectItem value="dorm">Dorm</SelectItem><SelectItem value="studio">Studio</SelectItem></SelectContent></Select></Field></div><div className="grid gap-4 sm:grid-cols-3"><Field label={copy.capacity}><Input name="capacity" type="number" min="1" defaultValue={room?.capacity??2} required/></Field><Field label={copy.nightRate}><Input name="rate_per_night" type="number" min="0" step="1" defaultValue={room?.rate_per_night??0} required/></Field><Field label={copy.floor}><Input name="floor" defaultValue={room?.floor??""}/></Field></div><Field label={copy.state}><Select name="status" defaultValue={room?.status??"available"}><SelectTrigger><SelectValue/></SelectTrigger><SelectContent><SelectItem value="available">{copy.available}</SelectItem><SelectItem value="occupied">{copy.occupied}</SelectItem><SelectItem value="maintenance">{copy.maintenance}</SelectItem><SelectItem value="blocked">{copy.blocked}</SelectItem></SelectContent></Select></Field><Field label={copy.amenities}><Input name="amenities" defaultValue={room?.amenities?.join(", ")??""} placeholder={copy.amenitiesPlaceholder}/></Field><Field label={copy.notes}><Textarea name="notes" defaultValue={room?.notes??""} rows={2}/></Field></div><DialogFooter><Button type="button" variant="outline" onClick={()=>onOpenChange(false)}>{copy.cancel}</Button><Button type="submit">{copy.save}</Button></DialogFooter></form></DialogContent></Dialog>}
+function BedDialog({open,onOpenChange,title,bed,onSubmit,copy}:{open:boolean;onOpenChange:(open:boolean)=>void;title:string;bed?:Bed|null;onSubmit:React.FormEventHandler<HTMLFormElement>;copy:Copy}){return <Dialog open={open} onOpenChange={onOpenChange}><DialogContent><form onSubmit={onSubmit}><DialogHeader><DialogTitle>{title}</DialogTitle><DialogDescription>{copy.bedDialogDetail}</DialogDescription></DialogHeader><div className="space-y-4 py-4"><Field label={copy.bedNumber}><Input name="bed_number" defaultValue={bed?.bed_number??""} required/></Field><Field label={copy.type}><Select name="bed_type" defaultValue={bed?.bed_type??"Single"}><SelectTrigger><SelectValue/></SelectTrigger><SelectContent><SelectItem value="Single">Single</SelectItem><SelectItem value="Double">Double</SelectItem><SelectItem value="Queen">Queen</SelectItem><SelectItem value="King">King</SelectItem><SelectItem value="Bunk_top">Bunk (Top)</SelectItem><SelectItem value="Bunk_bottom">Bunk (Bottom)</SelectItem></SelectContent></Select></Field><Field label={copy.notes}><Textarea name="notes" defaultValue={bed?.notes??""} rows={2}/></Field></div><DialogFooter><Button type="button" variant="outline" onClick={()=>onOpenChange(false)}>{copy.cancel}</Button><Button type="submit">{copy.save}</Button></DialogFooter></form></DialogContent></Dialog>}
+function Field({label,children}:{label:string;children:React.ReactNode}){return <div className="space-y-1.5"><Label>{label}</Label>{children}</div>}
+function Info({label,value}:{label:string;value:string}){return <div><p className="text-xs text-muted-foreground">{label}</p><p className="font-medium">{value}</p></div>}

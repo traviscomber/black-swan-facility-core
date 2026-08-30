@@ -8,6 +8,7 @@ import { format } from "date-fns"
 import { de, enUS, es } from "date-fns/locale"
 import { useLanguage } from "@/lib/hooks/use-language"
 import { addReservationCopy } from "@/lib/translations/add-reservation"
+import { formatClp } from "@/lib/money"
 
 interface ReservationConfirmationModalProps {
   open: boolean
@@ -25,6 +26,9 @@ interface ReservationConfirmationModalProps {
   loading?: boolean
 }
 
+const DATE_LOCALES = { en: enUS, es, de } as const
+const NUMBER_LOCALES = { en: "en-US", es: "es-CL", de: "de-DE" } as const
+
 export function ReservationConfirmationModal({
   open,
   onOpenChange,
@@ -34,7 +38,8 @@ export function ReservationConfirmationModal({
 }: ReservationConfirmationModalProps) {
   const { language } = useLanguage()
   const copy = addReservationCopy[language]
-  const dateLocale = language === "de" ? de : language === "es" ? es : enUS
+  const dateLocale = DATE_LOCALES[language]
+  const numberLocale = NUMBER_LOCALES[language]
   if (!reservationDetails) return null
 
   const checkInDate = new Date(reservationDetails.checkIn)
@@ -62,7 +67,7 @@ export function ReservationConfirmationModal({
                 <div className="mt-2 flex justify-between text-sm"><span className="text-muted-foreground">{copy.duration}:</span><span className="font-semibold">{reservationDetails.nights} {reservationDetails.nights === 1 ? copy.night : copy.nights}</span></div>
               </div>
               <div className="border-t border-secondary pt-3">
-                <div className="flex justify-between"><span className="text-lg font-semibold text-accent">{copy.totalAmount}:</span><span className="text-lg font-bold text-primary">${reservationDetails.totalAmount.toFixed(2)}</span></div>
+                <div className="flex justify-between"><span className="text-lg font-semibold text-accent">{copy.totalAmount}:</span><span className="text-lg font-bold text-primary">{formatClp(reservationDetails.totalAmount, numberLocale)}</span></div>
               </div>
             </CardContent>
           </Card>

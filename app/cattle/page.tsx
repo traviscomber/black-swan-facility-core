@@ -10,186 +10,20 @@ import { Button } from "@/components/ui/button"
 import { LinkedOperationalTask } from "@/components/linked-operational-task"
 import { createBrowserClient } from "@/lib/supabase/client"
 import { buildOperationalTaskHref } from "@/lib/operational-task-links"
+import { useLanguage } from "@/lib/hooks/use-language"
 
-type CattleArea = {
-  id: string
-  name: string
-  description: string | null
-  status: string | null
-  specifications: {
-    hectares?: number
-    capacity?: number
-    business_unit?: string
-    grass_type?: string
-  } | null
-}
+type CattleArea={id:string;name:string;description:string|null;status:string|null;specifications:{hectares?:number;capacity?:number;business_unit?:string;grass_type?:string}|null}
+const COPY={
+ en:{title:"Cattle",description:"Paddocks, management units, tasks and support tools for Fundo Corcovado.",refresh:"Refresh",loadError:"Cattle areas could not be loaded.",areas:"Cattle areas",areasDesc:"Paddocks and management units with linked operational tracking.",loading:"Loading areas…",empty:"No cattle areas are registered.",breeding:"Breeding",fattening:"Fattening",unclassified:"Unclassified",surface:"Area",capacity:"Declared capacity",pasture:"Pasture",task:"Create task",support:"Technical support",supportDesc:"Separate tools for cattle analysis and recommendations.",assistant:"Open cattle assistant",planning:"Economic planning",planningDesc:"Costs, prices and assumptions for the cattle unit.",costs:"Costs and prices",plan:"Business plan",round:"Operational round",review:"Review",context:"Recorded context",observe:"Carry out an observation and operational review round in"},
+ es:{title:"Ganadería",description:"Potreros, unidades de manejo, tareas y herramientas de apoyo del Fundo Corcovado.",refresh:"Actualizar",loadError:"No fue posible cargar las áreas ganaderas.",areas:"Áreas ganaderas",areasDesc:"Potreros y unidades de manejo registradas con su seguimiento operativo vinculado.",loading:"Cargando áreas…",empty:"No hay áreas ganaderas registradas.",breeding:"Crianza",fattening:"Engorda",unclassified:"Sin clasificar",surface:"Superficie",capacity:"Capacidad declarada",pasture:"Pradera",task:"Crear tarea",support:"Apoyo técnico",supportDesc:"Herramientas separadas para análisis y recomendaciones ganaderas.",assistant:"Abrir asistente ganadero",planning:"Planificación económica",planningDesc:"Costos, precios y supuestos de la unidad ganadera.",costs:"Costos y precios",plan:"Plan de negocio",round:"Ronda operativa",review:"Revisar",context:"Contexto registrado",observe:"Realizar ronda de observación y revisión operativa en"},
+ de:{title:"Rinderhaltung",description:"Weiden, Bewirtschaftungseinheiten, Aufgaben und Hilfsmittel für Fundo Corcovado.",refresh:"Aktualisieren",loadError:"Die Rinderhaltungsflächen konnten nicht geladen werden.",areas:"Rinderhaltungsflächen",areasDesc:"Erfasste Weiden und Bewirtschaftungseinheiten mit verknüpfter operativer Nachverfolgung.",loading:"Flächen werden geladen…",empty:"Keine Rinderhaltungsflächen erfasst.",breeding:"Zucht",fattening:"Mast",unclassified:"Nicht klassifiziert",surface:"Fläche",capacity:"Angegebene Kapazität",pasture:"Weide",task:"Aufgabe erstellen",support:"Fachliche Unterstützung",supportDesc:"Separate Werkzeuge für Analyse und Empfehlungen zur Rinderhaltung.",assistant:"Rinderassistent öffnen",planning:"Wirtschaftliche Planung",planningDesc:"Kosten, Preise und Annahmen der Rindereinheit.",costs:"Kosten und Preise",plan:"Geschäftsplan",round:"Operative Runde",review:"Prüfen",context:"Erfasster Kontext",observe:"Beobachtungs- und operative Prüfrunde durchführen in"},
+} as const
 
-export default function CattlePage() {
-  const supabase = useMemo(() => createBrowserClient(), [])
-  const [areas, setAreas] = useState<CattleArea[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-
-  async function loadAreas() {
-    setLoading(true)
-    setError(null)
-    const { data, error: loadError } = await supabase
-      .from("infrastructure_plans")
-      .select("id, name, description, status, specifications")
-      .eq("category", "Cattle")
-      .order("name")
-
-    if (loadError) setError(loadError.message)
-    else setAreas((data ?? []) as CattleArea[])
-    setLoading(false)
-  }
-
-  useEffect(() => {
-    void loadAreas()
-  }, [])
-
-  return (
-    <AppLayout>
-      <PageHeader
-        title="Ganadería"
-        description="Potreros, unidades de manejo, tareas y herramientas de apoyo del Fundo Corcovado."
-        actions={
-          <Button variant="outline" onClick={() => void loadAreas()} disabled={loading}>
-            <RefreshCw className={`mr-2 h-4 w-4 ${loading ? "animate-spin" : ""}`} />
-            Actualizar
-          </Button>
-        }
-      />
-
-      <div className="space-y-10 px-4 py-6 sm:px-8 sm:py-8">
-        {error && (
-          <div className="border border-destructive/40 bg-destructive/5 px-4 py-3 text-sm text-destructive">
-            No fue posible cargar las áreas ganaderas: {error}
-          </div>
-        )}
-
-        <section>
-          <div className="mb-5 flex items-start gap-3 border-b border-border pb-4">
-            <MapPinned className="mt-0.5 h-5 w-5 text-primary" />
-            <div>
-              <h2 className="text-base font-semibold">Áreas ganaderas</h2>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Potreros y unidades de manejo registradas con su seguimiento operativo vinculado.
-              </p>
-            </div>
-          </div>
-
-          {loading ? (
-            <p className="py-12 text-center text-sm text-muted-foreground">Cargando áreas…</p>
-          ) : areas.length === 0 ? (
-            <p className="border border-border bg-card px-5 py-12 text-center text-sm text-muted-foreground">
-              No hay áreas ganaderas registradas.
-            </p>
-          ) : (
-            <div className="grid gap-px overflow-hidden border border-border bg-border md:grid-cols-2">
-              {areas.map((area) => {
-                const taskHref = buildOperationalTaskHref({
-                  template: "ganado-ronda",
-                  area: "ganaderia",
-                  title: `Ronda operativa · ${area.name}`,
-                  description: area.description
-                    ? `Revisar ${area.name}. Contexto registrado: ${area.description}`
-                    : `Realizar ronda de observación y revisión operativa en ${area.name}.`,
-                  category: "Observación animal",
-                  priority: "alta",
-                  sourceType: "cattle_area",
-                  sourceId: area.id,
-                  sourceLabel: area.name,
-                  sourcePath: "/cattle",
-                })
-
-                const unitLabel =
-                  area.specifications?.business_unit === "Breeding"
-                    ? "Crianza"
-                    : area.specifications?.business_unit === "Fattening"
-                      ? "Engorda"
-                      : "Sin clasificar"
-
-                return (
-                  <article key={area.id} className="flex min-h-64 flex-col justify-between bg-card p-5 sm:p-6">
-                    <div>
-                      <div className="flex items-start justify-between gap-4">
-                        <div>
-                          <h3 className="text-lg font-semibold tracking-[-0.02em]">{area.name}</h3>
-                          {area.description && <p className="mt-2 text-sm leading-6 text-muted-foreground">{area.description}</p>}
-                        </div>
-                        <Badge variant="outline" className="shrink-0 text-[10px] uppercase tracking-[0.12em]">
-                          {unitLabel}
-                        </Badge>
-                      </div>
-
-                      <dl className="mt-6 grid grid-cols-2 gap-4 border-y border-border py-4 text-xs sm:grid-cols-3">
-                        <div>
-                          <dt className="text-muted-foreground">Superficie</dt>
-                          <dd className="mt-1 font-medium text-foreground">
-                            {Number(area.specifications?.hectares ?? 0).toLocaleString("es-CL")} ha
-                          </dd>
-                        </div>
-                        <div>
-                          <dt className="text-muted-foreground">Capacidad declarada</dt>
-                          <dd className="mt-1 font-medium text-foreground">
-                            {Number(area.specifications?.capacity ?? 0).toLocaleString("es-CL")}
-                          </dd>
-                        </div>
-                        {area.specifications?.grass_type && (
-                          <div className="col-span-2 sm:col-span-1">
-                            <dt className="text-muted-foreground">Pradera</dt>
-                            <dd className="mt-1 font-medium text-foreground">{area.specifications.grass_type}</dd>
-                          </div>
-                        )}
-                      </dl>
-
-                      <div className="mt-4">
-                        <LinkedOperationalTask sourceType="cattle_area" sourceId={area.id} />
-                      </div>
-                    </div>
-
-                    <Button asChild size="sm" variant="outline" className="mt-5 w-fit">
-                      <Link href={taskHref}>
-                        <ClipboardPlus className="mr-2 h-4 w-4" />
-                        Crear tarea
-                      </Link>
-                    </Button>
-                  </article>
-                )
-              })}
-            </div>
-          )}
-        </section>
-
-        <section className="grid gap-px overflow-hidden border border-border bg-border lg:grid-cols-2">
-          <div className="bg-card p-6">
-            <Brain className="h-5 w-5 text-primary" />
-            <h2 className="mt-5 text-base font-semibold">Apoyo técnico</h2>
-            <p className="mt-2 text-sm leading-6 text-muted-foreground">
-              Herramientas separadas para análisis y recomendaciones ganaderas.
-            </p>
-            <Button asChild variant="outline" className="mt-6">
-              <Link href="/cattle/expert-agent">Abrir asistente ganadero</Link>
-            </Button>
-          </div>
-
-          <div className="bg-card p-6">
-            <h2 className="text-base font-semibold">Planificación económica</h2>
-            <p className="mt-2 text-sm leading-6 text-muted-foreground">
-              Costos, precios y supuestos de la unidad ganadera.
-            </p>
-            <div className="mt-6 flex flex-wrap gap-2">
-              <Button asChild variant="outline">
-                <Link href="/cattle/pricing-costs">Costos y precios</Link>
-              </Button>
-              <Button asChild variant="outline">
-                <Link href="/cattle/business-plan">Plan de negocio</Link>
-              </Button>
-            </div>
-          </div>
-        </section>
-      </div>
-    </AppLayout>
-  )
+export default function CattlePage(){
+ const supabase=useMemo(()=>createBrowserClient(),[]);const{language}=useLanguage();const lang=(language in COPY?language:"en") as keyof typeof COPY;const c=COPY[lang];const locale=lang==="es"?"es-CL":lang==="de"?"de-DE":"en-US";const number=new Intl.NumberFormat(locale);const[areas,setAreas]=useState<CattleArea[]>([]);const[loading,setLoading]=useState(true);const[error,setError]=useState(false)
+ async function loadAreas(){setLoading(true);setError(false);const{data,error:loadError}=await supabase.from("infrastructure_plans").select("id, name, description, status, specifications").eq("category","Cattle").order("name");if(loadError){console.error("CATTLE_AREAS_LOAD_FAILED",loadError);setError(true);setAreas([])}else setAreas((data??[]) as CattleArea[]);setLoading(false)}
+ useEffect(()=>{void loadAreas()},[])
+ return <AppLayout><PageHeader title={c.title} description={c.description} actions={<Button variant="outline" onClick={()=>void loadAreas()} disabled={loading}><RefreshCw className={`mr-2 h-4 w-4 ${loading?"animate-spin":""}`}/>{c.refresh}</Button>}/><div className="space-y-10 px-4 py-6 sm:px-8 sm:py-8">{error&&<div className="border border-destructive/40 bg-destructive/5 px-4 py-3 text-sm text-destructive">{c.loadError}</div>}
+ <section><div className="mb-5 flex items-start gap-3 border-b border-border pb-4"><MapPinned className="mt-0.5 h-5 w-5 text-primary"/><div><h2 className="text-base font-semibold">{c.areas}</h2><p className="mt-1 text-sm text-muted-foreground">{c.areasDesc}</p></div></div>{loading?<p className="py-12 text-center text-sm text-muted-foreground">{c.loading}</p>:areas.length===0?<p className="border border-border bg-card px-5 py-12 text-center text-sm text-muted-foreground">{c.empty}</p>:<div className="grid gap-px overflow-hidden border border-border bg-border md:grid-cols-2">{areas.map(area=>{const taskHref=buildOperationalTaskHref({template:"ganado-ronda",area:"ganaderia",title:`${c.round} · ${area.name}`,description:area.description?`${c.review} ${area.name}. ${c.context}: ${area.description}`:`${c.observe} ${area.name}.`,category:"Observación animal",priority:"alta",sourceType:"cattle_area",sourceId:area.id,sourceLabel:area.name,sourcePath:"/cattle"});const unit=area.specifications?.business_unit==="Breeding"?c.breeding:area.specifications?.business_unit==="Fattening"?c.fattening:c.unclassified;return <article key={area.id} className="flex min-h-64 flex-col justify-between bg-card p-5 sm:p-6"><div><div className="flex items-start justify-between gap-4"><div><h3 className="text-lg font-semibold tracking-[-0.02em]">{area.name}</h3>{area.description&&<p className="mt-2 text-sm leading-6 text-muted-foreground">{area.description}</p>}</div><Badge variant="outline" className="shrink-0 text-[10px] uppercase tracking-[0.12em]">{unit}</Badge></div><dl className="mt-6 grid grid-cols-2 gap-4 border-y border-border py-4 text-xs sm:grid-cols-3"><div><dt className="text-muted-foreground">{c.surface}</dt><dd className="mt-1 font-medium text-foreground">{number.format(Number(area.specifications?.hectares??0))} ha</dd></div><div><dt className="text-muted-foreground">{c.capacity}</dt><dd className="mt-1 font-medium text-foreground">{number.format(Number(area.specifications?.capacity??0))}</dd></div>{area.specifications?.grass_type&&<div className="col-span-2 sm:col-span-1"><dt className="text-muted-foreground">{c.pasture}</dt><dd className="mt-1 font-medium text-foreground">{area.specifications.grass_type}</dd></div>}</dl><div className="mt-4"><LinkedOperationalTask sourceType="cattle_area" sourceId={area.id}/></div></div><Button asChild size="sm" variant="outline" className="mt-5 w-fit"><Link href={taskHref}><ClipboardPlus className="mr-2 h-4 w-4"/>{c.task}</Link></Button></article>})}</div>}</section>
+ <section className="grid gap-px overflow-hidden border border-border bg-border lg:grid-cols-2"><div className="bg-card p-6"><Brain className="h-5 w-5 text-primary"/><h2 className="mt-5 text-base font-semibold">{c.support}</h2><p className="mt-2 text-sm leading-6 text-muted-foreground">{c.supportDesc}</p><Button asChild variant="outline" className="mt-6"><Link href="/cattle/expert-agent">{c.assistant}</Link></Button></div><div className="bg-card p-6"><h2 className="text-base font-semibold">{c.planning}</h2><p className="mt-2 text-sm leading-6 text-muted-foreground">{c.planningDesc}</p><div className="mt-6 flex flex-wrap gap-2"><Button asChild variant="outline"><Link href="/cattle/pricing-costs">{c.costs}</Link></Button><Button asChild variant="outline"><Link href="/cattle/business-plan">{c.plan}</Link></Button></div></div></section></div></AppLayout>
 }

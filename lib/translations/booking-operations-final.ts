@@ -1,8 +1,6 @@
 import type { Language } from "@/lib/hooks/use-language"
 
-type TargetLanguage = Exclude<Language, "es">
-
-const exact: Record<TargetLanguage, Record<string, string>> = {
+const exact: Record<Language, Record<string, string>> = {
   en: {
     "Cerrar panel": "Close panel",
     "Operación de estadía": "Stay operations",
@@ -30,6 +28,7 @@ const exact: Record<TargetLanguage, Record<string, string>> = {
     "Origen": "Source",
     "interno": "internal",
   },
+  es: {},
   de: {
     "Cerrar panel": "Panel schließen",
     "Operación de estadía": "Aufenthaltsbetrieb",
@@ -65,18 +64,23 @@ const months: Record<Language, Record<string, string>> = {
   de: { Jan: "Jan", Feb: "Feb", Mar: "Mär", Apr: "Apr", May: "Mai", Jun: "Jun", Jul: "Jul", Aug: "Aug", Sep: "Sep", Oct: "Okt", Nov: "Nov", Dec: "Dez" },
 }
 
+const dynamicPrefixes: Record<Language, { payment: string; source: string; bed: string; priority: string; timelineError: string }> = {
+  en: { payment: "Payment: ", source: "Source: ", bed: "Bed $1", priority: "Priority $1", timelineError: "Could not load the timeline: $1" },
+  es: { payment: "Pago: ", source: "Origen: ", bed: "Cama $1", priority: "Prioridad $1", timelineError: "No fue posible cargar el timeline: $1" },
+  de: { payment: "Zahlung: ", source: "Quelle: ", bed: "Bett $1", priority: "Priorität $1", timelineError: "Die Zeitleiste konnte nicht geladen werden: $1" },
+}
+
 export function translateBookingOperationsFinal(value: string, language: Language) {
-  if (language === "es") return replaceMonths(value, language)
-
   const direct = exact[language][value]
-  if (direct) return direct
+  if (direct) return replaceMonths(direct, language)
 
+  const prefix = dynamicPrefixes[language]
   let result = value
-  result = result.replace(/^Pago:\s*/u, language === "de" ? "Zahlung: " : "Payment: ")
-  result = result.replace(/^Origen:\s*/u, language === "de" ? "Quelle: " : "Source: ")
-  result = result.replace(/^Cama\s+(\S+)$/u, language === "de" ? "Bett $1" : "Bed $1")
-  result = result.replace(/^Prioridad\s+(.+)$/u, language === "de" ? "Priorität $1" : "Priority $1")
-  result = result.replace(/^No fue posible cargar el timeline:\s*(.+)$/u, language === "de" ? "Die Zeitleiste konnte nicht geladen werden: $1" : "Could not load the timeline: $1")
+  result = result.replace(/^Pago:\s*/u, prefix.payment)
+  result = result.replace(/^Origen:\s*/u, prefix.source)
+  result = result.replace(/^Cama\s+(\S+)$/u, prefix.bed)
+  result = result.replace(/^Prioridad\s+(.+)$/u, prefix.priority)
+  result = result.replace(/^No fue posible cargar el timeline:\s*(.+)$/u, prefix.timelineError)
   return replaceMonths(result, language)
 }
 

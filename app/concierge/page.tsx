@@ -8,65 +8,14 @@ import { PageHeader } from "@/components/page-header"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { createBrowserClient } from "@/lib/supabase/client"
+import { useLanguage } from "@/lib/hooks/use-language"
 
-type ConciergeStats = {
-  leads: number
-  messages24h: number
-  openIncidents: number
-  openRequests: number
-  tasksToday: number
-}
-
-const emptyStats: ConciergeStats = { leads: 0, messages24h: 0, openIncidents: 0, openRequests: 0, tasksToday: 0 }
-
-export default function ConciergeDashboard() {
-  const supabase = useMemo(() => createBrowserClient(), [])
-  const [stats, setStats] = useState<ConciergeStats>(emptyStats)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-
-  async function loadDashboard() {
-    setLoading(true)
-    setError(null)
-    const today = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Santiago", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date())
-    const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
-    const [leads, messages, incidents, requests, tasks] = await Promise.all([
-      supabase.from("leads").select("id", { count: "exact", head: true }).eq("stage", "new"),
-      supabase.from("messages").select("id", { count: "exact", head: true }).gte("ts", since),
-      supabase.from("incidents").select("id", { count: "exact", head: true }).eq("status", "open"),
-      supabase.from("hospitality_requests").select("id", { count: "exact", head: true }).not("status", "in", "(completed,cancelled)"),
-      supabase.from("tasks").select("id", { count: "exact", head: true }).eq("due_date", today).in("status", ["nueva", "en_progreso"]),
-    ])
-    const firstError = leads.error ?? messages.error ?? incidents.error ?? requests.error ?? tasks.error
-    if (firstError) setError(firstError.message)
-    setStats({ leads: leads.count ?? 0, messages24h: messages.count ?? 0, openIncidents: incidents.count ?? 0, openRequests: requests.count ?? 0, tasksToday: tasks.count ?? 0 })
-    setLoading(false)
-  }
-
-  useEffect(() => { void loadDashboard() }, [])
-
-  return (
-    <AppLayout>
-      <PageHeader title="Concierge y hospitalidad" description="Control operativo de huéspedes, mensajes, solicitudes, incidencias y tareas de atención en Fundo Corcovado." actions={<Button variant="outline" onClick={() => void loadDashboard()} disabled={loading}><RefreshCw className={`mr-2 h-4 w-4 ${loading ? "animate-spin" : ""}`} />Actualizar</Button>} />
-      <div className="space-y-6 p-4 md:p-6">
-        {error && <Card className="border-destructive/40"><CardContent className="p-4 text-sm text-destructive">No fue posible actualizar el panel: {error}</CardContent></Card>}
-        {loading ? <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin" /></div> : <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5"><Metric title="Nuevos contactos" value={stats.leads} icon={Users} /><Metric title="Mensajes últimas 24 h" value={stats.messages24h} icon={MessageSquare} /><Metric title="Solicitudes abiertas" value={stats.openRequests} icon={CalendarCheck} /><Metric title="Incidencias abiertas" value={stats.openIncidents} icon={AlertTriangle} /><Metric title="Tareas para hoy" value={stats.tasksToday} icon={ClipboardList} /></div>}
-
-        <Card><CardHeader><CardTitle className="text-base">Operación de hospitalidad</CardTitle></CardHeader><CardContent className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          <Button asChild><Link href="/concierge/requests">Gestionar solicitudes de huéspedes</Link></Button>
-          <Button asChild variant="outline"><Link href="/guest-requests">Abrir formulario para huéspedes</Link></Button>
-          <Button asChild variant="outline"><Link href="/tasks">Ver tareas operativas</Link></Button>
-          <Button asChild variant="outline"><Link href="/bookings">Reservas y disponibilidad</Link></Button>
-          <Button asChild variant="outline"><Link href="/concierge/leads">Contactos y oportunidades</Link></Button>
-          <Button asChild variant="outline"><Link href="/concierge/messages">Mensajes</Link></Button>
-        </CardContent></Card>
-
-        <Card><CardHeader><CardTitle className="text-base">Regla de seguimiento</CardTitle></CardHeader><CardContent className="text-sm leading-6 text-muted-foreground">Las solicitudes de huéspedes permanecen como registro de hospitalidad. Cuando requieren ejecución, se genera una tarea vinculada para asignar trabajadores o voluntarios, registrar seguridad, estado y resultado sin duplicar el origen.</CardContent></Card>
-      </div>
-    </AppLayout>
-  )
-}
-
-function Metric({ title, value, icon: Icon }: { title: string; value: number; icon: typeof Users }) {
-  return <Card><CardContent className="flex items-start justify-between p-4"><div><p className="text-sm text-muted-foreground">{title}</p><p className="mt-1 text-3xl font-semibold tabular-nums">{value.toLocaleString("es-CL")}</p></div><Icon className="h-5 w-5 text-muted-foreground" /></CardContent></Card>
-}
+type ConciergeStats={leads:number;messages24h:number;openIncidents:number;openRequests:number;tasksToday:number}
+const emptyStats:ConciergeStats={leads:0,messages24h:0,openIncidents:0,openRequests:0,tasksToday:0}
+const COPY={
+ en:{title:"Concierge and hospitality",description:"Operational control of guests, messages, requests, incidents and service tasks at Fundo Corcovado.",refresh:"Refresh",error:"The dashboard could not be refreshed.",newContacts:"New contacts",messages:"Messages · last 24 h",requests:"Open requests",incidents:"Open incidents",tasks:"Tasks due today",operation:"Hospitality operations",manage:"Manage guest requests",guestForm:"Open guest form",tasksLink:"View operational tasks",bookings:"Reservations and availability",leads:"Contacts and opportunities",messagesLink:"Messages",rule:"Follow-up rule",ruleText:"Guest requests remain hospitality records. When execution is required, create a linked task for assignment, safety, status and outcome tracking without duplicating the source."},
+ es:{title:"Concierge y hospitalidad",description:"Control operativo de huéspedes, mensajes, solicitudes, incidencias y tareas de atención en Fundo Corcovado.",refresh:"Actualizar",error:"No fue posible actualizar el panel.",newContacts:"Nuevos contactos",messages:"Mensajes últimas 24 h",requests:"Solicitudes abiertas",incidents:"Incidencias abiertas",tasks:"Tareas para hoy",operation:"Operación de hospitalidad",manage:"Gestionar solicitudes de huéspedes",guestForm:"Abrir formulario para huéspedes",tasksLink:"Ver tareas operativas",bookings:"Reservas y disponibilidad",leads:"Contactos y oportunidades",messagesLink:"Mensajes",rule:"Regla de seguimiento",ruleText:"Las solicitudes de huéspedes permanecen como registro de hospitalidad. Cuando requieren ejecución, se genera una tarea vinculada para asignar trabajadores o voluntarios, registrar seguridad, estado y resultado sin duplicar el origen."},
+ de:{title:"Concierge und Hospitality",description:"Operative Steuerung von Gästen, Nachrichten, Anfragen, Vorfällen und Serviceaufgaben bei Fundo Corcovado.",refresh:"Aktualisieren",error:"Das Dashboard konnte nicht aktualisiert werden.",newContacts:"Neue Kontakte",messages:"Nachrichten · letzte 24 Std.",requests:"Offene Anfragen",incidents:"Offene Vorfälle",tasks:"Heute fällige Aufgaben",operation:"Hospitality-Betrieb",manage:"Gästeanfragen verwalten",guestForm:"Gästeformular öffnen",tasksLink:"Operative Aufgaben anzeigen",bookings:"Reservierungen und Verfügbarkeit",leads:"Kontakte und Chancen",messagesLink:"Nachrichten",rule:"Nachverfolgungsregel",ruleText:"Gästeanfragen bleiben Hospitality-Datensätze. Wenn Ausführung nötig ist, wird eine verknüpfte Aufgabe für Zuweisung, Sicherheit, Status und Ergebnis erstellt, ohne die Quelle zu duplizieren."},
+} as const
+export default function ConciergeDashboard(){const supabase=useMemo(()=>createBrowserClient(),[]);const{language}=useLanguage();const lang=(language in COPY?language:"en") as keyof typeof COPY;const c=COPY[lang];const locale=lang==="es"?"es-CL":lang==="de"?"de-DE":"en-US";const nf=useMemo(()=>new Intl.NumberFormat(locale),[locale]);const[stats,setStats]=useState<ConciergeStats>(emptyStats);const[loading,setLoading]=useState(true);const[error,setError]=useState(false);async function loadDashboard(){setLoading(true);setError(false);const today=new Intl.DateTimeFormat("en-CA",{timeZone:"America/Santiago",year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date());const since=new Date(Date.now()-86400000).toISOString();const[leads,messages,incidents,requests,tasks]=await Promise.all([supabase.from("leads").select("id",{count:"exact",head:true}).eq("stage","new"),supabase.from("messages").select("id",{count:"exact",head:true}).gte("ts",since),supabase.from("incidents").select("id",{count:"exact",head:true}).eq("status","open"),supabase.from("hospitality_requests").select("id",{count:"exact",head:true}).not("status","in","(completed,cancelled)"),supabase.from("tasks").select("id",{count:"exact",head:true}).eq("due_date",today).in("status",["nueva","en_progreso"])]);const firstError=leads.error??messages.error??incidents.error??requests.error??tasks.error;if(firstError){console.error("CONCIERGE_DASHBOARD_LOAD_FAILED",firstError);setError(true)}setStats({leads:leads.count??0,messages24h:messages.count??0,openIncidents:incidents.count??0,openRequests:requests.count??0,tasksToday:tasks.count??0});setLoading(false)}useEffect(()=>{void loadDashboard()},[]);return <AppLayout><PageHeader title={c.title} description={c.description} actions={<Button variant="outline" onClick={()=>void loadDashboard()} disabled={loading}><RefreshCw className={`mr-2 h-4 w-4 ${loading?"animate-spin":""}`}/>{c.refresh}</Button>}/><div className="space-y-6 p-4 md:p-6">{error&&<Card className="border-destructive/40"><CardContent className="p-4 text-sm text-destructive">{c.error}</CardContent></Card>}{loading?<div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin"/></div>:<div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5"><Metric title={c.newContacts} value={stats.leads} icon={Users} nf={nf}/><Metric title={c.messages} value={stats.messages24h} icon={MessageSquare} nf={nf}/><Metric title={c.requests} value={stats.openRequests} icon={CalendarCheck} nf={nf}/><Metric title={c.incidents} value={stats.openIncidents} icon={AlertTriangle} nf={nf}/><Metric title={c.tasks} value={stats.tasksToday} icon={ClipboardList} nf={nf}/></div>}<Card><CardHeader><CardTitle className="text-base">{c.operation}</CardTitle></CardHeader><CardContent className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3"><Button asChild><Link href="/concierge/requests">{c.manage}</Link></Button><Button asChild variant="outline"><Link href="/guest-requests">{c.guestForm}</Link></Button><Button asChild variant="outline"><Link href="/tasks">{c.tasksLink}</Link></Button><Button asChild variant="outline"><Link href="/bookings">{c.bookings}</Link></Button><Button asChild variant="outline"><Link href="/concierge/leads">{c.leads}</Link></Button><Button asChild variant="outline"><Link href="/concierge/messages">{c.messagesLink}</Link></Button></CardContent></Card><Card><CardHeader><CardTitle className="text-base">{c.rule}</CardTitle></CardHeader><CardContent className="text-sm leading-6 text-muted-foreground">{c.ruleText}</CardContent></Card></div></AppLayout>}
+function Metric({title,value,icon:Icon,nf}:{title:string;value:number;icon:typeof Users;nf:Intl.NumberFormat}){return <Card><CardContent className="flex items-start justify-between p-4"><div><p className="text-sm text-muted-foreground">{title}</p><p className="mt-1 text-3xl font-semibold tabular-nums">{nf.format(value)}</p></div><Icon className="h-5 w-5 text-muted-foreground"/></CardContent></Card>}

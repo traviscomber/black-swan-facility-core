@@ -64,13 +64,32 @@ const copy = {
     unknown: 'Unidentified',
     dataNote: 'Figures come from stored records. They do not represent automatic telemetry or physical tank inventory.',
   },
+  de: {
+    title: 'Analysezeitraum',
+    description: 'Alle folgenden Kennzahlen beziehen sich ausschließlich auf den ausgewählten Monat.',
+    showing: 'Angezeigt',
+    records: 'Datensätze im Zeitraum',
+    liters: 'Erfasste Liter',
+    cost: 'Erfasste Ausgaben',
+    average: 'Durchschnittskosten pro Liter',
+    noData: 'Für diesen Zeitraum liegen keine Datensätze vor.',
+    byFuel: 'Verbrauch nach Kraftstoffart',
+    fuel: 'Kraftstoff',
+    byVehicle: 'Fahrzeuge mit höchstem Verbrauch',
+    vehicle: 'Fahrzeug',
+    transactions: 'Datensätze',
+    unknown: 'Nicht identifiziert',
+    dataNote: 'Die Werte stammen aus gespeicherten Datensätzen. Sie stellen weder automatische Telemetrie noch den physischen Tankbestand dar.',
+  },
 } as const
+
+const locales = { es: 'es-CL', en: 'en-US', de: 'de-DE' } as const
 
 export function FuelAnalyticsTab({ records, vehicles }: FuelAnalyticsTabProps) {
   const { language } = useLanguage()
-  const lang = language === 'es' ? 'es' : 'en'
+  const lang = language
   const text = copy[lang]
-  const locale = lang === 'es' ? 'es-CL' : 'en-US'
+  const locale = locales[lang]
 
   const availablePeriods = useMemo(() => {
     return Array.from(new Set(records.map((record) => record.date_recorded?.slice(0, 7)).filter(Boolean))).sort().reverse()
