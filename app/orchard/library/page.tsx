@@ -151,6 +151,13 @@ function southChilePriority(name:string){
   const index=SOUTH_CHILE_PRIORITY.findIndex(group=>group.some(alias=>key===alias||key.startsWith(`${alias},`)||key.startsWith(`${alias} (`)))
   return index===-1?SOUTH_CHILE_PRIORITY.length:index
 }
+function chileRepresentativeScore(name:string,group:string[]){
+  const key=normalizeCropName(name)
+  if(group.some(alias=>key===alias))return 0
+  if(/\b(fodder|silage|seeds?)\b/.test(key))return 9
+  if(/\b(edible|harvested green|vegetable|red|dry)\b/.test(key))return 1
+  return 3
+}
 function cropPhoto(name:string){
   const key=normalizeCropName(name)
   return SOUTH_CHILE_CROP_PHOTOS[key] ?? NAMED_CROP_PHOTOS[key] ?? null
@@ -187,8 +194,13 @@ export default function OrchardLibraryPage(){
   const observed=crops.filter(c=>c.provenance_type==="observed").length
   const reusable=successions.filter(s=>s.knowledge_applied_at).length
   const orderedCrops=useMemo(()=>[...crops].sort((a,b)=>southChilePriority(a.crop_name)-southChilePriority(b.crop_name)||a.crop_name.localeCompare(b.crop_name)),[crops])
-  const chileCrops=useMemo(()=>orderedCrops.filter(c=>southChilePriority(c.crop_name)<SOUTH_CHILE_PRIORITY.length),[orderedCrops])
-  const restCrops=useMemo(()=>orderedCrops.filter(c=>southChilePriority(c.crop_name)===SOUTH_CHILE_PRIORITY.length).sort((a,b)=>a.crop_name.localeCompare(b.crop_name)),[orderedCrops])
+  const chileCrops=useMemo(()=>SOUTH_CHILE_PRIORITY.flatMap((group,index)=>{
+    const candidates=orderedCrops.filter(c=>southChilePriority(c.crop_name)===index)
+    if(!candidates.length)return []
+    return [[...candidates].sort((a,b)=>chileRepresentativeScore(a.crop_name,group)-chileRepresentativeScore(b.crop_name,group)||a.crop_name.localeCompare(b.crop_name))[0]]
+  }),[orderedCrops])
+  const chileCropIds=useMemo(()=>new Set(chileCrops.map(c=>c.id)),[chileCrops])
+  const restCrops=useMemo(()=>orderedCrops.filter(c=>!chileCropIds.has(c.id)).sort((a,b)=>a.crop_name.localeCompare(b.crop_name)),[orderedCrops,chileCropIds])
   const catalogLetters=useMemo(()=>Array.from(new Set(restCrops.map(c=>cropInitial(c.crop_name)).filter(letter=>/^[A-Z]$/.test(letter)))).sort(),[restCrops])
   const visibleCrops=useMemo(()=>catalogIndex==="CL"?chileCrops:restCrops.filter(c=>cropInitial(c.crop_name)===catalogIndex),[catalogIndex,chileCrops,restCrops])
 
@@ -232,7 +244,7 @@ export default function OrchardLibraryPage(){
       </div>
     </section>
 
-    {crops.length>0&&<section className="space-y-4"><div className="flex items-end justify-between gap-3"><div><p className="text-xs font-semibold uppercase tracking-[.18em] text-primary">{es?"Índice de cultivos":"Crop index"}</p><h2 className="text-xl font-semibold">{catalogIndex==="CL"?(es?"Prioridad Chile":"Chile priority"):`${es?"Cultivos":"Crops"} · ${catalogIndex}`}</h2></div><p className="hidden text-sm text-muted-foreground md:block">{es?"Chile primero; luego índice alfabético A–Z.":"Chile first; then the alphabetical A–Z index."}</p></div>
+    {crops.length>0&&<section className="space-y-4"><div className="flex items-end justify-between gap-3"><div><p className="text-xs font-semibold uppercase tracking-[.18em] text-primary">{es?"Índice de cultivos":"Crop index"}</p><h2 className="text-xl font-semibold">{catalogIndex==="CL"?(es?"Prioridad Chile":"Chile priority"):`${es?"Cultivos":"Crops"} · ${catalogIndex}`}</h2></div><p className="hidden text-sm text-muted-foreground md:block">{es?"Chile muestra un cultivo representativo por grupo; las variantes FAO quedan en el índice A–Z.":"Chile shows one representative crop per group; FAO variants remain in the A–Z index."}</p></div>
       <div className="sticky top-0 z-20 -mx-1 flex gap-2 overflow-x-auto border-y border-white/10 bg-background/95 px-1 py-3 backdrop-blur supports-[backdrop-filter]:bg-background/80">
         <Button size="sm" variant={catalogIndex==="CL"?"default":"outline"} className="shrink-0" onClick={()=>setCatalogIndex("CL")}>{es?"Chile":"Chile"}<span className="ml-2 text-[10px] opacity-70">{chileCrops.length}</span></Button>
         {catalogLetters.map(letter=><Button key={letter} size="sm" variant={catalogIndex===letter?"default":"outline"} className="h-9 w-9 shrink-0 px-0" onClick={()=>setCatalogIndex(letter)}>{letter}</Button>)}
