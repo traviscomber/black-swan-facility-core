@@ -23,6 +23,13 @@ type DailyItem = {
   createdAt?: string | null
 }
 
+const locales = { en: "en-US", es: "es-CL", de: "de-DE" } as const
+const detailCopy = {
+  en: { guest: "Guest", location: "Location", room: "Room", received: "Received", priority: "Priority" },
+  es: { guest: "Huésped", location: "Casa", room: "Habitación", received: "Recibida", priority: "Prioridad" },
+  de: { guest: "Gast", location: "Ort", room: "Zimmer", received: "Empfangen", priority: "Priorität" },
+} as const
+
 function chileOperatingDate() {
   const parts = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Santiago", year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(new Date())
   const value = (type: Intl.DateTimeFormatPartTypes) => parts.find((part) => part.type === type)?.value ?? ""
@@ -42,9 +49,9 @@ function relationLabel(value: unknown, key: string) {
   return null
 }
 
-function requestTime(value: string | null | undefined, language: string) {
+function requestTime(value: string | null | undefined, language: keyof typeof locales) {
   if (!value) return null
-  return new Intl.DateTimeFormat(language === "de" ? "de-DE" : language === "en" ? "en-US" : "es-CL", {
+  return new Intl.DateTimeFormat(locales[language], {
     timeZone: "America/Santiago",
     hour: "2-digit",
     minute: "2-digit",
@@ -55,20 +62,16 @@ export function DailyOperationsPanel() {
   const supabase = useMemo(() => createClient(), [])
   const { language } = useLanguage()
   const copy = dailyOperationsCopy[language]
+  const details = detailCopy[language]
   const categoryLabels = { housekeeping: "Housekeeping", hospitality: "Hospitality", operations: copy.operations }
-  const detailCopy = language === "en"
-    ? { guest: "Guest", location: "Location", room: "Room", received: "Received", priority: "Priority" }
-    : language === "de"
-      ? { guest: "Gast", location: "Ort", room: "Zimmer", received: "Empfangen", priority: "Priorität" }
-      : { guest: "Huésped", location: "Casa", room: "Habitación", received: "Recibida", priority: "Prioridad" }
   const [open, setOpen] = useState(false)
   const [items, setItems] = useState<DailyItem[]>([])
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState(false)
 
   const loadItems = useCallback(async () => {
     setLoading(true)
-    setError(null)
+    setError(false)
     const today = chileOperatingDate()
     const [year, month, day] = today.split("-").map(Number)
     const nextDate = new Date(Date.UTC(year, month - 1, day + 1))
@@ -92,7 +95,8 @@ export function DailyOperationsPanel() {
 
     const firstError = housekeepingResult.error || hospitalityResult.error || tasksResult.error
     if (firstError) {
-      setError(firstError.message)
+      console.error("Daily operations load failed", firstError)
+      setError(true)
       setItems([])
       setLoading(false)
       return
@@ -121,17 +125,14 @@ export function DailyOperationsPanel() {
 
   useEffect(() => {
     void loadItems()
-
     const onLocalRefresh = () => void loadItems()
     window.addEventListener(DAILY_OPERATIONS_REFRESH_EVENT, onLocalRefresh)
-
     const channel = supabase
       .channel("bookings-daily-operations-live")
       .on("postgres_changes", { event: "*", schema: "public", table: "hospitality_requests" }, () => void loadItems())
       .on("postgres_changes", { event: "*", schema: "public", table: "housekeeping_tasks" }, () => void loadItems())
       .on("postgres_changes", { event: "*", schema: "public", table: "tasks" }, () => void loadItems())
       .subscribe()
-
     return () => {
       window.removeEventListener(DAILY_OPERATIONS_REFRESH_EVENT, onLocalRefresh)
       void supabase.removeChannel(channel)
@@ -171,7 +172,7 @@ export function DailyOperationsPanel() {
             <p className="text-sm text-muted-foreground">{copy.loading}</p>
           ) : error ? (
             <div className="flex items-center justify-between gap-3">
-              <p className="text-sm text-destructive">{copy.loadFailed}: {error}</p>
+              <p className="text-sm text-destructive">{copy.loadFailed}</p>
               <Button size="sm" variant="outline" onClick={() => void loadItems()}>{copy.retry}</Button>
             </div>
           ) : items.length === 0 ? (
@@ -182,12 +183,7 @@ export function DailyOperationsPanel() {
                 const isHospitality = item.category === "hospitality"
                 const receivedAt = requestTime(item.createdAt, language)
                 return (
-                  <article
-                    key={`${item.category}-${item.id}`}
-                    className={isHospitality
-                      ? "border border-primary/40 bg-[var(--bs-surface-primary)] p-3"
-                      : "border border-border/30 bg-[var(--bs-surface-primary)] p-3"}
-                  >
+                  <article key={`${item.category}-${item.id}`} className={isHospitality ? "border border-primary/40 bg-[var(--bs-surface-primary)] p-3" : "border border-border/30 bg-[var(--bs-surface-primary)] p-3"}>
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
                         <div className="flex items-center gap-2">
@@ -198,33 +194,15 @@ export function DailyOperationsPanel() {
                       </div>
                       <Badge variant={isHospitality ? "default" : "outline"}>{item.status}</Badge>
                     </div>
-
                     {isHospitality ? (
                       <div className="mt-3 grid gap-2 text-xs sm:grid-cols-2">
-                        <div className="border border-border/30 bg-background/20 p-2.5">
-                          <p className="text-[10px] uppercase tracking-[0.12em] text-muted-foreground">{detailCopy.guest}</p>
-                          <p className="mt-1 font-medium text-foreground">{item.guestName || "—"}</p>
-                        </div>
-                        <div className="border border-border/30 bg-background/20 p-2.5">
-                          <p className="text-[10px] uppercase tracking-[0.12em] text-muted-foreground">{detailCopy.location}</p>
-                          <p className="mt-1 flex items-center gap-1.5 font-medium text-foreground"><MapPin className="h-3 w-3 text-primary" />{item.locationName || "—"}</p>
-                        </div>
-                        <div className="border border-border/30 bg-background/20 p-2.5">
-                          <p className="text-[10px] uppercase tracking-[0.12em] text-muted-foreground">{detailCopy.room}</p>
-                          <p className="mt-1 font-medium text-foreground">{item.roomName || "—"}</p>
-                        </div>
-                        <div className="border border-border/30 bg-background/20 p-2.5">
-                          <p className="text-[10px] uppercase tracking-[0.12em] text-muted-foreground">{detailCopy.received}</p>
-                          <p className="mt-1 font-medium text-foreground">{receivedAt || "—"}</p>
-                        </div>
+                        <div className="border border-border/30 bg-background/20 p-2.5"><p className="text-[10px] uppercase tracking-[0.12em] text-muted-foreground">{details.guest}</p><p className="mt-1 font-medium text-foreground">{item.guestName || "—"}</p></div>
+                        <div className="border border-border/30 bg-background/20 p-2.5"><p className="text-[10px] uppercase tracking-[0.12em] text-muted-foreground">{details.location}</p><p className="mt-1 flex items-center gap-1.5 font-medium text-foreground"><MapPin className="h-3 w-3 text-primary" />{item.locationName || "—"}</p></div>
+                        <div className="border border-border/30 bg-background/20 p-2.5"><p className="text-[10px] uppercase tracking-[0.12em] text-muted-foreground">{details.room}</p><p className="mt-1 font-medium text-foreground">{item.roomName || "—"}</p></div>
+                        <div className="border border-border/30 bg-background/20 p-2.5"><p className="text-[10px] uppercase tracking-[0.12em] text-muted-foreground">{details.received}</p><p className="mt-1 font-medium text-foreground">{receivedAt || "—"}</p></div>
                       </div>
-                    ) : item.context ? (
-                      <p className="mt-2 text-xs text-muted-foreground">{item.context}</p>
-                    ) : null}
-
-                    {item.priority && (
-                      <p className="mt-3 text-[11px] uppercase tracking-[0.12em] text-muted-foreground">{detailCopy.priority}: {item.priority}</p>
-                    )}
+                    ) : item.context ? <p className="mt-2 text-xs text-muted-foreground">{item.context}</p> : null}
+                    {item.priority && <p className="mt-3 text-[11px] uppercase tracking-[0.12em] text-muted-foreground">{details.priority}: {item.priority}</p>}
                   </article>
                 )
               })}
