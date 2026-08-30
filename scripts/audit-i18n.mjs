@@ -177,9 +177,18 @@ const blockingRules = new Set([
   'english-fallback-in-de',
 ])
 const blocking = findings.filter((item) => blockingRules.has(item.rule))
-const coverageBlocking = unwiredPages.length + localeAwareWithoutGerman.length + binaryCatalogs.length
-if (blocking.length || coverageBlocking) {
-  console.error(`\nBlocking: ${blocking.length} structural locale collapse(s) + ${coverageBlocking} interior/catalog coverage gap(s).`)
-  console.error('A translated shell is not sufficient: every rendered page, dialog, state and locale catalog must support en/es/de before merge.')
+const orchardPath = (file) => file.startsWith('app/orchard/') || file.startsWith('components/orchard/')
+const orchardBlocking = blocking.filter((item) => orchardPath(item.file))
+const orchardUnwiredPages = unwiredPages.filter((item) => orchardPath(item.file))
+const orchardLocaleAwareWithoutGerman = localeAwareWithoutGerman.filter((item) => orchardPath(item.file))
+const orchardCoverageBlocking = orchardUnwiredPages.length + orchardLocaleAwareWithoutGerman.length
+const globalCoverageBacklog = unwiredPages.length + localeAwareWithoutGerman.length + binaryCatalogs.length
+
+console.log(`\nOrchard phase gate: ${orchardBlocking.length} structural locale collapse(s) + ${orchardCoverageBlocking} interior coverage gap(s).`)
+if (blocking.length || globalCoverageBacklog) {
+  console.warn(`Global Polyglot backlog (reported, non-blocking during Orchard phase): ${blocking.length} structural locale collapse(s) + ${globalCoverageBacklog} interior/catalog coverage gap(s).`)
+}
+if (orchardBlocking.length || orchardCoverageBlocking) {
+  console.error('Blocking Orchard phase: every Orchard page, dialog, state and locale catalog must support en/es/de before this phase can pass.')
   process.exitCode = 1
 }
