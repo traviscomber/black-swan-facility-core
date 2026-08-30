@@ -49,6 +49,10 @@ const ORCHARD_HERO_EXCLUSIONS = new Set([
   "/orchard/season-summary",
   "/orchard/traceability",
   "/orchard/reports",
+  "/orchard/mobile",
+  "/orchard/health",
+  "/orchard/notes",
+  "/orchard/tasks",
 ])
 
 const PLANNING_ROUTES = [
@@ -70,10 +74,6 @@ const OPERATIONS_ROUTES = [
   "/orchard/pests",
   "/orchard/soil",
   "/orchard/equipment",
-  "/orchard/mobile",
-  "/orchard/health",
-  "/orchard/notes",
-  "/orchard/tasks",
 ]
 
 const PERFORMANCE_ROUTES = [
