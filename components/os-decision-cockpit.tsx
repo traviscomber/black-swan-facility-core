@@ -8,8 +8,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { createClient } from '@/lib/supabase/client'
 import { useLanguage } from '@/lib/hooks/use-language'
 
- type Navigation = { items?: Array<{ key: string; href: string; label: string }> }
- type DecisionItem = {
+type Navigation = { items?: Array<{ key: string; href: string; label: string }> }
+type DecisionItem = {
   key: string
   domain: 'hospitality' | 'finance' | 'maintenance' | 'procurement' | 'tasks' | 'issues'
   title: string
@@ -17,8 +17,8 @@ import { useLanguage } from '@/lib/hooks/use-language'
   href: string
   priority: string | null
   rank: number
- }
- type ChangeSignal = { key: string; label: string; value: number; href: string }
+}
+type ChangeSignal = { key: string; label: string; value: number; href: string }
 
 const copy = {
   en: {
@@ -155,7 +155,7 @@ export function OsDecisionCockpit() {
       next.push({ key: `task-${row.id}`, domain: 'tasks', title: row.title || text.taskFallback, detail: `${text.overdue}${row.due_date ? ` · ${text.due} ${row.due_date}` : ''}`, href: '/tasks', priority: row.priority, rank: 2 })
     }
     if (!issueRows.error) for (const row of issueRows.data ?? []) {
-      next.push({ key: `issue-${row.id}`, domain: 'issues', title: row.title || text.issueFallback, detail: [row.status ? `${text.status} ${row.status}` : null, row.created_at ? `${text.created} ${String(row.created_at).slice(0, 10)}` : null].filter(Boolean).join(' · '), href: '/issues', priority: row.severity || row.priority, rank: 2 })
+      next.push({ key: `issue-${row.id}`, domain: 'issues', title: row.title || text.issueFallback, detail: [row.status ? `${text.status} ${row.status}` : null, row.created_at ? `${text.created} ${String(row.created_at).slice(0, 10)}` : null].filter(Boolean).join(' · '), href: `/issues/${row.id}`, priority: row.severity || row.priority, rank: 2 })
     }
 
     next.sort((a, b) => a.rank - b.rank || priorityRank(a.priority) - priorityRank(b.priority) || a.title.localeCompare(b.title, localeMap[language]))
