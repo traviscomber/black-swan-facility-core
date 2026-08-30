@@ -40,6 +40,11 @@ const workspaceMeta = {
     es: ['Educación', 'Colecciones y materiales educativos derivados de eventos, incluyendo estado editorial, clasificación de privacidad y preparación para publicación.'],
     de: ['Bildung', 'Aus Veranstaltungen abgeleitete Bildungssammlungen und Materialien einschließlich Redaktionsstatus, Datenschutzklassifizierung und Publikationsbereitschaft.'],
   },
+  events: {
+    en: ['Events', 'Member-linked event planning, invite-only guest pages, external service providers, operational status and Education output.'],
+    es: ['Eventos', 'Planificación de eventos vinculada a miembros, páginas de invitados por invitación, proveedores externos, estado operativo y resultados para Educación.'],
+    de: ['Veranstaltungen', 'Mitgliederbezogene Veranstaltungsplanung, Gastseiten nur auf Einladung, externe Dienstleister, Betriebsstatus und Ergebnisse für Bildung.'],
+  },
   'event-providers': {
     en: ['External Event Providers', 'Canonical supplier-backed inventory of external event service providers, compliance state, preferred status and engagement history.'],
     es: ['Proveedores externos de eventos', 'Inventario canónico respaldado por proveedores para servicios externos de eventos, estado de cumplimiento, preferencia e historial de contrataciones.'],
