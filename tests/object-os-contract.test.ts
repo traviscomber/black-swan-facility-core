@@ -5,6 +5,7 @@ import { readFileSync } from "node:fs"
 const assetObject = readFileSync(new URL("../app/inventory/[id]/page.tsx", import.meta.url), "utf8")
 const purchaseIndex = readFileSync(new URL("../app/procurement/requests/page.tsx", import.meta.url), "utf8")
 const purchaseObject = readFileSync(new URL("../app/procurement/requests/[id]/page.tsx", import.meta.url), "utf8")
+const purchaseObjectView = readFileSync(new URL("../components/procurement-request-object-view.tsx", import.meta.url), "utf8")
 
 test("asset object connects canonical maintenance, issues, custody and movement context", () => {
   assert.match(assetObject, /Objeto · Activo/)
@@ -25,7 +26,7 @@ test("procurement request list opens the canonical purchase object", () => {
 })
 
 test("purchase object follows request through sourcing, order, receiving and inventory", () => {
-  assert.match(purchaseObject, /Objeto · Compra/)
+  assert.match(purchaseObjectView, /Objeto · Compra/)
   assert.match(purchaseObject, /from\("procurement_requests"\)/)
   assert.match(purchaseObject, /from\("procurement_quotation_rounds"\)/)
   assert.match(purchaseObject, /from\("procurement_quotation_requests"\)/)
@@ -38,12 +39,12 @@ test("purchase object follows request through sourcing, order, receiving and inv
   assert.match(purchaseObject, /from\("inventory_replenishment_needs"\)/)
   assert.match(purchaseObject, /from\("procurement_approval_events"\)/)
   assert.match(purchaseObject, /from\("procurement_audit_log"\)/)
-  assert.match(purchaseObject, /Comprar/)
-  assert.match(purchaseObject, /Cotizar/)
-  assert.match(purchaseObject, /Aprobar/)
-  assert.match(purchaseObject, /En camino/)
-  assert.match(purchaseObject, /Recibir/)
-  assert.match(purchaseObject, /Stock listo/)
+  assert.match(purchaseObjectView, /Comprar/)
+  assert.match(purchaseObjectView, /Cotizar/)
+  assert.match(purchaseObjectView, /Aprobar/)
+  assert.match(purchaseObjectView, /En camino/)
+  assert.match(purchaseObjectView, /Recibir/)
+  assert.match(purchaseObjectView, /Stock listo/)
   assert.doesNotMatch(purchaseObject, /\.insert\(/)
   assert.doesNotMatch(purchaseObject, /\.update\(/)
   assert.doesNotMatch(purchaseObject, /\.delete\(/)
