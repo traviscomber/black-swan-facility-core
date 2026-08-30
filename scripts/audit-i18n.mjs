@@ -14,13 +14,12 @@ const rules = [
   ['binary-locale-union', /(?:Record|Partial<Record)<\s*["'](?:en|es)["']\s*\|\s*["'](?:en|es)["']/g],
   ['binary-lang-normalizer', /\blang(?:uage)?\s*=\s*language\s*===\s*["'](?:en|es)["']\s*\?\s*["'](?:en|es)["']\s*:\s*["'](?:en|es)["']/g],
   ['binary-locale-normalizer', /\blocale\s*=\s*(?:lang|language)\s*===\s*["'](?:en|es)["']\s*\?[^\n;]+:[^\n;]+/g],
+  ['binary-locale-map', /(?:label|labels|copy|text|messages|translations|statuses|names)\s*[:=][\s\S]{0,120}\ben\s*:\s*["'`][\s\S]{0,260}\bes\s*:\s*["'`]/g],
   ['legacy-deu-locale', /["']deu["']/g],
   ['english-fallback-in-de', /language\s*===\s*["']de["'][\s\S]{0,220}translations\.en/g],
 ]
 
 const allowedBinaryFiles = new Set([
-  // Language switcher controls can legitimately compare the active language
-  // against each explicit locale. They are not binary translation branches.
   'components/language-switcher.tsx',
 ])
 
@@ -33,8 +32,29 @@ function walk(dir) {
   })
 }
 
+function countMatches(source, pattern) {
+  const copy = new RegExp(pattern.source, pattern.flags.includes('g') ? pattern.flags : `${pattern.flags}g`)
+  let count = 0
+  while (copy.exec(source)) count += 1
+  return count
+}
+
+function hasLocaleSignal(source) {
+  return /\buseLanguage\s*\(/.test(source)
+    || /\b(?:t|translate)\s*\(\s*["'`]/.test(source)
+    || /from\s+["'][^"']*translations?[^"']*["']/.test(source)
+    || /\b(?:en|es|de)\s*:\s*\{/.test(source)
+}
+
+function visibleLiteralCount(source) {
+  const jsxText = countMatches(source, />\s*([A-Za-zÁÉÍÓÚÜÑáéíóúüñÄÖÜäöüß][^<>{}\n]{1,160})\s*</g)
+  const visibleProps = countMatches(source, /\b(?:title|description|label|placeholder|aria-label|aria-description|alt|helperText|emptyText|message)\s*=\s*["'][A-Za-zÁÉÍÓÚÜÑáéíóúüñÄÖÜäöüß][^"']{1,180}["']/g)
+  return jsxText + visibleProps
+}
+
+const allFiles = roots.flatMap(walk)
 const findings = []
-for (const file of roots.flatMap(walk)) {
+for (const file of allFiles) {
   if (ignored.includes(file)) continue
   const source = fs.readFileSync(file, 'utf8')
   for (const [rule, pattern] of rules) {
@@ -49,12 +69,41 @@ for (const file of roots.flatMap(walk)) {
   }
 }
 
+const pageFiles = walk('app').filter((file) => /\/(?:page|layout)\.(?:tsx|jsx|ts|js)$/.test(file))
+const pageCoverage = pageFiles.map((file) => {
+  const source = fs.readFileSync(file, 'utf8')
+  const literals = visibleLiteralCount(source)
+  const localeSignal = hasLocaleSignal(source)
+  const explicitlyMentionsDe = /["']de["']\s*:|\bde\s*:|===\s*["']de["']|\bdeTranslations\b/.test(source)
+  return { file, literals, localeSignal, explicitlyMentionsDe }
+})
+
+const unwiredPages = pageCoverage.filter((item) => item.literals > 0 && !item.localeSignal)
+const localeAwareWithoutGerman = pageCoverage.filter((item) => item.literals > 0 && item.localeSignal && !item.explicitlyMentionsDe)
+
+const translationFiles = walk('lib/translations').filter((file) => !ignored.includes(file))
+const binaryCatalogs = translationFiles.filter((file) => {
+  const source = fs.readFileSync(file, 'utf8')
+  const hasEn = /\ben\s*:\s*\{/.test(source)
+  const hasEs = /\bes\s*:\s*\{/.test(source)
+  const hasDe = /\bde\s*:\s*\{/.test(source)
+  return hasEn && hasEs && !hasDe
+})
+
 const byRule = Object.groupBy(findings, (item) => item.rule)
-console.log(`\nPolyglot i18n audit: ${findings.length} structural finding(s)`)
+console.log(`\nPolyglot structural audit: ${findings.length} finding(s)`)
 for (const [rule, items] of Object.entries(byRule)) {
   console.log(`\n[${rule}] ${items.length}`)
   for (const item of items) console.log(`- ${item.file}:${item.line} :: ${item.sample}`)
 }
+
+console.log(`\nPolyglot interior-page inventory: ${pageFiles.length} page/layout file(s)`)
+console.log(`[unwired-interior-pages] ${unwiredPages.length}`)
+for (const item of unwiredPages) console.log(`- ${item.file} :: ${item.literals} visible literal candidate(s), no locale signal`)
+console.log(`\n[locale-aware-but-no-explicit-de] ${localeAwareWithoutGerman.length}`)
+for (const item of localeAwareWithoutGerman) console.log(`- ${item.file} :: ${item.literals} visible literal candidate(s)`)
+console.log(`\n[binary-translation-catalogs] ${binaryCatalogs.length}`)
+for (const file of binaryCatalogs) console.log(`- ${file}`)
 
 const blockingRules = new Set([
   'binary-es-locale',
@@ -62,11 +111,13 @@ const blockingRules = new Set([
   'binary-locale-union',
   'binary-lang-normalizer',
   'binary-locale-normalizer',
+  'binary-locale-map',
   'english-fallback-in-de',
 ])
 const blocking = findings.filter((item) => blockingRules.has(item.rule))
-if (blocking.length) {
-  console.error(`\nBlocking: ${blocking.length} locale branch(es) still collapse /en /es /de into a two-language UI.`)
-  console.error('Every user-facing branch must define all three selected locales explicitly before merge.')
+const coverageBlocking = unwiredPages.length + localeAwareWithoutGerman.length + binaryCatalogs.length
+if (blocking.length || coverageBlocking) {
+  console.error(`\nBlocking: ${blocking.length} structural locale collapse(s) + ${coverageBlocking} interior/catalog coverage gap(s).`)
+  console.error('A translated shell is not sufficient: every rendered page, dialog, state and locale catalog must support en/es/de before merge.')
   process.exitCode = 1
 }
