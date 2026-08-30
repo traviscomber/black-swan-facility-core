@@ -25,7 +25,7 @@ const emptyCrop = { crop_name:"", scientific_name:"", crop_family:"", category:"
 const emptyCultivar = { crop_library_id:"", variety:"", days_to_maturity:"", nursery_days:"", plant_spacing_cm:"", row_spacing_cm:"", germination_rate_pct:"", seeds_per_plant:"", target_yield_per_sqm:"", notes:"", source_name:"", source_url:"" }
 const n = (value:string) => value === "" ? null : Number(value)
 
-const CROP_FALLBACK_PHOTO = "https://images.unsplash.com/photo-1416879595882-3373a0480b5b?auto=format&fit=crop&w=1400&q=92"
+const AGRONOMIC_LIBRARY_PHOTO = "https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=2200&q=92"
 const NAMED_CROP_PHOTOS: Record<string,string> = {
   tomato: "https://images.unsplash.com/photo-1592924357228-91a4daadcfea?auto=format&fit=crop&w=1400&q=92",
   tomate: "https://images.unsplash.com/photo-1592924357228-91a4daadcfea?auto=format&fit=crop&w=1400&q=92",
@@ -51,21 +51,22 @@ const NAMED_CROP_PHOTOS: Record<string,string> = {
   beet: "https://images.unsplash.com/photo-1593105544559-ecb03bf76f82?auto=format&fit=crop&w=1400&q=92",
   beetroot: "https://images.unsplash.com/photo-1593105544559-ecb03bf76f82?auto=format&fit=crop&w=1400&q=92",
   betarraga: "https://images.unsplash.com/photo-1593105544559-ecb03bf76f82?auto=format&fit=crop&w=1400&q=92",
-  pepper: "https://cdn.mos.cms.futurecdn.net/drByGsZtfKirRfapJQ2B2C.jpg",
+  "bell pepper": "https://cdn.mos.cms.futurecdn.net/drByGsZtfKirRfapJQ2B2C.jpg",
   pimenton: "https://cdn.mos.cms.futurecdn.net/drByGsZtfKirRfapJQ2B2C.jpg",
   zucchini: "https://upload.wikimedia.org/wikipedia/commons/d/d7/Zucchini_Plant.jpg",
   calabacin: "https://upload.wikimedia.org/wikipedia/commons/d/d7/Zucchini_Plant.jpg",
   "zapallo italiano": "https://upload.wikimedia.org/wikipedia/commons/d/d7/Zucchini_Plant.jpg",
 }
 
+function normalizeCropName(name:string){return name.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/\s+/g," ")}
 function cropPhoto(name:string){
-  const key=name.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"")
-  return Object.entries(NAMED_CROP_PHOTOS).find(([crop])=>key.includes(crop))?.[1] ?? CROP_FALLBACK_PHOTO
+  const key=normalizeCropName(name)
+  if(NAMED_CROP_PHOTOS[key])return NAMED_CROP_PHOTOS[key]
+  const alias=Object.keys(NAMED_CROP_PHOTOS).sort((a,b)=>b.length-a.length).find(crop=>key.startsWith(`${crop},`)||key.startsWith(`${crop} (`))
+  return alias?NAMED_CROP_PHOTOS[alias]:null
 }
 
-function recoverCropPhoto(e:React.SyntheticEvent<HTMLImageElement>){
-  if(e.currentTarget.src!==CROP_FALLBACK_PHOTO)e.currentTarget.src=CROP_FALLBACK_PHOTO
-}
+function recoverCropPhoto(e:React.SyntheticEvent<HTMLImageElement>){e.currentTarget.style.display="none"}
 
 export default function OrchardLibraryPage(){
   const supabase = useMemo(() => createBrowserClient(), [])
@@ -123,7 +124,7 @@ export default function OrchardLibraryPage(){
 
     <section className="grid gap-4 lg:grid-cols-[1.35fr_.65fr]">
       <div className="relative min-h-[280px] overflow-hidden rounded-2xl border border-white/10 bg-black">
-        <img src={cropPhoto(crops[0]?.crop_name??"vegetables")} alt="" onError={recoverCropPhoto} className="absolute inset-0 h-full w-full object-cover opacity-100 [filter:none]" loading="lazy" decoding="async"/>
+        <img src={AGRONOMIC_LIBRARY_PHOTO} alt="" onError={recoverCropPhoto} className="absolute inset-0 h-full w-full object-cover opacity-100 [filter:none]" loading="lazy" decoding="async"/>
         <div className="absolute inset-0" style={{background:"linear-gradient(90deg,rgba(8,10,8,.94) 0%,rgba(8,10,8,.72) 45%,rgba(8,10,8,.16) 100%),linear-gradient(0deg,rgba(8,10,8,.76) 0%,transparent 62%)"}}/>
         <div className="relative z-10 flex h-full min-h-[280px] max-w-2xl flex-col justify-end p-6 md:p-8">
           <div className="mb-3 flex items-center gap-2 text-emerald-200"><Sprout className="h-4 w-4"/><span className="text-xs font-semibold uppercase tracking-[.22em]">{es?"Conocimiento vivo":"Living crop knowledge"}</span></div>
@@ -149,7 +150,8 @@ export default function OrchardLibraryPage(){
 }
 
 function CropVisualCard({crop,cultivars,es}:{crop:CropProfile;cultivars:Cultivar[];es:boolean}){
-  return <Card className="group overflow-hidden border-white/10 bg-card/80"><div className="relative h-[210px] overflow-hidden bg-muted"><img src={cropPhoto(crop.crop_name)} alt={crop.crop_name} onError={recoverCropPhoto} className="h-full w-full object-cover opacity-100 [filter:none] transition-transform duration-500 group-hover:scale-[1.025]" loading="lazy" decoding="async"/><div className="absolute inset-0" style={{background:"linear-gradient(0deg,rgba(7,9,7,.88) 0%,rgba(7,9,7,.12) 72%)"}}/><div className="absolute inset-x-0 bottom-0 p-4 text-white"><div className="mb-2 flex items-center justify-between gap-2"><Badge variant="secondary" className="border-white/10 bg-black/35 text-white backdrop-blur-sm">{crop.category??crop.default_cycle_type??(es?"Cultivo":"Crop")}</Badge><Provenance profile={crop} es={es}/></div><h3 className="text-xl font-semibold tracking-[-.025em]">{crop.crop_name}</h3><p className="text-xs italic text-white/65">{crop.scientific_name??crop.crop_family??""}</p></div></div><CardContent className="space-y-4 p-4"><div className="grid grid-cols-4 gap-2 text-sm"><Datum label={es?"Madurez":"Maturity"} value={crop.days_to_maturity?`${crop.days_to_maturity}d`:"—"}/><Datum label={es?"Vivero":"Nursery"} value={crop.nursery_days!=null?`${crop.nursery_days}d`:"—"}/><Datum label={es?"Germ.":"Germ."} value={crop.germination_rate_pct!=null?`${crop.germination_rate_pct}%`:"—"}/><Datum label={es?"Obs.":"Obs."} value={String(crop.observed_count)}/></div>{cultivars.length>0&&<div><p className="mb-2 text-[10px] font-semibold uppercase tracking-[.16em] text-muted-foreground">{es?"Cultivares":"Cultivars"}</p><div className="flex flex-wrap gap-2">{cultivars.slice(0,4).map(v=><Badge key={v.id} variant="outline">{v.variety}</Badge>)}{cultivars.length>4&&<Badge variant="outline">+{cultivars.length-4}</Badge>}</div></div>}{crop.source_url&&<a href={crop.source_url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs text-muted-foreground transition-colors hover:text-foreground">{crop.source_name??(es?"Ver fuente":"View source")}<ExternalLink className="h-3 w-3"/></a>}</CardContent></Card>
+  const photo=cropPhoto(crop.crop_name)
+  return <Card className="group overflow-hidden border-white/10 bg-card/80"><div className="relative h-[210px] overflow-hidden bg-muted">{photo?<img src={photo} alt={crop.crop_name} onError={recoverCropPhoto} className="h-full w-full object-cover opacity-100 [filter:none] transition-transform duration-500 group-hover:scale-[1.025]" loading="lazy" decoding="async"/>:<div className="absolute inset-0 flex flex-col items-center justify-center bg-[radial-gradient(circle_at_50%_35%,rgba(52,211,153,.16),transparent_36%),linear-gradient(135deg,rgba(20,28,23,1),rgba(34,42,36,1))] text-center"><Leaf className="mb-3 h-8 w-8 text-emerald-300/70"/><span className="text-[10px] font-semibold uppercase tracking-[.2em] text-emerald-200/70">{es?"Perfil de referencia":"Reference profile"}</span><span className="mt-2 max-w-[80%] text-xs text-white/50">{es?"Fotografía específica pendiente de verificación":"Specific photography pending verification"}</span></div>}<div className="absolute inset-0" style={{background:"linear-gradient(0deg,rgba(7,9,7,.88) 0%,rgba(7,9,7,.12) 72%)"}}/><div className="absolute inset-x-0 bottom-0 p-4 text-white"><div className="mb-2 flex items-center justify-between gap-2"><Badge variant="secondary" className="border-white/10 bg-black/35 text-white backdrop-blur-sm">{crop.category??crop.default_cycle_type??(es?"Cultivo":"Crop")}</Badge><Provenance profile={crop} es={es}/></div><h3 className="text-xl font-semibold tracking-[-.025em]">{crop.crop_name}</h3><p className="text-xs italic text-white/65">{crop.scientific_name??crop.crop_family??""}</p></div></div><CardContent className="space-y-4 p-4"><div className="grid grid-cols-4 gap-2 text-sm"><Datum label={es?"Madurez":"Maturity"} value={crop.days_to_maturity?`${crop.days_to_maturity}d`:"—"}/><Datum label={es?"Vivero":"Nursery"} value={crop.nursery_days!=null?`${crop.nursery_days}d`:"—"}/><Datum label={es?"Germ.":"Germ."} value={crop.germination_rate_pct!=null?`${crop.germination_rate_pct}%`:"—"}/><Datum label={es?"Obs.":"Obs."} value={String(crop.observed_count)}/></div>{cultivars.length>0&&<div><p className="mb-2 text-[10px] font-semibold uppercase tracking-[.16em] text-muted-foreground">{es?"Cultivares":"Cultivars"}</p><div className="flex flex-wrap gap-2">{cultivars.slice(0,4).map(v=><Badge key={v.id} variant="outline">{v.variety}</Badge>)}{cultivars.length>4&&<Badge variant="outline">+{cultivars.length-4}</Badge>}</div></div>}{crop.source_url&&<a href={crop.source_url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs text-muted-foreground transition-colors hover:text-foreground">{crop.source_name??(es?"Ver fuente":"View source")}<ExternalLink className="h-3 w-3"/></a>}</CardContent></Card>
 }
 function Provenance({profile,es}:{profile:CropProfile;es:boolean}){if(profile.provenance_type==="reference")return <Badge className="gap-1"><ShieldCheck className="h-3 w-3"/>{es?"Referencia":"Reference"}</Badge>;if(profile.provenance_type==="observed")return <Badge variant="secondary" className="gap-1"><Database className="h-3 w-3"/>{es?"Observado":"Observed"}</Badge>;return <Badge variant="outline">{es?"Manual":"Manual"}</Badge>}
 function Field({label,children}:{label:string;children:ReactNode}){return <div className="space-y-1.5"><Label>{label}</Label>{children}</div>}
