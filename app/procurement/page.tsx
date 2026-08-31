@@ -17,6 +17,8 @@ import { createBrowserClient } from "@/lib/supabase/client"
 type RequestRow = { id: string; request_number: string | null; title: string; category: string; priority: string; status: string; estimated_budget_clp: number | null; required_date: string | null; created_at: string }
 type PurchaseOrderRow = { id: string; order_number: string | null; status: string; currency: string; total: number; expected_delivery: string | null; created_at: string; supplier: { name: string } | null; request: { title: string; request_number: string | null } | null }
 type RawPurchaseOrder = Omit<PurchaseOrderRow, "supplier" | "request"> & { suppliers: { name: string } | { name: string }[] | null; procurement_requests: { title: string; request_number: string | null } | { title: string; request_number: string | null }[] | null }
+type RequestMetricRow = { estimated_budget_clp: number | string | null }
+type OrderMetricRow = { currency: string; total: number | string | null }
 
 const LOCALES = { en: "en-US", es: "es-CL", de: "de-DE" } as const
 const COPY = {
@@ -45,6 +47,10 @@ export default function ProcurementPage() {
   const canManage = !accessLoading && can("procurement.manage") && canAccessDepartment("procurement")
   const [requests, setRequests] = useState<RequestRow[]>([])
   const [orders, setOrders] = useState<PurchaseOrderRow[]>([])
+  const [requestCount, setRequestCount] = useState(0)
+  const [requestedBudget, setRequestedBudget] = useState(0)
+  const [orderCount, setOrderCount] = useState(0)
+  const [orderTotals, setOrderTotals] = useState<Record<string, number>>({})
   const [approvedSuppliers, setApprovedSuppliers] = useState(0)
   const [pendingSuppliers, setPendingSuppliers] = useState(0)
   const [loading, setLoading] = useState(true)
@@ -58,19 +64,27 @@ export default function ProcurementPage() {
 
   const loadData = useCallback(async () => {
     setLoading(true); setLoadError(false)
-    const [requestsResult, ordersResult, approvedResult, pendingResult] = await Promise.all([
+    const [requestsResult, requestMetricsResult, ordersResult, orderMetricsResult, approvedResult, pendingResult] = await Promise.all([
       supabase.from("procurement_requests").select("id, request_number, title, category, priority, status, estimated_budget_clp, required_date, created_at").order("created_at", { ascending: false }).limit(8),
+      supabase.from("procurement_requests").select("estimated_budget_clp"),
       supabase.from("procurement_purchase_orders").select("id, order_number, status, currency, total, expected_delivery, created_at, suppliers(name), procurement_requests(title, request_number)").order("created_at", { ascending: false }).limit(8),
+      supabase.from("procurement_purchase_orders").select("currency,total"),
       supabase.from("suppliers").select("id", { count: "exact", head: true }).eq("is_active", true).eq("approval_status", "approved"),
       supabase.from("suppliers").select("id", { count: "exact", head: true }).eq("approval_status", "pending"),
     ])
-    const error = requestsResult.error || ordersResult.error || approvedResult.error || pendingResult.error
+    const error = requestsResult.error || requestMetricsResult.error || ordersResult.error || orderMetricsResult.error || approvedResult.error || pendingResult.error
     if (error) {
       console.error("procurement load failed", error)
-      setLoadError(true); setRequests([]); setOrders([]); setApprovedSuppliers(0); setPendingSuppliers(0)
+      setLoadError(true); setRequests([]); setOrders([]); setRequestCount(0); setRequestedBudget(0); setOrderCount(0); setOrderTotals({}); setApprovedSuppliers(0); setPendingSuppliers(0)
     } else {
+      const requestMetrics = (requestMetricsResult.data ?? []) as RequestMetricRow[]
+      const orderMetrics = (orderMetricsResult.data ?? []) as OrderMetricRow[]
       setRequests((requestsResult.data ?? []) as RequestRow[])
       setOrders(((ordersResult.data ?? []) as unknown as RawPurchaseOrder[]).map((order) => ({ ...order, total: Number(order.total ?? 0), supplier: firstRelation(order.suppliers), request: firstRelation(order.procurement_requests) })))
+      setRequestCount(requestMetrics.length)
+      setRequestedBudget(requestMetrics.reduce((sum, request) => sum + Number(request.estimated_budget_clp ?? 0), 0))
+      setOrderCount(orderMetrics.length)
+      setOrderTotals(orderMetrics.reduce<Record<string, number>>((totals, order) => { totals[order.currency] = (totals[order.currency] ?? 0) + Number(order.total ?? 0); return totals }, {}))
       setApprovedSuppliers(approvedResult.count ?? 0); setPendingSuppliers(pendingResult.count ?? 0)
     }
     setLoading(false)
@@ -88,8 +102,6 @@ export default function ProcurementPage() {
     await loadData()
   }
 
-  const requestBudget = requests.reduce((sum, request) => sum + Number(request.estimated_budget_clp ?? 0), 0)
-  const orderTotals = orders.reduce<Record<string, number>>((totals, order) => { totals[order.currency] = (totals[order.currency] ?? 0) + Number(order.total ?? 0); return totals }, {})
   const statusLabel = (value: string) => STATUS[lang][value as keyof (typeof STATUS)[typeof lang]] ?? value
   const priorityLabel = (value: string) => PRIORITY[lang][value as keyof (typeof PRIORITY)[typeof lang]] ?? value
 
@@ -103,9 +115,9 @@ export default function ProcurementPage() {
     <div className="space-y-6 p-4 sm:p-8">
       {loadError && <Card className="border-destructive/60"><CardContent className="flex items-center justify-between gap-4 p-5"><p className="text-sm text-destructive">{copy.loadError}</p><Button variant="outline" size="sm" onClick={() => void loadData()}><RefreshCw className="mr-2 h-4 w-4" />{copy.retry}</Button></CardContent></Card>}
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
-        <Metric title={copy.requestsRegistered} value={number.format(requests.length)} />
-        <Metric title={copy.requestedBudget} value={money(requestBudget)} detail={copy.requestedBudgetDetail} />
-        <Metric title={copy.ordersRegistered} value={number.format(orders.length)} />
+        <Metric title={copy.requestsRegistered} value={number.format(requestCount)} />
+        <Metric title={copy.requestedBudget} value={money(requestedBudget)} detail={copy.requestedBudgetDetail} />
+        <Metric title={copy.ordersRegistered} value={number.format(orderCount)} />
         <Metric title={copy.approvedSuppliers} value={number.format(approvedSuppliers)} />
         <Metric title={copy.pendingSuppliers} value={number.format(pendingSuppliers)} alert={pendingSuppliers > 0} />
       </div>
