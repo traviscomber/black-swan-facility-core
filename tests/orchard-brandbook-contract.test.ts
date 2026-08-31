@@ -5,6 +5,7 @@ import test from "node:test"
 const orchardPages = [
   "app/orchard/page.tsx",
   "app/orchard/field/page.tsx",
+  "app/orchard/field/advanced/page.tsx",
   "app/orchard/field/harvest/page.tsx",
   "app/orchard/field/nursery/page.tsx",
   "app/orchard/game-plan/page.tsx",
@@ -18,6 +19,8 @@ const orchardPages = [
   "app/orchard/game-plan/capacity/page.tsx",
   "app/orchard/game-plan/forecast/page.tsx",
   "app/orchard/harvest/desk/page.tsx",
+  "app/orchard/season-summary/page.tsx",
+  "app/orchard/season-summary/advanced/page.tsx",
   "app/orchard/work/page.tsx",
   "app/orchard/harvest/page.tsx",
   "app/orchard/assistant/page.tsx",
@@ -115,7 +118,7 @@ test("Dietrich workbook reference data remains explicit and versioned", async ()
   assert.match(tasks, /day_offset/)
 })
 
-test("Dietrich daily surface is plan-first and never auto-completes work", async () => {
+test("Dietrich daily surface is plan-first and stays on simple routes", async () => {
   const source = await readFile("app/orchard/page.tsx", "utf8")
 
   assert.match(source, /Orchard · Today/)
@@ -123,6 +126,34 @@ test("Dietrich daily surface is plan-first and never auto-completes work", async
   assert.match(source, /planned_transplant_date/)
   assert.match(source, /planned_first_harvest_date/)
   assert.match(source, /no work is marked complete automatically/)
+  assert.match(source, /\/orchard\/harvest\/desk/)
+})
+
+test("Dietrich Field is a read-first field surface with advanced tools preserved", async () => {
+  const source = await readFile("app/orchard/field/page.tsx", "utf8")
+  const advanced = await readFile("app/orchard/field/advanced/page.tsx", "utf8")
+
+  assert.match(source, /planned_sow_date/)
+  assert.match(source, /planned_transplant_date/)
+  assert.match(source, /planned_first_harvest_date/)
+  assert.match(source, /\/orchard\/harvest\/desk/)
+  assert.match(source, /\/orchard\/game-plan\/tasks/)
+  assert.match(source, /\/orchard\/field\/advanced/)
+  assert.doesNotMatch(source, /unsplash\.com/)
+  assert.doesNotMatch(source, /transitionTask/)
+  assert.match(advanced, /transitionTask/)
+})
+
+test("Dietrich History excludes draft planning and preserves advanced season analysis", async () => {
+  const source = await readFile("app/orchard/season-summary/page.tsx", "utf8")
+  const advanced = await readFile("app/orchard/season-summary/advanced/page.tsx", "utf8")
+
+  assert.match(source, /p\.status===\"completed\"/)
+  assert.match(source, /\/orchard\/season-summary\/advanced/)
+  assert.match(source, /crop_succession_id/)
+  assert.match(source, /does not assign them by date alone/)
+  assert.doesNotMatch(source, /generateAndSave/)
+  assert.match(advanced, /generateAndSave/)
 })
 
 test("Orchard analytics and charts expose accessible names for their form controls", async () => {
