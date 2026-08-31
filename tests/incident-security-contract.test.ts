@@ -42,6 +42,10 @@ const guestInviteExpiryMigration = readFileSync(
   new URL("../supabase/migrations/20260831153028_bound_event_portal_invite_expiry.sql", import.meta.url),
   "utf8",
 )
+const guestInviteEmailBindingMigration = readFileSync(
+  new URL("../supabase/migrations/20260831153209_bind_event_invites_to_recipient_email.sql", import.meta.url),
+  "utf8",
+)
 
 test("incident tables revoke anonymous and broad authenticated privileges", () => {
   for (const table of ["issues", "issue_labels", "issue_label_assignments", "issue_task_assignments"]) {
@@ -202,5 +206,19 @@ test("event portal invitation tokens cannot outlive the event lifecycle", () => 
   assert.match(
     guestInviteExpiryMigration,
     /revoke all on function public\.issue_event_portal_invite\([\s\S]*?from public, anon/,
+  )
+})
+
+test("nominal event invitation tokens are bound to recipient email", () => {
+  assert.match(guestInviteEmailBindingMigration, /expires_at > now\(\)/)
+  assert.match(guestInviteEmailBindingMigration, /v_invite\.invitee_email is not null/)
+  assert.match(
+    guestInviteEmailBindingMigration,
+    /lower\(trim\(v_invite\.invitee_email\)\) <> lower\(trim\(p_email\)\)/,
+  )
+  assert.match(guestInviteEmailBindingMigration, /Invalid invitation or passcode/)
+  assert.match(
+    guestInviteEmailBindingMigration,
+    /grant execute on function public\.register_event_portal_guest\([\s\S]*?to anon, authenticated, service_role/,
   )
 })
