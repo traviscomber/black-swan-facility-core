@@ -1,8 +1,8 @@
 'use client'
 
-import { normalizeCapabilitySnapshot } from '@/lib/access/capabilities'
-import { filterOsAreas, osAreas } from '@/lib/os/navigation'
-import { createClient } from '@/lib/supabase/client'
+import { normalizeCapabilitySnapshot } from '../access/capabilities.ts'
+import { filterOsAreas, osAreas } from './navigation.ts'
+import { createClient } from '../supabase/client.ts'
 
 const operationsApi = process.env.NEXT_PUBLIC_BLACK_SWAN_OPERATIONS_API_URL
 
@@ -25,10 +25,15 @@ function normalizeNavigation(value: unknown): AuthorizedNavigation {
   return { ...navigation, items: Array.isArray(navigation.items) ? navigation.items : [] }
 }
 
-async function loadServerNavigation(supabase: ReturnType<typeof createClient>, token: string): Promise<AuthorizedNavigation> {
-  if (operationsApi) {
+async function loadServerNavigation(
+  supabase: ReturnType<typeof createClient>,
+  token: string,
+  apiUrl: string | undefined,
+  fetchImpl: typeof fetch,
+): Promise<AuthorizedNavigation> {
+  if (apiUrl) {
     try {
-      const response = await fetch(`${operationsApi}/v1/os/navigation`, { headers: { authorization: `Bearer ${token}` } })
+      const response = await fetchImpl(`${apiUrl}/v1/os/navigation`, { headers: { authorization: `Bearer ${token}` } })
       const body = await response.json().catch(() => ({}))
       if (response.ok && body?.data) return normalizeNavigation(body.data)
     } catch {
@@ -46,8 +51,15 @@ async function loadServerNavigation(supabase: ReturnType<typeof createClient>, t
   return navigation
 }
 
-export async function loadAuthorizedNavigation(): Promise<AuthorizedNavigation> {
-  const supabase = createClient()
+export async function loadAuthorizedNavigationWith({
+  supabase = createClient(),
+  apiUrl = operationsApi,
+  fetchImpl = fetch,
+}: {
+  supabase?: ReturnType<typeof createClient>
+  apiUrl?: string
+  fetchImpl?: typeof fetch
+} = {}): Promise<AuthorizedNavigation> {
   const { data: sessionData } = await supabase.auth.getSession()
   const token = sessionData.session?.access_token
   if (!token) throw new Error('Authentication required')
@@ -59,7 +71,7 @@ export async function loadAuthorizedNavigation(): Promise<AuthorizedNavigation> 
   const capabilityItems = filterOsAreas(osAreas, normalizeCapabilitySnapshot(routeAccess), { is_admin: Boolean(access.is_admin) })
     .flatMap((area) => area.items)
     .map((item) => ({ key: item.key, label: readableLabel(item.key), href: item.href }))
-  const serverNavigation = await loadServerNavigation(supabase, token)
+  const serverNavigation = await loadServerNavigation(supabase, token, apiUrl, fetchImpl)
   const merged = new Map(capabilityItems.map((item) => [item.key, item]))
   for (const item of serverNavigation.items ?? []) merged.set(item.key, item)
 
@@ -68,4 +80,8 @@ export async function loadAuthorizedNavigation(): Promise<AuthorizedNavigation> 
     role: serverNavigation.role ?? access.role_key,
     items: [...merged.values()],
   }
+}
+
+export async function loadAuthorizedNavigation(): Promise<AuthorizedNavigation> {
+  return loadAuthorizedNavigationWith()
 }

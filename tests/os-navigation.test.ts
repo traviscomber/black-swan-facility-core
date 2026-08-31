@@ -2,6 +2,7 @@ import assert from "node:assert/strict"
 import test from "node:test"
 import { filterOsAreas, osAreas, rankAreasForAccess, resolveAreaForPath } from "../lib/os/navigation.ts"
 import { normalizeCapabilitySnapshot } from "../lib/access/capabilities.ts"
+import { loadAuthorizedNavigationWith } from "../lib/os/authorized-navigation-client.ts"
 
 const expectedKeys = ["today", "operations", "people", "places-assets", "finance", "network"]
 
@@ -79,4 +80,60 @@ test("ranking never grants capabilities or rewrites direct URLs", () => {
   assert.equal(hrefs.includes("/bookings"), true)
   assert.equal(hrefs.includes("/budgets"), false)
   assert.equal(resolveAreaForPath("/bookings/calendar"), "operations")
+})
+
+test("Operations API outage falls back to canonical RPCs without granting routes", async () => {
+  const rpcCalls: string[] = []
+  const supabase = {
+    auth: {
+      getSession: async () => ({ data: { session: { access_token: "test-token" } }, error: null }),
+    },
+    rpc: async (name: string) => {
+      rpcCalls.push(name)
+      if (name === "get_current_route_access") {
+        return {
+          data: {
+            role_key: "hospitality",
+            is_admin: false,
+            domains: { booking: ["view"], operations: ["view"] },
+          },
+          error: null,
+        }
+      }
+      if (name === "get_black_swan_os_navigation") {
+        return {
+          data: { items: [{ key: "events", label: "Eventos", href: "/os/events" }] },
+          error: null,
+        }
+      }
+      if (name === "get_discovery_navigation_entitlement") return { data: true, error: null }
+      throw new Error(`Unexpected RPC: ${name}`)
+    },
+  }
+  const requests: Array<{ input: string; authorization: string | null }> = []
+  const unavailableFetch = (async (input: string | URL | Request, init?: RequestInit) => {
+    requests.push({
+      input: String(input),
+      authorization: new Headers(init?.headers).get("authorization"),
+    })
+    throw new Error("Operations API unavailable")
+  }) as typeof fetch
+
+  const navigation = await loadAuthorizedNavigationWith({
+    supabase: supabase as never,
+    apiUrl: "https://operations.example",
+    fetchImpl: unavailableFetch,
+  })
+  const keys = navigation.items?.map((item) => item.key) ?? []
+
+  assert.deepEqual(requests, [{ input: "https://operations.example/v1/os/navigation", authorization: "Bearer test-token" }])
+  assert.deepEqual(rpcCalls, ["get_current_route_access", "get_black_swan_os_navigation", "get_discovery_navigation_entitlement"])
+  assert.equal(navigation.role, "hospitality")
+  assert.equal(keys.includes("bookings"), true)
+  assert.equal(keys.includes("tasks"), true)
+  assert.equal(keys.includes("events"), true)
+  assert.equal(keys.includes("discovery"), true)
+  assert.equal(keys.includes("maintenance"), false)
+  assert.equal(keys.includes("inventory"), false)
+  assert.equal(keys.includes("approvals"), false)
 })
