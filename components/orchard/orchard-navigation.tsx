@@ -45,7 +45,7 @@ type NavItem = {
 const primaryItems: NavItem[] = [
   { href: "/orchard", label: { en: "Today", es: "Hoy", de: "Heute" }, icon: LayoutDashboard },
   { href: "/orchard/field", label: { en: "Field", es: "Campo", de: "Feld" }, icon: Smartphone, includeChildren: true },
-  { href: "/orchard/harvest", label: { en: "Harvest", es: "Cosecha", de: "Ernte" }, icon: Leaf },
+  { href: "/orchard/harvest/desk", label: { en: "Harvest", es: "Cosecha", de: "Ernte" }, icon: Leaf },
   { href: "/orchard/season-summary", label: { en: "History", es: "Historial", de: "Verlauf" }, icon: History },
 ]
 
@@ -67,6 +67,7 @@ const advancedItems: NavItem[] = [
   { href: "/orchard/library/fao", label: { en: "FAO Catalog", es: "Catálogo FAO", de: "FAO-Katalog" }, icon: Database },
   { href: "/orchard/nursery", label: { en: "Seed & nursery management", es: "Gestión de semillas", de: "Saatgutverwaltung" }, icon: Sprout },
   { href: "/orchard/work", label: { en: "Accountable work", es: "Trabajo responsable", de: "Verbindliche Arbeit" }, icon: CalendarDays },
+  { href: "/orchard/harvest", label: { en: "Harvest management", es: "Gestión de cosecha", de: "Ernteverwaltung" }, icon: Leaf },
   { href: "/orchard/crop-map", label: { en: "Crop map workspace", es: "Workspace de mapa", de: "Karten-Arbeitsbereich" }, icon: Map },
   { href: "/orchard/crop-map/auto-place", label: { en: "Auto-place", es: "Auto-ubicar", de: "Auto-Platzierung" }, icon: WandSparkles },
   { href: "/orchard/crops", label: { en: "Crops", es: "Cultivos", de: "Kulturen" }, icon: Sprout },
