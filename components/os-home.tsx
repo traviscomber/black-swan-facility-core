@@ -50,22 +50,22 @@ async function loadTodaySignals(navigation: Navigation): Promise<Signal[]> {
 
   const [arrivals, departures, tasksDue, maintenanceBlocked, maintenanceDue, issuesOpen, stockCritical, replenishmentOpen, financeReady, procurementPending] = await Promise.all([
     hasNavKey(navigation, 'bookings')
-      ? supabase.from('reservations').select('id', { count: 'exact', head: true }).eq('check_in', today).neq('status', 'cancelled')
+      ? supabase.from('reservations').select('id', { count: 'exact', head: true }).eq('check_in', today).not('status', 'in', '(cancelled,canceled,cancelada)')
       : zero,
     hasNavKey(navigation, 'bookings')
-      ? supabase.from('reservations').select('id', { count: 'exact', head: true }).eq('check_out', today).neq('status', 'cancelled')
+      ? supabase.from('reservations').select('id', { count: 'exact', head: true }).eq('check_out', today).not('status', 'in', '(cancelled,canceled,cancelada)')
       : zero,
     hasNavKey(navigation, 'tasks')
-      ? supabase.from('tasks').select('id', { count: 'exact', head: true }).lte('due_date', today).neq('status', 'completada')
+      ? supabase.from('tasks').select('id', { count: 'exact', head: true }).lte('due_date', today).not('status', 'in', '(completada,completed,cancelada,cancelled,canceled)')
       : zero,
     hasNavKey(navigation, 'maintenance')
-      ? supabase.from('maintenance_tasks').select('id', { count: 'exact', head: true }).eq('bloqueado', true)
+      ? supabase.from('maintenance_tasks').select('id', { count: 'exact', head: true }).eq('bloqueado', true).not('status', 'in', '(completada,completed,cancelada,cancelled,canceled)')
       : zero,
     hasNavKey(navigation, 'maintenance')
-      ? supabase.from('maintenance_tasks').select('id', { count: 'exact', head: true }).lte('fecha_objetivo', today).not('status', 'in', '(completada,cancelada)')
+      ? supabase.from('maintenance_tasks').select('id', { count: 'exact', head: true }).lte('fecha_objetivo', today).not('status', 'in', '(completada,completed,cancelada,cancelled,canceled)')
       : zero,
     hasNavKey(navigation, 'issues')
-      ? supabase.from('issues').select('id', { count: 'exact', head: true }).neq('status', 'resolved')
+      ? supabase.from('issues').select('id', { count: 'exact', head: true }).not('status', 'in', '(resolved,closed,cancelada,cancelled,canceled)')
       : zero,
     hasNavKey(navigation, 'inventory')
       ? supabase.from('inventory_stock_status').select('*', { count: 'exact', head: true }).in('stock_state', ['low', 'out'])
