@@ -5,7 +5,7 @@ import type { DemandCrop, DemandCropCycle, DemandCropTarget, DemandHarvest, Dema
 import { orchardAiScopeLabel, resolveOrchardAiGamePlanScope, scopeOrchardAiSnapshot } from "@/lib/orchard-ai/game-plan-scope"
 
 const MODEL = ORCHARD_AI_MODEL
-const PROMPT_VERSION = "orchard-assistant-v7-demand-intelligence"
+const PROMPT_VERSION = "orchard-assistant-v8-corcovado-canonical"
 const MAX_QUESTION_LENGTH = 2000
 const MAX_HISTORY_TURNS = 8
 
@@ -67,8 +67,10 @@ export async function POST(request: Request) {
   const sources = await Promise.all([
     supabase.from("orchard_game_plans").select("id,name,season,start_date,end_date,status,objective").limit(50),
     supabase.from("orchard_crop_cycles").select("id,game_plan_id,crop_name,variety,cycle_type,planned_start_date,target_harvest_date,status,planned_area_sqm,target_quantity,target_unit").limit(150),
-    supabase.from("orchard_crop_successions").select("id,crop_cycle_id,sequence_no,planned_sow_date,planned_transplant_date,planned_first_harvest_date,planned_last_harvest_date,planned_plants,planned_area_sqm,status").limit(250),
+    supabase.from("orchard_crop_successions").select("id,crop_cycle_id,sequence_no,planned_sow_date,planned_transplant_date,planned_first_harvest_date,planned_last_harvest_date,planned_plants,planned_area_sqm,status,days_to_maturity,plant_spacing_cm,row_spacing_cm,germination_rate_pct,seeds_per_plant,crop_library_id,cultivar_library_id,knowledge_applied_at,knowledge_source_snapshot").limit(250),
     supabase.from("orchard_succession_lifecycle").select("crop_succession_id,crop_cycle_id,sequence_no,effective_status,persisted_status,planned_sow_date,planned_transplant_date,planned_first_harvest_date,planned_last_harvest_date,transplanted_count,first_planting_date,first_harvest_date,harvest_passes").limit(250),
+    supabase.from("orchard_crop_library").select("id,crop_name,default_cycle_type,days_to_maturity,nursery_days,plant_spacing_cm,row_spacing_cm,germination_rate_pct,seeds_per_plant,target_yield_per_sqm,yield_unit,provenance_type,observed_count,last_observed_at,classification_scheme,classification_code").eq("classification_scheme", "black_swan_canonical").eq("classification_code", "fundo_corcovado").eq("is_active", true).limit(100),
+    supabase.from("orchard_cultivar_library").select("id,crop_library_id,variety,days_to_maturity,nursery_days,plant_spacing_cm,row_spacing_cm,germination_rate_pct,seeds_per_plant,target_yield_per_sqm,provenance_type,observed_count,last_observed_at").eq("is_active", true).limit(200),
     supabase.from("orchard_plots").select("id,name,plot_type,size_sqm,status,soil_type,irrigation_type").neq("status", "abandoned").limit(100),
     supabase.from("orchard_beds").select("id,plot_id,name,area_sqm,status,orientation").neq("status", "out_of_service").limit(250),
     supabase.from("orchard_bed_allocations").select("id,bed_id,crop_succession_id,planned_start_date,planned_end_date,allocated_area_sqm,planned_plants").limit(300),
@@ -88,7 +90,7 @@ export async function POST(request: Request) {
     supabase.from("reservations").select("check_in,check_out,num_guests,status").limit(500),
   ])
 
-  const sourceNames = ["game_plans","crop_cycles","successions","lifecycle","plots","beds","bed_allocations","seed_lots","nursery_batches","crops","care_logs","health_logs","harvests","revenue_targets","sales_commitments","sales_channels","notes","tasks","demand_scenarios","demand_crop_targets","reservations"]
+  const sourceNames = ["game_plans","crop_cycles","successions","lifecycle","canonical_crop_library","canonical_cultivars","plots","beds","bed_allocations","seed_lots","nursery_batches","crops","care_logs","health_logs","harvests","revenue_targets","sales_commitments","sales_channels","notes","tasks","demand_scenarios","demand_crop_targets","reservations"]
   const unscopedSnapshot: Record<string, unknown[]> = {}
   for (let index = 0; index < sources.length; index += 1) {
     const result = sources[index]
@@ -120,13 +122,15 @@ export async function POST(request: Request) {
   const instructions = `You are the Orchard operations assistant inside Blackswan Facility Core.
 Use ONLY the authorized ORCHARD_SNAPSHOT supplied in the current user input for factual claims. The CONVERSATION_HISTORY is context for follow-up references, not an independent factual source.
 ACTIVE_GAME_PLAN_SCOPE: ${scopeLabel}.
-${scope ? "The snapshot has already been filtered to this Game Plan. Never infer, mention, compare, or use records from another Game Plan unless the user explicitly leaves this scope and starts a new request without a Game Plan scope. Demand scenarios and reservations are shared demand inputs, while planned/forecast/harvested supply inside foodDemand/importGaps is computed only from this Game Plan." : "No Game Plan filter is active; the snapshot contains all authorized Orchard records."}
+${scope ? "The snapshot has already been filtered to this Game Plan. Never infer, mention, compare, or use operational records from another Game Plan unless the user explicitly leaves this scope and starts a new request without a Game Plan scope." : "No Game Plan filter is active; the snapshot contains all authorized Orchard records."}
+Fundo Corcovado canonical knowledge is authoritative for farm-specific crop parameters. Use [canonical_crop_library], [canonical_cultivars], and each succession's knowledge_source_snapshot before any derived intelligence note. The history keys black_swan_history_2024_25 and black_swan_history_2025_26 are real Fundo Corcovado evidence. Preserve profile comparability: never apply field evidence directly to greenhouse, storage to fresh/new, or direct-sow to transplant when the snapshot marks them related or non-comparable. Treat right_censored or measurement_incomplete evidence as partial measurement, never as final underperformance.
+External INIA/FAO reference data is not present in the canonical snapshot by default and must not be presented as Fundo Corcovado fact. Notes may contain operator context, but they do not override canonical crop profiles or direct knowledge_source_snapshot evidence.
 Never invent rows, weather, agronomy facts, prices, yields, tasks, dates, or actions that are not present.
 
 Configured read skill:\n${orchardSkillsPrompt("read")}
 
 The deterministic planning signals foodDemand, occupancyForecast, selfSufficiency and importGaps are authoritative derived views built from the same calculation used by the Demand planner UI. Use them for questions about people to feed, demand in kg, planned kg, forecast kg, harvested kg, coverage, self-sufficiency, imports and demand windows. Do not recalculate these metrics differently.
-When asked what to plant now to reduce imports in a future month, first identify importGaps whose scenario window covers that month, rank the relevant crop gaps, then use crop_cycles, successions, lifecycle, crops, beds, seed_lots and nursery_batches to determine what is already planned and what evidence exists for timing. If exact agronomic lead time or maturity evidence is absent, state that missing evidence instead of inventing a sowing date.
+When asked what to plant now to reduce imports in a future month, first identify importGaps whose scenario window covers that month, rank the relevant crop gaps, then use canonical_crop_library, canonical_cultivars, succession knowledge_source_snapshot, crop_cycles, lifecycle, crops, beds, seed_lots and nursery_batches to determine what is already planned and what Corcovado evidence exists for timing. If exact lead-time evidence is absent, state what is missing instead of inventing a sowing date.
 You may calculate deterministic totals, compare dates, identify missing links, summarize risks, connect plan-to-execution-to-harvest-to-commercial outcomes, and explain operational context.
 When evidence is insufficient, say exactly what is missing.
 Do not claim that an action was executed. Action proposals are handled by the separate approval workflow.
@@ -134,7 +138,7 @@ Do not recommend pesticides, chemicals, dosages, or other safety-sensitive treat
 ${languageInstruction} The selected UI locale is ${locale}; do not switch languages based on the wording of the question or previous turns.
 Resolve pronouns and follow-up questions from CONVERSATION_HISTORY when possible.
 Prefer a clear answer first, then short bullets when useful. Avoid long preambles.
-For factual claims, append one or more dataset labels in square brackets, including [foodDemand], [occupancyForecast], [selfSufficiency] or [importGaps] when those signals support the claim.
+For factual claims, append one or more dataset labels in square brackets. Use [canonical_crop_library], [canonical_cultivars] or [successions] for direct Corcovado agronomic/history claims, and [foodDemand], [occupancyForecast], [selfSufficiency] or [importGaps] for demand claims.
 Distinguish recorded facts from inferences. Prefix inferred conclusions with "${inferenceLabel}".`
 
   const conversation = history.length ? history.map((turn, index) => `TURN ${index + 1}\nUSER: ${turn.question}\nASSISTANT: ${turn.answer}`).join("\n\n") : "No prior turns."
