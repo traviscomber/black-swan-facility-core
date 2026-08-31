@@ -6,6 +6,14 @@ const migration = readFileSync(
   new URL("../supabase/migrations/20260831144604_harden_incident_mutations.sql", import.meta.url),
   "utf8",
 )
+const navigationRpcMigration = readFileSync(
+  new URL("../supabase/migrations/20260831150801_restrict_internal_navigation_rpc_anon.sql", import.meta.url),
+  "utf8",
+)
+const guestPortalMigration = readFileSync(
+  new URL("../supabase/migrations/20260831151049_harden_guest_portal_capability_surface.sql", import.meta.url),
+  "utf8",
+)
 
 test("incident tables revoke anonymous and broad authenticated privileges", () => {
   for (const table of ["issues", "issue_labels", "issue_label_assignments", "issue_task_assignments"]) {
@@ -48,4 +56,36 @@ test("incident relationship policies validate visible parents", () => {
   assert.match(migration, /exists \(select 1 from public\.issues i where i\.id = issue_id\)/)
   assert.match(migration, /exists \(select 1 from public\.issue_labels l where l\.id = label_id and coalesce\(l\.is_active, true\)\)/)
   assert.match(migration, /exists \(select 1 from public\.tasks t where t\.id = task_id\)/)
+})
+
+test("internal navigation RPCs cannot be executed anonymously", () => {
+  for (const rpc of ["get_black_swan_os_navigation", "get_current_route_access"]) {
+    assert.match(navigationRpcMigration, new RegExp(`revoke all on function public\\.${rpc}\\(\\) from public, anon`))
+    assert.match(navigationRpcMigration, new RegExp(`grant execute on function public\\.${rpc}\\(\\) to authenticated, service_role`))
+  }
+  assert.doesNotMatch(navigationRpcMigration, /grant execute[^\n]+to anon/i)
+})
+
+test("guest portal keeps anonymous access only through explicit capability RPCs", () => {
+  for (const table of [
+    "event_guest_portals",
+    "event_portal_invites",
+    "event_portal_registrations",
+    "discovery_intents",
+    "discovery_opportunities",
+  ]) {
+    assert.match(guestPortalMigration, new RegExp(`revoke all on table public\\.${table} from anon`))
+  }
+
+  for (const rpc of [
+    "resolve_event_guest_portal",
+    "register_event_portal_guest",
+    "start_guest_event_discovery_session",
+    "get_guest_discovery_workspace",
+    "create_guest_event_discovery_intent",
+    "respond_guest_discovery_opportunity",
+  ]) {
+    assert.match(guestPortalMigration, new RegExp(`revoke all on function public\\.${rpc}\\(`))
+    assert.match(guestPortalMigration, new RegExp(`grant execute on function public\\.${rpc}\\([\\s\\S]*?to anon, authenticated, service_role`))
+  }
 })
