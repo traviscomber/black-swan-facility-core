@@ -51,7 +51,7 @@ export default function OrchardTodayPage(){
     {href:"/orchard/game-plan/overview",label:text.openPlan,icon:CalendarRange},
     {href:"/orchard/game-plan/tasks",label:text.openTasks,icon:CalendarDays},
     {href:"/orchard/field",label:text.openField,icon:Sprout},
-    {href:"/orchard/harvest",label:text.openHarvest,icon:Leaf},
+    {href:"/orchard/harvest/desk",label:text.openHarvest,icon:Leaf},
    ].map(item=>{const Icon=item.icon;return <Link key={item.href} href={href(item.href)} className="group flex min-h-28 items-center justify-between gap-4 bg-[var(--bs-surface-primary)] p-5"><span className="flex items-center gap-3"><Icon className="h-4 w-4 text-muted-foreground"/><strong className="font-medium">{item.label}</strong></span><ArrowRight className="h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-1"/></Link>})}</section>
    <div className="flex items-center justify-between gap-4 border-t border-[var(--bs-divider-subtle)] pt-5 text-xs text-muted-foreground"><span>{text.source}</span><span>{text.overdue}: {overdue.length}</span></div>
   </>}
