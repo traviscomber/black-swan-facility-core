@@ -10,6 +10,7 @@ const orchardPages = [
   "app/orchard/game-plan/page.tsx",
   "app/orchard/game-plan/overview/page.tsx",
   "app/orchard/game-plan/objectives/page.tsx",
+  "app/orchard/game-plan/written-plan/page.tsx",
   "app/orchard/game-plan/season/page.tsx",
   "app/orchard/game-plan/crop-chart/page.tsx",
   "app/orchard/game-plan/propagation/page.tsx",
@@ -86,6 +87,19 @@ test("Dietrich Orchard navigation keeps the operating surface intentionally smal
   assert.match(source, /href:\s*"\/orchard\/game-plan\/forecast"/)
   assert.match(source, /href:\s*"\/orchard\/harvest\/desk"/)
   assert.match(source, /const advancedItems/)
+})
+
+test("Dietrich Game Plan hub preserves the written plan as a first-class section", async () => {
+  const overview = await readFile("app/orchard/game-plan/overview/page.tsx", "utf8")
+  const written = await readFile("app/orchard/game-plan/written-plan/page.tsx", "utf8")
+  const source = await readFile("data/orchard/dietrich-game-plan-2026-27.json", "utf8")
+
+  assert.match(overview, /\/orchard\/game-plan\/written-plan/)
+  assert.match(written, /dietrich-game-plan-2026-27\.json/)
+  assert.match(source, /Consolidate Fresh Food Production/)
+  assert.match(source, /Written|writtenCrops/)
+  assert.match(source, /Garlic/)
+  assert.match(source, /Mizuna/)
 })
 
 test("Dietrich workbook reference data remains explicit and versioned", async () => {
