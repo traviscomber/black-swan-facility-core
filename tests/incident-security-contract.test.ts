@@ -26,6 +26,10 @@ const bookingDragWrapperMigration = readFileSync(
   new URL("../supabase/migrations/20260831152036_harden_booking_drag_wrapper.sql", import.meta.url),
   "utf8",
 )
+const discoveryEvaluationWriterMigration = readFileSync(
+  new URL("../supabase/migrations/20260831152422_restrict_discovery_evaluation_writer.sql", import.meta.url),
+  "utf8",
+)
 
 test("incident tables revoke anonymous and broad authenticated privileges", () => {
   for (const table of ["issues", "issue_labels", "issue_label_assignments", "issue_task_assignments"]) {
@@ -140,4 +144,16 @@ test("booking drag wrapper authorizes before reading reservation state", () => {
     /grant execute on function public\.apply_or_queue_booking_drag\([\s\S]*?to authenticated, service_role/,
   )
   assert.doesNotMatch(bookingDragWrapperMigration, /grant execute[^\n]+to anon/i)
+})
+
+test("discovery evaluation metadata is writable only by the trusted engine", () => {
+  assert.match(
+    discoveryEvaluationWriterMigration,
+    /revoke all on function public\.record_discovery_evaluation\([\s\S]*?from public, anon, authenticated/,
+  )
+  assert.match(
+    discoveryEvaluationWriterMigration,
+    /grant execute on function public\.record_discovery_evaluation\([\s\S]*?to service_role/,
+  )
+  assert.doesNotMatch(discoveryEvaluationWriterMigration, /grant execute[^\n]+to (anon|authenticated)/i)
 })
