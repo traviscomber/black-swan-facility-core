@@ -3,8 +3,10 @@ import test from "node:test"
 import { readFileSync } from "node:fs"
 
 const migration = readFileSync(new URL("../supabase/migrations/20260827220000_it_control_center_v1.sql", import.meta.url), "utf8")
+const dataHealthMigration = readFileSync(new URL("../supabase/migrations/20260831002000_add_it_data_health_snapshot.sql", import.meta.url), "utf8")
 const page = readFileSync(new URL("../app/admin/it-control/page.tsx", import.meta.url), "utf8")
 const component = readFileSync(new URL("../components/it-control-center.tsx", import.meta.url), "utf8")
+const dataHealth = readFileSync(new URL("../components/it-data-health.tsx", import.meta.url), "utf8")
 const sidebar = readFileSync(new URL("../components/sidebar.tsx", import.meta.url), "utf8")
 const proxy = readFileSync(new URL("../proxy.ts", import.meta.url), "utf8")
 const adminPage = readFileSync(new URL("../app/admin/page.tsx", import.meta.url), "utf8")
@@ -32,9 +34,33 @@ test("IT snapshot exposes live read-only control-plane evidence without error me
   assert.doesNotMatch(component, /insert\(|update\(|delete\(/i)
 })
 
-test("IT route reads the privileged snapshot only from the server client", () => {
+test("IT data health uses the same fail-closed admin-or-IT authority", () => {
+  assert.match(dataHealthMigration, /auth\.uid\(\)/)
+  assert.match(dataHealthMigration, /current_app_role\(\)/)
+  assert.match(dataHealthMigration, /user_operational_scopes/)
+  assert.match(dataHealthMigration, /v_role <> 'admin' and not v_has_it_scope/)
+  assert.match(dataHealthMigration, /revoke all on function public\.get_it_data_health_snapshot\(\) from public/)
+  assert.match(dataHealthMigration, /revoke all on function public\.get_it_data_health_snapshot\(\) from anon/)
+  assert.match(dataHealthMigration, /grant execute on function public\.get_it_data_health_snapshot\(\) to authenticated/)
+})
+
+test("data health reports observed canonical coverage without manufacturing a score", () => {
+  assert.match(dataHealthMigration, /booking_health_runs/)
+  assert.match(dataHealthMigration, /vehicle_registry_health/)
+  assert.match(dataHealthMigration, /classification_scheme = 'black_swan_canonical'/)
+  assert.match(dataHealthMigration, /classification_code = 'fundo_corcovado'/)
+  assert.match(dataHealthMigration, /source_type is not null and t\.source_id is null/)
+  assert.match(dataHealth, /These are counts, not synthetic quality scores/)
+  assert.match(dataHealth, /Son conteos, no scores sintéticos de calidad/)
+  assert.match(dataHealth, /keine synthetischen Qualitätsscores/)
+  assert.doesNotMatch(dataHealth, /\.insert\(|\.update\(|\.delete\(/)
+})
+
+test("IT route reads both privileged snapshots only from the server client", () => {
   assert.match(page, /@\/lib\/supabase\/server/)
   assert.match(page, /rpc\("get_it_control_center_snapshot"\)/)
+  assert.match(page, /rpc\("get_it_data_health_snapshot"\)/)
+  assert.match(page, /<ItDataHealth snapshot=\{dataHealth\} \/>/)
   assert.match(page, /dynamic = "force-dynamic"/)
   assert.doesNotMatch(page, /@\/lib\/supabase\/client/)
 })
