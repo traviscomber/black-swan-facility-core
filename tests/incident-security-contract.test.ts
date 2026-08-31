@@ -14,6 +14,10 @@ const guestPortalMigration = readFileSync(
   new URL("../supabase/migrations/20260831151049_harden_guest_portal_capability_surface.sql", import.meta.url),
   "utf8",
 )
+const guestPresenceHelperMigration = readFileSync(
+  new URL("../supabase/migrations/20260831151718_restrict_internal_guest_presence_helpers.sql", import.meta.url),
+  "utf8",
+)
 
 test("incident tables revoke anonymous and broad authenticated privileges", () => {
   for (const table of ["issues", "issue_labels", "issue_label_assignments", "issue_task_assignments"]) {
@@ -88,4 +92,18 @@ test("guest portal keeps anonymous access only through explicit capability RPCs"
     assert.match(guestPortalMigration, new RegExp(`revoke all on function public\\.${rpc}\\(`))
     assert.match(guestPortalMigration, new RegExp(`grant execute on function public\\.${rpc}\\([\\s\\S]*?to anon, authenticated, service_role`))
   }
+})
+
+test("internal guest presence helpers are service-role only", () => {
+  for (const helper of ["can_guest_enter", "is_member_on_ground"]) {
+    assert.match(
+      guestPresenceHelperMigration,
+      new RegExp(`revoke all on function public\\.${helper}\\([\\s\\S]*?from public, anon, authenticated`),
+    )
+    assert.match(
+      guestPresenceHelperMigration,
+      new RegExp(`grant execute on function public\\.${helper}\\([\\s\\S]*?to service_role`),
+    )
+  }
+  assert.doesNotMatch(guestPresenceHelperMigration, /grant execute[^\n]+to (anon|authenticated)/i)
 })
