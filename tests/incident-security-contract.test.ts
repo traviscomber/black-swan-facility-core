@@ -38,6 +38,10 @@ const guestPortalPasscodeMigration = readFileSync(
   new URL("../supabase/migrations/20260831152814_harden_event_guest_portal_passcodes.sql", import.meta.url),
   "utf8",
 )
+const guestInviteExpiryMigration = readFileSync(
+  new URL("../supabase/migrations/20260831153028_bound_event_portal_invite_expiry.sql", import.meta.url),
+  "utf8",
+)
 
 test("incident tables revoke anonymous and broad authenticated privileges", () => {
   for (const table of ["issues", "issue_labels", "issue_label_assignments", "issue_task_assignments"]) {
@@ -186,5 +190,17 @@ test("guest portal passcodes must be strong before bcrypt hashing", () => {
   assert.match(
     guestPortalPasscodeMigration,
     /revoke all on function public\.upsert_event_guest_portal\([\s\S]*?from public, anon/,
+  )
+})
+
+test("event portal invitation tokens cannot outlive the event lifecycle", () => {
+  assert.match(guestInviteExpiryMigration, /gen_random_bytes\(24\)/)
+  assert.match(guestInviteExpiryMigration, /extensions\.digest\(v_token, 'sha256'\)/)
+  assert.match(guestInviteExpiryMigration, /v_effective_expiry := coalesce\(p_expires_at, v_default_expiry\)/)
+  assert.match(guestInviteExpiryMigration, /v_effective_expiry > v_default_expiry/)
+  assert.match(guestInviteExpiryMigration, /Invitation cannot outlive the portal registration window or event/)
+  assert.match(
+    guestInviteExpiryMigration,
+    /revoke all on function public\.issue_event_portal_invite\([\s\S]*?from public, anon/,
   )
 })
