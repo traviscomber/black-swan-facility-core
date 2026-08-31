@@ -54,9 +54,9 @@ const gamePlanItems: NavItem[] = [
   { href: "/orchard/game-plan/objectives", label: { en: "Objectives", es: "Objetivos", de: "Ziele" }, icon: Target },
   { href: "/orchard/game-plan", label: { en: "Season plan", es: "Plan de temporada", de: "Saisonplan" }, icon: CalendarRange },
   { href: "/orchard/game-plan/crop-chart", label: { en: "Crop Chart", es: "Crop Chart", de: "Crop Chart" }, icon: BookOpen },
-  { href: "/orchard/nursery", label: { en: "Sowing & nursery", es: "Siembra y almácigo", de: "Aussaat & Anzucht" }, icon: Sprout },
-  { href: "/orchard/work", label: { en: "Calendar & tasks", es: "Calendario y tareas", de: "Kalender & Aufgaben" }, icon: CalendarDays },
-  { href: "/orchard/crop-map", label: { en: "Beds & capacity", es: "Camas y capacidad", de: "Beete & Kapazität" }, icon: Map },
+  { href: "/orchard/game-plan/propagation", label: { en: "Sowing & nursery", es: "Siembra y almácigo", de: "Aussaat & Anzucht" }, icon: Sprout },
+  { href: "/orchard/game-plan/tasks", label: { en: "Calendar & tasks", es: "Calendario y tareas", de: "Kalender & Aufgaben" }, icon: CalendarDays },
+  { href: "/orchard/game-plan/capacity", label: { en: "Beds & capacity", es: "Camas y capacidad", de: "Beete & Kapazität" }, icon: Map },
   { href: "/orchard/game-plan/forecast", label: { en: "Production forecast", es: "Forecast de producción", de: "Produktionsprognose" }, icon: ChartNoAxesCombined },
 ]
 
@@ -65,6 +65,9 @@ const advancedItems: NavItem[] = [
   { href: "/orchard/demand", label: { en: "Food Demand", es: "Demanda", de: "Lebensmittelbedarf" }, icon: UtensilsCrossed },
   { href: "/orchard/library", label: { en: "Agronomic library", es: "Biblioteca agronómica", de: "Anbaubibliothek" }, icon: BookOpen },
   { href: "/orchard/library/fao", label: { en: "FAO Catalog", es: "Catálogo FAO", de: "FAO-Katalog" }, icon: Database },
+  { href: "/orchard/nursery", label: { en: "Seed & nursery management", es: "Gestión de semillas", de: "Saatgutverwaltung" }, icon: Sprout },
+  { href: "/orchard/work", label: { en: "Accountable work", es: "Trabajo responsable", de: "Verbindliche Arbeit" }, icon: CalendarDays },
+  { href: "/orchard/crop-map", label: { en: "Crop map workspace", es: "Workspace de mapa", de: "Karten-Arbeitsbereich" }, icon: Map },
   { href: "/orchard/crop-map/auto-place", label: { en: "Auto-place", es: "Auto-ubicar", de: "Auto-Platzierung" }, icon: WandSparkles },
   { href: "/orchard/crops", label: { en: "Crops", es: "Cultivos", de: "Kulturen" }, icon: Sprout },
   { href: "/orchard/lifecycle", label: { en: "Lifecycle", es: "Ciclo", de: "Lebenszyklus" }, icon: GitBranch },
