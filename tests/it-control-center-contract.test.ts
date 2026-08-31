@@ -4,6 +4,7 @@ import { readFileSync } from "node:fs"
 
 const migration = readFileSync(new URL("../supabase/migrations/20260827220000_it_control_center_v1.sql", import.meta.url), "utf8")
 const dataHealthMigration = readFileSync(new URL("../supabase/migrations/20260831002000_add_it_data_health_snapshot.sql", import.meta.url), "utf8")
+const dataHealthHardeningMigration = readFileSync(new URL("../supabase/migrations/20260831004500_harden_booking_health_and_vehicle_data_health.sql", import.meta.url), "utf8")
 const page = readFileSync(new URL("../app/admin/it-control/page.tsx", import.meta.url), "utf8")
 const component = readFileSync(new URL("../components/it-control-center.tsx", import.meta.url), "utf8")
 const dataHealth = readFileSync(new URL("../components/it-data-health.tsx", import.meta.url), "utf8")
@@ -54,6 +55,30 @@ test("data health reports observed canonical coverage without manufacturing a sc
   assert.match(dataHealth, /Son conteos, no scores sintéticos de calidad/)
   assert.match(dataHealth, /keine synthetischen Qualitätsscores/)
   assert.doesNotMatch(dataHealth, /\.insert\(|\.update\(|\.delete\(/)
+})
+
+test("Booking Health is a scheduled observable control-plane job", () => {
+  assert.match(dataHealthHardeningMigration, /private\.evaluate_booking_health/)
+  assert.match(dataHealthHardeningMigration, /private\.execute_booking_health_snapshot/)
+  assert.match(dataHealthHardeningMigration, /private\.run_booking_health_snapshot/)
+  assert.match(dataHealthHardeningMigration, /'booking-health-snapshot'/)
+  assert.match(dataHealthHardeningMigration, /'5,20,35,50 \* \* \* \*'/)
+  assert.match(dataHealthHardeningMigration, /public\.integration_job_runs/)
+  assert.match(dataHealthHardeningMigration, /public\.booking_health_runs/)
+  assert.match(dataHealthHardeningMigration, /cron\.schedule/)
+  assert.match(dataHealthHardeningMigration, /max_attempts[^\n]*,?[\s\S]*?1/)
+})
+
+test("vehicle health separates canonical identity from unrecorded external identifiers", () => {
+  assert.match(dataHealthHardeningMigration, /canonical_identity_present/)
+  assert.match(dataHealthHardeningMigration, /external_identifier_unrecorded/)
+  assert.match(dataHealthHardeningMigration, /nullif\(btrim\(v\.code\), ''\) is not null/)
+  assert.match(dataHealthHardeningMigration, /v\.plate_number/)
+  assert.match(dataHealthHardeningMigration, /v\.vin/)
+  assert.match(dataHealthHardeningMigration, /v\.serial_number/)
+  assert.match(dataHealth, /ID canónico presente/)
+  assert.match(dataHealth, /ID externo no registrado/)
+  assert.match(dataHealth, /nunca se infieren/)
 })
 
 test("IT route reads both privileged snapshots only from the server client", () => {
