@@ -30,6 +30,10 @@ const discoveryEvaluationWriterMigration = readFileSync(
   new URL("../supabase/migrations/20260831152422_restrict_discovery_evaluation_writer.sql", import.meta.url),
   "utf8",
 )
+const orchardLifecycleHelperMigration = readFileSync(
+  new URL("../supabase/migrations/20260831152608_restrict_orchard_lifecycle_sync_helper.sql", import.meta.url),
+  "utf8",
+)
 
 test("incident tables revoke anonymous and broad authenticated privileges", () => {
   for (const table of ["issues", "issue_labels", "issue_label_assignments", "issue_task_assignments"]) {
@@ -156,4 +160,16 @@ test("discovery evaluation metadata is writable only by the trusted engine", () 
     /grant execute on function public\.record_discovery_evaluation\([\s\S]*?to service_role/,
   )
   assert.doesNotMatch(discoveryEvaluationWriterMigration, /grant execute[^\n]+to (anon|authenticated)/i)
+})
+
+test("orchard lifecycle sync is an internal trigger helper", () => {
+  assert.match(
+    orchardLifecycleHelperMigration,
+    /revoke all on function public\.orchard_sync_succession_lifecycle\([\s\S]*?from public, anon, authenticated/,
+  )
+  assert.match(
+    orchardLifecycleHelperMigration,
+    /grant execute on function public\.orchard_sync_succession_lifecycle\([\s\S]*?to service_role/,
+  )
+  assert.doesNotMatch(orchardLifecycleHelperMigration, /grant execute[^\n]+to (anon|authenticated)/i)
 })
