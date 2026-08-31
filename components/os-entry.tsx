@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { BigPictureHome } from '@/components/big-picture-home'
 import { FieldAdminHome } from '@/components/field-admin-home'
+import { OsDecisionCockpit } from '@/components/os-decision-cockpit'
 import { OsHome } from '@/components/os-home'
 import { useOsPersona } from '@/lib/hooks/use-os-persona'
 import { useLanguage } from '@/lib/hooks/use-language'
@@ -23,6 +24,8 @@ export function OsEntry() {
 
   if (loading) return <div className="p-6 text-sm text-muted-foreground">{text.loading}</div>
 
+  const dailyHome = persona === 'field_admin' ? <FieldAdminHome /> : <OsHome />
+
   return (
     <div>
       <div className="border-b border-border/50 px-4 pt-4 md:px-6">
@@ -31,7 +34,8 @@ export function OsEntry() {
           <Link href="/os?view=panorama" className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${panorama ? 'bg-background shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>{text.panorama}</Link>
         </div>
       </div>
-      {panorama ? <BigPictureHome /> : persona === 'field_admin' ? <FieldAdminHome /> : <OsHome />}
+      {!panorama && persona !== 'field_admin' && <OsDecisionCockpit />}
+      {panorama ? <BigPictureHome /> : dailyHome}
     </div>
   )
 }
