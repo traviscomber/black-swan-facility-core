@@ -143,7 +143,7 @@ export function OsDecisionCockpit() {
     }
     if (!financeRows.error) for (const row of financeRows.data ?? []) {
       const amount = formatMoney(row.total_amount, row.currency, language)
-      next.push({ key: `finance-${row.id}`, domain: 'finance', title: row.operational_label || text.financeFallback, detail: [amount ? `${text.amount} ${amount}` : null, row.due_date ? `${text.due} ${row.due_date}` : null].filter(Boolean).join(' · '), href: '/budgets/approvals', priority: 'high', rank: 0 })
+      next.push({ key: `finance-${row.id}`, domain: 'finance', title: row.operational_label || text.financeFallback, detail: [amount ? `${text.amount} ${amount}` : null, row.due_date ? `${text.due} ${row.due_date}` : null].filter(Boolean).join(' · '), href: `/budgets/approvals/${row.id}`, priority: 'high', rank: 0 })
     }
     if (!maintenanceRows.error) for (const row of maintenanceRows.data ?? []) {
       next.push({ key: `maintenance-${row.id}`, domain: 'maintenance', title: row.title || text.maintenanceFallback, detail: [text.blocks, row.fecha_objetivo ? `${text.due} ${row.fecha_objetivo}` : null].filter(Boolean).join(' · '), href: `/maintenance/${row.id}`, priority: row.prioridad, rank: 1 })
