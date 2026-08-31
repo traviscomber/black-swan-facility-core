@@ -10,6 +10,10 @@ const orchardPages = [
   "app/orchard/game-plan/page.tsx",
   "app/orchard/game-plan/overview/page.tsx",
   "app/orchard/game-plan/objectives/page.tsx",
+  "app/orchard/game-plan/crop-chart/page.tsx",
+  "app/orchard/game-plan/propagation/page.tsx",
+  "app/orchard/game-plan/tasks/page.tsx",
+  "app/orchard/game-plan/capacity/page.tsx",
   "app/orchard/game-plan/forecast/page.tsx",
   "app/orchard/work/page.tsx",
   "app/orchard/harvest/page.tsx",
@@ -72,8 +76,25 @@ test("Dietrich Orchard navigation keeps the operating surface intentionally smal
   assert.match(source, /en:\s*"Harvest"/)
   assert.match(source, /en:\s*"History"/)
   assert.match(source, /href:\s*"\/orchard\/game-plan\/objectives"/)
+  assert.match(source, /href:\s*"\/orchard\/game-plan\/crop-chart"/)
+  assert.match(source, /href:\s*"\/orchard\/game-plan\/propagation"/)
+  assert.match(source, /href:\s*"\/orchard\/game-plan\/tasks"/)
+  assert.match(source, /href:\s*"\/orchard\/game-plan\/capacity"/)
   assert.match(source, /href:\s*"\/orchard\/game-plan\/forecast"/)
   assert.match(source, /const advancedItems/)
+})
+
+test("Dietrich workbook reference data remains explicit and versioned", async () => {
+  const direct = await readFile("data/orchard/dietrich-direct-sow-2026-27.json", "utf8")
+  const nursery = await readFile("data/orchard/dietrich-nursery-2026-27.json", "utf8")
+  const tasks = await readFile("data/orchard/dietrich-crop-tasks-2026-27.json", "utf8")
+
+  assert.match(direct, /Six Row Seeder/)
+  assert.match(direct, /calibration/)
+  assert.match(nursery, /germination_temp/)
+  assert.match(nursery, /days_in_nursery/)
+  assert.match(tasks, /Flextine weeder/)
+  assert.match(tasks, /day_offset/)
 })
 
 test("Orchard analytics and charts expose accessible names for their form controls", async () => {
