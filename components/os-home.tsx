@@ -48,12 +48,15 @@ async function loadTodaySignals(navigation: Navigation): Promise<Signal[]> {
   const today = chileDateKey()
   const zero = Promise.resolve({ count: 0, error: null })
 
-  const [arrivals, departures, tasksDue, maintenanceBlocked, maintenanceDue, issuesOpen, stockCritical, replenishmentOpen, financeReady, procurementPending] = await Promise.all([
+  const [arrivals, departures, overdueReservations, tasksDue, maintenanceBlocked, maintenanceDue, issuesOpen, stockCritical, replenishmentOpen, financeReady, procurementPending] = await Promise.all([
     hasNavKey(navigation, 'bookings')
       ? supabase.from('reservations').select('id', { count: 'exact', head: true }).eq('check_in', today).not('status', 'in', '(cancelled,canceled,cancelada)')
       : zero,
     hasNavKey(navigation, 'bookings')
       ? supabase.from('reservations').select('id', { count: 'exact', head: true }).eq('check_out', today).not('status', 'in', '(cancelled,canceled,cancelada)')
+      : zero,
+    hasNavKey(navigation, 'bookings')
+      ? supabase.from('reservations').select('id', { count: 'exact', head: true }).lt('check_out', today).in('status', ['pending', 'confirmed', 'waiting_for_room', 'ready_for_checkin', 'checked_in', 'checked-in'])
       : zero,
     hasNavKey(navigation, 'tasks')
       ? supabase.from('tasks').select('id', { count: 'exact', head: true }).lte('due_date', today).not('status', 'in', '(completada,completed,cancelada,cancelled,canceled)')
@@ -82,6 +85,7 @@ async function loadTodaySignals(navigation: Navigation): Promise<Signal[]> {
   ])
 
   const nextSignals: Signal[] = [
+    { key: 'booking-overdue', label: 'Reservas vencidas sin cierre', value: overdueReservations.count ?? 0, detail: 'Estadías con check-out vencido que siguen activas', href: '/bookings/exceptions', group: 'attention' },
     { key: 'finance', label: 'Decisiones financieras', value: financeReady.count ?? 0, detail: 'Documentos listos para decisión', href: '/budgets/approvals', group: 'attention' },
     { key: 'procurement', label: 'Compras por decidir', value: procurementPending.count ?? 0, detail: 'Solicitudes enviadas o pendientes de aprobación', href: '/procurement', group: 'attention' },
     { key: 'maintenance-blocked', label: 'Mantenimiento bloqueado', value: maintenanceBlocked.count ?? 0, detail: 'Órdenes que requieren destrabe', href: '/maintenance', group: 'attention' },
@@ -100,9 +104,9 @@ async function loadTodaySignals(navigation: Navigation): Promise<Signal[]> {
 const selectableAreas = new Set<OsAreaKey>(['operations', 'people', 'places-assets', 'finance', 'network'])
 
 const attentionPriority: Record<OsPersonaKey, string[]> = {
-  executive: ['finance', 'procurement', 'issues', 'maintenance-blocked', 'maintenance-due', 'stock', 'replenishment', 'tasks'],
-  field_admin: ['maintenance-blocked', 'maintenance-due', 'issues', 'tasks', 'stock', 'replenishment', 'procurement', 'finance'],
-  general: ['issues', 'maintenance-blocked', 'maintenance-due', 'tasks', 'stock', 'replenishment', 'procurement', 'finance'],
+  executive: ['booking-overdue', 'finance', 'procurement', 'issues', 'maintenance-blocked', 'maintenance-due', 'stock', 'replenishment', 'tasks'],
+  field_admin: ['booking-overdue', 'maintenance-blocked', 'maintenance-due', 'issues', 'tasks', 'stock', 'replenishment', 'procurement', 'finance'],
+  general: ['booking-overdue', 'issues', 'maintenance-blocked', 'maintenance-due', 'tasks', 'stock', 'replenishment', 'procurement', 'finance'],
 }
 
 const quickActionPriority: Record<OsPersonaKey, string[]> = {
