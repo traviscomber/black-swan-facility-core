@@ -8,6 +8,9 @@ const orchardPages = [
   "app/orchard/field/harvest/page.tsx",
   "app/orchard/field/nursery/page.tsx",
   "app/orchard/game-plan/page.tsx",
+  "app/orchard/game-plan/overview/page.tsx",
+  "app/orchard/game-plan/objectives/page.tsx",
+  "app/orchard/game-plan/forecast/page.tsx",
   "app/orchard/work/page.tsx",
   "app/orchard/harvest/page.tsx",
   "app/orchard/assistant/page.tsx",
@@ -52,11 +55,25 @@ test("Orchard brand layer encodes canonical Black Swan rules", async () => {
   assert.match(source, /--bs-cool-sky/)
 })
 
-test("Orchard navigation preserves accessible names when mobile labels are visually hidden", async () => {
+test("Orchard navigation preserves accessible names for primary and menu navigation", async () => {
   const source = await readFile("components/orchard/orchard-navigation.tsx", "utf8")
 
   assert.match(source, /aria-label=\{item\.label\[locale\]\}/)
-  assert.match(source, /aria-label=\{group\.label\[locale\]\}/)
+  assert.match(source, /aria-label=\{gamePlanLabel\[locale\]\}/)
+  assert.match(source, /aria-label=\{moreLabel\[locale\]\}/)
+})
+
+test("Dietrich Orchard navigation keeps the operating surface intentionally small", async () => {
+  const source = await readFile("components/orchard/orchard-navigation.tsx", "utf8")
+
+  assert.match(source, /en:\s*"Today"/)
+  assert.match(source, /gamePlanLabel/)
+  assert.match(source, /en:\s*"Field"/)
+  assert.match(source, /en:\s*"Harvest"/)
+  assert.match(source, /en:\s*"History"/)
+  assert.match(source, /href:\s*"\/orchard\/game-plan\/objectives"/)
+  assert.match(source, /href:\s*"\/orchard\/game-plan\/forecast"/)
+  assert.match(source, /const advancedItems/)
 })
 
 test("Orchard analytics and charts expose accessible names for their form controls", async () => {
