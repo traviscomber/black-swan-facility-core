@@ -10,11 +10,13 @@ const orchardPages = [
   "app/orchard/game-plan/page.tsx",
   "app/orchard/game-plan/overview/page.tsx",
   "app/orchard/game-plan/objectives/page.tsx",
+  "app/orchard/game-plan/season/page.tsx",
   "app/orchard/game-plan/crop-chart/page.tsx",
   "app/orchard/game-plan/propagation/page.tsx",
   "app/orchard/game-plan/tasks/page.tsx",
   "app/orchard/game-plan/capacity/page.tsx",
   "app/orchard/game-plan/forecast/page.tsx",
+  "app/orchard/harvest/desk/page.tsx",
   "app/orchard/work/page.tsx",
   "app/orchard/harvest/page.tsx",
   "app/orchard/assistant/page.tsx",
@@ -76,11 +78,13 @@ test("Dietrich Orchard navigation keeps the operating surface intentionally smal
   assert.match(source, /en:\s*"Harvest"/)
   assert.match(source, /en:\s*"History"/)
   assert.match(source, /href:\s*"\/orchard\/game-plan\/objectives"/)
+  assert.match(source, /href:\s*"\/orchard\/game-plan\/season"/)
   assert.match(source, /href:\s*"\/orchard\/game-plan\/crop-chart"/)
   assert.match(source, /href:\s*"\/orchard\/game-plan\/propagation"/)
   assert.match(source, /href:\s*"\/orchard\/game-plan\/tasks"/)
   assert.match(source, /href:\s*"\/orchard\/game-plan\/capacity"/)
   assert.match(source, /href:\s*"\/orchard\/game-plan\/forecast"/)
+  assert.match(source, /href:\s*"\/orchard\/harvest\/desk"/)
   assert.match(source, /const advancedItems/)
 })
 
@@ -95,6 +99,16 @@ test("Dietrich workbook reference data remains explicit and versioned", async ()
   assert.match(nursery, /days_in_nursery/)
   assert.match(tasks, /Flextine weeder/)
   assert.match(tasks, /day_offset/)
+})
+
+test("Dietrich daily surface is plan-first and never auto-completes work", async () => {
+  const source = await readFile("app/orchard/page.tsx", "utf8")
+
+  assert.match(source, /Orchard · Today/)
+  assert.match(source, /planned_sow_date/)
+  assert.match(source, /planned_transplant_date/)
+  assert.match(source, /planned_first_harvest_date/)
+  assert.match(source, /no work is marked complete automatically/)
 })
 
 test("Orchard analytics and charts expose accessible names for their form controls", async () => {
