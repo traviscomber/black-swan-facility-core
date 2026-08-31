@@ -152,8 +152,8 @@ test("Dietrich History excludes draft planning and preserves advanced season ana
   assert.match(source, /\/orchard\/season-summary\/advanced/)
   assert.match(source, /crop_succession_id/)
   assert.match(source, /does not assign them by date alone/)
-  assert.doesNotMatch(source, /generateAndSave/)
-  assert.match(advanced, /generateAndSave/)
+  assert.doesNotMatch(source, /scopeGamePlanGraph/)
+  assert.match(advanced, /scopeGamePlanGraph/)
 })
 
 test("Orchard analytics and charts expose accessible names for their form controls", async () => {
