@@ -137,3 +137,44 @@ test("Operations API outage falls back to canonical RPCs without granting routes
   assert.equal(keys.includes("inventory"), false)
   assert.equal(keys.includes("approvals"), false)
 })
+
+test("malformed successful Operations API payload uses the canonical RPC fallback", async () => {
+  const rpcCalls: string[] = []
+  const supabase = {
+    auth: {
+      getSession: async () => ({ data: { session: { access_token: "test-token" } }, error: null }),
+    },
+    rpc: async (name: string) => {
+      rpcCalls.push(name)
+      if (name === "get_current_route_access") {
+        return {
+          data: { role_key: "hospitality", is_admin: false, domains: { booking: ["view"] } },
+          error: null,
+        }
+      }
+      if (name === "get_black_swan_os_navigation") {
+        return {
+          data: { role: "hospitality", is_member: false, items: [{ key: "events", label: "Events", href: "/os/events" }] },
+          error: null,
+        }
+      }
+      if (name === "get_discovery_navigation_entitlement") return { data: false, error: null }
+      throw new Error(`Unexpected RPC: ${name}`)
+    },
+  }
+  const malformedSuccess = (async () => new Response(JSON.stringify({
+    data: { role: "hospitality", items: [{ key: "events", label: "Events" }] },
+  }), { status: 200, headers: { "content-type": "application/json" } })) as typeof fetch
+
+  const navigation = await loadAuthorizedNavigationWith({
+    supabase: supabase as never,
+    apiUrl: "https://operations.example",
+    fetchImpl: malformedSuccess,
+  })
+  const keys = navigation.items?.map((item) => item.key) ?? []
+
+  assert.deepEqual(rpcCalls, ["get_current_route_access", "get_black_swan_os_navigation", "get_discovery_navigation_entitlement"])
+  assert.equal(navigation.role, "hospitality")
+  assert.equal(keys.includes("bookings"), true)
+  assert.equal(keys.includes("events"), true)
+})

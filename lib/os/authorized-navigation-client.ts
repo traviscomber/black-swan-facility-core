@@ -25,6 +25,22 @@ function normalizeNavigation(value: unknown): AuthorizedNavigation {
   return { ...navigation, items: Array.isArray(navigation.items) ? navigation.items : [] }
 }
 
+function parseApiNavigation(value: unknown): AuthorizedNavigation | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null
+  const navigation = value as Record<string, unknown>
+  if (!Array.isArray(navigation.items)) return null
+  if (navigation.role !== undefined && typeof navigation.role !== 'string') return null
+  if (navigation.is_member !== undefined && typeof navigation.is_member !== 'boolean') return null
+  if (!navigation.items.every((item) => {
+    if (!item || typeof item !== 'object' || Array.isArray(item)) return false
+    const candidate = item as Record<string, unknown>
+    return typeof candidate.key === 'string' && candidate.key.length > 0
+      && typeof candidate.label === 'string' && candidate.label.length > 0
+      && typeof candidate.href === 'string' && candidate.href.startsWith('/')
+  })) return null
+  return navigation as AuthorizedNavigation
+}
+
 async function loadServerNavigation(
   supabase: ReturnType<typeof createClient>,
   token: string,
@@ -35,7 +51,8 @@ async function loadServerNavigation(
     try {
       const response = await fetchImpl(`${apiUrl}/v1/os/navigation`, { headers: { authorization: `Bearer ${token}` } })
       const body = await response.json().catch(() => ({}))
-      if (response.ok && body?.data) return normalizeNavigation(body.data)
+      const navigation = response.ok ? parseApiNavigation(body?.data) : null
+      if (navigation) return navigation
     } catch {
       // The canonical authenticated RPC below is the bounded availability fallback.
     }
