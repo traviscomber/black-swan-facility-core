@@ -146,13 +146,13 @@ export function OsDecisionCockpit() {
       next.push({ key: `finance-${row.id}`, domain: 'finance', title: row.operational_label || text.financeFallback, detail: [amount ? `${text.amount} ${amount}` : null, row.due_date ? `${text.due} ${row.due_date}` : null].filter(Boolean).join(' · '), href: '/budgets/approvals', priority: 'high', rank: 0 })
     }
     if (!maintenanceRows.error) for (const row of maintenanceRows.data ?? []) {
-      next.push({ key: `maintenance-${row.id}`, domain: 'maintenance', title: row.title || text.maintenanceFallback, detail: [text.blocks, row.fecha_objetivo ? `${text.due} ${row.fecha_objetivo}` : null].filter(Boolean).join(' · '), href: '/maintenance', priority: row.prioridad, rank: 1 })
+      next.push({ key: `maintenance-${row.id}`, domain: 'maintenance', title: row.title || text.maintenanceFallback, detail: [text.blocks, row.fecha_objetivo ? `${text.due} ${row.fecha_objetivo}` : null].filter(Boolean).join(' · '), href: `/maintenance/${row.id}`, priority: row.prioridad, rank: 1 })
     }
     if (!procurementRows.error) for (const row of procurementRows.data ?? []) {
       next.push({ key: `procurement-${row.id}`, domain: 'procurement', title: row.title || row.request_number || text.procurementFallback, detail: [row.request_number, row.status ? `${text.status} ${row.status}` : null, row.required_date ? `${text.due} ${row.required_date}` : null].filter(Boolean).join(' · '), href: `/procurement/requests/${row.id}`, priority: row.priority, rank: 1 })
     }
     if (!taskRows.error) for (const row of taskRows.data ?? []) {
-      next.push({ key: `task-${row.id}`, domain: 'tasks', title: row.title || text.taskFallback, detail: `${text.overdue}${row.due_date ? ` · ${text.due} ${row.due_date}` : ''}`, href: '/tasks', priority: row.priority, rank: 2 })
+      next.push({ key: `task-${row.id}`, domain: 'tasks', title: row.title || text.taskFallback, detail: `${text.overdue}${row.due_date ? ` · ${text.due} ${row.due_date}` : ''}`, href: `/tasks?selected=${row.id}`, priority: row.priority, rank: 2 })
     }
     if (!issueRows.error) for (const row of issueRows.data ?? []) {
       next.push({ key: `issue-${row.id}`, domain: 'issues', title: row.title || text.issueFallback, detail: [row.status ? `${text.status} ${row.status}` : null, row.created_at ? `${text.created} ${String(row.created_at).slice(0, 10)}` : null].filter(Boolean).join(' · '), href: `/issues/${row.id}`, priority: row.severity || row.priority, rank: 2 })
