@@ -18,6 +18,10 @@ const guestPresenceHelperMigration = readFileSync(
   new URL("../supabase/migrations/20260831151718_restrict_internal_guest_presence_helpers.sql", import.meta.url),
   "utf8",
 )
+const nestedAuthorizationHelperMigration = readFileSync(
+  new URL("../supabase/migrations/20260831151913_restrict_nested_authorization_helpers.sql", import.meta.url),
+  "utf8",
+)
 
 test("incident tables revoke anonymous and broad authenticated privileges", () => {
   for (const table of ["issues", "issue_labels", "issue_label_assignments", "issue_task_assignments"]) {
@@ -106,4 +110,18 @@ test("internal guest presence helpers are service-role only", () => {
     )
   }
   assert.doesNotMatch(guestPresenceHelperMigration, /grant execute[^\n]+to (anon|authenticated)/i)
+})
+
+test("nested authorization helpers are service-role only", () => {
+  for (const helper of ["can_access_orchard_allocation", "can_finance_admin"]) {
+    assert.match(
+      nestedAuthorizationHelperMigration,
+      new RegExp(`revoke all on function public\\.${helper}\\([\\s\\S]*?from public, anon, authenticated`),
+    )
+    assert.match(
+      nestedAuthorizationHelperMigration,
+      new RegExp(`grant execute on function public\\.${helper}\\([\\s\\S]*?to service_role`),
+    )
+  }
+  assert.doesNotMatch(nestedAuthorizationHelperMigration, /grant execute[^\n]+to (anon|authenticated)/i)
 })
