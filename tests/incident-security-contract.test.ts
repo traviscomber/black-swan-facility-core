@@ -22,6 +22,10 @@ const nestedAuthorizationHelperMigration = readFileSync(
   new URL("../supabase/migrations/20260831151913_restrict_nested_authorization_helpers.sql", import.meta.url),
   "utf8",
 )
+const bookingDragWrapperMigration = readFileSync(
+  new URL("../supabase/migrations/20260831152036_harden_booking_drag_wrapper.sql", import.meta.url),
+  "utf8",
+)
 
 test("incident tables revoke anonymous and broad authenticated privileges", () => {
   for (const table of ["issues", "issue_labels", "issue_label_assignments", "issue_task_assignments"]) {
@@ -124,4 +128,16 @@ test("nested authorization helpers are service-role only", () => {
     )
   }
   assert.doesNotMatch(nestedAuthorizationHelperMigration, /grant execute[^\n]+to (anon|authenticated)/i)
+})
+
+test("booking drag wrapper authorizes before reading reservation state", () => {
+  assert.match(bookingDragWrapperMigration, /if auth\.uid\(\) is null/)
+  assert.match(bookingDragWrapperMigration, /action_key = 'booking\.modify'/)
+  assert.match(bookingDragWrapperMigration, /can_access_operational_scope\('booking', r\.location_id\)/)
+  assert.match(bookingDragWrapperMigration, /Reserva no encontrada o fuera de alcance operacional/)
+  assert.match(
+    bookingDragWrapperMigration,
+    /grant execute on function public\.apply_or_queue_booking_drag\([\s\S]*?to authenticated, service_role/,
+  )
+  assert.doesNotMatch(bookingDragWrapperMigration, /grant execute[^\n]+to anon/i)
 })
