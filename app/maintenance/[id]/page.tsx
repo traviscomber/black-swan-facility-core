@@ -39,7 +39,7 @@ export default async function MaintenanceObjectPage({ params }: PageProps) {
   if (taskResult.error || !taskResult.data) notFound()
   const task = taskResult.data as MaintenanceRow
 
-  const [employee, asset, infrastructure, vehicle, reservation, room, issue, incident, hospitalityRequest] = await Promise.all([
+  const [employee, asset, infrastructure, vehicle, reservation, room, issue, incident, hospitalityRequest, derivedTasks] = await Promise.all([
     task.assigned_to ? supabase.from('employees').select('id,name').eq('id', task.assigned_to).maybeSingle() : Promise.resolve({ data: null, error: null }),
     task.asset_id ? supabase.from('assets').select('id,name,asset_code,status').eq('id', task.asset_id).maybeSingle() : Promise.resolve({ data: null, error: null }),
     task.infrastructure_id ? supabase.from('infrastructure_plans').select('id,name,status,priority').eq('id', task.infrastructure_id).maybeSingle() : Promise.resolve({ data: null, error: null }),
@@ -49,11 +49,12 @@ export default async function MaintenanceObjectPage({ params }: PageProps) {
     task.issue_id ? supabase.from('issues').select('id,title,status,priority,severity').eq('id', task.issue_id).maybeSingle() : Promise.resolve({ data: null, error: null }),
     task.incident_id ? supabase.from('incidents').select('id,title,status,priority,severity').eq('id', task.incident_id).maybeSingle() : Promise.resolve({ data: null, error: null }),
     task.hospitality_request_id ? supabase.from('hospitality_requests').select('id,request_type,status,priority,guest_name,reservation_id').eq('id', task.hospitality_request_id).maybeSingle() : Promise.resolve({ data: null, error: null }),
+    supabase.from('tasks').select('id,title,status,priority,due_date').eq('source_type', 'maintenance_task').eq('source_id', id).order('created_at', { ascending: false }).limit(20),
   ])
 
-  const partial = [employee, asset, infrastructure, vehicle, reservation, room, issue, incident, hospitalityRequest].some((result) => Boolean(result.error))
+  const partial = [employee, asset, infrastructure, vehicle, reservation, room, issue, incident, hospitalityRequest, derivedTasks].some((result) => Boolean(result.error))
 
-  return <MaintenanceObjectView task={task} employee={employee.data ?? null} asset={asset.data ?? null} infrastructure={infrastructure.data ?? null} vehicle={vehicle.data ?? null} reservation={reservation.data ?? null} room={room.data ?? null} issue={issue.data ?? null} incident={incident.data ?? null} hospitalityRequest={hospitalityRequest.data ?? null} partial={partial} />
+  return <MaintenanceObjectView task={task} employee={employee.data ?? null} asset={asset.data ?? null} infrastructure={infrastructure.data ?? null} vehicle={vehicle.data ?? null} reservation={reservation.data ?? null} room={room.data ?? null} issue={issue.data ?? null} incident={incident.data ?? null} hospitalityRequest={hospitalityRequest.data ?? null} derivedTasks={derivedTasks.data ?? []} partial={partial} />
 }
 
 export const dynamic = 'force-dynamic'
