@@ -10,6 +10,8 @@ const issueObject = readFileSync(new URL("../app/issues/[id]/page.tsx", import.m
 const issueObjectView = readFileSync(new URL("../components/issue-object-view.tsx", import.meta.url), "utf8")
 const maintenanceObject = readFileSync(new URL("../app/maintenance/[id]/page.tsx", import.meta.url), "utf8")
 const maintenanceObjectView = readFileSync(new URL("../components/maintenance-object-view.tsx", import.meta.url), "utf8")
+const financeObject = readFileSync(new URL("../app/budgets/approvals/[id]/page.tsx", import.meta.url), "utf8")
+const financeObjectView = readFileSync(new URL("../components/finance-approval-object-view.tsx", import.meta.url), "utf8")
 const taskIndex = readFileSync(new URL("../app/tasks/page.tsx", import.meta.url), "utf8")
 
 test("asset object connects canonical maintenance, issues, custody and movement context", () => {
@@ -90,6 +92,19 @@ test("maintenance object follows only explicit foreign keys and derived task lin
   assert.doesNotMatch(maintenanceObject, /\.insert\(/)
   assert.doesNotMatch(maintenanceObject, /\.update\(/)
   assert.doesNotMatch(maintenanceObject, /\.delete\(/)
+})
+
+test("finance approval object is permission checked and read-only while preserving controlled mutations in the queue", () => {
+  assert.match(financeObjectView, /Objeto · Aprobación financiera/)
+  assert.match(financeObject, /rpc\('can_finance_approve'\)/)
+  assert.match(financeObject, /from\('finance_approval_queue'\)/)
+  assert.match(financeObjectView, /Las acciones de aprobar\/rechazar permanecen en la cola controlada existente/)
+  assert.match(financeObjectView, /href="\/budgets\/approvals"/)
+  assert.doesNotMatch(financeObject, /approve_finance_document/)
+  assert.doesNotMatch(financeObject, /reject_finance_document/)
+  assert.doesNotMatch(financeObject, /\.insert\(/)
+  assert.doesNotMatch(financeObject, /\.update\(/)
+  assert.doesNotMatch(financeObject, /\.delete\(/)
 })
 
 test("task index keeps its existing selected-object architecture for concrete task links", () => {
