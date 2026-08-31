@@ -3,8 +3,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { AlertTriangle, ArrowRight, CheckCircle2, Clock3 } from 'lucide-react'
-import { Badge } from '@/components/ui/badge'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { createClient } from '@/lib/supabase/client'
 import { useLanguage } from '@/lib/hooks/use-language'
 import { hasCapability, normalizeCapabilitySnapshot } from '@/lib/access/capabilities'
@@ -14,6 +12,8 @@ type DecisionItem = {
   domain: 'hospitality' | 'finance' | 'maintenance' | 'procurement' | 'tasks' | 'issues'
   title: string
   detail: string
+  why: string
+  action: string
   href: string
   priority: string | null
   rank: number
@@ -22,30 +22,36 @@ type ChangeSignal = { key: string; label: string; value: number; href: string }
 
 const copy = {
   en: {
-    eyebrow: 'Decision cockpit', title: 'Needs a decision now', description: 'Concrete canonical objects that are blocked, overdue, awaiting approval, or require triage. No synthetic scores.',
-    empty: 'No visible decision blockers for your access.', open: 'Open', recent: 'Changed in the last 24 hours', recentDescription: 'Observed changes in canonical operating records.',
-    loading: 'Refreshing decision queue…', partial: 'Some sources could not be refreshed; available evidence is still shown.',
+    title: 'What needs your attention', description: 'Only items that need a decision, follow-up, or action now.',
+    empty: 'Nothing urgent right now.', emptyDetail: 'There are no visible blockers, overdue tasks, or approvals waiting for you.', recent: 'What changed today', recentDescription: 'Recent activity you may want to review.',
+    loading: 'Checking what needs attention…', partial: 'Some information could not be refreshed. What is available is shown below.', why: 'Why it matters',
     hospitality: 'Hospitality', finance: 'Finance', maintenance: 'Maintenance', procurement: 'Procurement', tasks: 'Tasks', issues: 'Issues',
     financeFallback: 'Document ready for approval', maintenanceFallback: 'Blocked maintenance', procurementFallback: 'Purchase request', taskFallback: 'Operational task', issueFallback: 'Open issue',
     blocks: 'Blocks', overdue: 'Overdue', due: 'Due', amount: 'Amount', status: 'Status', created: 'Created',
+    reservationWhy: 'This may affect check-in or check-out.', financeWhy: 'This payment or document is waiting for a decision.', maintenanceWhy: 'This work is blocked and cannot move forward.', procurementWhy: 'This request is waiting for approval or follow-up.', taskWhy: 'This task is due or overdue.', issueWhy: 'This issue is still open and may need follow-up.',
+    reservationAction: 'Review reservation', financeAction: 'Review approval', maintenanceAction: 'Review maintenance', procurementAction: 'Review purchase', taskAction: 'Review task', issueAction: 'Review issue',
     changesTasks: 'Tasks changed', changesIssues: 'Issues created', changesMaintenance: 'Maintenance created', changesProcurement: 'Purchases changed',
   },
   es: {
-    eyebrow: 'Decision cockpit', title: 'Necesita decisión ahora', description: 'Objetos canónicos concretos bloqueados, vencidos, pendientes de aprobación o que requieren triaje. Sin scores sintéticos.',
-    empty: 'No hay bloqueos de decisión visibles para tu acceso.', open: 'Abrir', recent: 'Cambió en las últimas 24 horas', recentDescription: 'Cambios observados en registros operativos canónicos.',
-    loading: 'Actualizando cola de decisiones…', partial: 'Algunas fuentes no pudieron actualizarse; se muestra la evidencia disponible.',
+    title: 'Qué necesita tu atención', description: 'Solo mostramos lo que necesita una decisión, seguimiento o acción ahora.',
+    empty: 'Nada urgente por ahora.', emptyDetail: 'No hay bloqueos, tareas vencidas ni aprobaciones pendientes visibles para ti.', recent: 'Qué cambió hoy', recentDescription: 'Actividad reciente que puede ser útil revisar.',
+    loading: 'Revisando qué necesita atención…', partial: 'Parte de la información no pudo actualizarse. Mostramos lo que sí está disponible.', why: 'Por qué importa',
     hospitality: 'Hospitality', finance: 'Finanzas', maintenance: 'Mantenimiento', procurement: 'Compras', tasks: 'Tareas', issues: 'Incidencias',
     financeFallback: 'Documento listo para aprobación', maintenanceFallback: 'Mantenimiento bloqueado', procurementFallback: 'Solicitud de compra', taskFallback: 'Tarea operativa', issueFallback: 'Incidencia abierta',
     blocks: 'Bloquea', overdue: 'Vencido', due: 'Vence', amount: 'Monto', status: 'Estado', created: 'Creado',
+    reservationWhy: 'Puede afectar un check-in o check-out.', financeWhy: 'Este pago o documento está esperando una decisión.', maintenanceWhy: 'Este trabajo está bloqueado y no puede avanzar.', procurementWhy: 'Esta solicitud está esperando aprobación o seguimiento.', taskWhy: 'Esta tarea vence hoy o ya está vencida.', issueWhy: 'Esta incidencia sigue abierta y puede requerir seguimiento.',
+    reservationAction: 'Revisar reserva', financeAction: 'Revisar aprobación', maintenanceAction: 'Revisar mantenimiento', procurementAction: 'Revisar compra', taskAction: 'Revisar tarea', issueAction: 'Revisar incidencia',
     changesTasks: 'Tareas modificadas', changesIssues: 'Incidencias creadas', changesMaintenance: 'Mantenimientos creados', changesProcurement: 'Compras modificadas',
   },
   de: {
-    eyebrow: 'Decision Cockpit', title: 'Jetzt entscheidungsrelevant', description: 'Konkrete kanonische Objekte, die blockiert, überfällig, freigabepflichtig oder zu triagieren sind. Keine synthetischen Scores.',
-    empty: 'Keine sichtbaren Entscheidungsblocker für deinen Zugriff.', open: 'Öffnen', recent: 'In den letzten 24 Stunden geändert', recentDescription: 'Beobachtete Änderungen in kanonischen Betriebsdaten.',
-    loading: 'Entscheidungswarteschlange wird aktualisiert…', partial: 'Einige Quellen konnten nicht aktualisiert werden; verfügbare Evidenz wird weiterhin angezeigt.',
+    title: 'Was jetzt deine Aufmerksamkeit braucht', description: 'Nur Punkte, die jetzt eine Entscheidung, Nachverfolgung oder Aktion brauchen.',
+    empty: 'Aktuell nichts Dringendes.', emptyDetail: 'Keine sichtbaren Blocker, überfälligen Aufgaben oder offenen Freigaben.', recent: 'Was sich heute geändert hat', recentDescription: 'Aktuelle Änderungen, die du prüfen kannst.',
+    loading: 'Aktuelle Aufgaben werden geprüft…', partial: 'Ein Teil der Informationen konnte nicht aktualisiert werden. Verfügbare Daten werden angezeigt.', why: 'Warum das wichtig ist',
     hospitality: 'Hospitality', finance: 'Finanzen', maintenance: 'Instandhaltung', procurement: 'Beschaffung', tasks: 'Aufgaben', issues: 'Vorfälle',
     financeFallback: 'Dokument zur Freigabe bereit', maintenanceFallback: 'Blockierte Instandhaltung', procurementFallback: 'Beschaffungsanfrage', taskFallback: 'Betriebliche Aufgabe', issueFallback: 'Offener Vorfall',
     blocks: 'Blockiert', overdue: 'Überfällig', due: 'Fällig', amount: 'Betrag', status: 'Status', created: 'Erstellt',
+    reservationWhy: 'Dies kann Check-in oder Check-out beeinflussen.', financeWhy: 'Diese Zahlung oder dieses Dokument wartet auf eine Entscheidung.', maintenanceWhy: 'Diese Arbeit ist blockiert und kann nicht fortgesetzt werden.', procurementWhy: 'Diese Anfrage wartet auf Freigabe oder Nachverfolgung.', taskWhy: 'Diese Aufgabe ist heute fällig oder bereits überfällig.', issueWhy: 'Dieser Vorfall ist noch offen und braucht möglicherweise Nachverfolgung.',
+    reservationAction: 'Reservierung prüfen', financeAction: 'Freigabe prüfen', maintenanceAction: 'Instandhaltung prüfen', procurementAction: 'Einkauf prüfen', taskAction: 'Aufgabe prüfen', issueAction: 'Vorfall prüfen',
     changesTasks: 'Geänderte Aufgaben', changesIssues: 'Neue Vorfälle', changesMaintenance: 'Neue Instandhaltung', changesProcurement: 'Geänderte Beschaffung',
   },
 } as const
@@ -140,23 +146,23 @@ export function OsDecisionCockpit() {
     const next: DecisionItem[] = []
     if (!reservationRows.error) for (const row of reservationRows.data ?? []) {
       const blocks = [row.blocks_check_in ? 'check-in' : null, row.blocks_check_out ? 'check-out' : null].filter(Boolean).join(' + ')
-      next.push({ key: `reservation-${row.reservation_id}-${row.title}`, domain: 'hospitality', title: row.title || text.hospitality, detail: `${text.blocks} ${blocks || 'stay'}${row.detail ? ` · ${row.detail}` : ''}`, href: `/bookings/reservations/${row.reservation_id}`, priority: row.priority, rank: 0 })
+      next.push({ key: `reservation-${row.reservation_id}-${row.title}`, domain: 'hospitality', title: row.title || text.hospitality, detail: `${text.blocks} ${blocks || 'stay'}${row.detail ? ` · ${row.detail}` : ''}`, why: text.reservationWhy, action: text.reservationAction, href: `/bookings/reservations/${row.reservation_id}`, priority: row.priority, rank: 0 })
     }
     if (!financeRows.error) for (const row of financeRows.data ?? []) {
       const amount = formatMoney(row.total_amount, row.currency, language)
-      next.push({ key: `finance-${row.id}`, domain: 'finance', title: row.description || row.cost_center_name || row.supplier_name || row.document_number || text.financeFallback, detail: [amount ? `${text.amount} ${amount}` : null, row.due_date ? `${text.due} ${row.due_date}` : null].filter(Boolean).join(' · '), href: `/budgets/approvals/${row.id}`, priority: 'high', rank: 0 })
+      next.push({ key: `finance-${row.id}`, domain: 'finance', title: row.description || row.cost_center_name || row.supplier_name || row.document_number || text.financeFallback, detail: [amount ? `${text.amount} ${amount}` : null, row.due_date ? `${text.due} ${row.due_date}` : null].filter(Boolean).join(' · '), why: text.financeWhy, action: text.financeAction, href: `/budgets/approvals/${row.id}`, priority: 'high', rank: 0 })
     }
     if (!maintenanceRows.error) for (const row of maintenanceRows.data ?? []) {
-      next.push({ key: `maintenance-${row.id}`, domain: 'maintenance', title: row.title || text.maintenanceFallback, detail: [text.blocks, row.fecha_objetivo ? `${text.due} ${row.fecha_objetivo}` : null].filter(Boolean).join(' · '), href: `/maintenance/${row.id}`, priority: row.prioridad, rank: 1 })
+      next.push({ key: `maintenance-${row.id}`, domain: 'maintenance', title: row.title || text.maintenanceFallback, detail: [text.blocks, row.fecha_objetivo ? `${text.due} ${row.fecha_objetivo}` : null].filter(Boolean).join(' · '), why: text.maintenanceWhy, action: text.maintenanceAction, href: `/maintenance/${row.id}`, priority: row.prioridad, rank: 1 })
     }
     if (!procurementRows.error) for (const row of procurementRows.data ?? []) {
-      next.push({ key: `procurement-${row.id}`, domain: 'procurement', title: row.title || row.request_number || text.procurementFallback, detail: [row.request_number, row.status ? `${text.status} ${row.status}` : null, row.required_date ? `${text.due} ${row.required_date}` : null].filter(Boolean).join(' · '), href: `/procurement/requests/${row.id}`, priority: row.priority, rank: 1 })
+      next.push({ key: `procurement-${row.id}`, domain: 'procurement', title: row.title || row.request_number || text.procurementFallback, detail: [row.request_number, row.status ? `${text.status} ${row.status}` : null, row.required_date ? `${text.due} ${row.required_date}` : null].filter(Boolean).join(' · '), why: text.procurementWhy, action: text.procurementAction, href: `/procurement/requests/${row.id}`, priority: row.priority, rank: 1 })
     }
     if (!taskRows.error) for (const row of taskRows.data ?? []) {
-      next.push({ key: `task-${row.id}`, domain: 'tasks', title: row.title || text.taskFallback, detail: `${text.overdue}${row.due_date ? ` · ${text.due} ${row.due_date}` : ''}`, href: `/tasks?selected=${row.id}`, priority: row.priority, rank: 2 })
+      next.push({ key: `task-${row.id}`, domain: 'tasks', title: row.title || text.taskFallback, detail: `${text.overdue}${row.due_date ? ` · ${text.due} ${row.due_date}` : ''}`, why: text.taskWhy, action: text.taskAction, href: `/tasks?selected=${row.id}`, priority: row.priority, rank: 2 })
     }
     if (!issueRows.error) for (const row of issueRows.data ?? []) {
-      next.push({ key: `issue-${row.id}`, domain: 'issues', title: row.title || text.issueFallback, detail: [row.status ? `${text.status} ${row.status}` : null, row.created_at ? `${text.created} ${String(row.created_at).slice(0, 10)}` : null].filter(Boolean).join(' · '), href: `/issues/${row.id}`, priority: row.severity || row.priority, rank: 2 })
+      next.push({ key: `issue-${row.id}`, domain: 'issues', title: row.title || text.issueFallback, detail: [row.status ? `${text.status} ${row.status}` : null, row.created_at ? `${text.created} ${String(row.created_at).slice(0, 10)}` : null].filter(Boolean).join(' · '), why: text.issueWhy, action: text.issueAction, href: `/issues/${row.id}`, priority: row.severity || row.priority, rank: 2 })
     }
 
     next.sort((a, b) => a.rank - b.rank || priorityRank(a.priority) - priorityRank(b.priority) || a.title.localeCompare(b.title, localeMap[language]))
@@ -173,36 +179,22 @@ export function OsDecisionCockpit() {
 
   useEffect(() => { void load() }, [load])
 
-  const domainLabels = { hospitality: text.hospitality, finance: text.finance, maintenance: text.maintenance, procurement: text.procurement, tasks: text.tasks, issues: text.issues }
-
   return (
-    <section className="px-4 pt-4 md:px-6">
-      <Card className="border-primary/20 bg-primary/[.025]">
-        <CardHeader className="pb-3">
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[.18em] text-primary">{text.eyebrow}</p>
-              <CardTitle className="mt-1 text-xl">{text.title}</CardTitle>
-              <CardDescription className="mt-1 max-w-3xl">{text.description}</CardDescription>
-            </div>
-            {!loading && <Badge variant={items.length > 0 ? 'default' : 'secondary'}>{items.length}</Badge>}
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {partial && <div className="flex items-start gap-2 rounded-md border border-amber-500/30 bg-amber-500/5 p-3 text-xs text-muted-foreground"><AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />{text.partial}</div>}
-          {loading ? <div className="rounded-md border border-dashed p-4 text-sm text-muted-foreground">{text.loading}</div> : items.length === 0 ? <div className="flex items-center gap-2 rounded-md border border-dashed p-4 text-sm text-muted-foreground"><CheckCircle2 className="h-4 w-4" />{text.empty}</div> : (
-            <div className="grid gap-2 lg:grid-cols-2">
-              {items.map((item) => <Link key={item.key} href={item.href} className="group rounded-lg border bg-background/60 p-3 transition-colors hover:bg-muted/50">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0"><div className="mb-1 flex flex-wrap items-center gap-2"><Badge variant="outline" className="text-[10px]">{domainLabels[item.domain]}</Badge>{item.priority && <span className="text-[10px] uppercase tracking-wide text-muted-foreground">{item.priority}</span>}</div><p className="truncate text-sm font-medium">{item.title}</p><p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{item.detail}</p></div>
-                  <ArrowRight className="mt-1 h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
-                </div>
-              </Link>)}
-            </div>
-          )}
-          {!loading && changes.length > 0 && <div className="border-t pt-3"><div className="mb-2 flex items-center gap-2"><Clock3 className="h-4 w-4 text-muted-foreground" /><div><p className="text-sm font-medium">{text.recent}</p><p className="text-xs text-muted-foreground">{text.recentDescription}</p></div></div><div className="flex flex-wrap gap-2">{changes.map((change) => <Link key={change.key} href={change.href} className="rounded-md border px-2.5 py-1.5 text-xs hover:bg-muted"><span className="font-semibold tabular-nums">{change.value}</span> {change.label}</Link>)}</div></div>}
-        </CardContent>
-      </Card>
+    <section className="px-4 pt-5 md:px-6">
+      <div className="border-b border-border pb-4">
+        <h1 className="text-2xl font-semibold tracking-tight">{text.title}</h1>
+        <p className="mt-1 max-w-2xl text-sm text-muted-foreground">{text.description}</p>
+      </div>
+      {partial && <div className="mt-4 flex items-start gap-2 border border-amber-500/30 bg-amber-500/5 p-3 text-sm text-muted-foreground"><AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" /><span>{text.partial}</span></div>}
+      {loading ? <div className="mt-4 flex items-center gap-2 py-6 text-sm text-muted-foreground"><Clock3 className="h-4 w-4" />{text.loading}</div> : items.length === 0 ? (
+        <div className="mt-4 flex items-start gap-3 border-b border-border py-5"><CheckCircle2 className="mt-0.5 h-5 w-5 text-emerald-600" /><div><p className="font-medium">{text.empty}</p><p className="mt-1 text-sm text-muted-foreground">{text.emptyDetail}</p></div></div>
+      ) : <div className="divide-y divide-border">{items.map((item) => (
+        <div key={item.key} className="grid gap-3 py-4 md:grid-cols-[1fr_auto] md:items-center">
+          <div className="min-w-0"><p className="font-medium leading-6">{item.title}</p>{item.detail && <p className="mt-1 text-sm text-muted-foreground">{item.detail}</p>}<p className="mt-1 text-sm text-muted-foreground"><span className="font-medium text-foreground/80">{text.why}:</span> {item.why}</p></div>
+          <Link href={item.href} className="inline-flex w-fit items-center gap-2 text-sm font-medium text-primary hover:underline">{item.action}<ArrowRight className="h-4 w-4" /></Link>
+        </div>
+      ))}</div>}
+      {!loading && changes.length > 0 && <div className="mt-6 border-t border-border pt-4"><div className="flex items-start gap-2"><Clock3 className="mt-0.5 h-4 w-4 text-muted-foreground" /><div><h2 className="text-sm font-semibold">{text.recent}</h2><p className="mt-1 text-sm text-muted-foreground">{text.recentDescription}</p></div></div><div className="mt-3 flex flex-wrap gap-x-5 gap-y-2">{changes.map((change) => <Link key={change.key} href={change.href} className="text-sm text-muted-foreground hover:text-foreground"><span className="font-semibold text-foreground">{change.value}</span> {change.label}</Link>)}</div></div>}
     </section>
   )
 }
