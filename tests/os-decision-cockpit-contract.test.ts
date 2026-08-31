@@ -18,19 +18,21 @@ test('Today exposes a canonical concrete decision queue without replacing Panora
 })
 
 test('decision cockpit gates every source through canonical capabilities or finance permission', () => {
-  assert.match(cockpit, /get_black_swan_os_navigation/)
-  assert.match(cockpit, /hasNavKey\(navigation, 'bookings'\)/)
-  assert.match(cockpit, /hasNavKey\(navigation, 'maintenance'\)/)
-  assert.match(cockpit, /hasNavKey\(navigation, 'procurement'\)/)
-  assert.match(cockpit, /hasNavKey\(navigation, 'tasks'\)/)
-  assert.match(cockpit, /hasNavKey\(navigation, 'issues'\)/)
+  assert.match(cockpit, /get_current_route_access/)
+  assert.match(cockpit, /normalizeCapabilitySnapshot/)
+  assert.match(cockpit, /hasCapability\(capabilities, 'booking', 'view'\)/)
+  assert.match(cockpit, /hasCapability\(capabilities, 'maintenance', 'view'\)/)
+  assert.match(cockpit, /hasCapability\(capabilities, 'procurement', 'view'\)/)
+  assert.match(cockpit, /hasCapability\(capabilities, 'operations', 'view'\)/)
+  assert.match(cockpit, /hasCapability\(capabilities, 'finance', 'view'\)/)
   assert.match(cockpit, /rpc\('can_finance_approve'\)/)
-  assert.match(cockpit, /hasNavKey\(navigation, 'approvals'\)/)
+  assert.doesNotMatch(cockpit, /hasNavKey/)
 })
 
 test('decision cockpit uses concrete canonical objects and partial-source degradation', () => {
   assert.match(cockpit, /reservation_operational_exceptions/)
   assert.match(cockpit, /finance_approval_queue/)
+  assert.doesNotMatch(cockpit, /operational_label/)
   assert.match(cockpit, /maintenance_tasks/)
   assert.match(cockpit, /procurement_requests/)
   assert.match(cockpit, /from\('tasks'\)/)
@@ -42,6 +44,8 @@ test('decision cockpit uses concrete canonical objects and partial-source degrad
   assert.match(cockpit, /href: `\/procurement\/requests\/\$\{row\.id\}`/)
   assert.match(cockpit, /results\.some\(\(result\) => Boolean\(result\.error\)\)/)
   assert.match(cockpit, /next\.slice\(0, 8\)/)
+  assert.match(cockpit, /\['submitted', 'under_review'\]/)
+  assert.doesNotMatch(cockpit, /pending_approval/)
 })
 
 test('decision cockpit reports observed last-24-hour changes instead of an inferred score', () => {

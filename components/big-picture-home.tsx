@@ -180,7 +180,7 @@ export function BigPictureHome() {
           ? supabase.from('inventory_replenishment_needs').select('id', { count: 'exact', head: true }).in('status', ['open', 'requested', 'sourcing', 'ordered', 'receiving'])
           : zero,
         hasNavKey(nav, 'procurement')
-          ? supabase.from('procurement_requests').select('id', { count: 'exact', head: true }).in('status', ['submitted', 'pending_approval'])
+          ? supabase.from('procurement_requests').select('id', { count: 'exact', head: true }).in('status', ['submitted', 'under_review'])
           : zero,
         canApprove
           ? supabase.from('finance_approval_queue').select('total_amount,currency').eq('approval_status', 'ready')
@@ -192,7 +192,7 @@ export function BigPictureHome() {
           ? supabase.from('maintenance_tasks').select('id,title,prioridad,fecha_objetivo').eq('bloqueado', true).not('status', 'in', '(completada,completed,cancelada,cancelled,canceled)').limit(4)
           : emptyRows,
         hasNavKey(nav, 'procurement')
-          ? supabase.from('procurement_requests').select('id,request_number,title,priority,status,required_date').in('status', ['submitted', 'pending_approval']).limit(4)
+          ? supabase.from('procurement_requests').select('id,request_number,title,priority,status,required_date').in('status', ['submitted', 'under_review']).limit(4)
           : emptyRows,
       ])
 

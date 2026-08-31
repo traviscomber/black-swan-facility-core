@@ -122,7 +122,7 @@ async function loadTodaySignals(navigation: Navigation): Promise<Signal[]> {
       ? supabase.from('finance_approval_queue').select('*', { count: 'exact', head: true }).eq('approval_status', 'ready')
       : zero,
     hasNavKey(navigation, 'procurement')
-      ? supabase.from('procurement_requests').select('id', { count: 'exact', head: true }).in('status', ['submitted', 'pending_approval'])
+      ? supabase.from('procurement_requests').select('id', { count: 'exact', head: true }).in('status', ['submitted', 'under_review'])
       : zero,
   ])
 

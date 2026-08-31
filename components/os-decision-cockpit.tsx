@@ -7,8 +7,8 @@ import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { createClient } from '@/lib/supabase/client'
 import { useLanguage } from '@/lib/hooks/use-language'
+import { hasCapability, normalizeCapabilitySnapshot } from '@/lib/access/capabilities'
 
-type Navigation = { items?: Array<{ key: string; href: string; label: string }> }
 type DecisionItem = {
   key: string
   domain: 'hospitality' | 'finance' | 'maintenance' | 'procurement' | 'tasks' | 'issues'
@@ -52,10 +52,6 @@ const copy = {
 
 const localeMap = { en: 'en-US', es: 'es-CL', de: 'de-DE' } as const
 
-function hasNavKey(navigation: Navigation, key: string) {
-  return Boolean(navigation.items?.some((item) => item.key === key))
-}
-
 function priorityRank(value: string | null | undefined) {
   const normalized = value?.trim().toLowerCase() ?? ''
   if (['critical', 'critica', 'crítica', 'urgent', 'urgente'].includes(normalized)) return 0
@@ -91,8 +87,8 @@ export function OsDecisionCockpit() {
   const load = useCallback(async () => {
     setLoading(true)
     setPartial(false)
-    const { data: navData, error: navError } = await supabase.rpc('get_black_swan_os_navigation')
-    if (navError || !navData || typeof navData !== 'object') {
+    const { data: routeAccessData, error: routeAccessError } = await supabase.rpc('get_current_route_access')
+    if (routeAccessError || !routeAccessData || typeof routeAccessData !== 'object') {
       setItems([])
       setChanges([])
       setPartial(true)
@@ -100,37 +96,42 @@ export function OsDecisionCockpit() {
       return
     }
 
-    const navigation = navData as Navigation
+    const capabilities = normalizeCapabilitySnapshot(routeAccessData)
+    const canViewBookings = hasCapability(capabilities, 'booking', 'view')
+    const canViewOperations = hasCapability(capabilities, 'operations', 'view')
+    const canViewMaintenance = hasCapability(capabilities, 'maintenance', 'view')
+    const canViewProcurement = hasCapability(capabilities, 'procurement', 'view')
+    const canViewFinance = hasCapability(capabilities, 'finance', 'view')
     const canApproveResult = await supabase.rpc('can_finance_approve')
-    const canApproveFinance = !canApproveResult.error && Boolean(canApproveResult.data) && hasNavKey(navigation, 'approvals')
+    const canApproveFinance = canViewFinance && !canApproveResult.error && Boolean(canApproveResult.data)
     const emptyRows = Promise.resolve({ data: [], error: null })
     const zero = Promise.resolve({ count: 0, error: null })
     const since = last24HoursIso()
     const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Santiago', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date())
 
     const [reservationRows, financeRows, maintenanceRows, procurementRows, taskRows, issueRows, changedTasks, changedIssues, changedMaintenance, changedProcurement] = await Promise.all([
-      hasNavKey(navigation, 'bookings')
+      canViewBookings
         ? supabase.from('reservation_operational_exceptions').select('reservation_id,title,detail,priority,exception_state,blocks_check_in,blocks_check_out').in('exception_state', ['open', 'overdue']).or('blocks_check_in.eq.true,blocks_check_out.eq.true').limit(5)
         : emptyRows,
       canApproveFinance
-        ? supabase.from('finance_approval_queue').select('id,operational_label,total_amount,currency,due_date,approval_status').eq('approval_status', 'ready').limit(5)
+        ? supabase.from('finance_approval_queue').select('id,supplier_name,document_number,description,cost_center_name,total_amount,currency,due_date,approval_status').eq('approval_status', 'ready').limit(5)
         : emptyRows,
-      hasNavKey(navigation, 'maintenance')
+      canViewMaintenance
         ? supabase.from('maintenance_tasks').select('id,title,prioridad,fecha_objetivo,status,bloqueado').eq('bloqueado', true).not('status', 'in', '(completada,completed,cancelada,cancelled,canceled)').limit(5)
         : emptyRows,
-      hasNavKey(navigation, 'procurement')
-        ? supabase.from('procurement_requests').select('id,request_number,title,priority,status,required_date').in('status', ['submitted', 'pending_approval']).limit(5)
+      canViewProcurement
+        ? supabase.from('procurement_requests').select('id,request_number,title,priority,status,required_date').in('status', ['submitted', 'under_review']).limit(5)
         : emptyRows,
-      hasNavKey(navigation, 'tasks')
+      canViewOperations
         ? supabase.from('tasks').select('id,title,status,priority,due_date').lte('due_date', today).not('status', 'in', '(completada,completed,cancelled,canceled)').limit(5)
         : emptyRows,
-      hasNavKey(navigation, 'issues')
+      canViewMaintenance
         ? supabase.from('issues').select('id,title,status,priority,severity,created_at').not('status', 'in', '(resolved,closed,cancelled,canceled)').order('created_at', { ascending: false }).limit(5)
         : emptyRows,
-      hasNavKey(navigation, 'tasks') ? supabase.from('tasks').select('id', { count: 'exact', head: true }).gte('updated_at', since) : zero,
-      hasNavKey(navigation, 'issues') ? supabase.from('issues').select('id', { count: 'exact', head: true }).gte('created_at', since) : zero,
-      hasNavKey(navigation, 'maintenance') ? supabase.from('maintenance_tasks').select('id', { count: 'exact', head: true }).gte('created_at', since) : zero,
-      hasNavKey(navigation, 'procurement') ? supabase.from('procurement_requests').select('id', { count: 'exact', head: true }).gte('updated_at', since) : zero,
+      canViewOperations ? supabase.from('tasks').select('id', { count: 'exact', head: true }).gte('updated_at', since) : zero,
+      canViewMaintenance ? supabase.from('issues').select('id', { count: 'exact', head: true }).gte('created_at', since) : zero,
+      canViewMaintenance ? supabase.from('maintenance_tasks').select('id', { count: 'exact', head: true }).gte('created_at', since) : zero,
+      canViewProcurement ? supabase.from('procurement_requests').select('id', { count: 'exact', head: true }).gte('updated_at', since) : zero,
     ])
 
     const results = [reservationRows, financeRows, maintenanceRows, procurementRows, taskRows, issueRows, changedTasks, changedIssues, changedMaintenance, changedProcurement]
@@ -143,7 +144,7 @@ export function OsDecisionCockpit() {
     }
     if (!financeRows.error) for (const row of financeRows.data ?? []) {
       const amount = formatMoney(row.total_amount, row.currency, language)
-      next.push({ key: `finance-${row.id}`, domain: 'finance', title: row.operational_label || text.financeFallback, detail: [amount ? `${text.amount} ${amount}` : null, row.due_date ? `${text.due} ${row.due_date}` : null].filter(Boolean).join(' · '), href: `/budgets/approvals/${row.id}`, priority: 'high', rank: 0 })
+      next.push({ key: `finance-${row.id}`, domain: 'finance', title: row.description || row.cost_center_name || row.supplier_name || row.document_number || text.financeFallback, detail: [amount ? `${text.amount} ${amount}` : null, row.due_date ? `${text.due} ${row.due_date}` : null].filter(Boolean).join(' · '), href: `/budgets/approvals/${row.id}`, priority: 'high', rank: 0 })
     }
     if (!maintenanceRows.error) for (const row of maintenanceRows.data ?? []) {
       next.push({ key: `maintenance-${row.id}`, domain: 'maintenance', title: row.title || text.maintenanceFallback, detail: [text.blocks, row.fecha_objetivo ? `${text.due} ${row.fecha_objetivo}` : null].filter(Boolean).join(' · '), href: `/maintenance/${row.id}`, priority: row.prioridad, rank: 1 })
