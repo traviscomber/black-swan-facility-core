@@ -47,13 +47,7 @@ export function DeleteIssueButton({ issueId }: DeleteIssueButtonProps) {
     try {
       const supabase = getSupabaseClient()
 
-      // Delete label assignments first (cascading delete)
-      await supabase.from("issue_label_assignments").delete().eq("issue_id", issueId).throwOnError()
-
-      // Delete task assignments (cascading delete)
-      await supabase.from("issue_task_assignments").delete().eq("issue_id", issueId).throwOnError()
-
-      // Finally delete the issue
+      // Assignment rows are removed atomically by their ON DELETE CASCADE constraints.
       const { error } = await supabase.from("issues").delete().eq("id", issueId)
 
       if (error) throw error

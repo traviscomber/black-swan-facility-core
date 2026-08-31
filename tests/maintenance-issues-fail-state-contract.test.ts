@@ -4,6 +4,8 @@ import { readFileSync } from "node:fs"
 
 const maintenance = readFileSync(new URL("../app/maintenance/page.tsx", import.meta.url), "utf8")
 const issues = readFileSync(new URL("../components/issues-view.tsx", import.meta.url), "utf8")
+const issueTaskLink = readFileSync(new URL("../components/issue-task-link-dialog.tsx", import.meta.url), "utf8")
+const issueDelete = readFileSync(new URL("../components/delete-issue-button.tsx", import.meta.url), "utf8")
 const maintenanceDrawer = readFileSync(new URL("../components/maintenance-quick-add-drawer.tsx", import.meta.url), "utf8")
 
 test("maintenance load failures do not render zero metrics or an empty queue", () => {
@@ -28,4 +30,16 @@ test("location-scoped maintenance creation requires a canonical asset location",
   assert.match(maintenanceDrawer, /can\('inventory\.process'\)/)
   assert.match(maintenanceDrawer, /create_inventory_asset_maintenance_task/)
   assert.match(maintenanceDrawer, /Selecciona un activo con ubicación/)
+})
+
+test("incident mutation controls fail closed against canonical permissions", () => {
+  assert.match(issues, /useEffectiveAccess\(\)/)
+  assert.match(issues, /!accessLoading && !accessError && can\("maintenance\.operate"\)/)
+  assert.match(issues, /canMaintain && <div[^>]*>.*IssueLabelSelector.*IssueTaskLinkDialog.*EditIssueDialog/s)
+  assert.match(issues, /access\.is_admin && <DeleteIssueButton/)
+  assert.match(issues, /access\.role === "approver"/)
+  assert.match(issueTaskLink, /canCreateTask && issue \? buildOperationalTaskHref/)
+  assert.doesNotMatch(issueDelete, /from\("issue_label_assignments"\)\.delete/)
+  assert.doesNotMatch(issueDelete, /from\("issue_task_assignments"\)\.delete/)
+  assert.match(issueDelete, /ON DELETE CASCADE/)
 })

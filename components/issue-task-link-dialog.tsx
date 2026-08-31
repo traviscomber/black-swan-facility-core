@@ -15,7 +15,7 @@ type ActiveTask = { id: string; title: string; status: string; priority: string 
 type IssueSummary = { id: string; title: string | null; description: string | null; category: string | null; priority: string | null; severity: string | null }
 const priorityMap: Record<string, "baja" | "media" | "alta" | "urgente"> = { low: "baja", medium: "media", high: "alta", critical: "urgente" }
 
-export function IssueTaskLinkDialog({ issueId }: { issueId: string }) {
+export function IssueTaskLinkDialog({ issueId, canCreateTask }: { issueId: string; canCreateTask: boolean }) {
   const router = useRouter()
   const [open, setOpen] = useState(false)
   const [tasks, setTasks] = useState<ActiveTask[]>([])
@@ -63,7 +63,7 @@ export function IssueTaskLinkDialog({ issueId }: { issueId: string }) {
     router.refresh()
   }
 
-  const taskHref = issue ? buildOperationalTaskHref({ area: "mantenimiento", title: `Resolver incidencia: ${issue.title || "sin título"}`, description: issue.description || "Revisar la incidencia y registrar la solución ejecutada.", category: issue.category || "Incidencia", priority: priorityMap[(issue.severity || issue.priority || "medium").toLowerCase()] || "media", sourceType: "issue", sourceId: issue.id, sourceLabel: issue.title || "Incidencia sin título", sourcePath: "/issues" }) : null
+  const taskHref = canCreateTask && issue ? buildOperationalTaskHref({ area: "mantenimiento", title: `Resolver incidencia: ${issue.title || "sin título"}`, description: issue.description || "Revisar la incidencia y registrar la solución ejecutada.", category: issue.category || "Incidencia", priority: priorityMap[(issue.severity || issue.priority || "medium").toLowerCase()] || "media", sourceType: "issue", sourceId: issue.id, sourceLabel: issue.title || "Incidencia sin título", sourcePath: "/issues" }) : null
 
   return <Dialog open={open} onOpenChange={handleOpenChange}>
     <DialogTrigger asChild><Button variant="outline" size="sm"><CheckSquare className="mr-2 h-4 w-4" />Tareas</Button></DialogTrigger>

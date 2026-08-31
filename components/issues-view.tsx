@@ -11,6 +11,7 @@ import { EditIssueDialog } from "@/components/edit-issue-dialog"
 import { DeleteIssueButton } from "@/components/delete-issue-button"
 import { IssueLabelSelector } from "@/components/issue-labels-selector"
 import { IssueTaskLinkDialog } from "@/components/issue-task-link-dialog"
+import { useEffectiveAccess } from "@/lib/hooks/use-effective-access"
 import { useLanguage } from "@/lib/hooks/use-language"
 
 export type IssueRecord = { id: string; title: string | null; description: string | null; category: string | null; status: string | null; priority: string | null; severity: string | null; created_at: string | null; photo_url: string | null; related_item_type: string | null; assets: { name: string } | null; reporter: { name: string } | null; issue_label_assignments: Array<{ issue_labels: { id: string; name: string; color: string | null } | null }> | null; issue_task_assignments: Array<{ tasks: { id: string; title: string; status: string | null } | null }> | null }
@@ -25,6 +26,9 @@ function priorityVariant(priority: string): "default" | "secondary" | "destructi
 
 export function IssuesView({ issues, loadFailed }: { issues: IssueRecord[]; loadFailed: boolean }) {
   const { language } = useLanguage(); const lang = (language in COPY ? language : "en") as keyof typeof COPY; const copy = COPY[lang]; const locale = lang === "es" ? "es-CL" : lang === "de" ? "de-DE" : "en-US"; const number = new Intl.NumberFormat(locale)
+  const { access, loading: accessLoading, error: accessError, can } = useEffectiveAccess()
+  const canMaintain = !accessLoading && !accessError && can("maintenance.operate")
+  const canCreateTask = canMaintain && (access.is_admin || access.role === "approver")
   const openCount = issues.filter((issue) => normalizedStatus(issue.status) === "open").length
   const inProgressCount = issues.filter((issue) => normalizedStatus(issue.status) === "in-progress").length
   const resolvedCount = issues.filter((issue) => ["resolved", "closed"].includes(normalizedStatus(issue.status))).length
@@ -42,7 +46,7 @@ export function IssuesView({ issues, loadFailed }: { issues: IssueRecord[]; load
       <div className="grid gap-3 rounded-lg border bg-muted/20 p-4 text-sm sm:grid-cols-3"><Info label={copy.reporter} value={issue.reporter?.name || copy.unknownReporter} /><Info label={copy.item} value={issue.assets?.name || issue.related_item_type || copy.noItem} /><Info label={copy.tasks} value={number.format(linkedTasks.length)} /></div>
       {labels.length > 0 && <div className="flex flex-wrap gap-2">{labels.map((label) => <Badge key={label.id} variant="outline" style={label.color ? { borderColor: label.color } : undefined}>{label.name}</Badge>)}</div>}
       {linkedTasks.length > 0 && <div className="space-y-2 rounded-lg border p-3"><p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{copy.derived}</p><div className="flex flex-wrap gap-2">{linkedTasks.map((task) => <Badge key={task.id} variant="secondary">{task.title}{task.status ? ` · ${task.status}` : ""}</Badge>)}</div></div>}
-      <div className="flex flex-col gap-3 border-t pt-4 sm:flex-row sm:items-center sm:justify-between">{issue.photo_url ? <img src={issue.photo_url} alt={`${copy.evidenceAlt} ${issue.title || copy.issue}`} className="h-16 w-16 rounded-md border object-cover" /> : <p className="text-xs text-muted-foreground">{copy.noPhoto}</p>}<div className="flex flex-wrap items-center gap-2"><IssueLabelSelector issueId={issue.id} /><IssueTaskLinkDialog issueId={issue.id} /><EditIssueDialog issue={issue} /><DeleteIssueButton issueId={issue.id} /></div></div>
+      <div className="flex flex-col gap-3 border-t pt-4 sm:flex-row sm:items-center sm:justify-between">{issue.photo_url ? <img src={issue.photo_url} alt={`${copy.evidenceAlt} ${issue.title || copy.issue}`} className="h-16 w-16 rounded-md border object-cover" /> : <p className="text-xs text-muted-foreground">{copy.noPhoto}</p>}{canMaintain && <div className="flex flex-wrap items-center gap-2"><IssueLabelSelector issueId={issue.id} /><IssueTaskLinkDialog issueId={issue.id} canCreateTask={canCreateTask} /><EditIssueDialog issue={issue} />{access.is_admin && <DeleteIssueButton issueId={issue.id} />}</div>}</div>
     </CardContent></Card> })}</div>}
     </>}
   </div></AppLayout>
