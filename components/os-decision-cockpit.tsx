@@ -8,8 +8,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { createClient } from '@/lib/supabase/client'
 import { useLanguage } from '@/lib/hooks/use-language'
 
- type Navigation = { items?: Array<{ key: string; href: string; label: string }> }
- type DecisionItem = {
+type Navigation = { items?: Array<{ key: string; href: string; label: string }> }
+type DecisionItem = {
   key: string
   domain: 'hospitality' | 'finance' | 'maintenance' | 'procurement' | 'tasks' | 'issues'
   title: string
@@ -17,8 +17,8 @@ import { useLanguage } from '@/lib/hooks/use-language'
   href: string
   priority: string | null
   rank: number
- }
- type ChangeSignal = { key: string; label: string; value: number; href: string }
+}
+type ChangeSignal = { key: string; label: string; value: number; href: string }
 
 const copy = {
   en: {
@@ -143,19 +143,19 @@ export function OsDecisionCockpit() {
     }
     if (!financeRows.error) for (const row of financeRows.data ?? []) {
       const amount = formatMoney(row.total_amount, row.currency, language)
-      next.push({ key: `finance-${row.id}`, domain: 'finance', title: row.operational_label || text.financeFallback, detail: [amount ? `${text.amount} ${amount}` : null, row.due_date ? `${text.due} ${row.due_date}` : null].filter(Boolean).join(' · '), href: '/budgets/approvals', priority: 'high', rank: 0 })
+      next.push({ key: `finance-${row.id}`, domain: 'finance', title: row.operational_label || text.financeFallback, detail: [amount ? `${text.amount} ${amount}` : null, row.due_date ? `${text.due} ${row.due_date}` : null].filter(Boolean).join(' · '), href: `/budgets/approvals/${row.id}`, priority: 'high', rank: 0 })
     }
     if (!maintenanceRows.error) for (const row of maintenanceRows.data ?? []) {
-      next.push({ key: `maintenance-${row.id}`, domain: 'maintenance', title: row.title || text.maintenanceFallback, detail: [text.blocks, row.fecha_objetivo ? `${text.due} ${row.fecha_objetivo}` : null].filter(Boolean).join(' · '), href: '/maintenance', priority: row.prioridad, rank: 1 })
+      next.push({ key: `maintenance-${row.id}`, domain: 'maintenance', title: row.title || text.maintenanceFallback, detail: [text.blocks, row.fecha_objetivo ? `${text.due} ${row.fecha_objetivo}` : null].filter(Boolean).join(' · '), href: `/maintenance/${row.id}`, priority: row.prioridad, rank: 1 })
     }
     if (!procurementRows.error) for (const row of procurementRows.data ?? []) {
       next.push({ key: `procurement-${row.id}`, domain: 'procurement', title: row.title || row.request_number || text.procurementFallback, detail: [row.request_number, row.status ? `${text.status} ${row.status}` : null, row.required_date ? `${text.due} ${row.required_date}` : null].filter(Boolean).join(' · '), href: `/procurement/requests/${row.id}`, priority: row.priority, rank: 1 })
     }
     if (!taskRows.error) for (const row of taskRows.data ?? []) {
-      next.push({ key: `task-${row.id}`, domain: 'tasks', title: row.title || text.taskFallback, detail: `${text.overdue}${row.due_date ? ` · ${text.due} ${row.due_date}` : ''}`, href: '/tasks', priority: row.priority, rank: 2 })
+      next.push({ key: `task-${row.id}`, domain: 'tasks', title: row.title || text.taskFallback, detail: `${text.overdue}${row.due_date ? ` · ${text.due} ${row.due_date}` : ''}`, href: `/tasks?selected=${row.id}`, priority: row.priority, rank: 2 })
     }
     if (!issueRows.error) for (const row of issueRows.data ?? []) {
-      next.push({ key: `issue-${row.id}`, domain: 'issues', title: row.title || text.issueFallback, detail: [row.status ? `${text.status} ${row.status}` : null, row.created_at ? `${text.created} ${String(row.created_at).slice(0, 10)}` : null].filter(Boolean).join(' · '), href: '/issues', priority: row.severity || row.priority, rank: 2 })
+      next.push({ key: `issue-${row.id}`, domain: 'issues', title: row.title || text.issueFallback, detail: [row.status ? `${text.status} ${row.status}` : null, row.created_at ? `${text.created} ${String(row.created_at).slice(0, 10)}` : null].filter(Boolean).join(' · '), href: `/issues/${row.id}`, priority: row.severity || row.priority, rank: 2 })
     }
 
     next.sort((a, b) => a.rank - b.rank || priorityRank(a.priority) - priorityRank(b.priority) || a.title.localeCompare(b.title, localeMap[language]))
