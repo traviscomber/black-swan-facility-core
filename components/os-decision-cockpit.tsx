@@ -117,7 +117,7 @@ export function OsDecisionCockpit() {
 
     const [reservationRows, financeRows, maintenanceRows, procurementRows, taskRows, issueRows, changedTasks, changedIssues, changedMaintenance, changedProcurement] = await Promise.all([
       canViewBookings
-        ? supabase.from('reservation_operational_exceptions').select('reservation_id,title,detail,priority,exception_state,blocks_check_in,blocks_check_out').in('exception_state', ['open', 'overdue']).or('blocks_check_in.eq.true,blocks_check_out.eq.true').limit(5)
+        ? supabase.from('reservation_operational_exceptions').select('reservation_id,title,detail,priority,exception_state,blocks_check_in,blocks_check_out').in('exception_state', ['open', 'overdue']).or('blocks_check_in.eq.true,blocks_check_out.eq.true').limit(20)
         : emptyRows,
       canApproveFinance
         ? supabase.from('finance_approval_queue').select('id,supplier_name,document_number,description,cost_center_name,total_amount,currency,due_date,approval_status').eq('approval_status', 'ready').limit(5)
