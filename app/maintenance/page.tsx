@@ -20,15 +20,23 @@ const COPY={
  de:{title:"Instandhaltung · Fundo Corcovado",description:"Planung und Nachverfolgung präventiver und korrektiver Arbeiten an Anlagen und Infrastruktur in Valdivia.",register:"Arbeit erfassen",context:"Operativer Kontext",contextDetail:"Dieser Bereich verwaltet Instandhaltungsarbeiten. Von Nutzern gemeldete Vorfälle werden separat behandelt und können bei technischem Ausführungsbedarf zu Aufgaben werden.",loadError:"Instandhaltungsdaten konnten nicht geladen werden.",retry:"Erneut versuchen",registered:"Erfasste Arbeiten",completedWeek:"Diese Woche abgeschlossen",pending:"Ausstehend",overdue:"Überfällig",blocked:"Blockiert",filters:"Operative Filter",state:"Status",allStates:"Alle Status",priority:"Priorität",allPriorities:"Alle Prioritäten",unassigned:"Nur Arbeiten ohne Verantwortliche",issues:"Offene Vorfälle anzeigen",tasks:"Allgemeine Aufgaben anzeigen",loading:"Instandhaltungsarbeiten werden geladen…",empty:"Keine Arbeiten entsprechen den gewählten Filtern.",emptyHint:"Erfasse eine Arbeit oder prüfe offene Vorfälle.",draft:"Entwurf",scheduled:"Geplant",assigned:"Zugewiesen",in_progress:"In Bearbeitung",completed:"Abgeschlossen",low:"Niedrig",medium:"Mittel",high:"Hoch",critical:"Kritisch"},
 } as const
 
+function taskState(task:MaintenanceTask){return (task.estado_extendido??task.status??"draft").toLowerCase()}
+function isTerminalState(value:string){return ["completed","completada","cancelled","canceled","cancelada"].includes(value)}
+function chileDateKey(){return new Intl.DateTimeFormat("en-CA",{timeZone:"America/Santiago",year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date())}
+function addDaysToDateKey(value:string,days:number){const [year,month,day]=value.split("-").map(Number);return new Date(Date.UTC(year,month-1,day+days)).toISOString().slice(0,10)}
+function dayOfWeekForDateKey(value:string){return new Date(`${value}T12:00:00Z`).getUTCDay()}
+
 export default function MaintenancePage(){
  const {language}=useLanguage(); const lang=(language in COPY?language:"en") as keyof typeof COPY; const copy=COPY[lang]; const locale=LOCALES[lang]
  const supabase=useMemo(()=>createClient(),[]); const [tasks,setTasks]=useState<MaintenanceTask[]>([]); const [loading,setLoading]=useState(true); const [error,setError]=useState(false); const [isDrawerOpen,setIsDrawerOpen]=useState(false); const [filters,setFilters]=useState({state:"all",priority:"all",unassigned:false})
  const fetchTasks=useCallback(async()=>{setLoading(true);setError(false);const {data,error:loadError}=await supabase.from("maintenance_tasks").select("*, assets(name), employees(name)").order("next_run",{ascending:true,nullsFirst:false});if(loadError){console.error("maintenance load failed",loadError);setError(true);setTasks([])}else setTasks(((data??[]) as MaintenanceTask[]).map(task=>({...task,priority:task.prioridad??task.priority??"medium"})));setLoading(false)},[supabase])
  useEffect(()=>{void fetchTasks()},[fetchTasks])
- const filteredTasks=useMemo(()=>tasks.filter(task=>{const taskState=task.estado_extendido??task.status??"draft";const taskPriority=task.prioridad??task.priority??"medium";return (filters.state==="all"||taskState===filters.state)&&(filters.priority==="all"||taskPriority===filters.priority)&&(!filters.unassigned||!task.assigned_to)}),[tasks,filters])
- const now=new Date();const weekStart=new Date(now);weekStart.setHours(0,0,0,0);weekStart.setDate(now.getDate()-now.getDay());const weekEnd=new Date(weekStart);weekEnd.setDate(weekStart.getDate()+7)
- const completedThisWeek=tasks.filter(task=>{if(!task.last_completed)return false;const date=new Date(task.last_completed);return date>=weekStart&&date<weekEnd}).length
- const pending=tasks.filter(task=>!["completed","cancelled"].includes(task.estado_extendido??task.status??"")).length; const overdue=tasks.filter(task=>task.next_run&&new Date(task.next_run)<now&&!["completed","cancelled"].includes(task.estado_extendido??task.status??"")).length; const blocked=tasks.filter(task=>task.bloqueado).length
+ const filteredTasks=useMemo(()=>tasks.filter(task=>{const currentState=taskState(task);const taskPriority=task.prioridad??task.priority??"medium";return (filters.state==="all"||currentState===filters.state)&&(filters.priority==="all"||taskPriority===filters.priority)&&(!filters.unassigned||!task.assigned_to)}),[tasks,filters])
+ const today=chileDateKey();const weekStart=addDaysToDateKey(today,-dayOfWeekForDateKey(today));const weekEnd=addDaysToDateKey(weekStart,7)
+ const completedThisWeek=tasks.filter(task=>Boolean(task.last_completed&&task.last_completed>=weekStart&&task.last_completed<weekEnd)).length
+ const pending=tasks.filter(task=>!isTerminalState(taskState(task))).length
+ const overdue=tasks.filter(task=>Boolean(task.next_run&&task.next_run<today&&!isTerminalState(taskState(task)))).length
+ const blocked=tasks.filter(task=>Boolean(task.bloqueado&&!isTerminalState(taskState(task)))).length
  const states=(["draft","scheduled","assigned","in_progress","completed"] as const)
  return <AppLayout><PageHeader title={copy.title} description={copy.description} actions={<Button disabled={loading||error} onClick={()=>setIsDrawerOpen(true)}><Plus className="mr-2 h-4 w-4"/>{copy.register}</Button>}/><div className="space-y-6 p-4 md:p-6">
   <Card><CardHeader><CardTitle className="text-base">{copy.context}</CardTitle></CardHeader><CardContent className="text-sm leading-6 text-muted-foreground">{copy.contextDetail}</CardContent></Card>
