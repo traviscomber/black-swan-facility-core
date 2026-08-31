@@ -4,6 +4,7 @@ import { readFileSync } from "node:fs"
 
 const entry = readFileSync(new URL("../components/os-entry.tsx", import.meta.url), "utf8")
 const panorama = readFileSync(new URL("../components/big-picture-home.tsx", import.meta.url), "utf8")
+const navigationLoader = readFileSync(new URL("../lib/os/authorized-navigation-client.ts", import.meta.url), "utf8")
 
 test("OS exposes daily operation and Panorama as two views of the same shell", () => {
   assert.match(entry, /searchParams\.get\('view'\) === 'panorama'/)
@@ -14,8 +15,9 @@ test("OS exposes daily operation and Panorama as two views of the same shell", (
 })
 
 test("Panorama remains capability and RLS scoped instead of persona-authorized", () => {
-  assert.match(panorama, /\/v1\/os\/navigation/)
-  assert.match(panorama, /authorization: `Bearer \$\{token\}`/)
+  assert.match(panorama, /loadAuthorizedNavigation/)
+  assert.match(navigationLoader, /rpc\('get_current_route_access'\)/)
+  assert.match(navigationLoader, /filterOsAreas/)
   assert.match(panorama, /hasNavKey\(nav, 'bookings'\)/)
   assert.match(panorama, /hasNavKey\(nav, 'tasks'\)/)
   assert.match(panorama, /hasNavKey\(nav, 'maintenance'\)/)

@@ -6,11 +6,8 @@ import { AlertTriangle, ArrowRight, BedDouble, CheckCircle2, ClipboardList, File
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { createClient } from '@/lib/supabase/client'
+import { loadAuthorizedNavigation, type AuthorizedNavigation as Navigation } from '@/lib/os/authorized-navigation-client'
 
-const operationsApi = process.env.NEXT_PUBLIC_BLACK_SWAN_OPERATIONS_API_URL
-
-type NavItem = { key: string; label: string; href: string }
-type Navigation = { role?: string; items?: NavItem[] }
 type PictureSignal = {
   key: string
   label: string
@@ -52,18 +49,6 @@ type ProcurementDecisionRow = {
 }
 type FinanceApprovalRow = { total_amount: number | string | null; currency: string | null }
 type FinancePicture = { count: number; totals: Record<string, number> }
-
-async function loadNavigation(): Promise<Navigation> {
-  if (!operationsApi) throw new Error('NEXT_PUBLIC_BLACK_SWAN_OPERATIONS_API_URL is not configured.')
-  const supabase = createClient()
-  const { data } = await supabase.auth.getSession()
-  const token = data.session?.access_token
-  if (!token) throw new Error('Authentication required')
-  const response = await fetch(`${operationsApi}/v1/os/navigation`, { headers: { authorization: `Bearer ${token}` } })
-  const body = await response.json().catch(() => ({}))
-  if (!response.ok) throw new Error(body?.error?.message || body?.error?.code || 'Unable to load navigation')
-  return body.data as Navigation
-}
 
 function hasNavKey(navigation: Navigation, key: string) {
   return Boolean(navigation.items?.some((item) => item.key === key))
@@ -125,7 +110,7 @@ export function BigPictureHome() {
     setLoading(true)
     setError(null)
     try {
-      const nav = await loadNavigation()
+      const nav = await loadAuthorizedNavigation()
       setNavigation(nav)
       const today = chileDateOffset(0)
       const horizon = chileDateOffset(7)

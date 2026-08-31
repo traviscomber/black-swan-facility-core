@@ -4,6 +4,7 @@ import { readFileSync } from "node:fs"
 import { rankAreasForPersona } from "../lib/os/personas.ts"
 
 const source = readFileSync(new URL("../components/os-home.tsx", import.meta.url), "utf8")
+const navigationLoader = readFileSync(new URL("../lib/os/authorized-navigation-client.ts", import.meta.url), "utf8")
 const personaSource = readFileSync(new URL("../lib/os/personas.ts", import.meta.url), "utf8")
 const personaHook = readFileSync(new URL("../lib/hooks/use-os-persona.ts", import.meta.url), "utf8")
 const osEntry = readFileSync(new URL("../components/os-entry.tsx", import.meta.url), "utf8")
@@ -18,8 +19,13 @@ const employeeMigration = readFileSync(new URL("../supabase/migrations/202608262
 const workspaceMigration = readFileSync(new URL("../supabase/migrations/20260826233705_set_os_primary_workspace_profiles.sql", import.meta.url), "utf8")
 
 test("OS home keeps server-authorized navigation as the source of truth", () => {
-  assert.match(source, /\/v1\/os\/navigation/)
-  assert.match(source, /authorization: `Bearer \$\{token\}`/)
+  assert.match(source, /loadAuthorizedNavigation/)
+  assert.match(navigationLoader, /\/v1\/os\/navigation/)
+  assert.match(navigationLoader, /authorization: `Bearer \$\{token\}`/)
+  assert.match(navigationLoader, /rpc\('get_current_route_access'\)/)
+  assert.match(navigationLoader, /filterOsAreas\(osAreas, normalizeCapabilitySnapshot\(routeAccess\)/)
+  assert.match(navigationLoader, /rpc\('get_black_swan_os_navigation'\)/)
+  assert.match(navigationLoader, /const merged = new Map/)
   assert.match(source, /hasNavKey\(navigation/)
 })
 
@@ -99,8 +105,7 @@ test("Raimundo field admin gets a dedicated OS desktop instead of Santiago's exp
 })
 
 test("field desktop keeps authorized navigation as the gate for every operational query", () => {
-  assert.match(fieldAdminHome, /\/v1\/os\/navigation/)
-  assert.match(fieldAdminHome, /authorization: `Bearer \$\{token\}`/)
+  assert.match(fieldAdminHome, /loadAuthorizedNavigation/)
   assert.match(fieldAdminHome, /hasNavKey\(nav, 'tasks'\)/)
   assert.match(fieldAdminHome, /hasNavKey\(nav, 'maintenance'\)/)
   assert.match(fieldAdminHome, /hasNavKey\(nav, 'issues'\)/)
