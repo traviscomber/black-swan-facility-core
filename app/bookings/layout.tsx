@@ -4,7 +4,7 @@ import type React from "react"
 import type { ElementType } from "react"
 import { useMemo } from "react"
 import { usePathname, useRouter } from "next/navigation"
-import { Activity, Calculator, CalendarDays, CalendarOff, ClipboardList, CreditCard, FileText, FolderLock, Home, MapPin, PackagePlus, Percent, ReceiptText, ShieldCheck, Sparkles, Tablet, TrendingUp, Users } from "lucide-react"
+import { Activity, AlertTriangle, Calculator, CalendarDays, CalendarOff, ClipboardList, CreditCard, FileText, FolderLock, Home, MapPin, PackagePlus, Percent, ReceiptText, ShieldCheck, Sparkles, Tablet, TrendingUp, Users } from "lucide-react"
 import { AccessGate } from "@/components/access/access-gate"
 import { BookingsLegacyLocalizationBridge } from "@/components/bookings-legacy-localization-bridge"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -22,11 +22,13 @@ export default function BookingsLayout({ children }: { children: React.ReactNode
   const pathname = usePathname() || "/"
   const { language } = useLanguage()
   const copy = bookingsTranslations[language]
+  const exceptionsLabel = { en: "Exceptions", es: "Excepciones", de: "Ausnahmen" }[language]
   const { access, loading, can, canAccessDepartment } = useEffectiveAccess()
   const internalPathname = stripLocale(pathname)
 
   const tabs = useMemo<BookingTab[]>(() => [
     { value: "calendar", route: "/bookings", label: copy.calendar, icon: CalendarDays, action: "booking.modify", department: "booking" },
+    { value: "exceptions", route: "/bookings/exceptions", label: exceptionsLabel, icon: AlertTriangle, action: "booking.modify", department: "booking" },
     { value: "activities", route: "/bookings/activities", label: copy.operations, icon: Activity, action: "activities.operate", department: "activities" },
     { value: "housekeeping", route: "/bookings/housekeeping", label: copy.housekeeping, icon: Sparkles, action: "housekeeping.operate", department: "housekeeping" },
     { value: "requests", route: "/bookings/requests", label: copy.requests, icon: Tablet, action: "hospitality.operate", department: "hospitality" },
@@ -44,7 +46,7 @@ export default function BookingsLayout({ children }: { children: React.ReactNode
     { value: "facilities", route: "/bookings/facilities", label: copy.facilities, icon: MapPin, action: "booking.modify", department: "booking" },
     { value: "rooms", route: "/bookings/rooms", label: copy.rooms, icon: Home, action: "booking.modify", department: "booking" },
     { value: "reports", route: "/bookings/reports", label: copy.reports, icon: TrendingUp, action: "booking.modify", department: "booking" },
-  ], [copy])
+  ], [copy, exceptionsLabel])
 
   const visibleTabs = tabs.filter((tab) => {
     if (tab.adminOnly) return access.is_admin
