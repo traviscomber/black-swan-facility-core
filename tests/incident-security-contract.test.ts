@@ -34,6 +34,10 @@ const orchardLifecycleHelperMigration = readFileSync(
   new URL("../supabase/migrations/20260831152608_restrict_orchard_lifecycle_sync_helper.sql", import.meta.url),
   "utf8",
 )
+const guestPortalPasscodeMigration = readFileSync(
+  new URL("../supabase/migrations/20260831152814_harden_event_guest_portal_passcodes.sql", import.meta.url),
+  "utf8",
+)
 
 test("incident tables revoke anonymous and broad authenticated privileges", () => {
   for (const table of ["issues", "issue_labels", "issue_label_assignments", "issue_task_assignments"]) {
@@ -172,4 +176,15 @@ test("orchard lifecycle sync is an internal trigger helper", () => {
     /grant execute on function public\.orchard_sync_succession_lifecycle\([\s\S]*?to service_role/,
   )
   assert.doesNotMatch(orchardLifecycleHelperMigration, /grant execute[^\n]+to (anon|authenticated)/i)
+})
+
+test("guest portal passcodes must be strong before bcrypt hashing", () => {
+  assert.match(guestPortalPasscodeMigration, /length\(v_passcode\) < 16/)
+  assert.match(guestPortalPasscodeMigration, /v_passcode !~ '\[A-Za-z\]'/)
+  assert.match(guestPortalPasscodeMigration, /v_passcode !~ '\[0-9\]'/)
+  assert.match(guestPortalPasscodeMigration, /extensions\.crypt\(v_passcode, extensions\.gen_salt\('bf'\)\)/)
+  assert.match(
+    guestPortalPasscodeMigration,
+    /revoke all on function public\.upsert_event_guest_portal\([\s\S]*?from public, anon/,
+  )
 })
