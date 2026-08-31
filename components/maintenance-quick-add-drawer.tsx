@@ -5,6 +5,7 @@ import { AlertCircle, Plus, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { useEffectiveAccess } from '@/lib/hooks/use-effective-access'
 import { createClient } from '@/lib/supabase/client'
 
 interface MaintenanceQuickAddDrawerProps {
@@ -29,18 +30,30 @@ const initialForm = () => ({
 
 export function MaintenanceQuickAddDrawer({ isOpen, onClose, onTaskCreated }: MaintenanceQuickAddDrawerProps) {
   const supabase = useMemo(() => createClient(), [])
+  const { access, loading: loadingAccess, error: accessError, can } = useEffectiveAccess()
   const [assets, setAssets] = useState<AssetOption[]>([])
   const [employees, setEmployees] = useState<EmployeeOption[]>([])
   const [formData, setFormData] = useState(initialForm)
   const [loading, setLoading] = useState(false)
   const [loadingOptions, setLoadingOptions] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const locationScoped = access.has_explicit_scopes && access.location_ids.length > 0
+  const canMaintain = can('maintenance.operate')
+  const canMaintainAssets = canMaintain && can('inventory.process')
 
   useEffect(() => {
-    if (!isOpen) return
+    if (!isOpen || loadingAccess) return
     let cancelled = false
 
     async function loadOptions() {
+      if (accessError) {
+        setError('No fue posible validar tus permisos de mantenimiento.')
+        return
+      }
+      if (!canMaintain) {
+        setError('No tienes permiso para registrar trabajos de mantenimiento.')
+        return
+      }
       setLoadingOptions(true)
       setError(null)
       const [assetsResult, employeesResult] = await Promise.all([
@@ -58,7 +71,7 @@ export function MaintenanceQuickAddDrawer({ isOpen, onClose, onTaskCreated }: Ma
 
     void loadOptions()
     return () => { cancelled = true }
-  }, [isOpen, supabase])
+  }, [accessError, canMaintain, isOpen, loadingAccess, supabase])
 
   function updateField(name: string, value: string) {
     setFormData((current) => ({ ...current, [name]: value }))
@@ -84,6 +97,14 @@ export function MaintenanceQuickAddDrawer({ isOpen, onClose, onTaskCreated }: Ma
     }
     if (selectedAsset && !selectedAsset.warehouse_location_id) {
       setError('El activo debe tener una posición de bodega antes de programar mantenimiento.')
+      return
+    }
+    if (locationScoped && !selectedAsset) {
+      setError('Tu acceso está limitado por ubicación. Selecciona un activo con posición registrada.')
+      return
+    }
+    if (selectedAsset && !canMaintainAssets) {
+      setError('El mantenimiento de activos requiere permisos de Mantenimiento e Inventario.')
       return
     }
 
@@ -175,9 +196,12 @@ export function MaintenanceQuickAddDrawer({ isOpen, onClose, onTaskCreated }: Ma
 
           <Field label="Activo asociado">
             <select disabled={loadingOptions} value={formData.asset_id} onChange={(event) => updateField('asset_id', event.target.value)} className="w-full rounded-md border bg-background px-3 py-2 text-sm">
-              <option value="none">Sin activo asociado</option>{assets.map((asset) => <option key={asset.id} value={asset.id}>{asset.asset_code} · {asset.name}{asset.warehouse_location_id ? '' : ' · Sin posición'}</option>)}
+              <option value="none">{locationScoped ? 'Selecciona un activo con ubicación' : 'Sin activo asociado'}</option>{assets.map((asset) => <option key={asset.id} value={asset.id}>{asset.asset_code} · {asset.name}{asset.warehouse_location_id ? '' : ' · Sin posición'}</option>)}
             </select>
           </Field>
+
+          {locationScoped && !selectedAsset && <p className="text-xs text-amber-800">Tu perfil está limitado por ubicación; el activo establece el alcance operativo del trabajo.</p>}
+          {selectedAsset && !canMaintainAssets && <p className="text-xs text-destructive">Necesitas permisos de Mantenimiento e Inventario para programar trabajo sobre activos.</p>}
 
           {selectedAsset && <div className={`rounded-lg border p-3 text-sm ${selectedAsset.warehouse_location_id ? 'bg-muted/20' : 'border-amber-300 bg-amber-50/60'}`}>
             <p className="font-medium">Orden vinculada a Inventario</p>
@@ -194,7 +218,7 @@ export function MaintenanceQuickAddDrawer({ isOpen, onClose, onTaskCreated }: Ma
 
         <div className="flex gap-2 border-t p-5">
           <Button type="button" variant="outline" className="flex-1" onClick={onClose}>Cancelar</Button>
-          <Button type="submit" form="maintenance-quick-add" className="flex-1" disabled={loading || loadingOptions || !formData.title.trim() || Boolean(selectedAsset && !selectedAsset.warehouse_location_id)}><Plus className="mr-2 h-4 w-4" />{loading ? 'Registrando…' : 'Registrar trabajo'}</Button>
+          <Button type="submit" form="maintenance-quick-add" className="flex-1" disabled={loading || loadingOptions || loadingAccess || Boolean(accessError) || !canMaintain || !formData.title.trim() || Boolean(locationScoped && !selectedAsset) || Boolean(selectedAsset && (!selectedAsset.warehouse_location_id || !canMaintainAssets))}><Plus className="mr-2 h-4 w-4" />{loading ? 'Registrando…' : 'Registrar trabajo'}</Button>
         </div>
       </aside>
     </>
