@@ -10,6 +10,8 @@ test("Heirloom reconciliation remains explicit, bed-meter based and capacity saf
   const page = await readFile("app/orchard/crop-map/auto-place/page.tsx", "utf8")
   const workPage = await readFile("app/orchard/work/page.tsx", "utf8")
   const gettingStarted = await readFile("app/orchard/getting-started/page.tsx", "utf8")
+  const taskCalendar = await readFile("app/orchard/game-plan/tasks/page.tsx", "utf8")
+  const cropTaskReference = await readFile("lib/orchard/crop-task-reference.ts", "utf8")
   const parity = await readFile("lib/orchard/heirloom-parity.ts", "utf8")
 
   // Preserve the authenticated Heirloom observation as historical evidence.
@@ -82,6 +84,31 @@ test("Heirloom reconciliation remains explicit, bed-meter based and capacity saf
   assert.match(gettingStarted, /reconciledIds\.has\(task\.source_id\)/)
   assert.match(gettingStarted, /scopedTasks\.length>0/)
   assert.doesNotMatch(gettingStarted, /\.eq\("operational_area","huerto_vinedo"\)/)
+
+  // Crop Associated Task stays a source-observed planning reference, not inferred agronomy.
+  assert.match(cropTaskReference, /e29b581d0c2190b8ea43d8116ce19cfac85f8b9be6f1abdb2b676e984d186683/)
+  assert.match(cropTaskReference, /sheet: "Crop Associated Task"/)
+  assert.match(cropTaskReference, /operationalStatus: "planning_reference_only"/)
+  assert.match(cropTaskReference, /canonicalCrop: "Carrots"/)
+  assert.match(cropTaskReference, /offsetDays: -7/)
+  assert.match(cropTaskReference, /canonicalCrop: "Onion"/)
+  assert.match(cropTaskReference, /offsetDays: -12/)
+  assert.match(cropTaskReference, /canonicalCrop: "Celery"/)
+  assert.match(cropTaskReference, /sourceRow: 12,\s*actions: \[\]/)
+  assert.match(cropTaskReference, /canonicalCrop: "Swiss Chard"/)
+  assert.match(cropTaskReference, /sourceRow: 39/)
+  assert.doesNotMatch(cropTaskReference, /canonicalCrop: "Peas"/)
+
+  // Calendar matching must be exact and constrained to physically allocated successions.
+  assert.match(taskCalendar, /@\/lib\/orchard\/crop-task-reference/)
+  assert.match(taskCalendar, /from\("orchard_bed_allocations"\)/)
+  assert.match(taskCalendar, /allocatedSuccessionIds\.has\(s\.id\)/)
+  assert.match(taskCalendar, /cropTaskReferenceFor\(cycle\.crop_name\)/)
+  assert.match(taskCalendar, /s\.planned_transplant_date\?\?s\.planned_sow_date/)
+  assert.match(taskCalendar, /action\.offsetDays/)
+  assert.doesNotMatch(taskCalendar, /Sweet peas/)
+  assert.doesNotMatch(taskCalendar, /aliases:/)
+  assert.doesNotMatch(taskCalendar, /dietrich-crop-tasks-2026-27\.json/)
 
   // Historical Heirloom reference and current Core truth are deliberately separate.
   assert.match(parity, /fieldBlockBeds: 18/)
