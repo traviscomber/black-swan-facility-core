@@ -12,6 +12,7 @@ test("Heirloom reconciliation remains explicit, bed-meter based and capacity saf
   const gettingStarted = await readFile("app/orchard/getting-started/page.tsx", "utf8")
   const taskCalendar = await readFile("app/orchard/game-plan/tasks/page.tsx", "utf8")
   const cropChart = await readFile("app/orchard/game-plan/crop-chart/page.tsx", "utf8")
+  const orchardLibrary = await readFile("app/orchard/library/page.tsx", "utf8")
   const cropTaskReference = await readFile("lib/orchard/crop-task-reference.ts", "utf8")
   const heirloomBenchmark = await readFile("lib/orchard/heirloom-season-benchmark.ts", "utf8")
   const parity = await readFile("lib/orchard/heirloom-parity.ts", "utf8")
@@ -127,6 +128,16 @@ test("Heirloom reconciliation remains explicit, bed-meter based and capacity saf
   const bunchNormalization = cropChart.indexOf('normalized.includes("ramillete")')
   const kilogramNormalization = cropChart.indexOf('normalized.includes("kilo")')
   assert.ok(bunchNormalization >= 0 && kilogramNormalization > bunchNormalization)
+
+  // Chile references remain visibly sourced and separate from Corcovado operating truth.
+  assert.match(orchardLibrary, /external_source:string\|null/)
+  assert.match(orchardLibrary, /chileRefs:"Referencias Chile"/)
+  assert.match(orchardLibrary, /Las referencias Chile y benchmarks Heirloom sirven para validar/)
+  assert.match(orchardLibrary, /provenance_type==="reference"/)
+  assert.match(orchardLibrary, /function ChileReferenceRow/)
+  assert.match(orchardLibrary, /cultivar\.source_url/)
+  assert.match(orchardLibrary, /target="_blank"/)
+  assert.doesNotMatch(orchardLibrary, /las referencias externas quedan fuera de esta vista/i)
 
   // Historical Heirloom reference and current Core truth are deliberately separate.
   assert.match(parity, /fieldBlockBeds: 18/)
