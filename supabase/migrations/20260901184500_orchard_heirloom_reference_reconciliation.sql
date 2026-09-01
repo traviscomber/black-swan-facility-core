@@ -106,14 +106,13 @@ where not exists (
 );
 
 insert into public.orchard_beds (
-  plot_id, name, length_m, width_m, area_sqm, status, planning_order, notes
+  plot_id, name, length_m, width_m, status, planning_order, notes
 )
 select
   p.id,
   gs::text,
   30,
   0.76,
-  22.8,
   'active',
   gs,
   'Canonical physical bed from Heirloom parity study; 30 m x 0.76 m.'
