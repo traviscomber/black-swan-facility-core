@@ -20,19 +20,25 @@ declare
   v_existing_rows integer;
   v_existing_succ integer;
 begin
-  select count(*), min(id) into v_plan_count, v_plan_id
+  select count(*) into v_plan_count
   from public.orchard_game_plans
   where name = 'BS Orchard — Crop Plan 2026/27' and season = '2026/27';
   if v_plan_count <> 1 then
     raise exception 'Expected exactly one canonical 2026/27 Orchard Game Plan, found %', v_plan_count;
   end if;
+  select id into v_plan_id
+  from public.orchard_game_plans
+  where name = 'BS Orchard — Crop Plan 2026/27' and season = '2026/27';
 
-  select count(*), min(id) into v_plot_count, v_plot_id
+  select count(*) into v_plot_count
   from public.orchard_plots
   where name = 'Orchard BlackSwan Campo' and status = 'active';
   if v_plot_count <> 1 then
     raise exception 'Expected exactly one active Orchard BlackSwan Campo, found %', v_plot_count;
   end if;
+  select id into v_plot_id
+  from public.orchard_plots
+  where name = 'Orchard BlackSwan Campo' and status = 'active';
 
   select count(*), coalesce(sum(s.planned_bed_m),0)
     into v_reconciled, v_total_bed_m
