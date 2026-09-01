@@ -47,7 +47,7 @@ const copy = {
   de:{eyebrow:"Orchard · Erste Schritte",title:"Ein Betriebsablauf von der Farmkarte bis zur Arbeitslast",description:"Der Fortschritt wird aus aktuellen Core-Datensätzen berechnet. Historische Heirloom-Beobachtungen bleiben Referenzevidenz und ersetzen nie das Betriebsmodell.",gamePlan:"Game Plan",loading:"Orchard-Status wird geladen…",loadError:"Der Orchard-Onboarding-Status konnte nicht geladen werden.",complete:"abgeschlossen",completed:"Abgeschlossen",pending:"Offen",openStep:"Schritt öffnen",reference:"Historische Heirloom-Referenz",coreLive:"Core live",referenceHelp:"Authentifiziert beobachtetes Verhalten vom 01. Sep. 2026. Nur Referenz.",coreHelp:"Aktueller autorisierter Supabase-Status für den gewählten Game Plan.",physicalBeds:"Physische Beete",plantings:"Pflanzungen",capacity:"Beetmeter-Kapazität",assigned:"Zugeordnete Pflanzungen",peak:"Referenz-Spitzenbedarf",syncTitle:"Farm Area 1 synchronisiert",syncBody:"Das aktuelle Betriebsmodell besteht aus 5 bestehenden + 3 Erweiterungsblöcken mit je 10 Beeten. Crop Map gilt erst als abgeschlossen, wenn alle abgeglichenen Pflanzungen physisch zugeordnet sind.",truth:"Abschlusskriterien sind streng und datenbasiert."},
 } as const
 
-const CORE_BLOCK_NAMES = new Set(CORE_FARM_AREA_1_LAYOUT_REFERENCE.blocks.map(block=>block.name))
+const CORE_BLOCK_NAMES = new Set<string>(CORE_FARM_AREA_1_LAYOUT_REFERENCE.blocks.map(block=>block.name))
 const initialSnapshot:LiveSnapshot={plans:[],plots:[],cycles:[],successions:[],beds:[],allocations:[],revenueTargets:[],chartDefinitions:0,seedLots:0,tasks:0}
 
 export default function OrchardGettingStartedPage(){
