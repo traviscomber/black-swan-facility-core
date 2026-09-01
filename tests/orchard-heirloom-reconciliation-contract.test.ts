@@ -25,7 +25,7 @@ test("Heirloom reconciliation remains explicit, idempotent and bed-meter based",
   assert.match(page, /planned_bed_m/)
   assert.match(page, /allocated_length_m/)
   assert.match(page, /orchard_place_succession_bed_meters/)
-  assert.match(page, /assigned\/\{scoped\.length\}/)
+  assert.match(page, /\$\{assigned\}\/\$\{scoped\.length\}/)
   assert.match(page, /Orchard BlackSwan Campo/)
 
   assert.match(parity, /fieldBlockBeds: 18/)
