@@ -8,6 +8,7 @@ test("Heirloom reconciliation remains explicit, bed-meter based and capacity saf
   const optimizedLayout = await readFile("supabase/migrations/20260901194500_orchard_capacity_safe_reference_layout.sql", "utf8")
   const expansion = await readFile("supabase/migrations/20260901195500_orchard_add_farm_area_1_sectors.sql", "utf8")
   const page = await readFile("app/orchard/crop-map/auto-place/page.tsx", "utf8")
+  const workPage = await readFile("app/orchard/work/page.tsx", "utf8")
   const parity = await readFile("lib/orchard/heirloom-parity.ts", "utf8")
 
   // Preserve the authenticated Heirloom observation as historical evidence.
@@ -57,6 +58,14 @@ test("Heirloom reconciliation remains explicit, bed-meter based and capacity saf
   assert.match(page, /80 active beds/)
   assert.match(page, /800 bed-m/)
   assert.doesNotMatch(page, /three logical cultivation sectors/)
+
+  // Workload must not drift back to the unreconciled 66-succession draft graph.
+  assert.match(workPage, /allocatedSuccessionIds/)
+  assert.match(workPage, /reconciledSuccessionIds/)
+  assert.match(workPage, /reconciledSuccessions/)
+  assert.match(workPage, /orchard_succession_sow/)
+  assert.match(workPage, /orchard_succession_transplant/)
+  assert.match(workPage, /orchard_succession_harvest/)
 
   // Historical Heirloom reference and current Core truth are deliberately separate.
   assert.match(parity, /fieldBlockBeds: 18/)
