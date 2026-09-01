@@ -27,9 +27,9 @@ const localeMap:Record<Locale,string>={en:"en-US",es:"es-CL",de:"de-DE"}
 function normalizeYieldUnit(value:string|undefined):NormalizedYieldUnit{
  if(!value)return null
  const normalized=value.toLowerCase()
+ if(normalized.includes("ramillete")||normalized.includes("bunch"))return "bunch"
  if(normalized.includes("kilo")||normalized==="kg")return "kg"
  if(normalized.includes("unidad")||normalized.includes("unit"))return "unit"
- if(normalized.includes("ramillete")||normalized.includes("bunch"))return "bunch"
  return null
 }
 
