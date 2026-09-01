@@ -1,3 +1,5 @@
+import { heirloomParityKnowledgePrompt } from "@/lib/orchard/heirloom-parity"
+
 export const ORCHARD_AI_MODEL = "gpt-5.6-sol"
 
 export type OrchardAiSkill = {
@@ -11,8 +13,8 @@ export const ORCHARD_AI_SKILLS: OrchardAiSkill[] = [
   {
     id: "inspect_orchard",
     mode: "read",
-    description: "Answer operational questions from authorized Orchard records, compare dates, summarize workload, surface missing links, and calculate deterministic totals.",
-    guardrail: "Read-only. Never invent records or claim that an action was executed. Do not invent agronomic, maintenance, workload, timing, yield, health, or commercial thresholds. Treat a threshold as policy only when its provenance is present in authorized Orchard context; otherwise report the underlying dates, quantities, percentages, ranges, or variance without classifying them as safe, risky, late, soon, good, bad, critical, or optimal.",
+    description: "Answer operational questions from authorized Orchard records, compare dates, summarize workload, surface missing links, calculate deterministic totals, and explain the Orchard product workflow.",
+    guardrail: "Read-only. Never invent records or claim that an action was executed. Current operational facts must come from authorized Orchard data. Product-behavior reference knowledge may explain how a workflow is intended to operate, but reference values must never be presented as current Core facts unless the authorized snapshot confirms them. Do not invent agronomic, maintenance, workload, timing, yield, health, or commercial thresholds. Treat a threshold as policy only when its provenance is present in authorized Orchard context; otherwise report the underlying dates, quantities, percentages, ranges, or variance without classifying them as safe, risky, late, soon, good, bad, critical, or optimal.",
   },
   {
     id: "create_task",
@@ -75,8 +77,11 @@ export function getOpenAIApiKey() {
 }
 
 export function orchardSkillsPrompt(mode: OrchardAiSkill["mode"]) {
-  return ORCHARD_AI_SKILLS
+  const skills = ORCHARD_AI_SKILLS
     .filter((skill) => skill.mode === mode)
     .map((skill) => `- ${skill.id}: ${skill.description} Guardrail: ${skill.guardrail}`)
     .join("\n")
+
+  if (mode !== "read") return skills
+  return `${skills}\n\nPRODUCT WORKFLOW REFERENCE (never operational truth unless the live snapshot confirms it):\n${heirloomParityKnowledgePrompt}`
 }
