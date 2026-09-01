@@ -2,10 +2,11 @@ import assert from "node:assert/strict"
 import { readFile } from "node:fs/promises"
 import test from "node:test"
 
-test("Heirloom reconciliation remains explicit, idempotent and bed-meter based", async () => {
+test("Heirloom reconciliation remains explicit, bed-meter based and capacity safe", async () => {
   const migration = await readFile("supabase/migrations/20260901184500_orchard_heirloom_reference_reconciliation.sql", "utf8")
   const placement = await readFile("supabase/migrations/20260901190000_orchard_place_succession_bed_meters.sql", "utf8")
   const optimizedLayout = await readFile("supabase/migrations/20260901194500_orchard_capacity_safe_reference_layout.sql", "utf8")
+  const expansion = await readFile("supabase/migrations/20260901195500_orchard_add_farm_area_1_sectors.sql", "utf8")
   const page = await readFile("app/orchard/crop-map/auto-place/page.tsx", "utf8")
   const parity = await readFile("lib/orchard/heirloom-parity.ts", "utf8")
 
@@ -32,15 +33,26 @@ test("Heirloom reconciliation remains explicit, idempotent and bed-meter based",
   assert.match(optimizedLayout, /b\.name = '18'/)
   assert.doesNotMatch(optimizedLayout, /min\(id\)/)
 
+  assert.match(expansion, /Farm Area 1 reference polygon/)
+  assert.match(expansion, /Orchard BlackSwan Campo — Sector 2/)
+  assert.match(expansion, /Orchard BlackSwan Campo — Sector 3/)
+  assert.match(expansion, /generate_series\(1,4\)/)
+  assert.match(expansion, /v_total_capacity <> 780/)
+  assert.match(expansion, /v_assigned <> 32/)
+  assert.match(expansion, /v_pending <> 0/)
+  assert.match(expansion, /v_allocated_m <> 744/)
+  assert.match(expansion, /Core does not yet store per-plot GIS geometry/)
+
   assert.match(page, /planned_bed_m/)
   assert.match(page, /allocated_length_m/)
   assert.match(page, /orchard_place_succession_bed_meters/)
   assert.match(page, /\$\{assigned\}\/\$\{scoped\.length\}/)
   assert.match(page, /peakDemand/)
-  assert.match(page, /assignedPeak/)
-  assert.match(page, /capacityConflict/)
+  assert.match(page, /areaCapacity/)
+  assert.match(page, /farmPlots/)
+  assert.match(page, /FARM_AREA_PREFIX/)
   assert.match(page, /spareBeds/)
-  assert.match(page, /Orchard BlackSwan Campo/)
+  assert.match(page, /Farm Area 1/)
 
   assert.match(parity, /fieldBlockBeds: 18/)
   assert.match(parity, /fieldBlockBedLengthM: 30/)
