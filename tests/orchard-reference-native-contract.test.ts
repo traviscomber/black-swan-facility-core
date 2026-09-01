@@ -59,11 +59,20 @@ test("bulk FAO sync is admin-only, audited, idempotent and preserves observed ag
   assert.match(syncMigration, /orchard_reference_sync_runs/)
 })
 
-test("Fundo Corcovado library reads only the canonical Black Swan crop layer", () => {
+test("Fundo Corcovado catalog stays canonical while the Chile reference bridge is bounded and read-only", () => {
   assert.match(orchardLibraryPage, /CANONICAL_SCHEME = "black_swan_canonical"/)
   assert.match(orchardLibraryPage, /CANONICAL_CODE = "fundo_corcovado"/)
   assert.match(orchardLibraryPage, /\.eq\("classification_scheme",CANONICAL_SCHEME\)/)
   assert.match(orchardLibraryPage, /\.eq\("classification_code",CANONICAL_CODE\)/)
+  assert.match(orchardLibraryPage, /CHILE_REFERENCE_PARENT_BY_CANONICAL/)
+  assert.match(orchardLibraryPage, /"Carrots":\["Carrot"\]/)
+  assert.match(orchardLibraryPage, /"Peas":\["Pea"\]/)
+  assert.match(orchardLibraryPage, /"Swiss Chard":\["Chard"\]/)
+  assert.match(orchardLibraryPage, /"Storage Potatoes":\["Potato"\]/)
+  assert.match(orchardLibraryPage, /\.eq\("classification_scheme","external_reference"\)\.in\("crop_name",EXTERNAL_REFERENCE_PARENT_NAMES\)/)
+  assert.match(orchardLibraryPage, /v\.provenance_type!=="reference"&&v\.crop_library_id===matchedCrop\.id/)
+  assert.match(orchardLibraryPage, /related=\{v\.crop_library_id!==crop\.id\}/)
+  assert.match(orchardLibraryPage, /no pueden aplicarse como defaults operativos/)
   assert.match(orchardLibraryPage, /Fundo Corcovado/)
   assert.doesNotMatch(orchardLibraryPage, /Valdivia \/ Los Ríos|SOUTH_CHILE_PRIORITY|southChilePriority|chileRepresentativeScore/)
 })
