@@ -105,6 +105,17 @@ test("Dietrich Game Plan hub preserves the written plan as a first-class section
   assert.match(source, /Mizuna/)
 })
 
+test("Dietrich Season Plan exposes a crop-led planting timeline", async () => {
+  const source = await readFile("app/orchard/game-plan/season/page.tsx", "utf8")
+
+  assert.match(source, /monthKeys/)
+  assert.match(source, /timelinePosition/)
+  assert.match(source, /Search crops/)
+  assert.match(source, /planned_sow_date/)
+  assert.match(source, /planned_last_harvest_date/)
+  assert.match(source, /var\(--orchard-green\)/)
+})
+
 test("Dietrich workbook reference data remains explicit and versioned", async () => {
   const direct = await readFile("data/orchard/dietrich-direct-sow-2026-27.json", "utf8")
   const nursery = await readFile("data/orchard/dietrich-nursery-2026-27.json", "utf8")
