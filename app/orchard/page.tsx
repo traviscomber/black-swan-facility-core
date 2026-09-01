@@ -64,7 +64,7 @@ export default function OrchardTodayPage(){
     {href:"/orchard/game-plan",label:text.openPlan,icon:CalendarRange,detail:plan.name},
     {href:"/orchard/work",label:text.openTasks,icon:CalendarDays,detail:`${todayEvents.length+upcoming.length} ${text.next7.toLowerCase()}`},
     {href:"/orchard/field",label:text.openField,icon:Sprout,detail:`${scopedSuccessions.length} successions`},
-    {href:"/orchard/harvest",label:text.openHarvest,icon:Leaf,detail:futureHarvest?futureHarvest.crop:text.noHarvest},
+    {href:"/orchard/harvest/desk",label:text.openHarvest,icon:Leaf,detail:futureHarvest?futureHarvest.crop:text.noHarvest},
    ].map(item=>{const Icon=item.icon;return <Link key={item.href} href={href(item.href)} className="group min-h-36 border bg-card p-5 transition hover:bg-muted/30"><div className="flex items-start justify-between gap-4"><div className="border bg-muted p-2"><Icon className="h-4 w-4"/></div><ArrowRight className="h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-1"/></div><p className="mt-5 font-medium">{item.label}</p><p className="mt-1 text-xs text-muted-foreground">{item.detail}</p></Link>})}</section>
 
    <div className="flex items-center justify-between gap-4 border-t border-[var(--bs-divider-subtle)] pt-5 text-xs text-muted-foreground"><span>{text.source}</span><span>{text.season}: {plan.season??plan.name}</span></div>
