@@ -59,7 +59,7 @@ The Crop Map exposes a right-side `Assign plantings (x / N)` panel.
 
 The authenticated reference queue contained **32 plantings** requesting **744 bed m** in total. Peak concurrent demand was **678 bed m on 2026-11-26**, exceeding the 540 bed-m instantaneous physical capacity by **138 bed m**.
 
-This is an important product behavior: the planner must be able to surface spatial/temporal over-capacity instead of treating a whole bed as occupied whenever any partial segment is used.
+This is an important product behavior: the planner must be able to surface spatial/temporal over-capacity instead of treating a whole bed as occupied whenever any partial bed-meter amount is used.
 
 ## Workload behavior observed
 
@@ -102,15 +102,15 @@ Core already has Game Plan, Crop Map, forecasts, charts, seed/nursery, workload 
 
 At the time of this study, production Core had no active physical Orchard beds while Heirloom had 18 × 30 m. The current 2026/27 Core Game Plan also has more successions than the 32-item Heirloom assignment queue. This must be reconciled explicitly; neither side should be silently treated as the other's authoritative dataset.
 
-### 3. Allocation semantics are whole-bed, not bed-meter
+### 3. Allocation semantics are whole-bed, not bed-meter capacity
 
-`orchard_bed_allocations` currently stores bed, dates, area and plants, but no longitudinal segment within a bed. Its overlap exclusion constraint blocks two date-overlapping allocations on the same bed even if they would occupy non-overlapping meter segments.
+`orchard_bed_allocations` currently stores bed, dates, area and plants, but no explicit bed-meter quantity. Its overlap exclusion constraint blocks any two date-overlapping allocations on the same bed, even when their combined bed-meter requirement would fit inside that bed.
 
 The auto-placement RPC also treats any overlapping allocation as making the entire bed unavailable.
 
-Exact parity therefore requires a future schema/RPC migration to represent longitudinal bed segments (for example start offset + allocated length) and enforce conflicts in both time and bed-meter space.
+Exact parity therefore requires an explicit planned/allocated bed-meter quantity and a capacity guard that allows concurrent partial allocations only while the total bed meters used on each date remain within the physical bed length. No explicit longitudinal offset was observed in Heirloom, so offset coordinates are intentionally not part of this parity contract.
 
-### 4. Crop Map UX must become crop-led and segment-aware
+### 4. Crop Map UX must become crop-led and bed-meter-capacity-aware
 
 Required target behavior:
 
@@ -119,7 +119,7 @@ Required target behavior:
 - planting date range + bed-meter requirement;
 - one-at-a-time drag onto a bed;
 - field block rendered as physical bed sequence;
-- visible segment occupancy through time;
+- visible bed-meter occupancy through time, without inventing an unobserved within-bed coordinate;
 - live `assigned / total` count;
 - capacity shortfall warning before bulk placement.
 
@@ -132,7 +132,7 @@ Core already contains richer accountable-work logic. The target is not to remove
 1. Codify this field study as reference knowledge and tests.
 2. Add an eight-step Getting Started route driven by live Core data.
 3. Expose parity knowledge to Orchard AI as product-use reference only.
-4. Build bed-meter segment schema + conflict model in a migration; do not apply to production until explicitly authorized.
-5. Rebuild Crop Map assignment UX on top of segment semantics.
+4. Build bed-meter capacity schema + conflict model in a migration; do not apply to production until explicitly authorized.
+5. Rebuild Crop Map assignment UX on top of bed-meter capacity semantics.
 6. Reframe workload default views into List / Week Board / Workload Graph.
 7. Reconcile the canonical physical block and Heirloom/Core planting counts before any production allocation import.
