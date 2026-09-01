@@ -73,7 +73,7 @@ test("Heirloom reconciliation remains explicit, bed-meter based and capacity saf
   assert.match(workPage, /p_location_id:location\.locationId/)
   assert.match(workPage, /p_employee_ids:\[form\.employee_id\]/)
   assert.match(workPage, /p_employee_ids:\[bulkEmployeeId\]/)
-  assert.match(workPage, /bulkEmployeeId === "none"/)
+  assert.match(workPage, /bulkEmployeeId\s*===\s*"none"/)
   assert.doesNotMatch(workPage, /from\("tasks"\)\.insert/)
 
   // Getting Started must count only accountable Orchard tasks linked to reconciled plantings.
