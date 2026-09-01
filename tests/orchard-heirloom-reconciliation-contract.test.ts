@@ -11,7 +11,9 @@ test("Heirloom reconciliation remains explicit, bed-meter based and capacity saf
   const workPage = await readFile("app/orchard/work/page.tsx", "utf8")
   const gettingStarted = await readFile("app/orchard/getting-started/page.tsx", "utf8")
   const taskCalendar = await readFile("app/orchard/game-plan/tasks/page.tsx", "utf8")
+  const cropChart = await readFile("app/orchard/game-plan/crop-chart/page.tsx", "utf8")
   const cropTaskReference = await readFile("lib/orchard/crop-task-reference.ts", "utf8")
+  const heirloomBenchmark = await readFile("lib/orchard/heirloom-season-benchmark.ts", "utf8")
   const parity = await readFile("lib/orchard/heirloom-parity.ts", "utf8")
 
   // Preserve the authenticated Heirloom observation as historical evidence.
@@ -109,6 +111,22 @@ test("Heirloom reconciliation remains explicit, bed-meter based and capacity saf
   assert.doesNotMatch(taskCalendar, /Sweet peas/)
   assert.doesNotMatch(taskCalendar, /aliases:/)
   assert.doesNotMatch(taskCalendar, /dietrich-crop-tasks-2026-27\.json/)
+
+  // Corcovado remains operational truth; Heirloom is a versioned external benchmark only.
+  assert.match(heirloomBenchmark, /capturedAt: "2026-09-01"/)
+  assert.match(heirloomBenchmark, /farmId: 109612/)
+  assert.match(heirloomBenchmark, /heirloomCultivar: "Generic"/)
+  assert.match(heirloomBenchmark, /coreCropName:"Arugula"/)
+  assert.match(heirloomBenchmark, /yieldPer10m:6\.666666667/)
+  assert.match(heirloomBenchmark, /coreCropName:"Lebanese Cucumber \(greenhouse\)"[\s\S]*match:"collapsed"/)
+  assert.match(heirloomBenchmark, /coreCropName:"Storage Potatoes"[\s\S]*match:"mismatch"/)
+  assert.match(cropChart, /Real Corcovado data vs Heirloom reference/)
+  assert.match(cropChart, /heirloomYieldBenchmarkFor/)
+  assert.match(cropChart, /heirloom\.match!=="mismatch"/)
+  assert.match(cropChart, /HEIRLOOM_SEASON_BENCHMARK_SOURCE/)
+  const bunchNormalization = cropChart.indexOf('normalized.includes("ramillete")')
+  const kilogramNormalization = cropChart.indexOf('normalized.includes("kilo")')
+  assert.ok(bunchNormalization >= 0 && kilogramNormalization > bunchNormalization)
 
   // Historical Heirloom reference and current Core truth are deliberately separate.
   assert.match(parity, /fieldBlockBeds: 18/)
