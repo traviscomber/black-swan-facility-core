@@ -34,6 +34,7 @@ import {
 } from "lucide-react"
 import { useLanguage } from "@/lib/hooks/use-language"
 import { cn } from "@/lib/utils"
+import { OrchardAiDock } from "@/components/orchard/orchard-ai-dock"
 
 type OrchardLocale = "en" | "es" | "de"
 type NavItem = { href: string; label: Record<OrchardLocale, string>; icon: typeof LayoutDashboard; includeChildren?: boolean }
@@ -207,6 +208,7 @@ export function OrchardNavigation() {
     const Icon = item.icon
     return <Link key={item.href} href={scopedHref(item.href)} aria-label={item.label[locale]} aria-current={active ? "page" : undefined} className={cn("inline-flex min-h-10 shrink-0 items-center gap-2 rounded-lg px-3.5 text-sm font-medium transition-colors focus-visible:outline-none", active ? "bg-[#e6f0ea] text-[#1f624d]" : "text-[#687069] hover:bg-[#f1f4f1] hover:text-[#27342c]")}><Icon className="h-4 w-4" aria-hidden="true"/><span>{item.label[locale]}</span></Link>
   }
+  const assistantHidden = pathname === "/orchard/assistant"
 
   return <>
     <style>{ORCHARD_BRAND_CSS}</style>
@@ -231,5 +233,6 @@ export function OrchardNavigation() {
         </details>
       </div>
     </nav>
+    <OrchardAiDock hidden={assistantHidden}/>
   </>
 }
