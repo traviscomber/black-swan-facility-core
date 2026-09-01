@@ -111,7 +111,9 @@ test("Dietrich Season Plan exposes a crop-led planting timeline", async () => {
   const source = await readFile("app/orchard/game-plan/season/page.tsx", "utf8")
 
   assert.match(source, /monthKeys/)
+  assert.match(source, /weekKeys/)
   assert.match(source, /timelinePosition/)
+  assert.match(source, /Planting Schedule/)
   assert.match(source, /Search crops/)
   assert.match(source, /planned_sow_date/)
   assert.match(source, /planned_last_harvest_date/)
