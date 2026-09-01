@@ -32,7 +32,9 @@ type Task = {
 }
 type Assignment = { task_id: string; employee_id: string | null }
 type Employee = { id: string; name: string; role: string | null }
-type AddForm = { title: string; minutes: string; employeeId: string; date: string; notes: string }
+type OrchardLocation = { id: string; name: string }
+type PlotLocation = { location_id: string | null }
+type AddForm = { title: string; minutes: string; employeeId: string; locationId: string; date: string; notes: string }
 
 const copy = {
   en: {
@@ -42,7 +44,7 @@ const copy = {
     search: "Search tasks…", date: "Date", task: "Task Name", type: "Type", amount: "Estimated time", location: "Location", owner: "Owner", empty: "No Orchard tasks match this view.",
     today: "Today", prev: "Previous week", next: "Next week", minutes: "minutes", noDate: "No date", unassigned: "Not assigned", completed: "Completed", open: "Open",
     average: "Average per week", peak: "Peak week", total: "Open workload", weekLabel: "Week", noWorkload: "No dated open workload is available.",
-    createTitle: "Create ad hoc Task", taskField: "Task", estimated: "Estimated time", assign: "Assign to", notes: "Notes", recurrence: "Recurrence", noRepeat: "Does not repeat", cancel: "Cancel", create: "Create", saveError: "Could not create task", loadError: "Could not load workload", recurrenceGap: "Recurring tasks are not yet a canonical Core field; this parity view creates one-off tasks only.",
+    createTitle: "Create ad hoc Task", taskField: "Task", estimated: "Estimated time", assign: "Assign to", locationField: "Orchard location", selectLocation: "Select location", notes: "Notes", recurrence: "Recurrence", noRepeat: "Does not repeat", cancel: "Cancel", create: "Create", saveError: "Could not create task", loadError: "Could not load workload", recurrenceGap: "Recurring tasks are not yet a canonical Core field; this parity view creates one-off tasks only.", ownerRequired: "Select a responsible person.", locationRequired: "Select an Orchard location.",
   },
   es: {
     title: "Tareas",
@@ -51,7 +53,7 @@ const copy = {
     search: "Buscar tareas…", date: "Fecha", task: "Nombre de tarea", type: "Tipo", amount: "Tiempo estimado", location: "Ubicación", owner: "Responsable", empty: "No hay tareas de Orchard para esta vista.",
     today: "Hoy", prev: "Semana anterior", next: "Semana siguiente", minutes: "minutos", noDate: "Sin fecha", unassigned: "Sin asignar", completed: "Completada", open: "Abierta",
     average: "Promedio por semana", peak: "Semana peak", total: "Carga abierta", weekLabel: "Semana", noWorkload: "No hay carga abierta con fecha disponible.",
-    createTitle: "Crear tarea ad hoc", taskField: "Tarea", estimated: "Tiempo estimado", assign: "Asignar a", notes: "Notas", recurrence: "Recurrencia", noRepeat: "No se repite", cancel: "Cancelar", create: "Crear", saveError: "No fue posible crear la tarea", loadError: "No fue posible cargar la carga de trabajo", recurrenceGap: "Las tareas recurrentes aún no son un campo canónico de Core; esta vista crea sólo tareas únicas.",
+    createTitle: "Crear tarea ad hoc", taskField: "Tarea", estimated: "Tiempo estimado", assign: "Asignar a", locationField: "Ubicación Orchard", selectLocation: "Seleccionar ubicación", notes: "Notas", recurrence: "Recurrencia", noRepeat: "No se repite", cancel: "Cancelar", create: "Crear", saveError: "No fue posible crear la tarea", loadError: "No fue posible cargar la carga de trabajo", recurrenceGap: "Las tareas recurrentes aún no son un campo canónico de Core; esta vista crea sólo tareas únicas.", ownerRequired: "Selecciona una persona responsable.", locationRequired: "Selecciona una ubicación de Orchard.",
   },
   de: {
     title: "Aufgaben",
@@ -60,7 +62,7 @@ const copy = {
     search: "Aufgaben suchen…", date: "Datum", task: "Aufgabe", type: "Typ", amount: "Geschätzte Zeit", location: "Ort", owner: "Verantwortlich", empty: "Keine Orchard-Aufgaben für diese Ansicht.",
     today: "Heute", prev: "Vorherige Woche", next: "Nächste Woche", minutes: "Minuten", noDate: "Kein Datum", unassigned: "Nicht zugewiesen", completed: "Abgeschlossen", open: "Offen",
     average: "Durchschnitt pro Woche", peak: "Spitzenwoche", total: "Offene Arbeitslast", weekLabel: "Woche", noWorkload: "Keine datierte offene Arbeitslast verfügbar.",
-    createTitle: "Ad-hoc-Aufgabe erstellen", taskField: "Aufgabe", estimated: "Geschätzte Zeit", assign: "Zuweisen an", notes: "Notizen", recurrence: "Wiederholung", noRepeat: "Keine Wiederholung", cancel: "Abbrechen", create: "Erstellen", saveError: "Aufgabe konnte nicht erstellt werden", loadError: "Arbeitslast konnte nicht geladen werden", recurrenceGap: "Wiederkehrende Aufgaben sind noch kein kanonisches Core-Feld; diese Ansicht erstellt nur einmalige Aufgaben.",
+    createTitle: "Ad-hoc-Aufgabe erstellen", taskField: "Aufgabe", estimated: "Geschätzte Zeit", assign: "Zuweisen an", locationField: "Orchard-Ort", selectLocation: "Ort auswählen", notes: "Notizen", recurrence: "Wiederholung", noRepeat: "Keine Wiederholung", cancel: "Abbrechen", create: "Erstellen", saveError: "Aufgabe konnte nicht erstellt werden", loadError: "Arbeitslast konnte nicht geladen werden", recurrenceGap: "Wiederkehrende Aufgaben sind noch kein kanonisches Core-Feld; diese Ansicht erstellt nur einmalige Aufgaben.", ownerRequired: "Wähle eine verantwortliche Person.", locationRequired: "Wähle einen Orchard-Ort.",
   },
 } as const
 
@@ -84,27 +86,32 @@ export function OrchardWorkloadParity({ mode }: { mode: Mode }) {
   const [tasks,setTasks] = useState<Task[]>([])
   const [assignments,setAssignments] = useState<Assignment[]>([])
   const [employees,setEmployees] = useState<Employee[]>([])
+  const [locations,setLocations] = useState<OrchardLocation[]>([])
   const [search,setSearch] = useState("")
   const [weekStart,setWeekStart] = useState(() => mondayOf(new Date()))
   const [dialogOpen,setDialogOpen] = useState(false)
   const [loading,setLoading] = useState(true)
   const [saving,setSaving] = useState(false)
   const [error,setError] = useState<string|null>(null)
-  const [form,setForm] = useState<AddForm>({ title:"", minutes:"30", employeeId:"none", date:dateKey(new Date()), notes:"" })
+  const [form,setForm] = useState<AddForm>({ title:"", minutes:"30", employeeId:"none", locationId:"none", date:dateKey(new Date()), notes:"" })
 
   const load = useCallback(async () => {
     setLoading(true); setError(null)
-    const [taskResult, employeeResult] = await Promise.all([
-      supabase.from("tasks").select("id,title,description,priority,status,due_date,location_name,task_category,estimated_minutes,source_label").eq("operational_area","huerto_vinedo").order("due_date",{ascending:true,nullsFirst:false}),
-      supabase.from("employees").select("id,name,role").order("name"),
+    const [taskResult, employeeResult, plotResult] = await Promise.all([
+      supabase.from("tasks").select("id,title,description,priority,status,due_date,location_name,task_category,estimated_minutes,source_label").in("operational_area",["orchard","huerto_vinedo"]).order("due_date",{ascending:true,nullsFirst:false}),
+      supabase.from("employees").select("id,name,role").eq("is_active",true).order("name"),
+      supabase.from("orchard_plots").select("location_id").not("location_id","is",null),
     ])
-    if (taskResult.error || employeeResult.error) {
-      setError(`${text.loadError}: ${(taskResult.error ?? employeeResult.error)?.message ?? "unknown"}`); setLoading(false); return
+    if (taskResult.error || employeeResult.error || plotResult.error) {
+      setError(`${text.loadError}: ${(taskResult.error ?? employeeResult.error ?? plotResult.error)?.message ?? "unknown"}`); setLoading(false); return
     }
+    const plotLocationIds=[...new Set(((plotResult.data??[]) as PlotLocation[]).map(row=>row.location_id).filter((id):id is string=>Boolean(id)))]
+    let nextLocations:OrchardLocation[]=[]
+    if(plotLocationIds.length){const l=await supabase.from("locations").select("id,name").in("id",plotLocationIds).eq("is_active",true).order("name");if(l.error){setError(`${text.loadError}: ${l.error.message}`);setLoading(false);return}else nextLocations=(l.data??[]) as OrchardLocation[]}
     const nextTasks=(taskResult.data??[]) as Task[]
     let nextAssignments:Assignment[]=[]
     if(nextTasks.length){const a=await supabase.from("task_assignments").select("task_id,employee_id").in("task_id",nextTasks.map(t=>t.id));if(a.error)setError(`${text.loadError}: ${a.error.message}`);else nextAssignments=(a.data??[]) as Assignment[]}
-    setTasks(nextTasks);setAssignments(nextAssignments);setEmployees((employeeResult.data??[]) as Employee[]);setLoading(false)
+    setTasks(nextTasks);setAssignments(nextAssignments);setEmployees((employeeResult.data??[]) as Employee[]);setLocations(nextLocations);setLoading(false)
   },[supabase,text.loadError])
   useEffect(()=>{void load()},[load])
 
@@ -129,14 +136,34 @@ export function OrchardWorkloadParity({ mode }: { mode: Mode }) {
 
   async function createTask(){
     const title=form.title.trim();if(!title||!form.date)return
+    if(form.employeeId==="none"){setError(`${text.saveError}: ${text.ownerRequired}`);return}
+    if(form.locationId==="none"){setError(`${text.saveError}: ${text.locationRequired}`);return}
+    const location=locations.find(item=>item.id===form.locationId)
+    if(!location){setError(`${text.saveError}: ${text.locationRequired}`);return}
     setSaving(true);setError(null)
-    const created=await supabase.from("tasks").insert({title,description:form.notes.trim()||null,priority:"media",status:"nueva",due_date:form.date,operational_area:"huerto_vinedo",task_category:"ad_hoc",estimated_minutes:form.minutes?Number(form.minutes):null,source_type:"orchard_general",source_label:"Orchard",source_path:`/${language}${modePath[mode]}`}).select("id").single()
-    if(created.error||!created.data?.id){setError(`${text.saveError}: ${created.error?.message??"unknown"}`);setSaving(false);return}
-    if(form.employeeId!=="none"){
-      const assigned=await supabase.from("task_assignments").insert({task_id:created.data.id,employee_id:form.employeeId})
-      if(assigned.error){await supabase.from("tasks").delete().eq("id",created.data.id);setError(`${text.saveError}: ${assigned.error.message}`);setSaving(false);return}
-    }
-    setForm({title:"",minutes:"30",employeeId:"none",date:dateKey(new Date()),notes:""});setDialogOpen(false);await load();setSaving(false)
+    const created=await supabase.rpc("create_operational_task_atomic",{
+      p_title:title,
+      p_description:form.notes.trim()||null,
+      p_priority:"media",
+      p_due_date:form.date,
+      p_location_id:location.id,
+      p_location_name:location.name,
+      p_latitude:null,
+      p_longitude:null,
+      p_operational_area:"orchard",
+      p_task_category:"ad_hoc",
+      p_estimated_minutes:form.minutes?Number(form.minutes):null,
+      p_animal_handling:false,
+      p_safety_notes:null,
+      p_employee_ids:[form.employeeId],
+      p_volunteer_ids:[],
+      p_source_type:null,
+      p_source_id:null,
+      p_source_label:"Orchard",
+      p_source_path:`/${language}${modePath[mode]}`,
+    })
+    if(created.error){setError(`${text.saveError}: ${created.error.message}`);setSaving(false);return}
+    setForm({title:"",minutes:"30",employeeId:"none",locationId:"none",date:dateKey(new Date()),notes:""});setDialogOpen(false);await load();setSaving(false)
   }
 
   const href=(target:Mode)=>`/${language}${modePath[target]}`
@@ -159,7 +186,7 @@ export function OrchardWorkloadParity({ mode }: { mode: Mode }) {
       {mode==="workload-graph"&&<section className="mt-6"><div className="grid gap-px overflow-hidden rounded-xl border bg-[var(--orchard-line)] md:grid-cols-3"><Metric icon={Clock3} label={text.average} value={`${averageMinutes} min`}/><Metric icon={BarChart3} label={text.peak} value={peakWeek?`${formatDate(peakWeek,dateLocale)} · ${peakMinutes} min`:"—"}/><Metric icon={Users} label={text.total} value={`${totalMinutes} min`}/></div><div className="mt-5 rounded-xl border bg-white p-5"><h2 className="text-lg font-normal">{text.graph}</h2>{workloadWeeks.length===0?<p className="mt-6 text-sm text-muted-foreground">{text.noWorkload}</p>:<div className="mt-6 space-y-4">{workloadWeeks.map(([week,value])=><div key={week} className="grid grid-cols-[110px_1fr_90px] items-center gap-3"><p className="text-xs tabular-nums text-muted-foreground">{formatDate(week,dateLocale)}</p><div className="h-8 overflow-hidden rounded-md bg-[#edf1ed]"><div className="flex h-full items-center bg-[#d8e7df] px-2 text-xs font-medium text-[#1f624d]" style={{width:`${peakMinutes?Math.max(4,(value.minutes/peakMinutes)*100):0}%`}}>{value.tasks}</div></div><p className="text-right text-sm tabular-nums">{value.minutes} min</p></div>)}</div>}</div></section>}
     </>}
 
-    {dialogOpen&&<div className="fixed inset-0 z-[110] grid place-items-center bg-black/35 p-4" role="dialog" aria-modal="true" aria-label={text.createTitle}><div className="w-full max-w-lg rounded-2xl border bg-white shadow-2xl"><div className="flex items-center justify-between border-b p-5"><h2 className="text-xl font-normal">{text.createTitle}</h2><button aria-label={text.cancel} onClick={()=>setDialogOpen(false)} className="grid h-9 w-9 place-items-center rounded-lg hover:bg-[#f1f4f1]"><X className="h-4 w-4"/></button></div><div className="space-y-4 p-5"><Field label={text.taskField}><Input value={form.title} onChange={e=>setForm(f=>({...f,title:e.target.value}))}/></Field><div className="grid gap-4 sm:grid-cols-2"><Field label={text.estimated}><div className="flex items-center gap-2"><Input type="number" min="0" value={form.minutes} onChange={e=>setForm(f=>({...f,minutes:e.target.value}))}/><span className="text-sm text-muted-foreground">min</span></div></Field><Field label={text.assign}><Select value={form.employeeId} onValueChange={value=>setForm(f=>({...f,employeeId:value}))}><SelectTrigger><SelectValue/></SelectTrigger><SelectContent><SelectItem value="none">{text.unassigned}</SelectItem>{employees.map(e=><SelectItem key={e.id} value={e.id}>{e.name}</SelectItem>)}</SelectContent></Select></Field></div><Field label={text.date}><Input type="date" value={form.date} onChange={e=>setForm(f=>({...f,date:e.target.value}))}/></Field><Field label={text.notes}><Textarea value={form.notes} onChange={e=>setForm(f=>({...f,notes:e.target.value}))}/></Field><Field label={text.recurrence}><Input value={text.noRepeat} disabled/><p className="mt-1 text-xs leading-5 text-muted-foreground">{text.recurrenceGap}</p></Field></div><div className="flex justify-end gap-2 border-t p-4"><Button variant="outline" onClick={()=>setDialogOpen(false)}>{text.cancel}</Button><Button disabled={saving||!form.title.trim()||!form.date} onClick={()=>void createTask()}>{text.create}</Button></div></div></div>}
+    {dialogOpen&&<div className="fixed inset-0 z-[110] grid place-items-center bg-black/35 p-4" role="dialog" aria-modal="true" aria-label={text.createTitle}><div className="w-full max-w-lg rounded-2xl border bg-white shadow-2xl"><div className="flex items-center justify-between border-b p-5"><h2 className="text-xl font-normal">{text.createTitle}</h2><button aria-label={text.cancel} onClick={()=>setDialogOpen(false)} className="grid h-9 w-9 place-items-center rounded-lg hover:bg-[#f1f4f1]"><X className="h-4 w-4"/></button></div><div className="space-y-4 p-5"><Field label={text.taskField}><Input value={form.title} onChange={e=>setForm(f=>({...f,title:e.target.value}))}/></Field><div className="grid gap-4 sm:grid-cols-2"><Field label={text.estimated}><div className="flex items-center gap-2"><Input type="number" min="5" max="1440" value={form.minutes} onChange={e=>setForm(f=>({...f,minutes:e.target.value}))}/><span className="text-sm text-muted-foreground">min</span></div></Field><Field label={text.assign}><Select value={form.employeeId} onValueChange={value=>setForm(f=>({...f,employeeId:value}))}><SelectTrigger><SelectValue/></SelectTrigger><SelectContent><SelectItem value="none">{text.unassigned}</SelectItem>{employees.map(e=><SelectItem key={e.id} value={e.id}>{e.name}</SelectItem>)}</SelectContent></Select></Field></div><Field label={text.locationField}><Select value={form.locationId} onValueChange={value=>setForm(f=>({...f,locationId:value}))}><SelectTrigger><SelectValue placeholder={text.selectLocation}/></SelectTrigger><SelectContent><SelectItem value="none">{text.selectLocation}</SelectItem>{locations.map(item=><SelectItem key={item.id} value={item.id}>{item.name}</SelectItem>)}</SelectContent></Select></Field><Field label={text.date}><Input type="date" value={form.date} onChange={e=>setForm(f=>({...f,date:e.target.value}))}/></Field><Field label={text.notes}><Textarea value={form.notes} onChange={e=>setForm(f=>({...f,notes:e.target.value}))}/></Field><Field label={text.recurrence}><Input value={text.noRepeat} disabled/><p className="mt-1 text-xs leading-5 text-muted-foreground">{text.recurrenceGap}</p></Field></div><div className="flex justify-end gap-2 border-t p-4"><Button variant="outline" onClick={()=>setDialogOpen(false)}>{text.cancel}</Button><Button disabled={saving||!form.title.trim()||!form.date||form.employeeId==="none"||form.locationId==="none"} onClick={()=>void createTask()}>{text.create}</Button></div></div></div>}
   </main></AppLayout>
 }
 
