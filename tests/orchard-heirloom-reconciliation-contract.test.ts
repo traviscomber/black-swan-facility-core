@@ -9,6 +9,7 @@ test("Heirloom reconciliation remains explicit, bed-meter based and capacity saf
   const expansion = await readFile("supabase/migrations/20260901195500_orchard_add_farm_area_1_sectors.sql", "utf8")
   const page = await readFile("app/orchard/crop-map/auto-place/page.tsx", "utf8")
   const workPage = await readFile("app/orchard/work/page.tsx", "utf8")
+  const gettingStarted = await readFile("app/orchard/getting-started/page.tsx", "utf8")
   const parity = await readFile("lib/orchard/heirloom-parity.ts", "utf8")
 
   // Preserve the authenticated Heirloom observation as historical evidence.
@@ -72,8 +73,15 @@ test("Heirloom reconciliation remains explicit, bed-meter based and capacity saf
   assert.match(workPage, /p_location_id:location\.locationId/)
   assert.match(workPage, /p_employee_ids:\[form\.employee_id\]/)
   assert.match(workPage, /p_employee_ids:\[bulkEmployeeId\]/)
-  assert.match(workPage, /bulkEmployeeId === \"none\"/)
+  assert.match(workPage, /bulkEmployeeId === "none"/)
   assert.doesNotMatch(workPage, /from\("tasks"\)\.insert/)
+
+  // Getting Started must count only accountable Orchard tasks linked to reconciled plantings.
+  assert.match(gettingStarted, /\.in\("operational_area",\["orchard","huerto_vinedo"\]\)/)
+  assert.match(gettingStarted, /const scopedTasks=/)
+  assert.match(gettingStarted, /reconciledIds\.has\(task\.source_id\)/)
+  assert.match(gettingStarted, /scopedTasks\.length>0/)
+  assert.doesNotMatch(gettingStarted, /\.eq\("operational_area","huerto_vinedo"\)/)
 
   // Historical Heirloom reference and current Core truth are deliberately separate.
   assert.match(parity, /fieldBlockBeds: 18/)
