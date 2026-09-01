@@ -59,13 +59,21 @@ test("Heirloom reconciliation remains explicit, bed-meter based and capacity saf
   assert.match(page, /800 bed-m/)
   assert.doesNotMatch(page, /three logical cultivation sectors/)
 
-  // Workload must not drift back to the unreconciled 66-succession draft graph.
+  // Workload must not drift back to the unreconciled draft graph or bypass the task guard.
   assert.match(workPage, /allocatedSuccessionIds/)
   assert.match(workPage, /reconciledSuccessionIds/)
+  assert.match(workPage, /new Set\(\[\.\.\.graph\.successionIds\]\.filter/)
   assert.match(workPage, /reconciledSuccessions/)
   assert.match(workPage, /orchard_succession_sow/)
   assert.match(workPage, /orchard_succession_transplant/)
   assert.match(workPage, /orchard_succession_harvest/)
+  assert.match(workPage, /rpc\("create_operational_task_atomic"/)
+  assert.match(workPage, /p_operational_area:\"orchard\"/)
+  assert.match(workPage, /p_location_id:location\.locationId/)
+  assert.match(workPage, /p_employee_ids:\[form\.employee_id\]/)
+  assert.match(workPage, /p_employee_ids:\[bulkEmployeeId\]/)
+  assert.match(workPage, /bulkEmployeeId === \"none\"/)
+  assert.doesNotMatch(workPage, /from\("tasks"\)\.insert/)
 
   // Historical Heirloom reference and current Core truth are deliberately separate.
   assert.match(parity, /fieldBlockBeds: 18/)
