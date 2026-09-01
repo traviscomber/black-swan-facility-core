@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useState, type ReactNode } from "react"
 import { CalendarRange, ChartNoAxesCombined, Leaf, Target } from "lucide-react"
 import { AppLayout } from "@/components/app-layout"
 import { OrchardNavigation } from "@/components/orchard/orchard-navigation"
@@ -12,7 +12,7 @@ type Locale="en"|"es"|"de"
 type Plan={id:string;name:string;season:string|null;start_date:string;end_date:string;status:string}
 type Cycle={id:string;game_plan_id:string;crop_name:string;variety:string|null;target_quantity:number|null;target_unit:string|null}
 type Succession={id:string;crop_cycle_id:string;sequence_no:number;planned_bed_m:number|null;planned_first_harvest_date:string|null;planned_last_harvest_date:string|null}
-type RevenueTarget={crop_succession_id:string;target_revenue_clp:number|null}
+type RevenueTarget={crop_succession_id:string;planned_revenue:number|null}
 type Window={id:string;crop:string;variety:string|null;sequence:number;bedMeters:number;first:string;last:string;targetQuantity:number|null;targetUnit:string|null;hasRevenueTarget:boolean}
 
 const copy={
@@ -34,7 +34,7 @@ export default function OrchardForecastPage(){
   supabase.from("orchard_game_plans").select("id,name,season,start_date,end_date,status").order("start_date",{ascending:false}),
   supabase.from("orchard_crop_cycles").select("id,game_plan_id,crop_name,variety,target_quantity,target_unit"),
   supabase.from("orchard_crop_successions").select("id,crop_cycle_id,sequence_no,planned_bed_m,planned_first_harvest_date,planned_last_harvest_date").not("planned_bed_m","is",null).neq("status","cancelled"),
-  supabase.from("orchard_revenue_targets").select("crop_succession_id,target_revenue_clp"),
+  supabase.from("orchard_revenue_targets").select("crop_succession_id,planned_revenue"),
  ]).then(([p,c,s,r])=>{if(!live)return;const first=p.error??c.error??s.error??r.error;if(first){setError(first.message);setLoading(false);return}setPlans((p.data??[]) as Plan[]);setCycles((c.data??[]) as Cycle[]);setSuccessions((s.data??[]) as Succession[]);setRevenueTargets((r.data??[]) as RevenueTarget[]);setLoading(false)});return()=>{live=false}},[supabase])
  const requested=typeof window!=="undefined"?new URLSearchParams(window.location.search).get("game_plan"):null
  const plan=plans.find(p=>p.id===requested)??plans.find(p=>p.season==="2026/27")??plans.find(p=>p.status==="active")??plans.find(p=>p.status==="draft")??plans[0]??null
@@ -53,5 +53,5 @@ export default function OrchardForecastPage(){
  </main></AppLayout>
 }
 
-function Metric({icon,label,value}:{icon:React.ReactNode;label:string;value:string}){return <div className="p-5">{icon}<p className="mt-4 text-xs uppercase tracking-wide text-muted-foreground">{label}</p><p className="mt-2 text-3xl tabular-nums">{value}</p></div>}
+function Metric({icon,label,value}:{icon:ReactNode;label:string;value:string}){return <div className="p-5">{icon}<p className="mt-4 text-xs uppercase tracking-wide text-muted-foreground">{label}</p><p className="mt-2 text-3xl tabular-nums">{value}</p></div>}
 function Cell({label,value}:{label:string;value:string}){return <div><p className="text-xs uppercase tracking-wide text-muted-foreground">{label}</p><p className="mt-1 text-sm">{value}</p></div>}
