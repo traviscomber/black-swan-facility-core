@@ -57,6 +57,8 @@ test("Orchard brand layer encodes the agricultural workspace rules", async () =>
   assert.match(source, /--orchard-green/)
   assert.match(source, /--orchard-green-soft/)
   assert.match(source, /--orchard-canvas/)
+  assert.match(source, /--bs-surface-primary:\s*#ffffff/)
+  assert.match(source, /--bs-text-primary:\s*var\(--orchard-ink\)/)
   assert.match(source, /--bs-font-heading/)
   assert.match(source, /--bs-font-body/)
   assert.match(source, /background:\s*var\(--orchard-canvas\)/)
