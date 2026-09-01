@@ -148,7 +148,7 @@ with mapping(crop_name, sequence_no, expected_bed_m, bed_name) as (
   where resolved_count = 29
     and succession_count = 29
     and key_count = 29
-    and bed_m = 255
+    and bed_m = 495
 )
 insert into public.orchard_bed_allocations (
   bed_id,
