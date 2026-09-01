@@ -63,6 +63,14 @@ body:has([data-orchard-navigation]) {
   --orchard-canvas: #f7f8f6;
   --orchard-radius: 12px;
   --orchard-radius-sm: 9px;
+  --bs-bg-primary: var(--orchard-canvas);
+  --bs-surface-primary: #ffffff;
+  --bs-surface-secondary: #f1f4f1;
+  --bs-surface-tertiary: #e7ece8;
+  --bs-text-primary: var(--orchard-ink);
+  --bs-text-secondary: var(--orchard-muted);
+  --bs-divider-subtle: var(--orchard-line);
+  --bs-cool-sage: var(--orchard-green);
   background: var(--orchard-canvas);
   color: var(--orchard-ink);
 }
