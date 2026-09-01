@@ -40,6 +40,24 @@ export const HEIRLOOM_REFERENCE_SETUP = {
   fieldBlockBedLengthM: 30,
 } as const
 
+export const CORE_FARM_AREA_1_LAYOUT_REFERENCE = {
+  effectiveDate: "2026-09-01",
+  geometryStatus: "logical_sector_membership_only",
+  sectorCount: 3,
+  totalBeds: 26,
+  totalCapacityBedMeters: 780,
+  reconciledPlantings: 32,
+  allocatedPlantings: 32,
+  allocatedBedMeters: 744,
+  canonicalPeakBedMeters: 702,
+  peakBufferBedMeters: 78,
+  sectors: [
+    { name: "Orchard BlackSwan Campo", beds: 18, bedLengthM: 30, provenance: "authenticated Heirloom field study" },
+    { name: "Orchard BlackSwan Campo — Sector 2", beds: 4, bedLengthM: 30, provenance: "Core capacity expansion inside Farm Area 1" },
+    { name: "Orchard BlackSwan Campo — Sector 3", beds: 4, bedLengthM: 30, provenance: "Core capacity expansion inside Farm Area 1" },
+  ],
+} as const
+
 export const HEIRLOOM_ONBOARDING_STEPS: HeirloomOnboardingStep[] = [
   { order: 1, id: "farm-map", label: "Map Your Farm", description: "Create the farm area and physical growing structures.", coreHref: "/orchard/crop-map", completionSignal: "canonical physical plot/field block and active beds exist" },
   { order: 2, id: "favorite-crop", label: "Choose a favorite crop", description: "Choose crops/cultivars for the season.", coreHref: "/orchard/crops", completionSignal: "selected Game Plan contains at least one crop cycle" },
@@ -101,4 +119,7 @@ Reference physical structure: Farm Area 1 contains Field Block "Orchard BlackSwa
 Reference Crop Map behavior: plantings are grouped by crop, each generation exposes start/end dates and required bed meters, and the user drags one planting at a time onto a bed. Partial bed occupation is valid and must preserve cumulative bed-meter capacity per bed across overlapping dates. No explicit within-bed offset was observed, so do not invent one. The observed reference queue had 32 plantings. One Arugula generation of 9 bed m was successfully placed on bed 17, moving onboarding from 6/8 to 7/8.
 Reference workload behavior: Tasks has List, Week Board and Workload Graph. Ad-hoc tasks have task name, estimated minutes, assignee, date, notes and recurrence. The reference AI assistant answers questions about using the app but explicitly says general farming questions are out of scope.
 Capacity finding from the 32 reference plantings: total requested bed-meter work = ${HEIRLOOM_REFERENCE_TOTAL_BED_METERS} bed m; physical instantaneous capacity = ${HEIRLOOM_REFERENCE_PHYSICAL_CAPACITY_BED_METERS} bed m; peak concurrent demand = ${HEIRLOOM_REFERENCE_PEAK_BED_METERS} bed m on ${HEIRLOOM_REFERENCE_PEAK_DATE}, a ${HEIRLOOM_REFERENCE_PEAK_BED_METERS - HEIRLOOM_REFERENCE_PHYSICAL_CAPACITY_BED_METERS} bed m shortfall. Treat this as a parity-study warning, not as a current Core allocation result.
+
+CORE PARITY IMPLEMENTATION REFERENCE (${CORE_FARM_AREA_1_LAYOUT_REFERENCE.effectiveDate})
+To resolve the validated Core capacity conflict without changing canonical crop dates, Farm Area 1 was modeled in Core as three logical cultivation sectors: the original 18-bed block plus two expansion sectors with four 30 m beds each. Combined logical capacity = ${CORE_FARM_AREA_1_LAYOUT_REFERENCE.totalCapacityBedMeters} bed m across ${CORE_FARM_AREA_1_LAYOUT_REFERENCE.totalBeds} beds. The reconciled 2026/27 plan contains ${CORE_FARM_AREA_1_LAYOUT_REFERENCE.allocatedPlantings}/${CORE_FARM_AREA_1_LAYOUT_REFERENCE.reconciledPlantings} allocated plantings and ${CORE_FARM_AREA_1_LAYOUT_REFERENCE.allocatedBedMeters} allocated bed m; canonical Core peak = ${CORE_FARM_AREA_1_LAYOUT_REFERENCE.canonicalPeakBedMeters} bed m, leaving ${CORE_FARM_AREA_1_LAYOUT_REFERENCE.peakBufferBedMeters} bed m of aggregate peak buffer. This is versioned implementation knowledge, not permission to invent current live state: current claims must still be confirmed by ORCHARD_SNAPSHOT. Sector membership is logical because Core does not yet store per-sector polygon geometry; do not fabricate coordinates.
 `.trim()
