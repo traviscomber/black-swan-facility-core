@@ -7,11 +7,19 @@ begin;
 
 do $$
 declare
+  v_plan_count integer;
   v_matches integer;
   v_distinct integer;
   v_total numeric;
   v_plot_count integer;
 begin
+  select count(*) into v_plan_count
+  from public.orchard_game_plans
+  where name = 'BS Orchard — Crop Plan 2026/27' and season = '2026/27';
+  if v_plan_count <> 1 then
+    raise exception 'Expected exactly one canonical 2026/27 Orchard Game Plan, found %', v_plan_count;
+  end if;
+
   with mapping(core_crop, core_sequence, bed_m) as (
     values
       ('Arugula',1,9::numeric),('Arugula',2,9),('Arugula',3,9),('Arugula',4,9),
@@ -29,12 +37,12 @@ begin
   ), matched as (
     select s.id as succession_id, m.bed_m
     from mapping m
+    join public.orchard_game_plans gp
+      on gp.name = 'BS Orchard — Crop Plan 2026/27' and gp.season = '2026/27'
     join public.orchard_crop_cycles c
-      on c.crop_name = m.core_crop
-     and c.game_plan_id = '3bdcad00-b8e5-4f73-bb8b-fdea96da9262'::uuid
+      on c.crop_name = m.core_crop and c.game_plan_id = gp.id
     join public.orchard_crop_successions s
-      on s.crop_cycle_id = c.id
-     and s.sequence_no = m.core_sequence
+      on s.crop_cycle_id = c.id and s.sequence_no = m.core_sequence
   )
   select count(*), count(distinct succession_id), coalesce(sum(bed_m),0)
     into v_matches, v_distinct, v_total
@@ -69,12 +77,12 @@ with mapping(core_crop, core_sequence, bed_m) as (
 ), matched as (
   select s.id as succession_id, m.bed_m
   from mapping m
+  join public.orchard_game_plans gp
+    on gp.name = 'BS Orchard — Crop Plan 2026/27' and gp.season = '2026/27'
   join public.orchard_crop_cycles c
-    on c.crop_name = m.core_crop
-   and c.game_plan_id = '3bdcad00-b8e5-4f73-bb8b-fdea96da9262'::uuid
+    on c.crop_name = m.core_crop and c.game_plan_id = gp.id
   join public.orchard_crop_successions s
-    on s.crop_cycle_id = c.id
-   and s.sequence_no = m.core_sequence
+    on s.crop_cycle_id = c.id and s.sequence_no = m.core_sequence
 )
 update public.orchard_crop_successions s
 set planned_bed_m = matched.bed_m,
@@ -153,9 +161,10 @@ select
   'Exact authenticated Heirloom parity placement observed 2026-09-01: Arugula generation 1 -> bed 17 -> 9 bed m.'
 from public.orchard_plots p
 join public.orchard_beds b on b.plot_id = p.id and b.name = '17'
+join public.orchard_game_plans gp
+  on gp.name = 'BS Orchard — Crop Plan 2026/27' and gp.season = '2026/27'
 join public.orchard_crop_cycles c
-  on c.game_plan_id = '3bdcad00-b8e5-4f73-bb8b-fdea96da9262'::uuid
- and c.crop_name = 'Arugula'
+  on c.game_plan_id = gp.id and c.crop_name = 'Arugula'
 join public.orchard_crop_successions s
   on s.crop_cycle_id = c.id and s.sequence_no = 1
 where p.name = 'Orchard BlackSwan Campo'
