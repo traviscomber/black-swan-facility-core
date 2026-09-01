@@ -2,7 +2,36 @@
 
 import Link from "next/link"
 import { usePathname, useSearchParams } from "next/navigation"
-import { Activity, BadgeDollarSign, BarChart3, BookOpen, Bot, Bug, CalendarDays, CalendarRange, ChartNoAxesCombined, ChartSpline, ChevronDown, Database, FileText, GitBranch, Hammer, History, LayoutDashboard, Leaf, Map, Route, ShieldAlert, Smartphone, Sprout, Target, TestTube2, UtensilsCrossed, WandSparkles } from "lucide-react"
+import {
+  Activity,
+  BadgeDollarSign,
+  BarChart3,
+  BookOpen,
+  Bot,
+  Bug,
+  CalendarDays,
+  CalendarRange,
+  ChartNoAxesCombined,
+  ChartSpline,
+  ChevronDown,
+  Database,
+  FileText,
+  GitBranch,
+  Hammer,
+  History,
+  LayoutDashboard,
+  Leaf,
+  Map,
+  Rocket,
+  Route,
+  ShieldAlert,
+  Smartphone,
+  Sprout,
+  Target,
+  TestTube2,
+  UtensilsCrossed,
+  WandSparkles,
+} from "lucide-react"
 import { useLanguage } from "@/lib/hooks/use-language"
 import { cn } from "@/lib/utils"
 
@@ -10,11 +39,13 @@ type OrchardLocale = "en" | "es" | "de"
 type NavItem = { href: string; label: Record<OrchardLocale, string>; icon: typeof LayoutDashboard; includeChildren?: boolean }
 
 const primaryItems: NavItem[] = [
+  { href: "/orchard/getting-started", label: { en: "Getting Started", es: "Primeros pasos", de: "Erste Schritte" }, icon: Rocket },
   { href: "/orchard", label: { en: "Today", es: "Hoy", de: "Heute" }, icon: LayoutDashboard },
   { href: "/orchard/field", label: { en: "Field", es: "Campo", de: "Feld" }, icon: Smartphone, includeChildren: true },
   { href: "/orchard/harvest/desk", label: { en: "Harvest", es: "Cosecha", de: "Ernte" }, icon: Leaf },
   { href: "/orchard/season-summary", label: { en: "History", es: "Historial", de: "Verlauf" }, icon: History },
 ]
+
 const gamePlanItems: NavItem[] = [
   { href: "/orchard/game-plan/overview", label: { en: "Game Plan home", es: "Inicio Game Plan", de: "Game-Plan-Start" }, icon: CalendarRange },
   { href: "/orchard/game-plan/objectives", label: { en: "Objectives", es: "Objetivos", de: "Ziele" }, icon: Target },
@@ -25,6 +56,7 @@ const gamePlanItems: NavItem[] = [
   { href: "/orchard/game-plan/capacity", label: { en: "Beds & capacity", es: "Camas y capacidad", de: "Beete & Kapazität" }, icon: Map },
   { href: "/orchard/game-plan/forecast", label: { en: "Production forecast", es: "Forecast de producción", de: "Produktionsprognose" }, icon: ChartNoAxesCombined },
 ]
+
 const advancedItems: NavItem[] = [
   { href: "/orchard/game-plan", label: { en: "Game Plan editor", es: "Editor Game Plan", de: "Game-Plan-Editor" }, icon: CalendarRange },
   { href: "/orchard/assistant", label: { en: "Orchard AI", es: "IA Orchard", de: "Orchard AI" }, icon: Bot },
@@ -90,13 +122,16 @@ body:has([data-orchard-navigation]) main:has(> [data-orchard-navigation]) { disp
 body:has([data-orchard-navigation]) main:has(> [data-orchard-navigation]) > [data-orchard-navigation] { order:0; }
 body:has([data-orchard-navigation]) main:has(> [data-orchard-navigation]) > [data-slot="page-header"] { order:1; }
 body:has([data-orchard-navigation]) main:has(> [data-orchard-navigation]) > :not([data-orchard-navigation]):not([data-slot="page-header"]) { order:2; }
-body:has([data-orchard-navigation]) main:has(> [data-orchard-navigation]) > div:not([data-slot]):not([class*="fixed"]) { width:100%; max-width:1560px; margin-left:auto; margin-right:auto; }
 body:has([data-orchard-navigation]) main h1,
 body:has([data-orchard-navigation]) main h2,
 body:has([data-orchard-navigation]) main h3,
 body:has([data-orchard-navigation]) main h4,
 body:has([data-orchard-navigation]) main h5,
-body:has([data-orchard-navigation]) main h6 { font-family:var(--bs-font-heading)!important; font-weight:500!important; color:var(--orchard-ink)!important; }
+body:has([data-orchard-navigation]) main h6 {
+  font-family: var(--bs-font-heading) !important;
+  font-weight: 500 !important;
+  color: var(--orchard-ink) !important;
+}
 body:has([data-orchard-navigation]) main h1 { font-size:clamp(30px,3vw,48px)!important; line-height:1.06!important; letter-spacing:-.035em!important; }
 body:has([data-orchard-navigation]) main h2 { font-size:clamp(24px,2.2vw,34px)!important; letter-spacing:-.025em!important; }
 body:has([data-orchard-navigation]) main [data-slot="card"],
@@ -107,9 +142,6 @@ body:has([data-orchard-navigation]) [data-slot="dialog-content"] {
   box-shadow: 0 2px 5px rgba(39,55,45,.06) !important;
   overflow: hidden;
 }
-body:has([data-orchard-navigation]) main [data-slot="card"] [data-slot="card"] { background:#fafbf9!important; box-shadow:none!important; }
-body:has([data-orchard-navigation]) main [data-slot="card-header"] { padding-bottom: 1rem; }
-body:has([data-orchard-navigation]) main [data-slot="card-title"] { letter-spacing:-.015em; }
 body:has([data-orchard-navigation]) main button,
 body:has([data-orchard-navigation]) main [role="button"],
 body:has([data-orchard-navigation]) main [data-slot="button"] { min-height:42px; border-radius:8px!important; box-shadow:none!important; }
@@ -126,58 +158,78 @@ body:has([data-orchard-navigation]) main [data-slot="select-trigger"] {
   border-radius:var(--orchard-radius-sm)!important;
   box-shadow:none!important;
 }
-body:has([data-orchard-navigation]) main textarea { border-radius:16px!important; }
-body:has([data-orchard-navigation]) main label,
-body:has([data-orchard-navigation]) main [data-slot="label"] { color:var(--orchard-muted)!important; font-weight:500; }
-body:has([data-orchard-navigation]) main [data-slot="badge"] { border-radius:999px!important; box-shadow:none!important; }
 body:has([data-orchard-navigation]) main table { border-collapse:separate; border-spacing:0; background:#fff; border:1px solid var(--orchard-line); border-radius:12px; overflow:hidden; }
 body:has([data-orchard-navigation]) main th { color:#626862!important; font-weight:500; background:#f4f6f3; }
 body:has([data-orchard-navigation]) main td { color:var(--orchard-ink); border-color:#edf0ed!important; }
-body:has([data-orchard-navigation]) main tbody tr:nth-child(even) { background:#fafbf9; }
-body:has([data-orchard-navigation]) main img { image-rendering:auto; }
-body:has([data-orchard-navigation]) main article,
-body:has([data-orchard-navigation]) main section { scroll-margin-top:calc(var(--orchard-nav-height) + 20px); }
 body:has([data-orchard-navigation]) main .text-muted-foreground,
 body:has([data-orchard-navigation]) main [data-slot="card-description"] { color:var(--orchard-muted)!important; }
-body:has([data-orchard-navigation]) main [id^="entity-"],
-body:has([data-orchard-navigation]) main [id^="task-"] { scroll-margin-top:calc(var(--orchard-nav-height) + 24px); }
 body:has([data-orchard-navigation]) main :focus-visible,
 body:has([data-orchard-navigation]) [data-orchard-navigation] :focus-visible { outline:2px solid var(--bs-cool-sky)!important; outline-offset:2px; }
 body:has([data-orchard-navigation]) main [class*="border-dashed"] { border-color:#cdd4cd!important; }
 body:has([data-orchard-navigation]) main [class*="bg-card"] { background-color:#fff!important; }
-body:has([data-orchard-navigation]) main [class*="bg-muted"] { border-color:var(--orchard-line); }
-body:has([data-orchard-navigation]) main [class*="overflow-hidden"][class*="border"] { border-color:var(--orchard-line); }
-body:has([data-orchard-navigation]) main [class*="overflow-hidden"] > img { transform:translateZ(0); }
 body:has([data-orchard-navigation]) main [class*="transition"] { transition-duration:220ms; }
 @media (hover:hover) {
   body:has([data-orchard-navigation]) main [data-slot="card"]:hover { border-color:#b8cabe!important; box-shadow:0 5px 16px rgba(39,55,45,.08)!important; }
-}
-@media (min-width:1280px) {
-  body:has([data-orchard-navigation]) main [class*="xl:sticky"][class*="xl:top-24"] { top:calc(var(--orchard-nav-height) + 24px)!important; }
 }
 @media (max-width:639px) {
   body:has([data-orchard-navigation]) [data-orchard-navigation] { padding-left:8px!important; padding-right:8px!important; }
   body:has([data-orchard-navigation]) [data-orchard-navigation] a,
   body:has([data-orchard-navigation]) [data-orchard-navigation] summary { min-height:44px; }
-  body:has([data-orchard-navigation]) main [data-slot="page-header"] { padding-left:16px; padding-right:16px; }
   body:has([data-orchard-navigation]) { --orchard-radius:14px; --orchard-radius-sm:10px; }
 }
 `
 
-function internalPath(pathname:string){ return pathname.replace(/^\/(en|es|de)(?=\/|$)/,"")||"/" }
-function isActive(pathname:string,item:NavItem){ if(pathname===item.href)return true; return Boolean(item.includeChildren&&pathname.startsWith(`${item.href}/`)) }
+function internalPath(pathname: string) { return pathname.replace(/^\/(en|es|de)(?=\/|$)/, "") || "/" }
+function isActive(pathname: string, item: NavItem) {
+  if (pathname === item.href) return true
+  return Boolean(item.includeChildren && pathname.startsWith(`${item.href}/`))
+}
 
-export function OrchardNavigation(){
-  const pathname=internalPath(usePathname()||"/")
-  const searchParams=useSearchParams()
-  const {language}=useLanguage()
-  const locale:OrchardLocale=language
-  const navAria:Record<OrchardLocale,string>={en:"Orchard navigation",es:"Navegación del huerto",de:"Orchard-Navigation"}
-  const gamePlanLabel:Record<OrchardLocale,string>={en:"Game Plan",es:"Game Plan",de:"Game Plan"}
-  const moreLabel:Record<OrchardLocale,string>={en:"More",es:"Más",de:"Mehr"}
-  const gamePlanId=searchParams.get("game_plan")
-  const scopedHref=(href:string)=>{const base=`/${language}${href}`;if(!gamePlanId)return base;const separator=base.includes("?")?"&":"?";return `${base}${separator}game_plan=${encodeURIComponent(gamePlanId)}`}
-  const gamePlanActive=gamePlanItems.some(item=>isActive(pathname,item));const advancedActive=advancedItems.some(item=>isActive(pathname,item))
-  const renderLink=(item:NavItem)=>{const active=isActive(pathname,item);const Icon=item.icon;return <Link key={item.href} href={scopedHref(item.href)} aria-label={item.label[locale]} aria-current={active?"page":undefined} className={cn("inline-flex min-h-10 shrink-0 items-center gap-2 rounded-lg px-3.5 text-sm font-medium transition-colors focus-visible:outline-none",active?"bg-[#e6f0ea] text-[#1f624d]":"text-[#687069] hover:bg-[#f1f4f1] hover:text-[#27342c]")}><Icon className="h-4 w-4" aria-hidden="true"/><span>{item.label[locale]}</span></Link>}
-  return <><style>{ORCHARD_BRAND_CSS}</style><nav data-orchard-navigation aria-label={navAria[locale]} className="sticky top-0 z-[70] border-b px-3 md:px-8"><div className="mx-auto flex min-h-[58px] w-full max-w-[1560px] items-center gap-1 overflow-x-auto py-2 [scrollbar-width:none] sm:overflow-visible [&::-webkit-scrollbar]:hidden">{renderLink(primaryItems[0])}<details className="group relative z-[80] shrink-0"><summary aria-label={gamePlanLabel[locale]} className={cn("flex min-h-10 cursor-pointer list-none items-center gap-2 rounded-lg px-3.5 text-sm font-medium marker:content-none focus-visible:outline-none [&::-webkit-details-marker]:hidden",gamePlanActive?"bg-[#e6f0ea] text-[#1f624d]":"text-[#687069] hover:bg-[#f1f4f1] hover:text-[#27342c]")}><CalendarRange className="h-4 w-4"/><span>{gamePlanLabel[locale]}</span><ChevronDown className="h-3.5 w-3.5 transition-transform group-open:rotate-180"/></summary><div className="fixed left-2 right-2 top-[64px] z-[90] max-h-[calc(100dvh-76px)] overflow-y-auto rounded-xl border border-[#dfe4df] bg-white/98 p-2 text-[#2f332f] shadow-xl backdrop-blur-xl sm:absolute sm:left-0 sm:right-auto sm:top-auto sm:mt-2 sm:max-h-[min(70vh,560px)] sm:w-80"><div className="mb-1 px-3 py-2 text-[10px] font-semibold uppercase tracking-[.18em] text-[#8a918b]">{gamePlanLabel[locale]}</div><div className="grid gap-1">{gamePlanItems.map(item=>{const active=isActive(pathname,item);const Icon=item.icon;return <Link key={item.href} href={scopedHref(item.href)} aria-current={active?"page":undefined} className={cn("flex min-h-11 items-center gap-3 rounded-lg px-3 text-sm transition-colors",active?"bg-[#e6f0ea] text-[#1f624d]":"text-[#626a63] hover:bg-[#f1f4f1] hover:text-[#27342c]")}><Icon className="h-4 w-4 shrink-0"/><span>{item.label[locale]}</span></Link>})}</div></div></details>{primaryItems.slice(1).map(renderLink)}<div className="mx-1 hidden h-6 w-px shrink-0 bg-[#dfe4df] sm:block"/><details className="group relative z-[80] shrink-0"><summary aria-label={moreLabel[locale]} className={cn("flex min-h-10 cursor-pointer list-none items-center gap-2 rounded-lg px-3.5 text-sm font-medium marker:content-none focus-visible:outline-none [&::-webkit-details-marker]:hidden",advancedActive?"bg-[#e6f0ea] text-[#1f624d]":"text-[#687069] hover:bg-[#f1f4f1] hover:text-[#27342c]")}><Activity className="h-4 w-4"/><span>{moreLabel[locale]}</span><ChevronDown className="h-3.5 w-3.5 transition-transform group-open:rotate-180"/></summary><div className="fixed left-2 right-2 top-[64px] z-[90] max-h-[calc(100dvh-76px)] overflow-y-auto rounded-xl border border-[#dfe4df] bg-white/98 p-2 text-[#2f332f] shadow-xl backdrop-blur-xl sm:absolute sm:left-auto sm:right-0 sm:top-auto sm:mt-2 sm:max-h-[min(70vh,620px)] sm:w-80"><div className="mb-1 px-3 py-2 text-[10px] font-semibold uppercase tracking-[.18em] text-[#8a918b]">{moreLabel[locale]}</div><div className="grid gap-1">{advancedItems.map(item=>{const active=isActive(pathname,item);const Icon=item.icon;return <Link key={item.href} href={scopedHref(item.href)} aria-current={active?"page":undefined} className={cn("flex min-h-11 items-center gap-3 rounded-lg px-3 text-sm transition-colors",active?"bg-[#e6f0ea] text-[#1f624d]":"text-[#626a63] hover:bg-[#f1f4f1] hover:text-[#27342c]")}><Icon className="h-4 w-4 shrink-0"/><span>{item.label[locale]}</span></Link>})}</div></div></details></div></nav></>
+export function OrchardNavigation() {
+  const pathname = internalPath(usePathname() || "/")
+  const searchParams = useSearchParams()
+  const { language } = useLanguage()
+  const locale: OrchardLocale = language
+  const navAria: Record<OrchardLocale, string> = { en: "Orchard navigation", es: "Navegación del huerto", de: "Orchard-Navigation" }
+  const gamePlanLabel: Record<OrchardLocale, string> = { en: "Game Plan", es: "Game Plan", de: "Game Plan" }
+  const moreLabel: Record<OrchardLocale, string> = { en: "More", es: "Más", de: "Mehr" }
+  const gamePlanId = searchParams.get("game_plan")
+  const scopedHref = (href: string) => {
+    const base = `/${language}${href}`
+    if (!gamePlanId) return base
+    const separator = base.includes("?") ? "&" : "?"
+    return `${base}${separator}game_plan=${encodeURIComponent(gamePlanId)}`
+  }
+  const gamePlanActive = gamePlanItems.some((item) => isActive(pathname, item))
+  const advancedActive = advancedItems.some((item) => isActive(pathname, item))
+  const renderLink = (item: NavItem) => {
+    const active = isActive(pathname, item)
+    const Icon = item.icon
+    return <Link key={item.href} href={scopedHref(item.href)} aria-label={item.label[locale]} aria-current={active ? "page" : undefined} className={cn("inline-flex min-h-10 shrink-0 items-center gap-2 rounded-lg px-3.5 text-sm font-medium transition-colors focus-visible:outline-none", active ? "bg-[#e6f0ea] text-[#1f624d]" : "text-[#687069] hover:bg-[#f1f4f1] hover:text-[#27342c]")}><Icon className="h-4 w-4" aria-hidden="true"/><span>{item.label[locale]}</span></Link>
+  }
+
+  return <>
+    <style>{ORCHARD_BRAND_CSS}</style>
+    <nav data-orchard-navigation aria-label={navAria[locale]} className="sticky top-0 z-[70] border-b px-3 md:px-8">
+      <div className="mx-auto flex min-h-[58px] w-full max-w-[1560px] items-center gap-1 overflow-x-auto py-2 [scrollbar-width:none] sm:overflow-visible [&::-webkit-scrollbar]:hidden">
+        {primaryItems.slice(0, 2).map(renderLink)}
+        <details className="group relative z-[80] shrink-0">
+          <summary aria-label={gamePlanLabel[locale]} className={cn("flex min-h-10 cursor-pointer list-none items-center gap-2 rounded-lg px-3.5 text-sm font-medium marker:content-none focus-visible:outline-none [&::-webkit-details-marker]:hidden", gamePlanActive ? "bg-[#e6f0ea] text-[#1f624d]" : "text-[#687069] hover:bg-[#f1f4f1] hover:text-[#27342c]")}><CalendarRange className="h-4 w-4"/><span>{gamePlanLabel[locale]}</span><ChevronDown className="h-3.5 w-3.5 transition-transform group-open:rotate-180"/></summary>
+          <div className="fixed left-2 right-2 top-[64px] z-[90] max-h-[calc(100dvh-76px)] overflow-y-auto rounded-xl border border-[#dfe4df] bg-white/98 p-2 text-[#2f332f] shadow-xl backdrop-blur-xl sm:absolute sm:left-0 sm:right-auto sm:top-auto sm:mt-2 sm:max-h-[min(70vh,560px)] sm:w-80">
+            <div className="mb-1 px-3 py-2 text-[10px] font-semibold uppercase tracking-[.18em] text-[#8a918b]">{gamePlanLabel[locale]}</div>
+            <div className="grid gap-1">{gamePlanItems.map((item) => { const active = isActive(pathname, item); const Icon = item.icon; return <Link key={item.href} href={scopedHref(item.href)} aria-current={active ? "page" : undefined} className={cn("flex min-h-11 items-center gap-3 rounded-lg px-3 text-sm transition-colors", active ? "bg-[#e6f0ea] text-[#1f624d]" : "text-[#626a63] hover:bg-[#f1f4f1] hover:text-[#27342c]")}><Icon className="h-4 w-4 shrink-0"/><span>{item.label[locale]}</span></Link> })}</div>
+          </div>
+        </details>
+        {primaryItems.slice(2).map(renderLink)}
+        <div className="mx-1 hidden h-6 w-px shrink-0 bg-[#dfe4df] sm:block"/>
+        <details className="group relative z-[80] shrink-0">
+          <summary aria-label={moreLabel[locale]} className={cn("flex min-h-10 cursor-pointer list-none items-center gap-2 rounded-lg px-3.5 text-sm font-medium marker:content-none focus-visible:outline-none [&::-webkit-details-marker]:hidden", advancedActive ? "bg-[#e6f0ea] text-[#1f624d]" : "text-[#687069] hover:bg-[#f1f4f1] hover:text-[#27342c]")}><Activity className="h-4 w-4"/><span>{moreLabel[locale]}</span><ChevronDown className="h-3.5 w-3.5 transition-transform group-open:rotate-180"/></summary>
+          <div className="fixed left-2 right-2 top-[64px] z-[90] max-h-[calc(100dvh-76px)] overflow-y-auto rounded-xl border border-[#dfe4df] bg-white/98 p-2 text-[#2f332f] shadow-xl backdrop-blur-xl sm:absolute sm:left-auto sm:right-0 sm:top-auto sm:mt-2 sm:max-h-[min(70vh,620px)] sm:w-80">
+            <div className="mb-1 px-3 py-2 text-[10px] font-semibold uppercase tracking-[.18em] text-[#8a918b]">{moreLabel[locale]}</div>
+            <div className="grid gap-1">{advancedItems.map((item) => { const active = isActive(pathname, item); const Icon = item.icon; return <Link key={item.href} href={scopedHref(item.href)} aria-current={active ? "page" : undefined} className={cn("flex min-h-11 items-center gap-3 rounded-lg px-3 text-sm transition-colors", active ? "bg-[#e6f0ea] text-[#1f624d]" : "text-[#626a63] hover:bg-[#f1f4f1] hover:text-[#27342c]")}><Icon className="h-4 w-4 shrink-0"/><span>{item.label[locale]}</span></Link> })}</div>
+          </div>
+        </details>
+      </div>
+    </nav>
+  </>
 }
