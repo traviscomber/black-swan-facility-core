@@ -27,6 +27,7 @@ type Succession = { id:string; crop_cycle_id:string; status:string; planned_bed_
 type Bed = { id:string; plot_id:string; length_m:number|null; status:string }
 type Allocation = { crop_succession_id:string }
 type RevenueTarget = { crop_succession_id:string }
+type TaskRef = { source_id:string|null; source_type:string|null }
 
 type LiveSnapshot = {
   plans: Plan[]
@@ -38,7 +39,7 @@ type LiveSnapshot = {
   revenueTargets: RevenueTarget[]
   chartDefinitions: number
   seedLots: number
-  tasks: number
+  tasks: TaskRef[]
 }
 
 const copy = {
@@ -48,7 +49,7 @@ const copy = {
 } as const
 
 const CORE_BLOCK_NAMES = new Set<string>(CORE_FARM_AREA_1_LAYOUT_REFERENCE.blocks.map(block=>block.name))
-const initialSnapshot:LiveSnapshot={plans:[],plots:[],cycles:[],successions:[],beds:[],allocations:[],revenueTargets:[],chartDefinitions:0,seedLots:0,tasks:0}
+const initialSnapshot:LiveSnapshot={plans:[],plots:[],cycles:[],successions:[],beds:[],allocations:[],revenueTargets:[],chartDefinitions:0,seedLots:0,tasks:[]}
 
 export default function OrchardGettingStartedPage(){
   const supabase=useMemo(()=>createBrowserClient(),[])
@@ -70,11 +71,11 @@ export default function OrchardGettingStartedPage(){
       supabase.from("orchard_revenue_targets").select("crop_succession_id"),
       supabase.from("orchard_chart_definitions").select("id",{count:"exact",head:true}),
       supabase.from("orchard_seed_lots").select("id",{count:"exact",head:true}),
-      supabase.from("tasks").select("id",{count:"exact",head:true}).eq("operational_area","huerto_vinedo"),
+      supabase.from("tasks").select("source_id,source_type").in("operational_area",["orchard","huerto_vinedo"]),
     ])
     const firstError=plans.error??plots.error??cycles.error??successions.error??beds.error??allocations.error??revenueTargets.error??charts.error??seeds.error??tasks.error
     if(firstError){setError(`${text.loadError} ${firstError.message}`);setLoading(false);return}
-    const next:LiveSnapshot={plans:(plans.data??[]) as Plan[],plots:(plots.data??[]) as Plot[],cycles:(cycles.data??[]) as Cycle[],successions:(successions.data??[]) as Succession[],beds:(beds.data??[]) as Bed[],allocations:(allocations.data??[]) as Allocation[],revenueTargets:(revenueTargets.data??[]) as RevenueTarget[],chartDefinitions:charts.count??0,seedLots:seeds.count??0,tasks:tasks.count??0}
+    const next:LiveSnapshot={plans:(plans.data??[]) as Plan[],plots:(plots.data??[]) as Plot[],cycles:(cycles.data??[]) as Cycle[],successions:(successions.data??[]) as Succession[],beds:(beds.data??[]) as Bed[],allocations:(allocations.data??[]) as Allocation[],revenueTargets:(revenueTargets.data??[]) as RevenueTarget[],chartDefinitions:charts.count??0,seedLots:seeds.count??0,tasks:(tasks.data??[]) as TaskRef[]}
     setSnapshot(next)
     setSelectedPlanId(current=>{
       if(current&&next.plans.some(plan=>plan.id===current))return current
@@ -90,12 +91,12 @@ export default function OrchardGettingStartedPage(){
   const cycleIds=new Set(scopedCycles.map(cycle=>cycle.id))
   const allPlanSuccessions=snapshot.successions.filter(succession=>cycleIds.has(succession.crop_cycle_id))
   const scopedSuccessions=allPlanSuccessions.filter(succession=>Number(succession.planned_bed_m)>0)
-  const successionIds=new Set(allPlanSuccessions.map(succession=>succession.id))
   const reconciledIds=new Set(scopedSuccessions.map(succession=>succession.id))
   const scopedAllocations=snapshot.allocations.filter(allocation=>reconciledIds.has(allocation.crop_succession_id))
   const allocatedSuccessionIds=new Set(scopedAllocations.map(allocation=>allocation.crop_succession_id))
   const unallocatedCount=scopedSuccessions.filter(succession=>!allocatedSuccessionIds.has(succession.id)).length
-  const scopedRevenueTargets=snapshot.revenueTargets.filter(target=>successionIds.has(target.crop_succession_id))
+  const scopedRevenueTargets=snapshot.revenueTargets.filter(target=>reconciledIds.has(target.crop_succession_id))
+  const scopedTasks=snapshot.tasks.filter(task=>Boolean(task.source_id&&reconciledIds.has(task.source_id)))
   const corePlots=snapshot.plots.filter(plot=>CORE_BLOCK_NAMES.has(plot.name))
   const corePlotIds=new Set(corePlots.map(plot=>plot.id))
   const coreBeds=snapshot.beds.filter(bed=>corePlotIds.has(bed.plot_id))
@@ -103,7 +104,7 @@ export default function OrchardGettingStartedPage(){
   const physicalLayoutReady=corePlots.length===CORE_FARM_AREA_1_LAYOUT_REFERENCE.blockCount&&coreBeds.length===CORE_FARM_AREA_1_LAYOUT_REFERENCE.totalBeds&&liveBedMeters===CORE_FARM_AREA_1_LAYOUT_REFERENCE.totalCapacityBedMeters
   const cropMapReady=scopedSuccessions.length>0&&unallocatedCount===0
 
-  const completion=[physicalLayoutReady,scopedCycles.length>0,scopedSuccessions.length>0,cropMapReady,scopedRevenueTargets.length>0,snapshot.chartDefinitions>0,snapshot.seedLots>0,snapshot.tasks>0]
+  const completion=[physicalLayoutReady,scopedCycles.length>0,scopedSuccessions.length>0,cropMapReady,scopedRevenueTargets.length>0,snapshot.chartDefinitions>0,snapshot.seedLots>0,scopedTasks.length>0]
   const completedCount=completion.filter(Boolean).length
   const scopedHref=(path:string)=>`/${language}${path}${selectedPlanId?`?game_plan=${encodeURIComponent(selectedPlanId)}`:""}`
 
