@@ -1,107 +1,118 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useState } from "react"
 import Link from "next/link"
-import { AlertTriangle, CalendarRange, CheckCircle2, ExternalLink, MapPinned, RefreshCw, Route, Sprout, WandSparkles } from "lucide-react"
+import { useCallback, useEffect, useMemo, useState } from "react"
+import { AlertTriangle, CheckCircle2, ExternalLink, MapPinned, RefreshCw, Sprout } from "lucide-react"
 import { AppLayout } from "@/components/app-layout"
 import { PageHeader } from "@/components/page-header"
 import { OrchardNavigation } from "@/components/orchard/orchard-navigation"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { createBrowserClient } from "@/lib/supabase/client"
 import { useLanguage } from "@/lib/hooks/use-language"
 
-type Plan={id:string;name:string;season:string|null;status:string;start_date:string;end_date:string}
-type Plot={id:string;name:string;status:string|null;plot_type:string}
-type Bed={id:string;plot_id:string;name:string;code:string|null;area_sqm:number|null;length_m:number|null;width_m:number|null;status:string;planning_order:number|null}
-type Allocation={bed_id:string;crop_succession_id:string;planned_start_date:string;planned_end_date:string;allocated_area_sqm:number|null}
-type Succession={id:string;crop_cycle_id:string;sequence_no:number;planned_sow_date:string;planned_transplant_date:string|null;planned_first_harvest_date:string|null;planned_last_harvest_date:string|null;planned_area_sqm:number|null;status:string}
-type Cycle={id:string;game_plan_id:string;crop_name:string;variety:string|null}
-type PlacementResult={allocation_ids?:string[];allocated_area_sqm?:number;contiguous_beds?:number;rotation_penalty?:number;available_run_area_sqm?:number}
+type Locale = "en" | "es" | "de"
+type Plan = { id:string; name:string; season:string|null; status:string; start_date:string; end_date:string }
+type Plot = { id:string; name:string; status:string|null; plot_type:string }
+type Bed = { id:string; plot_id:string; name:string; length_m:number|null; width_m:number|null; status:string; planning_order:number|null }
+type Allocation = { id:string; bed_id:string; crop_succession_id:string; planned_start_date:string; planned_end_date:string; allocated_length_m:number }
+type Succession = { id:string; crop_cycle_id:string; sequence_no:number; planned_sow_date:string; planned_transplant_date:string|null; planned_first_harvest_date:string|null; planned_last_harvest_date:string|null; planned_bed_m:number|null; status:string }
+type Cycle = { id:string; game_plan_id:string; crop_name:string; variety:string|null }
+type PlacementResult = { allocation_ids?:string[]; allocated_bed_m?:number; beds_used?:number; start_bed_id?:string }
 
-type Locale="en"|"es"|"de"
-const today=()=>new Intl.DateTimeFormat("en-CA",{timeZone:"America/Santiago",year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date())
-const copy={
- en:{title:"Organize My Crop Map",description:"Distribute the selected Game Plan across real physical beds. Existing occupancy from every season remains authoritative.",refresh:"Refresh",gis:"Open GIS",season:"Game Plan",pending:"Pending plantings",beds:"Active beds",freeBeds:"Free for selected dates",eligible:"Eligible contiguous runs",queue:"Plantings to place",queueHelp:"This queue is scoped only to the selected Game Plan. A planting disappears after it has a bed allocation.",none:"All plantings in this Game Plan are placed.",select:"Select",selected:"Selected",fieldBlock:"Field block",fieldBlockHelp:"Choose the physical block that contains the beds. Only active physical beds can receive plantings.",noPhysicalBeds:"No active physical beds are configured in Black Swan Core yet. Sync or create the real field block before allocating crops; legacy/demo beds are intentionally excluded.",start:"Start",end:"End",area:"Required area",place:"Place in contiguous beds",placing:"Placing…",sequence:"Bed sequence",sequenceHelp:"Beds are shown in planning order. Existing allocations that overlap the selected planting dates break a contiguous run.",free:"Free",occupied:"Occupied",crop:"Crop",allocationDone:"Planting assigned",contiguousBeds:"Beds used",allocatedArea:"Allocated area",runArea:"Run area",rotationPenalty:"Rotation penalty",sourceWarning:"Core and Heirloom must be reconciled before bulk placement. This screen never invents missing beds or silently writes legacy placeholders."},
- es:{title:"Organizar mi Mapa de Cultivos",description:"Distribuye el Plan de Cultivo seleccionado sobre camas físicas reales. La ocupación existente de todas las temporadas sigue siendo la autoridad.",refresh:"Actualizar",gis:"Abrir GIS",season:"Plan de Cultivo",pending:"Plantaciones pendientes",beds:"Camas activas",freeBeds:"Libres para las fechas",eligible:"Bloques contiguos aptos",queue:"Plantaciones por ubicar",queueHelp:"La cola pertenece sólo al Plan seleccionado. Una plantación desaparece cuando ya tiene una asignación de cama.",none:"Todas las plantaciones de este Plan están ubicadas.",select:"Seleccionar",selected:"Seleccionada",fieldBlock:"Field Block",fieldBlockHelp:"Elige el bloque físico que contiene las camas. Sólo camas físicas activas pueden recibir plantaciones.",noPhysicalBeds:"Black Swan Core aún no tiene camas físicas activas configuradas. Sincroniza o crea el Field Block real antes de asignar cultivos; las camas demo/legacy quedan excluidas intencionalmente.",start:"Inicio",end:"Fin",area:"Área requerida",place:"Ubicar en camas contiguas",placing:"Ubicando…",sequence:"Secuencia de camas",sequenceHelp:"Las camas se muestran en orden de planificación. Una asignación que se superpone con las fechas seleccionadas corta el bloque contiguo.",free:"Libre",occupied:"Ocupada",crop:"Cultivo",allocationDone:"Plantación asignada",contiguousBeds:"Camas usadas",allocatedArea:"Área asignada",runArea:"Área del bloque",rotationPenalty:"Penalización rotación",sourceWarning:"Core y Heirloom deben reconciliarse antes de una ubicación masiva. Esta pantalla nunca inventa camas faltantes ni escribe placeholders legacy silenciosamente."},
- de:{title:"Anbaukarte organisieren",description:"Verteile den ausgewählten Game Plan auf reale physische Beete. Bestehende Belegung aus allen Saisons bleibt maßgeblich.",refresh:"Aktualisieren",gis:"GIS öffnen",season:"Game Plan",pending:"Offene Pflanzungen",beds:"Aktive Beete",freeBeds:"Für Zeitraum frei",eligible:"Geeignete zusammenhängende Blöcke",queue:"Zu platzierende Pflanzungen",queueHelp:"Die Liste ist nur auf den ausgewählten Game Plan beschränkt. Nach einer Beetzuordnung verschwindet die Pflanzung aus der Liste.",none:"Alle Pflanzungen dieses Game Plans sind zugeordnet.",select:"Auswählen",selected:"Ausgewählt",fieldBlock:"Feldblock",fieldBlockHelp:"Wähle den physischen Block mit den Beeten. Nur aktive reale Beete können Pflanzungen aufnehmen.",noPhysicalBeds:"In Black Swan Core sind noch keine aktiven physischen Beete eingerichtet. Synchronisiere oder erstelle zuerst den realen Feldblock; Demo-/Legacy-Beete bleiben bewusst ausgeschlossen.",start:"Start",end:"Ende",area:"Benötigte Fläche",place:"In zusammenhängende Beete platzieren",placing:"Wird platziert…",sequence:"Beetfolge",sequenceHelp:"Beete erscheinen in Planungsreihenfolge. Überlappende Zuordnungen unterbrechen einen zusammenhängenden Block.",free:"Frei",occupied:"Belegt",crop:"Kultur",allocationDone:"Pflanzung zugeordnet",contiguousBeds:"Verwendete Beete",allocatedArea:"Zugeordnete Fläche",runArea:"Blockfläche",rotationPenalty:"Fruchtfolge-Strafe",sourceWarning:"Core und Heirloom müssen vor einer Massenplatzierung abgeglichen werden. Diese Ansicht erfindet keine fehlenden Beete und schreibt keine Legacy-Platzhalter stillschweigend."}
+const copy = {
+  en: { title:"Organize My Crop Map", description:"Assign the selected Game Plan to real beds using bed-meter capacity, matching the Heirloom workflow without hiding Core conflicts.", refresh:"Refresh", gis:"Open GIS", plan:"Game Plan", assigned:"assigned plantings", pending:"Pending", totalDemand:"Validated demand", blockCapacity:"Field capacity", queue:"Plantings to assign", queueHelp:"Only the 32 plantings reconciled against Heirloom and the canonical Crop Plan are shown here.", fieldBlock:"Field block", startBed:"Starting bed", required:"Required", dateRange:"Date range", choosePlanting:"Choose a planting", chooseBed:"Choose the first bed. Large plantings continue into following beds transactionally.", available:"available", used:"used", place:"Assign planting", placing:"Assigning…", placed:"Planting assigned", bedsUsed:"beds used", noQueue:"All reconciled plantings are assigned.", insufficient:"Not enough contiguous bed-meter capacity from this starting bed.", crop:"Crop", source:"Core dates remain canonical. Bed-meter demand is the validated Heirloom/Crop Plan reconciliation. The only imported placement is the observed Arugula generation 1 on bed 17." },
+  es: { title:"Organizar mi Mapa de Cultivos", description:"Asigna el Plan seleccionado a camas reales usando capacidad en metros de cama, replicando el flujo de Heirloom sin ocultar conflictos de Core.", refresh:"Actualizar", gis:"Abrir GIS", plan:"Plan de Cultivo", assigned:"plantaciones asignadas", pending:"Pendientes", totalDemand:"Demanda validada", blockCapacity:"Capacidad del bloque", queue:"Plantaciones por asignar", queueHelp:"Aquí aparecen sólo las 32 plantaciones reconciliadas contra Heirloom y el Crop Plan canónico.", fieldBlock:"Field Block", startBed:"Cama inicial", required:"Requerido", dateRange:"Rango de fechas", choosePlanting:"Elige una plantación", chooseBed:"Elige la primera cama. Las plantaciones grandes continúan por las camas siguientes dentro de una sola transacción.", available:"disponible", used:"usado", place:"Asignar plantación", placing:"Asignando…", placed:"Plantación asignada", bedsUsed:"camas usadas", noQueue:"Todas las plantaciones reconciliadas están asignadas.", insufficient:"No existe capacidad contigua suficiente desde esta cama.", crop:"Cultivo", source:"Las fechas de Core siguen siendo canónicas. Los metros de cama provienen de la reconciliación validada Heirloom/Crop Plan. La única ubicación importada es Arugula generación 1 en cama 17, observada directamente." },
+  de: { title:"Anbaukarte organisieren", description:"Ordne den ausgewählten Game Plan realen Beeten anhand der Beetmeter-Kapazität zu und bilde den Heirloom-Ablauf ohne versteckte Core-Konflikte nach.", refresh:"Aktualisieren", gis:"GIS öffnen", plan:"Game Plan", assigned:"zugeordnete Pflanzungen", pending:"Offen", totalDemand:"Validierter Bedarf", blockCapacity:"Blockkapazität", queue:"Pflanzungen zuordnen", queueHelp:"Hier erscheinen nur die 32 mit Heirloom und dem kanonischen Crop Plan abgeglichenen Pflanzungen.", fieldBlock:"Feldblock", startBed:"Startbeet", required:"Benötigt", dateRange:"Zeitraum", choosePlanting:"Pflanzung auswählen", chooseBed:"Wähle das erste Beet. Große Pflanzungen werden transaktional auf die folgenden Beete verteilt.", available:"verfügbar", used:"belegt", place:"Pflanzung zuordnen", placing:"Zuordnung…", placed:"Pflanzung zugeordnet", bedsUsed:"Beete verwendet", noQueue:"Alle abgeglichenen Pflanzungen sind zugeordnet.", insufficient:"Ab diesem Startbeet gibt es nicht genügend zusammenhängende Beetmeter-Kapazität.", crop:"Kultur", source:"Core-Daten bleiben kanonisch. Der Beetmeter-Bedarf stammt aus dem validierten Heirloom/Crop-Plan-Abgleich. Die einzige importierte Platzierung ist die direkt beobachtete Arugula-Generation 1 auf Beet 17." },
 } as const
 
+function dateKey(d:Date){return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`}
+function addDay(value:string){const d=new Date(`${value}T12:00:00`);d.setDate(d.getDate()+1);return dateKey(d)}
+
 export default function OrchardAutoPlacePage(){
- const supabase=useMemo(()=>createBrowserClient(),[])
- const {language}=useLanguage(); const lang=language as Locale; const text=copy[lang]
- const [plans,setPlans]=useState<Plan[]>([]),[plots,setPlots]=useState<Plot[]>([]),[beds,setBeds]=useState<Bed[]>([]),[allocations,setAllocations]=useState<Allocation[]>([]),[successions,setSuccessions]=useState<Succession[]>([]),[cycles,setCycles]=useState<Cycle[]>([])
- const [selectedPlanId,setSelectedPlanId]=useState("")
- const [form,setForm]=useState({succession_id:"",plot_id:"",start_date:today(),end_date:today(),area:""})
- const [loading,setLoading]=useState(true),[saving,setSaving]=useState(false),[error,setError]=useState<string|null>(null),[result,setResult]=useState<PlacementResult|null>(null)
+  const supabase=useMemo(()=>createBrowserClient(),[])
+  const {language}=useLanguage(); const lang=language as Locale; const text=copy[lang]
+  const [plans,setPlans]=useState<Plan[]>([]),[plots,setPlots]=useState<Plot[]>([]),[beds,setBeds]=useState<Bed[]>([]),[allocations,setAllocations]=useState<Allocation[]>([]),[successions,setSuccessions]=useState<Succession[]>([]),[cycles,setCycles]=useState<Cycle[]>([])
+  const [selectedPlanId,setSelectedPlanId]=useState(""),[plotId,setPlotId]=useState(""),[successionId,setSuccessionId]=useState(""),[startBedId,setStartBedId]=useState("")
+  const [loading,setLoading]=useState(true),[saving,setSaving]=useState(false),[error,setError]=useState<string|null>(null),[result,setResult]=useState<PlacementResult|null>(null)
 
- const load=useCallback(async()=>{
-  setLoading(true);setError(null)
-  const [p,pl,b,a,s,c]=await Promise.all([
-   supabase.from("orchard_game_plans").select("id,name,season,status,start_date,end_date").order("start_date",{ascending:false}),
-   supabase.from("orchard_plots").select("id,name,status,plot_type").order("name"),
-   supabase.from("orchard_beds").select("id,plot_id,name,code,area_sqm,length_m,width_m,status,planning_order").eq("status","active").order("planning_order"),
-   supabase.from("orchard_bed_allocations").select("bed_id,crop_succession_id,planned_start_date,planned_end_date,allocated_area_sqm"),
-   supabase.from("orchard_crop_successions").select("id,crop_cycle_id,sequence_no,planned_sow_date,planned_transplant_date,planned_first_harvest_date,planned_last_harvest_date,planned_area_sqm,status").neq("status","cancelled").order("planned_sow_date"),
-   supabase.from("orchard_crop_cycles").select("id,game_plan_id,crop_name,variety")
-  ])
-  const firstError=p.error??pl.error??b.error??a.error??s.error??c.error
-  if(firstError){setError(firstError.message);setLoading(false);return}
-  const nextPlans=(p.data??[]) as Plan[]; const nextPlots=(pl.data??[]) as Plot[]; const nextBeds=(b.data??[]) as Bed[]
-  setPlans(nextPlans);setPlots(nextPlots);setBeds(nextBeds);setAllocations((a.data??[]) as Allocation[]);setSuccessions((s.data??[]) as Succession[]);setCycles((c.data??[]) as Cycle[])
-  setSelectedPlanId(current=>current||nextPlans.find(item=>item.status==="active")?.id||nextPlans.find(item=>item.status==="draft")?.id||nextPlans[0]?.id||"")
-  setForm(current=>{if(current.plot_id&&nextBeds.some(bed=>bed.plot_id===current.plot_id))return current;const firstPlotId=nextBeds[0]?.plot_id??"";return{...current,plot_id:firstPlotId}})
-  setLoading(false)
- },[supabase])
- useEffect(()=>{void load()},[load])
+  const load=useCallback(async()=>{
+    setLoading(true);setError(null)
+    const [p,pl,b,a,s,c]=await Promise.all([
+      supabase.from("orchard_game_plans").select("id,name,season,status,start_date,end_date").order("start_date",{ascending:false}),
+      supabase.from("orchard_plots").select("id,name,status,plot_type").eq("status","active").order("name"),
+      supabase.from("orchard_beds").select("id,plot_id,name,length_m,width_m,status,planning_order").eq("status","active").order("planning_order"),
+      supabase.from("orchard_bed_allocations").select("id,bed_id,crop_succession_id,planned_start_date,planned_end_date,allocated_length_m").order("planned_start_date"),
+      supabase.from("orchard_crop_successions").select("id,crop_cycle_id,sequence_no,planned_sow_date,planned_transplant_date,planned_first_harvest_date,planned_last_harvest_date,planned_bed_m,status").not("planned_bed_m","is",null).neq("status","cancelled").order("planned_sow_date"),
+      supabase.from("orchard_crop_cycles").select("id,game_plan_id,crop_name,variety")
+    ])
+    const e=p.error??pl.error??b.error??a.error??s.error??c.error
+    if(e){setError(e.message);setLoading(false);return}
+    const nextPlans=(p.data??[]) as Plan[], nextPlots=(pl.data??[]) as Plot[], nextBeds=(b.data??[]) as Bed[]
+    setPlans(nextPlans);setPlots(nextPlots);setBeds(nextBeds);setAllocations((a.data??[]) as Allocation[]);setSuccessions((s.data??[]) as Succession[]);setCycles((c.data??[]) as Cycle[])
+    setSelectedPlanId(current=>current||nextPlans.find(x=>x.season==="2026/27")?.id||nextPlans.find(x=>x.status==="active")?.id||nextPlans[0]?.id||"")
+    setPlotId(current=>current||nextPlots.find(x=>x.name==="Orchard BlackSwan Campo")?.id||nextBeds[0]?.plot_id||"")
+    setLoading(false)
+  },[supabase])
+  useEffect(()=>{void load()},[load])
 
- const cycleById=useMemo(()=>new Map(cycles.map(c=>[c.id,c])),[cycles])
- const allocatedIds=useMemo(()=>new Set(allocations.map(a=>a.crop_succession_id)),[allocations])
- const scopedSuccessions=useMemo(()=>successions.filter(s=>cycleById.get(s.crop_cycle_id)?.game_plan_id===selectedPlanId),[successions,cycleById,selectedPlanId])
- const queue=useMemo(()=>scopedSuccessions.filter(s=>!allocatedIds.has(s.id)),[scopedSuccessions,allocatedIds])
- const physicalPlots=useMemo(()=>plots.filter(plot=>beds.some(bed=>bed.plot_id===plot.id)),[plots,beds])
- const selected=successions.find(s=>s.id===form.succession_id)
- const selectedCycle=selected?cycleById.get(selected.crop_cycle_id):null
- const plotBeds=useMemo(()=>beds.filter(b=>b.plot_id===form.plot_id).sort((a,b)=>(a.planning_order??9999)-(b.planning_order??9999)||a.name.localeCompare(b.name)),[beds,form.plot_id])
- const area=(b:Bed)=>Number(b.area_sqm??((b.length_m??0)*(b.width_m??0)))
- const isFree=(b:Bed)=>!allocations.some(a=>a.bed_id===b.id&&a.planned_start_date<=form.end_date&&a.planned_end_date>=form.start_date)
- const freeBeds=plotBeds.filter(isFree)
- const required=Number(form.area||selected?.planned_area_sqm||0)
- const runs=useMemo(()=>{const out:{beds:Bed[];area:number}[]=[];let current:{beds:Bed[];area:number}|null=null;for(const bed of plotBeds){if(!isFree(bed)){current=null;continue}if(!current){current={beds:[],area:0};out.push(current)}current.beds.push(bed);current.area+=area(bed)}return out},[plotBeds,allocations,form.start_date,form.end_date])
- const eligibleRuns=runs.filter(run=>run.area>=required&&required>0)
+  const cycleById=useMemo(()=>new Map(cycles.map(c=>[c.id,c])),[cycles])
+  const allocatedIds=useMemo(()=>new Set(allocations.map(a=>a.crop_succession_id)),[allocations])
+  const scoped=useMemo(()=>successions.filter(s=>cycleById.get(s.crop_cycle_id)?.game_plan_id===selectedPlanId&&Number(s.planned_bed_m)>0),[successions,cycleById,selectedPlanId])
+  const queue=useMemo(()=>scoped.filter(s=>!allocatedIds.has(s.id)),[scoped,allocatedIds])
+  const assigned=scoped.length-queue.length
+  const totalDemand=scoped.reduce((sum,s)=>sum+Number(s.planned_bed_m??0),0)
+  const plotBeds=useMemo(()=>beds.filter(b=>b.plot_id===plotId).sort((a,b)=>(a.planning_order??9999)-(b.planning_order??9999)||Number(a.name)-Number(b.name)),[beds,plotId])
+  const blockCapacity=plotBeds.reduce((sum,b)=>sum+Number(b.length_m??0),0)
+  const selected=queue.find(s=>s.id===successionId)??null
+  const cycle=selected?cycleById.get(selected.crop_cycle_id):null
+  const start=selected?(selected.planned_transplant_date??selected.planned_sow_date):""
+  const end=selected?(selected.planned_last_harvest_date??selected.planned_first_harvest_date??selected.planned_transplant_date??selected.planned_sow_date):""
+  const required=Number(selected?.planned_bed_m??0)
 
- useEffect(()=>{if(form.succession_id&&!queue.some(item=>item.id===form.succession_id))setForm(current=>({...current,succession_id:"",area:""}))},[queue,form.succession_id])
- function label(s:Succession){const c=cycleById.get(s.crop_cycle_id);return `${c?.crop_name??text.crop}${c?.variety?` · ${c.variety}`:""} · #${s.sequence_no}`}
- function pickSuccession(id:string){const s=successions.find(item=>item.id===id);if(!s)return;setResult(null);setForm(current=>({...current,succession_id:id,start_date:s.planned_transplant_date??s.planned_sow_date,end_date:s.planned_last_harvest_date??s.planned_first_harvest_date??s.planned_transplant_date??s.planned_sow_date,area:s.planned_area_sqm?String(s.planned_area_sqm):""}))}
- async function autoPlace(){if(!form.succession_id||!form.plot_id||!form.start_date||!form.end_date||required<=0||eligibleRuns.length===0)return;setSaving(true);setError(null);setResult(null);const response=await supabase.rpc("orchard_auto_place_succession",{p_succession_id:form.succession_id,p_plot_id:form.plot_id,p_start_date:form.start_date,p_end_date:form.end_date,p_required_area_sqm:required});if(response.error)setError(response.error.message);else{setResult((response.data??{}) as PlacementResult);await load()}setSaving(false)}
+  function peakUsed(bedId:string){
+    if(!start||!end)return 0
+    let cursor=start,peak=0
+    while(cursor<=end){const used=allocations.filter(a=>a.bed_id===bedId&&a.planned_start_date<=cursor&&a.planned_end_date>=cursor).reduce((sum,a)=>sum+Number(a.allocated_length_m??0),0);peak=Math.max(peak,used);cursor=addDay(cursor)}
+    return peak
+  }
+  const availability=plotBeds.map(b=>({bed:b,used:peakUsed(b.id),free:Math.max(Number(b.length_m??0)-peakUsed(b.id),0)}))
+  const selectedIndex=availability.findIndex(x=>x.bed.id===startBedId)
+  let contiguousAvailable=0
+  if(selectedIndex>=0){for(let i=selectedIndex;i<availability.length;i++){if(availability[i].free<=0)break;contiguousAvailable+=availability[i].free}}
+  const canPlace=Boolean(selected&&startBedId&&required>0&&contiguousAvailable+0.0001>=required&&!saving)
 
- return <AppLayout><PageHeader title={text.title} description={text.description} actions={<div className="flex gap-2"><Button variant="outline" asChild><Link href={`/${language}/map`}><MapPinned className="mr-2 h-4 w-4"/>{text.gis}<ExternalLink className="ml-2 h-3 w-3"/></Link></Button><Button variant="outline" onClick={()=>void load()} aria-label={text.refresh}><RefreshCw className="h-4 w-4"/></Button></div>}/><OrchardNavigation/><main className="mx-auto w-full max-w-[1560px] space-y-6 px-4 pb-24 pt-6 sm:px-6 lg:px-8">
-  {error?<Card className="border-destructive/50"><CardContent className="p-4 text-sm text-destructive">{error}</CardContent></Card>:null}
-  <section className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_320px]"><div className="rounded-xl border border-[var(--orchard-line)] bg-white p-5"><p className="text-[11px] font-semibold uppercase tracking-[.18em] text-[var(--orchard-green)]">06 · Crop Map</p><h1 className="mt-2 text-3xl font-medium tracking-[-.035em]">{text.title}</h1><p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">{text.sourceWarning}</p></div><div className="rounded-xl border border-[var(--orchard-line)] bg-white p-4"><Label>{text.season}</Label><Select value={selectedPlanId} onValueChange={value=>{setSelectedPlanId(value);setResult(null)}}><SelectTrigger className="mt-2"><SelectValue/></SelectTrigger><SelectContent>{plans.map(plan=><SelectItem key={plan.id} value={plan.id}>{plan.season??plan.name} · {plan.status}</SelectItem>)}</SelectContent></Select></div></section>
+  function plantingLabel(s:Succession){const c=cycleById.get(s.crop_cycle_id);return `${c?.crop_name??text.crop}${c?.variety?` · ${c.variety}`:""} · ${s.sequence_no}`}
+  function choosePlanting(id:string){setSuccessionId(id);setStartBedId("");setResult(null);setError(null)}
+  async function place(){if(!selected||!canPlace)return;setSaving(true);setError(null);setResult(null);const response=await supabase.rpc("orchard_place_succession_bed_meters",{p_succession_id:selected.id,p_plot_id:plotId,p_start_bed_id:startBedId,p_start_date:start,p_end_date:end,p_required_bed_m:required});if(response.error)setError(response.error.message);else{setResult((response.data??{}) as PlacementResult);setSuccessionId("");setStartBedId("");await load()}setSaving(false)}
 
-  <section className="grid overflow-hidden rounded-xl border border-[var(--orchard-line)] bg-white sm:grid-cols-2 xl:grid-cols-4">{[
-   {label:text.pending,value:queue.length,icon:Sprout},
-   {label:text.beds,value:beds.length,icon:Route},
-   {label:text.freeBeds,value:freeBeds.length,icon:CheckCircle2},
-   {label:text.eligible,value:eligibleRuns.length,icon:CalendarRange}
-  ].map((metric,index)=>{const Icon=metric.icon;return <div key={metric.label} className={`p-5 ${index?"border-t border-[var(--orchard-line)] sm:border-l sm:border-t-0":""}`}><Icon className="h-4 w-4 text-[var(--orchard-green)]"/><p className="mt-5 text-3xl font-medium tabular-nums">{loading?"—":metric.value}</p><p className="mt-1 text-xs text-muted-foreground">{metric.label}</p></div>})}</section>
+  return <AppLayout>
+    <PageHeader title={text.title} description={text.description} actions={<div className="flex gap-2"><Button variant="outline" asChild><Link href={`/${language}/map`}><MapPinned className="mr-2 h-4 w-4"/>{text.gis}<ExternalLink className="ml-2 h-3 w-3"/></Link></Button><Button variant="outline" onClick={()=>void load()} disabled={loading} aria-label={text.refresh}><RefreshCw className={`h-4 w-4 ${loading?"animate-spin":""}`}/></Button></div>}/>
+    <OrchardNavigation/>
+    <main className="mx-auto w-full max-w-[1560px] space-y-6 px-4 pb-24 pt-6 sm:px-6 lg:px-8">
+      {error?<Card className="border-destructive/40"><CardContent className="p-4 text-sm text-destructive">{error}</CardContent></Card>:null}
+      <Card><CardContent className="grid gap-5 p-5 lg:grid-cols-[1fr_280px]"><div><p className="text-xs font-semibold uppercase tracking-[.18em] text-[var(--orchard-green)]">Crop Map · Heirloom parity</p><p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">{text.source}</p></div><div><Label>{text.plan}</Label><Select value={selectedPlanId} onValueChange={value=>{setSelectedPlanId(value);setSuccessionId("");setStartBedId("")}}><SelectTrigger className="mt-2"><SelectValue/></SelectTrigger><SelectContent>{plans.map(p=><SelectItem key={p.id} value={p.id}>{p.season??p.name} · {p.status}</SelectItem>)}</SelectContent></Select></div></CardContent></Card>
 
-  {beds.length===0?<Card className="border-amber-500/35 bg-amber-50/50"><CardContent className="flex gap-3 p-5 text-sm leading-6"><AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-700"/><p>{text.noPhysicalBeds}</p></CardContent></Card>:null}
-  {result?<Card className="border-emerald-500/35"><CardContent className="grid gap-3 p-4 sm:grid-cols-4"><MetricInline label={text.contiguousBeds} value={String(result.contiguous_beds??0)}/><MetricInline label={text.allocatedArea} value={`${Number(result.allocated_area_sqm??0).toFixed(1)} m²`}/><MetricInline label={text.runArea} value={`${Number(result.available_run_area_sqm??0).toFixed(1)} m²`}/><MetricInline label={text.rotationPenalty} value={String(result.rotation_penalty??0)}/></CardContent></Card>:null}
+      <section className="grid overflow-hidden rounded-xl border border-[var(--orchard-line)] bg-white sm:grid-cols-2 xl:grid-cols-4">
+        <Metric value={`${assigned}/${scoped.length}`} label={text.assigned}/><Metric value={String(queue.length)} label={text.pending}/><Metric value={`${totalDemand} m`} label={text.totalDemand}/><Metric value={`${blockCapacity} m`} label={text.blockCapacity}/>
+      </section>
 
-  <section className="grid gap-5 xl:grid-cols-[.85fr_1.15fr]">
-   <Card><CardHeader><CardTitle>{text.queue}</CardTitle><CardDescription>{text.queueHelp}</CardDescription></CardHeader><CardContent>{queue.length===0?<div className="rounded-lg border border-dashed p-6 text-sm text-muted-foreground">{text.none}</div>:<div className="max-h-[620px] space-y-2 overflow-y-auto pr-1">{queue.map(s=>{const active=form.succession_id===s.id;const cycle=cycleById.get(s.crop_cycle_id);const start=s.planned_transplant_date??s.planned_sow_date;const end=s.planned_last_harvest_date??s.planned_first_harvest_date??start;return <button type="button" key={s.id} onClick={()=>pickSuccession(s.id)} className={`w-full rounded-lg border p-3 text-left transition ${active?"border-[var(--orchard-green)] bg-[var(--orchard-green-soft)]":"border-[var(--orchard-line)] bg-white hover:bg-[#f8faf8]"}`}><div className="flex items-start justify-between gap-3"><div><p className="text-sm font-medium">{cycle?.crop_name??text.crop}{cycle?.variety?` · ${cycle.variety}`:""}</p><p className="mt-1 text-xs text-muted-foreground">#{s.sequence_no} · {start} → {end}</p></div><Badge variant={active?"default":"secondary"}>{active?text.selected:text.select}</Badge></div>{s.planned_area_sqm!=null?<p className="mt-2 text-xs tabular-nums text-muted-foreground">{s.planned_area_sqm} m²</p>:null}</button>})}</div>}</CardContent></Card>
+      <section className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_420px]">
+        <Card><CardHeader><CardTitle>{text.queue}</CardTitle><CardDescription>{text.queueHelp}</CardDescription></CardHeader><CardContent>{queue.length===0?<div className="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground"><CheckCircle2 className="mx-auto mb-3 h-5 w-5"/>{text.noQueue}</div>:<div className="grid gap-3 md:grid-cols-2">{queue.map(s=>{const active=s.id===successionId;const c=cycleById.get(s.crop_cycle_id);const sStart=s.planned_transplant_date??s.planned_sow_date;const sEnd=s.planned_last_harvest_date??s.planned_first_harvest_date??sStart;return <button key={s.id} type="button" onClick={()=>choosePlanting(s.id)} className={`rounded-xl border p-4 text-left transition ${active?"border-[var(--orchard-green)] bg-[var(--orchard-green-soft)]":"border-[var(--orchard-line)] bg-white hover:border-[#b8cabe]"}`}><div className="flex items-start justify-between gap-3"><div><p className="font-medium">{c?.crop_name??text.crop}</p><p className="mt-1 text-xs text-muted-foreground">Generation {s.sequence_no}{c?.variety?` · ${c.variety}`:""}</p></div><Badge variant={active?"default":"secondary"}>{Number(s.planned_bed_m)} m</Badge></div><p className="mt-4 text-xs text-muted-foreground">{sStart} → {sEnd}</p></button>})}</div>}</CardContent></Card>
 
-   <div className="space-y-5"><Card><CardHeader><CardTitle className="flex items-center gap-2"><Route className="h-5 w-5"/>{text.fieldBlock}</CardTitle><CardDescription>{text.fieldBlockHelp}</CardDescription></CardHeader><CardContent className="grid gap-4 sm:grid-cols-2"><Field label={text.fieldBlock}><Select value={form.plot_id} onValueChange={value=>{setResult(null);setForm(current=>({...current,plot_id:value}))}}><SelectTrigger><SelectValue/></SelectTrigger><SelectContent>{physicalPlots.map(plot=><SelectItem key={plot.id} value={plot.id}>{plot.name}</SelectItem>)}</SelectContent></Select></Field><Field label={text.area}><Input type="number" min="0.1" step="0.1" value={form.area} onChange={event=>setForm(current=>({...current,area:event.target.value}))}/></Field><Field label={text.start}><Input type="date" value={form.start_date} onChange={event=>setForm(current=>({...current,start_date:event.target.value}))}/></Field><Field label={text.end}><Input type="date" value={form.end_date} onChange={event=>setForm(current=>({...current,end_date:event.target.value}))}/></Field><div className="sm:col-span-2"><Button className="w-full sm:w-auto" onClick={()=>void autoPlace()} disabled={saving||!form.succession_id||!form.plot_id||required<=0||eligibleRuns.length===0}><WandSparkles className="mr-2 h-4 w-4"/>{saving?text.placing:text.place}</Button>{selectedCycle?<span className="ml-3 text-sm text-muted-foreground">{label(selected as Succession)}</span>:null}</div></CardContent></Card>
+        <div className="space-y-5 xl:sticky xl:top-24 xl:self-start">
+          <Card><CardHeader><CardTitle>{text.fieldBlock}</CardTitle><CardDescription>{plots.find(p=>p.id===plotId)?.name??"—"}</CardDescription></CardHeader><CardContent className="space-y-4"><Select value={plotId} onValueChange={value=>{setPlotId(value);setStartBedId("")}}><SelectTrigger aria-label={text.fieldBlock}><SelectValue/></SelectTrigger><SelectContent>{plots.filter(p=>beds.some(b=>b.plot_id===p.id)).map(p=><SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent></Select>{selected?<div className="rounded-xl bg-[#f6f8f5] p-4"><p className="font-medium">{plantingLabel(selected)}</p><div className="mt-3 grid grid-cols-2 gap-3 text-xs"><div><span className="text-muted-foreground">{text.required}</span><p className="mt-1 text-base font-medium">{required} m</p></div><div><span className="text-muted-foreground">{text.dateRange}</span><p className="mt-1">{start}<br/>{end}</p></div></div></div>:<p className="text-sm text-muted-foreground">{text.choosePlanting}</p>}</CardContent></Card>
 
-    <Card><CardHeader><CardTitle>{text.sequence}</CardTitle><CardDescription>{text.sequenceHelp}</CardDescription></CardHeader><CardContent>{!form.plot_id?<p className="text-sm text-muted-foreground">{text.noPhysicalBeds}</p>:<div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">{plotBeds.map(bed=>{const free=isFree(bed);return <div key={bed.id} className={`rounded-lg border p-3 ${free?"border-[var(--orchard-line)] bg-white":"border-amber-300 bg-amber-50/60"}`}><div className="flex items-start justify-between gap-3"><div><p className="font-medium">#{bed.planning_order??"—"} · {bed.code?`${bed.code} · `:""}{bed.name}</p><p className="mt-1 text-xs text-muted-foreground">{bed.length_m!=null?`${bed.length_m} m · `:""}{area(bed).toFixed(1)} m²</p></div><Badge variant={free?"outline":"secondary"}>{free?text.free:text.occupied}</Badge></div></div>})}</div>}</CardContent></Card></div>
-  </section>
- </main></AppLayout>
+          <Card><CardHeader><CardTitle>{text.startBed}</CardTitle><CardDescription>{text.chooseBed}</CardDescription></CardHeader><CardContent className="space-y-3"><div className="grid grid-cols-3 gap-2">{availability.map(({bed,used,free})=>{const active=bed.id===startBedId;return <button key={bed.id} type="button" disabled={!selected||free<=0} onClick={()=>setStartBedId(bed.id)} className={`rounded-lg border p-3 text-left ${active?"border-[var(--orchard-green)] bg-[var(--orchard-green-soft)]":"border-[var(--orchard-line)] disabled:opacity-45"}`}><p className="font-medium">{bed.name}</p><p className="mt-1 text-[11px] text-muted-foreground">{used.toFixed(0)} m {text.used}</p><p className="text-[11px] text-[var(--orchard-green)]">{free.toFixed(0)} m {text.available}</p></button>})}</div>{selected&&startBedId&&contiguousAvailable+0.0001<required?<p className="flex gap-2 text-xs text-amber-700"><AlertTriangle className="h-4 w-4 shrink-0"/>{text.insufficient} ({contiguousAvailable.toFixed(0)} m)</p>:null}<Button className="w-full" disabled={!canPlace} onClick={()=>void place()}><Sprout className="mr-2 h-4 w-4"/>{saving?text.placing:text.place}</Button></CardContent></Card>
+
+          {result?<Card className="border-[var(--orchard-green)]"><CardContent className="p-4"><p className="flex items-center gap-2 font-medium text-[var(--orchard-green)]"><CheckCircle2 className="h-4 w-4"/>{text.placed}</p><p className="mt-2 text-sm text-muted-foreground">{result.allocated_bed_m} m · {result.beds_used} {text.bedsUsed}</p></CardContent></Card>:null}
+        </div>
+      </section>
+    </main>
+  </AppLayout>
 }
 
-function Field({label,children}:{label:string;children:React.ReactNode}){return <div className="space-y-1.5"><Label>{label}</Label>{children}</div>}
-function MetricInline({label,value}:{label:string;value:string}){return <div><p className="text-lg font-semibold">{value}</p><p className="text-xs text-muted-foreground">{label}</p></div>}
+function Metric({value,label}:{value:string;label:string}){return <div className="p-5"><p className="text-2xl font-medium tabular-nums">{value}</p><p className="mt-1 text-xs text-muted-foreground">{label}</p></div>}
