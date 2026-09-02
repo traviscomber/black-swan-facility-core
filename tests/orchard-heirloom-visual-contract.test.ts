@@ -120,5 +120,25 @@ test("crop map overview keeps all-plan physical occupancy visible", async () => 
   assert.match(source, /nextPlanAllocation/)
   assert.match(source, /Próxima ocupación del plan/)
   assert.match(source, /orchard-date-range/)
-  assert.match(source, /not surveyed geometry|no geometría topográfica/)
+  assert.match(source, /schematic occupancy|vista esquemática.*ocupación/i)
+})
+
+test("core Orchard crop surfaces share one canonical family color identity", async () => {
+  const identity = await readFile("lib/orchard/crop-identity.ts", "utf8")
+  const surfaces = await Promise.all([
+    readFile("app/orchard/crops/catalog/page.tsx", "utf8"),
+    readFile("app/orchard/game-plan/season/page.tsx", "utf8"),
+    readFile("app/orchard/crop-map/overview/page.tsx", "utf8"),
+    readFile("app/orchard/nursery/overview/page.tsx", "utf8"),
+    readFile("app/orchard/harvest/desk/page.tsx", "utf8"),
+  ])
+
+  assert.match(identity, /Brassicaceae/)
+  assert.match(identity, /Solanaceae/)
+  assert.match(identity, /cropPhaseStyle/)
+  assert.match(identity, /cropColor/)
+  for (const source of surfaces) {
+    assert.match(source, /crop-identity/)
+    assert.match(source, /cropColor/)
+  }
 })
