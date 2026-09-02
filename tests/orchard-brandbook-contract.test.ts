@@ -73,30 +73,29 @@ test("Orchard navigation preserves accessible names for primary and menu navigat
   const source = await readFile("components/orchard/orchard-navigation.tsx", "utf8")
 
   assert.match(source, /aria-label=\{item\.label\[locale\]\}/)
-  assert.match(source, /aria-label=\{gamePlanLabel\[locale\]\}/)
   assert.match(source, /aria-label=\{moreLabel\[locale\]\}/)
 })
 
-test("Dietrich Orchard navigation keeps the operating surface intentionally small", async () => {
+test("Dietrich Orchard navigation follows the compact Heirloom-style operating workflow", async () => {
   const source = await readFile("components/orchard/orchard-navigation.tsx", "utf8")
 
+  assert.match(source, /const primaryItems/)
   assert.match(source, /en:\s*"Today"/)
-  assert.match(source, /gamePlanLabel/)
-  assert.match(source, /en:\s*"Field"/)
+  assert.match(source, /en:\s*"Calendar"/)
+  assert.match(source, /en:\s*"Crop Map"/)
+  assert.match(source, /en:\s*"Nursery"/)
+  assert.match(source, /en:\s*"Tasks"/)
   assert.match(source, /en:\s*"Harvest"/)
-  assert.match(source, /en:\s*"History"/)
-  assert.match(source, /href:\s*"\/orchard\/game-plan\/objectives"/)
+  assert.match(source, /en:\s*"Crops"/)
   assert.match(source, /href:\s*"\/orchard\/game-plan\/season"/)
-  assert.match(source, /href:\s*"\/orchard\/game-plan\/crop-chart"/)
-  assert.match(source, /href:\s*"\/orchard\/game-plan\/propagation"/)
-  assert.match(source, /en:\s*"Sowing methods"/)
-  assert.match(source, /href:\s*"\/orchard\/nursery\/overview"/)
   assert.match(source, /href:\s*"\/orchard\/crop-map\/overview"/)
-  assert.match(source, /href:\s*"\/orchard\/game-plan\/tasks"/)
-  assert.match(source, /href:\s*"\/orchard\/game-plan\/capacity"/)
-  assert.match(source, /href:\s*"\/orchard\/game-plan\/forecast"/)
+  assert.match(source, /href:\s*"\/orchard\/nursery\/overview"/)
+  assert.match(source, /href:\s*"\/orchard\/work\/week-board"/)
   assert.match(source, /href:\s*"\/orchard\/harvest\/desk"/)
-  assert.match(source, /const advancedItems/)
+  assert.match(source, /href:\s*"\/orchard\/crops"/)
+  assert.match(source, /const moreItems/)
+  assert.match(source, /href:\s*"\/orchard\/game-plan\/overview"/)
+  assert.match(source, /href:\s*"\/orchard\/field"/)
 })
 
 test("Dietrich Game Plan hub preserves the written plan as a first-class section", async () => {
@@ -117,11 +116,14 @@ test("Dietrich Season Plan exposes a crop-led planting timeline", async () => {
 
   assert.match(source, /monthKeys/)
   assert.match(source, /weekKeys/)
+  assert.match(source, /isoWeekNumber/)
   assert.match(source, /timelinePosition/)
   assert.match(source, /Planting Schedule/)
   assert.match(source, /Search crops/)
   assert.match(source, /planned_sow_date/)
   assert.match(source, /planned_last_harvest_date/)
+  assert.match(source, /collapseAll/)
+  assert.match(source, /data-orchard-season-crop/)
   assert.match(source, /var\(--orchard-green\)/)
 })
 
