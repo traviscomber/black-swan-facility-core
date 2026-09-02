@@ -82,7 +82,7 @@ export function AppLayout({ children }: AppLayoutProps) {
     ? "md:sticky md:top-0 md:z-40 md:flex md:h-screen md:w-64 md:flex-col"
     : "lg:sticky lg:top-0 lg:z-40 lg:flex lg:h-screen lg:w-64 lg:flex-col"
   const mobileOnlyClass = orchardShell ? "md:hidden" : "lg:hidden"
-  const showConcierge = can("hospitality.operate") && canAccessDepartment("hospitality")
+  const showConcierge = !orchardShell && can("hospitality.operate") && canAccessDepartment("hospitality")
   const conciergeHref = contextualHref(language, "/concierge", pathname)
   const aiHref = contextualHref(language, "/ai-ops", pathname)
   const DesktopSidebar = orchardShell ? OrchardSidebar : Sidebar
