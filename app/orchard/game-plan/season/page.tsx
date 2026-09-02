@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { useEffect, useMemo, useState } from "react"
-import { ArrowRight, CalendarRange, Eye, Search, Sprout } from "lucide-react"
+import { ArrowRight, CalendarRange, ChevronDown, Eye, Search, Sprout } from "lucide-react"
 import { AppLayout } from "@/components/app-layout"
 import { OrchardNavigation } from "@/components/orchard/orchard-navigation"
 import { createBrowserClient } from "@/lib/supabase/client"
@@ -97,15 +97,30 @@ const timelinePosition = (value:string,start:string,end:string) => {
   if (last <= first) return 0
   return Math.max(0,Math.min(100,((dateMs(value)-first)/(last-first))*100))
 }
+const isoWeekStart = (value:string) => {
+  const cursor = new Date(`${value}T12:00:00-04:00`)
+  const day = cursor.getDay() || 7
+  cursor.setDate(cursor.getDate() - day + 1)
+  return cursor
+}
+const dateKey = (date:Date) => `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,"0")}-${String(date.getDate()).padStart(2,"0")}`
 const weekKeys = (start:string,end:string) => {
   const weeks:string[] = []
-  const cursor = new Date(`${start}T12:00:00-04:00`)
+  const cursor = isoWeekStart(start)
   const stop = new Date(`${end}T12:00:00-04:00`)
   while (cursor <= stop) {
-    weeks.push(`${cursor.getFullYear()}-${String(cursor.getMonth()+1).padStart(2,"0")}-${String(cursor.getDate()).padStart(2,"0")}`)
+    weeks.push(dateKey(cursor))
     cursor.setDate(cursor.getDate()+7)
   }
   return weeks
+}
+const isoWeekNumber = (value:string) => {
+  const [year,month,day] = value.split("-").map(Number)
+  const date = new Date(Date.UTC(year,month-1,day))
+  const weekday = date.getUTCDay() || 7
+  date.setUTCDate(date.getUTCDate()+4-weekday)
+  const yearStart = new Date(Date.UTC(date.getUTCFullYear(),0,1))
+  return Math.ceil((((date.getTime()-yearStart.getTime())/86400000)+1)/7)
 }
 const monthKeys = (weeks:string[]) => Array.from(new Set(weeks.map(week=>week.slice(0,7))))
 const monthGroups = (weeks:string[], locale:string) => {
@@ -248,19 +263,22 @@ export default function DietrichSeasonPlanPage() {
             <div className="sticky top-[var(--orchard-nav-height)] z-30 grid border-b border-[var(--orchard-line)] bg-white" style={{gridTemplateColumns:`285px repeat(${Math.max(weeks.length,1)},minmax(28px,1fr))`}}>
               <div className="sticky left-0 z-40 row-span-2 flex items-end border-r border-[var(--orchard-line)] bg-white px-4 py-3 text-[10px] font-semibold uppercase tracking-[.14em] text-muted-foreground">{text.crop}</div>
               {months.map(group=><div key={group.key} className="border-r border-[var(--orchard-line)] px-2 py-2 text-center text-sm font-medium capitalize" style={{gridColumn:`${group.start+2} / span ${group.span}`}}>{group.label}</div>)}
-              {weeks.map((week,index)=><div key={week} className="border-r border-t border-[var(--orchard-line)] py-1.5 text-center text-[9px] tabular-nums text-muted-foreground" style={{gridColumn:index+2}}>{dateLabel(week,locale)}</div>)}
+              {weeks.map((week,index)=><div key={week} className="border-r border-t border-[var(--orchard-line)] py-1.5 text-center text-[10px] font-medium tabular-nums text-muted-foreground" style={{gridColumn:index+2}}>{isoWeekNumber(week)}</div>)}
             </div>
 
             {visibleRows.length===0 ? <div className="px-6 py-12 text-sm text-muted-foreground">{text.noRows}</div> : visibleRows.map(({c,ss})=>{
               const cycleBed = ss.reduce((sum,s)=>sum+(s.planned_bed_m??0),0)
               const cyclePlants = ss.reduce((sum,s)=>sum+(s.planned_plants??0),0)
-              return <section key={c.id} className="border-b border-[var(--orchard-line)] last:border-b-0">
-                <div className="grid bg-[#f6f8f5]" style={{gridTemplateColumns:"285px minmax(0,1fr)"}}>
+              return <details key={c.id} open className="group border-b border-[var(--orchard-line)] last:border-b-0">
+                <summary className="grid cursor-pointer list-none bg-[#f6f8f5] marker:content-none [&::-webkit-details-marker]:hidden" style={{gridTemplateColumns:"285px minmax(0,1fr)"}}>
                   <div className="sticky left-0 z-20 border-r border-[var(--orchard-line)] bg-[#f6f8f5] px-4 py-2.5">
-                    <div className="flex items-center justify-between gap-3"><p className="font-medium">{c.crop_name}{c.variety?` · ${c.variety}`:""}</p><span className="text-[10px] uppercase tracking-[.12em] text-[var(--orchard-green)]">{typeLabel(c.cycle_type,lang)}</span></div>
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex min-w-0 items-center gap-2"><ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-180"/><p className="truncate font-medium">{c.crop_name}{c.variety?` · ${c.variety}`:""}</p></div>
+                      <span className="shrink-0 text-[10px] uppercase tracking-[.12em] text-[var(--orchard-green)]">{typeLabel(c.cycle_type,lang)}</span>
+                    </div>
                   </div>
                   <div className="flex items-center gap-3 px-3 text-xs text-muted-foreground"><span>{ss.length} {text.plantings}</span>{cycleBed>0&&<span>· {cycleBed.toLocaleString(locale,{maximumFractionDigits:1})} m {text.bed}</span>}{cyclePlants>0&&<span>· {cyclePlants.toLocaleString(locale)} {text.plants}</span>}</div>
-                </div>
+                </summary>
 
                 {ss.map(s=>{
                   const fieldDate = c.cycle_type==="transplant" ? (s.planned_transplant_date??s.planned_sow_date) : s.planned_sow_date
@@ -287,7 +305,7 @@ export default function DietrichSeasonPlanPage() {
                     </div>
                   </div>
                 })}
-              </section>
+              </details>
             })}
           </div>
         </div>
