@@ -5,6 +5,8 @@ import { readFileSync } from "node:fs"
 const appLayout = readFileSync(new URL("../components/app-layout.tsx", import.meta.url), "utf8")
 const commandPalette = readFileSync(new URL("../components/object-command-palette.tsx", import.meta.url), "utf8")
 const orchardAiDock = readFileSync(new URL("../components/orchard/orchard-ai-dock.tsx", import.meta.url), "utf8")
+const personaSource = readFileSync(new URL("../lib/os/personas.ts", import.meta.url), "utf8")
+const personaHook = readFileSync(new URL("../lib/hooks/use-os-persona.ts", import.meta.url), "utf8")
 
 test("mobile shell keeps BSFC globally and uses the contextual Orchard mark on Orchard routes", () => {
   assert.match(appLayout, /orchardShell \? "ORCHARD" : "BSFC"/)
@@ -30,6 +32,16 @@ test("mobile shell exposes localized navigation and sign-out labels", () => {
   assert.match(appLayout, /aria-label=\{mobileText\.openNavigation\}/)
   assert.match(appLayout, /aria-label=\{mobileText\.back\}/)
   assert.match(appLayout, /aria-label=\{mobileText\.logout\}/)
+})
+
+test("OS persona labels follow the active locale without changing persona identity", () => {
+  for (const label of ["Operations", "Field operations", "Executive", "Operación", "Operación en terreno", "Dirección", "Betrieb", "Betrieb vor Ort", "Leitung"]) {
+    assert.match(personaSource, new RegExp(label))
+  }
+  assert.match(personaSource, /getOsPersonaLabel\(persona: OsPersonaKey, primaryDomain\?: string \| null, language: OsPersonaLanguage = "es"\)/)
+  assert.match(personaHook, /useLanguage/)
+  assert.match(personaHook, /getOsPersonaLabel\(persona, primaryDomain, language\)/)
+  assert.match(personaSource, /CEO · Hospitality/)
 })
 
 test("global command input has an explicit localized accessible name", () => {
