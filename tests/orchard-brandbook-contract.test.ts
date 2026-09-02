@@ -56,6 +56,7 @@ test("Orchard brand layer encodes the agricultural workspace rules", async () =>
   const source = await readFile("components/orchard/orchard-navigation.tsx", "utf8")
 
   assert.match(source, /data-orchard-navigation/)
+  assert.match(source, /--orchard-nav-height:\s*0px/)
   assert.match(source, /--orchard-green/)
   assert.match(source, /--orchard-green-soft/)
   assert.match(source, /--orchard-canvas/)
@@ -68,33 +69,37 @@ test("Orchard brand layer encodes the agricultural workspace rules", async () =>
   assert.match(source, /border-radius:\s*var\(--orchard-radius\)\s*!important/)
 })
 
-test("Orchard navigation preserves accessible names for primary and menu navigation", async () => {
-  const source = await readFile("components/orchard/orchard-navigation.tsx", "utf8")
+test("Orchard shell uses one accessible contextual sidebar instead of duplicate top navigation", async () => {
+  const sidebar = await readFile("components/orchard/orchard-sidebar.tsx", "utf8")
+  const shell = await readFile("components/app-layout.tsx", "utf8")
+  const brand = await readFile("components/orchard/orchard-navigation.tsx", "utf8")
 
-  assert.match(source, /aria-label=\{item\.label\[locale\]\}/)
-  assert.match(source, /aria-label=\{moreLabel\[locale\]\}/)
+  assert.match(sidebar, /data-orchard-sidebar/)
+  assert.match(sidebar, /aria-current=\{active\?"page":undefined\}/)
+  assert.match(shell, /isOrchardPath/)
+  assert.match(shell, /OrchardSidebar/)
+  assert.doesNotMatch(brand, /<nav data-orchard-navigation/)
 })
 
-test("Dietrich Orchard navigation follows the compact Heirloom-style operating workflow", async () => {
-  const source = await readFile("components/orchard/orchard-navigation.tsx", "utf8")
+test("Dietrich Orchard sidebar follows the compact Heirloom operating workflow", async () => {
+  const source = await readFile("components/orchard/orchard-sidebar.tsx", "utf8")
 
-  assert.match(source, /const primaryItems/)
-  assert.match(source, /en:\s*"Today"/)
-  assert.match(source, /en:\s*"Calendar"/)
-  assert.match(source, /en:\s*"Crop Map"/)
-  assert.match(source, /en:\s*"Nursery"/)
-  assert.match(source, /en:\s*"Tasks"/)
-  assert.match(source, /en:\s*"Harvest"/)
-  assert.match(source, /en:\s*"Crops"/)
-  assert.match(source, /href:\s*"\/orchard\/game-plan\/season"/)
-  assert.match(source, /href:\s*"\/orchard\/crop-map\/overview"/)
-  assert.match(source, /href:\s*"\/orchard\/nursery\/overview"/)
-  assert.match(source, /href:\s*"\/orchard\/work\/week-board"/)
-  assert.match(source, /href:\s*"\/orchard\/harvest\/desk"/)
-  assert.match(source, /href:\s*"\/orchard\/crops"/)
-  assert.match(source, /const moreItems/)
-  assert.match(source, /href:\s*"\/orchard\/game-plan\/overview"/)
-  assert.match(source, /href:\s*"\/orchard\/field"/)
+  assert.match(source, /const seasonItems/)
+  assert.match(source, /en:"Crops"/)
+  assert.match(source, /en:"Game plan"/)
+  assert.match(source, /en:"Crop map"/)
+  assert.match(source, /en:"Seeds & transplants"/)
+  assert.match(source, /en:"Nursery"/)
+  assert.match(source, /en:"Harvests"/)
+  assert.match(source, /en:"Tasks"/)
+  assert.match(source, /href:"\/orchard\/game-plan\/season"/)
+  assert.match(source, /href:"\/orchard\/crop-map\/overview"/)
+  assert.match(source, /href:"\/orchard\/nursery\/overview"/)
+  assert.match(source, /href:"\/orchard\/work\/week-board"/)
+  assert.match(source, /href:"\/orchard\/harvest\/desk"/)
+  assert.match(source, /href:"\/orchard\/crops"/)
+  assert.match(source, /orchard_game_plans/)
+  assert.match(source, /game_plan/)
 })
 
 test("Dietrich Game Plan hub preserves the written plan as a first-class section", async () => {
