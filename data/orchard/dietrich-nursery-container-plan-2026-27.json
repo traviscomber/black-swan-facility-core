@@ -1,0 +1,18 @@
+{
+  "season": "2026/27",
+  "scope": "32 physically reconciled field plantings; 22 transplant successions",
+  "source": "Dietrich Nursery & Transplant Chart + Crop Chart, reconciled against authenticated Heirloom Nursery projection",
+  "status": "reconciled_projection_not_observed",
+  "containers": [
+    { "container": "128-cell tray", "max_projected": 12, "total_usage": 28, "current_in_use": 0 },
+    { "container": "72-cell tray", "max_projected": 16, "total_usage": 19, "current_in_use": 0 },
+    { "container": "4-inch pot", "max_projected": 256, "total_usage": 256, "current_in_use": 0 },
+    { "container": "6-inch pot", "max_projected": 128, "total_usage": 128, "current_in_use": 0 },
+    { "container": "Open tray", "max_projected": 1, "total_usage": 1, "current_in_use": 0 }
+  ],
+  "notes": [
+    "These are planning projections, not observed nursery occupancy.",
+    "The 6-inch pot total reconciles to 128 using the workbook cucumber rates and the operational 20% security factor inferred from the validated plan; the Lebanese Crop Chart security source cell remains anomalous and is not overwritten.",
+    "Observed germination remains unavailable until nursery batches record seeds_sown and emerged_count."
+  ]
+}
