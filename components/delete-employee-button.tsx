@@ -15,9 +15,9 @@ interface DeleteEmployeeButtonProps {
 }
 
 const COPY = {
-  en: { action:"Deactivate", title:"Deactivate", description:"The person will stop appearing as active, but the record will be retained for traceability. It can be reactivated from Edit.", cancel:"Cancel", updating:"Updating…", failed:"Could not deactivate", done:"Person deactivated", doneDescription:"remains in history but is no longer shown as active." },
-  es: { action:"Desactivar", title:"Desactivar a", description:"La persona dejará de aparecer como activa, pero el registro se conservará para mantener trazabilidad. Puede reactivarse desde Editar.", cancel:"Cancelar", updating:"Actualizando…", failed:"No fue posible desactivar", done:"Persona desactivada", doneDescription:"se mantiene en el historial, pero ya no figura como activa." },
-  de: { action:"Deaktivieren", title:"Deaktivieren", description:"Die Person wird nicht mehr als aktiv angezeigt; der Datensatz bleibt für die Nachverfolgbarkeit erhalten. Er kann über Bearbeiten reaktiviert werden.", cancel:"Abbrechen", updating:"Aktualisieren…", failed:"Deaktivierung nicht möglich", done:"Person deaktiviert", doneDescription:"bleibt im Verlauf erhalten, wird aber nicht mehr als aktiv angezeigt." },
+  en: { action:"Deactivate", title:(name:string)=>`Deactivate ${name}`, description:"The person will stop appearing as active, but the record will be retained for traceability. It can be reactivated from Edit.", cancel:"Cancel", updating:"Updating…", failed:"Could not deactivate", done:"Person deactivated", doneDescription:"remains in history but is no longer shown as active." },
+  es: { action:"Desactivar", title:(name:string)=>`Desactivar a ${name}`, description:"La persona dejará de aparecer como activa, pero el registro se conservará para mantener trazabilidad. Puede reactivarse desde Editar.", cancel:"Cancelar", updating:"Actualizando…", failed:"No fue posible desactivar", done:"Persona desactivada", doneDescription:"se mantiene en el historial, pero ya no figura como activa." },
+  de: { action:"Deaktivieren", title:(name:string)=>`${name} deaktivieren`, description:"Die Person wird nicht mehr als aktiv angezeigt; der Datensatz bleibt für die Nachverfolgbarkeit erhalten. Er kann über Bearbeiten reaktiviert werden.", cancel:"Abbrechen", updating:"Aktualisieren…", failed:"Deaktivierung nicht möglich", done:"Person deaktiviert", doneDescription:"bleibt im Verlauf erhalten, wird aber nicht mehr als aktiv angezeigt." },
 } as const
 
 export function DeleteEmployeeButton({ employeeId, employeeName }: DeleteEmployeeButtonProps) {
@@ -41,14 +41,12 @@ export function DeleteEmployeeButton({ employeeId, employeeName }: DeleteEmploye
     router.refresh()
   }
 
-  const title = language === "es" ? `${copy.title} ${employeeName}` : `${copy.title} ${employeeName}`
-
   return (
     <AlertDialog>
       <AlertDialogTrigger asChild><Button variant="outline" size="sm" className="flex-1 gap-1 bg-transparent text-muted-foreground"><UserMinus className="h-4 w-4" />{copy.action}</Button></AlertDialogTrigger>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>{title}</AlertDialogTitle>
+          <AlertDialogTitle>{copy.title(employeeName)}</AlertDialogTitle>
           <AlertDialogDescription>{copy.description}</AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter><AlertDialogCancel>{copy.cancel}</AlertDialogCancel><AlertDialogAction onClick={handleDeactivate} disabled={isUpdating}>{isUpdating ? copy.updating : copy.action}</AlertDialogAction></AlertDialogFooter>
