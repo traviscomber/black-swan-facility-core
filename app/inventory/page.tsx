@@ -1,6 +1,7 @@
 "use client"
 
 import { Suspense } from "react"
+import { AppLayout } from "@/components/app-layout"
 import { InventoryCommandCenter } from "@/components/inventory/inventory-command-center"
 import { InventoryContent } from "@/components/inventory/inventory-content"
 import { InventoryHealthPanel } from "@/components/inventory/inventory-health-panel"
@@ -20,7 +21,7 @@ export default function InventoryPage() {
   const { language } = useLanguage()
 
   return (
-    <>
+    <AppLayout>
       <InventoryCommandCenter />
       <InventoryHealthPanel />
       <InventoryWorkflowNav />
@@ -30,6 +31,6 @@ export default function InventoryPage() {
       <Suspense fallback={<div className="p-8 text-center text-muted-foreground">{loadingCopy[language]}</div>}>
         <InventoryContent />
       </Suspense>
-    </>
+    </AppLayout>
   )
 }
