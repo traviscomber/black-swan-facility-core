@@ -80,7 +80,7 @@ export const shellTranslations: Record<Language, Record<string, string>> = {
     "shell.global_tools": "Herramientas globales",
     "shell.concierge": "Concierge",
     "shell.ai_ops": "AI Ops",
-    "shell.it_control": "Control IT",
+    "shell.it_control": "Centro de control TI",
     "shell.admin": "Administración",
     "shell.loading_access": "Cargando acceso…",
     "shell.search": "Buscar",
