@@ -2,10 +2,12 @@
 
 import { useEffect, useMemo, useState } from "react"
 import { createClient } from "@/lib/supabase/client"
+import { useLanguage } from "@/lib/hooks/use-language"
 import { getOsPersonaLabel, normalizeOsPersona, type OsPersonaKey } from "@/lib/os/personas"
 
 export function useOsPersona() {
   const supabase = useMemo(() => createClient(), [])
+  const { language } = useLanguage()
   const [persona, setPersona] = useState<OsPersonaKey>("general")
   const [firstName, setFirstName] = useState<string>("")
   const [primaryDomain, setPrimaryDomain] = useState<string | null>(null)
@@ -54,7 +56,7 @@ export function useOsPersona() {
 
   return {
     persona,
-    personaLabel: getOsPersonaLabel(persona, primaryDomain),
+    personaLabel: getOsPersonaLabel(persona, primaryDomain, language),
     firstName,
     primaryDomain,
     startPath,
