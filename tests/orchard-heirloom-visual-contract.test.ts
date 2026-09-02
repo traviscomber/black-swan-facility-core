@@ -45,6 +45,9 @@ test("planned workload graph counts source actions and explicitly refuses fake h
   assert.match(source, /followUp/)
   assert.match(source, /No es una estimación de horas/)
   assert.match(source, /estimated_minutes/)
+  assert.match(source, /weekStart/)
+  assert.match(source, /compactDate/)
+  assert.match(source, /SummaryCell/)
 })
 
 test("capacity view plots simultaneous physical occupancy against canonical capacity", async () => {
@@ -55,6 +58,16 @@ test("capacity view plots simultaneous physical occupancy against canonical capa
   assert.match(source, /a\.planned_start_date<=date&&date<a\.planned_end_date/)
   assert.match(source, /capacity:capacityM/)
   assert.match(source, /Curva de capacidad de temporada/)
+})
+
+test("capacity cockpit explains today, the next field occupancy and the peak", async () => {
+  const source = await readFile("app/orchard/game-plan/capacity/page.tsx", "utf8")
+
+  assert.match(source, /currentMeters/)
+  assert.match(source, /nextStartDate/)
+  assert.match(source, /Próxima ocupación de campo/)
+  assert.match(source, /todayKey<a\.planned_end_date/)
+  assert.match(source, /peakContext/)
 })
 
 test("nursery overview separates reconciled projection from observed evidence", async () => {
