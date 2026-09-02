@@ -5,7 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react"
 import { ArrowLeft, Check, Layers3, LocateFixed, MapPinned, X } from "lucide-react"
 import { AppLayout } from "@/components/app-layout"
 import { OrchardNavigation } from "@/components/orchard/orchard-navigation"
-import { loadOverlayGeoJson, type GeoJsonFeatureCollection } from "@/lib/map/overlay-loader"
+import { loadOverlayGeoJson } from "@/lib/map/overlay-loader"
 import { createBrowserClient } from "@/lib/supabase/client"
 import { useLanguage } from "@/lib/hooks/use-language"
 
@@ -13,12 +13,10 @@ type Locale = "en" | "es" | "de"
 type Plan = { id:string; name:string; season:string|null; status:string }
 type GisOverlay = { id:string; name:string; file_url:string; file_type:string|null; is_visible:boolean|null; opacity:number|string|null; updated_at:string|null }
 type OverlayState = "idle" | "loading" | "ready" | "error"
-type LeafletBounds = { isValid:()=>boolean }
-type LeafletLayer = { addTo:(map:LeafletMap)=>LeafletLayer; getBounds?:()=>LeafletBounds }
+type LeafletLayer = { addTo:(map:LeafletMap)=>LeafletLayer }
 type TileLayer = LeafletLayer & { on:(event:string,handler:()=>void)=>TileLayer }
 type LeafletMap = {
   setView:(center:[number,number],zoom:number)=>LeafletMap
-  fitBounds:(bounds:[[number,number],[number,number]],options?:Record<string,unknown>)=>LeafletMap
   addLayer:(layer:LeafletLayer)=>LeafletMap
   removeLayer:(layer:LeafletLayer)=>LeafletMap
   hasLayer:(layer:LeafletLayer)=>boolean
@@ -36,6 +34,7 @@ type RuntimeLeaflet = {
 const LEAFLET_CSS = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
 const ESRI_IMAGERY = "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
 const CORCOVADO_CENTER:[number,number] = [-39.699435,-73.205363]
+const FARM_ZOOM = 16.3
 
 const copy = {
   en:{title:"Farm map",subtitle:"Fundo Corcovado · real GIS",back:"Crop map",layers:"GIS layers",focus:"Focus farm",loading:"Loading real farm map…",error:"The farm map could not be loaded.",baseError:"Satellite imagery could not be loaded.",geometry:"Real GIS overlays",geometryNote:"Field blocks and canonical beds stay in Crop Map until their surveyed geometry is available.",source:"Satellite · Esri World Imagery",season:"Season"},
@@ -59,7 +58,6 @@ export default function OrchardFarmMapPage(){
   const mapRef=useRef<LeafletMap|null>(null)
   const leafletRef=useRef<RuntimeLeaflet|null>(null)
   const layerRefs=useRef<Map<string,LeafletLayer>>(new Map())
-  const coordinateCacheRef=useRef<Map<string,[number,number][]>>(new Map())
   const [plans,setPlans]=useState<Plan[]>([])
   const [overlays,setOverlays]=useState<GisOverlay[]>([])
   const [visibleIds,setVisibleIds]=useState<Set<string>>(new Set())
@@ -105,7 +103,7 @@ export default function OrchardFarmMapPage(){
       const L=module as unknown as RuntimeLeaflet
       if(cancelled||!mapContainerRef.current)return
       leafletRef.current=L
-      const map=L.map(mapContainerRef.current,{zoomControl:false,attributionControl:true,minZoom:4,maxZoom:20}).setView(CORCOVADO_CENTER,16)
+      const map=L.map(mapContainerRef.current,{zoomControl:false,attributionControl:true,minZoom:4,maxZoom:20}).setView(CORCOVADO_CENTER,FARM_ZOOM)
       mapRef.current=map
       L.control.zoom({position:"bottomleft"}).addTo(map)
       const base=L.tileLayer(ESRI_IMAGERY,{maxZoom:20,maxNativeZoom:19,tileSize:256,attribution:"Imagery © Esri and contributors"})
@@ -117,12 +115,12 @@ export default function OrchardFarmMapPage(){
       const initiallyVisible=overlays.filter(row=>visibleIdsRef.current.has(row.id))
       void Promise.all(initiallyVisible.map(row=>loadOverlay(L,map,row))).then(()=>{
         if(cancelled)return
-        fitLoaded(map)
+        focusFarm(map)
         requestAnimationFrame(()=>map.invalidateSize())
         setLoading(false)
       })
     }).catch(()=>{if(!cancelled){setError(text.error);setLoading(false)}})
-    return()=>{cancelled=true;mapRef.current?.remove();mapRef.current=null;leafletRef.current=null;layerRefs.current.clear();coordinateCacheRef.current.clear()}
+    return()=>{cancelled=true;mapRef.current?.remove();mapRef.current=null;leafletRef.current=null;layerRefs.current.clear()}
   },[overlays,text.error])
 
   const loadOverlay=async(L:RuntimeLeaflet,map:LeafletMap,overlay:GisOverlay)=>{
@@ -136,7 +134,6 @@ export default function OrchardFarmMapPage(){
         pointToLayer:(_feature:unknown,latlng:unknown)=>L.circleMarker(latlng,{radius:4.5,color:"#171512",weight:1.5,fillColor:color,fillOpacity:1}),
       })
       layerRefs.current.set(overlay.id,layer)
-      coordinateCacheRef.current.set(overlay.id,collectCoordinates(result.geojson))
       if(visibleIdsRef.current.has(overlay.id))map.addLayer(layer)
       setStates(current=>({...current,[overlay.id]:"ready"}))
     }catch{
@@ -150,19 +147,14 @@ export default function OrchardFarmMapPage(){
     const next=new Set(visibleIdsRef.current);if(willShow)next.add(overlay.id);else next.delete(overlay.id)
     visibleIdsRef.current=next;setVisibleIds(next)
     const layer=layerRefs.current.get(overlay.id)
-    if(!layer&&willShow){void loadOverlay(L,map,overlay).then(()=>fitLoaded(map));return}
+    if(!layer&&willShow){void loadOverlay(L,map,overlay);return}
     if(layer){if(willShow&&!map.hasLayer(layer))map.addLayer(layer);if(!willShow&&map.hasLayer(layer))map.removeLayer(layer)}
   }
 
-  const fitLoaded=(map=mapRef.current)=>{
-    if(!map)return
-    const coordinates=Array.from(coordinateCacheRef.current.entries()).filter(([id])=>visibleIdsRef.current.has(id)).flatMap(([,points])=>points)
-    if(coordinates.length===0){map.setView(CORCOVADO_CENTER,16);return}
-    map.fitBounds(boundsForLeaflet(coordinates),{padding:[70,70],maxZoom:17})
-  }
+  const focusFarm=(map=mapRef.current)=>{map?.setView(CORCOVADO_CENTER,FARM_ZOOM)}
 
   return <AppLayout><OrchardNavigation/><main className="relative h-[100dvh] min-h-[640px] w-full overflow-hidden bg-[#11110f]">
-    <div ref={mapContainerRef} className="absolute inset-0 z-0" aria-label={text.title}/>
+    <div ref={mapContainerRef} className="absolute inset-0 z-0" style={{background:"#11110f"}} aria-label={text.title}/>
     <div className="pointer-events-none absolute inset-x-0 top-0 z-20 flex items-start justify-between gap-3 p-4 sm:p-5">
       <div className="pointer-events-auto flex min-w-0 items-center gap-3 border border-white/15 bg-[#171512]/95 px-3 py-2.5 shadow-2xl backdrop-blur-md sm:px-4">
         <Link href={cropMapHref} className="flex h-9 w-9 shrink-0 items-center justify-center border border-white/10 bg-white/[.04] text-[#e8e5dc] transition hover:bg-white/[.08]" aria-label={text.back}><ArrowLeft className="h-4 w-4"/></Link>
@@ -177,7 +169,7 @@ export default function OrchardFarmMapPage(){
     </aside>:null}
 
     <div className="absolute bottom-5 left-1/2 z-20 flex -translate-x-1/2 items-center gap-1.5 border border-white/15 bg-[#171512]/94 p-1 shadow-2xl backdrop-blur-md">
-      <button type="button" onClick={()=>fitLoaded()} className="flex h-9 items-center gap-2 px-3 text-xs text-[#e8e5dc] hover:bg-white/[.05]"><LocateFixed className="h-4 w-4 text-[#91c9ae]"/>{text.focus}</button><span className="h-5 w-px bg-white/10"/><span className="hidden px-2 text-[10px] uppercase tracking-[.1em] text-[#77726a] sm:block">{text.source}</span>
+      <button type="button" onClick={()=>focusFarm()} className="flex h-9 items-center gap-2 px-3 text-xs text-[#e8e5dc] hover:bg-white/[.05]"><LocateFixed className="h-4 w-4 text-[#91c9ae]"/>{text.focus}</button><span className="h-5 w-px bg-white/10"/><span className="hidden px-2 text-[10px] uppercase tracking-[.1em] text-[#77726a] sm:block">{text.source}</span>
     </div>
 
     {loading?<div className="absolute inset-0 z-10 flex items-center justify-center bg-[#11110f]/65 text-sm text-[#aaa69c] backdrop-blur-[1px]">{text.loading}</div>:null}
@@ -188,16 +180,3 @@ export default function OrchardFarmMapPage(){
 }
 
 function cleanOverlayName(name:string){return name.replace(/^BS_/i,"").replaceAll("_"," ").replace(/\s+/g," ").trim()}
-
-function collectCoordinates(collection:GeoJsonFeatureCollection):[number,number][]{
-  const points:[number,number][]=[]
-  const walk=(value:unknown)=>{if(!Array.isArray(value))return;if(value.length>=2&&typeof value[0]==="number"&&typeof value[1]==="number"){const lng=value[0],lat=value[1];if(Number.isFinite(lng)&&Number.isFinite(lat)&&Math.abs(lng)<=180&&Math.abs(lat)<=90)points.push([lng,lat]);return}for(const child of value)walk(child)}
-  for(const feature of collection.features)walk(feature.geometry?.coordinates)
-  return points
-}
-
-function boundsForLeaflet(points:[number,number][]):[[number,number],[number,number]]{
-  let minLng=points[0][0],maxLng=points[0][0],minLat=points[0][1],maxLat=points[0][1]
-  for(const [lng,lat] of points){minLng=Math.min(minLng,lng);maxLng=Math.max(maxLng,lng);minLat=Math.min(minLat,lat);maxLat=Math.max(maxLat,lat)}
-  return [[minLat,minLng],[maxLat,maxLng]]
-}
