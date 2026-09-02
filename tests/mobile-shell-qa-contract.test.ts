@@ -7,6 +7,8 @@ const commandPalette = readFileSync(new URL("../components/object-command-palett
 const orchardAiDock = readFileSync(new URL("../components/orchard/orchard-ai-dock.tsx", import.meta.url), "utf8")
 const personaSource = readFileSync(new URL("../lib/os/personas.ts", import.meta.url), "utf8")
 const personaHook = readFileSync(new URL("../lib/hooks/use-os-persona.ts", import.meta.url), "utf8")
+const inventoryPage = readFileSync(new URL("../app/inventory/page.tsx", import.meta.url), "utf8")
+const procurementLayout = readFileSync(new URL("../app/procurement/layout.tsx", import.meta.url), "utf8")
 
 test("mobile shell keeps BSFC globally and uses the contextual Orchard mark on Orchard routes", () => {
   assert.match(appLayout, /orchardShell \? "ORCHARD" : "BSFC"/)
@@ -58,4 +60,10 @@ test("Orchard suppresses global assistants and uses its own high-contrast AI doc
   assert.match(orchardAiDock, /text-\[#e7e1d8\]/)
   assert.match(orchardAiDock, /bg-\[#8bcba8\] text-\[#102018\]/)
   assert.doesNotMatch(orchardAiDock, /title: "Asistente IA de Orchard"/)
+})
+
+test("legacy operational hubs cannot escape or pre-render outside the common shell", () => {
+  assert.match(inventoryPage, /<AppLayout>[\s\S]*?<InventoryCommandCenter \/>/)
+  assert.doesNotMatch(procurementLayout, /ProcurementReadinessPanel/)
+  assert.match(procurementLayout, /<AccessGate[\s\S]*?>[\s\S]*?\{children\}[\s\S]*?<\/AccessGate>/)
 })
