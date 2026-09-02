@@ -21,8 +21,8 @@ test("Orchard planting calendar is succession-led, lifecycle phased and Heirloom
   assert.match(source, /Search crops/)
 
   assert.doesNotMatch(source, /orchard_bed_allocations/)
-  assert.doesNotMatch(source, /ScopeMode = "field" \| "all"/)
-  assert.doesNotMatch(source, /Plan de campo/)
-  assert.doesNotMatch(source, /Plan completo/)
+  assert.doesNotMatch(source, /\bScopeMode\b/)
+  assert.doesNotMatch(source, /setScopeMode/)
+  assert.doesNotMatch(source, /setPropagationFilter/)
   assert.doesNotMatch(source, /from "@\/components\/ui\/card"/)
 })
