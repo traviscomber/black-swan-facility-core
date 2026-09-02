@@ -21,10 +21,12 @@ export function OsEntry() {
   const { language } = useLanguage()
   const text = copy[language]
   const panorama = searchParams.get('view') === 'panorama'
+  const areaView = Boolean(searchParams.get('area'))
 
   if (loading) return <div className="p-6 text-sm text-muted-foreground">{text.loading}</div>
 
   const dailyHome = persona === 'field_admin' ? <FieldAdminHome /> : <OsHome />
+  const showDecisionCockpit = !panorama && !areaView && persona !== 'field_admin'
 
   return (
     <div>
@@ -34,7 +36,7 @@ export function OsEntry() {
           <Link href="/os?view=panorama" className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${panorama ? 'bg-background shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>{text.panorama}</Link>
         </div>
       </div>
-      {!panorama && persona !== 'field_admin' && <OsDecisionCockpit />}
+      {showDecisionCockpit && <OsDecisionCockpit />}
       {panorama ? <BigPictureHome /> : dailyHome}
     </div>
   )
