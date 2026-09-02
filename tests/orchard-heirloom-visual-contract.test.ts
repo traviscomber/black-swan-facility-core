@@ -132,7 +132,7 @@ test("Farm Map is a separate real-GIS surface that uses reliable Leaflet raster 
   assert.match(farmMap, /gis_overlays/)
   assert.match(farmMap, /World_Imagery/)
   assert.match(farmMap, /leaflet@1\.9\.4/)
-  assert.match(farmMap, /import\('leaflet'\)/)
+  assert.match(farmMap, /import\(["']leaflet["']\)/)
   assert.match(farmMap, /geoJSON/)
   assert.match(farmMap, /\/orchard\/crop-map\/overview/)
   assert.match(farmMap, /hasta contar con su geometría levantada/)
