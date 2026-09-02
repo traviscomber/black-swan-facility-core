@@ -38,6 +38,7 @@ const CULTIVATED_FAMILY: Record<string, string> = {
   cabbage: "Brassicaceae",
   carrots: "Apiaceae",
   cauliflower: "Brassicaceae",
+  celery: "Apiaceae",
   "cherry tomato (greenhouse)": "Solanaceae",
   "chili pepper": "Solanaceae",
   "chinese cabbage": "Brassicaceae",
@@ -59,6 +60,7 @@ const CULTIVATED_FAMILY: Record<string, string> = {
   "spinach (direct sowing)": "Amaranthaceae",
   "spinach (transplant)": "Amaranthaceae",
   "storage cabbage": "Brassicaceae",
+  "storage potatoes": "Solanaceae",
   "storage squash": "Cucurbitaceae",
   strawberries: "Rosaceae",
   "swiss chard": "Amaranthaceae",
@@ -121,3 +123,15 @@ export function cropFamilyColor(family: string | null | undefined) {
   const tones = family ? FAMILY_TONES[family] : null
   return tones?.[0] ?? DEFAULT_TONES[0]
 }
+
+function cssString(value: string) {
+  return value.replaceAll("\\", "\\\\").replaceAll('"', '\\"')
+}
+
+export const legacyCropIdentityCss = Object.keys(CULTIVATED_FAMILY)
+  .map(cropName => {
+    const color = cropColor(cropName, CULTIVATED_FAMILY[cropName])
+    const selectorName = cssString(cropName)
+    return `body:has([data-orchard-navigation]) main article:has(img[alt="${selectorName}" i]) { border-color:${alpha(color,0.55)} !important; box-shadow:inset 4px 0 0 ${color}; }`
+  })
+  .join("\n")
