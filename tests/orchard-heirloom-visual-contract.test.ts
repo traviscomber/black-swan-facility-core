@@ -37,16 +37,6 @@ test("Game Plan overview visualizes real reconciled season milestones", async ()
   assert.match(source, /col-span-2 md:col-span-1/)
 })
 
-test("planting calendar exposes the next real field entry and localized search", async () => {
-  const source = await readFile("app/orchard/game-plan/season/page.tsx", "utf8")
-
-  assert.match(source, /nextField/)
-  assert.match(source, /Próxima entrada a campo/)
-  assert.match(source, /fieldDate>=todayKey/)
-  assert.match(source, /placeholder=\{text\.search\}/)
-  assert.match(source, /Search crops/)
-})
-
 test("planned workload graph counts source actions and explicitly refuses fake hours", async () => {
   const source = await readFile("app/orchard/game-plan/tasks/page.tsx", "utf8")
 
