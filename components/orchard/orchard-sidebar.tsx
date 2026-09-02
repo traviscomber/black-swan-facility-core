@@ -41,7 +41,7 @@ const seasonItems:NavItem[] = [
   { href:"/orchard/crops/catalog", label:{en:"Crops",es:"Cultivos",de:"Kulturen"}, icon:Sprout, includeChildren:true },
   { href:"/orchard/game-plan/season", label:{en:"Game plan",es:"Plan estratégico",de:"Saisonplan"}, icon:CalendarRange },
   { href:"/orchard/crop-map/overview", label:{en:"Crop map",es:"Mapa de cultivos",de:"Anbaukarte"}, icon:Map, includeChildren:true },
-  { href:"/orchard/nursery", label:{en:"Seeds & transplants",es:"Semillas y trasplantes",de:"Saatgut & Jungpflanzen"}, icon:FlaskConical },
+  { href:"/orchard/game-plan/propagation", label:{en:"Seeds & transplants",es:"Semillas y trasplantes",de:"Saatgut & Jungpflanzen"}, icon:FlaskConical },
   { href:"/orchard/nursery/overview", label:{en:"Nursery",es:"Vivero",de:"Anzucht"}, icon:Sprout },
   { href:"/orchard/harvest/desk", label:{en:"Harvests",es:"Cosechas",de:"Ernten"}, icon:Leaf, includeChildren:true },
   { href:"/orchard/work/week-board", label:{en:"Tasks",es:"Tareas",de:"Aufgaben"}, icon:ClipboardList, includeChildren:true },

@@ -57,3 +57,9 @@ test("Semillas y trasplantes shows gross plan demand before inventory consolidat
   assert.doesNotMatch(source, /quantity_seeds/)
   assert.doesNotMatch(source, /procurementTotals[^\n]*-/)
 })
+
+test("Orchard seeds navigation opens plan demand before shared inventory", () => {
+  const sidebar = readFileSync(new URL("../components/orchard/orchard-sidebar.tsx", import.meta.url), "utf8")
+  assert.match(sidebar, /href:"\/orchard\/game-plan\/propagation"[^\n]*Seeds & transplants/)
+  assert.match(sidebar, /href:"\/orchard\/nursery\/overview"[^\n]*Nursery/)
+})
