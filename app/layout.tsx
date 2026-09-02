@@ -37,14 +37,13 @@ export async function generateMetadata(): Promise<Metadata> {
     applicationName: "Blackswan Facility Core",
     icons: {
       icon: [
-        { url: "/icon-light-32x32.png", media: "(prefers-color-scheme: light)" },
-        { url: "/icon-dark-32x32.png", media: "(prefers-color-scheme: dark)" },
+        { url: "/icon-dark-32x32.png" },
         { url: "/icon.svg", type: "image/svg+xml" },
       ],
       apple: "/apple-icon.png",
     },
     robots: { index: false, follow: false },
-    other: { google: "notranslate" },
+    other: { google: "notranslate", "color-scheme": "dark" },
   }
 }
 
@@ -61,7 +60,14 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
   const documentLanguage = resolveLocale(requestHeaders.get("x-site-locale"))
 
   return (
-    <html lang={documentLanguage} translate="no" className="dark notranslate" suppressHydrationWarning>
+    <html
+      lang={documentLanguage}
+      translate="no"
+      className="dark notranslate"
+      data-theme="dark"
+      style={{ colorScheme: "dark", backgroundColor: "#171512" }}
+      suppressHydrationWarning
+    >
       <body className={`${montserrat.variable} antialiased notranslate`}>
         <ClientProviders>
           {children}
