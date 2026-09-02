@@ -8,7 +8,6 @@ import { OrchardNavigation } from "@/components/orchard/orchard-navigation"
 import { cropColor, cropChipStyle } from "@/lib/orchard/crop-identity"
 import { createBrowserClient } from "@/lib/supabase/client"
 import { useLanguage } from "@/lib/hooks/use-language"
-import { cn } from "@/lib/utils"
 
 type Locale="en"|"es"|"de"
 type Plan={id:string;name:string;season:string|null;status:string}
@@ -19,9 +18,9 @@ type Succession={id:string;crop_cycle_id:string}
 type CycleLabels={direct:string;transplant:string;perennial:string;cover:string}
 
 const copy={
- en:{title:"Crop selection",description:"Choose crops from the canonical Corcovado library, see what is already in the selected season and enter planning without leaving the operating context.",search:"Search crops…",all:"All crops",inPlan:"In this plan",field:"In field",library:"Advanced library",plantings:"plantings",planting:"planting",add:"Add planting",openPlan:"Open plan",empty:"No crops match this view.",season:"Season",direct:"Direct sow",transplant:"Transplant",perennial:"Perennial",cover:"Cover crop",days:"days",canonical:"Corcovado canonical",noVerifiedPhoto:"No verified photo"},
- es:{title:"Selección de cultivos",description:"Elige cultivos desde la biblioteca canónica Corcovado, identifica cuáles ya están en la temporada seleccionada y entra a planificación sin perder el contexto operativo.",search:"Buscar cultivos…",all:"Todos los cultivos",inPlan:"En este plan",field:"En terreno",library:"Biblioteca avanzada",plantings:"plantaciones",planting:"plantación",add:"Agregar plantación",openPlan:"Abrir plan",empty:"No hay cultivos para esta vista.",season:"Temporada",direct:"Siembra directa",transplant:"Trasplante",perennial:"Perenne",cover:"Cobertura",days:"días",canonical:"Canónico Corcovado",noVerifiedPhoto:"Sin foto verificada"},
- de:{title:"Kulturauswahl",description:"Kulturen aus der kanonischen Corcovado-Bibliothek wählen, Saisonbelegung erkennen und direkt in die Planung wechseln.",search:"Kulturen suchen…",all:"Alle Kulturen",inPlan:"In diesem Plan",field:"Im Feld",library:"Erweiterte Bibliothek",plantings:"Pflanzungen",planting:"Pflanzung",add:"Pflanzung hinzufügen",openPlan:"Plan öffnen",empty:"Keine Kulturen entsprechen dieser Ansicht.",season:"Saison",direct:"Direktsaat",transplant:"Verpflanzung",perennial:"Mehrjährig",cover:"Zwischenfrucht",days:"Tage",canonical:"Corcovado kanonisch",noVerifiedPhoto:"Kein verifiziertes Foto"},
+ en:{title:"Crop selection",description:"Choose crops from the canonical Corcovado library, see what is already in the selected season and enter planning without leaving the operating context.",search:"Search crops…",all:"All crops",inPlan:"In this plan",showCatalog:"View full catalog",backToPlan:"Back to current plan",field:"In field",library:"Advanced library",plantings:"plantings",planting:"planting",add:"Add planting",openPlan:"Open plan",empty:"No crops match this view.",season:"Season",direct:"Direct sow",transplant:"Transplant",perennial:"Perennial",cover:"Cover crop",days:"days",canonical:"Corcovado canonical",noVerifiedPhoto:"No verified photo"},
+ es:{title:"Selección de cultivos",description:"Elige cultivos desde la biblioteca canónica Corcovado, identifica cuáles ya están en la temporada seleccionada y entra a planificación sin perder el contexto operativo.",search:"Buscar cultivos…",all:"Todos los cultivos",inPlan:"En este plan",showCatalog:"Ver catálogo completo",backToPlan:"Volver al plan",field:"En terreno",library:"Biblioteca avanzada",plantings:"plantaciones",planting:"plantación",add:"Agregar plantación",openPlan:"Abrir plan",empty:"No hay cultivos para esta vista.",season:"Temporada",direct:"Siembra directa",transplant:"Trasplante",perennial:"Perenne",cover:"Cobertura",days:"días",canonical:"Canónico Corcovado",noVerifiedPhoto:"Sin foto verificada"},
+ de:{title:"Kulturauswahl",description:"Kulturen aus der kanonischen Corcovado-Bibliothek wählen, Saisonbelegung erkennen und direkt in die Planung wechseln.",search:"Kulturen suchen…",all:"Alle Kulturen",inPlan:"In diesem Plan",showCatalog:"Gesamten Katalog anzeigen",backToPlan:"Zurück zum aktuellen Plan",field:"Im Feld",library:"Erweiterte Bibliothek",plantings:"Pflanzungen",planting:"Pflanzung",add:"Pflanzung hinzufügen",openPlan:"Plan öffnen",empty:"Keine Kulturen entsprechen dieser Ansicht.",season:"Saison",direct:"Direktsaat",transplant:"Verpflanzung",perennial:"Mehrjährig",cover:"Zwischenfrucht",days:"Tage",canonical:"Corcovado kanonisch",noVerifiedPhoto:"Kein verifiziertes Foto"},
 } as const
 
 function normalized(value:string){return value.trim().toLowerCase()}
@@ -61,9 +60,12 @@ export default function OrchardCropCatalogPage(){
   <section className="mb-5 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
    <div className="flex flex-1 flex-col gap-2 sm:flex-row sm:items-center">
     <label className="flex min-h-10 w-full max-w-md items-center gap-2 border border-[var(--orchard-line)] bg-[var(--bs-surface-primary)] px-3"><Search className="h-4 w-4 text-muted-foreground"/><span className="sr-only">{text.search}</span><input value={query} onChange={e=>setQuery(e.target.value)} placeholder={text.search} className="h-8 w-full border-0 bg-transparent text-sm outline-none"/></label>
-    <div className="flex items-center gap-1"><button type="button" onClick={()=>setPlanOnly(false)} className={cn("min-h-10 px-3 text-sm",!planOnly?"bg-[var(--orchard-green)] text-white":"text-muted-foreground hover:bg-muted")}>{text.all} · {profiles.length}</button><button type="button" onClick={()=>setPlanOnly(true)} className={cn("min-h-10 px-3 text-sm",planOnly?"bg-[var(--orchard-green)] text-white":"text-muted-foreground hover:bg-muted")}>{text.inPlan} · {countByCrop.size}</button></div>
+    <div className="px-2 text-xs text-muted-foreground">{planOnly?text.inPlan:text.all} · <strong className="font-medium text-foreground">{planOnly?countByCrop.size:profiles.length}</strong></div>
    </div>
-   <div className="text-xs text-muted-foreground">{text.season}: <strong className="font-medium text-foreground">{plan?.season??"—"}</strong></div>
+   <div className="flex flex-wrap items-center justify-between gap-3 sm:justify-end">
+    <div className="text-xs text-muted-foreground">{text.season}: <strong className="font-medium text-foreground">{plan?.season??"—"}</strong></div>
+    <button type="button" aria-expanded={!planOnly} onClick={()=>setPlanOnly(value=>!value)} className="inline-flex min-h-10 items-center border border-[var(--orchard-line)] px-3 text-sm font-medium hover:bg-muted">{planOnly?`${text.showCatalog} · ${profiles.length}`:`${text.backToPlan} · ${countByCrop.size}`}</button>
+   </div>
   </section>
 
   {loading?<div className="py-12 text-sm text-muted-foreground">…</div>:error?<div className="border border-red-400/40 bg-red-950/10 p-4 text-sm">{error}</div>:filtered.length===0?<div className="border border-[var(--orchard-line)] p-10 text-sm text-muted-foreground">{text.empty}</div>:<section className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
