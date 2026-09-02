@@ -9,6 +9,7 @@ const personaSource = readFileSync(new URL("../lib/os/personas.ts", import.meta.
 const personaHook = readFileSync(new URL("../lib/hooks/use-os-persona.ts", import.meta.url), "utf8")
 const inventoryPage = readFileSync(new URL("../app/inventory/page.tsx", import.meta.url), "utf8")
 const procurementLayout = readFileSync(new URL("../app/procurement/layout.tsx", import.meta.url), "utf8")
+const shellTranslations = readFileSync(new URL("../lib/translations/shell.ts", import.meta.url), "utf8")
 
 test("mobile shell keeps BSFC globally and uses the contextual Orchard mark on Orchard routes", () => {
   assert.match(appLayout, /orchardShell \? "ORCHARD" : "BSFC"/)
@@ -66,4 +67,10 @@ test("legacy operational hubs cannot escape or pre-render outside the common she
   assert.match(inventoryPage, /<AppLayout>[\s\S]*?<InventoryCommandCenter \/>/)
   assert.doesNotMatch(procurementLayout, /ProcurementReadinessPanel/)
   assert.match(procurementLayout, /<AccessGate[\s\S]*?>[\s\S]*?\{children\}[\s\S]*?<\/AccessGate>/)
+})
+
+test("places and assets map navigation never leaks a raw translation key", () => {
+  assert.match(shellTranslations, /en:\s*\{[\s\S]*?"nav\.map": "Map"/)
+  assert.match(shellTranslations, /es:\s*\{[\s\S]*?"nav\.map": "Mapa"/)
+  assert.match(shellTranslations, /de:\s*\{[\s\S]*?"nav\.map": "Karte"/)
 })
