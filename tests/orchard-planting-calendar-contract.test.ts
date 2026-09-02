@@ -27,3 +27,24 @@ test("Orchard planting calendar is succession-led, lifecycle phased and Heirloom
   assert.doesNotMatch(source, /setPropagationFilter/)
   assert.doesNotMatch(source, /from "@\/components\/ui\/card"/)
 })
+
+test("Orchard dark brand layer neutralizes legacy light calendar surfaces", async () => {
+  const brand = await readFile("components/orchard/orchard-navigation.tsx", "utf8")
+  assert.match(brand, /bg-\[#f6f8f5\]/)
+  assert.match(brand, /bg-\[#eff1ee\]/)
+  assert.match(brand, /text-\[#657069\]/)
+  assert.match(brand, /#eef1ed/)
+  assert.match(brand, /background-image:none!important/)
+})
+
+test("Seeds and transplants stays a simple plan-first hub", async () => {
+  const hub = await readFile("app/orchard/nursery/page.tsx", "utf8")
+  const advanced = await readFile("app/orchard/nursery/advanced/page.tsx", "utf8")
+  assert.match(hub, /Requerido por el plan/)
+  assert.match(hub, /\/orchard\/game-plan\/propagation/)
+  assert.match(hub, /\/orchard\/nursery\/advanced/)
+  assert.match(hub, /\/orchard\/nursery\/overview/)
+  assert.doesNotMatch(hub, /orchard_seed_lots/)
+  assert.match(advanced, /orchard_seed_lots/)
+  assert.match(advanced, /orchard_nursery_batches/)
+})
