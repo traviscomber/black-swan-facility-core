@@ -107,6 +107,12 @@ test("German global controls use the labels already established inside their mod
   assert.match(adminOverview, /itTitle: "IT-Kontrollzentrum"/)
 })
 
+test("Spanish IT control uses the Administration label consistently", () => {
+  assert.match(shellTranslations, /es: \{[\s\S]*?"shell\.it_control": "Centro de control TI"/)
+  assert.match(component, /es: \{[\s\S]*?title: "Centro de control TI"/)
+  assert.match(adminOverview, /itTitle: "Centro de control TI"/)
+})
+
 test("middleware aligns the IT route with the same admin-or-IT policy", () => {
   assert.match(proxy, /isItControlPath\(pathname\)/)
   assert.match(proxy, /if \(isItControlPath\(pathname\)\) return null/)
