@@ -188,12 +188,20 @@ export function OsDecisionCockpit() {
       {partial && <div className="mt-4 flex items-start gap-2 border border-amber-500/30 bg-amber-500/5 p-3 text-sm text-muted-foreground"><AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" /><span>{text.partial}</span></div>}
       {loading ? <div className="mt-4 flex items-center gap-2 py-6 text-sm text-muted-foreground"><Clock3 className="h-4 w-4" />{text.loading}</div> : items.length === 0 ? (
         <div className="mt-4 flex items-start gap-3 border-b border-border py-5"><CheckCircle2 className="mt-0.5 h-5 w-5 text-emerald-600" /><div><p className="font-medium">{text.empty}</p><p className="mt-1 text-sm text-muted-foreground">{text.emptyDetail}</p></div></div>
-      ) : <div className="divide-y divide-border">{items.map((item) => (
-        <div key={item.key} className="grid gap-3 py-4 md:grid-cols-[1fr_auto] md:items-center">
-          <div className="min-w-0"><p className="font-medium leading-6">{item.title}</p>{item.detail && <p className="mt-1 text-sm text-muted-foreground">{item.detail}</p>}<p className="mt-1 text-sm text-muted-foreground"><span className="font-medium text-foreground/80">{text.why}:</span> {item.why}</p></div>
-          <Link href={item.href} className="inline-flex w-fit items-center gap-2 text-sm font-medium text-primary hover:underline">{item.action}<ArrowRight className="h-4 w-4" /></Link>
-        </div>
-      ))}</div>}
+      ) : <div className="divide-y divide-border">{items.map((item, index) => {
+        const previous = items[index - 1]
+        const repeated = Boolean(previous && previous.domain === item.domain && previous.title === item.title && previous.why === item.why)
+        return (
+          <div key={item.key} className={`grid gap-3 ${repeated ? 'py-2.5' : 'py-4'} md:grid-cols-[1fr_auto] md:items-center`}>
+            <div className="min-w-0">
+              {!repeated && <p className="font-medium leading-6">{item.title}</p>}
+              {item.detail && <p className={repeated ? 'text-sm text-muted-foreground' : 'mt-1 text-sm text-muted-foreground'}>{item.detail}</p>}
+              {!repeated && <p className="mt-1 text-sm text-muted-foreground"><span className="font-medium text-foreground/80">{text.why}:</span> {item.why}</p>}
+            </div>
+            <Link href={item.href} className="inline-flex w-fit items-center gap-2 text-sm font-medium text-primary hover:underline">{item.action}<ArrowRight className="h-4 w-4" /></Link>
+          </div>
+        )
+      })}</div>}
       {!loading && changes.length > 0 && <div className="mt-6 border-t border-border pt-4"><div className="flex items-start gap-2"><Clock3 className="mt-0.5 h-4 w-4 text-muted-foreground" /><div><h2 className="text-sm font-semibold">{text.recent}</h2><p className="mt-1 text-sm text-muted-foreground">{text.recentDescription}</p></div></div><div className="mt-3 flex flex-wrap gap-x-5 gap-y-2">{changes.map((change) => <Link key={change.key} href={change.href} className="text-sm text-muted-foreground hover:text-foreground"><span className="font-semibold text-foreground">{change.value}</span> {change.label}</Link>)}</div></div>}
     </section>
   )
