@@ -12,6 +12,7 @@ type Locale = "en" | "es" | "de"
 type Plan = { id:string; name:string; season:string|null; start_date:string; end_date:string; status:string; objective:string|null }
 type Cycle = { id:string; game_plan_id:string; crop_name:string; variety:string|null; cycle_type:string; planned_start_date:string; target_harvest_date:string|null; status:string; planned_area_sqm:number|null; target_quantity:number|null; target_unit:string|null }
 type Succession = { id:string; crop_cycle_id:string; sequence_no:number; planned_sow_date:string; planned_transplant_date:string|null; planned_first_harvest_date:string|null; planned_last_harvest_date:string|null; planned_area_sqm:number|null; planned_bed_m:number|null; planned_plants:number|null; status:string }
+type Allocation = { crop_succession_id:string }
 
 const copy = {
   en: {
@@ -28,7 +29,7 @@ const copy = {
     fieldToHarvest:"Field → first harvest",
     harvestWindow:"Harvest window",
     advanced:"Edit Game Plan",
-    source:"Canonical dates from the full Game Plan. Physical placement is managed separately in Crop Map.",
+    source:"Canonical dates from the reconciled field plan. Physical placement remains managed in Crop Map.",
     noRows:"No plantings match the current search.",
     today:"Today",
     collapseAll:"Collapse all",
@@ -47,7 +48,7 @@ const copy = {
     fieldToHarvest:"Campo → primera cosecha",
     harvestWindow:"Ventana de cosecha",
     advanced:"Editar Game Plan",
-    source:"Fechas canónicas del Game Plan completo. La ubicación física se gestiona por separado en Crop Map.",
+    source:"Fechas canónicas del plan de campo reconciliado. La ubicación física se sigue gestionando en Crop Map.",
     noRows:"No hay plantaciones para la búsqueda actual.",
     today:"Hoy",
     collapseAll:"Contraer todo",
@@ -66,7 +67,7 @@ const copy = {
     fieldToHarvest:"Feld → erste Ernte",
     harvestWindow:"Erntefenster",
     advanced:"Game Plan bearbeiten",
-    source:"Kanonische Termine aus dem vollständigen Game Plan. Die physische Platzierung wird separat in Crop Map verwaltet.",
+    source:"Kanonische Termine aus dem abgeglichenen Feldplan. Die physische Platzierung bleibt in Crop Map verwaltet.",
     noRows:"Keine Pflanzungen entsprechen der aktuellen Suche.",
     today:"Heute",
     collapseAll:"Alle einklappen",
@@ -145,6 +146,7 @@ export default function DietrichSeasonPlanPage() {
   const [plans,setPlans] = useState<Plan[]>([])
   const [cycles,setCycles] = useState<Cycle[]>([])
   const [successions,setSuccessions] = useState<Succession[]>([])
+  const [allocations,setAllocations] = useState<Allocation[]>([])
   const [loading,setLoading] = useState(true)
   const [query,setQuery] = useState("")
 
@@ -154,11 +156,13 @@ export default function DietrichSeasonPlanPage() {
       supabase.from("orchard_game_plans").select("id,name,season,start_date,end_date,status,objective").order("start_date",{ascending:false}),
       supabase.from("orchard_crop_cycles").select("id,game_plan_id,crop_name,variety,cycle_type,planned_start_date,target_harvest_date,status,planned_area_sqm,target_quantity,target_unit").order("crop_name"),
       supabase.from("orchard_crop_successions").select("id,crop_cycle_id,sequence_no,planned_sow_date,planned_transplant_date,planned_first_harvest_date,planned_last_harvest_date,planned_area_sqm,planned_bed_m,planned_plants,status").order("sequence_no"),
-    ]).then(([p,c,s])=>{
+      supabase.from("orchard_bed_allocations").select("crop_succession_id"),
+    ]).then(([p,c,s,a])=>{
       if (!live) return
       setPlans((p.data??[]) as Plan[])
       setCycles((c.data??[]) as Cycle[])
       setSuccessions((s.data??[]) as Succession[])
+      setAllocations((a.data??[]) as Allocation[])
       setLoading(false)
     })
     return()=>{live=false}
@@ -167,7 +171,9 @@ export default function DietrichSeasonPlanPage() {
   const requested = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("game_plan") : null
   const plan = plans.find(p=>p.id===requested) ?? plans.find(p=>p.status==="active") ?? plans.find(p=>p.status==="draft") ?? plans[0] ?? null
   const scopedCycles = plan ? cycles.filter(c=>c.game_plan_id===plan.id) : []
-  const selectedSuccessions = successions.filter(s=>scopedCycles.some(c=>c.id===s.crop_cycle_id))
+  const allPlanSuccessions = successions.filter(s=>scopedCycles.some(c=>c.id===s.crop_cycle_id))
+  const allocatedSuccessionIds = new Set(allocations.map(a=>a.crop_succession_id))
+  const selectedSuccessions = allPlanSuccessions.filter(s=>allocatedSuccessionIds.has(s.id))
   const selectedIds = new Set(selectedSuccessions.map(s=>s.id))
   const rows = scopedCycles.map(c=>{
     const ss = successions.filter(s=>s.crop_cycle_id===c.id && selectedIds.has(s.id)).sort((a,b)=>a.sequence_no-b.sequence_no)
