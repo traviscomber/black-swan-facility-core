@@ -31,7 +31,7 @@ export default function OrchardCropCatalogPage(){
  const supabase=useMemo(()=>createBrowserClient(),[])
  const {language}=useLanguage();const lang:Locale=language;const text=copy[lang]
  const [plans,setPlans]=useState<Plan[]>([]),[profiles,setProfiles]=useState<CropProfile[]>([]),[photos,setPhotos]=useState<Photo[]>([]),[cycles,setCycles]=useState<Cycle[]>([]),[successions,setSuccessions]=useState<Succession[]>([])
- const [query,setQuery]=useState(""),[planOnly,setPlanOnly]=useState(false),[loading,setLoading]=useState(true),[error,setError]=useState<string|null>(null)
+ const [query,setQuery]=useState(""),[planOnly,setPlanOnly]=useState(true),[loading,setLoading]=useState(true),[error,setError]=useState<string|null>(null)
 
  useEffect(()=>{let live=true;setLoading(true);setError(null);void Promise.all([
   supabase.from("orchard_game_plans").select("id,name,season,status").order("start_date",{ascending:false}),
