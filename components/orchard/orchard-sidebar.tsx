@@ -120,14 +120,14 @@ export function OrchardSidebar({isOpen=true,onClose}:{isOpen?:boolean;onClose?:(
   const logout=async()=>{await supabase.auth.signOut();router.push(`/${language}/auth/login`)}
   const renderItem=(item:NavItem)=>{const Icon=item.icon;const active=itemActive(internalPathname,item);return <Link key={item.href} href={localizedHref(item.href)} onClick={onClose} aria-current={active?"page":undefined} className={cn("flex min-h-10 items-center gap-3 rounded-md px-3 text-sm transition-colors",active?"bg-primary/10 font-medium text-primary":"text-muted-foreground hover:bg-muted hover:text-foreground")}><Icon className="h-4 w-4 shrink-0"/><span className="truncate">{item.label[locale]}</span></Link>}
 
-  return <div data-orchard-sidebar className={cn("fixed inset-y-0 left-0 z-50 flex h-screen w-64 flex-col border-r border-border bg-sidebar text-sidebar-foreground transition-transform duration-300 lg:relative lg:inset-auto lg:z-auto lg:h-full lg:translate-x-0",isOpen?"translate-x-0":"-translate-x-full")}>
+  return <div data-orchard-sidebar className={cn("fixed inset-y-0 left-0 z-50 flex h-screen w-64 flex-col border-r border-border bg-sidebar text-sidebar-foreground transition-transform duration-300 md:relative md:inset-auto md:z-auto md:h-full md:translate-x-0",isOpen?"translate-x-0":"-translate-x-full")}>
     <div className="border-b border-border px-4 py-4">
       <div className="flex items-start justify-between gap-2">
         <Link href={localizedHref("/orchard")} onClick={onClose} className="flex min-w-0 items-center gap-3">
           <img src="/blackswan-logo.png" alt="Black Swan" className="h-9 w-9 shrink-0 object-contain"/>
           <div className="min-w-0"><p className="truncate text-sm font-semibold">{text.farm}</p><p className="mt-0.5 text-[11px] text-muted-foreground">{text.owner}</p></div>
         </Link>
-        <button type="button" onClick={onClose} className="rounded p-1 hover:bg-muted lg:hidden" aria-label="Close"><X className="h-4 w-4"/></button>
+        <button type="button" onClick={onClose} className="rounded p-1 hover:bg-muted md:hidden" aria-label="Close"><X className="h-4 w-4"/></button>
       </div>
       <label className="mt-4 block">
         <span className="mb-1.5 block text-[10px] font-semibold uppercase tracking-[.14em] text-muted-foreground">{text.season}</span>
