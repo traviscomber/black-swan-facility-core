@@ -1,0 +1,8 @@
+Heirloom visual audit checkpoint
+
+- branch based on main dfbfd150a8b5e9824b61b4726f55dde91302fc9e
+- 158/158 OS tests pass
+- both Vercel checks green on head 1e81c1dfe4178d0164ab0a111f33bb9aee77294f
+- no database writes or schema changes
+- preview app authentication prevents visual inspection on the preview origin
+- production visual QA is required immediately after reversible promotion
