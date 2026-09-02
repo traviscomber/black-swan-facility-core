@@ -8,10 +8,17 @@ const navigationLoader = readFileSync(new URL("../lib/os/authorized-navigation-c
 
 test("OS exposes daily operation and Panorama as two views of the same shell", () => {
   assert.match(entry, /searchParams\.get\('view'\) === 'panorama'/)
-  assert.match(entry, /href="\/os"/)
-  assert.match(entry, /href="\/os\?view=panorama"/)
+  assert.match(entry, /const osHref = `\/\$\{language\}\/os`/)
+  assert.match(entry, /href=\{osHref\}/)
+  assert.match(entry, /href=\{`\$\{osHref\}\?view=panorama`\}/)
   assert.match(entry, /panorama \? <BigPictureHome \/>/)
   assert.match(entry, /persona === 'field_admin' \? <FieldAdminHome \/> : <OsHome \/>/)
+})
+
+test("OS normalizes dynamic finance labels without changing canonical hrefs", () => {
+  assert.match(navigationLoader, /'\/accounting\/reports': 'Reportes financieros'/)
+  assert.match(navigationLoader, /presentationLabelsByHref\[item\.href\] \?\? item\.label/)
+  assert.match(navigationLoader, /merged\.set\(item\.key, normalizePresentationLabel\(item\)\)/)
 })
 
 test("Panorama remains capability and RLS scoped instead of persona-authorized", () => {
