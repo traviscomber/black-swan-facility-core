@@ -38,9 +38,10 @@ test("Today is actionable instead of a workspace-only catalog", () => {
   assert.match(source, /America\/Santiago/)
 })
 
-test("area selection is additive and keeps canonical item hrefs", () => {
+test("area selection is additive and keeps canonical item hrefs through locale presentation", () => {
   assert.match(source, /searchParams\.get\('area'\)/)
-  assert.match(source, /href=\{item\.href\}/)
+  assert.match(source, /href=\{withLocale\(item\.href, lang\)\}/)
+  assert.match(source, /function withLocale/)
 })
 
 test("persona is UX-only and never an authorization primitive", () => {

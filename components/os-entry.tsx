@@ -22,6 +22,7 @@ export function OsEntry() {
   const text = copy[language]
   const panorama = searchParams.get('view') === 'panorama'
   const areaView = Boolean(searchParams.get('area'))
+  const osHref = `/${language}/os`
 
   if (loading) return <div className="p-6 text-sm text-muted-foreground">{text.loading}</div>
 
@@ -32,8 +33,8 @@ export function OsEntry() {
     <div>
       <div className="border-b border-border/50 px-4 pt-4 md:px-6">
         <div className="flex w-fit items-center rounded-lg border bg-muted/20 p-1">
-          <Link href="/os" className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${!panorama ? 'bg-background shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>{text.today}</Link>
-          <Link href="/os?view=panorama" className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${panorama ? 'bg-background shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>{text.panorama}</Link>
+          <Link href={osHref} className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${!panorama ? 'bg-background shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>{text.today}</Link>
+          <Link href={`${osHref}?view=panorama`} className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${panorama ? 'bg-background shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>{text.panorama}</Link>
         </div>
       </div>
       {showDecisionCockpit && <OsDecisionCockpit />}
