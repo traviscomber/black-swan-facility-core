@@ -97,3 +97,20 @@ test("propagation exposes complete direct-sow method coverage without inventing 
   assert.equal(ORCHARD_GERMINATION_PLANNING_REFERENCE.operationalStatus, "procurement_planning_fallback")
   assert.match(ORCHARD_GERMINATION_PLANNING_REFERENCE.semantics, /not observed germination/)
 })
+
+test("Today and Field use physical Crop Map reconciliation as their operating boundary", async () => {
+  const today = await readFile("app/orchard/page.tsx", "utf8")
+  const field = await readFile("app/orchard/field/page.tsx", "utf8")
+  for (const source of [today, field]) {
+    assert.match(source, /from\("orchard_bed_allocations"\)/)
+    assert.match(source, /allocatedIds\.has\(s\.id\)/)
+    assert.match(source, /planned_sow_date/)
+    assert.match(source, /planned_transplant_date/)
+    assert.match(source, /planned_first_harvest_date/)
+    assert.doesNotMatch(source, /unsplash\.com/)
+  }
+  assert.match(today, /no work is marked complete automatically/)
+  assert.match(today, /task_assignments/)
+  assert.match(today, /dueToday/)
+  assert.match(field, /A passed date is not an overdue operational task by itself/)
+})
