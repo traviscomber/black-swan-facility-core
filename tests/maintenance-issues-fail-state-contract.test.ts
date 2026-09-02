@@ -10,8 +10,8 @@ const maintenanceDrawer = readFileSync(new URL("../components/maintenance-quick-
 
 test("maintenance load failures do not render zero metrics or an empty queue", () => {
   assert.match(maintenance, /disabled=\{loading\|\|error\}/)
-  assert.match(maintenance, /\{!loading&&!error&&<div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">/)
-  assert.match(maintenance, /\{!loading&&!error&&<Card>/)
+  assert.match(maintenance, /\{!loading&&!error&&<div className="grid grid-cols-2 gap-x-6 gap-y-4 border-y py-4 sm:grid-cols-3 xl:grid-cols-5">/)
+  assert.match(maintenance, /\{!loading&&!error&&<section className="space-y-4">/)
   assert.match(maintenance, /: error\s*\? null\s*: filteredTasks\.length===0/)
 })
 
