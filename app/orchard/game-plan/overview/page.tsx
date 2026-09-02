@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { useEffect, useMemo, useState } from "react"
-import { ArrowRight, BookOpen, BookOpenText, CalendarDays, CalendarRange, ChartNoAxesCombined, CheckCircle2, Leaf, Map, Sprout, Target } from "lucide-react"
+import { ArrowRight, BookOpen, BookOpenText, CalendarDays, CalendarRange, ChartNoAxesCombined, CheckCircle2, Leaf, Map as MapIcon, Sprout, Target } from "lucide-react"
 import { AppLayout } from "@/components/app-layout"
 import { OrchardNavigation } from "@/components/orchard/orchard-navigation"
 import { SeasonPulseChart } from "@/components/orchard/orchard-season-graphics"
@@ -20,7 +20,7 @@ type Section={href:string;icon:typeof Target;title:Record<Locale,string>;descrip
 const sections:Section[]=[
  {href:"/orchard/game-plan/propagation",icon:Sprout,kind:"operate",title:{en:"Sowing & nursery",es:"Siembra y almácigo",de:"Aussaat & Anzucht"},description:{en:"Direct sow methods, nursery propagation and germination evidence.",es:"Métodos de siembra directa, almácigo y evidencia de germinación.",de:"Direktsaat, Anzucht und Keimungsnachweise."}},
  {href:"/orchard/game-plan/tasks",icon:CalendarDays,kind:"operate",title:{en:"Planned work",es:"Labores planificadas",de:"Geplante Arbeit"},description:{en:"Crop Chart follow-ups converted to accountable tasks only on confirmation.",es:"Labores de Crop Chart que sólo se convierten en tareas responsables al confirmar.",de:"Crop-Chart-Folgearbeiten werden erst nach Bestätigung zu Aufgaben."}},
- {href:"/orchard/game-plan/capacity",icon:Map,kind:"operate",title:{en:"Beds & capacity",es:"Camas y capacidad",de:"Beete & Kapazität"},description:{en:"Verified 8-block physical capacity and simultaneous bed-meter occupancy.",es:"Capacidad física verificada de 8 bloques y ocupación simultánea en bed-m.",de:"Verifizierte 8-Block-Kapazität und gleichzeitige Beetmeterbelegung."}},
+ {href:"/orchard/game-plan/capacity",icon:MapIcon,kind:"operate",title:{en:"Beds & capacity",es:"Camas y capacidad",de:"Beete & Kapazität"},description:{en:"Verified 8-block physical capacity and simultaneous bed-meter occupancy.",es:"Capacidad física verificada de 8 bloques y ocupación simultánea en bed-m.",de:"Verifizierte 8-Block-Kapazität und gleichzeitige Beetmeterbelegung."}},
  {href:"/orchard/game-plan/forecast",icon:ChartNoAxesCombined,kind:"operate",title:{en:"Production forecast",es:"Forecast de producción",de:"Produktionsprognose"},description:{en:"Harvest-window availability from the physically reconciled plan.",es:"Disponibilidad por ventanas de cosecha del plan físicamente reconciliado.",de:"Erntefenster-Verfügbarkeit aus dem physisch abgeglichenen Plan."}},
  {href:"/orchard/harvest/desk",icon:Leaf,kind:"operate",title:{en:"Harvest desk",es:"Mesa de cosecha",de:"Erntezentrale"},description:{en:"Planned windows and actual output tied to exact succession lineage.",es:"Ventanas planificadas y producción real ligada a la sucesión exacta.",de:"Planfenster und reale Produktion mit exakter Folgen-Lineage."}},
  {href:"/orchard/game-plan/objectives",icon:Target,kind:"reference",title:{en:"Objectives",es:"Objetivos",de:"Ziele"},description:{en:"Mission and annual objectives preserved from Dietrich's planning system.",es:"Misión y objetivos anuales preservados desde el sistema de Dietrich.",de:"Mission und Jahresziele aus Dietrichs Planungssystem."}},
@@ -47,7 +47,7 @@ export default function DietrichGamePlanOverview(){
  ]).then(([p,c,s,a])=>{if(!live)return;const first=p.error??c.error??s.error??a.error;if(first){setError(first.message);setLoading(false);return}setPlans((p.data??[]) as Plan[]);setCycles((c.data??[]) as Cycle[]);setSuccessions((s.data??[]) as Succession[]);setAllocations((a.data??[]) as Allocation[]);setLoading(false)});return()=>{live=false}},[supabase])
  const requested=typeof window!=="undefined"?new URLSearchParams(window.location.search).get("game_plan"):null
  const plan=plans.find(p=>p.id===requested)??plans.find(p=>p.status==="active")??plans.find(p=>p.status==="draft")??plans[0]??null
- const scopedCycles=plan?cycles.filter(c=>c.game_plan_id===plan.id):[];const cycleById=new Map(scopedCycles.map(c=>[c.id,c]));const scopedSuccessions=successions.filter(s=>cycleById.has(s.crop_cycle_id));const allocatedIds=new Set(allocations.map(a=>a.crop_succession_id));const fieldSuccessions=scopedSuccessions.filter(s=>allocatedIds.has(s.id));const fieldCycleIds=new Set(fieldSuccessions.map(s=>s.crop_cycle_id));const fieldCropNames=new Set([...fieldCycleIds].map(id=>cycleById.get(id)?.crop_name).filter(Boolean))
+ const scopedCycles=plan?cycles.filter(c=>c.game_plan_id===plan.id):[];const cycleById=new globalThis.Map(scopedCycles.map(c=>[c.id,c]));const scopedSuccessions=successions.filter(s=>cycleById.has(s.crop_cycle_id));const allocatedIds=new Set(allocations.map(a=>a.crop_succession_id));const fieldSuccessions=scopedSuccessions.filter(s=>allocatedIds.has(s.id));const fieldCycleIds=new Set(fieldSuccessions.map(s=>s.crop_cycle_id));const fieldCropNames=new Set([...fieldCycleIds].map(id=>cycleById.get(id)?.crop_name).filter(Boolean))
  const href=(path:string)=>`/${language}${path}${plan?`?game_plan=${encodeURIComponent(plan.id)}`:""}`
  const operational=sections.filter(s=>s.kind==="operate"),reference=sections.filter(s=>s.kind==="reference")
  const locale=lang==="es"?"es-CL":lang==="de"?"de-DE":"en-US"
