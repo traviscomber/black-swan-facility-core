@@ -52,20 +52,24 @@ test("every Orchard page mounts the shared navigation and brand layer", async ()
   }
 })
 
-test("Orchard brand layer encodes the agricultural workspace rules", async () => {
+test("Orchard brand layer stays permanently dark while preserving the agricultural workspace rules", async () => {
   const source = await readFile("components/orchard/orchard-navigation.tsx", "utf8")
 
   assert.match(source, /data-orchard-navigation/)
+  assert.match(source, /color-scheme:\s*dark/)
   assert.match(source, /--orchard-nav-height:\s*0px/)
   assert.match(source, /--orchard-green/)
   assert.match(source, /--orchard-green-soft/)
-  assert.match(source, /--orchard-canvas/)
-  assert.match(source, /--bs-surface-primary:\s*#ffffff/)
+  assert.match(source, /--orchard-canvas:\s*#171512/)
+  assert.match(source, /--bs-surface-primary:\s*#2b2722/)
   assert.match(source, /--bs-text-primary:\s*var\(--orchard-ink\)/)
   assert.match(source, /--bs-font-heading/)
   assert.match(source, /--bs-font-body/)
   assert.match(source, /background:\s*var\(--orchard-canvas\)/)
-  assert.match(source, /background:\s*#fff\s*!important/)
+  assert.match(source, /background:\s*var\(--bs-surface-primary\)\s*!important/)
+  assert.doesNotMatch(source, /--orchard-canvas:\s*#f7f8f6/)
+  assert.doesNotMatch(source, /--bs-surface-primary:\s*#ffffff/)
+  assert.doesNotMatch(source, /background:\s*#fff\s*!important/)
   assert.match(source, /border-radius:\s*var\(--orchard-radius\)\s*!important/)
 })
 
@@ -93,6 +97,7 @@ test("Dietrich Orchard sidebar follows the compact Heirloom operating workflow",
   assert.match(source, /en:"Harvests"/)
   assert.match(source, /en:"Tasks"/)
   assert.match(source, /href:"\/orchard\/game-plan\/season"/)
+  assert.match(source, /href:"\/orchard\/game-plan\/propagation"/)
   assert.match(source, /href:"\/orchard\/crop-map\/overview"/)
   assert.match(source, /href:"\/orchard\/nursery\/overview"/)
   assert.match(source, /href:"\/orchard\/work\/week-board"/)
