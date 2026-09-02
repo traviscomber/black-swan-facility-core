@@ -1,1 +1,0 @@
-Placeholder visual pass branch marker.
