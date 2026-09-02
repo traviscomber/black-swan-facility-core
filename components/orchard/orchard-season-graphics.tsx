@@ -65,10 +65,10 @@ export function SeasonPulseChart({ data, language }: { data: SeasonPulsePoint[];
   const text = labels[language]
   return <div className="h-[300px] w-full">
     <ResponsiveContainer width="100%" height="100%">
-      <BarChart data={data} margin={{ top: 16, right: 12, left: -18, bottom: 0 }} barGap={3}>
+      <BarChart data={data} margin={{ top: 16, right: 12, left: 2, bottom: 0 }} barGap={3}>
         <CartesianGrid vertical={false} stroke={palette.grid} />
         <XAxis dataKey="label" tickLine={false} axisLine={false} tick={{ fill: "currentColor", fontSize: 11 }} />
-        <YAxis allowDecimals={false} tickLine={false} axisLine={false} tick={{ fill: "currentColor", fontSize: 11 }} width={32} />
+        <YAxis allowDecimals={false} tickLine={false} axisLine={false} tickMargin={6} tick={{ fill: "currentColor", fontSize: 11 }} width={36} />
         <Tooltip cursor={{ fill: "rgba(128,128,128,.08)" }} content={(props) => <TooltipShell {...props} />} />
         <Legend iconType="square" wrapperStyle={{ fontSize: 11, paddingTop: 10 }} />
         <Bar dataKey="sow" name={text.sow} fill={palette.sow} radius={[2, 2, 0, 0]} />
@@ -83,10 +83,10 @@ export function PlannedWorkloadChart({ data, language }: { data: WorkloadPoint[]
   const text = labels[language]
   return <div className="h-[360px] w-full">
     <ResponsiveContainer width="100%" height="100%">
-      <BarChart data={data} margin={{ top: 16, right: 12, left: -12, bottom: 0 }} barCategoryGap="20%">
+      <BarChart data={data} margin={{ top: 16, right: 12, left: 2, bottom: 0 }} barCategoryGap="20%">
         <CartesianGrid vertical={false} stroke={palette.grid} />
         <XAxis dataKey="label" tickLine={false} axisLine={false} interval={3} tick={{ fill: "currentColor", fontSize: 10 }} />
-        <YAxis allowDecimals={false} tickLine={false} axisLine={false} tick={{ fill: "currentColor", fontSize: 11 }} width={34} />
+        <YAxis allowDecimals={false} tickLine={false} axisLine={false} tickMargin={6} tick={{ fill: "currentColor", fontSize: 11 }} width={38} />
         <Tooltip cursor={{ fill: "rgba(128,128,128,.08)" }} content={(props) => <TooltipShell {...props} suffix={text.actions} />} />
         <Legend iconType="square" wrapperStyle={{ fontSize: 11, paddingTop: 10 }} />
         <Bar dataKey="implantation" name={text.implantation} stackId="work" fill={palette.implantation} />
@@ -100,7 +100,7 @@ export function CapacityCurveChart({ data, language, peakLabel }: { data: Capaci
   const text = labels[language]
   return <div className="h-[330px] w-full">
     <ResponsiveContainer width="100%" height="100%">
-      <AreaChart data={data} margin={{ top: 18, right: 14, left: -4, bottom: 0 }}>
+      <AreaChart data={data} margin={{ top: 18, right: 14, left: 2, bottom: 0 }}>
         <defs>
           <linearGradient id="orchard-capacity-fill" x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%" stopColor={palette.occupancy} stopOpacity={0.42} />
@@ -109,7 +109,7 @@ export function CapacityCurveChart({ data, language, peakLabel }: { data: Capaci
         </defs>
         <CartesianGrid vertical={false} stroke={palette.grid} />
         <XAxis dataKey="label" tickLine={false} axisLine={false} interval={3} tick={{ fill: "currentColor", fontSize: 10 }} />
-        <YAxis tickLine={false} axisLine={false} tick={{ fill: "currentColor", fontSize: 11 }} width={48} />
+        <YAxis tickLine={false} axisLine={false} tickMargin={6} tick={{ fill: "currentColor", fontSize: 11 }} width={50} />
         <Tooltip content={(props) => <TooltipShell {...props} suffix={text.meters} />} />
         <Legend iconType="square" wrapperStyle={{ fontSize: 11, paddingTop: 10 }} />
         <Area type="monotone" dataKey="occupancy" name={text.occupancy} stroke={palette.occupancy} strokeWidth={2} fill="url(#orchard-capacity-fill)" />
