@@ -10,6 +10,9 @@ const personaHook = readFileSync(new URL("../lib/hooks/use-os-persona.ts", impor
 const inventoryPage = readFileSync(new URL("../app/inventory/page.tsx", import.meta.url), "utf8")
 const procurementLayout = readFileSync(new URL("../app/procurement/layout.tsx", import.meta.url), "utf8")
 const shellTranslations = readFileSync(new URL("../lib/translations/shell.ts", import.meta.url), "utf8")
+const maintenancePage = readFileSync(new URL("../app/maintenance/page.tsx", import.meta.url), "utf8")
+const peopleDirectory = readFileSync(new URL("../components/employees-directory-view.tsx", import.meta.url), "utf8")
+const employeeCard = readFileSync(new URL("../components/employee-card.tsx", import.meta.url), "utf8")
 
 test("mobile shell keeps BSFC globally and uses the contextual Orchard mark on Orchard routes", () => {
   assert.match(appLayout, /orchardShell \? "ORCHARD" : "BSFC"/)
@@ -73,4 +76,16 @@ test("places and assets map navigation never leaks a raw translation key", () =>
   assert.match(shellTranslations, /en:\s*\{[\s\S]*?"nav\.map": "Map"/)
   assert.match(shellTranslations, /es:\s*\{[\s\S]*?"nav\.map": "Mapa"/)
   assert.match(shellTranslations, /de:\s*\{[\s\S]*?"nav\.map": "Karte"/)
+})
+
+test("secondary operating surfaces use compact responsive hierarchy and preserve locale", () => {
+  assert.match(maintenancePage, /grid grid-cols-2 gap-x-6 gap-y-4 border-y py-4 sm:grid-cols-3 xl:grid-cols-5/)
+  assert.match(maintenancePage, /const href=\(path:string\)=>`\/\$\{lang\}\$\{path\}`/)
+  assert.match(maintenancePage, /href=\{href\("\/issues"\)\}/)
+  assert.match(maintenancePage, /href=\{href\("\/tasks"\)\}/)
+  assert.match(peopleDirectory, /grid grid-cols-2 gap-x-6 gap-y-4 border-y py-4 sm:grid-cols-3 xl:grid-cols-5/)
+  assert.doesNotMatch(peopleDirectory, /<Card><CardHeader><CardTitle className="text-base">\{copy\.directory\}/)
+  for (const label of ["Role not recorded", "Función pendiente de registrar", "Rolle nicht erfasst", "Historical record", "Registro histórico", "Historischer Datensatz"]) {
+    assert.match(employeeCard, new RegExp(label))
+  }
 })
