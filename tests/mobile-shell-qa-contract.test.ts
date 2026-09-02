@@ -5,8 +5,9 @@ import { readFileSync } from "node:fs"
 const appLayout = readFileSync(new URL("../components/app-layout.tsx", import.meta.url), "utf8")
 const commandPalette = readFileSync(new URL("../components/object-command-palette.tsx", import.meta.url), "utf8")
 
-test("mobile shell keeps the canonical BSFC mark", () => {
-  assert.match(appLayout, />BSFC<\/span>/)
+test("mobile shell keeps BSFC globally and uses the contextual Orchard mark on Orchard routes", () => {
+  assert.match(appLayout, /orchardShell \? "ORCHARD" : "BSFC"/)
+  assert.match(appLayout, /isOrchardPath/)
   assert.doesNotMatch(appLayout, />BFCS<\/span>/)
 })
 
