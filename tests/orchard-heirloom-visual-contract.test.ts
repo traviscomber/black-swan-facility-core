@@ -43,11 +43,10 @@ test("Today and Field count only physical field milestones", async () => {
 
   for (const source of [today, field]) {
     assert.match(source, /cycle_type/)
-    assert.match(source, /c\.cycle_type===\"direct_sow\"/)
-    assert.match(source, /c\.cycle_type===\"transplant\"&&s\.planned_transplant_date/)
+    assert.match(source, /if\(c\.cycle_type===\"direct_sow\"\)events\.push\(\{date:s\.planned_sow_date,kind:\"sow\"/)
+    assert.match(source, /if\(c\.cycle_type===\"transplant\"&&s\.planned_transplant_date\)events\.push\(\{date:s\.planned_transplant_date,kind:\"transplant\"/)
     assert.match(source, /nextBeyond/)
     assert.match(source, /planned_first_harvest_date/)
-    assert.doesNotMatch(source, /events\.push\(\{date:s\.planned_sow_date,kind:\"sow\"/)
   }
   assert.match(today, /Próximo hito físico de campo/)
   assert.match(field, /Próximo hito físico después de este horizonte/)
