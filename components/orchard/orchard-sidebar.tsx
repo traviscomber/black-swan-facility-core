@@ -48,6 +48,7 @@ const seasonItems:NavItem[] = [
 ]
 
 const advancedItems:NavItem[] = [
+  { href:"/orchard/crops", label:{en:"Live crop operations",es:"En terreno",de:"Aktive Kulturen"}, icon:Sprout },
   { href:"/orchard/library", label:{en:"Agronomic library",es:"Biblioteca agronómica",de:"Agronomische Bibliothek"}, icon:BookOpen, includeChildren:true },
   { href:"/orchard/care", label:{en:"Care",es:"Cuidados",de:"Pflege"}, icon:Leaf },
   { href:"/orchard/pests", label:{en:"Plant health",es:"Sanidad",de:"Pflanzengesundheit"}, icon:ShieldAlert },
