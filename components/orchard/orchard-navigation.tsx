@@ -4,6 +4,15 @@ import { usePathname } from "next/navigation"
 import { OrchardAiDock } from "@/components/orchard/orchard-ai-dock"
 import { legacyCropIdentityCss } from "@/lib/orchard/crop-identity"
 
+const ADVANCED_COMPACT_PATHS = new Set([
+  "/orchard/crops",
+  "/orchard/care",
+  "/orchard/pests",
+  "/orchard/soil",
+  "/orchard/equipment",
+  "/orchard/performance",
+])
+
 const ORCHARD_BRAND_CSS = `
 body:has([data-orchard-navigation]) {
   color-scheme: dark;
@@ -154,6 +163,37 @@ body:has([data-orchard-navigation]) main [class*="text-[#425148]"] { color:var(-
 body:has([data-orchard-navigation]) main [class*="text-black"] { color:var(--orchard-ink)!important; }
 body:has([data-orchard-navigation]) main details[data-orchard-season-crop] > div > div[style*="#eef1ed"] { background-image:none!important; }
 body:has([data-orchard-navigation]) main [class*="transition"] { transition-duration:180ms; }
+body:has([data-orchard-advanced-compact]) main section[class*="min-h-"][class*="overflow-hidden"] {
+  min-height:0!important;
+  background:transparent!important;
+  color:var(--orchard-ink)!important;
+  border-top:1px solid var(--orchard-line)!important;
+  border-bottom:1px solid var(--orchard-line)!important;
+}
+body:has([data-orchard-advanced-compact]) main section[class*="min-h-"][class*="overflow-hidden"] > img[class*="absolute"][class*="inset-0"],
+body:has([data-orchard-advanced-compact]) main section[class*="min-h-"][class*="overflow-hidden"] > div[class*="absolute"][class*="inset-0"] {
+  display:none!important;
+}
+body:has([data-orchard-advanced-compact]) main section[class*="min-h-"][class*="overflow-hidden"] > div[class*="relative"][class*="min-h-"] {
+  min-height:0!important;
+  max-width:none!important;
+  padding:20px 0!important;
+  color:var(--orchard-ink)!important;
+}
+body:has([data-orchard-advanced-compact]) main section[class*="min-h-"][class*="overflow-hidden"] [class*="text-white"] {
+  color:var(--orchard-ink)!important;
+}
+body:has([data-orchard-advanced-compact]) main section[class*="min-h-"][class*="overflow-hidden"] > div[class*="absolute"][class*="bottom-"] {
+  position:static!important;
+  display:grid!important;
+  grid-template-columns:repeat(4,minmax(0,1fr))!important;
+  gap:1px!important;
+  margin:0 0 18px!important;
+  background:var(--orchard-line)!important;
+}
+body:has([data-orchard-advanced-compact]) main section[class*="min-h-"][class*="overflow-hidden"] > div[class*="absolute"][class*="bottom-"] > * {
+  background:var(--bs-surface-primary)!important;
+}
 @media (hover:hover) {
   body:has([data-orchard-navigation]) main [data-slot="card"]:hover { border-color:rgba(139,203,168,.24)!important; box-shadow:none!important; }
   body:has([data-orchard-navigation]) main [data-slot="card"] [data-slot="card"]:hover { border-color:transparent!important; }
@@ -164,6 +204,9 @@ body:has([data-orchard-navigation]) main [class*="transition"] { transition-dura
 @media (min-width:1024px) and (max-width:1279px) {
   body:has([data-orchard-navigation]) main div[class*="xl:grid-cols-7"] { grid-template-columns:repeat(4,minmax(0,1fr))!important; }
 }
+@media (max-width:767px) {
+  body:has([data-orchard-advanced-compact]) main section[class*="min-h-"][class*="overflow-hidden"] > div[class*="absolute"][class*="bottom-"] { grid-template-columns:repeat(2,minmax(0,1fr))!important; }
+}
 @media (max-width:639px) {
   body:has([data-orchard-navigation]) { --orchard-radius:12px; --orchard-radius-sm:9px; }
 }
@@ -173,9 +216,11 @@ function internalPath(pathname:string){return pathname.replace(/^\/(en|es|de)(?=
 
 export function OrchardNavigation(){
   const pathname=internalPath(usePathname()||"/")
+  const compactAdvanced=ADVANCED_COMPACT_PATHS.has(pathname)
   return <>
     <style>{`${ORCHARD_BRAND_CSS}\n${legacyCropIdentityCss}`}</style>
     <span data-orchard-navigation hidden aria-hidden="true" />
+    {compactAdvanced?<span data-orchard-advanced-compact hidden aria-hidden="true" />:null}
     <OrchardAiDock hidden={pathname==="/orchard/assistant"}/>
   </>
 }
