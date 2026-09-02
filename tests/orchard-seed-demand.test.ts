@@ -63,8 +63,8 @@ test("ready demands are grouped by unit and never summed across units", () => {
   })
 })
 
-test("Nursery UI is scoped to allocated transplants and uses evidence-safe demand", () => {
-  const source = readFileSync(new URL("../app/orchard/nursery/page.tsx", import.meta.url), "utf8")
+test("Advanced nursery UI is scoped to allocated transplants and uses evidence-safe demand", () => {
+  const source = readFileSync(new URL("../app/orchard/nursery/advanced/page.tsx", import.meta.url), "utf8")
   assert.match(source, /estimateTransplantSeedDemand/)
   assert.match(source, /orchard_bed_allocations/)
   assert.match(source, /cycle_type === "transplant"/)
@@ -73,8 +73,8 @@ test("Nursery UI is scoped to allocated transplants and uses evidence-safe deman
   assert.doesNotMatch(source, /germination_rate_pct[^\n]*:\s*100/)
 })
 
-test("Nursery never auto-fills seeds when transplant demand is incomplete", () => {
-  const source = readFileSync(new URL("../app/orchard/nursery/page.tsx", import.meta.url), "utf8")
+test("Advanced nursery never auto-fills seeds when transplant demand is incomplete", () => {
+  const source = readFileSync(new URL("../app/orchard/nursery/advanced/page.tsx", import.meta.url), "utf8")
   assert.match(source, /estimate\.status === "ready"/)
   assert.match(source, /seeds_sown: outstanding && outstanding > 0 \? outstanding\.toString\(\) : ""/)
   assert.match(source, /text\.incompleteHelp/)
