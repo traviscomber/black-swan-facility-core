@@ -47,6 +47,10 @@ const seasonItems:NavItem[] = [
   { href:"/orchard/work/week-board", label:{en:"Tasks",es:"Tareas",de:"Aufgaben"}, icon:ClipboardList, includeChildren:true },
 ]
 
+const farmItems:NavItem[] = [
+  { href:"/orchard/farm-map", label:{en:"Farm map",es:"Mapa de la granja",de:"Hofkarte"}, icon:Map },
+]
+
 const advancedItems:NavItem[] = [
   { href:"/orchard/crops", label:{en:"Live crop operations",es:"En terreno",de:"Aktive Kulturen"}, icon:Sprout },
   { href:"/orchard/library", label:{en:"Agronomic library",es:"Biblioteca agronómica",de:"Agronomische Bibliothek"}, icon:BookOpen, includeChildren:true },
@@ -146,7 +150,8 @@ export function OrchardSidebar({isOpen=true,onClose}:{isOpen?:boolean;onClose?:(
       <div className="space-y-1">{seasonItems.map(renderItem)}</div>
       <div className="my-4 border-t border-border"/>
       <p className="px-3 pb-1.5 text-[10px] font-semibold tracking-[.14em] text-muted-foreground">{text.myFarm}</p>
-      <details className="group">
+      <div className="space-y-1">{farmItems.map(renderItem)}</div>
+      <details className="group mt-1">
         <summary className="flex min-h-10 cursor-pointer list-none items-center justify-between rounded-md px-3 text-sm text-muted-foreground hover:bg-muted hover:text-foreground marker:content-none [&::-webkit-details-marker]:hidden"><span>{text.more}</span><ChevronDown className="h-4 w-4 transition-transform group-open:rotate-180"/></summary>
         <div className="mt-1 space-y-1 border-l border-border pl-2">{advancedItems.map(renderItem)}</div>
       </details>
