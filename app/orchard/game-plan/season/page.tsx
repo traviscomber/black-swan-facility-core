@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react"
 import { ArrowRight, CalendarRange, ChevronDown, ChevronsUp, Search } from "lucide-react"
 import { AppLayout } from "@/components/app-layout"
 import { OrchardNavigation } from "@/components/orchard/orchard-navigation"
+import { cropColor, cropPhaseStyle } from "@/lib/orchard/crop-identity"
 import { createBrowserClient } from "@/lib/supabase/client"
 import { useLanguage } from "@/lib/hooks/use-language"
 
@@ -13,142 +14,49 @@ type Plan = { id:string; name:string; season:string|null; start_date:string; end
 type Cycle = { id:string; game_plan_id:string; crop_name:string; variety:string|null; cycle_type:string; planned_start_date:string; target_harvest_date:string|null; status:string; planned_area_sqm:number|null; target_quantity:number|null; target_unit:string|null }
 type Succession = { id:string; crop_cycle_id:string; sequence_no:number; planned_sow_date:string; planned_transplant_date:string|null; planned_first_harvest_date:string|null; planned_last_harvest_date:string|null; planned_area_sqm:number|null; planned_bed_m:number|null; planned_plants:number|null; status:string }
 type Allocation = { crop_succession_id:string }
+type CropProfile = { crop_name:string; crop_family:string|null }
 
 const copy = {
   en: {
-    eyebrow:"Dietrich · Season Plan",
-    title:"Planting calendar",
-    description:"Read the reconciled field season as one continuous calendar. Every succession has its own row from sowing through field establishment and harvest.",
-    crop:"Crop / succession",
-    direct:"Direct sow",
-    transplant:"Transplant",
-    plantings:"plantings",
-    bed:"bed",
-    plants:"plants",
-    sowToField:"Sow → field",
-    fieldToHarvest:"Field → first harvest",
-    harvestWindow:"Harvest window",
-    advanced:"Edit Game Plan",
-    source:"Canonical dates from the reconciled field plan. Physical placement remains managed in Crop Map.",
-    noRows:"No plantings match the current search.",
-    today:"Today",
-    collapseAll:"Collapse all",
+    eyebrow:"Dietrich · Season Plan", title:"Planting calendar", description:"Read the reconciled field season as one continuous calendar. Every succession has its own row from sowing through field establishment and harvest.", crop:"Crop / succession", direct:"Direct sow", transplant:"Transplant", plantings:"plantings", bed:"bed", plants:"plants", sowToField:"Sow → field", fieldToHarvest:"Field → first harvest", harvestWindow:"Harvest window", advanced:"Edit Game Plan", source:"Canonical dates from the reconciled field plan. Crop color follows canonical botanical family; phase is expressed by intensity. Physical placement remains managed in Crop Map.", noRows:"No plantings match the current search.", today:"Today", collapseAll:"Collapse all", colorIdentity:"Color = botanical family / crop"
   },
   es: {
-    eyebrow:"Dietrich · Plan de temporada",
-    title:"Calendario de plantación",
-    description:"Lee la temporada reconciliada como un calendario continuo. Cada sucesión tiene su propia fila desde siembra, entrada a campo y cosecha.",
-    crop:"Cultivo / sucesión",
-    direct:"Siembra directa",
-    transplant:"Trasplante",
-    plantings:"plantaciones",
-    bed:"de cama",
-    plants:"plantas",
-    sowToField:"Siembra → campo",
-    fieldToHarvest:"Campo → primera cosecha",
-    harvestWindow:"Ventana de cosecha",
-    advanced:"Editar Game Plan",
-    source:"Fechas canónicas del plan de campo reconciliado. La ubicación física se sigue gestionando en Crop Map.",
-    noRows:"No hay plantaciones para la búsqueda actual.",
-    today:"Hoy",
-    collapseAll:"Contraer todo",
+    eyebrow:"Dietrich · Plan de temporada", title:"Calendario de plantación", description:"Lee la temporada reconciliada como un calendario continuo. Cada sucesión tiene su propia fila desde siembra, entrada a campo y cosecha.", crop:"Cultivo / sucesión", direct:"Siembra directa", transplant:"Trasplante", plantings:"plantaciones", bed:"de cama", plants:"plantas", sowToField:"Siembra → campo", fieldToHarvest:"Campo → primera cosecha", harvestWindow:"Ventana de cosecha", advanced:"Editar Game Plan", source:"Fechas canónicas del plan de campo reconciliado. El color del cultivo sigue su familia botánica canónica y la fase se expresa por intensidad. La ubicación física se sigue gestionando en Crop Map.", noRows:"No hay plantaciones para la búsqueda actual.", today:"Hoy", collapseAll:"Contraer todo", colorIdentity:"Color = familia botánica / cultivo"
   },
   de: {
-    eyebrow:"Dietrich · Saisonplan",
-    title:"Pflanzkalender",
-    description:"Die abgeglichene Feldsaison als durchgehenden Kalender lesen. Jede Folge hat eine eigene Zeile von Aussaat über Feldstart bis Ernte.",
-    crop:"Kultur / Folge",
-    direct:"Direktsaat",
-    transplant:"Verpflanzung",
-    plantings:"Pflanzungen",
-    bed:"Beet",
-    plants:"Pflanzen",
-    sowToField:"Aussaat → Feld",
-    fieldToHarvest:"Feld → erste Ernte",
-    harvestWindow:"Erntefenster",
-    advanced:"Game Plan bearbeiten",
-    source:"Kanonische Termine aus dem abgeglichenen Feldplan. Die physische Platzierung bleibt in Crop Map verwaltet.",
-    noRows:"Keine Pflanzungen entsprechen der aktuellen Suche.",
-    today:"Heute",
-    collapseAll:"Alle einklappen",
+    eyebrow:"Dietrich · Saisonplan", title:"Pflanzkalender", description:"Die abgeglichene Feldsaison als durchgehenden Kalender lesen. Jede Folge hat eine eigene Zeile von Aussaat über Feldstart bis Ernte.", crop:"Kultur / Folge", direct:"Direktsaat", transplant:"Verpflanzung", plantings:"Pflanzungen", bed:"Beet", plants:"Pflanzen", sowToField:"Aussaat → Feld", fieldToHarvest:"Feld → erste Ernte", harvestWindow:"Erntefenster", advanced:"Game Plan bearbeiten", source:"Kanonische Termine aus dem abgeglichenen Feldplan. Kulturfarbe folgt der kanonischen botanischen Familie; die Phase wird über Intensität dargestellt. Die physische Platzierung bleibt in Crop Map verwaltet.", noRows:"Keine Pflanzungen entsprechen der aktuellen Suche.", today:"Heute", collapseAll:"Alle einklappen", colorIdentity:"Farbe = botanische Familie / Kultur"
   },
 } as const
 
 const localeMap: Record<Locale,string> = { en:"en-US", es:"es-CL", de:"de-DE" }
 const dateMs = (value:string) => new Date(`${value}T12:00:00-04:00`).getTime()
-const dateKeyInSantiago = () => {
-  const parts = new Intl.DateTimeFormat("en-US", { timeZone:"America/Santiago", year:"numeric", month:"2-digit", day:"2-digit" }).formatToParts(new Date())
-  const map = Object.fromEntries(parts.map(part => [part.type, part.value]))
-  return `${map.year}-${map.month}-${map.day}`
-}
+const dateKeyInSantiago = () => { const parts = new Intl.DateTimeFormat("en-US", { timeZone:"America/Santiago", year:"numeric", month:"2-digit", day:"2-digit" }).formatToParts(new Date()); const map = Object.fromEntries(parts.map(part => [part.type, part.value])); return `${map.year}-${map.month}-${map.day}` }
 const dateLabel = (value:string|null, locale:string) => value ? new Date(`${value}T12:00:00-04:00`).toLocaleDateString(locale,{day:"2-digit",month:"short",timeZone:"America/Santiago"}) : "—"
 const typeLabel = (value:string, lang:Locale) => value === "direct_sow" ? copy[lang].direct : value === "transplant" ? copy[lang].transplant : value.replaceAll("_"," ")
-const timelinePosition = (value:string,start:string,end:string) => {
-  const first = dateMs(start)
-  const last = dateMs(end)
-  if (last <= first) return 0
-  return Math.max(0,Math.min(100,((dateMs(value)-first)/(last-first))*100))
-}
-const isoWeekStart = (value:string) => {
-  const cursor = new Date(`${value}T12:00:00-04:00`)
-  const day = cursor.getDay() || 7
-  cursor.setDate(cursor.getDate() - day + 1)
-  return cursor
-}
+const timelinePosition = (value:string,start:string,end:string) => { const first = dateMs(start); const last = dateMs(end); if (last <= first) return 0; return Math.max(0,Math.min(100,((dateMs(value)-first)/(last-first))*100)) }
+const isoWeekStart = (value:string) => { const cursor = new Date(`${value}T12:00:00-04:00`); const day = cursor.getDay() || 7; cursor.setDate(cursor.getDate() - day + 1); return cursor }
 const dateKey = (date:Date) => `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,"0")}-${String(date.getDate()).padStart(2,"0")}`
-const weekKeys = (start:string,end:string) => {
-  const weeks:string[] = []
-  const cursor = isoWeekStart(start)
-  const stop = new Date(`${end}T12:00:00-04:00`)
-  while (cursor <= stop) {
-    weeks.push(dateKey(cursor))
-    cursor.setDate(cursor.getDate()+7)
-  }
-  return weeks
-}
-const isoWeekNumber = (value:string) => {
-  const [year,month,day] = value.split("-").map(Number)
-  const date = new Date(Date.UTC(year,month-1,day))
-  const weekday = date.getUTCDay() || 7
-  date.setUTCDate(date.getUTCDate()+4-weekday)
-  const yearStart = new Date(Date.UTC(date.getUTCFullYear(),0,1))
-  return Math.ceil((((date.getTime()-yearStart.getTime())/86400000)+1)/7)
-}
+const weekKeys = (start:string,end:string) => { const weeks:string[] = []; const cursor = isoWeekStart(start); const stop = new Date(`${end}T12:00:00-04:00`); while (cursor <= stop) { weeks.push(dateKey(cursor)); cursor.setDate(cursor.getDate()+7) } return weeks }
+const isoWeekNumber = (value:string) => { const [year,month,day] = value.split("-").map(Number); const date = new Date(Date.UTC(year,month-1,day)); const weekday = date.getUTCDay() || 7; date.setUTCDate(date.getUTCDate()+4-weekday); const yearStart = new Date(Date.UTC(date.getUTCFullYear(),0,1)); return Math.ceil((((date.getTime()-yearStart.getTime())/86400000)+1)/7) }
 const monthKeys = (weeks:string[]) => Array.from(new Set(weeks.map(week=>week.slice(0,7))))
-const monthGroups = (weeks:string[], locale:string) => {
-  const orderedMonths = monthKeys(weeks)
-  const groups:{key:string;label:string;start:number;span:number}[] = []
-  for (let index=0; index<weeks.length; index += 1) {
-    const key = weeks[index].slice(0,7)
-    const previous = groups[groups.length-1]
-    if (previous?.key === key) previous.span += 1
-    else groups.push({ key, label:new Date(`${key}-01T12:00:00-04:00`).toLocaleDateString(locale,{month:"long",timeZone:"America/Santiago"}), start:index, span:1 })
-  }
-  return orderedMonths.map(key=>groups.find(group=>group.key===key)).filter((group): group is {key:string;label:string;start:number;span:number}=>Boolean(group))
-}
+const monthGroups = (weeks:string[], locale:string) => { const orderedMonths = monthKeys(weeks); const groups:{key:string;label:string;start:number;span:number}[] = []; for (let index=0; index<weeks.length; index += 1) { const key = weeks[index].slice(0,7); const previous = groups[groups.length-1]; if (previous?.key === key) previous.span += 1; else groups.push({ key, label:new Date(`${key}-01T12:00:00-04:00`).toLocaleDateString(locale,{month:"long",timeZone:"America/Santiago"}), start:index, span:1 }) } return orderedMonths.map(key=>groups.find(group=>group.key===key)).filter((group): group is {key:string;label:string;start:number;span:number}=>Boolean(group)) }
 const minDate = (values:(string|null|undefined)[]) => values.filter(Boolean).sort()[0] ?? null
 const maxDate = (values:(string|null|undefined)[]) => values.filter(Boolean).sort().at(-1) ?? null
+const normalize = (value:string) => value.trim().toLowerCase()
 
-function Phase({ start, end, timelineStart, timelineEnd, className, label }:{ start:string|null; end:string|null; timelineStart:string; timelineEnd:string; className:string; label:string }) {
+function Phase({ start, end, timelineStart, timelineEnd, style, label }:{ start:string|null; end:string|null; timelineStart:string; timelineEnd:string; style:{backgroundColor:string;borderColor:string}; label:string }) {
   if (!start || !end || end < start) return null
   const left = timelinePosition(start,timelineStart,timelineEnd)
   const right = timelinePosition(end,timelineStart,timelineEnd)
   const width = Math.max(.55,right-left)
-  return <div className={`absolute top-[9px] h-[16px] min-w-px border-y ${className}`} style={{left:`${left}%`,width:`${width}%`}} title={label}/>
+  return <div className="absolute top-[9px] h-[16px] min-w-px border-y" style={{left:`${left}%`,width:`${width}%`,backgroundColor:style.backgroundColor,borderColor:style.borderColor}} title={label}/>
 }
 
 export default function DietrichSeasonPlanPage() {
   const supabase = useMemo(()=>createBrowserClient(),[])
-  const {language} = useLanguage()
-  const lang:Locale = language
-  const text = copy[lang]
-  const locale = localeMap[lang]
-  const [plans,setPlans] = useState<Plan[]>([])
-  const [cycles,setCycles] = useState<Cycle[]>([])
-  const [successions,setSuccessions] = useState<Succession[]>([])
-  const [allocations,setAllocations] = useState<Allocation[]>([])
-  const [loading,setLoading] = useState(true)
-  const [query,setQuery] = useState("")
+  const {language} = useLanguage(); const lang:Locale = language; const text = copy[lang]; const locale = localeMap[lang]
+  const [plans,setPlans] = useState<Plan[]>([]); const [cycles,setCycles] = useState<Cycle[]>([]); const [successions,setSuccessions] = useState<Succession[]>([]); const [allocations,setAllocations] = useState<Allocation[]>([]); const [profiles,setProfiles] = useState<CropProfile[]>([])
+  const [loading,setLoading] = useState(true); const [query,setQuery] = useState("")
 
   useEffect(()=>{
     let live = true
@@ -157,142 +65,48 @@ export default function DietrichSeasonPlanPage() {
       supabase.from("orchard_crop_cycles").select("id,game_plan_id,crop_name,variety,cycle_type,planned_start_date,target_harvest_date,status,planned_area_sqm,target_quantity,target_unit").order("crop_name"),
       supabase.from("orchard_crop_successions").select("id,crop_cycle_id,sequence_no,planned_sow_date,planned_transplant_date,planned_first_harvest_date,planned_last_harvest_date,planned_area_sqm,planned_bed_m,planned_plants,status").order("sequence_no"),
       supabase.from("orchard_bed_allocations").select("crop_succession_id"),
-    ]).then(([p,c,s,a])=>{
-      if (!live) return
-      setPlans((p.data??[]) as Plan[])
-      setCycles((c.data??[]) as Cycle[])
-      setSuccessions((s.data??[]) as Succession[])
-      setAllocations((a.data??[]) as Allocation[])
-      setLoading(false)
-    })
+      supabase.from("orchard_crop_library").select("crop_name,crop_family").eq("is_active",true).eq("classification_scheme","black_swan_canonical").eq("classification_code","fundo_corcovado"),
+    ]).then(([p,c,s,a,l])=>{ if (!live) return; setPlans((p.data??[]) as Plan[]); setCycles((c.data??[]) as Cycle[]); setSuccessions((s.data??[]) as Succession[]); setAllocations((a.data??[]) as Allocation[]); setProfiles((l.data??[]) as CropProfile[]); setLoading(false) })
     return()=>{live=false}
   },[supabase])
 
   const requested = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("game_plan") : null
   const plan = plans.find(p=>p.id===requested) ?? plans.find(p=>p.status==="active") ?? plans.find(p=>p.status==="draft") ?? plans[0] ?? null
+  const familyByCrop = new Map(profiles.map(profile=>[normalize(profile.crop_name),profile.crop_family]))
+  const familyFor = (cropName:string) => familyByCrop.get(normalize(cropName)) ?? null
   const scopedCycles = plan ? cycles.filter(c=>c.game_plan_id===plan.id) : []
   const allPlanSuccessions = successions.filter(s=>scopedCycles.some(c=>c.id===s.crop_cycle_id))
   const allocatedSuccessionIds = new Set(allocations.map(a=>a.crop_succession_id))
   const selectedSuccessions = allPlanSuccessions.filter(s=>allocatedSuccessionIds.has(s.id))
   const selectedIds = new Set(selectedSuccessions.map(s=>s.id))
-  const rows = scopedCycles.map(c=>{
-    const ss = successions.filter(s=>s.crop_cycle_id===c.id && selectedIds.has(s.id)).sort((a,b)=>a.sequence_no-b.sequence_no)
-    return { c, ss }
-  }).filter(row=>row.ss.length>0)
+  const rows = scopedCycles.map(c=>{ const ss = successions.filter(s=>s.crop_cycle_id===c.id && selectedIds.has(s.id)).sort((a,b)=>a.sequence_no-b.sequence_no); return { c, ss } }).filter(row=>row.ss.length>0)
   const visibleRows = rows.filter(({c})=>`${c.crop_name} ${c.variety??""}`.toLowerCase().includes(query.trim().toLowerCase()))
 
   const timelineSuccessions = selectedSuccessions
   const scopeStart = minDate(timelineSuccessions.map(s=>s.planned_sow_date)) ?? plan?.start_date ?? ""
   const scopeEnd = maxDate(timelineSuccessions.map(s=>s.planned_last_harvest_date ?? s.planned_first_harvest_date ?? s.planned_transplant_date ?? s.planned_sow_date)) ?? plan?.end_date ?? scopeStart
-  const weeks = scopeStart && scopeEnd ? weekKeys(scopeStart,scopeEnd) : []
-  const months = monthGroups(weeks,locale)
-  const todayKey = dateKeyInSantiago()
-  const todayVisible = Boolean(scopeStart && scopeEnd && todayKey >= scopeStart && todayKey <= scopeEnd)
-  const todayLeft = todayVisible ? timelinePosition(todayKey,scopeStart,scopeEnd) : 0
-  const bedMeters = selectedSuccessions.reduce((sum,s)=>sum+(s.planned_bed_m??0),0)
-  const plantCount = selectedSuccessions.reduce((sum,s)=>sum+(s.planned_plants??0),0)
-  const directCount = selectedSuccessions.filter(s=>scopedCycles.find(c=>c.id===s.crop_cycle_id)?.cycle_type==="direct_sow").length
-  const transplantCount = selectedSuccessions.filter(s=>scopedCycles.find(c=>c.id===s.crop_cycle_id)?.cycle_type==="transplant").length
+  const weeks = scopeStart && scopeEnd ? weekKeys(scopeStart,scopeEnd) : []; const months = monthGroups(weeks,locale); const todayKey = dateKeyInSantiago(); const todayVisible = Boolean(scopeStart && scopeEnd && todayKey >= scopeStart && todayKey <= scopeEnd); const todayLeft = todayVisible ? timelinePosition(todayKey,scopeStart,scopeEnd) : 0
+  const bedMeters = selectedSuccessions.reduce((sum,s)=>sum+(s.planned_bed_m??0),0); const plantCount = selectedSuccessions.reduce((sum,s)=>sum+(s.planned_plants??0),0); const directCount = selectedSuccessions.filter(s=>scopedCycles.find(c=>c.id===s.crop_cycle_id)?.cycle_type==="direct_sow").length; const transplantCount = selectedSuccessions.filter(s=>scopedCycles.find(c=>c.id===s.crop_cycle_id)?.cycle_type==="transplant").length
   const advancedHref = `/${language}/orchard/game-plan${plan?`?game_plan=${encodeURIComponent(plan.id)}`:""}`
   const collapseAll = () => document.querySelectorAll<HTMLDetailsElement>("details[data-orchard-season-crop]").forEach(section=>{section.open=false})
 
   return <AppLayout><OrchardNavigation/><main className="w-full pb-16">
-    <header className="border-b border-[var(--orchard-line)] bg-white px-4 py-4 sm:px-6 lg:px-8">
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-        <div className="max-w-3xl">
-          <p className="text-[10px] font-semibold uppercase tracking-[.18em] text-[var(--orchard-green)]">{text.eyebrow}</p>
-          <h1 className="mt-1 text-2xl font-medium tracking-[-.03em] sm:text-3xl">{text.title}</h1><span className="sr-only">Planting Schedule</span>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">{text.description}</p>
-        </div>
-        <div className="flex items-center gap-3 border-l border-[var(--orchard-line)] pl-4">
-          <CalendarRange className="h-4 w-4 text-[var(--orchard-green)]"/>
-          <div><p className="text-[9px] uppercase tracking-[.14em] text-muted-foreground">{plan?.season??"—"}</p><p className="text-sm font-medium">{plan?.name??"—"}</p></div>
-        </div>
-      </div>
-    </header>
+    <header className="border-b border-[var(--orchard-line)] bg-white px-4 py-4 sm:px-6 lg:px-8"><div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between"><div className="max-w-3xl"><p className="text-[10px] font-semibold uppercase tracking-[.18em] text-[var(--orchard-green)]">{text.eyebrow}</p><h1 className="mt-1 text-2xl font-medium tracking-[-.03em] sm:text-3xl">{text.title}</h1><span className="sr-only">Planting Schedule</span><p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">{text.description}</p></div><div className="flex items-center gap-3 border-l border-[var(--orchard-line)] pl-4"><CalendarRange className="h-4 w-4 text-[var(--orchard-green)]"/><div><p className="text-[9px] uppercase tracking-[.14em] text-muted-foreground">{plan?.season??"—"}</p><p className="text-sm font-medium">{plan?.name??"—"}</p></div></div></div></header>
 
     {loading ? <div className="px-6 py-12 text-sm text-muted-foreground">…</div> : <>
-      <section className="border-b border-[var(--orchard-line)] bg-white px-4 py-3 sm:px-6 lg:px-8">
-        <div className="flex items-center">
-          <label className="flex min-h-10 w-full items-center gap-2 border border-[var(--orchard-line)] bg-white px-3 sm:max-w-md">
-            <Search className="h-4 w-4 text-muted-foreground"/><span className="sr-only">Search crops</span>
-            <input value={query} onChange={event=>setQuery(event.target.value)} placeholder="Search crops…" className="h-8 w-full border-0 bg-transparent text-sm outline-none"/>
-          </label>
-        </div>
-        <div className="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-[11px] text-muted-foreground">
-          <span><strong className="font-medium text-foreground">{selectedSuccessions.length}</strong> {text.plantings}</span>
-          <span><strong className="font-medium text-foreground">{directCount}</strong> {text.direct.toLowerCase()}</span>
-          <span><strong className="font-medium text-foreground">{transplantCount}</strong> {text.transplant.toLowerCase()}</span>
-          <span><strong className="font-medium text-foreground">{bedMeters.toLocaleString(locale,{maximumFractionDigits:1})} m</strong> {text.bed}</span>
-          <span><strong className="font-medium text-foreground">{plantCount.toLocaleString(locale)}</strong> {text.plants}</span>
-          <span className="ml-auto hidden flex-wrap items-center gap-3 lg:flex">
-            <span className="inline-flex items-center gap-1.5"><i className="h-2.5 w-5 border border-[#c7d5cb] bg-[#dfe8e2]"/>{text.sowToField}</span>
-            <span className="inline-flex items-center gap-1.5"><i className="h-2.5 w-5 border border-[#8fb39d] bg-[#a8c5b2]"/>{text.fieldToHarvest}</span>
-            <span className="inline-flex items-center gap-1.5"><i className="h-2.5 w-5 border border-[var(--orchard-green)] bg-[var(--orchard-green)]"/>{text.harvestWindow}</span>
-          </span>
-        </div>
-      </section>
+      <section className="border-b border-[var(--orchard-line)] bg-white px-4 py-3 sm:px-6 lg:px-8"><div className="flex items-center"><label className="flex min-h-10 w-full items-center gap-2 border border-[var(--orchard-line)] bg-white px-3 sm:max-w-md"><Search className="h-4 w-4 text-muted-foreground"/><span className="sr-only">Search crops</span><input value={query} onChange={event=>setQuery(event.target.value)} placeholder="Search crops…" className="h-8 w-full border-0 bg-transparent text-sm outline-none"/></label></div><div className="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-[11px] text-muted-foreground"><span><strong className="font-medium text-foreground">{selectedSuccessions.length}</strong> {text.plantings}</span><span><strong className="font-medium text-foreground">{directCount}</strong> {text.direct.toLowerCase()}</span><span><strong className="font-medium text-foreground">{transplantCount}</strong> {text.transplant.toLowerCase()}</span><span><strong className="font-medium text-foreground">{bedMeters.toLocaleString(locale,{maximumFractionDigits:1})} m</strong> {text.bed}</span><span><strong className="font-medium text-foreground">{plantCount.toLocaleString(locale)}</strong> {text.plants}</span><span className="ml-auto hidden items-center gap-2 lg:inline-flex"><i className="h-2.5 w-5 bg-[#66736a]"/><span>{text.colorIdentity}</span></span></div></section>
 
-      <section className="bg-white">
-        <div className="overflow-x-auto border-b border-[var(--orchard-line)]">
-          <div className="min-w-[1380px]">
-            <div className="sticky top-[var(--orchard-nav-height)] z-30 grid border-b border-[var(--orchard-line)] bg-white" style={{gridTemplateColumns:`285px repeat(${Math.max(weeks.length,1)},minmax(28px,1fr))`}}>
-              <div className="sticky left-0 z-40 row-span-2 flex min-h-[72px] flex-col items-start justify-between border-r border-[var(--orchard-line)] bg-white px-4 py-2.5">
-                <button type="button" onClick={collapseAll} className="inline-flex min-h-8 items-center gap-1.5 bg-[#eff1ee] px-3 text-[10px] font-semibold uppercase tracking-[.11em] text-[#657069] transition-colors hover:bg-[#e5e9e4]" aria-label={text.collapseAll}><ChevronsUp className="h-3.5 w-3.5"/>{text.collapseAll}</button>
-                <span className="text-[10px] font-semibold uppercase tracking-[.14em] text-muted-foreground">{text.crop}</span>
-              </div>
-              {months.map(group=><div key={group.key} className="border-r border-[var(--orchard-line)] px-2 py-2 text-center text-sm font-medium capitalize" style={{gridColumn:`${group.start+2} / span ${group.span}`}}>{group.label}</div>)}
-              {weeks.map((week,index)=><div key={week} className="border-r border-t border-[var(--orchard-line)] py-1.5 text-center text-[10px] font-medium tabular-nums text-muted-foreground" style={{gridColumn:index+2}}>{isoWeekNumber(week)}</div>)}
-            </div>
+      <section className="bg-white"><div className="overflow-x-auto border-b border-[var(--orchard-line)]"><div className="min-w-[1380px]">
+        <div className="sticky top-[var(--orchard-nav-height)] z-30 grid border-b border-[var(--orchard-line)] bg-white" style={{gridTemplateColumns:`285px repeat(${Math.max(weeks.length,1)},minmax(28px,1fr))`}}><div className="sticky left-0 z-40 row-span-2 flex min-h-[72px] flex-col items-start justify-between border-r border-[var(--orchard-line)] bg-white px-4 py-2.5"><button type="button" onClick={collapseAll} className="inline-flex min-h-8 items-center gap-1.5 bg-[#eff1ee] px-3 text-[10px] font-semibold uppercase tracking-[.11em] text-[#657069] transition-colors hover:bg-[#e5e9e4]" aria-label={text.collapseAll}><ChevronsUp className="h-3.5 w-3.5"/>{text.collapseAll}</button><span className="text-[10px] font-semibold uppercase tracking-[.14em] text-muted-foreground">{text.crop}</span></div>{months.map(group=><div key={group.key} className="border-r border-[var(--orchard-line)] px-2 py-2 text-center text-sm font-medium capitalize" style={{gridColumn:`${group.start+2} / span ${group.span}`}}>{group.label}</div>)}{weeks.map((week,index)=><div key={week} className="border-r border-t border-[var(--orchard-line)] py-1.5 text-center text-[10px] font-medium tabular-nums text-muted-foreground" style={{gridColumn:index+2}}>{isoWeekNumber(week)}</div>)}</div>
 
-            {visibleRows.length===0 ? <div className="px-6 py-12 text-sm text-muted-foreground">{text.noRows}</div> : visibleRows.map(({c,ss})=>{
-              const cycleBed = ss.reduce((sum,s)=>sum+(s.planned_bed_m??0),0)
-              const cyclePlants = ss.reduce((sum,s)=>sum+(s.planned_plants??0),0)
-              return <details key={c.id} data-orchard-season-crop open className="group border-b border-[var(--orchard-line)] last:border-b-0">
-                <summary className="grid cursor-pointer list-none bg-[#f6f8f5] marker:content-none [&::-webkit-details-marker]:hidden" style={{gridTemplateColumns:"285px minmax(0,1fr)"}}>
-                  <div className="sticky left-0 z-20 border-r border-[var(--orchard-line)] bg-[#f6f8f5] px-4 py-2.5">
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="flex min-w-0 items-center gap-2"><ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-180"/><p className="truncate font-medium">{c.crop_name}{c.variety?` · ${c.variety}`:""}</p></div>
-                      <span className="shrink-0 text-[10px] uppercase tracking-[.12em] text-[var(--orchard-green)]">{typeLabel(c.cycle_type,lang)}</span>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3 px-3 text-xs text-muted-foreground"><span>{ss.length} {text.plantings}</span>{cycleBed>0&&<span>· {cycleBed.toLocaleString(locale,{maximumFractionDigits:1})} m {text.bed}</span>}{cyclePlants>0&&<span>· {cyclePlants.toLocaleString(locale)} {text.plants}</span>}</div>
-                </summary>
+        {visibleRows.length===0 ? <div className="px-6 py-12 text-sm text-muted-foreground">{text.noRows}</div> : visibleRows.map(({c,ss})=>{ const cycleBed = ss.reduce((sum,s)=>sum+(s.planned_bed_m??0),0); const cyclePlants = ss.reduce((sum,s)=>sum+(s.planned_plants??0),0); const family = familyFor(c.crop_name); const identityColor = cropColor(c.crop_name,family); return <details key={c.id} data-orchard-season-crop open className="group border-b border-[var(--orchard-line)] last:border-b-0">
+          <summary className="grid cursor-pointer list-none bg-[#f6f8f5] marker:content-none [&::-webkit-details-marker]:hidden" style={{gridTemplateColumns:"285px minmax(0,1fr)",boxShadow:`inset 4px 0 0 ${identityColor}`}}><div className="sticky left-0 z-20 border-r border-[var(--orchard-line)] bg-[#f6f8f5] px-4 py-2.5"><div className="flex items-center justify-between gap-3"><div className="flex min-w-0 items-center gap-2"><ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-180"/><span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{backgroundColor:identityColor}}/><p className="truncate font-medium">{c.crop_name}{c.variety?` · ${c.variety}`:""}</p></div><span className="shrink-0 text-[10px] uppercase tracking-[.12em]" style={{color:identityColor}}>{typeLabel(c.cycle_type,lang)}</span></div></div><div className="flex items-center gap-3 px-3 text-xs text-muted-foreground"><span>{ss.length} {text.plantings}</span>{cycleBed>0&&<span>· {cycleBed.toLocaleString(locale,{maximumFractionDigits:1})} m {text.bed}</span>}{cyclePlants>0&&<span>· {cyclePlants.toLocaleString(locale)} {text.plants}</span>}</div></summary>
 
-                {ss.map(s=>{
-                  const fieldDate = c.cycle_type==="transplant" ? (s.planned_transplant_date??s.planned_sow_date) : s.planned_sow_date
-                  const firstHarvest = s.planned_first_harvest_date
-                  const lastHarvest = s.planned_last_harvest_date??firstHarvest
-                  const sowLeft = timelinePosition(s.planned_sow_date,scopeStart,scopeEnd)
-                  const fieldLeft = timelinePosition(fieldDate,scopeStart,scopeEnd)
-                  const firstHarvestLeft = firstHarvest?timelinePosition(firstHarvest,scopeStart,scopeEnd):null
-                  const lastHarvestLeft = lastHarvest?timelinePosition(lastHarvest,scopeStart,scopeEnd):null
-                  return <div key={s.id} className="grid min-h-[38px]" style={{gridTemplateColumns:"285px minmax(0,1fr)"}}>
-                    <div className="sticky left-0 z-20 flex items-center border-r border-t border-[var(--orchard-line)] bg-white px-4 py-2">
-                      <span className={`mr-2 h-1.5 w-1.5 rounded-full ${c.cycle_type==="direct_sow"?"bg-[var(--orchard-green)]":"bg-[#91ad9a]"}`}/>
-                      <span className="min-w-0 truncate text-xs"><strong className="font-medium">{c.variety??"Generic"}</strong>{s.planned_bed_m?` · ${s.planned_bed_m.toLocaleString(locale,{maximumFractionDigits:1})} m ${text.bed}`:""} · {s.sequence_no}/{ss.length}</span>
-                    </div>
-                    <div className="relative border-t border-[var(--orchard-line)]" style={{backgroundImage:`repeating-linear-gradient(90deg,transparent 0,transparent calc(100% / ${Math.max(weeks.length,1)} - 1px),#eef1ed calc(100% / ${Math.max(weeks.length,1)} - 1px),#eef1ed calc(100% / ${Math.max(weeks.length,1)}))`}}>
-                      {todayVisible&&<div className="pointer-events-none absolute inset-y-0 z-20 w-px bg-[#b96354]" style={{left:`${todayLeft}%`}} title={text.today}/>} 
-                      {c.cycle_type==="transplant"&&<Phase start={s.planned_sow_date} end={fieldDate} timelineStart={scopeStart} timelineEnd={scopeEnd} className="border-[#c7d5cb] bg-[#dfe8e2]" label={`${text.sowToField}: ${dateLabel(s.planned_sow_date,locale)} → ${dateLabel(fieldDate,locale)}`}/>} 
-                      <Phase start={fieldDate} end={firstHarvest} timelineStart={scopeStart} timelineEnd={scopeEnd} className="border-[#8fb39d] bg-[#a8c5b2]" label={`${text.fieldToHarvest}: ${dateLabel(fieldDate,locale)} → ${dateLabel(firstHarvest,locale)}`}/>
-                      <Phase start={firstHarvest} end={lastHarvest} timelineStart={scopeStart} timelineEnd={scopeEnd} className="border-[var(--orchard-green)] bg-[var(--orchard-green)]" label={`${text.harvestWindow}: ${dateLabel(firstHarvest,locale)} → ${dateLabel(lastHarvest,locale)}`}/>
-                      <span className="absolute top-[10px] z-30 -translate-x-1/2 whitespace-nowrap bg-white/90 px-1 text-[9px] tabular-nums text-[#425148]" style={{left:`${sowLeft}%`}}>{dateLabel(s.planned_sow_date,locale)}</span>
-                      {c.cycle_type==="transplant"&&fieldDate!==s.planned_sow_date&&<span className="absolute top-[10px] z-30 -translate-x-1/2 whitespace-nowrap bg-white/90 px-1 text-[9px] tabular-nums text-[#425148]" style={{left:`${fieldLeft}%`}}>{dateLabel(fieldDate,locale)}</span>}
-                      {firstHarvestLeft!==null&&<span className="absolute top-[10px] z-30 -translate-x-1/2 whitespace-nowrap bg-[#779985] px-1 text-[9px] tabular-nums text-white" style={{left:`${firstHarvestLeft}%`}}>{dateLabel(firstHarvest,locale)}</span>}
-                      {lastHarvestLeft!==null&&lastHarvest!==firstHarvest&&<span className="absolute top-[10px] z-30 -translate-x-full whitespace-nowrap bg-[var(--orchard-green)] px-1 text-[9px] tabular-nums text-white" style={{left:`${lastHarvestLeft}%`}}>{dateLabel(lastHarvest,locale)}</span>}
-                    </div>
-                  </div>
-                })}
-              </details>
-            })}
-          </div>
-        </div>
-      </section>
+          {ss.map(s=>{ const fieldDate = c.cycle_type==="transplant" ? (s.planned_transplant_date??s.planned_sow_date) : s.planned_sow_date; const firstHarvest = s.planned_first_harvest_date; const lastHarvest = s.planned_last_harvest_date??firstHarvest; const sowLeft = timelinePosition(s.planned_sow_date,scopeStart,scopeEnd); const fieldLeft = timelinePosition(fieldDate,scopeStart,scopeEnd); const firstHarvestLeft = firstHarvest?timelinePosition(firstHarvest,scopeStart,scopeEnd):null; const lastHarvestLeft = lastHarvest?timelinePosition(lastHarvest,scopeStart,scopeEnd):null; const nurseryStyle = cropPhaseStyle(c.crop_name,family,"nursery"); const fieldStyle = cropPhaseStyle(c.crop_name,family,"field"); const harvestStyle = cropPhaseStyle(c.crop_name,family,"harvest"); return <div key={s.id} className="grid min-h-[38px]" style={{gridTemplateColumns:"285px minmax(0,1fr)"}}><div className="sticky left-0 z-20 flex items-center border-r border-t border-[var(--orchard-line)] bg-white px-4 py-2"><span className="mr-2 h-1.5 w-1.5 rounded-full" style={{backgroundColor:identityColor}}/><span className="min-w-0 truncate text-xs"><strong className="font-medium">{c.variety??"Generic"}</strong>{s.planned_bed_m?` · ${s.planned_bed_m.toLocaleString(locale,{maximumFractionDigits:1})} m ${text.bed}`:""} · {s.sequence_no}/{ss.length}</span></div><div className="relative border-t border-[var(--orchard-line)]" style={{backgroundImage:`repeating-linear-gradient(90deg,transparent 0,transparent calc(100% / ${Math.max(weeks.length,1)} - 1px),#eef1ed calc(100% / ${Math.max(weeks.length,1)} - 1px),#eef1ed calc(100% / ${Math.max(weeks.length,1)}))`}}>{todayVisible&&<div className="pointer-events-none absolute inset-y-0 z-20 w-px bg-[#b96354]" style={{left:`${todayLeft}%`}} title={text.today}/>} {c.cycle_type==="transplant"&&<Phase start={s.planned_sow_date} end={fieldDate} timelineStart={scopeStart} timelineEnd={scopeEnd} style={nurseryStyle} label={`${text.sowToField}: ${dateLabel(s.planned_sow_date,locale)} → ${dateLabel(fieldDate,locale)}`}/>}<Phase start={fieldDate} end={firstHarvest} timelineStart={scopeStart} timelineEnd={scopeEnd} style={fieldStyle} label={`${text.fieldToHarvest}: ${dateLabel(fieldDate,locale)} → ${dateLabel(firstHarvest,locale)}`}/><Phase start={firstHarvest} end={lastHarvest} timelineStart={scopeStart} timelineEnd={scopeEnd} style={harvestStyle} label={`${text.harvestWindow}: ${dateLabel(firstHarvest,locale)} → ${dateLabel(lastHarvest,locale)}`}/><span className="absolute top-[10px] z-30 -translate-x-1/2 whitespace-nowrap bg-white/90 px-1 text-[9px] tabular-nums text-[#425148]" style={{left:`${sowLeft}%`}}>{dateLabel(s.planned_sow_date,locale)}</span>{c.cycle_type==="transplant"&&fieldDate!==s.planned_sow_date&&<span className="absolute top-[10px] z-30 -translate-x-1/2 whitespace-nowrap bg-white/90 px-1 text-[9px] tabular-nums text-[#425148]" style={{left:`${fieldLeft}%`}}>{dateLabel(fieldDate,locale)}</span>}{firstHarvestLeft!==null&&<span className="absolute top-[10px] z-30 -translate-x-1/2 whitespace-nowrap px-1 text-[9px] tabular-nums text-white" style={{left:`${firstHarvestLeft}%`,backgroundColor:identityColor}}>{dateLabel(firstHarvest,locale)}</span>}{lastHarvestLeft!==null&&lastHarvest!==firstHarvest&&<span className="absolute top-[10px] z-30 -translate-x-full whitespace-nowrap px-1 text-[9px] tabular-nums text-white" style={{left:`${lastHarvestLeft}%`,backgroundColor:identityColor}}>{dateLabel(lastHarvest,locale)}</span>}</div></div> })}
+        </details> })}
+      </div></div></section>
 
-      <div className="mx-4 mt-5 flex flex-col gap-3 border-t border-[var(--bs-divider-subtle)] pt-5 text-xs text-muted-foreground sm:mx-6 sm:flex-row sm:items-center sm:justify-between lg:mx-8">
-        <span>{text.source}</span><Link href={advancedHref} className="inline-flex items-center gap-2 text-sm text-foreground">{text.advanced}<ArrowRight className="h-4 w-4"/></Link>
-      </div>
+      <div className="mx-4 mt-5 flex flex-col gap-3 border-t border-[var(--bs-divider-subtle)] pt-5 text-xs text-muted-foreground sm:mx-6 sm:flex-row sm:items-center sm:justify-between lg:mx-8"><span>{text.source}</span><Link href={advancedHref} className="inline-flex items-center gap-2 text-sm text-foreground">{text.advanced}<ArrowRight className="h-4 w-4"/></Link></div>
     </>}
   </main></AppLayout>
 }
