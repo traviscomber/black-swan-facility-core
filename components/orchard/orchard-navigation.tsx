@@ -48,14 +48,17 @@ const primaryItems: NavItem[] = [
 ]
 
 const gamePlanItems: NavItem[] = [
-  { href: "/orchard/game-plan/overview", label: { en: "Game Plan home", es: "Inicio Game Plan", de: "Game-Plan-Start" }, icon: CalendarRange },
-  { href: "/orchard/game-plan/objectives", label: { en: "Objectives", es: "Objetivos", de: "Ziele" }, icon: Target },
-  { href: "/orchard/game-plan/season", label: { en: "Season plan", es: "Plan de temporada", de: "Saisonplan" }, icon: CalendarRange },
-  { href: "/orchard/game-plan/crop-chart", label: { en: "Crop Chart", es: "Crop Chart", de: "Crop Chart" }, icon: BookOpen },
-  { href: "/orchard/game-plan/propagation", label: { en: "Sowing & nursery", es: "Siembra y almácigo", de: "Aussaat & Anzucht" }, icon: Sprout },
-  { href: "/orchard/game-plan/tasks", label: { en: "Calendar & tasks", es: "Calendario y tareas", de: "Kalender & Aufgaben" }, icon: CalendarDays },
+  { href: "/orchard/game-plan/season", label: { en: "Planting calendar", es: "Calendario de plantación", de: "Pflanzkalender" }, icon: CalendarRange },
+  { href: "/orchard/game-plan/overview", label: { en: "Game Plan overview", es: "Resumen Game Plan", de: "Game-Plan-Übersicht" }, icon: LayoutDashboard },
+  { href: "/orchard/game-plan/tasks", label: { en: "Planned work", es: "Labores planificadas", de: "Geplante Arbeit" }, icon: CalendarDays },
+  { href: "/orchard/game-plan/propagation", label: { en: "Sowing methods", es: "Métodos de siembra", de: "Aussaatmethoden" }, icon: Sprout },
+  { href: "/orchard/nursery/overview", label: { en: "Nursery plan", es: "Plan de almácigo", de: "Anzuchtplan" }, icon: Sprout },
   { href: "/orchard/game-plan/capacity", label: { en: "Beds & capacity", es: "Camas y capacidad", de: "Beete & Kapazität" }, icon: Map },
+  { href: "/orchard/crop-map/overview", label: { en: "Crop Map", es: "Crop Map", de: "Crop Map" }, icon: Map },
   { href: "/orchard/game-plan/forecast", label: { en: "Production forecast", es: "Forecast de producción", de: "Produktionsprognose" }, icon: ChartNoAxesCombined },
+  { href: "/orchard/game-plan/objectives", label: { en: "Objectives", es: "Objetivos", de: "Ziele" }, icon: Target },
+  { href: "/orchard/game-plan/written-plan", label: { en: "Written Game Plan", es: "Written Game Plan", de: "Written Game Plan" }, icon: FileText },
+  { href: "/orchard/game-plan/crop-chart", label: { en: "Crop Chart", es: "Crop Chart", de: "Crop Chart" }, icon: BookOpen },
 ]
 
 const advancedItems: NavItem[] = [
