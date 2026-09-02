@@ -3,10 +3,11 @@ import test from "node:test"
 import { readFileSync } from "node:fs"
 
 const entry = readFileSync(new URL("../components/os-entry.tsx", import.meta.url), "utf8")
+const osHome = readFileSync(new URL("../components/os-home.tsx", import.meta.url), "utf8")
 const panorama = readFileSync(new URL("../components/big-picture-home.tsx", import.meta.url), "utf8")
 const navigationLoader = readFileSync(new URL("../lib/os/authorized-navigation-client.ts", import.meta.url), "utf8")
 
-test("OS exposes daily operation and Panorama as two views of the same shell", () => {
+test("OS exposes daily operation and Panorama as two locale-preserving views of the same shell", () => {
   assert.match(entry, /searchParams\.get\('view'\) === 'panorama'/)
   assert.match(entry, /const osHref = `\/\$\{language\}\/os`/)
   assert.match(entry, /href=\{osHref\}/)
@@ -15,10 +16,17 @@ test("OS exposes daily operation and Panorama as two views of the same shell", (
   assert.match(entry, /persona === 'field_admin' \? <FieldAdminHome \/> : <OsHome \/>/)
 })
 
-test("OS normalizes dynamic finance labels without changing canonical hrefs", () => {
-  assert.match(navigationLoader, /'\/accounting\/reports': 'Reportes financieros'/)
-  assert.match(navigationLoader, /presentationLabelsByHref\[item\.href\] \?\? item\.label/)
-  assert.match(navigationLoader, /merged\.set\(item\.key, normalizePresentationLabel\(item\)\)/)
+test("OS home localizes workspace presentation while keeping canonical navigation neutral", () => {
+  assert.match(osHome, /useLanguage/)
+  assert.match(osHome, /const osHref = `\/\$\{lang\}\/os`/)
+  assert.match(osHome, /function withLocale/)
+  assert.match(osHome, /item\.href === '\/accounting\/reports'/)
+  assert.match(osHome, /Reportes financieros/)
+  assert.match(osHome, /Financial Reports/)
+  assert.match(osHome, /Finanzberichte/)
+  assert.match(osHome, /displayNavLabel\(item, lang\)/)
+  assert.match(navigationLoader, /merged\.set\(item\.key, item\)/)
+  assert.doesNotMatch(navigationLoader, /Reportes financieros/)
 })
 
 test("Panorama remains capability and RLS scoped instead of persona-authorized", () => {
