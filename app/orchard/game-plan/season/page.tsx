@@ -2,19 +2,16 @@
 
 import Link from "next/link"
 import { useEffect, useMemo, useState } from "react"
-import { ArrowRight, CalendarRange, ChevronDown, ChevronsUp, Eye, Search, Sprout } from "lucide-react"
+import { ArrowRight, CalendarRange, ChevronDown, ChevronsUp, Search } from "lucide-react"
 import { AppLayout } from "@/components/app-layout"
 import { OrchardNavigation } from "@/components/orchard/orchard-navigation"
 import { createBrowserClient } from "@/lib/supabase/client"
 import { useLanguage } from "@/lib/hooks/use-language"
 
 type Locale = "en" | "es" | "de"
-type ScopeMode = "field" | "all"
-type PropagationFilter = "all" | "direct_sow" | "transplant"
 type Plan = { id:string; name:string; season:string|null; start_date:string; end_date:string; status:string; objective:string|null }
 type Cycle = { id:string; game_plan_id:string; crop_name:string; variety:string|null; cycle_type:string; planned_start_date:string; target_harvest_date:string|null; status:string; planned_area_sqm:number|null; target_quantity:number|null; target_unit:string|null }
 type Succession = { id:string; crop_cycle_id:string; sequence_no:number; planned_sow_date:string; planned_transplant_date:string|null; planned_first_harvest_date:string|null; planned_last_harvest_date:string|null; planned_area_sqm:number|null; planned_bed_m:number|null; planned_plants:number|null; status:string }
-type Allocation = { crop_succession_id:string }
 
 const copy = {
   en: {
@@ -22,9 +19,6 @@ const copy = {
     title:"Planting calendar",
     description:"Read the reconciled field season as one continuous calendar. Every succession has its own row from sowing through field establishment and harvest.",
     crop:"Crop / succession",
-    fieldScope:"Field plan",
-    fullScope:"Full plan",
-    all:"All",
     direct:"Direct sow",
     transplant:"Transplant",
     plantings:"plantings",
@@ -34,8 +28,8 @@ const copy = {
     fieldToHarvest:"Field → first harvest",
     harvestWindow:"Harvest window",
     advanced:"Edit Game Plan",
-    source:"Canonical dates from the Game Plan. Field-plan scope includes only successions with a physical Crop Map allocation.",
-    noRows:"No plantings match the current filters.",
+    source:"Canonical dates from the full Game Plan. Physical placement is managed separately in Crop Map.",
+    noRows:"No plantings match the current search.",
     today:"Today",
     collapseAll:"Collapse all",
   },
@@ -44,9 +38,6 @@ const copy = {
     title:"Calendario de plantación",
     description:"Lee la temporada reconciliada como un calendario continuo. Cada sucesión tiene su propia fila desde siembra, entrada a campo y cosecha.",
     crop:"Cultivo / sucesión",
-    fieldScope:"Plan de campo",
-    fullScope:"Plan completo",
-    all:"Todas",
     direct:"Siembra directa",
     transplant:"Trasplante",
     plantings:"plantaciones",
@@ -56,8 +47,8 @@ const copy = {
     fieldToHarvest:"Campo → primera cosecha",
     harvestWindow:"Ventana de cosecha",
     advanced:"Editar Game Plan",
-    source:"Fechas canónicas del Game Plan. El alcance de campo incluye sólo sucesiones con asignación física en Crop Map.",
-    noRows:"No hay plantaciones para los filtros actuales.",
+    source:"Fechas canónicas del Game Plan completo. La ubicación física se gestiona por separado en Crop Map.",
+    noRows:"No hay plantaciones para la búsqueda actual.",
     today:"Hoy",
     collapseAll:"Contraer todo",
   },
@@ -66,9 +57,6 @@ const copy = {
     title:"Pflanzkalender",
     description:"Die abgeglichene Feldsaison als durchgehenden Kalender lesen. Jede Folge hat eine eigene Zeile von Aussaat über Feldstart bis Ernte.",
     crop:"Kultur / Folge",
-    fieldScope:"Feldplan",
-    fullScope:"Gesamtplan",
-    all:"Alle",
     direct:"Direktsaat",
     transplant:"Verpflanzung",
     plantings:"Pflanzungen",
@@ -78,8 +66,8 @@ const copy = {
     fieldToHarvest:"Feld → erste Ernte",
     harvestWindow:"Erntefenster",
     advanced:"Game Plan bearbeiten",
-    source:"Kanonische Termine aus dem Game Plan. Der Feldplan enthält nur Folgen mit physischer Crop-Map-Zuweisung.",
-    noRows:"Keine Pflanzungen entsprechen den aktuellen Filtern.",
+    source:"Kanonische Termine aus dem vollständigen Game Plan. Die physische Platzierung wird separat in Crop Map verwaltet.",
+    noRows:"Keine Pflanzungen entsprechen der aktuellen Suche.",
     today:"Heute",
     collapseAll:"Alle einklappen",
   },
@@ -157,11 +145,8 @@ export default function DietrichSeasonPlanPage() {
   const [plans,setPlans] = useState<Plan[]>([])
   const [cycles,setCycles] = useState<Cycle[]>([])
   const [successions,setSuccessions] = useState<Succession[]>([])
-  const [allocations,setAllocations] = useState<Allocation[]>([])
   const [loading,setLoading] = useState(true)
   const [query,setQuery] = useState("")
-  const [scopeMode,setScopeMode] = useState<ScopeMode>("field")
-  const [propagationFilter,setPropagationFilter] = useState<PropagationFilter>("all")
 
   useEffect(()=>{
     let live = true
@@ -169,13 +154,11 @@ export default function DietrichSeasonPlanPage() {
       supabase.from("orchard_game_plans").select("id,name,season,start_date,end_date,status,objective").order("start_date",{ascending:false}),
       supabase.from("orchard_crop_cycles").select("id,game_plan_id,crop_name,variety,cycle_type,planned_start_date,target_harvest_date,status,planned_area_sqm,target_quantity,target_unit").order("crop_name"),
       supabase.from("orchard_crop_successions").select("id,crop_cycle_id,sequence_no,planned_sow_date,planned_transplant_date,planned_first_harvest_date,planned_last_harvest_date,planned_area_sqm,planned_bed_m,planned_plants,status").order("sequence_no"),
-      supabase.from("orchard_bed_allocations").select("crop_succession_id"),
-    ]).then(([p,c,s,a])=>{
+    ]).then(([p,c,s])=>{
       if (!live) return
       setPlans((p.data??[]) as Plan[])
       setCycles((c.data??[]) as Cycle[])
       setSuccessions((s.data??[]) as Succession[])
-      setAllocations((a.data??[]) as Allocation[])
       setLoading(false)
     })
     return()=>{live=false}
@@ -183,21 +166,14 @@ export default function DietrichSeasonPlanPage() {
 
   const requested = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("game_plan") : null
   const plan = plans.find(p=>p.id===requested) ?? plans.find(p=>p.status==="active") ?? plans.find(p=>p.status==="draft") ?? plans[0] ?? null
-  const allocatedSuccessionIds = useMemo(()=>new Set(allocations.map(item=>item.crop_succession_id)),[allocations])
   const scopedCycles = plan ? cycles.filter(c=>c.game_plan_id===plan.id) : []
-  const allPlanSuccessions = successions.filter(s=>scopedCycles.some(c=>c.id===s.crop_cycle_id))
-  const fieldPlanSuccessions = allPlanSuccessions.filter(s=>allocatedSuccessionIds.has(s.id))
-  const selectedSuccessions = scopeMode === "field" ? fieldPlanSuccessions : allPlanSuccessions
+  const selectedSuccessions = successions.filter(s=>scopedCycles.some(c=>c.id===s.crop_cycle_id))
   const selectedIds = new Set(selectedSuccessions.map(s=>s.id))
   const rows = scopedCycles.map(c=>{
     const ss = successions.filter(s=>s.crop_cycle_id===c.id && selectedIds.has(s.id)).sort((a,b)=>a.sequence_no-b.sequence_no)
     return { c, ss }
   }).filter(row=>row.ss.length>0)
-  const visibleRows = rows.filter(({c})=>{
-    const matchesQuery = `${c.crop_name} ${c.variety??""}`.toLowerCase().includes(query.trim().toLowerCase())
-    const matchesType = propagationFilter === "all" || c.cycle_type === propagationFilter
-    return matchesQuery && matchesType
-  })
+  const visibleRows = rows.filter(({c})=>`${c.crop_name} ${c.variety??""}`.toLowerCase().includes(query.trim().toLowerCase()))
 
   const timelineSuccessions = selectedSuccessions
   const scopeStart = minDate(timelineSuccessions.map(s=>s.planned_sow_date)) ?? plan?.start_date ?? ""
@@ -231,29 +207,19 @@ export default function DietrichSeasonPlanPage() {
 
     {loading ? <div className="px-6 py-12 text-sm text-muted-foreground">…</div> : <>
       <section className="border-b border-[var(--orchard-line)] bg-white px-4 py-3 sm:px-6 lg:px-8">
-        <div className="flex flex-col gap-3 xl:flex-row xl:items-center">
-          <label className="flex min-h-10 flex-1 items-center gap-2 border border-[var(--orchard-line)] bg-white px-3 xl:max-w-sm">
+        <div className="flex items-center">
+          <label className="flex min-h-10 w-full items-center gap-2 border border-[var(--orchard-line)] bg-white px-3 sm:max-w-md">
             <Search className="h-4 w-4 text-muted-foreground"/><span className="sr-only">Search crops</span>
             <input value={query} onChange={event=>setQuery(event.target.value)} placeholder="Search crops…" className="h-8 w-full border-0 bg-transparent text-sm outline-none"/>
           </label>
-          <div className="flex flex-wrap items-center gap-1">
-            <button type="button" onClick={()=>setScopeMode("field")} className={`min-h-10 border px-3 text-sm ${scopeMode==="field"?"border-[var(--orchard-green)] bg-[var(--orchard-green-soft)] text-[var(--orchard-green)]":"border-[var(--orchard-line)] bg-white text-muted-foreground"}`}>{text.fieldScope} · {fieldPlanSuccessions.length}</button>
-            <button type="button" onClick={()=>setScopeMode("all")} className={`min-h-10 border px-3 text-sm ${scopeMode==="all"?"border-[var(--orchard-green)] bg-[var(--orchard-green-soft)] text-[var(--orchard-green)]":"border-[var(--orchard-line)] bg-white text-muted-foreground"}`}>{text.fullScope} · {allPlanSuccessions.length}</button>
-          </div>
-          <div className="flex flex-wrap items-center gap-1 xl:border-l xl:border-[var(--orchard-line)] xl:pl-3">
-            <button type="button" onClick={()=>setPropagationFilter("all")} className={`min-h-10 px-3 text-sm ${propagationFilter==="all"?"bg-[var(--orchard-ink)] text-white":"text-muted-foreground"}`}><Eye className="mr-1.5 inline h-4 w-4"/>{text.all}</button>
-            <button type="button" onClick={()=>setPropagationFilter("direct_sow")} className={`min-h-10 px-3 text-sm ${propagationFilter==="direct_sow"?"bg-[var(--orchard-ink)] text-white":"text-muted-foreground"}`}>{text.direct}</button>
-            <button type="button" onClick={()=>setPropagationFilter("transplant")} className={`min-h-10 px-3 text-sm ${propagationFilter==="transplant"?"bg-[var(--orchard-ink)] text-white":"text-muted-foreground"}`}>{text.transplant}</button>
-          </div>
-          <Link href={advancedHref} className="inline-flex min-h-10 items-center justify-center gap-2 bg-[var(--orchard-green)] px-4 text-sm font-medium text-white xl:ml-auto"><Sprout className="h-4 w-4"/>{text.advanced}</Link>
         </div>
-        <div className="mt-3 flex flex-wrap gap-x-5 gap-y-2 text-xs text-muted-foreground">
+        <div className="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-[11px] text-muted-foreground">
           <span><strong className="font-medium text-foreground">{selectedSuccessions.length}</strong> {text.plantings}</span>
           <span><strong className="font-medium text-foreground">{directCount}</strong> {text.direct.toLowerCase()}</span>
           <span><strong className="font-medium text-foreground">{transplantCount}</strong> {text.transplant.toLowerCase()}</span>
           <span><strong className="font-medium text-foreground">{bedMeters.toLocaleString(locale,{maximumFractionDigits:1})} m</strong> {text.bed}</span>
           <span><strong className="font-medium text-foreground">{plantCount.toLocaleString(locale)}</strong> {text.plants}</span>
-          <span className="ml-auto flex flex-wrap items-center gap-3">
+          <span className="ml-auto hidden flex-wrap items-center gap-3 lg:flex">
             <span className="inline-flex items-center gap-1.5"><i className="h-2.5 w-5 border border-[#c7d5cb] bg-[#dfe8e2]"/>{text.sowToField}</span>
             <span className="inline-flex items-center gap-1.5"><i className="h-2.5 w-5 border border-[#8fb39d] bg-[#a8c5b2]"/>{text.fieldToHarvest}</span>
             <span className="inline-flex items-center gap-1.5"><i className="h-2.5 w-5 border border-[var(--orchard-green)] bg-[var(--orchard-green)]"/>{text.harvestWindow}</span>
