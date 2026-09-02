@@ -28,6 +28,7 @@ type Bed = { id:string; plot_id:string; length_m:number|null; status:string }
 type Allocation = { crop_succession_id:string }
 type RevenueTarget = { crop_succession_id:string }
 type TaskRef = { source_id:string|null; source_type:string|null }
+type StepText = { label:string; description:string }
 
 type LiveSnapshot = {
   plans: Plan[]
@@ -47,6 +48,30 @@ const copy = {
   es:{eyebrow:"Orchard · Primeros pasos",title:"Un solo recorrido operativo desde el mapa hasta la carga de trabajo",description:"El avance se calcula desde los registros actuales de Core. Las observaciones históricas de Heirloom quedan como evidencia y nunca reemplazan el layout operativo.",gamePlan:"Plan de Cultivo",loading:"Cargando estado de Orchard…",loadError:"No fue posible cargar el estado de onboarding de Orchard.",complete:"completado",completed:"Completado",pending:"Pendiente",openStep:"Abrir paso",reference:"Referencia histórica Heirloom",coreLive:"Core en vivo",referenceHelp:"Comportamiento autenticado observado el 01 sep 2026. Sólo referencia.",coreHelp:"Estado autorizado actual de Supabase para el Plan seleccionado.",physicalBeds:"Camas físicas",plantings:"Plantaciones",capacity:"Capacidad bed-meter",assigned:"Plantaciones asignadas",peak:"Demanda peak de referencia",syncTitle:"Farm Area 1 sincronizada",syncBody:"El modelo operativo actual es 5 bloques actuales + 3 expansiones, con 10 camas por bloque. Crop Map sólo se considera completo cuando todas las plantaciones reconciliadas tienen ubicación física.",truth:"Los criterios de avance son estrictos y respaldados por datos."},
   de:{eyebrow:"Orchard · Erste Schritte",title:"Ein Betriebsablauf von der Farmkarte bis zur Arbeitslast",description:"Der Fortschritt wird aus aktuellen Core-Datensätzen berechnet. Historische Heirloom-Beobachtungen bleiben Referenzevidenz und ersetzen nie das Betriebsmodell.",gamePlan:"Game Plan",loading:"Orchard-Status wird geladen…",loadError:"Der Orchard-Onboarding-Status konnte nicht geladen werden.",complete:"abgeschlossen",completed:"Abgeschlossen",pending:"Offen",openStep:"Schritt öffnen",reference:"Historische Heirloom-Referenz",coreLive:"Core live",referenceHelp:"Authentifiziert beobachtetes Verhalten vom 01. Sep. 2026. Nur Referenz.",coreHelp:"Aktueller autorisierter Supabase-Status für den gewählten Game Plan.",physicalBeds:"Physische Beete",plantings:"Pflanzungen",capacity:"Beetmeter-Kapazität",assigned:"Zugeordnete Pflanzungen",peak:"Referenz-Spitzenbedarf",syncTitle:"Farm Area 1 synchronisiert",syncBody:"Das aktuelle Betriebsmodell besteht aus 5 bestehenden + 3 Erweiterungsblöcken mit je 10 Beeten. Crop Map gilt erst als abgeschlossen, wenn alle abgeglichenen Pflanzungen physisch zugeordnet sind.",truth:"Abschlusskriterien sind streng und datenbasiert."},
 } as const
+
+const stepCopy:Record<Locale,Record<string,StepText>> = {
+  en:{},
+  es:{
+    "farm-map":{label:"Mapea tu granja",description:"Crea el área de la granja y sus estructuras físicas de cultivo."},
+    "favorite-crop":{label:"Elige tus cultivos",description:"Selecciona cultivos y cultivares para la temporada."},
+    "game-plan":{label:"Crea tu plan de cultivo",description:"Planifica las sucesiones de cultivo en el calendario de temporada."},
+    "crop-map":{label:"Organiza tu mapa de cultivos",description:"Asigna las plantaciones a camas físicas o estructuras protegidas."},
+    "financial-forecast":{label:"Proyecta el resultado financiero",description:"Define rendimiento planificado, precios y objetivos de ingresos."},
+    "data-charts":{label:"Revisa tus gráficos de datos",description:"Revisa las vistas agronómicas que alimentan la operación."},
+    "seed-inventory":{label:"Revisa el inventario de semillas",description:"Comprueba inventario y preparación de compra de semillas."},
+    "workload":{label:"Gestiona tu carga de trabajo",description:"Revisa trabajo generado y ad hoc en lista, semana y carga."},
+  },
+  de:{
+    "farm-map":{label:"Farm kartieren",description:"Farmfläche und physische Anbaustrukturen anlegen."},
+    "favorite-crop":{label:"Kulturen auswählen",description:"Kulturen und Sorten für die Saison auswählen."},
+    "game-plan":{label:"Anbauplan erstellen",description:"Kulturfolgen im Saisonkalender planen."},
+    "crop-map":{label:"Anbaukarte organisieren",description:"Pflanzungen physischen Beeten oder geschützten Strukturen zuordnen."},
+    "financial-forecast":{label:"Finanzprognose planen",description:"Geplante Erträge, Preise und Umsatzziele festlegen."},
+    "data-charts":{label:"Datendiagramme prüfen",description:"Agronomische Datenansichten prüfen, die den Betrieb speisen."},
+    "seed-inventory":{label:"Saatgutbestand prüfen",description:"Saatgutbestand und Beschaffungsbereitschaft prüfen."},
+    "workload":{label:"Arbeitslast verwalten",description:"Generierte und Ad-hoc-Arbeit in Liste, Woche und Auslastung prüfen."},
+  },
+}
 
 const CORE_BLOCK_NAMES = new Set<string>(CORE_FARM_AREA_1_LAYOUT_REFERENCE.blocks.map(block=>block.name))
 const initialSnapshot:LiveSnapshot={plans:[],plots:[],cycles:[],successions:[],beds:[],allocations:[],revenueTargets:[],chartDefinitions:0,seedLots:0,tasks:[]}
@@ -123,7 +148,7 @@ export default function OrchardGettingStartedPage(){
         </section>
 
         <section className="grid overflow-hidden border-y border-[var(--orchard-line)] md:grid-cols-2 xl:grid-cols-4">
-          {HEIRLOOM_ONBOARDING_STEPS.map((step,index)=>{const done=completion[index];return <Link key={step.id} href={scopedHref(step.coreHref)} className="group min-h-48 border-b border-[var(--orchard-line)] bg-[var(--bs-surface-primary)] p-5 transition-colors hover:bg-[var(--bs-surface-secondary)] md:border-r xl:[&:nth-child(4n)]:border-r-0"><div className="flex items-center justify-between gap-3"><span className="text-xs font-medium tabular-nums text-muted-foreground">0{step.order}</span>{done?<CheckCircle2 className="h-5 w-5 text-[var(--orchard-green)]"/>:<Circle className="h-5 w-5 text-muted-foreground"/>}</div><h2 className="mt-7 text-lg font-normal">{step.label}</h2><p className="mt-2 text-sm leading-5 text-muted-foreground">{step.description}</p><div className="mt-5 flex items-center justify-between gap-2"><span className="text-xs text-muted-foreground">{done?text.completed:text.pending}</span><span className="flex items-center gap-1 text-xs font-medium text-[var(--orchard-green)]">{text.openStep}<ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-1"/></span></div></Link>})}
+          {HEIRLOOM_ONBOARDING_STEPS.map((step,index)=>{const done=completion[index];const localized=stepCopy[locale][step.id]??step;return <Link key={step.id} href={scopedHref(step.coreHref)} className="group min-h-48 border-b border-[var(--orchard-line)] bg-[var(--bs-surface-primary)] p-5 transition-colors hover:bg-[var(--bs-surface-secondary)] md:border-r xl:[&:nth-child(4n)]:border-r-0"><div className="flex items-center justify-between gap-3"><span className="text-xs font-medium tabular-nums text-muted-foreground">0{step.order}</span>{done?<CheckCircle2 className="h-5 w-5 text-[var(--orchard-green)]"/>:<Circle className="h-5 w-5 text-muted-foreground"/>}</div><h2 className="mt-7 text-lg font-normal">{localized.label}</h2><p className="mt-2 text-sm leading-5 text-muted-foreground">{localized.description}</p><div className="mt-5 flex items-center justify-between gap-2"><span className="text-xs text-muted-foreground">{done?text.completed:text.pending}</span><span className="flex items-center gap-1 text-xs font-medium text-[var(--orchard-green)]">{text.openStep}<ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-1"/></span></div></Link>})}
         </section>
 
         <section className="mt-8 grid gap-8 border-t border-[var(--orchard-line)] pt-6 xl:grid-cols-2">
