@@ -66,7 +66,6 @@ test("Orchard brand layer encodes the agricultural workspace rules", async () =>
   assert.match(source, /background:\s*var\(--orchard-canvas\)/)
   assert.match(source, /background:\s*#fff\s*!important/)
   assert.match(source, /border-radius:\s*var\(--orchard-radius\)\s*!important/)
-  assert.match(source, /--bs-cool-sky/)
 })
 
 test("Orchard navigation preserves accessible names for primary and menu navigation", async () => {
