@@ -4,15 +4,16 @@ import test from "node:test"
 
 const sidebarSource = readFileSync(new URL("../components/orchard/orchard-sidebar.tsx", import.meta.url), "utf8")
 const shellSource = readFileSync(new URL("../components/app-layout.tsx", import.meta.url), "utf8")
-const orchardPages = ["page.tsx", "crops/page.tsx", "care/page.tsx", "harvest/page.tsx", "pests/page.tsx", "soil/page.tsx", "equipment/page.tsx", "analytics/page.tsx"]
+const orchardPages = ["page.tsx", "crops/page.tsx", "crops/catalog/page.tsx", "care/page.tsx", "harvest/page.tsx", "pests/page.tsx", "soil/page.tsx", "equipment/page.tsx", "analytics/page.tsx"]
 
 test("Orchard exposes its primary operating workflow from one contextual sidebar", () => {
-  for (const route of ["/orchard", "/orchard/crops", "/orchard/game-plan/season", "/orchard/crop-map/overview", "/orchard/nursery", "/orchard/nursery/overview", "/orchard/harvest/desk", "/orchard/work/week-board"]) {
+  for (const route of ["/orchard", "/orchard/crops/catalog", "/orchard/game-plan/season", "/orchard/crop-map/overview", "/orchard/nursery", "/orchard/nursery/overview", "/orchard/harvest/desk", "/orchard/work/week-board"]) {
     assert.match(sidebarSource, new RegExp(`href:["']${route.replaceAll("/", "\\/")}["']`))
   }
   assert.match(sidebarSource, /MI TEMPORADA/)
   assert.match(sidebarSource, /Semillas y trasplantes/)
   assert.match(sidebarSource, /orchard_game_plans/)
+  assert.match(sidebarSource, /pathname\.startsWith\("\/orchard\/crops"\)/)
   assert.match(shellSource, /isOrchardPath/)
   assert.match(shellSource, /OrchardSidebar/)
 })
