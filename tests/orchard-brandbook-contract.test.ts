@@ -27,8 +27,10 @@ const orchardPages = [
   "app/orchard/library/page.tsx",
   "app/orchard/library/fao/page.tsx",
   "app/orchard/crop-map/page.tsx",
+  "app/orchard/crop-map/overview/page.tsx",
   "app/orchard/crop-map/auto-place/page.tsx",
   "app/orchard/nursery/page.tsx",
+  "app/orchard/nursery/overview/page.tsx",
   "app/orchard/crops/page.tsx",
   "app/orchard/lifecycle/page.tsx",
   "app/orchard/care/page.tsx",
@@ -87,6 +89,9 @@ test("Dietrich Orchard navigation keeps the operating surface intentionally smal
   assert.match(source, /href:\s*"\/orchard\/game-plan\/season"/)
   assert.match(source, /href:\s*"\/orchard\/game-plan\/crop-chart"/)
   assert.match(source, /href:\s*"\/orchard\/game-plan\/propagation"/)
+  assert.match(source, /en:\s*"Sowing methods"/)
+  assert.match(source, /href:\s*"\/orchard\/nursery\/overview"/)
+  assert.match(source, /href:\s*"\/orchard\/crop-map\/overview"/)
   assert.match(source, /href:\s*"\/orchard\/game-plan\/tasks"/)
   assert.match(source, /href:\s*"\/orchard\/game-plan\/capacity"/)
   assert.match(source, /href:\s*"\/orchard\/game-plan\/forecast"/)
