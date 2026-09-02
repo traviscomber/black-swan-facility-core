@@ -15,22 +15,14 @@ const labels: Record<string, string> = {
   'cattle-health': 'Salud animal', fuel: 'Combustibles', budget: 'Presupuesto', approvals: 'Aprobaciones', documents: 'Documentos', reconciliation: 'Conciliación', accounting: 'Contabilidad', invoices: 'Facturas',
 }
 
-const presentationLabelsByHref: Record<string, string> = {
-  '/accounting/reports': 'Reportes financieros',
-}
-
 function readableLabel(key: string) {
   return labels[key] ?? key.split('-').map((part) => part.charAt(0).toUpperCase() + part.slice(1)).join(' ')
-}
-
-function normalizePresentationLabel(item: AuthorizedNavItem): AuthorizedNavItem {
-  return { ...item, label: presentationLabelsByHref[item.href] ?? item.label }
 }
 
 function normalizeNavigation(value: unknown): AuthorizedNavigation {
   if (!value || typeof value !== 'object') return { items: [] }
   const navigation = value as AuthorizedNavigation
-  return { ...navigation, items: Array.isArray(navigation.items) ? navigation.items.map(normalizePresentationLabel) : [] }
+  return { ...navigation, items: Array.isArray(navigation.items) ? navigation.items : [] }
 }
 
 function parseApiNavigation(value: unknown): AuthorizedNavigation | null {
@@ -46,8 +38,7 @@ function parseApiNavigation(value: unknown): AuthorizedNavigation | null {
       && typeof candidate.label === 'string' && candidate.label.length > 0
       && typeof candidate.href === 'string' && candidate.href.startsWith('/')
   })) return null
-  const parsed = navigation as AuthorizedNavigation
-  return { ...parsed, items: parsed.items?.map(normalizePresentationLabel) }
+  return navigation as AuthorizedNavigation
 }
 
 async function loadServerNavigation(
@@ -99,7 +90,7 @@ export async function loadAuthorizedNavigationWith({
     .map((item) => ({ key: item.key, label: readableLabel(item.key), href: item.href }))
   const serverNavigation = await loadServerNavigation(supabase, token, apiUrl, fetchImpl)
   const merged = new Map(capabilityItems.map((item) => [item.key, item]))
-  for (const item of serverNavigation.items ?? []) merged.set(item.key, normalizePresentationLabel(item))
+  for (const item of serverNavigation.items ?? []) merged.set(item.key, item)
 
   return {
     ...serverNavigation,
