@@ -37,6 +37,21 @@ test("Game Plan overview visualizes real reconciled season milestones", async ()
   assert.match(source, /col-span-2 md:col-span-1/)
 })
 
+test("Today and Field count only physical field milestones", async () => {
+  const today = await readFile("app/orchard/page.tsx", "utf8")
+  const field = await readFile("app/orchard/field/page.tsx", "utf8")
+
+  for (const source of [today, field]) {
+    assert.match(source, /cycle_type/)
+    assert.match(source, /if\(c\.cycle_type===\"direct_sow\"\)events\.push\(\{date:s\.planned_sow_date,kind:\"sow\"/)
+    assert.match(source, /if\(c\.cycle_type===\"transplant\"&&s\.planned_transplant_date\)events\.push\(\{date:s\.planned_transplant_date,kind:\"transplant\"/)
+    assert.match(source, /nextBeyond/)
+    assert.match(source, /planned_first_harvest_date/)
+  }
+  assert.match(today, /Próximo hito físico de campo/)
+  assert.match(field, /Próximo hito físico después de este horizonte/)
+})
+
 test("planned workload graph counts source actions and explicitly refuses fake hours", async () => {
   const source = await readFile("app/orchard/game-plan/tasks/page.tsx", "utf8")
 
