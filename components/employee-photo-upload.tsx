@@ -1,10 +1,10 @@
 "use client"
 
 import type React from "react"
-
 import { useState } from "react"
 import { Upload, X } from "lucide-react"
 import { createBrowserClient } from "@/lib/supabase/client"
+import { useLanguage } from "@/lib/hooks/use-language"
 
 interface EmployeePhotoUploadProps {
   employeeId: string
@@ -13,19 +13,27 @@ interface EmployeePhotoUploadProps {
   onPhotoUploaded?: (photoUrl: string) => void
 }
 
+const COPY = {
+  en: { photo:"Employee photo", invalid:"Please select a valid image file.", uploadFailed:"Photo upload failed", unknown:"Unknown error", upload:"Click or drag to upload", uploading:"Uploading…", remove:"Remove photo" },
+  es: { photo:"Foto de la persona", invalid:"Selecciona un archivo de imagen válido.", uploadFailed:"No fue posible subir la foto", unknown:"Error desconocido", upload:"Haz clic o arrastra una imagen", uploading:"Subiendo…", remove:"Eliminar foto" },
+  de: { photo:"Foto der Person", invalid:"Bitte wähle eine gültige Bilddatei.", uploadFailed:"Foto konnte nicht hochgeladen werden", unknown:"Unbekannter Fehler", upload:"Klicken oder Bild hierher ziehen", uploading:"Wird hochgeladen…", remove:"Foto entfernen" },
+} as const
+
 export function EmployeePhotoUpload({
   employeeId,
   employeeName,
   currentPhotoUrl,
   onPhotoUploaded,
 }: EmployeePhotoUploadProps) {
+  const { language } = useLanguage()
+  const copy = COPY[language as keyof typeof COPY] ?? COPY.en
   const [isUploading, setIsUploading] = useState(false)
   const [preview, setPreview] = useState<string | null>(currentPhotoUrl || null)
   const [dragActive, setDragActive] = useState(false)
 
   const handleUpload = async (file: File) => {
     if (!file.type.startsWith("image/")) {
-      alert("Please select a valid image file")
+      alert(copy.invalid)
       return
     }
 
@@ -33,11 +41,9 @@ export function EmployeePhotoUpload({
     try {
       const fileName = `employee-${employeeId}-${Date.now()}`
       const filePath = `employees/${fileName}`
-
-      // Upload to storage with proper error handling
       const response = await fetch(`/api/upload?path=${encodeURIComponent(filePath)}`, {
         method: "POST",
-        headers: { 
+        headers: {
           "Content-Type": file.type,
           "x-file-path": filePath,
         },
@@ -46,22 +52,19 @@ export function EmployeePhotoUpload({
 
       if (!response.ok) {
         const errorData = await response.json()
-        throw new Error(errorData.error || "Upload failed")
+        throw new Error(errorData.error || copy.uploadFailed)
       }
 
       const { url } = await response.json()
-
-      // Update employee record with photo URL
       const supabase = createBrowserClient()
       const { error } = await supabase.from("employees").update({ photo_url: url }).eq("id", employeeId)
-
       if (error) throw error
 
       setPreview(url)
       onPhotoUploaded?.(url)
     } catch (error) {
-      console.error("Error uploading photo:", error)
-      alert(`Failed to upload photo: ${error instanceof Error ? error.message : "Unknown error"}`)
+      console.error("Error uploading employee photo:", error)
+      alert(`${copy.uploadFailed}: ${error instanceof Error ? error.message : copy.unknown}`)
     } finally {
       setIsUploading(false)
     }
@@ -70,43 +73,41 @@ export function EmployeePhotoUpload({
   const handleDrag = (e: React.DragEvent) => {
     e.preventDefault()
     e.stopPropagation()
-    if (e.type === "dragenter" || e.type === "dragover") {
-      setDragActive(true)
-    } else if (e.type === "dragleave") {
-      setDragActive(false)
-    }
+    if (e.type === "dragenter" || e.type === "dragover") setDragActive(true)
+    else if (e.type === "dragleave") setDragActive(false)
   }
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault()
     e.stopPropagation()
     setDragActive(false)
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      handleUpload(e.dataTransfer.files[0])
-    }
+    if (e.dataTransfer.files?.[0]) void handleUpload(e.dataTransfer.files[0])
   }
 
   const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      handleUpload(e.target.files[0])
-    }
+    if (e.target.files?.[0]) void handleUpload(e.target.files[0])
+  }
+
+  const handleRemove = async () => {
+    setPreview(null)
+    const supabase = createBrowserClient()
+    await supabase.from("employees").update({ photo_url: null }).eq("id", employeeId)
+    onPhotoUploaded?.("")
   }
 
   return (
     <div className="space-y-2">
-      <label className="text-sm font-medium">Employee Photo</label>
+      <label className="text-sm font-medium">{copy.photo}</label>
 
       {preview ? (
-        <div className="relative w-44 h-44 rounded-lg overflow-hidden bg-slate-200">
-          <img src={preview || "/placeholder.svg"} alt={employeeName} className="w-full h-full object-cover" />
+        <div className="relative h-44 w-44 overflow-hidden rounded-lg border bg-muted">
+          <img src={preview} alt={employeeName} className="h-full w-full object-cover" />
           <button
-            onClick={() => {
-              setPreview(null)
-              // Clear photo from database
-              const supabase = createBrowserClient()
-              supabase.from("employees").update({ photo_url: null }).eq("id", employeeId)
-            }}
-            className="absolute top-1 right-1 bg-red-500 text-white p-1 rounded hover:bg-red-600"
+            type="button"
+            onClick={() => void handleRemove()}
+            className="absolute right-1 top-1 rounded bg-destructive p-1 text-destructive-foreground hover:opacity-90"
+            aria-label={copy.remove}
+            title={copy.remove}
           >
             <X className="h-3 w-3" />
           </button>
@@ -117,19 +118,17 @@ export function EmployeePhotoUpload({
           onDragLeave={handleDrag}
           onDragOver={handleDrag}
           onDrop={handleDrop}
-          className={`flex flex-col items-center justify-center w-full h-24 border-2 border-dashed rounded-lg cursor-pointer transition ${
-            dragActive ? "border-blue-500 bg-blue-50" : "border-gray-300 hover:border-gray-400"
-          }`}
+          className={`flex h-24 w-full cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed transition-colors ${dragActive ? "border-primary bg-primary/5" : "border-border hover:border-muted-foreground/60"}`}
         >
-          <div className="flex flex-col items-center justify-center pt-5 pb-6">
-            <Upload className="h-5 w-5 text-gray-400 mb-1" />
-            <p className="text-xs text-gray-500">Click or drag to upload</p>
+          <div className="flex flex-col items-center justify-center py-5">
+            <Upload className="mb-1 h-5 w-5 text-muted-foreground" />
+            <p className="text-xs text-muted-foreground">{copy.upload}</p>
           </div>
           <input type="file" accept="image/*" onChange={handleFileInput} className="hidden" disabled={isUploading} />
         </label>
       )}
 
-      {isUploading && <p className="text-xs text-gray-500">Uploading...</p>}
+      {isUploading && <p className="text-xs text-muted-foreground">{copy.uploading}</p>}
     </div>
   )
 }
