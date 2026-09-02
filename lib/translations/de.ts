@@ -156,9 +156,9 @@ export const deTranslations: Record<string, string> = {
   'nav.combustibles_tip': 'Kraftstoffverbrauch verfolgen und Auffälligkeiten erkennen',
 
   // Sovereignty
-  'nav.sovereignty': 'Sovereignty',
+  'nav.sovereignty': 'Souveränität',
   'nav.sovereignty_desc': 'Persönliche Entwicklung',
-  'nav.sovereignty_dashboard': 'Sovereignty',
+  'nav.sovereignty_dashboard': 'Souveränität',
   'nav.sovereignty_dashboard_tip': 'Persönliches Coaching-Dashboard',
   'nav.coach': 'Coach',
   'nav.coach_tip': 'Coach für persönliche Entwicklung',

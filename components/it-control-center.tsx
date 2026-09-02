@@ -145,7 +145,7 @@ const copy = {
     back: "Back to Administration",
   },
   de: {
-    title: "IT Control Center",
+    title: "IT-Kontrollzentrum",
     description: "Betriebszustand, Jobs, Zugriff und Plattformkontrollen live aus der Produktion.",
     unavailable: "Telemetrie nicht verfügbar",
     unavailableDescription: "Der privilegierte Snapshot konnte nicht geladen werden. Es werden keine geschätzten Werte angezeigt.",
