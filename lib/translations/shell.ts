@@ -124,7 +124,7 @@ export const shellTranslations: Record<Language, Record<string, string>> = {
     "shell.global_tools": "Globale Werkzeuge",
     "shell.concierge": "Concierge",
     "shell.ai_ops": "AI Ops",
-    "shell.it_control": "IT Control Center",
+    "shell.it_control": "IT-Kontrollzentrum",
     "shell.admin": "Admin",
     "shell.loading_access": "Zugriff wird geladen…",
     "shell.search": "Suchen",
