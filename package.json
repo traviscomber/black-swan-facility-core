@@ -22,7 +22,7 @@
     "test:source-policy": "node --experimental-strip-types --test tests/booking-source-policy.test.ts",
     "test:discovery": "node --experimental-strip-types --test tests/discovery-evaluation-flow.test.ts",
     "test:os-navigation": "node --experimental-strip-types --test tests/os-navigation.test.ts",
-    "test:os": "node --experimental-strip-types --test tests/os-navigation.test.ts tests/os-home-contract.test.ts tests/os-decision-cockpit-contract.test.ts tests/os-big-picture-contract.test.ts tests/os-shell-contract.test.ts tests/os-route-context.test.ts tests/temporal-foundation.test.ts tests/activities-timeline.test.ts tests/activities-calendar-contract.test.ts tests/os-compatibility.test.ts tests/object-os-contract.test.ts tests/object-command-contract.test.ts tests/operational-scope-security-contract.test.ts tests/orchard-reference-native-contract.test.ts tests/orchard-brandbook-contract.test.ts tests/orchard-planting-calendar-contract.test.ts tests/orchard-crop-chart-task-reference.test.ts tests/orchard-bed-meter-capacity-contract.test.ts tests/orchard-workload-parity-contract.test.ts tests/orchard-heirloom-reconciliation-contract.test.ts tests/orchard-seed-demand.test.ts tests/mobile-shell-qa-contract.test.ts tests/it-control-center-contract.test.ts tests/maintenance-issues-fail-state-contract.test.ts tests/incident-security-contract.test.ts",
+    "test:os": "node --experimental-strip-types --test tests/os-navigation.test.ts tests/os-home-contract.test.ts tests/os-decision-cockpit-contract.test.ts tests/os-big-picture-contract.test.ts tests/os-shell-contract.test.ts tests/os-route-context.test.ts tests/temporal-foundation.test.ts tests/activities-timeline.test.ts tests/activities-calendar-contract.test.ts tests/os-compatibility.test.ts tests/object-os-contract.test.ts tests/object-command-contract.test.ts tests/operational-scope-security-contract.test.ts tests/orchard-reference-native-contract.test.ts tests/orchard-brandbook-contract.test.ts tests/orchard-heirloom-visual-contract.test.ts tests/orchard-planting-calendar-contract.test.ts tests/orchard-crop-chart-task-reference.test.ts tests/orchard-bed-meter-capacity-contract.test.ts tests/orchard-workload-parity-contract.test.ts tests/orchard-heirloom-reconciliation-contract.test.ts tests/orchard-seed-demand.test.ts tests/mobile-shell-qa-contract.test.ts tests/it-control-center-contract.test.ts tests/maintenance-issues-fail-state-contract.test.ts tests/incident-security-contract.test.ts",
     "test:e2e:booking": "node scripts/run-booking-calendar-e2e.mjs",
     "map:backfill-derivatives": "node scripts/backfill-gis-overlay-derivatives.mjs"
   },
@@ -105,7 +105,7 @@
     "pg": "^8.22.0",
     "playwright": "^1.61.1",
     "postcss": "^8.5",
-    "tailwindcss": "^4.1.9",
+    "tailwindcss-animate": "^1.0.7",
     "tw-animate-css": "1.3.3",
     "typescript": "^5"
   }
