@@ -61,7 +61,7 @@ export type ItControlSnapshot = {
 
 const copy = {
   es: {
-    title: "IT Control Center",
+    title: "Centro de control TI",
     description: "Salud operativa, jobs, acceso y controles de plataforma con datos leídos en vivo desde producción.",
     unavailable: "Telemetría no disponible",
     unavailableDescription: "El snapshot privilegiado no pudo cargarse. No se muestran valores aproximados ni datos cacheados.",
