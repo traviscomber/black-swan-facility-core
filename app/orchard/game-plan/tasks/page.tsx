@@ -144,113 +144,32 @@ export default function DietrichTaskCalendarPage() {
         const date = action.offsetDays === null ? null : dateKey(anchor, action.offsetDays)
         const sourcePath = `${ORCHARD_CROP_CHART_TASK_SOURCE.sheet}!${action.sourceColumn}`
         const task = date ? existingTasks.find((candidate) => candidate.source_type === "orchard_succession" && candidate.source_id === succession.id && candidate.due_date === date && candidate.source_path === sourcePath) ?? null : null
-        rows.push({
-          successionId: succession.id,
-          crop: cycle.crop_name,
-          sequence: succession.sequence_no,
-          activity: action.activity,
-          date,
-          anchor,
-          offsetDays: action.offsetDays,
-          sourceRow: profile.sourceRow,
-          sourceColumn: action.sourceColumn,
-          sourcePath,
-          kind: action.kind,
-          taskId: task?.id ?? null,
-          taskStatus: task?.status ?? null,
-        })
+        rows.push({ successionId: succession.id, crop: cycle.crop_name, sequence: succession.sequence_no, activity: action.activity, date, anchor, offsetDays: action.offsetDays, sourceRow: profile.sourceRow, sourceColumn: action.sourceColumn, sourcePath, kind: action.kind, taskId: task?.id ?? null, taskStatus: task?.status ?? null })
       }
     }
     return rows.sort((a, b) => (a.date ?? "9999-12-31").localeCompare(b.date ?? "9999-12-31") || a.crop.localeCompare(b.crop) || a.sequence - b.sequence)
   }, [scopedSuccessions, cycleById, existingTasks])
 
-  const counts = {
-    implantation: references.filter((item) => item.kind === "implantation").length,
-    followUp: references.filter((item) => item.kind === "follow_up" && item.date).length,
-    conditional: references.filter((item) => item.kind === "conditional").length,
-    converted: references.filter((item) => item.taskId).length,
-  }
-
+  const counts = { implantation: references.filter((item) => item.kind === "implantation").length, followUp: references.filter((item) => item.kind === "follow_up" && item.date).length, conditional: references.filter((item) => item.kind === "conditional").length, converted: references.filter((item) => item.taskId).length }
   const normalizedQuery = query.trim().toLocaleLowerCase(locale)
-  const filtered = references.filter((item) => {
-    if (view !== "all" && item.kind !== view) return false
-    if (!normalizedQuery) return true
-    return `${item.crop} ${item.activity} ${item.sequence}`.toLocaleLowerCase(locale).includes(normalizedQuery)
-  })
-
-  const relativeLabel = (item: PlannedReference) => {
-    if (item.offsetDays === null) return text.noDate
-    if (item.offsetDays === 0) return text.day0
-    return item.offsetDays < 0 ? `${Math.abs(item.offsetDays)} ${text.before}` : `+${item.offsetDays} ${text.after}`
-  }
+  const filtered = references.filter((item) => { if (view !== "all" && item.kind !== view) return false; if (!normalizedQuery) return true; return `${item.crop} ${item.activity} ${item.sequence}`.toLocaleLowerCase(locale).includes(normalizedQuery) })
+  const relativeLabel = (item: PlannedReference) => { if (item.offsetDays === null) return text.noDate; if (item.offsetDays === 0) return text.day0; return item.offsetDays < 0 ? `${Math.abs(item.offsetDays)} ${text.before}` : `+${item.offsetDays} ${text.after}` }
 
   const workHref = (item: PlannedReference) => {
     if (!plan || !item.date) return `/${language}/orchard/work`
-    const params = new URLSearchParams({
-      game_plan: plan.id,
-      from: "planning-reference",
-      succession: item.successionId,
-      due: item.date,
-      title: `${item.activity}: ${item.crop} #${item.sequence}`,
-      category: item.activity,
-      source_type: "orchard_succession",
-      source_path: item.sourcePath,
-    })
-    return `/${language}/orchard/work?${params.toString()}`
+    const params = new URLSearchParams({ game_plan: plan.id, succession: item.successionId, due: item.date, title: `${item.activity}: ${item.crop} #${item.sequence}`, category: item.activity, source_path: item.sourcePath })
+    return `/${language}/orchard/work/from-plan?${params.toString()}`
   }
-
   const workRoot = `/${language}/orchard/work${plan ? `?game_plan=${encodeURIComponent(plan.id)}` : ""}`
 
   return <AppLayout><OrchardNavigation/><main className="mx-auto w-full max-w-[1560px] px-4 py-8 sm:px-6 lg:px-8">
-    <header className="mb-7 max-w-5xl">
-      <p className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">{text.eyebrow}</p>
-      <div className="flex flex-wrap items-center gap-3"><h1 className="text-3xl font-normal sm:text-4xl">{text.title}</h1>{plan?.season ? <Badge variant="secondary">{plan.season}</Badge> : null}</div>
-      <p className="mt-3 max-w-4xl text-sm leading-6 text-muted-foreground sm:text-base">{text.description}</p>
-    </header>
-
+    <header className="mb-7 max-w-5xl"><p className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">{text.eyebrow}</p><div className="flex flex-wrap items-center gap-3"><h1 className="text-3xl font-normal sm:text-4xl">{text.title}</h1>{plan?.season ? <Badge variant="secondary">{plan.season}</Badge> : null}</div><p className="mt-3 max-w-4xl text-sm leading-6 text-muted-foreground sm:text-base">{text.description}</p></header>
     {loading ? <div className="py-12 text-sm text-muted-foreground">…</div> : error ? <div className="border border-red-300 bg-red-50 p-4 text-sm text-red-800">{error}</div> : <>
-      <section className="mb-6 grid gap-px bg-[var(--bs-divider-subtle)] sm:grid-cols-2 xl:grid-cols-4">
-        <Metric icon={Sprout} label={text.anchors} value={counts.implantation}/>
-        <Metric icon={CalendarClock} label={text.followUps} value={counts.followUp}/>
-        <Metric icon={ShieldAlert} label={text.conditional} value={counts.conditional}/>
-        <Metric icon={CheckCircle2} label={text.converted} value={counts.converted}/>
-      </section>
-
+      <section className="mb-6 grid gap-px bg-[var(--bs-divider-subtle)] sm:grid-cols-2 xl:grid-cols-4"><Metric icon={Sprout} label={text.anchors} value={counts.implantation}/><Metric icon={CalendarClock} label={text.followUps} value={counts.followUp}/><Metric icon={ShieldAlert} label={text.conditional} value={counts.conditional}/><Metric icon={CheckCircle2} label={text.converted} value={counts.converted}/></section>
       <div className="mb-6 border-l-2 border-[var(--bs-warm-amber)] pl-4 text-sm leading-6 text-muted-foreground">{text.warning}</div>
-
-      <section className="mb-4 flex flex-col gap-3 border-y border-[var(--bs-divider-subtle)] py-3 lg:flex-row lg:items-center lg:justify-between">
-        <div className="flex flex-wrap gap-2">
-          <FilterButton active={view === "follow_up"} onClick={() => setView("follow_up")}>{text.followUp} · {counts.followUp}</FilterButton>
-          <FilterButton active={view === "implantation"} onClick={() => setView("implantation")}>{text.implantation} · {counts.implantation}</FilterButton>
-          <FilterButton active={view === "conditional"} onClick={() => setView("conditional")}>{text.conditionalView} · {counts.conditional}</FilterButton>
-          <FilterButton active={view === "all"} onClick={() => setView("all")}>{text.all} · {references.length}</FilterButton>
-        </div>
-        <label className="relative block w-full lg:w-80"><Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"/><Input aria-label={text.search} value={query} onChange={(event) => setQuery(event.target.value)} placeholder={text.search} className="pl-9"/></label>
-      </section>
-
-      <section>
-        <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between"><div><p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">{text.calendar}</p><h2 className="mt-1 text-2xl font-normal">{plan?.season ?? "—"}</h2></div><Link href={workRoot} className="inline-flex items-center gap-2 text-sm text-foreground">{text.work}<ArrowRight className="h-4 w-4"/></Link></div>
-        <div className="overflow-x-auto border border-[var(--bs-divider-subtle)] bg-[var(--bs-surface-primary)]">
-          <div className="min-w-[1040px]">
-            <div className="grid grid-cols-[170px_260px_1fr_130px_135px_190px] border-b border-[var(--bs-divider-subtle)] bg-[var(--bs-surface-secondary)] px-3 py-2 text-[11px] uppercase tracking-[0.12em] text-muted-foreground">
-              <span>{text.date}</span><span>{text.crop}</span><span>{text.action}</span><span>{text.relative}</span><span>{text.source}</span><span>{text.status}</span>
-            </div>
-            {filtered.length === 0 ? <div className="p-8 text-sm text-muted-foreground">{text.noRows}</div> : filtered.map((item) => <div key={`${item.successionId}-${item.sourcePath}-${item.date ?? "conditional"}`} className="grid grid-cols-[170px_260px_1fr_130px_135px_190px] items-center border-b border-[var(--bs-divider-subtle)] px-3 py-3 text-sm last:border-b-0">
-              <div className="tabular-nums">{item.date ? dateLabel(item.date, locale) : <span className="text-muted-foreground">{text.noDate}</span>}</div>
-              <div><p className="font-medium">{item.crop}</p><p className="mt-1 text-xs text-muted-foreground">{text.sequence} {item.sequence}</p></div>
-              <div><p>{item.activity}</p>{item.kind === "conditional" ? <p className="mt-1 text-xs text-muted-foreground">{text.conditionalHelp}</p> : null}</div>
-              <div className="tabular-nums text-muted-foreground">{relativeLabel(item)}</div>
-              <div className="font-mono text-xs text-muted-foreground">{ORCHARD_CROP_CHART_TASK_SOURCE.sheet}!{item.sourceColumn}</div>
-              <div>{item.taskId ? <Link href={`/${language}/tasks?entity=${encodeURIComponent(item.taskId)}`} className="inline-flex items-center gap-1.5 text-sm"><CheckCircle2 className="h-4 w-4"/>{text.taskCreated}</Link> : item.kind === "follow_up" && item.date ? <Link href={workHref(item)} className="inline-flex items-center gap-1.5 text-sm font-medium text-[var(--orchard-green)]">{text.createTask}<ArrowRight className="h-4 w-4"/></Link> : <span className="text-xs text-muted-foreground">{text.plannedOnly}</span>}</div>
-            </div>)}
-          </div>
-        </div>
-      </section>
-
-      <footer className="mt-6 grid gap-3 border-t border-[var(--bs-divider-subtle)] pt-5 text-xs leading-5 text-muted-foreground lg:grid-cols-2">
-        <div><strong className="font-medium text-foreground">{text.sourcePrimary}:</strong> {ORCHARD_CROP_CHART_TASK_SOURCE.sheet} · SHA-256 {ORCHARD_CROP_CHART_TASK_SOURCE.workbookSha256.slice(0, 12)}… · {ORCHARD_CROP_CHART_TASK_PROFILES.length} crop profiles.<br/>{text.sourceCoverage}</div>
-        <div><strong className="font-medium text-foreground">{text.sourceSecondary}:</strong> {ORCHARD_CROP_TASK_REFERENCE_SOURCE.sheet} · same immutable workbook hash. It remains a contextual reference and is not double-counted into the operational schedule.</div>
-      </footer>
+      <section className="mb-4 flex flex-col gap-3 border-y border-[var(--bs-divider-subtle)] py-3 lg:flex-row lg:items-center lg:justify-between"><div className="flex flex-wrap gap-2"><FilterButton active={view === "follow_up"} onClick={() => setView("follow_up")}>{text.followUp} · {counts.followUp}</FilterButton><FilterButton active={view === "implantation"} onClick={() => setView("implantation")}>{text.implantation} · {counts.implantation}</FilterButton><FilterButton active={view === "conditional"} onClick={() => setView("conditional")}>{text.conditionalView} · {counts.conditional}</FilterButton><FilterButton active={view === "all"} onClick={() => setView("all")}>{text.all} · {references.length}</FilterButton></div><label className="relative block w-full lg:w-80"><Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"/><Input aria-label={text.search} value={query} onChange={(event) => setQuery(event.target.value)} placeholder={text.search} className="pl-9"/></label></section>
+      <section><div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between"><div><p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">{text.calendar}</p><h2 className="mt-1 text-2xl font-normal">{plan?.season ?? "—"}</h2></div><Link href={workRoot} className="inline-flex items-center gap-2 text-sm text-foreground">{text.work}<ArrowRight className="h-4 w-4"/></Link></div><div className="overflow-x-auto border border-[var(--bs-divider-subtle)] bg-[var(--bs-surface-primary)]"><div className="min-w-[1040px]"><div className="grid grid-cols-[170px_260px_1fr_130px_135px_190px] border-b border-[var(--bs-divider-subtle)] bg-[var(--bs-surface-secondary)] px-3 py-2 text-[11px] uppercase tracking-[0.12em] text-muted-foreground"><span>{text.date}</span><span>{text.crop}</span><span>{text.action}</span><span>{text.relative}</span><span>{text.source}</span><span>{text.status}</span></div>{filtered.length === 0 ? <div className="p-8 text-sm text-muted-foreground">{text.noRows}</div> : filtered.map((item) => <div key={`${item.successionId}-${item.sourcePath}-${item.date ?? "conditional"}`} className="grid grid-cols-[170px_260px_1fr_130px_135px_190px] items-center border-b border-[var(--bs-divider-subtle)] px-3 py-3 text-sm last:border-b-0"><div className="tabular-nums">{item.date ? dateLabel(item.date, locale) : <span className="text-muted-foreground">{text.noDate}</span>}</div><div><p className="font-medium">{item.crop}</p><p className="mt-1 text-xs text-muted-foreground">{text.sequence} {item.sequence}</p></div><div><p>{item.activity}</p>{item.kind === "conditional" ? <p className="mt-1 text-xs text-muted-foreground">{text.conditionalHelp}</p> : null}</div><div className="tabular-nums text-muted-foreground">{relativeLabel(item)}</div><div className="font-mono text-xs text-muted-foreground">{ORCHARD_CROP_CHART_TASK_SOURCE.sheet}!{item.sourceColumn}</div><div>{item.taskId ? <Link href={`/${language}/tasks?entity=${encodeURIComponent(item.taskId)}`} className="inline-flex items-center gap-1.5 text-sm"><CheckCircle2 className="h-4 w-4"/>{text.taskCreated}</Link> : item.kind === "follow_up" && item.date ? <Link href={workHref(item)} className="inline-flex items-center gap-1.5 text-sm font-medium text-[var(--orchard-green)]">{text.createTask}<ArrowRight className="h-4 w-4"/></Link> : <span className="text-xs text-muted-foreground">{text.plannedOnly}</span>}</div></div>)}</div></div></section>
+      <footer className="mt-6 grid gap-3 border-t border-[var(--bs-divider-subtle)] pt-5 text-xs leading-5 text-muted-foreground lg:grid-cols-2"><div><strong className="font-medium text-foreground">{text.sourcePrimary}:</strong> {ORCHARD_CROP_CHART_TASK_SOURCE.sheet} · SHA-256 {ORCHARD_CROP_CHART_TASK_SOURCE.workbookSha256.slice(0, 12)}… · {ORCHARD_CROP_CHART_TASK_PROFILES.length} crop profiles.<br/>{text.sourceCoverage}</div><div><strong className="font-medium text-foreground">{text.sourceSecondary}:</strong> {ORCHARD_CROP_TASK_REFERENCE_SOURCE.sheet} · same immutable workbook hash. It remains a contextual reference and is not double-counted into the operational schedule.</div></footer>
     </>}
   </main></AppLayout>
 }
