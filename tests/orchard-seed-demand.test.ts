@@ -1,4 +1,5 @@
 import assert from "node:assert/strict"
+import { readFileSync } from "node:fs"
 import test from "node:test"
 import { estimateDirectSeedDemand, estimateTransplantSeedDemand, groupReadyDemandByUnit } from "../lib/orchard/seed-demand.ts"
 
@@ -59,4 +60,21 @@ test("ready demands are grouped by unit and never summed across units", () => {
     g: 129,
     tuber_count: 40,
   })
+})
+
+test("Nursery UI is scoped to allocated transplants and uses evidence-safe demand", () => {
+  const source = readFileSync(new URL("../app/orchard/nursery/page.tsx", import.meta.url), "utf8")
+  assert.match(source, /estimateTransplantSeedDemand/)
+  assert.match(source, /orchard_bed_allocations/)
+  assert.match(source, /cycle_type === "transplant"/)
+  assert.match(source, /item\.planned_transplant_date != null/)
+  assert.doesNotMatch(source, /const estimatedSeeds/)
+  assert.doesNotMatch(source, /germination_rate_pct[^\n]*:\s*100/)
+})
+
+test("Nursery never auto-fills seeds when transplant demand is incomplete", () => {
+  const source = readFileSync(new URL("../app/orchard/nursery/page.tsx", import.meta.url), "utf8")
+  assert.match(source, /estimate\.status === "ready"/)
+  assert.match(source, /seeds_sown: outstanding && outstanding > 0 \? outstanding\.toString\(\) : ""/)
+  assert.match(source, /text\.incompleteHelp/)
 })
