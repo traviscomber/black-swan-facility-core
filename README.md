@@ -1,317 +1,127 @@
-# Blackswan Facility Core (BSFC)
+# Black Swan Facility Core
 
-Operating system interno para la operación de Blackswan Facility: Hospitalidad, trabajo operacional, personas, activos, inventario, procurement, finanzas, red/eventos y administración.
+> **Facility & Hospitality OS**
 
-**Producción:** https://blackswn.app  
-**Release documentada:** `f22330dec23ed396d195abbdb5e1f9ed2ea61ed7`  
-**Deployment de referencia:** `dpl_EuizvxiBFrvqCMMLMEaEAzP55wLg` — `READY`  
-**Cierre documental:** 2026-08-27
+[Black Swan Facility Core](https://blackswn.app) is the operating system for a complex hospitality/facility environment. It connects reservations, people, assets, inventory, procurement, maintenance, finance, events and administration through shared canonical objects rather than disconnected modules.
 
-> Este README es el índice ejecutivo. La documentación detallada vive en `docs/` y debe actualizarse cuando cambien contratos, rutas, roles, objetos canónicos, jobs o arquitectura.
+<p align="center"><strong>Reservation · Asset · Purchase · Work · Finance</strong></p>
 
-## Estado
+---
 
-La fase de construcción principal está cerrada. La baseline productiva fue verificada con:
+## Product thesis
 
-- Next.js production build completo;
-- TypeScript limpio;
-- `test:os` 67/67;
-- smoke de rutas/locales EN, ES y DE;
-- autorización del IT Control Center probada;
-- RLS habilitado en 218/218 tablas públicas observadas al cierre;
-- control plane con sus dos jobs activos en estado `healthy`, sin retries vencidos ni dead letters en el snapshot de cierre.
+A facility is not a collection of dashboards. A reservation affects rooms, guests, housekeeping, activities, charges and payments. A purchase can become inventory. An asset can create maintenance work. A maintenance event can affect budget, safety and availability.
 
-A partir de esta baseline, el criterio es **operar, observar y corregir evidencia real**. No agregar funcionalidades especulativas ni datos simulados para llenar dashboards.
+Black Swan models those relationships directly.
 
-## Documentación de cierre
+```text
+REAL FACILITY
+     │
+     ├──── Reservation / Guest
+     ├──── Person / Team
+     ├──── Asset / Inventory
+     ├──── Purchase / Supplier
+     ├──── Work / Maintenance
+     ├──── Budget / Finance
+     └──── Event / Network
+              │
+              ▼
+        shared operational truth
+              │
+              ▼
+      action + evidence + audit
+```
 
-| Documento | Contenido |
+---
+
+## Operating areas
+
+| Area | What it connects |
 |---|---|
-| [`docs/CLOSURE_2026-08-27.md`](docs/CLOSURE_2026-08-27.md) | Dossier de cierre, baseline productiva, estado verificado, excepciones y política post-cierre. |
-| [`docs/SITE_SECTIONS.md`](docs/SITE_SECTIONS.md) | Inventario completo de secciones, rutas primarias, secundarias, públicas, administrativas y API. |
-| [`docs/DATA_MODEL.md`](docs/DATA_MODEL.md) | Objetos canónicos, ownership y cadenas Reservation/Asset/Purchase/Work/Finance. |
-| [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | Next.js/Supabase/Vercel, routing, OS, server/client boundaries, control plane y CI. |
-| [`docs/ACCESS_SECURITY.md`](docs/ACCESS_SECURITY.md) | Auth, capabilities, roles, scopes, RLS, SECURITY DEFINER y advisories conocidos. |
-| [`docs/OPERATIONS_RUNBOOK.md`](docs/OPERATIONS_RUNBOOK.md) | Operación diaria, Cronos, troubleshooting, release, rollback y recovery. |
-| [`docs/QA_RELEASE.md`](docs/QA_RELEASE.md) | Gate PASS/HOLD/BLOCK, suites, Booking E2E, integrity checks y Definition of Done. |
+| **Hospitality** | Reservations, rooms, guests, activities, charges, payments and housekeeping |
+| **Operations** | Tasks, checklists, handovers, issues and daily execution |
+| **People** | Employees, responsibilities and organizational context |
+| **Places & Assets** | Property, inventory, maintenance, orchard, vineyard, cattle, energy and fuel contexts |
+| **Procurement** | Requests, sourcing, approvals, suppliers, purchase orders and receiving |
+| **Finance** | Budgets, approvals, documents, reconciliation, accounting and invoices |
+| **Network & Events** | Discovery, events, providers, front-door and education workflows |
+| **Administration** | Roles, permissions, system controls and operational configuration |
 
-Documentación histórica específica (calendar, procurement, security, etc.) se conserva en el repositorio como evidencia de evolución. Cuando exista contradicción, prevalecen el comportamiento verificado, las migraciones actuales y los documentos de cierre anteriores.
+---
 
-## Operating System
+## Canonical chains
 
-La navegación principal usa seis áreas canónicas:
+### Reservation
 
-1. **Hoy** — `/os`
-2. **Operaciones** — Hospitalidad, actividades, tasks, checklists, procurement, maintenance e issues
-3. **Personas** — empleados y contexto organizacional
-4. **Lugares y Activos** — property, inventory, mapa, energía, orchard, vineyard, cattle y fuel
-5. **Finanzas** — budget, approvals, documents, reconciliation, accounting e invoices
-6. **Red** — Discovery, events, event providers, front door y education
-
-La persona/UX puede priorizar áreas, pero **no otorga permisos**. La autorización real usa capabilities, scopes, route guards, RLS y workflows/RPCs de dominio.
-
-## Secciones principales
-
-### Hospitalidad
-
-Entrada: `/bookings`
-
-Incluye calendario, reservations, rooms, guests, blocks, activities, charges, extras, payments, invoices, documents, quotes, rates, reports, requests, housekeeping, handovers y operations.
-
-Objetos canónicos:
-
-- Reservation → `/bookings/reservations/[id]`
-- Room → `/bookings/rooms/[id]`
-
-Invariantes: sin double booking silencioso, room blocks respetados, intervalos half-open, source policy fail-closed y mutations críticas protegidas en backend/base.
-
-### Inventory / Assets
-
-Entrada: `/inventory`
-
-Incluye asset object, categorías, conteos, auditorías, intake, replenishment, movement/custody y vínculos con maintenance/issues.
-
-Objeto canónico:
-
-- Asset → `/inventory/[id]`
+`Reservation → Room → Guest → Activity → Charge → Payment → Invoice`
 
 ### Procurement
 
-Entrada: `/procurement`
+`Request → Quotes → Comparison → Approval → Purchase Order → Receipt → Inventory`
 
-Submódulos principales: requests, sourcing, approvals, receiving, suppliers y analytics.
+### Assets & work
 
-Objeto canónico:
+`Asset → Issue → Maintenance / Work → Evidence → Closure`
 
-- Purchase/Request → `/procurement/requests/[id]`
+### Finance
 
-Cadena:
+`Budget → Commitment → Document → Reconciliation → Accounting evidence`
 
-`request → sourcing/quotes → comparison → approval → purchase order → receipt → inventory intake`
+These chains are intentionally cross-functional. The same object should not acquire multiple conflicting identities because it crossed a module boundary.
 
-### Finanzas
+---
 
-Entradas principales:
+## Integrity rules
 
-- `/budgets`
-- `/budgets/approvals`
-- `/budgets/documents`
-- `/budgets/reconciliation`
-- `/accounting`
-- `/bookings/invoices`
+- no silent double booking;
+- room blocks and availability constraints are enforced at the authoritative layer;
+- critical mutations are protected server-side;
+- roles/capabilities and data scopes are not granted by UI visibility alone;
+- row-level data boundaries remain explicit;
+- operational records retain history and provenance;
+- missing information is not fabricated to make dashboards appear complete;
+- automation must leave evidence of what it changed and why.
 
-No mostrar métricas financieras inventadas. Totales/estado deben provenir de datos canónicos reproducibles.
+---
 
-### Administración / IT
+## Product architecture
 
-- `/admin`
-- `/admin/access`
-- `/admin/audit`
-- `/admin/locations`
-- `/admin/asset-types`
-- `/admin/issue-types`
-- `/admin/procurement-users`
-- `/admin/it-control`
+The system uses a Next.js/React/TypeScript application layer with PostgreSQL/Supabase as the canonical operational data store, server-side authorization, row-level security, scheduled control-plane work and deployment/release gates.
 
-El IT Control Center es read-only y usa telemetría live. Su política es usuario autenticado con perfil activo y `admin` **o** scope IT activo.
+The public repository documents the architecture and operating model. Deployment credentials, private facility data and sensitive operational evidence are intentionally excluded.
 
-El mapa detallado de todas las familias físicas de `app/` está en [`docs/SITE_SECTIONS.md`](docs/SITE_SECTIONS.md).
+---
 
-## Objetos canónicos
+## Documentation
 
-BSFC es object-centered. Antes de introducir nuevos modelos revisar si el dato pertenece a:
+The repository includes detailed system documentation:
 
-- Reservation / Guest / Room
-- Asset / Stock
-- Purchase
-- Work (Tasks / Maintenance / Issues / Housekeeping)
-- Invoice / Payment
-- Person / Access Profile
-- Location
-- Event / Network
-
-El command palette global `⌘K`/`Ctrl+K` es read-only y navega a objetos autorizados bajo RLS.
-
-## Arquitectura
-
-```text
-Browser
-  ↓
-Next.js 16 App Router + proxy/access
-  ↓
-Server Components / Route Handlers / RLS-backed client calls
-  ↓
-Supabase Auth + RPC + Data API
-  ↓
-PostgreSQL RLS + constraints + triggers + canonical workflows
-  ↓
-Audit / operational events / control plane
-```
-
-Stack principal:
-
-- Next.js `16.0.10`
-- React `19.2.0`
-- TypeScript
-- Tailwind CSS 4
-- Supabase JS `2.87.1` + `@supabase/ssr`
-- PostgreSQL / pg_cron
-- Vercel
-- Playwright `1.61.1`
-- pnpm `10.28.0`
-
-El prebuild prohíbe introducir imports del AI SDK sin una decisión arquitectónica explícita.
-
-## Acceso y seguridad
-
-Capability levels:
-
-`view < operate < approve < admin`
-
-Capas de control:
-
-1. Supabase Auth
-2. perfil activo
-3. capability/role
-4. operational scope
-5. RLS
-6. RPC/constraint para mutations críticas
-
-Reglas:
-
-- nunca `service_role` en frontend;
-- no usar `user_metadata` como autoridad de acceso;
-- usuario sin perfil activo falla cerrado;
-- scope específico de ubicación no autoriza `location_id = NULL`;
-- `SECURITY DEFINER` requiere ACL y validación interna;
-- logs/audit relevantes son append-only;
-- no crear policies permisivas sólo para eliminar warnings.
-
-Advisories conocidos de cierre:
-
-- Supabase Auth Leaked Password Protection continúa pendiente;
-- `btree_gist` en public requiere análisis antes de mover;
-- funciones `SECURITY DEFINER` se auditan individualmente, no con revocación masiva.
-
-Detalles: [`docs/ACCESS_SECURITY.md`](docs/ACCESS_SECURITY.md).
-
-## Control plane / Cronos
-
-Jobs observados al cierre:
-
-| Job | Schedule |
+| Document | Purpose |
 |---|---|
-| `operations-health-snapshot` | `*/15 * * * *` |
-| `integration-job-supervisor` | `3,8,13,18,23,28,33,38,43,48,53,58 * * * *` |
+| [`docs/CLOSURE_2026-08-27.md`](docs/CLOSURE_2026-08-27.md) | Verified closure baseline and known exceptions |
+| [`docs/SITE_SECTIONS.md`](docs/SITE_SECTIONS.md) | Route and surface inventory |
+| [`docs/DATA_MODEL.md`](docs/DATA_MODEL.md) | Canonical objects and ownership |
+| [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | Application/data/control-plane architecture |
+| [`docs/ACCESS_SECURITY.md`](docs/ACCESS_SECURITY.md) | Authorization, scopes and RLS boundaries |
+| [`docs/OPERATIONS_RUNBOOK.md`](docs/OPERATIONS_RUNBOOK.md) | Operations, recovery and rollback |
+| [`docs/QA_RELEASE.md`](docs/QA_RELEASE.md) | QA and release-gate model |
 
-El snapshot es read-only. El supervisor implementa recovery/retry acotado; no resuelve automáticamente decisiones de negocio.
+Historical project documentation remains part of the engineering record. Current behavior, migrations and closure documentation take precedence when historical notes conflict.
 
-Runbook: [`docs/OPERATIONS_RUNBOOK.md`](docs/OPERATIONS_RUNBOOK.md).
+---
 
-## Locales
+## Product principles
 
-Locales soportados:
+1. **One facility, one operational model.**
+2. **Canonical objects before dashboard convenience.**
+3. **Authorization is enforced by the system, not presentation.**
+4. **Integrity rules fail closed where the operation is consequential.**
+5. **Evidence and history survive automation.**
+6. **Operational intelligence should lead to executable work.**
 
-- `/en`
-- `/es`
-- `/de`
+---
 
-`/deu` es alias legacy hacia `/de`.
+## Product
 
-El locale se preserva en navegación/redirects y la autorización se evalúa sobre la ruta interna normalizada.
-
-## Desarrollo local
-
-Requisitos:
-
-- Node.js compatible con Next.js 16
-- pnpm `10.28.0`
-- proyecto Supabase configurado
-
-Instalación:
-
-```bash
-pnpm install
-pnpm dev
-```
-
-Variables necesarias dependen del entorno. Como mínimo la aplicación usa las variables públicas de conexión Supabase requeridas por los clientes Next.js. **No guardar valores secretos en Git.**
-
-## Comandos de calidad
-
-```bash
-pnpm typecheck
-pnpm test:inventory
-pnpm test:booking
-pnpm test:os
-pnpm test:e2e:booking
-pnpm build
-```
-
-`pnpm build` ejecuta `prebuild`, que incluye los checks contractuales relevantes antes del build Next.js.
-
-Workflows GitHub:
-
-- `.github/workflows/booking-calendar-e2e.yml`
-- `.github/workflows/booking-calendar-e2e-status.yml`
-- `.github/workflows/map-performance-hardening.yml`
-
-## Release
-
-Flujo recomendado:
-
-```text
-branch
-→ preview
-→ tests/build
-→ QA
-→ compare con main
-→ fast-forward main
-→ production deployment del mismo SHA
-→ smoke + runtime logs
-→ PASS/HOLD/BLOCK
-```
-
-No declarar PASS mientras exista un gate requerido pendiente o rojo.
-
-La guía completa está en [`docs/QA_RELEASE.md`](docs/QA_RELEASE.md).
-
-## Datos y migraciones
-
-La historia de schema vive en `supabase/migrations/`.
-
-Reglas de mantenimiento:
-
-- cambios de schema versionados;
-- verificar RLS/grants/RPCs;
-- no sembrar datos demo en producción;
-- no borrar historia para corregir una inconsistencia;
-- preservar lineage entre Procurement → Receiving → Inventory;
-- preservar Reservation → Room/Bed → Housekeeping/Maintenance;
-- mantener objetos canónicos estables.
-
-Modelo conceptual: [`docs/DATA_MODEL.md`](docs/DATA_MODEL.md).
-
-## Política post-cierre
-
-El sistema debe evolucionar desde evidencia operacional real:
-
-- bugs reproducidos;
-- incidentes;
-- feedback de usuarios;
-- nuevas obligaciones de negocio;
-- problemas de rendimiento/seguridad demostrados.
-
-No abrir nuevas superficies por defecto. Preferir cambios pequeños, reversibles, verificables y documentados.
-
-## Source of truth
-
-En caso de discrepancia, el orden de autoridad es:
-
-1. comportamiento productivo verificado;
-2. migraciones/constraints/RLS/RPC actuales;
-3. código de `main`;
-4. documentación de cierre;
-5. documentación histórica.
-
-Cualquier cambio material debe actualizar la documentación correspondiente en el mismo release.
+**Black Swan Facility Core — Facility & Hospitality OS**  
+[blackswn.app](https://blackswn.app)
