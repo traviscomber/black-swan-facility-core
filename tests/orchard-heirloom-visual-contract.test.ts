@@ -45,3 +45,36 @@ test("capacity view plots simultaneous physical occupancy against canonical capa
   assert.match(source, /capacity:capacityM/)
   assert.match(source, /Curva de capacidad de temporada/)
 })
+
+test("nursery overview separates reconciled projection from observed evidence", async () => {
+  const source = await readFile("app/orchard/nursery/overview/page.tsx", "utf8")
+  const projection = await readFile("data/orchard/dietrich-nursery-container-plan-2026-27.json", "utf8")
+
+  assert.match(source, /orchard_seed_lots/)
+  assert.match(source, /orchard_nursery_batches/)
+  assert.match(source, /germination_rate_pct/)
+  assert.match(source, /Demanda proyectada de contenedores/)
+  assert.match(projection, /reconciled_projection_not_observed/)
+  assert.match(projection, /"current_in_use": 0/)
+})
+
+test("harvest desk is a weekly availability matrix without fabricated yield", async () => {
+  const source = await readFile("app/orchard/harvest/desk/page.tsx", "utf8")
+
+  assert.match(source, /Weekly harvest availability/)
+  assert.match(source, /activeInWeek/)
+  assert.match(source, /crop_succession_id/)
+  assert.match(source, /No representa una cantidad proyectada/)
+  assert.doesNotMatch(source, /projected_kg|estimated_yield|fake yield/i)
+})
+
+test("crop map overview keeps all-plan physical occupancy visible", async () => {
+  const source = await readFile("app/orchard/crop-map/overview/page.tsx", "utf8")
+
+  assert.match(source, /Field occupancy canvas/)
+  assert.match(source, /Current 0\[1-5\]/)
+  assert.match(source, /Expansion 0\[1-3\]/)
+  assert.match(source, /activeAllocations=allocations\.filter/)
+  assert.match(source, /planActiveAllocations/)
+  assert.match(source, /not surveyed geometry|no geometría topográfica/)
+})
