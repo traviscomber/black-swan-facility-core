@@ -2,13 +2,9 @@ import assert from "node:assert/strict"
 import { readFile } from "node:fs/promises"
 import test from "node:test"
 
-test("Orchard planting calendar is reconciled, succession-led and lifecycle phased", async () => {
+test("Orchard planting calendar is succession-led, lifecycle phased and Heirloom-dense", async () => {
   const source = await readFile("app/orchard/game-plan/season/page.tsx", "utf8")
 
-  assert.match(source, /orchard_bed_allocations/)
-  assert.match(source, /ScopeMode = "field" \| "all"/)
-  assert.match(source, /useState<ScopeMode>\("field"\)/)
-  assert.match(source, /allocatedSuccessionIds/)
   assert.match(source, /planned_bed_m/)
   assert.match(source, /planned_transplant_date/)
   assert.match(source, /planned_first_harvest_date/)
@@ -17,7 +13,16 @@ test("Orchard planting calendar is reconciled, succession-led and lifecycle phas
   assert.match(source, /Sow → field/)
   assert.match(source, /Field → first harvest/)
   assert.match(source, /Harvest window/)
+  assert.match(source, /isoWeekNumber/)
+  assert.match(source, /details\[data-orchard-season-crop\]/)
+  assert.match(source, /collapseAll/)
   assert.match(source, /sticky left-0/)
   assert.match(source, /todayVisible/)
+  assert.match(source, /Search crops/)
+
+  assert.doesNotMatch(source, /orchard_bed_allocations/)
+  assert.doesNotMatch(source, /ScopeMode = "field" \| "all"/)
+  assert.doesNotMatch(source, /Plan de campo/)
+  assert.doesNotMatch(source, /Plan completo/)
   assert.doesNotMatch(source, /from "@\/components\/ui\/card"/)
 })
