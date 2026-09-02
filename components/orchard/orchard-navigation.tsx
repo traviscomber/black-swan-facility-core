@@ -77,6 +77,20 @@ body:has([data-orchard-navigation]) main [data-slot="card"] table {
   border-right:0!important;
   border-radius:0!important;
 }
+body:has([data-orchard-navigation]) main [data-testid="orchard-plan-procurement"],
+body:has([data-orchard-navigation]) main details[data-orchard-propagation-section] {
+  border-left:0!important;
+  border-right:0!important;
+}
+body:has([data-orchard-navigation]) main details[data-orchard-propagation-section] details {
+  border-left:0!important;
+  border-right:0!important;
+  border-color:var(--orchard-line-soft)!important;
+}
+body:has([data-orchard-navigation]) main details[data-orchard-propagation-section] details > div > div {
+  border-left-color:transparent!important;
+  border-right-color:transparent!important;
+}
 body:has([data-orchard-navigation]) main button,
 body:has([data-orchard-navigation]) main [role="button"],
 body:has([data-orchard-navigation]) main [data-slot="button"] { min-height:40px; border-radius:8px!important; box-shadow:none!important; }
