@@ -158,6 +158,12 @@ body:has([data-orchard-navigation]) main [class*="transition"] { transition-dura
   body:has([data-orchard-navigation]) main [data-slot="card"]:hover { border-color:rgba(139,203,168,.24)!important; box-shadow:none!important; }
   body:has([data-orchard-navigation]) main [data-slot="card"] [data-slot="card"]:hover { border-color:transparent!important; }
 }
+@media (min-width:768px) and (max-width:1023px) {
+  body:has([data-orchard-navigation]) main div[class*="xl:grid-cols-7"] { grid-template-columns:repeat(2,minmax(0,1fr))!important; }
+}
+@media (min-width:1024px) and (max-width:1279px) {
+  body:has([data-orchard-navigation]) main div[class*="xl:grid-cols-7"] { grid-template-columns:repeat(4,minmax(0,1fr))!important; }
+}
 @media (max-width:639px) {
   body:has([data-orchard-navigation]) { --orchard-radius:12px; --orchard-radius-sm:9px; }
 }
