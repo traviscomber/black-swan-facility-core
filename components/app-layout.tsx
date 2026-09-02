@@ -83,6 +83,7 @@ export function AppLayout({ children }: AppLayoutProps) {
     : "lg:sticky lg:top-0 lg:z-40 lg:flex lg:h-screen lg:w-64 lg:flex-col"
   const mobileOnlyClass = orchardShell ? "md:hidden" : "lg:hidden"
   const showConcierge = !orchardShell && can("hospitality.operate") && canAccessDepartment("hospitality")
+  const showGlobalAiOps = !orchardShell && access.is_admin
   const conciergeHref = contextualHref(language, "/concierge", pathname)
   const aiHref = contextualHref(language, "/ai-ops", pathname)
   const DesktopSidebar = orchardShell ? OrchardSidebar : Sidebar
@@ -140,9 +141,9 @@ export function AppLayout({ children }: AppLayoutProps) {
 
         <main className="relative min-h-0 flex-1 overflow-y-auto bg-background">
           {children}
-          {(showConcierge || access.is_admin) && <div className="fixed bottom-4 right-4 z-30 flex items-center gap-2">
+          {(showConcierge || showGlobalAiOps) && <div className="fixed bottom-4 right-4 z-30 flex items-center gap-2">
             {showConcierge && <Link href={conciergeHref} className="inline-flex h-11 items-center gap-2 rounded-full border bg-background px-4 text-sm font-medium shadow-lg hover:bg-muted"><MessageSquare className="h-4 w-4" />Concierge</Link>}
-            {access.is_admin && <Link href={aiHref} className="inline-flex h-11 w-11 items-center justify-center rounded-full border bg-background shadow-lg hover:bg-muted" aria-label="AI Ops"><Bot className="h-4 w-4" /></Link>}
+            {showGlobalAiOps && <Link href={aiHref} className="inline-flex h-11 w-11 items-center justify-center rounded-full border bg-background shadow-lg hover:bg-muted" aria-label="AI Ops"><Bot className="h-4 w-4" /></Link>}
           </div>}
         </main>
       </div>
