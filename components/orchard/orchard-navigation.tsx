@@ -108,7 +108,7 @@ body:has([data-orchard-navigation]) main details[data-orchard-season-crop] > div
   border-color:var(--orchard-line-soft)!important;
 }
 body:has([data-orchard-navigation]) main details[data-orchard-season-crop] > div > div[class*="relative"][class*="border-t"] {
-  background-image:repeating-linear-gradient(90deg,transparent 0,transparent calc(100% / 36 - 1px),rgba(231,225,216,.045) calc(100% / 36 - 1px),rgba(231,225,216,.045) calc(100% / 36))!important;
+  background-image:none!important;
 }
 body:has([data-orchard-navigation]) main button,
 body:has([data-orchard-navigation]) main [role="button"],
