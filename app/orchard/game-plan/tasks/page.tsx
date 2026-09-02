@@ -39,6 +39,7 @@ type PlannedReference = {
   taskId: string | null
   taskStatus: string | null
 }
+type WorkloadRow = { label:string; weekStart:string; implantation:number; followUp:number }
 
 const copy = {
   en: {
@@ -53,7 +54,7 @@ const copy = {
     conditionalHelp: "Undated source actions remain conditional until an operator confirms the execution date. Black Swan does not invent that date.",
     sourcePrimary: "Primary schedule source", sourceSecondary: "Context source", sourceCoverage: "The reconciled 32 plantings resolve to 103 dated Crop Chart actions: 32 implantation anchors + 71 follow-ups, plus 1 undated conditional action.",
     work: "Open accountable task management", loadError: "Could not load the reconciled work calendar.", sequence: "succession",
-    workload: "Planned workload by week", workloadHelp: "Heirloom-style season shape using source-backed action counts. This is not an hours estimate: Black Swan currently has no Orchard tasks with estimated_minutes.", peakWeek: "Peak", activeWeeks: "active weeks",
+    workload: "Planned workload by week", workloadHelp: "Season shape using source-backed action counts and real calendar dates. This is not an hours estimate: Black Swan currently has no Orchard tasks with estimated_minutes.", peakWeek: "Peak week", activeWeeks: "Active weeks", actions:"actions",
   },
   es: {
     eyebrow: "Dietrich · Calendario y Tareas",
@@ -67,7 +68,7 @@ const copy = {
     conditionalHelp: "Las acciones sin fecha en la fuente siguen siendo condicionales hasta que un operador confirme cuándo ejecutarlas. Black Swan no inventa esa fecha.",
     sourcePrimary: "Fuente principal del calendario", sourceSecondary: "Fuente contextual", sourceCoverage: "Las 32 plantaciones reconciliadas resuelven 103 acciones fechadas de Crop Chart: 32 hitos de implantación + 71 labores posteriores, más 1 acción condicional sin fecha.",
     work: "Abrir gestión de tareas responsables", loadError: "No fue posible cargar el calendario reconciliado de labores.", sequence: "sucesión",
-    workload: "Carga planificada por semana", workloadHelp: "Forma de temporada estilo Heirloom usando conteos de acciones respaldados por fuente. No es una estimación de horas: Black Swan hoy no tiene tareas Orchard con estimated_minutes.", peakWeek: "Peak", activeWeeks: "semanas activas",
+    workload: "Carga planificada por semana", workloadHelp: "Forma de temporada usando conteos de acciones respaldados por fuente y fechas reales de calendario. No es una estimación de horas: Black Swan hoy no tiene tareas Orchard con estimated_minutes.", peakWeek: "Semana peak", activeWeeks: "Semanas activas", actions:"acciones",
   },
   de: {
     eyebrow: "Dietrich · Kalender & Aufgaben",
@@ -81,13 +82,14 @@ const copy = {
     conditionalHelp: "Undatierte Quellaktionen bleiben bedingt, bis ein Operator das Ausführungsdatum bestätigt. Black Swan erfindet dieses Datum nicht.",
     sourcePrimary: "Primäre Kalenderquelle", sourceSecondary: "Kontextquelle", sourceCoverage: "Die 32 abgeglichenen Pflanzungen ergeben 103 datierte Crop-Chart-Aktionen: 32 Pflanzanker + 71 Folgearbeiten sowie 1 undatierte bedingte Aktion.",
     work: "Verbindliche Aufgabenverwaltung öffnen", loadError: "Der abgeglichene Arbeitskalender konnte nicht geladen werden.", sequence: "Folge",
-    workload: "Geplante Arbeitslast pro Woche", workloadHelp: "Heirloom-artige Saisonform auf Basis belegter Aktionsanzahlen. Keine Stundenprognose: Black Swan hat derzeit keine Orchard-Aufgaben mit estimated_minutes.", peakWeek: "Peak", activeWeeks: "aktive Wochen",
+    workload: "Geplante Arbeitslast pro Woche", workloadHelp: "Saisonverlauf auf Basis belegter Aktionsanzahlen und realer Kalenderdaten. Keine Stundenprognose: Black Swan hat derzeit keine Orchard-Aufgaben mit estimated_minutes.", peakWeek: "Spitzenwoche", activeWeeks: "Aktive Wochen", actions:"Arbeiten",
   },
 } as const
 
 const locales: Record<Locale, string> = { en: "en-US", es: "es-CL", de: "de-DE" }
 const dateKey = (value: string, days: number) => { const d = new Date(`${value}T12:00:00`); d.setDate(d.getDate() + days); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}` }
 const dateLabel = (value: string, locale: string) => new Date(`${value}T12:00:00`).toLocaleDateString(locale, { weekday: "short", day: "2-digit", month: "short", year: "numeric" })
+const compactDate = (value:string, locale:string) => new Date(`${value}T12:00:00`).toLocaleDateString(locale,{day:"2-digit",month:"short"})
 const dayMs = 86_400_000
 
 export default function DietrichTaskCalendarPage() {
@@ -156,12 +158,12 @@ export default function DietrichTaskCalendarPage() {
   }, [scopedSuccessions, cycleById, existingTasks])
 
   const counts = { implantation: references.filter((item) => item.kind === "implantation").length, followUp: references.filter((item) => item.kind === "follow_up" && item.date).length, conditional: references.filter((item) => item.kind === "conditional").length, converted: references.filter((item) => item.taskId).length }
-  const workloadData = useMemo(() => {
+  const workloadData = useMemo<WorkloadRow[]>(() => {
     if (!plan) return []
     const start = new Date(`${plan.start_date}T12:00:00`).getTime()
     const end = new Date(`${plan.end_date}T12:00:00`).getTime()
     const weeks = Math.max(1, Math.ceil((end - start) / (7 * dayMs)) + 1)
-    const rows = Array.from({ length: weeks }, (_, index) => ({ label: `${lang === "es" ? "S" : "W"}${index + 1}`, implantation: 0, followUp: 0 }))
+    const rows = Array.from({ length: weeks }, (_, index) => { const d=new Date(start+index*7*dayMs);const weekStart=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;return { label:compactDate(weekStart,locale), weekStart, implantation: 0, followUp: 0 } })
     for (const item of references) {
       if (!item.date || item.kind === "conditional") continue
       const when = new Date(`${item.date}T12:00:00`).getTime()
@@ -171,8 +173,9 @@ export default function DietrichTaskCalendarPage() {
       if (item.kind === "follow_up") rows[index].followUp += 1
     }
     return rows
-  }, [plan, references, lang])
-  const peakWork = workloadData.reduce((best, row) => Math.max(best, row.implantation + row.followUp), 0)
+  }, [plan, references, locale])
+  const peakRow = workloadData.reduce<WorkloadRow|null>((best,row)=>!best||row.implantation+row.followUp>best.implantation+best.followUp?row:best,null)
+  const peakWork = peakRow ? peakRow.implantation + peakRow.followUp : 0
   const activeWeeks = workloadData.filter((row) => row.implantation + row.followUp > 0).length
   const normalizedQuery = query.trim().toLocaleLowerCase(locale)
   const filtered = references.filter((item) => { if (view !== "all" && item.kind !== view) return false; if (!normalizedQuery) return true; return `${item.crop} ${item.activity} ${item.sequence}`.toLocaleLowerCase(locale).includes(normalizedQuery) })
@@ -189,7 +192,7 @@ export default function DietrichTaskCalendarPage() {
     <header className="mb-7 max-w-5xl"><p className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">{text.eyebrow}</p><div className="flex flex-wrap items-center gap-3"><h1 className="text-3xl font-normal sm:text-4xl">{text.title}</h1>{plan?.season ? <Badge variant="secondary">{plan.season}</Badge> : null}</div><p className="mt-3 max-w-4xl text-sm leading-6 text-muted-foreground sm:text-base">{text.description}</p></header>
     {loading ? <div className="py-12 text-sm text-muted-foreground">…</div> : error ? <div className="border border-red-300 bg-red-50 p-4 text-sm text-red-800">{error}</div> : <>
       <section className="mb-6 grid gap-px bg-[var(--bs-divider-subtle)] sm:grid-cols-2 xl:grid-cols-4"><Metric icon={Sprout} label={text.anchors} value={counts.implantation}/><Metric icon={CalendarClock} label={text.followUps} value={counts.followUp}/><Metric icon={ShieldAlert} label={text.conditional} value={counts.conditional}/><Metric icon={CheckCircle2} label={text.converted} value={counts.converted}/></section>
-      <section className="mb-6 border border-[var(--bs-divider-subtle)] bg-[var(--bs-surface-primary)] p-5 sm:p-6"><div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between"><div><h2 className="text-xl font-normal">{text.workload}</h2><p className="mt-1 max-w-4xl text-xs leading-5 text-muted-foreground">{text.workloadHelp}</p></div><div className="flex gap-5 text-xs text-muted-foreground"><span>{text.peakWeek}: <strong className="font-medium text-foreground">{peakWork}</strong></span><span><strong className="font-medium text-foreground">{activeWeeks}</strong> {text.activeWeeks}</span></div></div><PlannedWorkloadChart data={workloadData} language={lang}/></section>
+      <section className="mb-6 border border-[var(--bs-divider-subtle)] bg-[var(--bs-surface-primary)] p-5 sm:p-6"><div className="grid gap-4 lg:grid-cols-[1fr_auto_auto] lg:items-end"><div><h2 className="text-xl font-normal">{text.workload}</h2><p className="mt-1 max-w-4xl text-xs leading-5 text-muted-foreground">{text.workloadHelp}</p></div><SummaryCell label={text.peakWeek} value={peakRow?`${peakRow.label} · ${peakWork} ${text.actions}`:"—"}/><SummaryCell label={text.activeWeeks} value={String(activeWeeks)}/></div><PlannedWorkloadChart data={workloadData} language={lang}/></section>
       <div className="mb-6 border-l-2 border-[var(--bs-warm-amber)] pl-4 text-sm leading-6 text-muted-foreground">{text.warning}</div>
       <section className="mb-4 flex flex-col gap-3 border-y border-[var(--bs-divider-subtle)] py-3 lg:flex-row lg:items-center lg:justify-between"><div className="flex flex-wrap gap-2"><FilterButton active={view === "follow_up"} onClick={() => setView("follow_up")}>{text.followUp} · {counts.followUp}</FilterButton><FilterButton active={view === "implantation"} onClick={() => setView("implantation")}>{text.implantation} · {counts.implantation}</FilterButton><FilterButton active={view === "conditional"} onClick={() => setView("conditional")}>{text.conditionalView} · {counts.conditional}</FilterButton><FilterButton active={view === "all"} onClick={() => setView("all")}>{text.all} · {references.length}</FilterButton></div><label className="relative block w-full lg:w-80"><Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"/><Input aria-label={text.search} value={query} onChange={(event) => setQuery(event.target.value)} placeholder={text.search} className="pl-9"/></label></section>
       <section><div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between"><div><p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">{text.calendar}</p><h2 className="mt-1 text-2xl font-normal">{plan?.season ?? "—"}</h2></div><Link href={workRoot} className="inline-flex items-center gap-2 text-sm text-foreground">{text.work}<ArrowRight className="h-4 w-4"/></Link></div><div className="overflow-x-auto border border-[var(--bs-divider-subtle)] bg-[var(--bs-surface-primary)]"><div className="min-w-[1040px]"><div className="grid grid-cols-[170px_260px_1fr_130px_135px_190px] border-b border-[var(--bs-divider-subtle)] bg-[var(--bs-surface-secondary)] px-3 py-2 text-[11px] uppercase tracking-[0.12em] text-muted-foreground"><span>{text.date}</span><span>{text.crop}</span><span>{text.action}</span><span>{text.relative}</span><span>{text.source}</span><span>{text.status}</span></div>{filtered.length === 0 ? <div className="p-8 text-sm text-muted-foreground">{text.noRows}</div> : filtered.map((item) => <div key={`${item.successionId}-${item.sourcePath}-${item.date ?? "conditional"}`} className="grid grid-cols-[170px_260px_1fr_130px_135px_190px] items-center border-b border-[var(--bs-divider-subtle)] px-3 py-3 text-sm last:border-b-0"><div className="tabular-nums">{item.date ? dateLabel(item.date, locale) : <span className="text-muted-foreground">{text.noDate}</span>}</div><div><p className="font-medium">{item.crop}</p><p className="mt-1 text-xs text-muted-foreground">{text.sequence} {item.sequence}</p></div><div><p>{item.activity}</p>{item.kind === "conditional" ? <p className="mt-1 text-xs text-muted-foreground">{text.conditionalHelp}</p> : null}</div><div className="tabular-nums text-muted-foreground">{relativeLabel(item)}</div><div className="font-mono text-xs text-muted-foreground">{ORCHARD_CROP_CHART_TASK_SOURCE.sheet}!{item.sourceColumn}</div><div>{item.taskId ? <Link href={`/${language}/tasks?entity=${encodeURIComponent(item.taskId)}`} className="inline-flex items-center gap-1.5 text-sm"><CheckCircle2 className="h-4 w-4"/>{text.taskCreated}</Link> : item.kind === "follow_up" && item.date ? <Link href={workHref(item)} className="inline-flex items-center gap-1.5 text-sm font-medium text-[var(--orchard-green)]">{text.createTask}<ArrowRight className="h-4 w-4"/></Link> : <span className="text-xs text-muted-foreground">{text.plannedOnly}</span>}</div></div>)}</div></div></section>
@@ -200,3 +203,4 @@ export default function DietrichTaskCalendarPage() {
 
 function Metric({ icon: Icon, label, value }: { icon: typeof ClipboardList; label: string; value: number }) { return <div className="bg-[var(--bs-surface-primary)] p-5"><Icon className="h-4 w-4 text-muted-foreground"/><p className="mt-4 text-xs uppercase tracking-wide text-muted-foreground">{label}</p><p className="mt-2 text-3xl tabular-nums">{value}</p></div> }
 function FilterButton({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) { return <button type="button" onClick={onClick} className={`min-h-9 border px-3 text-sm ${active ? "border-[var(--orchard-green)] bg-[var(--orchard-green-soft)] text-[var(--orchard-green)]" : "border-[var(--bs-divider-subtle)] bg-transparent text-muted-foreground"}`}>{children}</button> }
+function SummaryCell({label,value}:{label:string;value:string}){return <div className="min-w-[150px] border-l border-[var(--bs-divider-subtle)] pl-4"><p className="text-[10px] uppercase tracking-[.14em] text-muted-foreground">{label}</p><p className="mt-1 text-sm font-medium">{value}</p></div>}
