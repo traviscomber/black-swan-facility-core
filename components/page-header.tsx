@@ -35,7 +35,6 @@ const ORCHARD_HERO_IMAGES = {
   autoPlace: "https://images.unsplash.com/photo-1416879595882-3373a0480b5b?auto=format&fit=crop&w=2200&q=92",
   observation: "https://images.unsplash.com/photo-1464226184884-fa280b87c399?auto=format&fit=crop&w=2200&q=92",
   seasonClose: "https://images.unsplash.com/photo-1471194402529-8e0f5a675de6?auto=format&fit=crop&w=2200&q=92",
-  traceability: "https://images.unsplash.com/photo-1500937386664-56d1dfef3854?auto=format&fit=crop&w=2200&q=92",
 } as const
 
 const ORCHARD_HERO_EXCLUSIONS = new Set([
@@ -53,6 +52,7 @@ const ORCHARD_HERO_EXCLUSIONS = new Set([
   "/orchard/commercial",
   "/orchard/performance",
   "/orchard/decisions",
+  "/orchard/traceability",
   "/orchard/mobile",
   "/orchard/health",
   "/orchard/notes",
@@ -95,10 +95,6 @@ const ROUTE_HEROES: Array<{ match: (pathname: string) => boolean; config: Orchar
   {
     match: (pathname) => pathname === "/orchard/season-summary" || pathname.startsWith("/orchard/season-summary/"),
     config: { image: ORCHARD_HERO_IMAGES.seasonClose, kicker: "Season closeout", signals: ["Yield", "Harvest", "Operational record"], suppressFirstContentHero: true },
-  },
-  {
-    match: (pathname) => pathname === "/orchard/traceability" || pathname.startsWith("/orchard/traceability/"),
-    config: { image: ORCHARD_HERO_IMAGES.traceability, kicker: "Crop lineage", signals: ["Nursery", "Field", "Harvest"], suppressFirstContentHero: true },
   },
   {
     match: (pathname) => pathname === "/orchard/reports" || pathname.startsWith("/orchard/reports/"),
