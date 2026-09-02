@@ -2,6 +2,7 @@ import assert from "node:assert/strict"
 import { readFile } from "node:fs/promises"
 import test from "node:test"
 import { ORCHARD_CROP_CHART_TASK_PROFILES, ORCHARD_CROP_CHART_TASK_SOURCE } from "../lib/orchard/crop-chart-task-reference.ts"
+import { ORCHARD_GERMINATION_PLANNING_REFERENCE } from "../lib/orchard/germination-reference.ts"
 
 const selectedPlantings: Record<string, number> = {
   "Alaska Cucumber (greenhouse)": 1,
@@ -77,4 +78,22 @@ test("planning references require accountable confirmation before becoming tasks
   assert.match(confirmation, /eq\("source_path", sourcePath\)/)
   assert.match(confirmation, /p_employee_ids: \[employeeId\]/)
   assert.doesNotMatch(confirmation, /from\("tasks"\)\.insert/)
+})
+
+test("propagation exposes complete direct-sow method coverage without inventing germination", async () => {
+  const propagation = await readFile("app/orchard/game-plan/propagation/page.tsx", "utf8")
+  assert.match(propagation, /Peas: "Sweet peas"/)
+  assert.match(propagation, /"New Potatoes"/)
+  assert.match(propagation, /"Storage Potatoes"/)
+  assert.match(propagation, /seeder: "By hand"/)
+  assert.match(propagation, /calibration: "N\/A"/)
+  assert.match(propagation, /crop === "Arugula" && index > 0 \? "alternate" : "standard"/)
+  assert.match(propagation, /crop === "Carrots".*cultivar === "All"/)
+  assert.match(propagation, /orchard_seed_lots/)
+  assert.match(propagation, /orchard_nursery_batches/)
+  assert.match(propagation, /transplantCovered/)
+  assert.match(propagation, /calibrationCovered/)
+  assert.equal(ORCHARD_GERMINATION_PLANNING_REFERENCE.planningFallbackPct, 90)
+  assert.equal(ORCHARD_GERMINATION_PLANNING_REFERENCE.operationalStatus, "procurement_planning_fallback")
+  assert.match(ORCHARD_GERMINATION_PLANNING_REFERENCE.semantics, /not observed germination/)
 })
