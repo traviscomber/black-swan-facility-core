@@ -4,7 +4,6 @@ import Link from "next/link"
 import { usePathname, useSearchParams } from "next/navigation"
 import {
   Activity,
-  BadgeDollarSign,
   BarChart3,
   BookOpen,
   Bot,
@@ -12,25 +11,15 @@ import {
   CalendarDays,
   CalendarRange,
   ChartNoAxesCombined,
-  ChartSpline,
   ChevronDown,
-  Database,
   FileText,
-  GitBranch,
   Hammer,
-  History,
   LayoutDashboard,
   Leaf,
   Map,
-  Rocket,
-  Route,
   ShieldAlert,
-  Smartphone,
   Sprout,
-  Target,
   TestTube2,
-  UtensilsCrossed,
-  WandSparkles,
 } from "lucide-react"
 import { useLanguage } from "@/lib/hooks/use-language"
 import { cn } from "@/lib/utils"
@@ -40,52 +29,28 @@ type OrchardLocale = "en" | "es" | "de"
 type NavItem = { href: string; label: Record<OrchardLocale, string>; icon: typeof LayoutDashboard; includeChildren?: boolean }
 
 const primaryItems: NavItem[] = [
-  { href: "/orchard/getting-started", label: { en: "Getting Started", es: "Primeros pasos", de: "Erste Schritte" }, icon: Rocket },
   { href: "/orchard", label: { en: "Today", es: "Hoy", de: "Heute" }, icon: LayoutDashboard },
-  { href: "/orchard/field", label: { en: "Field", es: "Campo", de: "Feld" }, icon: Smartphone, includeChildren: true },
-  { href: "/orchard/harvest/desk", label: { en: "Harvest", es: "Cosecha", de: "Ernte" }, icon: Leaf },
-  { href: "/orchard/season-summary", label: { en: "History", es: "Historial", de: "Verlauf" }, icon: History },
+  { href: "/orchard/game-plan/season", label: { en: "Calendar", es: "Calendario", de: "Kalender" }, icon: CalendarRange },
+  { href: "/orchard/crop-map/overview", label: { en: "Crop Map", es: "Crop Map", de: "Crop Map" }, icon: Map, includeChildren: true },
+  { href: "/orchard/nursery/overview", label: { en: "Nursery", es: "Almácigo", de: "Anzucht" }, icon: Sprout, includeChildren: true },
+  { href: "/orchard/work/week-board", label: { en: "Tasks", es: "Tareas", de: "Aufgaben" }, icon: CalendarDays, includeChildren: true },
+  { href: "/orchard/harvest/desk", label: { en: "Harvest", es: "Cosecha", de: "Ernte" }, icon: Leaf, includeChildren: true },
+  { href: "/orchard/crops", label: { en: "Crops", es: "Cultivos", de: "Kulturen" }, icon: Sprout, includeChildren: true },
 ]
 
-const gamePlanItems: NavItem[] = [
-  { href: "/orchard/game-plan/season", label: { en: "Planting calendar", es: "Calendario de plantación", de: "Pflanzkalender" }, icon: CalendarRange },
-  { href: "/orchard/game-plan/overview", label: { en: "Game Plan overview", es: "Resumen Game Plan", de: "Game-Plan-Übersicht" }, icon: LayoutDashboard },
-  { href: "/orchard/game-plan/tasks", label: { en: "Planned work", es: "Labores planificadas", de: "Geplante Arbeit" }, icon: CalendarDays },
-  { href: "/orchard/game-plan/propagation", label: { en: "Sowing methods", es: "Métodos de siembra", de: "Aussaatmethoden" }, icon: Sprout },
-  { href: "/orchard/nursery/overview", label: { en: "Nursery plan", es: "Plan de almácigo", de: "Anzuchtplan" }, icon: Sprout },
-  { href: "/orchard/game-plan/capacity", label: { en: "Beds & capacity", es: "Camas y capacidad", de: "Beete & Kapazität" }, icon: Map },
-  { href: "/orchard/crop-map/overview", label: { en: "Crop Map", es: "Crop Map", de: "Crop Map" }, icon: Map },
-  { href: "/orchard/game-plan/forecast", label: { en: "Production forecast", es: "Forecast de producción", de: "Produktionsprognose" }, icon: ChartNoAxesCombined },
-  { href: "/orchard/game-plan/objectives", label: { en: "Objectives", es: "Objetivos", de: "Ziele" }, icon: Target },
-  { href: "/orchard/game-plan/written-plan", label: { en: "Written Game Plan", es: "Written Game Plan", de: "Written Game Plan" }, icon: FileText },
-  { href: "/orchard/game-plan/crop-chart", label: { en: "Crop Chart", es: "Crop Chart", de: "Crop Chart" }, icon: BookOpen },
-]
-
-const advancedItems: NavItem[] = [
-  { href: "/orchard/game-plan", label: { en: "Game Plan editor", es: "Editor Game Plan", de: "Game-Plan-Editor" }, icon: CalendarRange },
-  { href: "/orchard/assistant", label: { en: "Orchard AI", es: "IA Orchard", de: "Orchard AI" }, icon: Bot },
-  { href: "/orchard/demand", label: { en: "Food Demand", es: "Demanda", de: "Lebensmittelbedarf" }, icon: UtensilsCrossed },
-  { href: "/orchard/library", label: { en: "Agronomic library", es: "Biblioteca agronómica", de: "Anbaubibliothek" }, icon: BookOpen },
-  { href: "/orchard/library/fao", label: { en: "FAO Catalog", es: "Catálogo FAO", de: "FAO-Katalog" }, icon: Database },
-  { href: "/orchard/nursery", label: { en: "Seed & nursery management", es: "Gestión de semillas", de: "Saatgutverwaltung" }, icon: Sprout },
-  { href: "/orchard/work", label: { en: "Accountable work", es: "Trabajo responsable", de: "Verbindliche Arbeit" }, icon: CalendarDays },
-  { href: "/orchard/harvest", label: { en: "Harvest management", es: "Gestión de cosecha", de: "Ernteverwaltung" }, icon: Leaf },
-  { href: "/orchard/crop-map", label: { en: "Crop map workspace", es: "Workspace de mapa", de: "Karten-Arbeitsbereich" }, icon: Map },
-  { href: "/orchard/crop-map/auto-place", label: { en: "Auto-place", es: "Auto-ubicar", de: "Auto-Platzierung" }, icon: WandSparkles },
-  { href: "/orchard/crops", label: { en: "Crops", es: "Cultivos", de: "Kulturen" }, icon: Sprout },
-  { href: "/orchard/lifecycle", label: { en: "Lifecycle", es: "Ciclo", de: "Lebenszyklus" }, icon: GitBranch },
+const moreItems: NavItem[] = [
+  { href: "/orchard/game-plan/overview", label: { en: "Game Plan", es: "Game Plan", de: "Game Plan" }, icon: CalendarRange, includeChildren: true },
+  { href: "/orchard/field", label: { en: "Field", es: "Campo", de: "Feld" }, icon: Map, includeChildren: true },
   { href: "/orchard/care", label: { en: "Care", es: "Cuidados", de: "Pflege" }, icon: Activity },
   { href: "/orchard/pests", label: { en: "Health", es: "Sanidad", de: "Gesundheit" }, icon: Bug },
   { href: "/orchard/soil", label: { en: "Soil", es: "Suelo", de: "Boden" }, icon: TestTube2 },
   { href: "/orchard/equipment", label: { en: "Equipment", es: "Equipos", de: "Geräte" }, icon: Hammer },
-  { href: "/orchard/mobile", label: { en: "Mobile App", es: "App móvil", de: "Mobile App" }, icon: Smartphone },
-  { href: "/orchard/commercial", label: { en: "Commercial", es: "Comercial", de: "Vermarktung" }, icon: BadgeDollarSign },
   { href: "/orchard/performance", label: { en: "Plan vs Actual", es: "Plan vs Real", de: "Plan vs. Ist" }, icon: ChartNoAxesCombined },
   { href: "/orchard/decisions", label: { en: "Decisions", es: "Decisiones", de: "Entscheidungen" }, icon: ShieldAlert },
-  { href: "/orchard/charts", label: { en: "Custom Charts", es: "Gráficos", de: "Eigene Diagramme" }, icon: ChartSpline },
-  { href: "/orchard/analytics", label: { en: "Insights", es: "Análisis", de: "Einblicke" }, icon: BarChart3 },
-  { href: "/orchard/traceability", label: { en: "Traceability", es: "Trazabilidad", de: "Rückverfolgbarkeit" }, icon: Route },
+  { href: "/orchard/analytics", label: { en: "Analytics", es: "Análisis", de: "Analyse" }, icon: BarChart3 },
+  { href: "/orchard/library", label: { en: "Crop Library", es: "Biblioteca", de: "Bibliothek" }, icon: BookOpen, includeChildren: true },
   { href: "/orchard/reports", label: { en: "Reports", es: "Reportes", de: "Berichte" }, icon: FileText },
+  { href: "/orchard/assistant", label: { en: "Orchard AI", es: "IA Orchard", de: "Orchard AI" }, icon: Bot },
 ]
 
 const ORCHARD_BRAND_CSS = `
@@ -111,7 +76,7 @@ body:has([data-orchard-navigation]) {
   color: var(--orchard-ink);
 }
 body:has([data-orchard-navigation]) [data-orchard-navigation] {
-  background: rgba(255,255,255,.96) !important;
+  background: rgba(255,255,255,.97) !important;
   border-color: var(--orchard-line) !important;
   color: var(--orchard-ink);
   backdrop-filter: blur(14px) !important;
@@ -168,10 +133,10 @@ body:has([data-orchard-navigation]) main td { color:var(--orchard-ink); border-c
 body:has([data-orchard-navigation]) main .text-muted-foreground,
 body:has([data-orchard-navigation]) main [data-slot="card-description"] { color:var(--orchard-muted)!important; }
 body:has([data-orchard-navigation]) main :focus-visible,
-body:has([data-orchard-navigation]) [data-orchard-navigation] :focus-visible { outline:2px solid var(--bs-cool-sky)!important; outline-offset:2px; }
+body:has([data-orchard-navigation]) [data-orchard-navigation] :focus-visible { outline:2px solid var(--orchard-green)!important; outline-offset:2px; }
 body:has([data-orchard-navigation]) main [class*="border-dashed"] { border-color:#cdd4cd!important; }
 body:has([data-orchard-navigation]) main [class*="bg-card"] { background-color:#fff!important; }
-body:has([data-orchard-navigation]) main [class*="transition"] { transition-duration:220ms; }
+body:has([data-orchard-navigation]) main [class*="transition"] { transition-duration:180ms; }
 @media (hover:hover) {
   body:has([data-orchard-navigation]) main [data-slot="card"]:hover { border-color:#b8cabe!important; box-shadow:0 5px 16px rgba(39,55,45,.08)!important; }
 }
@@ -186,7 +151,12 @@ body:has([data-orchard-navigation]) main [class*="transition"] { transition-dura
 function internalPath(pathname: string) { return pathname.replace(/^\/(en|es|de)(?=\/|$)/, "") || "/" }
 function isActive(pathname: string, item: NavItem) {
   if (pathname === item.href) return true
-  return Boolean(item.includeChildren && pathname.startsWith(`${item.href}/`))
+  if (!item.includeChildren) return false
+  if (item.href === "/orchard/crop-map/overview") return pathname.startsWith("/orchard/crop-map")
+  if (item.href === "/orchard/nursery/overview") return pathname.startsWith("/orchard/nursery")
+  if (item.href === "/orchard/work/week-board") return pathname.startsWith("/orchard/work")
+  if (item.href === "/orchard/harvest/desk") return pathname.startsWith("/orchard/harvest")
+  return pathname.startsWith(`${item.href}/`)
 }
 
 export function OrchardNavigation() {
@@ -195,43 +165,30 @@ export function OrchardNavigation() {
   const { language } = useLanguage()
   const locale: OrchardLocale = language
   const navAria: Record<OrchardLocale, string> = { en: "Orchard navigation", es: "Navegación del huerto", de: "Orchard-Navigation" }
-  const gamePlanLabel: Record<OrchardLocale, string> = { en: "Game Plan", es: "Game Plan", de: "Game Plan" }
   const moreLabel: Record<OrchardLocale, string> = { en: "More", es: "Más", de: "Mehr" }
   const gamePlanId = searchParams.get("game_plan")
   const scopedHref = (href: string) => {
     const base = `/${language}${href}`
     if (!gamePlanId) return base
-    const separator = base.includes("?") ? "&" : "?"
-    return `${base}${separator}game_plan=${encodeURIComponent(gamePlanId)}`
+    return `${base}${base.includes("?") ? "&" : "?"}game_plan=${encodeURIComponent(gamePlanId)}`
   }
-  const gamePlanActive = gamePlanItems.some((item) => isActive(pathname, item))
-  const advancedActive = advancedItems.some((item) => isActive(pathname, item))
+  const moreActive = moreItems.some((item) => isActive(pathname, item))
   const renderLink = (item: NavItem) => {
     const active = isActive(pathname, item)
     const Icon = item.icon
-    return <Link key={item.href} href={scopedHref(item.href)} aria-label={item.label[locale]} aria-current={active ? "page" : undefined} className={cn("inline-flex min-h-10 shrink-0 items-center gap-2 rounded-lg px-3.5 text-sm font-medium transition-colors focus-visible:outline-none", active ? "bg-[#e6f0ea] text-[#1f624d]" : "text-[#687069] hover:bg-[#f1f4f1] hover:text-[#27342c]")}><Icon className="h-4 w-4" aria-hidden="true"/><span>{item.label[locale]}</span></Link>
+    return <Link key={item.href} href={scopedHref(item.href)} aria-label={item.label[locale]} aria-current={active ? "page" : undefined} className={cn("inline-flex min-h-10 shrink-0 items-center gap-2 border-b-2 px-3 text-sm font-medium transition-colors focus-visible:outline-none", active ? "border-[#1f624d] text-[#1f624d]" : "border-transparent text-[#687069] hover:text-[#27342c]")}><Icon className="h-4 w-4" aria-hidden="true"/><span>{item.label[locale]}</span></Link>
   }
   const assistantHidden = pathname === "/orchard/assistant"
 
   return <>
     <style>{ORCHARD_BRAND_CSS}</style>
     <nav data-orchard-navigation aria-label={navAria[locale]} className="sticky top-0 z-[70] border-b px-3 md:px-8">
-      <div className="mx-auto flex min-h-[58px] w-full max-w-[1560px] items-center gap-1 overflow-x-auto py-2 [scrollbar-width:none] sm:overflow-visible [&::-webkit-scrollbar]:hidden">
-        {primaryItems.slice(0, 2).map(renderLink)}
-        <details className="group relative z-[80] shrink-0">
-          <summary aria-label={gamePlanLabel[locale]} className={cn("flex min-h-10 cursor-pointer list-none items-center gap-2 rounded-lg px-3.5 text-sm font-medium marker:content-none focus-visible:outline-none [&::-webkit-details-marker]:hidden", gamePlanActive ? "bg-[#e6f0ea] text-[#1f624d]" : "text-[#687069] hover:bg-[#f1f4f1] hover:text-[#27342c]")}><CalendarRange className="h-4 w-4"/><span>{gamePlanLabel[locale]}</span><ChevronDown className="h-3.5 w-3.5 transition-transform group-open:rotate-180"/></summary>
-          <div className="fixed left-2 right-2 top-[64px] z-[90] max-h-[calc(100dvh-76px)] overflow-y-auto rounded-xl border border-[#dfe4df] bg-white/98 p-2 text-[#2f332f] shadow-xl backdrop-blur-xl sm:absolute sm:left-0 sm:right-auto sm:top-auto sm:mt-2 sm:max-h-[min(70vh,560px)] sm:w-80">
-            <div className="mb-1 px-3 py-2 text-[10px] font-semibold uppercase tracking-[.18em] text-[#8a918b]">{gamePlanLabel[locale]}</div>
-            <div className="grid gap-1">{gamePlanItems.map((item) => { const active = isActive(pathname, item); const Icon = item.icon; return <Link key={item.href} href={scopedHref(item.href)} aria-current={active ? "page" : undefined} className={cn("flex min-h-11 items-center gap-3 rounded-lg px-3 text-sm transition-colors", active ? "bg-[#e6f0ea] text-[#1f624d]" : "text-[#626a63] hover:bg-[#f1f4f1] hover:text-[#27342c]")}><Icon className="h-4 w-4 shrink-0"/><span>{item.label[locale]}</span></Link> })}</div>
-          </div>
-        </details>
-        {primaryItems.slice(2).map(renderLink)}
-        <div className="mx-1 hidden h-6 w-px shrink-0 bg-[#dfe4df] sm:block"/>
-        <details className="group relative z-[80] shrink-0">
-          <summary aria-label={moreLabel[locale]} className={cn("flex min-h-10 cursor-pointer list-none items-center gap-2 rounded-lg px-3.5 text-sm font-medium marker:content-none focus-visible:outline-none [&::-webkit-details-marker]:hidden", advancedActive ? "bg-[#e6f0ea] text-[#1f624d]" : "text-[#687069] hover:bg-[#f1f4f1] hover:text-[#27342c]")}><Activity className="h-4 w-4"/><span>{moreLabel[locale]}</span><ChevronDown className="h-3.5 w-3.5 transition-transform group-open:rotate-180"/></summary>
-          <div className="fixed left-2 right-2 top-[64px] z-[90] max-h-[calc(100dvh-76px)] overflow-y-auto rounded-xl border border-[#dfe4df] bg-white/98 p-2 text-[#2f332f] shadow-xl backdrop-blur-xl sm:absolute sm:left-auto sm:right-0 sm:top-auto sm:mt-2 sm:max-h-[min(70vh,620px)] sm:w-80">
-            <div className="mb-1 px-3 py-2 text-[10px] font-semibold uppercase tracking-[.18em] text-[#8a918b]">{moreLabel[locale]}</div>
-            <div className="grid gap-1">{advancedItems.map((item) => { const active = isActive(pathname, item); const Icon = item.icon; return <Link key={item.href} href={scopedHref(item.href)} aria-current={active ? "page" : undefined} className={cn("flex min-h-11 items-center gap-3 rounded-lg px-3 text-sm transition-colors", active ? "bg-[#e6f0ea] text-[#1f624d]" : "text-[#626a63] hover:bg-[#f1f4f1] hover:text-[#27342c]")}><Icon className="h-4 w-4 shrink-0"/><span>{item.label[locale]}</span></Link> })}</div>
+      <div className="mx-auto flex min-h-[58px] w-full max-w-[1560px] items-center gap-0 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        {primaryItems.map(renderLink)}
+        <details className="group relative z-[80] ml-1 shrink-0">
+          <summary aria-label={moreLabel[locale]} className={cn("flex min-h-10 cursor-pointer list-none items-center gap-2 border-b-2 px-3 text-sm font-medium marker:content-none focus-visible:outline-none [&::-webkit-details-marker]:hidden", moreActive ? "border-[#1f624d] text-[#1f624d]" : "border-transparent text-[#687069] hover:text-[#27342c]")}><span>{moreLabel[locale]}</span><ChevronDown className="h-3.5 w-3.5 transition-transform group-open:rotate-180"/></summary>
+          <div className="fixed left-2 right-2 top-[64px] z-[90] max-h-[calc(100dvh-76px)] overflow-y-auto rounded-xl border border-[#dfe4df] bg-white/98 p-2 text-[#2f332f] shadow-xl backdrop-blur-xl sm:absolute sm:left-auto sm:right-0 sm:top-auto sm:mt-2 sm:max-h-[min(70vh,620px)] sm:w-72">
+            <div className="grid gap-1">{moreItems.map((item) => { const active = isActive(pathname, item); const Icon = item.icon; return <Link key={item.href} href={scopedHref(item.href)} aria-current={active ? "page" : undefined} className={cn("flex min-h-11 items-center gap-3 rounded-lg px-3 text-sm transition-colors", active ? "bg-[#e6f0ea] text-[#1f624d]" : "text-[#626a63] hover:bg-[#f1f4f1] hover:text-[#27342c]")}><Icon className="h-4 w-4 shrink-0"/><span>{item.label[locale]}</span></Link> })}</div>
           </div>
         </details>
       </div>
