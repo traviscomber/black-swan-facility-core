@@ -2,6 +2,7 @@
 
 import { usePathname } from "next/navigation"
 import { OrchardAiDock } from "@/components/orchard/orchard-ai-dock"
+import { legacyCropIdentityCss } from "@/lib/orchard/crop-identity"
 
 const ORCHARD_BRAND_CSS = `
 body:has([data-orchard-navigation]) {
@@ -88,7 +89,7 @@ function internalPath(pathname:string){return pathname.replace(/^\/(en|es|de)(?=
 export function OrchardNavigation(){
   const pathname=internalPath(usePathname()||"/")
   return <>
-    <style>{ORCHARD_BRAND_CSS}</style>
+    <style>{`${ORCHARD_BRAND_CSS}\n${legacyCropIdentityCss}`}</style>
     <span data-orchard-navigation hidden aria-hidden="true" />
     <OrchardAiDock hidden={pathname==="/orchard/assistant"}/>
   </>
