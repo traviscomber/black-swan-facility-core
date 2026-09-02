@@ -28,13 +28,15 @@ test("Orchard planting calendar is succession-led, lifecycle phased and Heirloom
   assert.doesNotMatch(source, /from "@\/components\/ui\/card"/)
 })
 
-test("Planting calendar keeps dates and today marker without weekly vertical grid noise", async () => {
+test("Planting calendar keeps a Heirloom-subtle weekly grid", async () => {
   const source = await readFile("app/orchard/game-plan/season/page.tsx", "utf8")
   assert.match(source, /isoWeekNumber/)
   assert.match(source, /dateLabel\(s\.planned_sow_date/)
   assert.match(source, /todayVisible/)
-  assert.doesNotMatch(source, /repeating-linear-gradient\(90deg/)
-  assert.doesNotMatch(source, /weeks\.map\(\(week,index\)=><div key=\{week\} className="border-r/)
+  assert.match(source, /repeating-linear-gradient\(90deg/)
+  assert.match(source, /rgba\(231,225,216,\.10\)/)
+  assert.match(source, /border-r border-t border-\[rgba\(231,225,216,\.10\)\]/)
+  assert.doesNotMatch(source, /#eef1ed/)
 })
 
 test("Orchard dark brand layer neutralizes legacy light calendar surfaces", async () => {
