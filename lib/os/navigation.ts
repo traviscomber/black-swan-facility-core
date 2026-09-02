@@ -25,17 +25,6 @@ export type OsArea = {
   items: OsNavItem[]
 }
 
-const orchardSubItems = [
-  { nameKey: "nav.orchard_overview", href: "/orchard", icon: "🌳" },
-  { nameKey: "nav.orchard_crops", href: "/orchard/crops", icon: "🌱" },
-  { nameKey: "nav.orchard_care", href: "/orchard/care", icon: "❤️" },
-  { nameKey: "nav.orchard_harvest", href: "/orchard/harvest", icon: "✂️" },
-  { nameKey: "nav.orchard_health", href: "/orchard/pests", icon: "🐛" },
-  { nameKey: "nav.orchard_soil", href: "/orchard/soil", icon: "🌍" },
-  { nameKey: "nav.orchard_equipment", href: "/orchard/equipment", icon: "🔧" },
-  { nameKey: "nav.orchard_analytics", href: "/orchard/analytics", icon: "▥" },
-]
-
 const vineyardSubItems = [
   { nameKey: "nav.vineyard_overview", href: "/vineyard", icon: "🍇" },
   { nameKey: "nav.vineyard_photos", href: "/vineyard/photos", icon: "📸" },
@@ -75,7 +64,7 @@ export const osAreas: OsArea[] = [
       { key: "inventory", nameKey: "nav.inventory", href: "/inventory", area: "places-assets", tipKey: "nav.inventory_tip", viewDomain: "inventory", action: "inventory.process", department: "inventory" },
       { key: "energy", nameKey: "nav.energy_management", href: "/energy", area: "places-assets", tipKey: "nav.management_tip", viewDomain: "maintenance", department: "maintenance" },
       { key: "map", nameKey: "nav.map", href: "/map", area: "places-assets", tipKey: "nav.gis_map_tip", viewDomain: "map" },
-      { key: "orchard", nameKey: "nav.orchard_dashboard", href: "/orchard", area: "places-assets", tipKey: "nav.dashboard_tip", viewDomain: "orchard", department: "orchard", subItems: orchardSubItems },
+      { key: "orchard", nameKey: "nav.orchard_dashboard", href: "/orchard", area: "places-assets", tipKey: "nav.dashboard_tip", viewDomain: "orchard", department: "orchard" },
       { key: "vineyard", nameKey: "nav.vineyard_dashboard", href: "/vineyard", area: "places-assets", tipKey: "nav.dashboard_tip", viewDomain: "vineyard", department: "vineyard", subItems: vineyardSubItems },
       { key: "cattle", nameKey: "nav.cattle_dashboard", href: "/cattle", area: "places-assets", tipKey: "nav.dashboard_tip", viewDomain: "cattle", department: "cattle", subItems: cattleSubItems },
       { key: "cattle-health", nameKey: "nav.cattle_health", href: "/cattle-health", area: "places-assets", tipKey: "nav.dashboard_tip", viewDomain: "cattle", department: "cattle" },
