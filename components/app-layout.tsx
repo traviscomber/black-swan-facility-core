@@ -4,6 +4,7 @@ import type React from "react"
 import { useMemo, useState, useEffect } from "react"
 import Link from "next/link"
 import { Sidebar } from "./sidebar"
+import { OrchardSidebar } from "@/components/orchard/orchard-sidebar"
 import { ObjectCommandPalette } from "./object-command-palette"
 import { Menu, ArrowLeft, Bot, LogOut, MessageSquare } from "lucide-react"
 import { usePathname, useRouter } from "next/navigation"
@@ -41,6 +42,10 @@ function contextualHref(locale: string, target: string, pathname: string) {
   return `/${locale}${target}?${params.toString()}`
 }
 
+function isOrchardPath(pathname:string){
+  return /^\/(?:en|es|de)\/orchard(?:\/|$)/.test(pathname) || /^\/orchard(?:\/|$)/.test(pathname)
+}
+
 export function AppLayout({ children }: AppLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [userInitials, setUserInitials] = useState<string>("")
@@ -50,6 +55,7 @@ export function AppLayout({ children }: AppLayoutProps) {
   const mobileText = mobileCopy[language as keyof typeof mobileCopy] ?? mobileCopy.en
   const { access, can, canAccessDepartment } = useEffectiveAccess()
   const supabase = useMemo(() => createClient(), [])
+  const orchardShell = isOrchardPath(pathname)
 
   useEffect(() => {
     let cancelled = false
@@ -75,19 +81,21 @@ export function AppLayout({ children }: AppLayoutProps) {
   const showConcierge = can("hospitality.operate") && canAccessDepartment("hospitality")
   const conciergeHref = contextualHref(language, "/concierge", pathname)
   const aiHref = contextualHref(language, "/ai-ops", pathname)
+  const DesktopSidebar = orchardShell ? OrchardSidebar : Sidebar
+  const MobileSidebar = orchardShell ? OrchardSidebar : Sidebar
 
   return (
     <div className="flex h-screen w-full bg-background">
       <ObjectCommandPalette access={access} canAccessDepartment={canAccessDepartment} />
 
       <div className={`brand-sidebar-shell hidden flex-shrink-0 lg:sticky lg:top-0 lg:z-40 lg:flex lg:h-screen lg:w-64 lg:flex-col ${sidebarSurface}`}>
-        <Sidebar isOpen={true} onClose={() => {}} />
+        <DesktopSidebar isOpen={true} onClose={() => {}} />
       </div>
 
       {isOpen && <div className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm lg:hidden" onClick={onClose} />}
       {isOpen && (
         <div className={`brand-sidebar-shell fixed inset-y-0 left-0 z-50 w-64 lg:hidden ${sidebarSurface}`}>
-          <Sidebar isOpen={isOpen} onClose={onClose} />
+          <MobileSidebar isOpen={isOpen} onClose={onClose} />
         </div>
       )}
 
@@ -113,7 +121,7 @@ export function AppLayout({ children }: AppLayoutProps) {
           </div>
           <div className="flex flex-1 items-center justify-center gap-2">
             <img src="/blackswan-logo.png" alt="Blackswan Logo" className="h-7 w-7 object-contain" />
-            <span className="text-xs font-semibold tracking-[0.12em] text-sidebar-foreground sm:text-sm">BSFC</span>
+            <span className="text-xs font-semibold tracking-[0.12em] text-sidebar-foreground sm:text-sm">{orchardShell ? "ORCHARD" : "BSFC"}</span>
           </div>
           <button
             onClick={handleLogout}
