@@ -63,7 +63,7 @@ test("harvest desk attributes actual output only through exact reconciled succes
   assert.match(source, /actualBySuccession/)
   assert.match(source, /new Map<string,ActualSummary>/)
   assert.match(source, /byUnit:new Map<string,number>/)
-  assert.match(source, /units\.length===1/)
+  assert.match(source, /(?:units|entries)\.length===1/)
   assert.match(source, /mixed units/)
   assert.doesNotMatch(source, /totals\.get\(crop\)/)
   assert.doesNotMatch(source, /harvests\.filter\([^\n]*harvest_date[^\n]*planned_/)
