@@ -132,6 +132,6 @@ export const legacyCropIdentityCss = Object.keys(CULTIVATED_FAMILY)
   .map(cropName => {
     const color = cropColor(cropName, CULTIVATED_FAMILY[cropName])
     const selectorName = cssString(cropName)
-    return `body:has([data-orchard-navigation]) main article:has(img[alt="${selectorName}" i]) { border-color:${alpha(color,0.55)} !important; box-shadow:inset 4px 0 0 ${color}; }`
+    return `body:has([data-orchard-navigation]) main :is(article,div.overflow-hidden.border):has(img[alt="${selectorName}" i]) { border-color:${alpha(color,0.55)} !important; box-shadow:inset 4px 0 0 ${color}; }`
   })
   .join("\n")
