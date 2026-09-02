@@ -124,6 +124,21 @@ test("crop map overview keeps all-plan physical occupancy visible", async () => 
   assert.match(source, /schematic occupancy|vista esquemática.*ocupación/i)
 })
 
+test("Farm Map is a separate real-GIS surface that reuses the existing mapping stack", async () => {
+  const farmMap = await readFile("app/orchard/farm-map/page.tsx", "utf8")
+  const sidebar = await readFile("components/orchard/orchard-sidebar.tsx", "utf8")
+
+  assert.match(farmMap, /loadOverlayGeoJson/)
+  assert.match(farmMap, /gis_overlays/)
+  assert.match(farmMap, /World_Imagery/)
+  assert.match(farmMap, /MAPLIBRE_VERSION/)
+  assert.match(farmMap, /\/orchard\/crop-map\/overview/)
+  assert.match(farmMap, /hasta contar con su geometría levantada/)
+  assert.match(sidebar, /\/orchard\/farm-map/)
+  assert.match(sidebar, /Mapa de la granja/)
+  assert.doesNotMatch(farmMap, /maps\.googleapis\.com|google\.maps/i)
+})
+
 test("core Orchard crop surfaces share one canonical family color identity", async () => {
   const identity = await readFile("lib/orchard/crop-identity.ts", "utf8")
   const surfaces = await Promise.all([
