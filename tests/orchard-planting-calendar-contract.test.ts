@@ -9,6 +9,8 @@ test("Orchard planting calendar is succession-led, lifecycle phased and Heirloom
   assert.match(source, /planned_transplant_date/)
   assert.match(source, /planned_first_harvest_date/)
   assert.match(source, /planned_last_harvest_date/)
+  assert.match(source, /orchard_bed_allocations/)
+  assert.match(source, /allocatedSuccessionIds/)
   assert.match(source, /function Phase/)
   assert.match(source, /Sow → field/)
   assert.match(source, /Field → first harvest/)
@@ -20,7 +22,6 @@ test("Orchard planting calendar is succession-led, lifecycle phased and Heirloom
   assert.match(source, /todayVisible/)
   assert.match(source, /Search crops/)
 
-  assert.doesNotMatch(source, /orchard_bed_allocations/)
   assert.doesNotMatch(source, /\bScopeMode\b/)
   assert.doesNotMatch(source, /setScopeMode/)
   assert.doesNotMatch(source, /setPropagationFilter/)
