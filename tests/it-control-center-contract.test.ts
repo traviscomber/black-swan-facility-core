@@ -9,8 +9,11 @@ const page = readFileSync(new URL("../app/admin/it-control/page.tsx", import.met
 const component = readFileSync(new URL("../components/it-control-center.tsx", import.meta.url), "utf8")
 const dataHealth = readFileSync(new URL("../components/it-data-health.tsx", import.meta.url), "utf8")
 const sidebar = readFileSync(new URL("../components/sidebar.tsx", import.meta.url), "utf8")
+const shellTranslations = readFileSync(new URL("../lib/translations/shell.ts", import.meta.url), "utf8")
+const deTranslations = readFileSync(new URL("../lib/translations/de.ts", import.meta.url), "utf8")
 const proxy = readFileSync(new URL("../proxy.ts", import.meta.url), "utf8")
 const adminPage = readFileSync(new URL("../app/admin/page.tsx", import.meta.url), "utf8")
+const adminOverview = readFileSync(new URL("../components/admin-overview.tsx", import.meta.url), "utf8")
 const legacySecurityPage = readFileSync(new URL("../app/admin/security/page.tsx", import.meta.url), "utf8")
 
 test("IT snapshot is fail-closed and restricted to admin or active IT scope", () => {
@@ -94,6 +97,14 @@ test("navigation exposes IT control only to admin or IT-scoped users", () => {
   assert.match(sidebar, /access\.is_admin \|\| access\.departments\.includes\("it"\)/)
   assert.match(sidebar, /href="\/admin\/it-control"/)
   assert.match(sidebar, /shell\.it_control/)
+})
+
+test("German global controls use the labels already established inside their modules", () => {
+  assert.match(deTranslations, /'nav\.sovereignty': 'Souveränität'/)
+  assert.match(deTranslations, /'nav\.sovereignty_dashboard': 'Souveränität'/)
+  assert.match(shellTranslations, /"shell\.it_control": "IT-Kontrollzentrum"/)
+  assert.match(component, /de: \{[\s\S]*?title: "IT-Kontrollzentrum"/)
+  assert.match(adminOverview, /itTitle: "IT-Kontrollzentrum"/)
 })
 
 test("middleware aligns the IT route with the same admin-or-IT policy", () => {
