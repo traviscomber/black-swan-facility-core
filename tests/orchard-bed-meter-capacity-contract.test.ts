@@ -42,3 +42,15 @@ test("capacity cockpit reads the verified eight-block model and temporal occupan
   assert.doesNotMatch(source, /does not yet contain enough verified bed geometry/i)
   assert.doesNotMatch(source, /no contiene suficiente geometría/i)
 })
+
+test("production forecast is bounded by physical Crop Map reconciliation", async () => {
+  const source = await readFile("app/orchard/game-plan/forecast/page.tsx", "utf8")
+  assert.match(source, /from\("orchard_bed_allocations"\)/)
+  assert.match(source, /allocatedSuccessionIds\.has\(succession\.id\)/)
+  assert.match(source, /planned_first_harvest_date/)
+  assert.match(source, /planned_last_harvest_date/)
+  assert.match(source, /cycleTargetQuantity/)
+  assert.match(source, /cycle-level, not per succession/)
+  assert.match(source, /no implica volumen semanal uniforme/)
+  assert.doesNotMatch(source, /weekly volume.*=/i)
+})
