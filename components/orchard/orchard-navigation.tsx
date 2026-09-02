@@ -81,7 +81,13 @@ body:has([data-orchard-navigation]) main :focus-visible { outline:2px solid var(
 body:has([data-orchard-navigation]) main [class*="border-dashed"] { border-color:rgba(231,225,216,.18)!important; }
 body:has([data-orchard-navigation]) main [class*="bg-card"] { background-color:var(--bs-surface-primary)!important; }
 body:has([data-orchard-navigation]) main [class*="bg-white"] { background-color:var(--bs-surface-primary)!important; }
+body:has([data-orchard-navigation]) main [class*="bg-[#f6f8f5]"] { background-color:var(--bs-surface-primary)!important; }
+body:has([data-orchard-navigation]) main [class*="bg-[#eff1ee]"] { background-color:var(--bs-surface-secondary)!important; color:var(--orchard-ink)!important; }
+body:has([data-orchard-navigation]) main [class*="hover:bg-[#e5e9e4]"]:hover { background-color:var(--bs-surface-tertiary)!important; }
+body:has([data-orchard-navigation]) main [class*="text-[#657069]"],
+body:has([data-orchard-navigation]) main [class*="text-[#425148]"] { color:var(--orchard-muted)!important; }
 body:has([data-orchard-navigation]) main [class*="text-black"] { color:var(--orchard-ink)!important; }
+body:has([data-orchard-navigation]) main details[data-orchard-season-crop] > div > div[style*="#eef1ed"] { background-image:none!important; }
 body:has([data-orchard-navigation]) main [class*="transition"] { transition-duration:180ms; }
 @media (hover:hover) {
   body:has([data-orchard-navigation]) main [data-slot="card"]:hover { border-color:rgba(139,203,168,.32)!important; box-shadow:none!important; }
