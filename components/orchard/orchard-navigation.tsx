@@ -91,6 +91,25 @@ body:has([data-orchard-navigation]) main details[data-orchard-propagation-sectio
   border-left-color:transparent!important;
   border-right-color:transparent!important;
 }
+body:has([data-orchard-navigation]) main div[class*="xl:grid-cols-7"] > article[class*="min-h-64"] {
+  min-height:168px!important;
+  border-radius:0!important;
+  border-color:var(--orchard-line)!important;
+  box-shadow:none!important;
+}
+body:has([data-orchard-navigation]) main div[class*="xl:grid-cols-7"] > article[class*="min-h-64"] > div:first-child {
+  border-color:var(--orchard-line-soft)!important;
+}
+body:has([data-orchard-navigation]) main details[data-orchard-season-crop] {
+  border-color:var(--orchard-line-soft)!important;
+}
+body:has([data-orchard-navigation]) main details[data-orchard-season-crop] > summary,
+body:has([data-orchard-navigation]) main details[data-orchard-season-crop] > div > div {
+  border-color:var(--orchard-line-soft)!important;
+}
+body:has([data-orchard-navigation]) main details[data-orchard-season-crop] > div > div[class*="relative"][class*="border-t"] {
+  background-image:none!important;
+}
 body:has([data-orchard-navigation]) main button,
 body:has([data-orchard-navigation]) main [role="button"],
 body:has([data-orchard-navigation]) main [data-slot="button"] { min-height:40px; border-radius:8px!important; box-shadow:none!important; }
