@@ -50,6 +50,14 @@ type ProcurementDecisionRow = {
 type FinanceApprovalRow = { total_amount: number | string | null; currency: string | null }
 type FinancePicture = { count: number; totals: Record<string, number> }
 
+type AttentionGroup = {
+  key: string
+  domain: string
+  title: string
+  priority?: string | null
+  items: AttentionItem[]
+}
+
 function hasNavKey(navigation: Navigation, key: string) {
   return Boolean(navigation.items?.some((item) => item.key === key))
 }
@@ -271,6 +279,23 @@ export function BigPictureHome() {
   useEffect(() => { void load() }, [load])
 
   const attentionCount = useMemo(() => [...hospitality, ...work, ...supply].filter((signal) => signal.alert).reduce((sum, signal) => sum + signal.value, 0), [hospitality, supply, work])
+  const groupedAttention = useMemo(() => {
+    const ordered: AttentionGroup[] = []
+    const byKey = new Map<string, AttentionGroup>()
+    for (const item of attention) {
+      const groupKey = item.domain === 'Hospitality' ? `${item.domain}:${item.title}` : item.key
+      const existing = byKey.get(groupKey)
+      if (existing) {
+        existing.items.push(item)
+        if (priorityRank(item.priority) < priorityRank(existing.priority)) existing.priority = item.priority
+        continue
+      }
+      const group: AttentionGroup = { key: groupKey, domain: item.domain, title: item.title, priority: item.priority, items: [item] }
+      byKey.set(groupKey, group)
+      ordered.push(group)
+    }
+    return ordered
+  }, [attention])
   const visibleSections = useMemo(() => ({
     hospitality: hasNavKey(navigation ?? {}, 'bookings'),
     work: hasNavKey(navigation ?? {}, 'tasks') || hasNavKey(navigation ?? {}, 'maintenance') || hasNavKey(navigation ?? {}, 'issues'),
@@ -307,18 +332,30 @@ export function BigPictureHome() {
               <div className="flex items-center gap-2"><AlertTriangle className="h-4 w-4 text-amber-500" /><CardTitle className="text-base">Requiere atención ahora</CardTitle></div>
               <CardDescription>Objetos concretos detrás de las señales. Abre el contexto antes de decidir.</CardDescription>
             </CardHeader>
-            <CardContent className="grid gap-2 lg:grid-cols-2">
-              {attention.map((item) => (
-                <Link key={item.key} href={item.href} className="group rounded-lg border bg-background/70 p-4 transition-colors hover:bg-muted/50">
-                  <div className="flex items-start justify-between gap-3">
+            <CardContent className="space-y-2">
+              {groupedAttention.map((group) => group.items.length === 1 ? (
+                <AttentionLink key={group.key} item={group.items[0]} />
+              ) : (
+                <div key={group.key} className="overflow-hidden rounded-lg border bg-background/70">
+                  <div className="flex flex-wrap items-start justify-between gap-3 p-4">
                     <div className="min-w-0">
-                      <div className="flex flex-wrap items-center gap-2"><Badge variant="outline">{item.domain}</Badge>{item.priority && <Badge variant="secondary">{item.priority}</Badge>}</div>
-                      <p className="mt-2 font-medium">{item.title}</p>
-                      <p className="mt-1 text-xs leading-5 text-muted-foreground">{item.detail}</p>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Badge variant="outline">{group.domain}</Badge>
+                        {group.priority && <Badge variant="secondary">{group.priority}</Badge>}
+                        <Badge variant="secondary">{group.items.length} reservas</Badge>
+                      </div>
+                      <p className="mt-2 font-medium">{group.title}</p>
                     </div>
-                    <ArrowRight className="mt-1 h-4 w-4 shrink-0 text-primary transition-transform group-hover:translate-x-0.5" />
                   </div>
-                </Link>
+                  <div className="divide-y border-t">
+                    {group.items.map((item) => (
+                      <Link key={item.key} href={item.href} className="group flex items-start justify-between gap-3 px-4 py-3 transition-colors hover:bg-muted/50">
+                        <p className="min-w-0 text-xs leading-5 text-muted-foreground">{item.detail}</p>
+                        <ArrowRight className="mt-0.5 h-4 w-4 shrink-0 text-primary transition-transform group-hover:translate-x-0.5" />
+                      </Link>
+                    ))}
+                  </div>
+                </div>
               ))}
             </CardContent>
           </Card>
@@ -348,6 +385,10 @@ export function BigPictureHome() {
       </>}
     </div>
   )
+}
+
+function AttentionLink({ item }: { item: AttentionItem }) {
+  return <Link href={item.href} className="group block rounded-lg border bg-background/70 p-4 transition-colors hover:bg-muted/50"><div className="flex items-start justify-between gap-3"><div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><Badge variant="outline">{item.domain}</Badge>{item.priority && <Badge variant="secondary">{item.priority}</Badge>}</div><p className="mt-2 font-medium">{item.title}</p><p className="mt-1 text-xs leading-5 text-muted-foreground">{item.detail}</p></div><ArrowRight className="mt-1 h-4 w-4 shrink-0 text-primary transition-transform group-hover:translate-x-0.5" /></div></Link>
 }
 
 function PictureSection({ title, icon, description, signals }: { title: string; icon: ReactNode; description: string; signals: PictureSignal[] }) {
