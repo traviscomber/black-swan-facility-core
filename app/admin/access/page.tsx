@@ -7,7 +7,7 @@ import { createClient } from "@/lib/supabase/server"
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
 
-const DEPARTMENTS = ["booking","housekeeping","hospitality","maintenance","services","activities","finance","procurement","inventory","fleet","fuel"] as const
+const DEPARTMENTS = ["booking","housekeeping","hospitality","maintenance","services","activities","finance","procurement","inventory","fleet","fuel","orchard","vineyard","cattle","map"] as const
 
 function getAdminClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL
