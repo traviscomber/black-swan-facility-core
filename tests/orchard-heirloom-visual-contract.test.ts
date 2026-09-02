@@ -15,6 +15,14 @@ test("Orchard carries the audited Heirloom visual grammar without copying unsupp
   assert.match(graphics, /CapacityCurveChart/)
 })
 
+test("compact Orchard charts preserve readable y-axis labels", async () => {
+  const graphics = await readFile("components/orchard/orchard-season-graphics.tsx", "utf8")
+
+  assert.doesNotMatch(graphics, /left:\s*-\d+/)
+  assert.match(graphics, /tickMargin=\{6\}/)
+  assert.match(graphics, /width=\{36\}/)
+})
+
 test("Game Plan overview visualizes real reconciled season milestones", async () => {
   const source = await readFile("app/orchard/game-plan/overview/page.tsx", "utf8")
 
@@ -24,6 +32,9 @@ test("Game Plan overview visualizes real reconciled season milestones", async ()
   assert.match(source, /planned_first_harvest_date/)
   assert.match(source, /fieldSuccessions/)
   assert.match(source, /Pulso de temporada/)
+  assert.match(source, /\/orchard\/nursery\/overview/)
+  assert.match(source, /\/orchard\/crop-map\/overview/)
+  assert.match(source, /col-span-2 md:col-span-1/)
 })
 
 test("planned workload graph counts source actions and explicitly refuses fake hours", async () => {
@@ -65,6 +76,8 @@ test("harvest desk is a weekly availability matrix without fabricated yield", as
   assert.match(source, /activeInWeek/)
   assert.match(source, /crop_succession_id/)
   assert.match(source, /No representa una cantidad proyectada/)
+  assert.match(source, /weeks:"semanas"/)
+  assert.match(source, /\{weeks\.length\} \{text\.weeks\}/)
   assert.doesNotMatch(source, /projected_kg|estimated_yield|fake yield/i)
 })
 
@@ -76,5 +89,8 @@ test("crop map overview keeps all-plan physical occupancy visible", async () => 
   assert.match(source, /Expansion 0\[1-3\]/)
   assert.match(source, /activeAllocations=allocations\.filter/)
   assert.match(source, /planActiveAllocations/)
+  assert.match(source, /nextPlanAllocation/)
+  assert.match(source, /Próxima ocupación del plan/)
+  assert.match(source, /orchard-date-range/)
   assert.match(source, /not surveyed geometry|no geometría topográfica/)
 })
