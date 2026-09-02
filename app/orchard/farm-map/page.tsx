@@ -101,8 +101,8 @@ export default function OrchardFarmMapPage(){
   useEffect(()=>{
     if(!mapContainerRef.current||overlays.length===0)return
     let cancelled=false
-    const dynamicImport=new Function("return import('leaflet')") as()=>Promise<RuntimeLeaflet>
-    void dynamicImport().then(L=>{
+    void import("leaflet").then(module=>{
+      const L=module as unknown as RuntimeLeaflet
       if(cancelled||!mapContainerRef.current)return
       leafletRef.current=L
       const map=L.map(mapContainerRef.current,{zoomControl:false,attributionControl:true,minZoom:4,maxZoom:20}).setView(CORCOVADO_CENTER,16)
