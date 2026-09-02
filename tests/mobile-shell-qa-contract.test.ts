@@ -37,8 +37,10 @@ test("global command input has an explicit localized accessible name", () => {
   assert.match(commandPalette, /shrink-0 whitespace-nowrap/)
 })
 
-test("Orchard suppresses Hospitality concierge and uses its own high-contrast AI dock", () => {
+test("Orchard suppresses global assistants and uses its own high-contrast AI dock", () => {
   assert.match(appLayout, /const showConcierge = !orchardShell && can\("hospitality\.operate"\)/)
+  assert.match(appLayout, /const showGlobalAiOps = !orchardShell && access\.is_admin/)
+  assert.match(appLayout, /\(showConcierge \|\| showGlobalAiOps\)/)
   assert.match(orchardAiDock, /title: "IA Orchard"/)
   assert.match(orchardAiDock, /bg-\[#171512\]/)
   assert.match(orchardAiDock, /text-\[#e7e1d8\]/)
