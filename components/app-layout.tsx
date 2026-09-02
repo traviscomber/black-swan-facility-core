@@ -78,6 +78,10 @@ export function AppLayout({ children }: AppLayoutProps) {
   const isOpen = sidebarOpen
   const onClose = () => setSidebarOpen(false)
   const sidebarSurface = "[&>div]:!border-sidebar-border [&>div]:!bg-sidebar"
+  const desktopSidebarClasses = orchardShell
+    ? "md:sticky md:top-0 md:z-40 md:flex md:h-screen md:w-64 md:flex-col"
+    : "lg:sticky lg:top-0 lg:z-40 lg:flex lg:h-screen lg:w-64 lg:flex-col"
+  const mobileOnlyClass = orchardShell ? "md:hidden" : "lg:hidden"
   const showConcierge = can("hospitality.operate") && canAccessDepartment("hospitality")
   const conciergeHref = contextualHref(language, "/concierge", pathname)
   const aiHref = contextualHref(language, "/ai-ops", pathname)
@@ -88,19 +92,19 @@ export function AppLayout({ children }: AppLayoutProps) {
     <div className="flex h-screen w-full bg-background">
       <ObjectCommandPalette access={access} canAccessDepartment={canAccessDepartment} />
 
-      <div className={`brand-sidebar-shell hidden flex-shrink-0 lg:sticky lg:top-0 lg:z-40 lg:flex lg:h-screen lg:w-64 lg:flex-col ${sidebarSurface}`}>
+      <div className={`brand-sidebar-shell hidden flex-shrink-0 ${desktopSidebarClasses} ${sidebarSurface}`}>
         <DesktopSidebar isOpen={true} onClose={() => {}} />
       </div>
 
-      {isOpen && <div className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm lg:hidden" onClick={onClose} />}
+      {isOpen && <div className={`fixed inset-0 z-40 bg-black/60 backdrop-blur-sm ${mobileOnlyClass}`} onClick={onClose} />}
       {isOpen && (
-        <div className={`brand-sidebar-shell fixed inset-y-0 left-0 z-50 w-64 lg:hidden ${sidebarSurface}`}>
+        <div className={`brand-sidebar-shell fixed inset-y-0 left-0 z-50 w-64 ${mobileOnlyClass} ${sidebarSurface}`}>
           <MobileSidebar isOpen={isOpen} onClose={onClose} />
         </div>
       )}
 
       <div className="flex w-full flex-1 flex-col overflow-hidden">
-        <div className="sticky top-0 z-40 flex h-14 items-center justify-between border-b border-border bg-sidebar px-3 sm:h-16 sm:px-4 lg:hidden">
+        <div className={`sticky top-0 z-40 flex h-14 items-center justify-between border-b border-border bg-sidebar px-3 sm:h-16 sm:px-4 ${mobileOnlyClass}`}>
           <div className="flex items-center gap-1">
             <button
               onClick={() => setSidebarOpen(true)}
