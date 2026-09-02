@@ -1,4 +1,5 @@
 import assert from "node:assert/strict"
+import { readFileSync } from "node:fs"
 import test from "node:test"
 import { estimateDirectProcurement, estimateTransplantProcurement, estimateTuberProcurement, parseApproxGrams, parseCentimeters } from "../lib/orchard/seed-procurement.ts"
 
@@ -43,4 +44,16 @@ test("workbook density and spacing strings parse deterministically", () => {
   assert.equal(parseApproxGrams("±0,5 oz"), null)
   assert.equal(parseCentimeters("15 cm"), 15)
   assert.equal(parseCentimeters("N/A"), null)
+})
+
+test("Semillas y trasplantes shows gross plan demand before inventory consolidation", () => {
+  const source = readFileSync(new URL("../app/orchard/game-plan/propagation/page.tsx", import.meta.url), "utf8")
+  assert.match(source, /data-testid="orchard-plan-procurement"/)
+  assert.match(source, /estimateTransplantProcurement/)
+  assert.match(source, /estimateDirectProcurement/)
+  assert.match(source, /estimateTuberProcurement/)
+  assert.match(source, /planningFallbackPct/)
+  assert.match(source, /orchard_bed_allocations/)
+  assert.doesNotMatch(source, /quantity_seeds/)
+  assert.doesNotMatch(source, /procurementTotals[^\n]*-/)
 })
