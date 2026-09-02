@@ -14,6 +14,7 @@ test("Heirloom reconciliation remains explicit, bed-meter based and capacity saf
   const cropChart = await readFile("app/orchard/game-plan/crop-chart/page.tsx", "utf8")
   const orchardLibrary = await readFile("app/orchard/library/page.tsx", "utf8")
   const cropTaskReference = await readFile("lib/orchard/crop-task-reference.ts", "utf8")
+  const cropChartTaskReference = await readFile("lib/orchard/crop-chart-task-reference.ts", "utf8")
   const heirloomBenchmark = await readFile("lib/orchard/heirloom-season-benchmark.ts", "utf8")
   const parity = await readFile("lib/orchard/heirloom-parity.ts", "utf8")
 
@@ -88,7 +89,7 @@ test("Heirloom reconciliation remains explicit, bed-meter based and capacity saf
   assert.match(gettingStarted, /scopedTasks\.length>0/)
   assert.doesNotMatch(gettingStarted, /\.eq\("operational_area","huerto_vinedo"\)/)
 
-  // Crop Associated Task stays a source-observed planning reference, not inferred agronomy.
+  // Crop Associated Task remains a source-observed contextual reference, not inferred agronomy.
   assert.match(cropTaskReference, /e29b581d0c2190b8ea43d8116ce19cfac85f8b9be6f1abdb2b676e984d186683/)
   assert.match(cropTaskReference, /sheet: "Crop Associated Task"/)
   assert.match(cropTaskReference, /operationalStatus: "planning_reference_only"/)
@@ -102,15 +103,28 @@ test("Heirloom reconciliation remains explicit, bed-meter based and capacity saf
   assert.match(cropTaskReference, /sourceRow: 39/)
   assert.doesNotMatch(cropTaskReference, /canonicalCrop: "Peas"/)
 
-  // Calendar matching must be exact and constrained to physically allocated successions.
-  assert.match(taskCalendar, /@\/lib\/orchard\/crop-task-reference/)
+  // Crop Chart is the richer task recipe used by the reconciled planning calendar.
+  assert.match(cropChartTaskReference, /sheet: "Crop Chart"/)
+  assert.match(cropChartTaskReference, /canonicalCrop: "Peas"/)
+  assert.match(cropChartTaskReference, /offsetDays: 53/)
+  assert.match(cropChartTaskReference, /canonicalCrop: "Celery"/)
+  assert.match(cropChartTaskReference, /offsetDays: 94/)
+  assert.match(cropChartTaskReference, /canonicalCrop: "Carrots"/)
+  assert.match(cropChartTaskReference, /offsetDays: 75/)
+  assert.match(cropChartTaskReference, /activity: "Haulm topping", offsetDays: null/)
+  assert.match(cropChartTaskReference, /kind: "conditional"/)
+
+  // Calendar matching must be exact, physically allocated and evidence-safe.
+  assert.match(taskCalendar, /@\/lib\/orchard\/crop-chart-task-reference/)
   assert.match(taskCalendar, /from\("orchard_bed_allocations"\)/)
   assert.match(taskCalendar, /allocatedSuccessionIds\.has\(s\.id\)/)
-  assert.match(taskCalendar, /cropTaskReferenceFor\(cycle\.crop_name\)/)
-  assert.match(taskCalendar, /s\.planned_transplant_date\?\?s\.planned_sow_date/)
-  assert.match(taskCalendar, /action\.offsetDays/)
-  assert.doesNotMatch(taskCalendar, /Sweet peas/)
-  assert.doesNotMatch(taskCalendar, /aliases:/)
+  assert.match(taskCalendar, /cropChartTaskReferenceFor\(cycle\.crop_name\)/)
+  assert.match(taskCalendar, /succession\.planned_transplant_date \?\? succession\.planned_sow_date/)
+  assert.match(taskCalendar, /action\.offsetDays === null \? null/)
+  assert.match(taskCalendar, /sourcePath = `\$\{ORCHARD_CROP_CHART_TASK_SOURCE\.sheet\}!\$\{action\.sourceColumn\}`/)
+  assert.match(taskCalendar, /candidate\.source_type === "orchard_succession"/)
+  assert.match(taskCalendar, /103 dated Crop Chart actions/)
+  assert.doesNotMatch(taskCalendar, /from\("tasks"\)\.insert/)
   assert.doesNotMatch(taskCalendar, /dietrich-crop-tasks-2026-27\.json/)
 
   // Corcovado remains operational truth; Heirloom is a versioned external benchmark only.
