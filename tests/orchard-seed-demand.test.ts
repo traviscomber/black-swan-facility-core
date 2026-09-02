@@ -2,6 +2,7 @@ import assert from "node:assert/strict"
 import { readFileSync } from "node:fs"
 import test from "node:test"
 import { estimateDirectSeedDemand, estimateTransplantSeedDemand, groupReadyDemandByUnit } from "../lib/orchard/seed-demand.ts"
+import "./orchard-seed-procurement.test.ts"
 
 test("transplant demand never treats unknown germination as 100 percent", () => {
   assert.deepEqual(estimateTransplantSeedDemand({ plannedPlants: 150, seedsPerPlant: 1, germinationRatePct: null }), {
