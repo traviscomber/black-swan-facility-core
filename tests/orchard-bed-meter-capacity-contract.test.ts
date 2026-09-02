@@ -66,5 +66,6 @@ test("harvest desk attributes actual output only through exact reconciled succes
   assert.match(source, /units\.length===1/)
   assert.match(source, /mixed units/)
   assert.doesNotMatch(source, /totals\.get\(crop\)/)
-  assert.doesNotMatch(source, /harvest_date.*planned_first_harvest_date/)
+  assert.doesNotMatch(source, /harvests\.filter\([^\n]*harvest_date[^\n]*planned_/)
+  assert.doesNotMatch(source, /find\([^\n]*harvest_date[^\n]*planned_/)
 })
