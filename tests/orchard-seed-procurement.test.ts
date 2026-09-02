@@ -58,6 +58,16 @@ test("Semillas y trasplantes shows gross plan demand before inventory consolidat
   assert.doesNotMatch(source, /procurementTotals[^\n]*-/)
 })
 
+test("Semillas y trasplantes is a plan-first visual cockpit with progressive technical detail", () => {
+  const source = readFileSync(new URL("../app/orchard/game-plan/propagation/page.tsx", import.meta.url), "utf8")
+  assert.match(source, /cropColor/)
+  assert.match(source, /cropChipStyle/)
+  assert.match(source, /upcoming/)
+  assert.match(source, /data-orchard-propagation-section/)
+  assert.match(source, /stockPending/)
+  assert.match(source, /firstSowByCrop/)
+})
+
 test("Orchard seeds navigation opens plan demand before shared inventory", () => {
   const sidebar = readFileSync(new URL("../components/orchard/orchard-sidebar.tsx", import.meta.url), "utf8")
   assert.match(sidebar, /href:"\/orchard\/game-plan\/propagation"[^\n]*Seeds & transplants/)
