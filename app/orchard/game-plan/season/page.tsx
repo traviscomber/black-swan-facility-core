@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { useEffect, useMemo, useState } from "react"
-import { ArrowRight, CalendarRange, ChevronDown, Eye, Search, Sprout } from "lucide-react"
+import { ArrowRight, CalendarRange, ChevronDown, ChevronsUp, Eye, Search, Sprout } from "lucide-react"
 import { AppLayout } from "@/components/app-layout"
 import { OrchardNavigation } from "@/components/orchard/orchard-navigation"
 import { createBrowserClient } from "@/lib/supabase/client"
@@ -37,6 +37,7 @@ const copy = {
     source:"Canonical dates from the Game Plan. Field-plan scope includes only successions with a physical Crop Map allocation.",
     noRows:"No plantings match the current filters.",
     today:"Today",
+    collapseAll:"Collapse all",
   },
   es: {
     eyebrow:"Dietrich · Plan de temporada",
@@ -58,6 +59,7 @@ const copy = {
     source:"Fechas canónicas del Game Plan. El alcance de campo incluye sólo sucesiones con asignación física en Crop Map.",
     noRows:"No hay plantaciones para los filtros actuales.",
     today:"Hoy",
+    collapseAll:"Contraer todo",
   },
   de: {
     eyebrow:"Dietrich · Saisonplan",
@@ -79,6 +81,7 @@ const copy = {
     source:"Kanonische Termine aus dem Game Plan. Der Feldplan enthält nur Folgen mit physischer Crop-Map-Zuweisung.",
     noRows:"Keine Pflanzungen entsprechen den aktuellen Filtern.",
     today:"Heute",
+    collapseAll:"Alle einklappen",
   },
 } as const
 
@@ -209,6 +212,7 @@ export default function DietrichSeasonPlanPage() {
   const directCount = selectedSuccessions.filter(s=>scopedCycles.find(c=>c.id===s.crop_cycle_id)?.cycle_type==="direct_sow").length
   const transplantCount = selectedSuccessions.filter(s=>scopedCycles.find(c=>c.id===s.crop_cycle_id)?.cycle_type==="transplant").length
   const advancedHref = `/${language}/orchard/game-plan${plan?`?game_plan=${encodeURIComponent(plan.id)}`:""}`
+  const collapseAll = () => document.querySelectorAll<HTMLDetailsElement>("details[data-orchard-season-crop]").forEach(section=>{section.open=false})
 
   return <AppLayout><OrchardNavigation/><main className="w-full pb-16">
     <header className="border-b border-[var(--orchard-line)] bg-white px-4 py-4 sm:px-6 lg:px-8">
@@ -261,7 +265,10 @@ export default function DietrichSeasonPlanPage() {
         <div className="overflow-x-auto border-b border-[var(--orchard-line)]">
           <div className="min-w-[1380px]">
             <div className="sticky top-[var(--orchard-nav-height)] z-30 grid border-b border-[var(--orchard-line)] bg-white" style={{gridTemplateColumns:`285px repeat(${Math.max(weeks.length,1)},minmax(28px,1fr))`}}>
-              <div className="sticky left-0 z-40 row-span-2 flex items-end border-r border-[var(--orchard-line)] bg-white px-4 py-3 text-[10px] font-semibold uppercase tracking-[.14em] text-muted-foreground">{text.crop}</div>
+              <div className="sticky left-0 z-40 row-span-2 flex min-h-[72px] flex-col items-start justify-between border-r border-[var(--orchard-line)] bg-white px-4 py-2.5">
+                <button type="button" onClick={collapseAll} className="inline-flex min-h-8 items-center gap-1.5 bg-[#eff1ee] px-3 text-[10px] font-semibold uppercase tracking-[.11em] text-[#657069] transition-colors hover:bg-[#e5e9e4]" aria-label={text.collapseAll}><ChevronsUp className="h-3.5 w-3.5"/>{text.collapseAll}</button>
+                <span className="text-[10px] font-semibold uppercase tracking-[.14em] text-muted-foreground">{text.crop}</span>
+              </div>
               {months.map(group=><div key={group.key} className="border-r border-[var(--orchard-line)] px-2 py-2 text-center text-sm font-medium capitalize" style={{gridColumn:`${group.start+2} / span ${group.span}`}}>{group.label}</div>)}
               {weeks.map((week,index)=><div key={week} className="border-r border-t border-[var(--orchard-line)] py-1.5 text-center text-[10px] font-medium tabular-nums text-muted-foreground" style={{gridColumn:index+2}}>{isoWeekNumber(week)}</div>)}
             </div>
@@ -269,7 +276,7 @@ export default function DietrichSeasonPlanPage() {
             {visibleRows.length===0 ? <div className="px-6 py-12 text-sm text-muted-foreground">{text.noRows}</div> : visibleRows.map(({c,ss})=>{
               const cycleBed = ss.reduce((sum,s)=>sum+(s.planned_bed_m??0),0)
               const cyclePlants = ss.reduce((sum,s)=>sum+(s.planned_plants??0),0)
-              return <details key={c.id} open className="group border-b border-[var(--orchard-line)] last:border-b-0">
+              return <details key={c.id} data-orchard-season-crop open className="group border-b border-[var(--orchard-line)] last:border-b-0">
                 <summary className="grid cursor-pointer list-none bg-[#f6f8f5] marker:content-none [&::-webkit-details-marker]:hidden" style={{gridTemplateColumns:"285px minmax(0,1fr)"}}>
                   <div className="sticky left-0 z-20 border-r border-[var(--orchard-line)] bg-[#f6f8f5] px-4 py-2.5">
                     <div className="flex items-center justify-between gap-3">
