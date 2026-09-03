@@ -6,6 +6,7 @@ import { AlertTriangle, ChevronDown, ConciergeBell, DoorOpen, FileCheck2, LogIn,
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { createClient } from "@/lib/supabase/client"
+import { useLanguage } from "@/lib/hooks/use-language"
 
 type HospitalityPulse = {
   arrivals: number
@@ -32,6 +33,60 @@ const EMPTY_PULSE: HospitalityPulse = {
   blockingExceptions: 0,
 }
 
+const COPY = {
+  en: {
+    today: "Hospitality today",
+    attention: "attention",
+    arrivals: "Arrivals",
+    notReady: "Not ready",
+    departures: "Departures",
+    requests: "Requests",
+    approvals: "Approvals",
+    blocks: "Blocks",
+    refresh: "Refresh Hospitality pulse",
+    error: "Hospitality pulse could not be refreshed",
+    noBlocks: "No exceptions are blocking check-in or check-out.",
+    blocksCheckIn: "Blocks check-in",
+    blocksCheckOut: "Blocks check-out",
+    open: "Open",
+    overdue: "Overdue",
+  },
+  es: {
+    today: "Hospitalidad hoy",
+    attention: "atención",
+    arrivals: "Llegadas",
+    notReady: "No listas",
+    departures: "Salidas",
+    requests: "Solicitudes",
+    approvals: "Aprobaciones",
+    blocks: "Bloqueos",
+    refresh: "Actualizar pulso de Hospitalidad",
+    error: "No fue posible actualizar el pulso de Hospitalidad",
+    noBlocks: "No hay excepciones que bloqueen check-in o check-out.",
+    blocksCheckIn: "Bloquea check-in",
+    blocksCheckOut: "Bloquea check-out",
+    open: "Abierta",
+    overdue: "Vencida",
+  },
+  de: {
+    today: "Hospitalität heute",
+    attention: "Hinweise",
+    arrivals: "Anreisen",
+    notReady: "Nicht bereit",
+    departures: "Abreisen",
+    requests: "Anfragen",
+    approvals: "Freigaben",
+    blocks: "Blockaden",
+    refresh: "Hospitalitätsstatus aktualisieren",
+    error: "Hospitalitätsstatus konnte nicht aktualisiert werden",
+    noBlocks: "Keine Ausnahme blockiert Check-in oder Check-out.",
+    blocksCheckIn: "Blockiert Check-in",
+    blocksCheckOut: "Blockiert Check-out",
+    open: "Offen",
+    overdue: "Überfällig",
+  },
+} as const
+
 function chileOperatingDate() {
   const parts = new Intl.DateTimeFormat("en-CA", {
     timeZone: "America/Santiago",
@@ -45,6 +100,8 @@ function chileOperatingDate() {
 
 export function HospitalityCommandStrip() {
   const supabase = useMemo(() => createClient(), [])
+  const { language } = useLanguage()
+  const copy = COPY[language]
   const [pulse, setPulse] = useState<HospitalityPulse>(EMPTY_PULSE)
   const [exceptions, setExceptions] = useState<ExceptionRow[]>([])
   const [canApproveFinance, setCanApproveFinance] = useState(false)
@@ -52,6 +109,7 @@ export function HospitalityCommandStrip() {
   const [open, setOpen] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const href = (path: string) => `/${language}${path}`
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -143,54 +201,55 @@ export function HospitalityCommandStrip() {
   }, [load, supabase])
 
   const attentionCount = pulse.arrivalsNotReady + pulse.openRequests + pulse.blockingExceptions
+  const exceptionStateLabel = (state: string) => state === "open" ? copy.open : state === "overdue" ? copy.overdue : state
 
   return (
-    <section className="border-b border-border/50 bg-[var(--bs-bg-secondary)]">
-      <div className="flex min-h-12 flex-wrap items-center gap-2 px-3 py-2 md:px-4">
+    <section className="border-b border-border/40 bg-background">
+      <div className="flex min-h-10 flex-wrap items-center gap-1.5 px-3 py-1.5 md:px-4">
         <div className="mr-1 flex items-center gap-2">
           <ConciergeBell className="h-4 w-4 text-primary" />
-          <span className="text-sm font-semibold">Hospitality hoy</span>
-          {attentionCount > 0 && <Badge variant="destructive">{attentionCount} atención</Badge>}
+          <span className="text-xs font-semibold">{copy.today}</span>
+          {attentionCount > 0 && <Badge variant="destructive">{attentionCount} {copy.attention}</Badge>}
         </div>
 
-        <PulseLink href="/bookings" icon={<LogIn className="h-3.5 w-3.5" />} label="Llegadas" value={pulse.arrivals} />
-        <PulseLink href="/bookings" icon={<DoorOpen className="h-3.5 w-3.5" />} label="No listas" value={pulse.arrivalsNotReady} warning={pulse.arrivalsNotReady > 0} />
-        <PulseLink href="/bookings" icon={<LogOut className="h-3.5 w-3.5" />} label="Salidas" value={pulse.departures} />
-        <PulseLink href="/bookings/requests" icon={<ConciergeBell className="h-3.5 w-3.5" />} label="Solicitudes" value={pulse.openRequests} warning={pulse.openRequests > 0} />
-        {canApproveFinance && <PulseLink href="/budgets/approvals" icon={<FileCheck2 className="h-3.5 w-3.5" />} label="Aprobaciones" value={financeApprovalCount ?? "—"} warning={(financeApprovalCount ?? 0) > 0} />}
+        <PulseLink href={href("/bookings")} icon={<LogIn className="h-3.5 w-3.5" />} label={copy.arrivals} value={pulse.arrivals} />
+        <PulseLink href={href("/bookings")} icon={<DoorOpen className="h-3.5 w-3.5" />} label={copy.notReady} value={pulse.arrivalsNotReady} warning={pulse.arrivalsNotReady > 0} />
+        <PulseLink href={href("/bookings")} icon={<LogOut className="h-3.5 w-3.5" />} label={copy.departures} value={pulse.departures} />
+        <PulseLink href={href("/bookings/requests")} icon={<ConciergeBell className="h-3.5 w-3.5" />} label={copy.requests} value={pulse.openRequests} warning={pulse.openRequests > 0} />
+        {canApproveFinance && <PulseLink href={href("/budgets/approvals")} icon={<FileCheck2 className="h-3.5 w-3.5" />} label={copy.approvals} value={financeApprovalCount ?? "—"} warning={(financeApprovalCount ?? 0) > 0} />}
         <button
           type="button"
           onClick={() => setOpen((current) => !current)}
-          className={`inline-flex h-8 items-center gap-1.5 rounded-md border px-2.5 text-xs font-medium transition-colors hover:bg-muted ${pulse.blockingExceptions > 0 ? "border-amber-500/40 text-amber-700 dark:text-amber-300" : "border-border text-muted-foreground"}`}
+          className={`inline-flex h-7 items-center gap-1.5 rounded border px-2 text-xs font-medium transition-colors hover:bg-muted ${pulse.blockingExceptions > 0 ? "border-amber-500/40 text-amber-700 dark:text-amber-300" : "border-border text-muted-foreground"}`}
           aria-expanded={open}
         >
           <AlertTriangle className="h-3.5 w-3.5" />
-          Bloqueos {pulse.blockingExceptions}
+          {copy.blocks} {pulse.blockingExceptions}
           <ChevronDown className={`h-3.5 w-3.5 transition-transform ${open ? "rotate-180" : ""}`} />
         </button>
 
-        <Button type="button" variant="ghost" size="icon" className="ml-auto h-8 w-8" onClick={() => void load()} disabled={loading} aria-label="Actualizar pulso de Hospitality">
+        <Button type="button" variant="ghost" size="icon" className="ml-auto h-7 w-7" onClick={() => void load()} disabled={loading} aria-label={copy.refresh} title={copy.refresh}>
           <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
         </Button>
       </div>
 
-      {error && <div className="border-t border-destructive/20 px-4 py-2 text-xs text-destructive">No fue posible actualizar el pulso de Hospitality: {error}</div>}
+      {error && <div className="border-t border-destructive/20 px-4 py-2 text-xs text-destructive">{copy.error}: {error}</div>}
 
       {open && (
         <div className="border-t border-border/40 px-4 py-3">
           {exceptions.length === 0 ? (
-            <p className="text-xs text-muted-foreground">No hay excepciones que bloqueen check-in o check-out.</p>
+            <p className="text-xs text-muted-foreground">{copy.noBlocks}</p>
           ) : (
             <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
               {exceptions.map((item) => (
                 <article key={`${item.reservation_id}-${item.title}`} className="border border-amber-500/25 bg-amber-500/5 p-3">
                   <div className="flex items-start justify-between gap-2">
                     <p className="text-sm font-medium">{item.title}</p>
-                    <Badge variant="outline">{item.exception_state}</Badge>
+                    <Badge variant="outline">{exceptionStateLabel(item.exception_state)}</Badge>
                   </div>
                   {item.detail && <p className="mt-1 text-xs text-muted-foreground">{item.detail}</p>}
                   <p className="mt-2 text-[11px] uppercase tracking-[0.12em] text-muted-foreground">
-                    {item.blocks_check_in ? "Bloquea check-in" : ""}{item.blocks_check_in && item.blocks_check_out ? " · " : ""}{item.blocks_check_out ? "Bloquea check-out" : ""}
+                    {item.blocks_check_in ? copy.blocksCheckIn : ""}{item.blocks_check_in && item.blocks_check_out ? " · " : ""}{item.blocks_check_out ? copy.blocksCheckOut : ""}
                   </p>
                 </article>
               ))}
@@ -206,7 +265,7 @@ function PulseLink({ href, icon, label, value, warning = false }: { href: string
   return (
     <Link
       href={href}
-      className={`inline-flex h-8 items-center gap-1.5 rounded-md border px-2.5 text-xs font-medium transition-colors hover:bg-muted ${warning ? "border-amber-500/40 text-amber-700 dark:text-amber-300" : "border-border text-muted-foreground"}`}
+      className={`inline-flex h-7 items-center gap-1.5 rounded border px-2 text-xs font-medium transition-colors hover:bg-muted ${warning ? "border-amber-500/40 text-amber-700 dark:text-amber-300" : "border-border text-muted-foreground"}`}
     >
       {icon}
       <span>{label}</span>
