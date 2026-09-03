@@ -1,5 +1,5 @@
-import { OrchardWorkloadParity } from "@/components/orchard/orchard-workload-parity"
+import { OrchardWeekBoard } from "@/components/orchard/orchard-week-board"
 
 export default function OrchardWeekBoardPage() {
-  return <OrchardWorkloadParity mode="week-board" />
+  return <OrchardWeekBoard />
 }
