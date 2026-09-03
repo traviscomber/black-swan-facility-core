@@ -33,7 +33,8 @@ export function getGreenApiConfig(): GreenApiConfig {
 }
 
 export function normalizeGreenApiChatId(phone: string) {
-  const digits = phone.replace(/\D/g, "").replace(/^0+/, "")
+  const rawDigits = phone.replace(/\D/g, "").replace(/^0+/, "")
+  const digits = /^9\d{8}$/.test(rawDigits) ? `56${rawDigits}` : rawDigits
   if (!/^569\d{8}$/.test(digits)) {
     throw new Error(`Invalid Chile mobile number for WhatsApp: ${phone}`)
   }
