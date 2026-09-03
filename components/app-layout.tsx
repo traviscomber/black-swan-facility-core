@@ -5,6 +5,7 @@ import { useMemo, useState, useEffect } from "react"
 import Link from "next/link"
 import { Sidebar } from "./sidebar"
 import { OrchardSidebar } from "@/components/orchard/orchard-sidebar"
+import { OrchardHarvestSectionNav } from "@/components/orchard/harvest-section-nav"
 import { BookingsSectionNav } from "@/components/bookings-section-nav"
 import { HospitalityCommandStrip } from "@/components/hospitality-command-strip"
 import { ObjectCommandPalette } from "./object-command-palette"
@@ -152,6 +153,7 @@ export function AppLayout({ children }: AppLayoutProps) {
         </div>
 
         <main className="relative min-h-0 min-w-0 flex-1 overflow-y-auto bg-background overflow-x-hidden">
+          {orchardShell && <OrchardHarvestSectionNav />}
           {bookingsShell && <BookingsSectionNav />}
           {bookingsRoot && <HospitalityCommandStrip />}
           {children}
