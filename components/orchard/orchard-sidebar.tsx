@@ -43,7 +43,7 @@ const seasonItems:NavItem[] = [
   { href:"/orchard/crop-map/overview", label:{en:"Crop map",es:"Mapa de cultivos",de:"Anbaukarte"}, icon:Map, includeChildren:true },
   { href:"/orchard/game-plan/propagation", label:{en:"Seeds & transplants",es:"Semillas y trasplantes",de:"Saatgut & Jungpflanzen"}, icon:FlaskConical },
   { href:"/orchard/nursery/overview", label:{en:"Nursery",es:"Vivero",de:"Anzucht"}, icon:Sprout },
-  { href:"/orchard/harvest/desk", label:{en:"Harvests",es:"Cosechas",de:"Ernten"}, icon:Leaf, includeChildren:true },
+  { href:"/orchard/harvest/season", label:{en:"Harvests",es:"Cosechas",de:"Ernten"}, icon:Leaf, includeChildren:true },
   { href:"/orchard/work/week-board", label:{en:"Tasks",es:"Tareas",de:"Aufgaben"}, icon:ClipboardList, includeChildren:true },
 ]
 
@@ -75,7 +75,7 @@ function itemActive(pathname:string,item:NavItem){
   if(item.href==="/orchard" )return pathname==="/orchard"
   if(item.href==="/orchard/crops/catalog")return pathname.startsWith("/orchard/crops")
   if(item.href==="/orchard/crop-map/overview")return pathname.startsWith("/orchard/crop-map")
-  if(item.href==="/orchard/harvest/desk")return pathname.startsWith("/orchard/harvest")
+  if(item.href==="/orchard/harvest/season")return pathname.startsWith("/orchard/harvest")
   if(item.href==="/orchard/work/week-board")return pathname.startsWith("/orchard/work")
   return Boolean(item.includeChildren&&pathname.startsWith(`${item.href}/`))
 }
