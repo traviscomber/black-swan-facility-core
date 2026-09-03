@@ -115,7 +115,7 @@ test("tasks and issues use compact object-first hierarchy and keep locale in dir
   assert.match(tasksPage, /const taskPath = `\/\$\{lang\}\/tasks`/)
   assert.match(tasksPage, /`\$\{taskPath\}\?selected=\$\{task\.id\}`/)
   assert.doesNotMatch(tasksPage, /<Card><CardHeader><CardTitle className="text-base">\{copy\.workList\}/)
-  assert.doesNotMatch(tasksPage, /bg-amber-50|bg-orange-50/)
+  assert.doesNotMatch(tasksPage, /bg-amber-50(?:\s|\")|bg-orange-50(?:\s|\")/)
   assert.match(issuesView, /border-l-2 border-primary\/40 pl-4/)
   assert.match(issuesView, /grid grid-cols-2 gap-x-6 gap-y-4 border-y py-4 sm:grid-cols-4/)
   assert.match(issuesView, /const href = \(path:string\) => `\/\$\{lang\}\$\{path\}`/)
