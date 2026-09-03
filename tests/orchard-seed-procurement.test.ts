@@ -46,7 +46,7 @@ test("workbook density and spacing strings parse deterministically", () => {
   assert.equal(parseCentimeters("N/A"), null)
 })
 
-test("Semillas y trasplantes shows gross plan demand before inventory consolidation", () => {
+test("technical propagation keeps gross plan demand before inventory consolidation", () => {
   const source = readFileSync(new URL("../app/orchard/game-plan/propagation/page.tsx", import.meta.url), "utf8")
   assert.match(source, /data-testid="orchard-plan-procurement"/)
   assert.match(source, /estimateTransplantProcurement/)
@@ -58,7 +58,7 @@ test("Semillas y trasplantes shows gross plan demand before inventory consolidat
   assert.doesNotMatch(source, /procurementTotals[^\n]*-/)
 })
 
-test("Semillas y trasplantes is a plan-first visual cockpit with progressive technical detail", () => {
+test("technical propagation remains a plan-first cockpit with progressive evidence", () => {
   const source = readFileSync(new URL("../app/orchard/game-plan/propagation/page.tsx", import.meta.url), "utf8")
   assert.match(source, /cropColor/)
   assert.match(source, /cropChipStyle/)
@@ -68,8 +68,17 @@ test("Semillas y trasplantes is a plan-first visual cockpit with progressive tec
   assert.match(source, /firstSowByCrop/)
 })
 
-test("Orchard seeds navigation opens plan demand before shared inventory", () => {
+test("Orchard seeds navigation opens the canonical procurement board while technical evidence stays linked", () => {
   const sidebar = readFileSync(new URL("../components/orchard/orchard-sidebar.tsx", import.meta.url), "utf8")
-  assert.match(sidebar, /href:"\/orchard\/game-plan\/propagation"[^\n]*Seeds & transplants/)
+  const board = readFileSync(new URL("../app/orchard/seed-orders/page.tsx", import.meta.url), "utf8")
+  assert.match(sidebar, /href:"\/orchard\/seed-orders"[^\n]*Seeds & transplants/)
   assert.match(sidebar, /href:"\/orchard\/nursery\/overview"[^\n]*Nursery/)
+  assert.match(board, /procurement_requests/)
+  assert.match(board, /source_type", "orchard_seed_plan"/)
+  assert.match(board, /source_ref/)
+  assert.match(board, /get_procurement_location_directory/)
+  assert.match(board, /Farm Area 1/)
+  assert.match(board, /status: "submitted"/)
+  assert.match(board, /\/orchard\/game-plan\/propagation/)
+  assert.doesNotMatch(board, /procurement_purchase_orders"\)\.insert/)
 })
