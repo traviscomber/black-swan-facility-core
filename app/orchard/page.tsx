@@ -4,6 +4,7 @@ import Link from "next/link"
 import { useEffect, useMemo, useState } from "react"
 import { AlertTriangle, ArrowRight, CalendarDays, CheckCircle2, ClipboardList, Leaf, Sprout } from "lucide-react"
 import { AppLayout } from "@/components/app-layout"
+import { OrchardDashboardInsights } from "@/components/orchard/orchard-dashboard-insights"
 import { OrchardNavigation } from "@/components/orchard/orchard-navigation"
 import { Badge } from "@/components/ui/badge"
 import { createBrowserClient } from "@/lib/supabase/client"
@@ -61,6 +62,7 @@ export default function OrchardTodayPage(){
     <div><div className="mb-3 flex items-end justify-between"><div><p className="text-xs uppercase tracking-[.16em] text-muted-foreground">02</p><h2 className="mt-1 text-2xl font-normal">{text.planEvents}</h2></div><Link href={href("/orchard/game-plan/season")} className="inline-flex items-center gap-2 text-sm text-foreground">{text.openCalendar}<ArrowRight className="h-4 w-4"/></Link></div><div className="border border-[var(--bs-divider-subtle)] bg-[var(--bs-surface-primary)]">{upcoming.length===0?<><p className="p-6 text-sm text-muted-foreground">{text.noMilestones}</p>{nextBeyond?<><p className="border-t border-[var(--bs-divider-subtle)] px-3 pt-3 text-[10px] uppercase tracking-[.14em] text-muted-foreground">{text.nextAfter}</p>{eventRow(nextBeyond)}</>:null}</>:upcoming.slice(0,12).map(eventRow)}</div></div>
    </section>
    <section className="mt-7 grid gap-px bg-[var(--bs-divider-subtle)] sm:grid-cols-3"><Action href={href("/orchard/game-plan/tasks")} label={text.openPlanTasks}/><Action href={href("/orchard/field")} label="Campo"/><Action href={href("/orchard/harvest/desk")} label={text.openHarvest}/></section>
+   <OrchardDashboardInsights gamePlanId={plan.id}/>
   </>}
  </main></AppLayout>
 }
