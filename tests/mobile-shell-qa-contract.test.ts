@@ -9,8 +9,12 @@ const personaSource = readFileSync(new URL("../lib/os/personas.ts", import.meta.
 const personaHook = readFileSync(new URL("../lib/hooks/use-os-persona.ts", import.meta.url), "utf8")
 const inventoryPage = readFileSync(new URL("../app/inventory/page.tsx", import.meta.url), "utf8")
 const procurementLayout = readFileSync(new URL("../app/procurement/layout.tsx", import.meta.url), "utf8")
+const bookingsLayout = readFileSync(new URL("../app/bookings/layout.tsx", import.meta.url), "utf8")
+const bookingsNav = readFileSync(new URL("../components/bookings-section-nav.tsx", import.meta.url), "utf8")
 const shellTranslations = readFileSync(new URL("../lib/translations/shell.ts", import.meta.url), "utf8")
 const maintenancePage = readFileSync(new URL("../app/maintenance/page.tsx", import.meta.url), "utf8")
+const tasksPage = readFileSync(new URL("../app/tasks/page.tsx", import.meta.url), "utf8")
+const issuesView = readFileSync(new URL("../components/issues-view.tsx", import.meta.url), "utf8")
 const peopleDirectory = readFileSync(new URL("../components/employees-directory-view.tsx", import.meta.url), "utf8")
 const employeeCard = readFileSync(new URL("../components/employee-card.tsx", import.meta.url), "utf8")
 const addEmployeeDialog = readFileSync(new URL("../components/add-employee-dialog.tsx", import.meta.url), "utf8")
@@ -76,6 +80,18 @@ test("legacy operational hubs cannot escape or pre-render outside the common she
   assert.match(procurementLayout, /<AccessGate[\s\S]*?>[\s\S]*?\{children\}[\s\S]*?<\/AccessGate>/)
 })
 
+test("booking section navigation stays inside the common shell without losing capability filters", () => {
+  assert.match(bookingsLayout, /booking-workspace contents/)
+  assert.doesNotMatch(bookingsLayout, /TabsList|TabsTrigger/)
+  assert.match(appLayout, /const bookingsShell = isBookingsPath\(pathname\)/)
+  assert.match(appLayout, /\{bookingsShell && <BookingsSectionNav \/>\}/)
+  assert.match(bookingsNav, /if \(tab\.adminOnly\) return access\.is_admin/)
+  assert.match(bookingsNav, /if \(tab\.action && !can\(tab\.action\)\) return false/)
+  assert.match(bookingsNav, /if \(tab\.department && !canAccessDepartment\(tab\.department\)\) return false/)
+  assert.match(bookingsNav, /overflow-x-auto/)
+  assert.match(bookingsNav, /localizeRoute\(route, language\)/)
+})
+
 test("places and assets map navigation never leaks a raw translation key", () => {
   assert.match(shellTranslations, /en:\s*\{[\s\S]*?"nav\.map": "Map"/)
   assert.match(shellTranslations, /es:\s*\{[\s\S]*?"nav\.map": "Mapa"/)
@@ -92,6 +108,21 @@ test("secondary operating surfaces use compact responsive hierarchy and preserve
   for (const label of ["Role not recorded", "Función pendiente de registrar", "Rolle nicht erfasst", "Historical record", "Registro histórico", "Historischer Datensatz"]) {
     assert.match(employeeCard, new RegExp(label))
   }
+})
+
+test("tasks and issues use compact object-first hierarchy and keep locale in direct routes", () => {
+  assert.match(tasksPage, /grid grid-cols-2 gap-x-6 gap-y-4 border-y py-4 sm:grid-cols-4/)
+  assert.match(tasksPage, /const taskPath = `\/\$\{lang\}\/tasks`/)
+  assert.match(tasksPage, /`\$\{taskPath\}\?selected=\$\{task\.id\}`/)
+  assert.doesNotMatch(tasksPage, /<Card><CardHeader><CardTitle className="text-base">\{copy\.workList\}/)
+  assert.doesNotMatch(tasksPage, /bg-amber-50|bg-orange-50/)
+  assert.match(issuesView, /border-l-2 border-primary\/40 pl-4/)
+  assert.match(issuesView, /grid grid-cols-2 gap-x-6 gap-y-4 border-y py-4 sm:grid-cols-4/)
+  assert.match(issuesView, /const href = \(path:string\) => `\/\$\{lang\}\$\{path\}`/)
+  assert.match(issuesView, /href=\{href\("\/issues\/report"\)\}/)
+  assert.match(issuesView, /href=\{href\("\/maintenance"\)\}/)
+  assert.match(issuesView, /<Card key=\{issue\.id\}>/)
+  assert.doesNotMatch(issuesView, /rounded-lg border bg-muted\/20 p-4/)
 })
 
 test("people record actions stay localized and dark across all supported locales", () => {
