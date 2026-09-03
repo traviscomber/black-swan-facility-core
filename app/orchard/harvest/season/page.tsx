@@ -9,7 +9,7 @@ import { useLanguage } from "@/lib/hooks/use-language"
 import { cropColor } from "@/lib/orchard/crop-identity"
 
 type Locale="en"|"es"|"de"
-type Plan={id:string;season:string|null;status:string}
+type Plan={id:string;season:string|null;status:string;start_date:string|null;end_date:string|null}
 type Cycle={id:string;game_plan_id:string;crop_name:string}
 type Succession={id:string;crop_cycle_id:string;sequence_no:number;planned_bed_m:number|null;planned_first_harvest_date:string|null;planned_last_harvest_date:string|null;knowledge_source_snapshot:Record<string,unknown>|null}
 type Allocation={crop_succession_id:string}
@@ -45,7 +45,7 @@ export default function SeasonHarvestsPage(){
  const [showProjectedRevenue,setShowProjectedRevenue]=useState(true),[showRecordedRevenue,setShowRecordedRevenue]=useState(false),[showRecordedValues,setShowRecordedValues]=useState(false),[showDiff,setShowDiff]=useState(false),[showDiffColors,setShowDiffColors]=useState(false),[showRounded,setShowRounded]=useState(false)
 
  useEffect(()=>{let live=true;setLoading(true);setError(null);void Promise.all([
-  supabase.from("orchard_game_plans").select("id,season,status").order("start_date",{ascending:false}),
+  supabase.from("orchard_game_plans").select("id,season,status,start_date,end_date").order("start_date",{ascending:false}),
   supabase.from("orchard_crop_cycles").select("id,game_plan_id,crop_name"),
   supabase.from("orchard_crop_successions").select("id,crop_cycle_id,sequence_no,planned_bed_m,planned_first_harvest_date,planned_last_harvest_date,knowledge_source_snapshot").neq("status","cancelled"),
   supabase.from("orchard_bed_allocations").select("crop_succession_id"),
@@ -57,7 +57,7 @@ export default function SeasonHarvestsPage(){
  const requested=typeof window!=="undefined"?new URLSearchParams(window.location.search).get("game_plan"):null
  const plan=plans.find(p=>p.id===requested)??plans.find(p=>p.status==="active")??plans.find(p=>p.status==="draft")??plans[0]??null
  const cycleById=new Map(cycles.filter(c=>c.game_plan_id===plan?.id).map(c=>[c.id,c]));const allocatedIds=new Set(allocations.map(a=>a.crop_succession_id));const scoped=successions.filter(s=>cycleById.has(s.crop_cycle_id)&&allocatedIds.has(s.id)&&s.planned_first_harvest_date&&s.planned_last_harvest_date&&Number(s.planned_bed_m)>0);const successionById=new Map(scoped.map(s=>[s.id,s]));const categoryByCrop=new Map(profiles.map(p=>[normalize(p.crop_name),p.category]));
- const seasonYear=plan?.season?.match(/\d{4}/)?.[0]??"2026";const minDate=scoped.map(s=>s.planned_first_harvest_date!).sort()[0]??`${seasonYear}-08-01`;const maxDate=scoped.map(s=>s.planned_last_harvest_date!).sort().at(-1)??minDate;const weeks=weekKeys(minDate,maxDate)
+ const seasonYear=plan?.season?.match(/\d{4}/)?.[0]??"2026";const scopedMin=scoped.map(s=>s.planned_first_harvest_date!).sort()[0]??null;const scopedMax=scoped.map(s=>s.planned_last_harvest_date!).sort().at(-1)??null;const minDate=plan?.start_date??scopedMin??`${seasonYear}-08-01`;const maxDate=plan?.end_date??scopedMax??minDate;const weeks=weekKeys(minDate,maxDate)
  const cropTypes=[...new Set(profiles.map(p=>p.category).filter((v):v is string=>Boolean(v)))].sort()
 
  const rows=useMemo<Row[]>(()=>{
