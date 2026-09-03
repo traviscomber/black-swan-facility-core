@@ -2,8 +2,9 @@ import assert from "node:assert/strict"
 import { readFile } from "node:fs/promises"
 import test from "node:test"
 
-test("Heirloom-style Orchard workload exposes list, week board and workload graph on canonical tasks", async () => {
+test("Heirloom-style Orchard workload exposes list, completed week board and workload graph on canonical tasks", async () => {
   const component = await readFile("components/orchard/orchard-workload-parity.tsx", "utf8")
+  const weekBoard = await readFile("components/orchard/orchard-week-board.tsx", "utf8")
   const list = await readFile("app/orchard/work/list/page.tsx", "utf8")
   const week = await readFile("app/orchard/work/week-board/page.tsx", "utf8")
   const graph = await readFile("app/orchard/work/workload-graph/page.tsx", "utf8")
@@ -23,9 +24,18 @@ test("Heirloom-style Orchard workload exposes list, week board and workload grap
   assert.doesNotMatch(component, /from\("tasks"\)\.insert/)
   assert.match(component, /Recurring tasks are not yet a canonical Core field/)
   assert.match(component, /mode===\"list\"/)
-  assert.match(component, /mode===\"week-board\"/)
   assert.match(component, /mode===\"workload-graph\"/)
   assert.match(list, /mode="list"/)
-  assert.match(week, /mode="week-board"/)
   assert.match(graph, /mode="workload-graph"/)
+
+  assert.match(week, /OrchardWeekBoard/)
+  assert.match(weekBoard, /from\("tasks"\)/)
+  assert.match(weekBoard, /from\("task_assignments"\)/)
+  assert.match(weekBoard, /Previous week|Semana anterior/)
+  assert.match(weekBoard, /Display options|Opciones de visualización/)
+  assert.match(weekBoard, /Export|Exportar/)
+  assert.match(weekBoard, /type="date"/)
+  assert.match(weekBoard, /new Blob/)
+  assert.match(weekBoard, /weatherGap/)
+  assert.doesNotMatch(weekBoard, /Math\.random/)
 })
