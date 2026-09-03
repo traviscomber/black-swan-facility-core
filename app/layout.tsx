@@ -37,10 +37,11 @@ export async function generateMetadata(): Promise<Metadata> {
     applicationName: "Blackswan Facility Core",
     icons: {
       icon: [
-        { url: "/icon-dark-32x32.png" },
-        { url: "/icon.svg", type: "image/svg+xml" },
+        { url: "/favicon.ico", type: "image/x-icon" },
+        { url: "/blackswan-favicon-32.png", type: "image/png", sizes: "32x32" },
       ],
-      apple: "/apple-icon.png",
+      shortcut: "/favicon.ico",
+      apple: [{ url: "/apple-icon.png", type: "image/png", sizes: "180x180" }],
     },
     robots: { index: false, follow: false },
     other: { google: "notranslate", "color-scheme": "dark" },
