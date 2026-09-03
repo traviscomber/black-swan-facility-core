@@ -13,8 +13,10 @@ type Plan={id:string;name:string;season:string|null;status:string}
 type Cycle={id:string;game_plan_id:string}
 type Succession={id:string;crop_cycle_id:string;planned_bed_m:number|string|null}
 type Allocation={crop_succession_id:string}
-type Snapshot={plans:Plan[];cycles:Cycle[];successions:Succession[];allocations:Allocation[];farmObjects:number;revenue:number;charts:number;seeds:number;tasks:number}
-const initial:Snapshot={plans:[],cycles:[],successions:[],allocations:[],farmObjects:0,revenue:0,charts:0,seeds:0,tasks:0}
+type RevenueTarget={crop_succession_id:string}
+type TaskRef={source_id:string|null;source_type:string|null}
+type Snapshot={plans:Plan[];cycles:Cycle[];successions:Succession[];allocations:Allocation[];revenueTargets:RevenueTarget[];tasks:TaskRef[];farmObjects:number;charts:number;seeds:number}
+const initial:Snapshot={plans:[],cycles:[],successions:[],allocations:[],revenueTargets:[],tasks:[],farmObjects:0,charts:0,seeds:0}
 const statusLabels:Record<Locale,Record<string,string>>={
  en:{draft:"Draft",active:"Active",completed:"Completed",archived:"Archived"},
  es:{draft:"Borrador",active:"Activo",completed:"Completado",archived:"Archivado"},
@@ -38,14 +40,20 @@ export default function OrchardGettingStartedPage(){
   supabase.from("orchard_crop_cycles").select("id,game_plan_id"),
   supabase.from("orchard_crop_successions").select("id,crop_cycle_id,planned_bed_m").neq("status","cancelled"),
   supabase.from("orchard_bed_allocations").select("crop_succession_id"),
+  supabase.from("orchard_revenue_targets").select("crop_succession_id"),
+  supabase.from("tasks").select("source_id,source_type").in("operational_area",["orchard","huerto_vinedo"]),
   supabase.from("orchard_farm_map_objects").select("id",{count:"exact",head:true}).in("object_type",["field_block","greenhouse","tunnel","farm_area"]),
-  supabase.from("orchard_revenue_targets").select("id",{count:"exact",head:true}),
   supabase.from("orchard_chart_definitions").select("id",{count:"exact",head:true}),
-  supabase.from("orchard_seed_lots").select("id",{count:"exact",head:true}),
-  supabase.from("tasks").select("id",{count:"exact",head:true}).in("operational_area",["orchard","huerto_vinedo"])
- ]).then(results=>{if(!live)return;const first=results.find(result=>result.error)?.error;if(first){setError(`${text.error} ${first.message}`);setLoading(false);return}const plans=(results[0].data??[]) as Plan[];setSnapshot({plans,cycles:(results[1].data??[]) as Cycle[],successions:(results[2].data??[]) as Succession[],allocations:(results[3].data??[]) as Allocation[],farmObjects:results[4].count??0,revenue:results[5].count??0,charts:results[6].count??0,seeds:results[7].count??0,tasks:results[8].count??0});const requested=new URLSearchParams(window.location.search).get("game_plan");setSelectedPlanId(plans.find(plan=>plan.id===requested)?.id??plans.find(plan=>plan.season==="2026/27")?.id??plans.find(plan=>plan.status==="active")?.id??plans.find(plan=>plan.status==="draft")?.id??plans[0]?.id??"");setLoading(false)});return()=>{live=false}},[supabase,text.error])
- const cycles=snapshot.cycles.filter(c=>c.game_plan_id===selectedPlanId),cycleIds=new Set(cycles.map(c=>c.id)),successions=snapshot.successions.filter(s=>cycleIds.has(s.crop_cycle_id)&&Number(s.planned_bed_m)>0),successionIds=new Set(successions.map(s=>s.id)),allocated=new Set(snapshot.allocations.filter(a=>successionIds.has(a.crop_succession_id)).map(a=>a.crop_succession_id))
- const completion=[snapshot.farmObjects>0,cycles.length>0,successions.length>0,successions.length>0&&allocated.size===successions.length,snapshot.revenue>0,snapshot.charts>0,snapshot.seeds>0,snapshot.tasks>0]
+  supabase.from("orchard_seed_lots").select("id",{count:"exact",head:true})
+ ]).then(results=>{if(!live)return;const first=results.find(result=>result.error)?.error;if(first){setError(`${text.error} ${first.message}`);setLoading(false);return}const plans=(results[0].data??[]) as Plan[];setSnapshot({plans,cycles:(results[1].data??[]) as Cycle[],successions:(results[2].data??[]) as Succession[],allocations:(results[3].data??[]) as Allocation[],revenueTargets:(results[4].data??[]) as RevenueTarget[],tasks:(results[5].data??[]) as TaskRef[],farmObjects:results[6].count??0,charts:results[7].count??0,seeds:results[8].count??0});const requested=new URLSearchParams(window.location.search).get("game_plan");setSelectedPlanId(plans.find(plan=>plan.id===requested)?.id??plans.find(plan=>plan.season==="2026/27")?.id??plans.find(plan=>plan.status==="active")?.id??plans.find(plan=>plan.status==="draft")?.id??plans[0]?.id??"");setLoading(false)});return()=>{live=false}},[supabase,text.error])
+ const cycles=snapshot.cycles.filter(c=>c.game_plan_id===selectedPlanId)
+ const cycleIds=new Set(cycles.map(c=>c.id))
+ const successions=snapshot.successions.filter(s=>cycleIds.has(s.crop_cycle_id)&&Number(s.planned_bed_m)>0)
+ const reconciledIds=new Set(successions.map(s=>s.id))
+ const allocated=new Set(snapshot.allocations.filter(a=>reconciledIds.has(a.crop_succession_id)).map(a=>a.crop_succession_id))
+ const scopedRevenueTargets=snapshot.revenueTargets.filter(target=>reconciledIds.has(target.crop_succession_id))
+ const scopedTasks=snapshot.tasks.filter(task=>Boolean(task.source_id&&reconciledIds.has(task.source_id)))
+ const completion=[snapshot.farmObjects>0,cycles.length>0,successions.length>0,successions.length>0&&allocated.size===successions.length,scopedRevenueTargets.length>0,snapshot.charts>0,snapshot.seeds>0,scopedTasks.length>0]
  const completed=completion.filter(Boolean).length
  const routes=["/orchard/farm-map","/orchard/crops/catalog","/orchard/game-plan/season","/orchard/crop-map/overview","/orchard/game-plan/forecast","/orchard/charts","/orchard/game-plan/propagation","/orchard/work/week-board"]
  const href=(route:string)=>`/${language}${route}${selectedPlanId?`?game_plan=${encodeURIComponent(selectedPlanId)}`:""}`
