@@ -6,6 +6,7 @@ import Link from "next/link"
 import { Sidebar } from "./sidebar"
 import { OrchardSidebar } from "@/components/orchard/orchard-sidebar"
 import { BookingsSectionNav } from "@/components/bookings-section-nav"
+import { HospitalityCommandStrip } from "@/components/hospitality-command-strip"
 import { ObjectCommandPalette } from "./object-command-palette"
 import { Menu, ArrowLeft, Bot, LogOut, MessageSquare } from "lucide-react"
 import { usePathname, useRouter } from "next/navigation"
@@ -51,6 +52,10 @@ function isBookingsPath(pathname:string){
   return /^\/(?:en|es|de)\/bookings(?:\/|$)/.test(pathname) || /^\/bookings(?:\/|$)/.test(pathname)
 }
 
+function isBookingsRoot(pathname:string){
+  return /^\/(?:en|es|de)\/bookings\/?$/.test(pathname) || /^\/bookings\/?$/.test(pathname)
+}
+
 export function AppLayout({ children }: AppLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [userInitials, setUserInitials] = useState<string>("")
@@ -62,6 +67,7 @@ export function AppLayout({ children }: AppLayoutProps) {
   const supabase = useMemo(() => createClient(), [])
   const orchardShell = isOrchardPath(pathname)
   const bookingsShell = isBookingsPath(pathname)
+  const bookingsRoot = isBookingsRoot(pathname)
 
   useEffect(() => {
     let cancelled = false
@@ -147,6 +153,7 @@ export function AppLayout({ children }: AppLayoutProps) {
 
         <main className="relative min-h-0 flex-1 overflow-y-auto bg-background">
           {bookingsShell && <BookingsSectionNav />}
+          {bookingsRoot && <HospitalityCommandStrip />}
           {children}
           {(showConcierge || showGlobalAiOps) && <div className="fixed bottom-4 right-4 z-30 flex items-center">
             {showConcierge ? (
