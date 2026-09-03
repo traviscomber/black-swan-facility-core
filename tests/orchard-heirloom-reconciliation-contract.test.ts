@@ -114,7 +114,7 @@ test("Heirloom reconciliation remains explicit, bed-meter based and capacity saf
   assert.match(cropChartTaskReference, /activity: "Haulm topping", offsetDays: null/)
   assert.match(cropChartTaskReference, /kind: "conditional"/)
 
-  // Calendar matching must be exact, physically allocated and evidence-safe.
+  // Calendar matching must be exact, physically allocated, evidence-safe and data-driven.
   assert.match(taskCalendar, /@\/lib\/orchard\/crop-chart-task-reference/)
   assert.match(taskCalendar, /from\("orchard_bed_allocations"\)/)
   assert.match(taskCalendar, /allocatedSuccessionIds\.has\(s\.id\)/)
@@ -123,7 +123,9 @@ test("Heirloom reconciliation remains explicit, bed-meter based and capacity saf
   assert.match(taskCalendar, /action\.offsetDays === null \? null/)
   assert.match(taskCalendar, /sourcePath = `\$\{ORCHARD_CROP_CHART_TASK_SOURCE\.sheet\}!\$\{action\.sourceColumn\}`/)
   assert.match(taskCalendar, /candidate\.source_type === "orchard_succession"/)
-  assert.match(taskCalendar, /103 dated Crop Chart actions/)
+  assert.match(taskCalendar, /scopedSuccessions\.length/)
+  assert.match(taskCalendar, /counts\.implantation \+ counts\.followUp/)
+  assert.match(taskCalendar, /tasksWithEstimatedMinutes/)
   assert.doesNotMatch(taskCalendar, /from\("tasks"\)\.insert/)
   assert.doesNotMatch(taskCalendar, /dietrich-crop-tasks-2026-27\.json/)
 
