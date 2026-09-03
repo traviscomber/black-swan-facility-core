@@ -39,6 +39,27 @@ test("Planting calendar keeps a Heirloom-subtle weekly grid", async () => {
   assert.doesNotMatch(source, /#eef1ed/)
 })
 
+test("Planting calendar localizes search, fallback variety and advanced navigation", async () => {
+  const source = await readFile("app/orchard/game-plan/season/page.tsx", "utf8")
+  assert.match(source, /search:"Buscar cultivos"/)
+  assert.match(source, /searchPlaceholder:"Buscar cultivos…"/)
+  assert.match(source, /generic:"Genérico"/)
+  assert.match(source, /advanced:"Editar plan de cultivo"/)
+  assert.match(source, /placeholder=\{text\.searchPlaceholder\}/)
+  assert.match(source, /aria-label=\{text\.search\}/)
+  assert.match(source, /c\.variety\?\?text\.generic/)
+  assert.doesNotMatch(source, /placeholder="Search crops…"/)
+})
+
+test("Getting Started localizes plan status without changing canonical status logic", async () => {
+  const source = await readFile("app/orchard/getting-started/page.tsx", "utf8")
+  assert.match(source, /es:\{draft:"Borrador",active:"Activo",completed:"Completado",archived:"Archivado"\}/)
+  assert.match(source, /statusLabel\(plan\.status,locale\)/)
+  assert.match(source, /plan\.status==="active"/)
+  assert.match(source, /plan\.status==="draft"/)
+  assert.doesNotMatch(source, /\{plan\.season\?\?plan\.name\} · \{plan\.status\}/)
+})
+
 test("Orchard dark brand layer neutralizes legacy light calendar surfaces", async () => {
   const brand = await readFile("components/orchard/orchard-navigation.tsx", "utf8")
   assert.match(brand, /bg-\[#f6f8f5\]/)
