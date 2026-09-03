@@ -80,6 +80,16 @@ test("planning references require accountable confirmation before becoming tasks
   assert.doesNotMatch(confirmation, /from\("tasks"\)\.insert/)
 })
 
+test("open Orchard succession tasks are unique by dated Crop Chart reference, not by succession alone", async () => {
+  const migration = await readFile("supabase/migrations/20260902144500_allow_multiple_open_orchard_plan_tasks.sql", "utf8")
+  assert.match(migration, /source_type <> 'orchard_succession'/)
+  assert.match(migration, /tasks_one_open_orchard_reference_idx/)
+  assert.match(migration, /source_type, source_id, due_date, source_path/)
+  assert.match(migration, /p_source_type = 'orchard_succession'/)
+  assert.match(migration, /due_date is not distinct from p_due_date/)
+  assert.match(migration, /source_path is not distinct from v_source_path/)
+})
+
 test("propagation exposes complete direct-sow method coverage without inventing germination", async () => {
   const propagation = await readFile("app/orchard/game-plan/propagation/page.tsx", "utf8")
   assert.match(propagation, /Peas: "Sweet peas"/)
