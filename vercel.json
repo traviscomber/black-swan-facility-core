@@ -1,13 +1,4 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "crons": [
-    {
-      "path": "/api/cron/task-whatsapp-digest",
-      "schedule": "30 10 * * *"
-    },
-    {
-      "path": "/api/cron/task-whatsapp-digest",
-      "schedule": "30 11 * * *"
-    }
-  ]
+  "crons": []
 }
