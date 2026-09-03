@@ -111,5 +111,6 @@ test("task index keeps its existing selected-object architecture for concrete ta
   assert.match(taskIndex, /get\("selected"\)/)
   assert.match(taskIndex, /setSelectedTask/)
   assert.match(taskIndex, /TaskDetailPanel/)
-  assert.match(taskIndex, /`\/tasks\?selected=\$\{task\.id\}`/)
+  assert.match(taskIndex, /const taskPath = `\/\$\{lang\}\/tasks`/)
+  assert.match(taskIndex, /`\$\{taskPath\}\?selected=\$\{task\.id\}`/)
 })
