@@ -28,8 +28,8 @@ export function OrchardHarvestSectionNav() {
   const href = (path: string) => `/${language}${path}${query ? `?${query}` : ""}`
   const items = [
     { href: "/orchard/commercial", label: text.channels, icon: Store, active: pathname === "/orchard/commercial" },
-    { href: "/orchard/harvest/desk", label: text.season, icon: CalendarRange, active: pathname === "/orchard/harvest/desk" },
-    { href: "/orchard/harvest", label: text.weekly, icon: Leaf, active: pathname === "/orchard/harvest" || (pathname.startsWith("/orchard/harvest/") && pathname !== "/orchard/harvest/desk") },
+    { href: "/orchard/harvest/season", label: text.season, icon: CalendarRange, active: pathname === "/orchard/harvest/season" },
+    { href: "/orchard/harvest/desk", label: text.weekly, icon: Leaf, active: pathname === "/orchard/harvest/desk" },
   ]
 
   return (
