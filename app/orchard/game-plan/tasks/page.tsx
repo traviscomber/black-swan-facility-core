@@ -54,7 +54,7 @@ const copy = {
     conditionalHelp: "Undated source actions remain conditional until an operator confirms the execution date. Black Swan does not invent that date.",
     sourcePrimary: "Primary schedule source", sourceSecondary: "Context source",
     work: "Open accountable task management", loadError: "Could not load the reconciled work calendar.", sequence: "succession",
-    workload: "Planned workload by week", workloadHelp: "Season shape using source-backed action counts and real calendar dates.", peakWeek: "Peak week", activeWeeks: "Active weeks", actions:"actions",
+    workload: "Planned workload by week", workloadHelp: "Season shape using source-backed action counts and real calendar dates. This is not an hours estimate.", peakWeek: "Peak week", activeWeeks: "Active weeks", actions:"actions",
   },
   es: {
     eyebrow: "Dietrich · Calendario y Tareas",
@@ -68,7 +68,7 @@ const copy = {
     conditionalHelp: "Las acciones sin fecha en la fuente siguen siendo condicionales hasta que un operador confirme cuándo ejecutarlas. Black Swan no inventa esa fecha.",
     sourcePrimary: "Fuente principal del calendario", sourceSecondary: "Fuente contextual",
     work: "Abrir gestión de tareas responsables", loadError: "No fue posible cargar el calendario reconciliado de labores.", sequence: "sucesión",
-    workload: "Carga planificada por semana", workloadHelp: "Forma de temporada usando conteos de acciones respaldados por fuente y fechas reales de calendario.", peakWeek: "Semana peak", activeWeeks: "Semanas activas", actions:"acciones",
+    workload: "Carga planificada por semana", workloadHelp: "Forma de temporada usando conteos de acciones respaldados por fuente y fechas reales de calendario. No es una estimación de horas.", peakWeek: "Semana peak", activeWeeks: "Semanas activas", actions:"acciones",
   },
   de: {
     eyebrow: "Dietrich · Kalender & Aufgaben",
@@ -82,7 +82,7 @@ const copy = {
     conditionalHelp: "Undatierte Quellaktionen bleiben bedingt, bis ein Operator das Ausführungsdatum bestätigt. Black Swan erfindet dieses Datum nicht.",
     sourcePrimary: "Primäre Kalenderquelle", sourceSecondary: "Kontextquelle",
     work: "Verbindliche Aufgabenverwaltung öffnen", loadError: "Der abgeglichene Arbeitskalender konnte nicht geladen werden.", sequence: "Folge",
-    workload: "Geplante Arbeitslast pro Woche", workloadHelp: "Saisonverlauf auf Basis belegter Aktionsanzahlen und realer Kalenderdaten.", peakWeek: "Spitzenwoche", activeWeeks: "Aktive Wochen", actions:"Arbeiten",
+    workload: "Geplante Arbeitslast pro Woche", workloadHelp: "Saisonverlauf auf Basis belegter Aktionsanzahlen und realer Kalenderdaten. Dies ist keine Stundenprognose.", peakWeek: "Spitzenwoche", activeWeeks: "Aktive Wochen", actions:"Arbeiten",
   },
 } as const
 
