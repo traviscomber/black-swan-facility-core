@@ -1,4 +1,5 @@
 import assert from "node:assert/strict"
+import { readFileSync } from "node:fs"
 import test from "node:test"
 
 import { buildDailyTaskDigestMessage, getChileClock, isDailyTaskDigestWindow } from "../lib/notifications/daily-task-digest.ts"
@@ -39,4 +40,18 @@ test("builds one prioritized morning digest from assigned open tasks", () => {
   assert.match(message, /2\. \[MEDIA · 2026-09-04\] Revisar tablero · Casa/)
   assert.doesNotMatch(message, /Tarea cerrada/)
   assert.match(message, /https:\/\/blackswn\.app\/es\/my-tasks/)
+})
+
+test("daily digest watchdog retries transient failures without duplicating successful sends", () => {
+  const migration = readFileSync(
+    new URL("../supabase/migrations/20260903184500_greenapi_daily_digest_watchdog.sql", import.meta.url),
+    "utf8",
+  )
+
+  assert.match(migration, /d\.status in \('processing','sent'\)/)
+  assert.match(migration, /d\.status='failed' and d\.attempt_count >= 3/)
+  assert.match(migration, /interval '8 minutes'/)
+  assert.match(migration, /black_swan_greenapi_digest_watchdog_0740_0750/)
+  assert.match(migration, /black_swan_greenapi_digest_watchdog_0800_0810/)
+  assert.match(migration, /public\.dispatch_daily_task_whatsapp_digests\(true,null\)/)
 })
