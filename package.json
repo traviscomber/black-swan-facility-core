@@ -7,7 +7,7 @@
   "scripts": {
     "typecheck": "node scripts/generate-legacy-translations.mjs && tsc --noEmit --pretty false",
     "audit:images": "node scripts/audit-image-sources.mjs",
-    "prebuild": "pnpm typecheck && pnpm audit:images && node scripts/audit-i18n-global.mjs && node scripts/check-no-ai-sdk.mjs && pnpm test:inventory && node --experimental-strip-types --test tests/map-overlay-loader.test.ts tests/map-overlay-runtime.test.ts tests/map-gis-derivative-contract.test.ts tests/map-overlay-derivative.test.ts tests/map-performance-contract.test.ts && node --experimental-strip-types --test tests/task-notification.test.ts && node --experimental-strip-types --test tests/booking-rules.test.ts && node --experimental-strip-types --test tests/booking-drag.test.ts && node --experimental-strip-types --test tests/booking-source-policy.test.ts && node --experimental-strip-types --test tests/booking-object-contract.test.ts && node --experimental-strip-types --test tests/discovery-evaluation-flow.test.ts && node --experimental-strip-types --test tests/access-capabilities.test.ts && pnpm test:os",
+    "prebuild": "pnpm typecheck && pnpm audit:images && node scripts/audit-i18n-global.mjs && node scripts/check-no-ai-sdk.mjs && pnpm test:inventory && node --experimental-strip-types --test tests/map-overlay-loader.test.ts tests/map-overlay-runtime.test.ts tests/map-gis-derivative-contract.test.ts tests/map-overlay-derivative.test.ts tests/map-performance-contract.test.ts && pnpm test:notifications && node --experimental-strip-types --test tests/booking-rules.test.ts && node --experimental-strip-types --test tests/booking-drag.test.ts && node --experimental-strip-types --test tests/booking-source-policy.test.ts && node --experimental-strip-types --test tests/booking-object-contract.test.ts && node --experimental-strip-types --test tests/discovery-evaluation-flow.test.ts && node --experimental-strip-types --test tests/access-capabilities.test.ts && pnpm test:os",
     "build": "NODE_OPTIONS=--import=./scripts/suppress-known-build-warning.mjs next build",
     "predev": "node scripts/generate-legacy-translations.mjs",
     "dev": "next dev",
@@ -16,7 +16,7 @@
     "test:i18n": "node scripts/audit-i18n.mjs",
     "test:i18n:global": "node scripts/audit-i18n-global.mjs",
     "test:inventory": "node --experimental-strip-types --test tests/inventory-count-contract.test.ts tests/inventory-custody-contract.test.ts tests/inventory-maintenance-contract.test.ts tests/inventory-asset-audit-contract.test.ts tests/inventory-replenishment-contract.test.ts tests/inventory-replenishment-receiving-contract.test.ts tests/procurement-sourcing-contract.test.ts",
-    "test:notifications": "node --experimental-strip-types --test tests/task-notification.test.ts",
+    "test:notifications": "node --experimental-strip-types --test tests/task-notification.test.ts tests/daily-task-digest.test.ts",
     "test:booking": "node --experimental-strip-types --test tests/booking-rules.test.ts && node --experimental-strip-types --test tests/booking-drag.test.ts && node --experimental-strip-types --test tests/booking-source-policy.test.ts && node --experimental-strip-types --test tests/booking-object-contract.test.ts",
     "test:objects": "node --experimental-strip-types --test tests/booking-object-contract.test.ts tests/object-os-contract.test.ts",
     "test:drag": "node --experimental-strip-types --test tests/booking-drag.test.ts",
@@ -107,7 +107,7 @@
     "playwright": "^1.61.1",
     "postcss": "^8.5",
     "tailwindcss": "^4.1.9",
-    "tw-animate-css": "1.3.3",
+    "tw-animate-css": "^1.3.3",
     "typescript": "^5"
   }
 }
