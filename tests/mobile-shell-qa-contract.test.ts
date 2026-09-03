@@ -3,6 +3,7 @@ import test from "node:test"
 import { readFileSync } from "node:fs"
 
 const appLayout = readFileSync(new URL("../components/app-layout.tsx", import.meta.url), "utf8")
+const sidebar = readFileSync(new URL("../components/sidebar.tsx", import.meta.url), "utf8")
 const commandPalette = readFileSync(new URL("../components/object-command-palette.tsx", import.meta.url), "utf8")
 const orchardAiDock = readFileSync(new URL("../components/orchard/orchard-ai-dock.tsx", import.meta.url), "utf8")
 const personaSource = readFileSync(new URL("../lib/os/personas.ts", import.meta.url), "utf8")
@@ -26,6 +27,14 @@ test("mobile shell keeps BSFC globally and uses the contextual Orchard mark on O
   assert.match(appLayout, /orchardShell \? "ORCHARD" : "BSFC"/)
   assert.match(appLayout, /isOrchardPath/)
   assert.doesNotMatch(appLayout, />BFCS<\/span>/)
+})
+
+test("desktop sidebar uses the same BSFC identity and native dark shell", () => {
+  assert.match(sidebar, />BSFC<\/h1>/)
+  assert.doesNotMatch(sidebar, />BFCS<\/h1>/)
+  assert.match(sidebar, /border-r border-sidebar-border bg-sidebar/)
+  assert.match(sidebar, /border-t border-sidebar-border p-3/)
+  assert.doesNotMatch(sidebar, /bg-white/)
 })
 
 test("mobile shell exposes localized navigation and sign-out labels", () => {
@@ -72,6 +81,17 @@ test("Orchard suppresses global assistants and uses its own high-contrast AI doc
   assert.match(orchardAiDock, /text-\[#e7e1d8\]/)
   assert.match(orchardAiDock, /bg-\[#8bcba8\] text-\[#102018\]/)
   assert.doesNotMatch(orchardAiDock, /title: "Asistente IA de Orchard"/)
+})
+
+test("global shell renders only one floating assistant without removing either canonical route", () => {
+  assert.match(appLayout, /showConcierge \? \(/)
+  assert.match(appLayout, /: showGlobalAiOps \? \(/)
+  assert.match(appLayout, /href=\{conciergeHref\}/)
+  assert.match(appLayout, /href=\{aiHref\}/)
+  assert.match(appLayout, /t\("shell\.concierge"\)/)
+  assert.match(appLayout, /t\("shell\.ai_ops"\)/)
+  assert.doesNotMatch(appLayout, /\{showConcierge && <Link/)
+  assert.doesNotMatch(appLayout, /\{showGlobalAiOps && <Link/)
 })
 
 test("legacy operational hubs cannot escape or pre-render outside the common shell", () => {

@@ -56,7 +56,7 @@ export function AppLayout({ children }: AppLayoutProps) {
   const [userInitials, setUserInitials] = useState<string>("")
   const router = useRouter()
   const pathname = usePathname() || "/"
-  const { language } = useLanguage()
+  const { language, t } = useLanguage()
   const mobileText = mobileCopy[language as keyof typeof mobileCopy] ?? mobileCopy.en
   const { access, can, canAccessDepartment } = useEffectiveAccess()
   const supabase = useMemo(() => createClient(), [])
@@ -148,9 +148,12 @@ export function AppLayout({ children }: AppLayoutProps) {
         <main className="relative min-h-0 flex-1 overflow-y-auto bg-background">
           {bookingsShell && <BookingsSectionNav />}
           {children}
-          {(showConcierge || showGlobalAiOps) && <div className="fixed bottom-4 right-4 z-30 flex items-center gap-2">
-            {showConcierge && <Link href={conciergeHref} className="inline-flex h-11 items-center gap-2 rounded-full border bg-background px-4 text-sm font-medium shadow-lg hover:bg-muted"><MessageSquare className="h-4 w-4" />Concierge</Link>}
-            {showGlobalAiOps && <Link href={aiHref} className="inline-flex h-11 w-11 items-center justify-center rounded-full border bg-background shadow-lg hover:bg-muted" aria-label="AI Ops"><Bot className="h-4 w-4" /></Link>}
+          {(showConcierge || showGlobalAiOps) && <div className="fixed bottom-4 right-4 z-30 flex items-center">
+            {showConcierge ? (
+              <Link href={conciergeHref} className="inline-flex h-11 items-center gap-2 rounded-full border bg-background px-4 text-sm font-medium shadow-sm hover:bg-muted"><MessageSquare className="h-4 w-4" />{t("shell.concierge")}</Link>
+            ) : showGlobalAiOps ? (
+              <Link href={aiHref} className="inline-flex h-11 w-11 items-center justify-center rounded-full border bg-background shadow-sm hover:bg-muted" aria-label={t("shell.ai_ops")} title={t("shell.ai_ops")}><Bot className="h-4 w-4" /></Link>
+            ) : null}
           </div>}
         </main>
       </div>

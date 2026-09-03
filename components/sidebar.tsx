@@ -207,11 +207,11 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
   return (
     <>
       {isOpen && <div className="fixed inset-0 z-40 bg-black/20 lg:hidden" onClick={onClose} />}
-      <div className={cn("fixed inset-y-0 left-0 z-50 flex h-screen w-64 flex-col overflow-y-auto border-r border-secondary bg-white transition-transform duration-300 lg:relative lg:inset-auto lg:z-auto lg:h-full lg:translate-x-0", isOpen ? "translate-x-0" : "-translate-x-full")}>
-        <div className="flex h-16 items-center justify-between border-b border-secondary bg-primary/5 px-4 sm:h-20">
+      <div className={cn("fixed inset-y-0 left-0 z-50 flex h-screen w-64 flex-col overflow-y-auto border-r border-sidebar-border bg-sidebar transition-transform duration-300 lg:relative lg:inset-auto lg:z-auto lg:h-full lg:translate-x-0", isOpen ? "translate-x-0" : "-translate-x-full")}>
+        <div className="flex h-16 items-center justify-between border-b border-sidebar-border bg-primary/5 px-4 sm:h-20">
           <Link href={localizedHref(language, "/os")} className="flex min-w-0 items-center gap-2 hover:opacity-80">
             <img src="/blackswan-logo.png" alt="Blackswan Logo" className="h-12 w-12 flex-shrink-0 object-contain sm:h-14 sm:w-14" />
-            <div className="min-w-0"><h1 className="truncate text-sm font-bold uppercase tracking-wider text-accent sm:text-base">BFCS</h1><p className="text-xs text-muted-foreground">Core System</p></div>
+            <div className="min-w-0"><h1 className="truncate text-sm font-bold uppercase tracking-wider text-accent sm:text-base">BSFC</h1><p className="text-xs text-muted-foreground">Core System</p></div>
           </Link>
           <button onClick={onClose} className="rounded p-1 hover:bg-secondary lg:hidden" aria-label={t("shell.close_navigation")}><X className="h-5 w-5" /></button>
         </div>
@@ -242,7 +242,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
           </div>
         </nav>
 
-        <div className="space-y-3 border-t border-secondary p-3">
+        <div className="space-y-3 border-t border-sidebar-border p-3">
           <LanguageSwitcher />
           <button onClick={handleOpenSearch} className="flex w-full items-center gap-3 rounded px-3 py-2 text-sm text-muted-foreground hover:bg-muted hover:text-foreground"><HelpCircle className="h-5 w-5" /><span>{t("shell.search")}</span><span className="ml-auto text-xs">⌘K</span></button>
           <div className="flex items-center gap-3 rounded bg-muted/40 px-3 py-2"><span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">{userInitials}</span><div className="min-w-0 flex-1"><p className="truncate text-xs font-medium">{userEmail || t("shell.user")}</p><p className="truncate text-[11px] text-muted-foreground">{personaLabel} · {access.role || "user"}</p></div><button onClick={handleLogout} className="rounded p-1.5 hover:bg-muted" title={t("shell.logout")}><LogOut className="h-4 w-4" /></button></div>
