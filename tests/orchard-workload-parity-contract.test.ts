@@ -2,12 +2,13 @@ import assert from "node:assert/strict"
 import { readFile } from "node:fs/promises"
 import test from "node:test"
 
-test("Heirloom-style Orchard workload exposes list, completed week board and workload graph on canonical tasks", async () => {
+test("Heirloom-style Orchard workload exposes list, source-backed week board and workload graph on canonical tasks", async () => {
   const component = await readFile("components/orchard/orchard-workload-parity.tsx", "utf8")
   const weekBoard = await readFile("components/orchard/orchard-week-board.tsx", "utf8")
   const list = await readFile("app/orchard/work/list/page.tsx", "utf8")
   const week = await readFile("app/orchard/work/week-board/page.tsx", "utf8")
   const graph = await readFile("app/orchard/work/workload-graph/page.tsx", "utf8")
+  const weatherMigration = await readFile("supabase/migrations/20260903170000_orchard_weather_source.sql", "utf8")
 
   assert.match(component, /from\("tasks"\)/)
   assert.match(component, /from\("task_assignments"\)/)
@@ -31,11 +32,16 @@ test("Heirloom-style Orchard workload exposes list, completed week board and wor
   assert.match(week, /OrchardWeekBoard/)
   assert.match(weekBoard, /from\("tasks"\)/)
   assert.match(weekBoard, /from\("task_assignments"\)/)
+  assert.match(weekBoard, /from\("orchard_farm_settings"\)/)
   assert.match(weekBoard, /Previous week|Semana anterior/)
   assert.match(weekBoard, /Display options|Opciones de visualización/)
   assert.match(weekBoard, /Export|Exportar/)
   assert.match(weekBoard, /type="date"/)
   assert.match(weekBoard, /new Blob/)
-  assert.match(weekBoard, /weatherGap/)
+  assert.match(weekBoard, /api\.open-meteo\.com\/v1\/forecast/)
+  assert.match(weekBoard, /temperature_2m_max/)
+  assert.match(weekBoard, /precipitation_probability_max/)
+  assert.match(weatherMigration, /weather_provider text not null default 'open_meteo'/)
+  assert.match(weatherMigration, /weather_timezone text not null default 'America\/Santiago'/)
   assert.doesNotMatch(weekBoard, /Math\.random/)
 })
