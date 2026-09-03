@@ -9,6 +9,7 @@ const personaSource = readFileSync(new URL("../lib/os/personas.ts", import.meta.
 const personaHook = readFileSync(new URL("../lib/hooks/use-os-persona.ts", import.meta.url), "utf8")
 const osEntry = readFileSync(new URL("../components/os-entry.tsx", import.meta.url), "utf8")
 const fieldAdminHome = readFileSync(new URL("../components/field-admin-home.tsx", import.meta.url), "utf8")
+const appLayout = readFileSync(new URL("../components/app-layout.tsx", import.meta.url), "utf8")
 const osPage = readFileSync(new URL("../app/os/page.tsx", import.meta.url), "utf8")
 const proxySource = readFileSync(new URL("../proxy.ts", import.meta.url), "utf8")
 const rootPage = readFileSync(new URL("../app/page.tsx", import.meta.url), "utf8")
@@ -61,8 +62,9 @@ test("Santiago profile is CEO plus Hospitality and starts in the reservation cal
   assert.match(personaHook, /os_primary_domain, os_start_path/)
 })
 
-test("Hospitality keeps the reservation calendar primary and removes duplicate permanent trays", () => {
-  assert.match(bookingsPage, /HospitalityCommandStrip/)
+test("Hospitality keeps the reservation calendar primary and mounts its pulse inside the common shell", () => {
+  assert.match(appLayout, /bookingsRoot && <HospitalityCommandStrip/)
+  assert.doesNotMatch(bookingsPage, /HospitalityCommandStrip/)
   assert.match(bookingsPage, /BookingOperationsTimelinePage/)
   assert.doesNotMatch(bookingsPage, /DailyOperationsPanel/)
   assert.doesNotMatch(bookingsPage, /CompactBookingQuickActions/)
@@ -85,8 +87,9 @@ test("Santiago sees canonical invoice approvals from Hospitality only when finan
   assert.match(hospitalityStrip, /finance_approval_queue/)
   assert.match(hospitalityStrip, /eq\("approval_status", "ready"\)/)
   assert.match(hospitalityStrip, /canApproveFinance && <PulseLink/)
-  assert.match(hospitalityStrip, /href="\/budgets\/approvals"/)
-  assert.match(hospitalityStrip, /label="Aprobaciones"/)
+  assert.match(hospitalityStrip, /href=\{href\("\/budgets\/approvals"\)\}/)
+  assert.match(hospitalityStrip, /label=\{copy\.approvals\}/)
+  assert.match(hospitalityStrip, /const href = \(path: string\) => `\/\$\{language\}\$\{path\}`/)
   assert.doesNotMatch(hospitalityStrip, /approve_finance_document/)
   assert.doesNotMatch(hospitalityStrip, /reject_finance_document/)
 })
