@@ -31,6 +31,12 @@ test("mobile shell keeps BSFC globally and uses the contextual Orchard mark on O
   assert.doesNotMatch(appLayout, />BFCS<\/span>/)
 })
 
+test("common shell constrains wide workspaces to the content column", () => {
+  assert.match(appLayout, /flex min-w-0 flex-1 flex-col overflow-hidden/)
+  assert.match(appLayout, /relative min-h-0 min-w-0 flex-1 overflow-y-auto bg-background/)
+  assert.doesNotMatch(appLayout, /flex w-full flex-1 flex-col overflow-hidden/)
+})
+
 test("desktop sidebar uses the same BSFC identity and native dark shell", () => {
   assert.match(sidebar, />BSFC<\/h1>/)
   assert.doesNotMatch(sidebar, />BFCS<\/h1>/)
