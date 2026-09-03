@@ -19,6 +19,7 @@ const orchardPages = [
   "app/orchard/game-plan/capacity/page.tsx",
   "app/orchard/game-plan/forecast/page.tsx",
   "app/orchard/harvest/desk/page.tsx",
+  "app/orchard/harvest/season/page.tsx",
   "app/orchard/season-summary/page.tsx",
   "app/orchard/season-summary/advanced/page.tsx",
   "app/orchard/work/page.tsx",
@@ -101,7 +102,7 @@ test("Dietrich Orchard sidebar follows the compact Heirloom operating workflow",
   assert.match(source, /href:"\/orchard\/crop-map\/overview"/)
   assert.match(source, /href:"\/orchard\/nursery\/overview"/)
   assert.match(source, /href:"\/orchard\/work\/week-board"/)
-  assert.match(source, /href:"\/orchard\/harvest\/desk"/)
+  assert.match(source, /href:"\/orchard\/harvest\/season"/)
   assert.match(source, /href:"\/orchard\/crops"/)
   assert.match(source, /orchard_game_plans/)
   assert.match(source, /game_plan/)
