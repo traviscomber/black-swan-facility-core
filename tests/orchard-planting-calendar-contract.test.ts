@@ -39,7 +39,7 @@ test("Planting calendar keeps a Heirloom-subtle weekly grid", async () => {
   assert.doesNotMatch(source, /#eef1ed/)
 })
 
-test("Planting calendar localizes search, fallback variety and advanced navigation", async () => {
+test("Planting calendar localizes search, generic sentinel and advanced navigation", async () => {
   const source = await readFile("app/orchard/game-plan/season/page.tsx", "utf8")
   assert.match(source, /search:"Buscar cultivos"/)
   assert.match(source, /searchPlaceholder:"Buscar cultivos…"/)
@@ -47,7 +47,10 @@ test("Planting calendar localizes search, fallback variety and advanced navigati
   assert.match(source, /advanced:"Editar plan de cultivo"/)
   assert.match(source, /placeholder=\{text\.searchPlaceholder\}/)
   assert.match(source, /aria-label=\{text\.search\}/)
-  assert.match(source, /c\.variety\?\?text\.generic/)
+  assert.match(source, /const varietyLabel = \(value:string\|null, generic:string\) => !value \|\| normalize\(value\)==="generic" \? generic : value/)
+  assert.match(source, /varietyLabel\(c\.variety,text\.generic\)/)
+  assert.match(source, /const variety=varietyLabel\(c\.variety,text\.generic\)/)
+  assert.doesNotMatch(source, /c\.variety\?\?text\.generic/)
   assert.doesNotMatch(source, /placeholder="Search crops…"/)
 })
 
