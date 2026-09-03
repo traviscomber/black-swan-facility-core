@@ -10,8 +10,10 @@ const personaSource = readFileSync(new URL("../lib/os/personas.ts", import.meta.
 const personaHook = readFileSync(new URL("../lib/hooks/use-os-persona.ts", import.meta.url), "utf8")
 const inventoryPage = readFileSync(new URL("../app/inventory/page.tsx", import.meta.url), "utf8")
 const procurementLayout = readFileSync(new URL("../app/procurement/layout.tsx", import.meta.url), "utf8")
+const bookingsPage = readFileSync(new URL("../app/bookings/page.tsx", import.meta.url), "utf8")
 const bookingsLayout = readFileSync(new URL("../app/bookings/layout.tsx", import.meta.url), "utf8")
 const bookingsNav = readFileSync(new URL("../components/bookings-section-nav.tsx", import.meta.url), "utf8")
+const hospitalityCommandStrip = readFileSync(new URL("../components/hospitality-command-strip.tsx", import.meta.url), "utf8")
 const shellTranslations = readFileSync(new URL("../lib/translations/shell.ts", import.meta.url), "utf8")
 const maintenancePage = readFileSync(new URL("../app/maintenance/page.tsx", import.meta.url), "utf8")
 const tasksPage = readFileSync(new URL("../app/tasks/page.tsx", import.meta.url), "utf8")
@@ -110,6 +112,22 @@ test("booking section navigation stays inside the common shell without losing ca
   assert.match(bookingsNav, /if \(tab\.department && !canAccessDepartment\(tab\.department\)\) return false/)
   assert.match(bookingsNav, /overflow-x-auto/)
   assert.match(bookingsNav, /localizeRoute\(route, language\)/)
+})
+
+test("Hospitality pulse belongs to the bookings root shell and preserves locale without changing operational sources", () => {
+  assert.match(appLayout, /const bookingsRoot = isBookingsRoot\(pathname\)/)
+  assert.match(appLayout, /\{bookingsRoot && <HospitalityCommandStrip \/>\}/)
+  assert.doesNotMatch(bookingsPage, /HospitalityCommandStrip/)
+  assert.match(hospitalityCommandStrip, /useLanguage/)
+  for (const label of ["Hospitality today", "Hospitalidad hoy", "Hospitalität heute"]) assert.match(hospitalityCommandStrip, new RegExp(label))
+  assert.match(hospitalityCommandStrip, /const href = \(path: string\) => `\/\$\{language\}\$\{path\}`/)
+  assert.match(hospitalityCommandStrip, /href=\{href\("\/bookings\/requests"\)\}/)
+  assert.match(hospitalityCommandStrip, /href=\{href\("\/budgets\/approvals"\)\}/)
+  for (const source of ["reservations", "hospitality_requests", "reservation_operational_exceptions", "reservation_room_readiness"]) {
+    assert.match(hospitalityCommandStrip, new RegExp(`from\\(\\"${source}\\"\\)`))
+  }
+  assert.match(hospitalityCommandStrip, /rpc\("can_finance_approve"\)/)
+  assert.match(hospitalityCommandStrip, /channel\("hospitality-command-strip"\)/)
 })
 
 test("places and assets map navigation never leaks a raw translation key", () => {
