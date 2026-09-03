@@ -49,6 +49,13 @@ const copy = {
   de:{eyebrow:"Orchard · Erste Schritte",title:"Ein Betriebsablauf von der Farmkarte bis zur Arbeitslast",description:"Der Fortschritt wird aus aktuellen Core-Datensätzen berechnet. Historische Heirloom-Beobachtungen bleiben Referenzevidenz und ersetzen nie das Betriebsmodell.",gamePlan:"Game Plan",loading:"Orchard-Status wird geladen…",loadError:"Der Orchard-Onboarding-Status konnte nicht geladen werden.",complete:"abgeschlossen",completed:"Abgeschlossen",pending:"Offen",openStep:"Schritt öffnen",reference:"Historische Heirloom-Referenz",coreLive:"Core live",referenceHelp:"Authentifiziert beobachtetes Verhalten vom 01. Sep. 2026. Nur Referenz.",coreHelp:"Aktueller autorisierter Supabase-Status für den gewählten Game Plan.",physicalBeds:"Physische Beete",plantings:"Pflanzungen",capacity:"Beetmeter-Kapazität",assigned:"Zugeordnete Pflanzungen",peak:"Referenz-Spitzenbedarf",syncTitle:"Farm Area 1 synchronisiert",syncBody:"Das aktuelle Betriebsmodell besteht aus 5 bestehenden + 3 Erweiterungsblöcken mit je 10 Beeten. Crop Map gilt erst als abgeschlossen, wenn alle abgeglichenen Pflanzungen physisch zugeordnet sind.",truth:"Abschlusskriterien sind streng und datenbasiert."},
 } as const
 
+const statusLabels:Record<Locale,Record<string,string>>={
+  en:{draft:"Draft",active:"Active",completed:"Completed",archived:"Archived"},
+  es:{draft:"Borrador",active:"Activo",completed:"Completado",archived:"Archivado"},
+  de:{draft:"Entwurf",active:"Aktiv",completed:"Abgeschlossen",archived:"Archiviert"},
+}
+const statusLabel=(status:string,locale:Locale)=>statusLabels[locale][status]??status.replaceAll("_"," ")
+
 const stepCopy:Record<Locale,Record<string,StepText>> = {
   en:{},
   es:{
@@ -138,7 +145,7 @@ export default function OrchardGettingStartedPage(){
     <main className="mx-auto w-full max-w-[1560px] px-4 py-6 sm:px-6 lg:px-8">
       <header className="grid gap-5 border-b border-[var(--orchard-line)] pb-5 lg:grid-cols-[1fr_auto] lg:items-end">
         <div className="max-w-4xl"><p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--orchard-green)]">{text.eyebrow}</p><h1 className="mt-2 text-3xl font-normal sm:text-4xl">{text.title}</h1><p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">{text.description}</p></div>
-        <div className="min-w-[250px]"><p className="mb-2 text-xs font-medium text-muted-foreground">{text.gamePlan}</p><Select value={selectedPlanId} onValueChange={setSelectedPlanId} disabled={loading||snapshot.plans.length===0}><SelectTrigger aria-label={text.gamePlan}><SelectValue placeholder={text.gamePlan}/></SelectTrigger><SelectContent>{snapshot.plans.map(plan=><SelectItem key={plan.id} value={plan.id}>{plan.season??plan.name} · {plan.status}</SelectItem>)}</SelectContent></Select></div>
+        <div className="min-w-[250px]"><p className="mb-2 text-xs font-medium text-muted-foreground">{text.gamePlan}</p><Select value={selectedPlanId} onValueChange={setSelectedPlanId} disabled={loading||snapshot.plans.length===0}><SelectTrigger aria-label={text.gamePlan}><SelectValue placeholder={text.gamePlan}/></SelectTrigger><SelectContent>{snapshot.plans.map(plan=><SelectItem key={plan.id} value={plan.id}>{plan.season??plan.name} · {statusLabel(plan.status,locale)}</SelectItem>)}</SelectContent></Select></div>
       </header>
 
       {loading?<div className="py-16 text-sm text-muted-foreground">{text.loading}</div>:error?<div className="my-8 border-y border-red-400/30 py-4 text-sm text-red-300">{error}</div>:<>
