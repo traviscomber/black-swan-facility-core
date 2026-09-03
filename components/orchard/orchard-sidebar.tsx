@@ -35,7 +35,7 @@ type NavItem = { href:string; label:Record<Locale,string>; icon:typeof Home; inc
 
 const topItems:NavItem[] = [
   { href:"/orchard/getting-started", label:{en:"Getting started",es:"Iniciación",de:"Einrichtung"}, icon:Home },
-  { href:"/orchard", label:{en:"Dashboard",es:"Pantalla principal",de:"Übersicht"}, icon:LayoutDashboard },
+  { href:"/orchard/dashboard", label:{en:"Dashboard",es:"Pantalla principal",de:"Übersicht"}, icon:LayoutDashboard },
 ]
 
 const seasonItems:NavItem[] = [
@@ -74,7 +74,7 @@ const copy = {
 function stripLocale(pathname:string){return pathname.replace(/^\/(en|es|de)(?=\/|$)/,"")||"/"}
 function itemActive(pathname:string,item:NavItem){
   if(pathname===item.href)return true
-  if(item.href==="/orchard" )return pathname==="/orchard"
+  if(item.href==="/orchard/dashboard")return pathname==="/orchard/dashboard"
   if(item.href==="/orchard/crops/catalog")return pathname.startsWith("/orchard/crops")
   if(item.href==="/orchard/crop-map/overview")return pathname.startsWith("/orchard/crop-map")
   if(item.href==="/orchard/harvest/season")return pathname.startsWith("/orchard/harvest")
@@ -131,7 +131,7 @@ export function OrchardSidebar({isOpen=true,onClose}:{isOpen?:boolean;onClose?:(
   return <div data-orchard-sidebar className={cn("fixed inset-y-0 left-0 z-50 flex h-screen w-64 flex-col border-r border-border bg-sidebar text-sidebar-foreground transition-transform duration-300 md:relative md:inset-auto md:z-auto md:h-full md:translate-x-0",isOpen?"translate-x-0":"-translate-x-full")}>
     <div className="border-b border-border px-4 py-4">
       <div className="flex items-start justify-between gap-2">
-        <Link href={localizedHref("/orchard")} onClick={onClose} className="flex min-w-0 items-center gap-3">
+        <Link href={localizedHref("/orchard/dashboard")} onClick={onClose} className="flex min-w-0 items-center gap-3">
           <img src="/blackswan-logo.png" alt="Black Swan" className="h-9 w-9 shrink-0 object-contain"/>
           <div className="min-w-0"><p className="truncate text-sm font-semibold">{text.farm}</p><p className="mt-0.5 text-[11px] text-muted-foreground">{text.owner}</p></div>
         </Link>
