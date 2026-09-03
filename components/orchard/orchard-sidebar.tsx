@@ -157,7 +157,7 @@ export function OrchardSidebar({isOpen=true,onClose}:{isOpen?:boolean;onClose?:(
         <summary className="flex min-h-10 cursor-pointer list-none items-center justify-between rounded-md px-3 text-sm text-muted-foreground hover:bg-muted hover:text-foreground marker:content-none [&::-webkit-details-marker]:hidden"><span>{text.more}</span><ChevronDown className="h-4 w-4 transition-transform group-open:rotate-180"/></summary>
         <div className="mt-1 space-y-1 border-l border-border pl-2">{advancedItems.map(renderItem)}</div>
       </details>
-      <Link href={localizedHref("/orchard/analytics")} onClick={onClose} className="mt-1 flex min-h-10 items-center gap-3 rounded-md px-3 text-sm text-muted-foreground hover:bg-muted hover:text-foreground"><Settings className="h-4 w-4"/><span>{text.settings}</span></Link>
+      <Link href={localizedHref("/orchard/settings")} onClick={onClose} aria-current={internalPathname==="/orchard/settings"?"page":undefined} className={cn("mt-1 flex min-h-10 items-center gap-3 rounded-md px-3 text-sm transition-colors",internalPathname==="/orchard/settings"?"bg-primary/10 font-medium text-primary":"text-muted-foreground hover:bg-muted hover:text-foreground")}><Settings className="h-4 w-4"/><span>{text.settings}</span></Link>
     </nav>
 
     <div className="space-y-3 border-t border-border p-3">
