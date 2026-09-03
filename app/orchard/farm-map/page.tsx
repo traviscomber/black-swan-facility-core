@@ -86,7 +86,7 @@ export default function OrchardFarmMapPage(){
   </header>
   <section className="relative min-h-0 flex-1 overflow-hidden bg-[#242622]">
    <div ref={canvasRef} className="absolute inset-0 overflow-hidden touch-none select-none" onPointerMove={pointerMove} onPointerUp={pointerUp} onPointerCancel={pointerUp}>
-    <div className="absolute left-1/2 top-1/2 h-full w-full -translate-x-1/2 -translate-y-1/2 bg-cover bg-center bg-no-repeat transition-transform duration-150" style={{transform:`translate(-50%,-50%) scale(${zoom})`,backgroundImage:'url("/orchard/farm-map-2026.webp")'}}>
+    <div className="absolute inset-0 bg-no-repeat transition-transform duration-150" style={{transform:`scale(${zoom})`,transformOrigin:"center",backgroundImage:'url("/orchard/farm-map-2026.webp")',backgroundSize:"cover",backgroundPosition:"center"}}>
      <div className="absolute inset-0 bg-black/10"/>
      {objects.map(item=>{
       const tone=objectTone(item.object_type);const growing=isGrowing(item.object_type);const infrastructure=["water","electricity","internet"].includes(item.object_type)
