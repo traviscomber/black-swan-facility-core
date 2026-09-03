@@ -20,6 +20,7 @@ import {
   Settings,
   ShieldAlert,
   Sprout,
+  StickyNote,
   TestTube2,
   X,
 } from "lucide-react"
@@ -52,6 +53,7 @@ const farmItems:NavItem[] = [
 ]
 
 const advancedItems:NavItem[] = [
+  { href:"/orchard/notes", label:{en:"Notes",es:"Notas",de:"Notizen"}, icon:StickyNote },
   { href:"/orchard/crops", label:{en:"Live crop operations",es:"En terreno",de:"Aktive Kulturen"}, icon:Sprout },
   { href:"/orchard/library", label:{en:"Agronomic library",es:"Biblioteca agronómica",de:"Agronomische Bibliothek"}, icon:BookOpen, includeChildren:true },
   { href:"/orchard/care", label:{en:"Care",es:"Cuidados",de:"Pflege"}, icon:Leaf },
