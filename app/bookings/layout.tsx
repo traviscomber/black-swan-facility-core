@@ -7,6 +7,7 @@ import { BookingsLegacyLocalizationBridge } from "@/components/bookings-legacy-l
 import { useLanguage } from "@/lib/hooks/use-language"
 
 const ROUTE_LOCALES = new Set(["en", "es", "de"])
+const BOOKING_LAYOUT_LOCALE = { en: "en", es: "es", de: "de" } as const
 
 function stripLocale(pathname: string) {
   const segments = pathname.split("/").filter(Boolean)
@@ -23,7 +24,7 @@ export default function BookingsLayout({ children }: { children: React.ReactNode
 
   return (
     <AccessGate action="booking.modify" department="booking">
-      <div className="booking-workspace contents" data-locale={language}>
+      <div className="booking-workspace contents" data-locale={BOOKING_LAYOUT_LOCALE[language]}>
         <BookingsLegacyLocalizationBridge />
         {children}
       </div>
