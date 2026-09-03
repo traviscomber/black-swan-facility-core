@@ -3,11 +3,19 @@ create table if not exists public.orchard_dashboard_preferences (
   active_view text not null default 'operation' check (active_view in ('operation','planning')),
   widget_order jsonb not null default '["tasks","weather","revenue","notepad","notes","crops","milestones"]'::jsonb,
   hidden_widgets jsonb not null default '[]'::jsonb,
+  operation_widget_order jsonb not null default '["tasks","weather","revenue","notepad","notes","crops","milestones"]'::jsonb,
+  planning_widget_order jsonb not null default '["revenue","crops","milestones","tasks","weather","notes","notepad"]'::jsonb,
+  operation_hidden_widgets jsonb not null default '[]'::jsonb,
+  planning_hidden_widgets jsonb not null default '[]'::jsonb,
   notepad text not null default '',
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   constraint orchard_dashboard_widget_order_array check (jsonb_typeof(widget_order) = 'array'),
   constraint orchard_dashboard_hidden_widgets_array check (jsonb_typeof(hidden_widgets) = 'array'),
+  constraint orchard_dashboard_operation_widget_order_array check (jsonb_typeof(operation_widget_order) = 'array'),
+  constraint orchard_dashboard_planning_widget_order_array check (jsonb_typeof(planning_widget_order) = 'array'),
+  constraint orchard_dashboard_operation_hidden_widgets_array check (jsonb_typeof(operation_hidden_widgets) = 'array'),
+  constraint orchard_dashboard_planning_hidden_widgets_array check (jsonb_typeof(planning_hidden_widgets) = 'array'),
   constraint orchard_dashboard_notepad_length check (char_length(notepad) <= 300)
 );
 
