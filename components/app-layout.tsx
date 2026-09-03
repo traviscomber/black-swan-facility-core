@@ -116,7 +116,7 @@ export function AppLayout({ children }: AppLayoutProps) {
         </div>
       )}
 
-      <div className="flex w-full flex-1 flex-col overflow-hidden">
+      <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
         <div className={`sticky top-0 z-40 flex h-14 items-center justify-between border-b border-border bg-sidebar px-3 sm:h-16 sm:px-4 ${mobileOnlyClass}`}>
           <div className="flex items-center gap-1">
             <button
@@ -151,7 +151,7 @@ export function AppLayout({ children }: AppLayoutProps) {
           </button>
         </div>
 
-        <main className="relative min-h-0 flex-1 overflow-y-auto bg-background">
+        <main className="relative min-h-0 min-w-0 flex-1 overflow-y-auto bg-background">
           {bookingsShell && <BookingsSectionNav />}
           {bookingsRoot && <HospitalityCommandStrip />}
           {children}
