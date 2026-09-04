@@ -1,0 +1,39 @@
+.orchard-dashboard-workspace [data-orchard-dashboard] {
+  padding-top: 1rem !important;
+}
+
+.orchard-dashboard-workspace [data-orchard-dashboard] > header {
+  margin-bottom: 1rem !important;
+  padding-bottom: 1rem !important;
+  gap: 0.75rem !important;
+}
+
+.orchard-dashboard-workspace [data-orchard-dashboard] > header h1 {
+  margin-top: 0.375rem !important;
+  font-size: 2rem !important;
+  line-height: 2.25rem !important;
+}
+
+.orchard-dashboard-workspace [data-orchard-dashboard] > section.grid {
+  gap: 0.75rem !important;
+}
+
+.orchard-dashboard-workspace [data-orchard-dashboard] article > header {
+  padding: 0.625rem 0.75rem !important;
+}
+
+.orchard-dashboard-workspace [data-orchard-dashboard] article > header h2 {
+  font-size: 1rem !important;
+  line-height: 1.5rem !important;
+  font-weight: 500 !important;
+}
+
+.orchard-dashboard-workspace > .mx-auto:first-of-type {
+  padding-top: 0.75rem !important;
+}
+
+@media (max-width: 1279px) {
+  .orchard-dashboard-workspace [data-orchard-dashboard] > section.grid {
+    gap: 0.625rem !important;
+  }
+}
