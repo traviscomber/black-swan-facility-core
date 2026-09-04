@@ -27,83 +27,122 @@ alter table public.procurement_receipts
 alter table public.procurement_inventory_intake
   alter column location_id set not null;
 
--- Purchase orders: Procurement managers/approvers and Inventory processors
--- may only see rows inside their effective operational scope.
-drop policy if exists procurement_purchase_orders_read_scoped
+-- Purchase orders keep their existing authorization model and add the missing
+-- row-level Procurement location boundary.
+drop policy if exists procurement_purchase_orders_read_authorized
   on public.procurement_purchase_orders;
-create policy procurement_purchase_orders_read_scoped
+create policy procurement_purchase_orders_read_authorized
   on public.procurement_purchase_orders
   for select
   to authenticated
   using (
-    (
-      (
-        public.internal_can_action('procurement.manage')
-        or public.internal_can_action('procurement.approve')
-      )
-      and public.can_access_operational_scope('procurement', location_id, null)
-    )
-    or
-    (
-      public.internal_can_action('inventory.process')
-      and public.can_access_operational_scope('inventory', location_id, null)
-    )
+    public.can_app_action('procurement.operate')
+    and public.can_access_operational_scope('procurement', location_id)
   );
 
-drop policy if exists procurement_purchase_orders_write_scoped
+drop policy if exists procurement_purchase_orders_create
   on public.procurement_purchase_orders;
-create policy procurement_purchase_orders_write_scoped
+create policy procurement_purchase_orders_create
   on public.procurement_purchase_orders
-  for all
+  for insert
+  to authenticated
+  with check (
+    coalesce((select auth.jwt() -> 'app_metadata' ->> 'procurement_role'), '') = any (array['admin', 'approver'])
+    and public.can_access_operational_scope('procurement', location_id)
+  );
+
+drop policy if exists procurement_purchase_orders_update
+  on public.procurement_purchase_orders;
+create policy procurement_purchase_orders_update
+  on public.procurement_purchase_orders
+  for update
   to authenticated
   using (
-    (
-      public.internal_can_action('procurement.manage')
-      or public.internal_can_action('procurement.approve')
-    )
-    and public.can_access_operational_scope('procurement', location_id, null)
+    coalesce((select auth.jwt() -> 'app_metadata' ->> 'procurement_role'), '') = any (array['admin', 'approver'])
+    and public.can_access_operational_scope('procurement', location_id)
   )
   with check (
-    (
-      public.internal_can_action('procurement.manage')
-      or public.internal_can_action('procurement.approve')
-    )
-    and public.can_access_operational_scope('procurement', location_id, null)
+    coalesce((select auth.jwt() -> 'app_metadata' ->> 'procurement_role'), '') = any (array['admin', 'approver'])
+    and public.can_access_operational_scope('procurement', location_id)
   );
 
--- Receipts: Procurement and Inventory each evaluate the concrete row location
--- in their own department scope. This replaces the previous NULL-scope check.
-drop policy if exists procurement_receipts_read_scoped
+-- Receipts replace the previous NULL-scope read and permission-only writes
+-- with the concrete location attached to each row.
+drop policy if exists procurement_receipts_select_scoped
   on public.procurement_receipts;
-create policy procurement_receipts_read_scoped
+create policy procurement_receipts_select_scoped
   on public.procurement_receipts
   for select
   to authenticated
   using (
-    (
-      public.internal_can_action('procurement.manage')
-      and public.can_access_operational_scope('procurement', location_id, null)
-    )
-    or
-    (
-      public.internal_can_action('inventory.process')
-      and public.can_access_operational_scope('inventory', location_id, null)
-    )
+    public.can_app_action('procurement.operate')
+    and public.can_access_operational_scope('procurement', location_id)
   );
 
-drop policy if exists procurement_receipts_write_scoped
+drop policy if exists procurement_receipts_insert_authorized
   on public.procurement_receipts;
-create policy procurement_receipts_write_scoped
+create policy procurement_receipts_insert_authorized
   on public.procurement_receipts
-  for all
+  for insert
+  to authenticated
+  with check (
+    public.can_app_action('procurement.operate')
+    and public.can_access_operational_scope('procurement', location_id)
+  );
+
+drop policy if exists procurement_receipts_update_authorized
+  on public.procurement_receipts;
+create policy procurement_receipts_update_authorized
+  on public.procurement_receipts
+  for update
   to authenticated
   using (
-    public.internal_can_action('procurement.manage')
-    and public.can_access_operational_scope('procurement', location_id, null)
+    public.can_app_action('procurement.operate')
+    and public.can_access_operational_scope('procurement', location_id)
   )
   with check (
-    public.internal_can_action('procurement.manage')
-    and public.can_access_operational_scope('procurement', location_id, null)
+    public.can_app_action('procurement.operate')
+    and public.can_access_operational_scope('procurement', location_id)
+  );
+
+-- Intake already had a scoped read policy but allowed NULL locations and its
+-- insert/update policies were permission-only. Keep the same action contract
+-- while failing closed on the canonical location.
+drop policy if exists procurement_inventory_intake_select_scoped
+  on public.procurement_inventory_intake;
+create policy procurement_inventory_intake_select_scoped
+  on public.procurement_inventory_intake
+  for select
+  to authenticated
+  using (
+    public.can_app_action('inventory.process')
+    and public.can_access_operational_scope('inventory', location_id)
+  );
+
+drop policy if exists procurement_inventory_intake_insert_authorized
+  on public.procurement_inventory_intake;
+create policy procurement_inventory_intake_insert_authorized
+  on public.procurement_inventory_intake
+  for insert
+  to authenticated
+  with check (
+    public.can_app_action('inventory.process')
+    and public.can_access_operational_scope('inventory', location_id)
+  );
+
+drop policy if exists procurement_inventory_intake_update_authorized
+  on public.procurement_inventory_intake;
+create policy procurement_inventory_intake_update_authorized
+  on public.procurement_inventory_intake
+  for update
+  to authenticated
+  using (
+    public.can_app_action('inventory.process')
+    and public.can_access_operational_scope('inventory', location_id)
+  )
+  with check (
+    public.can_app_action('inventory.process')
+    and public.can_access_operational_scope('inventory', location_id)
   );
 
 commit;
