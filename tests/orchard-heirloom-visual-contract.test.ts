@@ -127,6 +127,11 @@ test("Crop Map is a Heirloom-style temporal bed board grounded in canonical allo
   assert.match(source, /isoWeek/)
   assert.match(source, /Season start|Inicio de temporada/)
   assert.match(source, /Season end|Fin de temporada/)
+  assert.match(source, /assignOpen/)
+  assert.match(source, /PanelRightClose/)
+  assert.match(source, /PanelRightOpen/)
+  assert.match(source, /beds\.length\*18/)
+  assert.match(source, /minmax\(16px,1fr\)/)
 })
 
 test("Farm Map uses the current aerial reference and keeps physical editing separate from crop allocation", async () => {
