@@ -1,0 +1,32 @@
+body:has([data-orchard-crop-catalog-layout]) main > section.grid article > div:first-child {
+  height: 5.5rem !important;
+}
+
+body:has([data-orchard-crop-catalog-layout]) main > section.grid article > div:last-child {
+  padding: 0.625rem !important;
+}
+
+body:has([data-orchard-crop-catalog-layout]) main > section.grid article h2 {
+  min-height: 2.35em !important;
+  font-size: 0.9375rem !important;
+}
+
+body:has([data-orchard-crop-catalog-layout]) main > section.grid article h2 + p {
+  margin-top: 0.125rem !important;
+}
+
+body:has([data-orchard-crop-catalog-layout]) main > section.grid article h2 + p + div {
+  margin-top: 0.5rem !important;
+  padding-top: 0.5rem !important;
+}
+
+body:has([data-orchard-crop-catalog-layout]) main > section.grid article h2 + p + div a,
+body:has([data-orchard-crop-catalog-layout]) main > section.grid article h2 + p + div span {
+  min-height: 2rem !important;
+}
+
+@media (min-width: 1536px) {
+  body:has([data-orchard-crop-catalog-layout]) main > section.grid {
+    grid-template-columns: repeat(6, minmax(0, 1fr)) !important;
+  }
+}
