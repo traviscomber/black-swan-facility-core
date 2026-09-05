@@ -1,0 +1,41 @@
+body:has([data-orchard-seed-orders-layout]) main table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background: var(--bs-bg-primary);
+}
+
+body:has([data-orchard-seed-orders-layout]) main table th:first-child,
+body:has([data-orchard-seed-orders-layout]) main table td:first-child {
+  position: sticky;
+  left: 0;
+  z-index: 15;
+  min-width: 220px;
+  background: var(--bs-bg-primary);
+  box-shadow: 1px 0 0 var(--orchard-line);
+}
+
+body:has([data-orchard-seed-orders-layout]) main table thead th:first-child {
+  z-index: 30;
+}
+
+body:has([data-orchard-seed-orders-layout]) main table th,
+body:has([data-orchard-seed-orders-layout]) main table td {
+  padding-top: 0.65rem;
+  padding-bottom: 0.65rem;
+}
+
+body:has([data-orchard-seed-orders-layout]) main table tbody tr:hover td {
+  background-color: color-mix(in srgb, var(--orchard-green) 5%, var(--bs-bg-primary));
+}
+
+body:has([data-orchard-seed-orders-layout]) main table tbody tr:hover td:first-child {
+  background-color: color-mix(in srgb, var(--orchard-green) 7%, var(--bs-bg-primary));
+}
+
+@media (max-width: 767px) {
+  body:has([data-orchard-seed-orders-layout]) main table th:first-child,
+  body:has([data-orchard-seed-orders-layout]) main table td:first-child {
+    min-width: 180px;
+  }
+}
