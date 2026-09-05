@@ -90,7 +90,7 @@ export default function OrchardFarmMapPage(){
 
  const types:[ObjectType,string,string][]=[
   ["field_block",text.field,text.fieldNote],["greenhouse",text.greenhouse,text.greenhouseNote],["tunnel",text.tunnel,text.tunnelNote],["farm_area",text.area,text.areaNote],
-  ["water",text.water,text.waterNote],["electricity",text.power,text.powerNote],["internet",text.internet,textNote]
+  ["water",text.water,text.waterNote],["electricity",text.power,text.powerNote],["internet",text.internet,text.internetNote]
  ]
  return <AppLayout><OrchardNavigation/><main className="flex h-[calc(100dvh-var(--orchard-nav-height,0px))] min-h-[620px] flex-col overflow-hidden bg-[#171715] text-[#e8e5dc]">
   <header className="flex shrink-0 items-center justify-between border-b border-white/10 px-4 py-3 sm:px-5">
