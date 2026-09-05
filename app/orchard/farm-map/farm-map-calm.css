@@ -1,0 +1,26 @@
+body:has([data-orchard-farm-map-layout]) main section > div:first-child > div > button[style*="left:"] {
+  border-width: 1px !important;
+  background: rgba(20, 22, 18, 0.16) !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18) !important;
+  backdrop-filter: blur(0.4px);
+  transition: background-color 140ms ease, box-shadow 140ms ease, opacity 140ms ease;
+}
+
+body:has([data-orchard-farm-map-layout]) main section > div:first-child > div > button[style*="left:"]:hover,
+body:has([data-orchard-farm-map-layout]) main section > div:first-child > div > button[style*="left:"]:focus-visible {
+  background: rgba(20, 22, 18, 0.34) !important;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.28) !important;
+  z-index: 20;
+}
+
+body:has([data-orchard-farm-map-layout]) main section > div:first-child > div > button[style*="left:"] > span {
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+}
+
+@media (max-width: 767px) {
+  body:has([data-orchard-farm-map-layout]) main section > div:first-child > div > button[style*="left:"] > span {
+    font-size: 8px;
+  }
+}
