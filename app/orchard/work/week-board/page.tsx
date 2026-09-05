@@ -1,5 +1,5 @@
-import { OrchardWeekBoard } from "@/components/orchard/orchard-week-board"
+import { OrchardTaskCalendar } from "@/components/orchard/orchard-task-calendar"
 
 export default function OrchardWeekBoardPage() {
-  return <OrchardWeekBoard />
+  return <OrchardTaskCalendar />
 }
