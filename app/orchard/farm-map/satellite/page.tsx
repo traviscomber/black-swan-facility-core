@@ -73,7 +73,7 @@ export default function OrchardFarmMapSatellitePage(){
    base.on("load",()=>setBaseError(false))
    base.addTo(map)
    const initiallyVisible=overlays.filter(row=>visibleIdsRef.current.has(row.id))
-   void Promise.all(initiallyVisible.map(row=>loadOverlay(L,map,row))).then(()=>{if(cancelled)return;fitLoaded(map);requestAnimationFrame(()=>map.invalidateSize());setLoading(false)})
+   void Promise.all(initiallyVisible.map(row=>loadOverlay(L,map,row))).then(()=>{if(cancelled)return;focusFarm(map);requestAnimationFrame(()=>map.invalidateSize());setLoading(false)})
   }).catch(()=>{if(!cancelled){setError(text.error);setLoading(false)}})
   return()=>{cancelled=true;mapRef.current?.remove();mapRef.current=null;leafletRef.current=null;layerRefs.current.clear();coordinateCacheRef.current.clear()}
  },[overlays,text.error])
@@ -94,11 +94,11 @@ export default function OrchardFarmMapSatellitePage(){
   const map=mapRef.current;const L=leafletRef.current;if(!map||!L)return
   const willShow=!visibleIdsRef.current.has(overlay.id);const next=new Set(visibleIdsRef.current);if(willShow)next.add(overlay.id);else next.delete(overlay.id);visibleIdsRef.current=next;setVisibleIds(next)
   const layer=layerRefs.current.get(overlay.id)
-  if(!layer&&willShow){void loadOverlay(L,map,overlay).then(()=>fitLoaded(map));return}
+  if(!layer&&willShow){void loadOverlay(L,map,overlay);return}
   if(layer){if(willShow&&!map.hasLayer(layer))map.addLayer(layer);if(!willShow&&map.hasLayer(layer))map.removeLayer(layer)}
  }
 
- const fitLoaded=(map=mapRef.current)=>{if(!map)return;const coordinates=Array.from(coordinateCacheRef.current.entries()).filter(([id])=>visibleIdsRef.current.has(id)).flatMap(([,points])=>points);if(coordinates.length===0){map.setView(CORCOVADO_CENTER,18);return}map.fitBounds(boundsForLeaflet(coordinates),{padding:[70,70],maxZoom:18})}
+ const focusFarm=(map=mapRef.current)=>{if(map)map.setView(CORCOVADO_CENTER,18)}
  const stateLabel=(state:OverlayState)=>state==="ready"?text.ready:state==="loading"?text.loadingState:state==="error"?text.errorState:text.idle
 
  return <AppLayout><OrchardNavigation/><main className="relative h-[calc(100dvh-var(--orchard-nav-height,0px))] min-h-[620px] w-full overflow-hidden bg-[#11110f]">
@@ -111,7 +111,7 @@ export default function OrchardFarmMapSatellitePage(){
    <div className="flex items-start justify-between gap-4 border-b border-white/10 px-4 py-3"><div><p className="text-xs font-medium text-[#f1eee7]">{text.geometry}</p><p className="mt-1 text-[11px] leading-4 text-[#8f8a81]">{text.geometryNote}</p></div><button type="button" onClick={()=>setDrawerOpen(false)} className="p-1 text-[#8f8a81] hover:text-white" aria-label={text.close}><X className="h-4 w-4"/></button></div>
    <div className="max-h-[55vh] overflow-y-auto p-2">{overlays.map(overlay=>{const active=visibleIds.has(overlay.id);const state=states[overlay.id]??"idle";return <button key={overlay.id} type="button" onClick={()=>toggleOverlay(overlay)} className="flex w-full items-center gap-3 px-2.5 py-2.5 text-left hover:bg-white/[.04]"><span className="h-3 w-3 shrink-0 border" style={{borderColor:overlayColor(overlay.name),backgroundColor:active?overlayColor(overlay.name):"transparent"}}/><span className="min-w-0 flex-1"><span className="block truncate text-xs text-[#e8e5dc]">{cleanOverlayName(overlay.name)}</span><span className="mt-0.5 block text-[10px] uppercase tracking-[.08em] text-[#746f68]">{stateLabel(state)}</span></span>{active?<Check className="h-3.5 w-3.5 text-[#91c9ae]"/>:null}</button>})}</div>
   </aside>:null}
-  <div className="absolute bottom-5 left-1/2 z-20 flex -translate-x-1/2 items-center gap-1.5 border border-white/15 bg-[#171512]/94 p-1 shadow-2xl backdrop-blur-md"><button type="button" onClick={()=>fitLoaded()} className="flex h-9 items-center gap-2 px-3 text-xs text-[#e8e5dc] hover:bg-white/[.05]"><LocateFixed className="h-4 w-4 text-[#91c9ae]"/>{text.focus}</button><span className="h-5 w-px bg-white/10"/><span className="hidden px-2 text-[10px] uppercase tracking-[.1em] text-[#77726a] sm:block">{text.source}</span></div>
+  <div className="absolute bottom-5 left-1/2 z-20 flex -translate-x-1/2 items-center gap-1.5 border border-white/15 bg-[#171512]/94 p-1 shadow-2xl backdrop-blur-md"><button type="button" onClick={()=>focusFarm()} className="flex h-9 items-center gap-2 px-3 text-xs text-[#e8e5dc] hover:bg-white/[.05]"><LocateFixed className="h-4 w-4 text-[#91c9ae]"/>{text.focus}</button><span className="h-5 w-px bg-white/10"/><span className="hidden px-2 text-[10px] uppercase tracking-[.1em] text-[#77726a] sm:block">{text.source}</span></div>
   {loading?<div className="absolute inset-0 z-10 flex items-center justify-center bg-[#11110f]/65 text-sm text-[#aaa69c] backdrop-blur-[1px]">{text.loading}</div>:null}
   {error?<div className="absolute left-1/2 top-1/2 z-40 -translate-x-1/2 -translate-y-1/2 border border-red-400/30 bg-[#211817] px-5 py-4 text-sm text-[#e7c2bb]">{error}</div>:null}
   {baseError&&!error?<div className="absolute bottom-20 left-1/2 z-30 -translate-x-1/2 border border-amber-300/25 bg-[#211e1a]/95 px-4 py-2 text-xs text-[#d9c7a0]">{text.baseError}</div>:null}
@@ -121,4 +121,3 @@ export default function OrchardFarmMapSatellitePage(){
 
 function cleanOverlayName(name:string){return name.replace(/^BS_/i,"").replaceAll("_"," ").replace(/\s+/g," ").trim()}
 function collectCoordinates(collection:GeoJsonFeatureCollection):[number,number][]{const points:[number,number][]=[];const walk=(value:unknown)=>{if(!Array.isArray(value))return;if(value.length>=2&&typeof value[0]==="number"&&typeof value[1]==="number"){const lng=value[0],lat=value[1];if(Number.isFinite(lng)&&Number.isFinite(lat)&&Math.abs(lng)<=180&&Math.abs(lat)<=90)points.push([lng,lat]);return}for(const child of value)walk(child)};for(const feature of collection.features)walk(feature.geometry?.coordinates);return points}
-function boundsForLeaflet(points:[number,number][]):[[number,number],[number,number]]{let minLng=points[0][0],maxLng=points[0][0],minLat=points[0][1],maxLat=points[0][1];for(const[lng,lat]of points){minLng=Math.min(minLng,lng);maxLng=Math.max(maxLng,lng);minLat=Math.min(minLat,lat);maxLat=Math.max(maxLat,lat)}return[[minLat,minLng],[maxLat,maxLng]]}
