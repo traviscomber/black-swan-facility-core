@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useRef, useState } from "react"
-import { Droplets, Plus, PlugZap, RadioTower, Sprout, Trees, Warehouse, X, Minus, RotateCcw } from "lucide-react"
+import { Crosshair, Droplets, Maximize2, Minus, Plus, PlugZap, RadioTower, RotateCcw, RotateCw, Sprout, Trees, Warehouse, X } from "lucide-react"
 import { AppLayout } from "@/components/app-layout"
 import { OrchardNavigation } from "@/components/orchard/orchard-navigation"
 import { createBrowserClient } from "@/lib/supabase/client"
@@ -10,13 +10,12 @@ import { useLanguage } from "@/lib/hooks/use-language"
 type Locale="en"|"es"|"de"
 type ObjectType="field_block"|"greenhouse"|"tunnel"|"farm_area"|"water"|"electricity"|"internet"
 type MapObject={id:string;location_id:string;plot_id:string|null;object_type:ObjectType;name:string;x_pct:number|string;y_pct:number|string;width_pct:number|string;height_pct:number|string;rotation_deg:number|string;bed_count:number|null;bed_length_m:number|string|null;bed_width_cm:number|string|null;path_width_cm:number|string|null;placement_source:string;is_visible:boolean}
-
 type Draft={type:ObjectType;name:string;beds:string;length:string;bedWidth:string;pathWidth:string}
 
 const copy={
- en:{title:"Farm Map",subtitle:"Map the physical farm before assigning crops",add:"Add to map",choose:"Choose the type of growing location or infrastructure to add.",field:"Field Block",fieldNote:"Outdoor growing area with beds",greenhouse:"Greenhouse",greenhouseNote:"Permanent covered growing structure",tunnel:"Tunnel",tunnelNote:"Movable or semi-permanent structure",area:"Farm area",areaNote:"Free farming space or physical farm boundary",water:"Water",waterNote:"Water connection or supply point",power:"Electricity",powerNote:"Electrical connection point",internet:"Internet",internetNote:"Internet or network connection point",create:"Create",cancel:"Cancel",back:"Back",name:"Name",beds:"Number of beds",length:"Bed length",bedWidth:"Bed width",pathWidth:"Path width",mapNote:"Drag objects to match the aerial image. Positions are visual references; canonical beds and crop allocations stay unchanged.",loading:"Loading farm map…",saveError:"Could not save this map position.",createError:"Could not create this map object.",zoomIn:"Zoom in",zoomOut:"Zoom out",reset:"Reset view",configured:"Configured locations"},
- es:{title:"Mapa de la granja",subtitle:"Mapea el espacio físico antes de asignar cultivos",add:"Agregar al mapa",choose:"Elige el tipo de espacio de cultivo o infraestructura que quieres agregar.",field:"Bloque de campo",fieldNote:"Área exterior de cultivo con camas",greenhouse:"Invernadero",greenhouseNote:"Estructura cubierta permanente",tunnel:"Túnel",tunnelNote:"Estructura móvil o semipermanente",area:"Área de granja",areaNote:"Espacio libre de cultivo o límite físico",water:"Agua",waterNote:"Conexión o punto de abastecimiento",power:"Electricidad",powerNote:"Punto de conexión eléctrica",internet:"Internet",internetNote:"Punto de conexión de red",create:"Crear",cancel:"Cancelar",back:"Atrás",name:"Nombre",beds:"Número de camas",length:"Largo de cama",bedWidth:"Ancho de cama",pathWidth:"Ancho de pasillo",mapNote:"Arrastra los objetos para alinearlos con la foto aérea. Las posiciones son referencias visuales; las camas y asignaciones canónicas no cambian.",loading:"Cargando mapa de la granja…",saveError:"No fue posible guardar esta posición.",createError:"No fue posible crear este objeto.",zoomIn:"Acercar",zoomOut:"Alejar",reset:"Restablecer vista",configured:"Espacios configurados"},
- de:{title:"Hofkarte",subtitle:"Physische Flächen vor der Kulturzuweisung kartieren",add:"Zur Karte hinzufügen",choose:"Wähle Anbaufläche oder Infrastruktur.",field:"Feldblock",fieldNote:"Anbaufläche im Freien mit Beeten",greenhouse:"Gewächshaus",greenhouseNote:"Permanente überdachte Struktur",tunnel:"Tunnel",tunnelNote:"Mobile oder semipermanente Struktur",area:"Hofbereich",areaNote:"Freie Anbaufläche oder physische Grenze",water:"Wasser",waterNote:"Wasseranschluss oder Versorgungspunkt",power:"Strom",powerNote:"Elektrischer Anschlusspunkt",internet:"Internet",internetNote:"Netzwerkanschlusspunkt",create:"Erstellen",cancel:"Abbrechen",back:"Zurück",name:"Name",beds:"Anzahl Beete",length:"Beetlänge",bedWidth:"Beetbreite",pathWidth:"Wegbreite",mapNote:"Objekte auf dem Luftbild verschieben. Positionen sind visuelle Referenzen; kanonische Beete und Kulturzuweisungen bleiben unverändert.",loading:"Hofkarte wird geladen…",saveError:"Position konnte nicht gespeichert werden.",createError:"Objekt konnte nicht erstellt werden.",zoomIn:"Vergrößern",zoomOut:"Verkleinern",reset:"Ansicht zurücksetzen",configured:"Konfigurierte Flächen"}
+ en:{title:"Farm Map",subtitle:"Map the physical farm before assigning crops",add:"Add to map",choose:"Choose the type of growing location or infrastructure to add.",field:"Field Block",fieldNote:"Outdoor growing area with beds",greenhouse:"Greenhouse",greenhouseNote:"Permanent covered growing structure",tunnel:"Tunnel",tunnelNote:"Movable or semi-permanent structure",area:"Farm area",areaNote:"Free farming space or physical farm boundary",water:"Water",waterNote:"Water connection or supply point",power:"Electricity",powerNote:"Electrical connection point",internet:"Internet",internetNote:"Internet or network connection point",create:"Create",cancel:"Cancel",back:"Back",name:"Name",beds:"Number of beds",length:"Bed length",bedWidth:"Bed width",pathWidth:"Path width",mapNote:"Drag objects to match the aerial image. Pan, zoom and rotate the view without changing canonical beds or crop allocations.",loading:"Loading farm map…",saveError:"Could not save this map position.",createError:"Could not create this map object.",zoomIn:"Zoom in",zoomOut:"Zoom out",reset:"Reset view",configured:"Configured locations",rotateLeft:"Rotate left",rotateRight:"Rotate right",fullscreen:"Fullscreen",focus:"Focus on farm"},
+ es:{title:"Mapa de la granja",subtitle:"Mapea el espacio físico antes de asignar cultivos",add:"Agregar al mapa",choose:"Elige el tipo de espacio de cultivo o infraestructura que quieres agregar.",field:"Bloque de campo",fieldNote:"Área exterior de cultivo con camas",greenhouse:"Invernadero",greenhouseNote:"Estructura cubierta permanente",tunnel:"Túnel",tunnelNote:"Estructura móvil o semipermanente",area:"Área de granja",areaNote:"Espacio libre de cultivo o límite físico",water:"Agua",waterNote:"Conexión o punto de abastecimiento",power:"Electricidad",powerNote:"Punto de conexión eléctrica",internet:"Internet",internetNote:"Punto de conexión de red",create:"Crear",cancel:"Cancelar",back:"Atrás",name:"Nombre",beds:"Número de camas",length:"Largo de cama",bedWidth:"Ancho de cama",pathWidth:"Ancho de pasillo",mapNote:"Arrastra objetos para alinearlos con la imagen aérea. Mueve, acerca y rota la vista sin cambiar camas ni asignaciones canónicas.",loading:"Cargando mapa de la granja…",saveError:"No fue posible guardar esta posición.",createError:"No fue posible crear este objeto.",zoomIn:"Acercar",zoomOut:"Alejar",reset:"Restablecer vista",configured:"Espacios configurados",rotateLeft:"Rotar a la izquierda",rotateRight:"Rotar a la derecha",fullscreen:"Pantalla completa",focus:"Centrar granja"},
+ de:{title:"Hofkarte",subtitle:"Physische Flächen vor der Kulturzuweisung kartieren",add:"Zur Karte hinzufügen",choose:"Wähle Anbaufläche oder Infrastruktur.",field:"Feldblock",fieldNote:"Anbaufläche im Freien mit Beeten",greenhouse:"Gewächshaus",greenhouseNote:"Permanente überdachte Struktur",tunnel:"Tunnel",tunnelNote:"Mobile oder semipermanente Struktur",area:"Hofbereich",areaNote:"Freie Anbaufläche oder physische Grenze",water:"Wasser",waterNote:"Wasseranschluss oder Versorgungspunkt",power:"Strom",powerNote:"Elektrischer Anschlusspunkt",internet:"Internet",internetNote:"Netzwerkanschlusspunkt",create:"Erstellen",cancel:"Abbrechen",back:"Zurück",name:"Name",beds:"Anzahl Beete",length:"Beetlänge",bedWidth:"Beetbreite",pathWidth:"Wegbreite",mapNote:"Objekte auf dem Luftbild verschieben. Ansicht verschieben, zoomen und drehen, ohne kanonische Beete oder Kulturzuweisungen zu ändern.",loading:"Hofkarte wird geladen…",saveError:"Position konnte nicht gespeichert werden.",createError:"Objekt konnte nicht erstellt werden.",zoomIn:"Vergrößern",zoomOut:"Verkleinern",reset:"Ansicht zurücksetzen",configured:"Konfigurierte Flächen",rotateLeft:"Nach links drehen",rotateRight:"Nach rechts drehen",fullscreen:"Vollbild",focus:"Hof fokussieren"}
 } as const
 
 const typeIcon=(type:ObjectType)=> type==="field_block"?<Sprout/>:type==="greenhouse"?<Warehouse/>:type==="tunnel"?<Warehouse/>:type==="farm_area"?<Trees/>:type==="water"?<Droplets/>:type==="electricity"?<PlugZap/>:<RadioTower/>
@@ -28,14 +27,18 @@ export default function OrchardFarmMapPage(){
  const {language}=useLanguage(); const lang:Locale=language; const text=copy[lang]
  const supabase=useMemo(()=>createBrowserClient(),[])
  const canvasRef=useRef<HTMLDivElement>(null)
+ const sectionRef=useRef<HTMLElement>(null)
  const [objects,setObjects]=useState<MapObject[]>([])
  const [locationId,setLocationId]=useState<string|null>(null)
  const [loading,setLoading]=useState(true)
  const [error,setError]=useState<string|null>(null)
  const [zoom,setZoom]=useState(1)
+ const [rotation,setRotation]=useState(0)
+ const [pan,setPan]=useState({x:0,y:0})
  const [dialog,setDialog]=useState<"types"|"form"|null>(null)
  const [draft,setDraft]=useState<Draft>({type:"field_block",name:"",beds:"8",length:"10",bedWidth:"80",pathWidth:"40"})
  const drag=useRef<{id:string;startX:number;startY:number;x:number;y:number}|null>(null)
+ const panDrag=useRef<{startX:number;startY:number;x:number;y:number}|null>(null)
 
  const load=async()=>{
   setLoading(true);setError(null)
@@ -60,48 +63,62 @@ export default function OrchardFarmMapPage(){
   setDialog(null);await load()
  }
  const pointerDown=(event:React.PointerEvent,mapObject:MapObject)=>{
-  event.preventDefault();event.currentTarget.setPointerCapture(event.pointerId)
+  event.preventDefault();event.stopPropagation();event.currentTarget.setPointerCapture(event.pointerId)
   drag.current={id:mapObject.id,startX:event.clientX,startY:event.clientY,x:n(mapObject.x_pct),y:n(mapObject.y_pct)}
  }
+ const mapPointerDown=(event:React.PointerEvent<HTMLDivElement>)=>{
+  if(event.target!==event.currentTarget)return
+  event.currentTarget.setPointerCapture(event.pointerId)
+  panDrag.current={startX:event.clientX,startY:event.clientY,x:pan.x,y:pan.y}
+ }
  const pointerMove=(event:React.PointerEvent)=>{
+  const panState=panDrag.current
+  if(panState){setPan({x:panState.x+event.clientX-panState.startX,y:panState.y+event.clientY-panState.startY});return}
   const state=drag.current;const box=canvasRef.current?.getBoundingClientRect();if(!state||!box)return
   const dx=(event.clientX-state.startX)/(box.width*zoom)*100;const dy=(event.clientY-state.startY)/(box.height*zoom)*100
   setObjects(current=>current.map(item=>item.id===state.id?{...item,x_pct:Math.max(2,Math.min(98,state.x+dx)),y_pct:Math.max(2,Math.min(98,state.y+dy))}:item))
  }
- const pointerUp=async(event:React.PointerEvent)=>{
+ const pointerUp=async()=>{
+  if(panDrag.current){panDrag.current=null;return}
   const state=drag.current;if(!state)return;drag.current=null
   const item=objects.find(row=>row.id===state.id);if(!item)return
   const result=await supabase.from("orchard_farm_map_objects").update({x_pct:n(item.x_pct),y_pct:n(item.y_pct),updated_at:new Date().toISOString()}).eq("id",item.id)
   if(result.error)setError(text.saveError)
  }
+ const focusFarm=()=>{setZoom(1);setRotation(0);setPan({x:0,y:0})}
+ const toggleFullscreen=async()=>{const section=sectionRef.current;if(!section)return;if(document.fullscreenElement)await document.exitFullscreen();else await section.requestFullscreen()}
 
  const types:[ObjectType,string,string][]=[
   ["field_block",text.field,text.fieldNote],["greenhouse",text.greenhouse,text.greenhouseNote],["tunnel",text.tunnel,text.tunnelNote],["farm_area",text.area,text.areaNote],
-  ["water",text.water,text.waterNote],["electricity",text.power,text.powerNote],["internet",text.internet,text.internetNote]
+  ["water",text.water,text.waterNote],["electricity",text.power,text.powerNote],["internet",text.internet,textNote]
  ]
  return <AppLayout><OrchardNavigation/><main className="flex h-[calc(100dvh-var(--orchard-nav-height,0px))] min-h-[620px] flex-col overflow-hidden bg-[#171715] text-[#e8e5dc]">
   <header className="flex shrink-0 items-center justify-between border-b border-white/10 px-4 py-3 sm:px-5">
    <div><h1 className="text-lg font-medium">{text.title}</h1><p className="mt-0.5 text-xs text-[#8f8a81]">{text.subtitle}</p></div>
    <div className="hidden text-right sm:block"><p className="text-[10px] uppercase tracking-[.13em] text-[#77726a]">{text.configured}</p><p className="text-sm">{objects.filter(o=>isGrowing(o.object_type)).length}</p></div>
   </header>
-  <section className="relative min-h-0 flex-1 overflow-hidden bg-[#242622]">
-   <div ref={canvasRef} className="absolute inset-0 overflow-hidden touch-none select-none" onPointerMove={pointerMove} onPointerUp={pointerUp} onPointerCancel={pointerUp}>
-    <div className="absolute inset-0 bg-no-repeat transition-transform duration-150" style={{transform:`scale(${zoom})`,transformOrigin:"center",backgroundImage:'url("/orchard/farm-map-2026.webp")',backgroundSize:"cover",backgroundPosition:"center"}}>
-     <div className="absolute inset-0 bg-black/10"/>
+  <section ref={sectionRef} className="relative min-h-0 flex-1 overflow-hidden bg-[#242622]">
+   <div ref={canvasRef} className="absolute inset-0 overflow-hidden touch-none select-none" onPointerMove={pointerMove} onPointerUp={()=>void pointerUp()} onPointerCancel={()=>void pointerUp()}>
+    <div onPointerDown={mapPointerDown} className="absolute inset-0 cursor-grab bg-no-repeat transition-transform duration-150 active:cursor-grabbing" style={{transform:`translate(${pan.x}px,${pan.y}px) rotate(${rotation}deg) scale(${zoom})`,transformOrigin:"center",backgroundImage:'url("/orchard/farm-map-2026.webp")',backgroundSize:"cover",backgroundPosition:"center"}}>
+     <div className="pointer-events-none absolute inset-0 bg-black/10"/>
      {objects.map(item=>{
       const tone=objectTone(item.object_type);const growing=isGrowing(item.object_type);const infrastructure=["water","electricity","internet"].includes(item.object_type)
-      return <button key={item.id} type="button" onPointerDown={event=>pointerDown(event,item)} className={`absolute flex cursor-grab items-center justify-center active:cursor-grabbing ${infrastructure?"rounded-full":"border-2"}`} style={{left:`${n(item.x_pct)}%`,top:`${n(item.y_pct)}%`,width:infrastructure?"34px":`${n(item.width_pct,9)}%`,height:infrastructure?"34px":`${n(item.height_pct,12)}%`,transform:`translate(-50%,-50%) rotate(${n(item.rotation_deg)}deg)`,borderColor:tone,background:infrastructure?`${tone}e8`:growing?`repeating-linear-gradient(90deg,rgba(90,58,33,.82) 0,rgba(90,58,33,.82) 10%,rgba(236,226,211,.72) 10%,rgba(236,226,211,.72) 14%)`:`${tone}20`,boxShadow:"0 4px 14px rgba(0,0,0,.28)"}} title={`${item.name}${item.bed_count?` · ${item.bed_count} beds`:""}`}>
-       {infrastructure?<span className="h-4 w-4 text-[#151713] [&>svg]:h-4 [&>svg]:w-4">{typeIcon(item.object_type)}</span>:<span className="rotate-0 bg-[#171715]/88 px-1.5 py-0.5 text-[10px] font-semibold text-white shadow" style={{transform:`rotate(${-n(item.rotation_deg)}deg)`}}>{item.name}</span>}
+      return <button key={item.id} type="button" onPointerDown={event=>pointerDown(event,item)} className={`absolute flex cursor-grab items-center justify-center active:cursor-grabbing ${infrastructure?"rounded-full":"border-2"}`} style={{left:`${n(item.x_pct)}%`,top:`${n(item.y_pct)}%`,width:infrastructure?"34px":`${n(item.width_pct,9)}%`,height:infrastructure?"34px":`${n(item.height_pct,12)}%`,transform:`translate(-50%,-50%) rotate(${n(item.rotation_deg)}deg)`,borderColor:tone,background:infrastructure?`${tone}e8`:growing?`repeating-linear-gradient(90deg,rgba(90,58,33,.76) 0,rgba(90,58,33,.76) 10%,rgba(236,226,211,.62) 10%,rgba(236,226,211,.62) 14%)`:`${tone}18`,boxShadow:"0 3px 10px rgba(0,0,0,.24)"}} title={`${item.name}${item.bed_count?` · ${item.bed_count} beds`:""}`}>
+       {infrastructure?<span className="h-4 w-4 text-[#151713] [&>svg]:h-4 [&>svg]:w-4">{typeIcon(item.object_type)}</span>:<span className="bg-[#171715]/82 px-1.5 py-0.5 text-[10px] font-medium text-white shadow" style={{transform:`rotate(${-n(item.rotation_deg)}deg)`}}>{item.name}</span>}
       </button>
      })}
     </div>
    </div>
    <div className="absolute bottom-4 left-4 z-20 flex items-center overflow-hidden border border-white/15 bg-[#171715]/95 shadow-xl">
     <button type="button" onClick={()=>setDialog("types")} className="flex h-11 w-11 items-center justify-center border-r border-white/10 hover:bg-white/[.06]" aria-label={text.add}><Plus className="h-5 w-5"/></button>
-    <button type="button" onClick={()=>setZoom(v=>Math.min(1.5,Number((v+.1).toFixed(1))))} className="flex h-11 w-10 items-center justify-center border-r border-white/10 hover:bg-white/[.06]" aria-label={text.zoomIn}><Plus className="h-4 w-4"/></button>
+    <button type="button" onClick={()=>setRotation(v=>v-10)} className="flex h-11 w-10 items-center justify-center border-r border-white/10 hover:bg-white/[.06]" aria-label={text.rotateLeft}><RotateCcw className="h-4 w-4"/></button>
+    <span className="w-12 text-center text-xs tabular-nums text-[#aaa69c]">{rotation}°</span>
+    <button type="button" onClick={()=>setRotation(v=>v+10)} className="flex h-11 w-10 items-center justify-center border-r border-white/10 hover:bg-white/[.06]" aria-label={text.rotateRight}><RotateCw className="h-4 w-4"/></button>
+    <button type="button" onClick={()=>setZoom(v=>Math.min(1.6,Number((v+.1).toFixed(1))))} className="flex h-11 w-10 items-center justify-center border-r border-white/10 hover:bg-white/[.06]" aria-label={text.zoomIn}><Plus className="h-4 w-4"/></button>
     <span className="w-12 text-center text-xs tabular-nums text-[#aaa69c]">{Math.round(zoom*100)}%</span>
-    <button type="button" onClick={()=>setZoom(v=>Math.max(.75,Number((v-.1).toFixed(1))))} className="flex h-11 w-10 items-center justify-center border-l border-white/10 hover:bg-white/[.06]" aria-label={text.zoomOut}><Minus className="h-4 w-4"/></button>
-    <button type="button" onClick={()=>setZoom(1)} className="flex h-11 w-10 items-center justify-center border-l border-white/10 hover:bg-white/[.06]" aria-label={text.reset}><RotateCcw className="h-4 w-4"/></button>
+    <button type="button" onClick={()=>setZoom(v=>Math.max(.7,Number((v-.1).toFixed(1))))} className="flex h-11 w-10 items-center justify-center border-r border-white/10 hover:bg-white/[.06]" aria-label={text.zoomOut}><Minus className="h-4 w-4"/></button>
+    <button type="button" onClick={focusFarm} className="flex h-11 w-10 items-center justify-center border-r border-white/10 hover:bg-white/[.06]" aria-label={text.focus}><Crosshair className="h-4 w-4"/></button>
+    <button type="button" onClick={()=>void toggleFullscreen()} className="flex h-11 w-10 items-center justify-center hover:bg-white/[.06]" aria-label={text.fullscreen}><Maximize2 className="h-4 w-4"/></button>
    </div>
    <div className="absolute bottom-4 right-4 z-10 max-w-sm border border-white/10 bg-[#171715]/90 px-3 py-2 text-[10px] leading-4 text-[#aaa69c] backdrop-blur-sm">{text.mapNote}</div>
    {loading?<div className="absolute inset-0 z-30 grid place-items-center bg-[#171715]/70 text-sm text-[#aaa69c]">{text.loading}</div>:null}
