@@ -1,3 +1,5 @@
+"use client"
+
 export default function OrchardChartsLayout({ children }: { children: React.ReactNode }) {
   return (
     <div data-orchard-charts-layout>
