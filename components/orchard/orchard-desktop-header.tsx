@@ -18,7 +18,7 @@ type RouteTitle = {
 const routeTitles: RouteTitle[] = [
   { prefix: "/orchard/getting-started", title: { en: "Getting Started", es: "Iniciación", de: "Einrichtung" } },
   { prefix: "/orchard/dashboard", title: { en: "Dashboard", es: "Dashboard", de: "Dashboard" } },
-  { prefix: "/orchard/crops/catalog", title: { en: "Crops", es: "Cultivos", de: "Kulturen" } },
+  { prefix: "/orchard/crops/catalog", title: { en: "Crop Selection", es: "Selección de cultivos", de: "Kulturauswahl" } },
   { prefix: "/orchard/game-plan", title: { en: "Game Plan", es: "Plan estratégico", de: "Saisonplan" } },
   { prefix: "/orchard/crop-map", title: { en: "Crop Map", es: "Mapa de cultivos", de: "Anbaukarte" } },
   { prefix: "/orchard/seed-orders", title: { en: "Seed Orders", es: "Semillas y trasplantes", de: "Saatgutbestellungen" } },
@@ -102,13 +102,7 @@ export function OrchardDesktopHeader() {
     <div className="flex items-center gap-3">
       <label className="flex h-9 items-center gap-2 border border-[#35332e] bg-[#171614] px-3">
         <span className="text-[10px] font-semibold uppercase tracking-[.12em] text-[#8f8a81]">{text.season}</span>
-        <select
-          aria-label={text.season}
-          value={selected?.id ?? ""}
-          onChange={(event) => changePlan(event.target.value)}
-          disabled={loading || !plans.length}
-          className="h-7 min-w-[170px] border-0 bg-transparent pr-2 text-xs text-[#dedad2] outline-none"
-        >
+        <select aria-label={text.season} value={selected?.id ?? ""} onChange={(event) => changePlan(event.target.value)} disabled={loading || !plans.length} className="h-7 min-w-[170px] border-0 bg-transparent pr-2 text-xs text-[#dedad2] outline-none">
           {loading ? <option>{text.loading}</option> : plans.map((plan) => <option key={plan.id} value={plan.id}>{plan.season ?? plan.name}</option>)}
         </select>
       </label>
