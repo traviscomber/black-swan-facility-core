@@ -134,6 +134,22 @@ test("Crop Map is a Heirloom-style temporal bed board grounded in canonical allo
   assert.match(source, /minmax\(16px,1fr\)/)
 })
 
+test("Crop Map quick assign distinguishes ready work from blocked evidence", async () => {
+  const source = await readFile("app/orchard/crop-map/overview/quick-assign.tsx", "utf8")
+
+  assert.match(source, /const planSuccessions = successions\.filter/)
+  assert.match(source, /const isReady = \(item: Succession\)/)
+  assert.match(source, /Number\(item\.planned_bed_m\) > 0/)
+  assert.match(source, /item\.planned_transplant_date \?\? item\.planned_sow_date/)
+  assert.match(source, /item\.planned_last_harvest_date \?\? item\.planned_first_harvest_date/)
+  assert.match(source, /const blocked = planSuccessions\.filter/)
+  assert.match(source, /\.neq\("status", "cancelled"\)/)
+  assert.match(source, /\{pending\.length\} \{text\.ready\}/)
+  assert.match(source, /\{blocked\.length\} \{text\.blocked\}/)
+  assert.match(source, /Nothing is placed automatically/)
+  assert.match(source, /orchard_place_succession_bed_meters/)
+})
+
 test("Farm Map uses the current aerial reference and keeps physical editing separate from crop allocation", async () => {
   const farmMap = await readFile("app/orchard/farm-map/page.tsx", "utf8")
   const sidebar = await readFile("components/orchard/orchard-sidebar.tsx", "utf8")
