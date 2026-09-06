@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react"
 import { Check, Layers3, LocateFixed, MapPinned, Maximize2, Minimize2, X } from "lucide-react"
 import { AppLayout } from "@/components/app-layout"
 import { OrchardNavigation } from "@/components/orchard/orchard-navigation"
-import { farmMapRectToLatLngs, PROVISIONAL_GEOREF } from "@/lib/orchard/farm-map-provisional-georef"
+import { farmMapRectToLatLngs, latLngToImagePoint, PROVISIONAL_GEOREF } from "@/lib/orchard/farm-map-provisional-georef"
 import { loadOverlayGeoJson, type GeoJsonFeatureCollection } from "@/lib/map/overlay-loader"
 import { createBrowserClient } from "@/lib/supabase/client"
 import { useLanguage } from "@/lib/hooks/use-language"
@@ -14,21 +14,23 @@ type GisOverlay={id:string;name:string;file_url:string;file_type:string|null;is_
 type FarmMapObject={id:string;object_type:string;name:string;x_pct:number|string;y_pct:number|string;width_pct:number|string;height_pct:number|string;rotation_deg:number|string;is_visible:boolean}
 type OverlayState="idle"|"loading"|"ready"|"error"
 type LeafletBounds={isValid:()=>boolean}
-type LeafletLayer={addTo:(map:LeafletMap)=>LeafletLayer;getBounds?:()=>LeafletBounds;bindTooltip?:(content:string,options?:Record<string,unknown>)=>LeafletLayer}
+type LeafletMouseEvent={latlng:{lat:number;lng:number};originalEvent?:{preventDefault?:()=>void;stopPropagation?:()=>void}}
+type LeafletLayer={addTo:(map:LeafletMap)=>LeafletLayer;getBounds?:()=>LeafletBounds;bindTooltip?:(content:string,options?:Record<string,unknown>)=>LeafletLayer;on?:(event:string,handler:(event:LeafletMouseEvent)=>void)=>LeafletLayer;setLatLngs?:(latlngs:[number,number][])=>LeafletLayer}
 type TileLayer=LeafletLayer&{on:(event:string,handler:()=>void)=>TileLayer}
-type LeafletMap={setView:(center:[number,number],zoom:number)=>LeafletMap;fitBounds:(bounds:[[number,number],[number,number]],options?:Record<string,unknown>)=>LeafletMap;addLayer:(layer:LeafletLayer)=>LeafletMap;removeLayer:(layer:LeafletLayer)=>LeafletMap;hasLayer:(layer:LeafletLayer)=>boolean;invalidateSize:()=>void;remove:()=>void}
+type LeafletMap={setView:(center:[number,number],zoom:number)=>LeafletMap;fitBounds:(bounds:[[number,number],[number,number]],options?:Record<string,unknown>)=>LeafletMap;addLayer:(layer:LeafletLayer)=>LeafletMap;removeLayer:(layer:LeafletLayer)=>LeafletMap;hasLayer:(layer:LeafletLayer)=>boolean;invalidateSize:()=>void;remove:()=>void;on:(event:string,handler:(event:LeafletMouseEvent)=>void)=>LeafletMap;off:(event:string,handler:(event:LeafletMouseEvent)=>void)=>LeafletMap;dragging:{disable:()=>void;enable:()=>void}}
 type RuntimeLeaflet={map:(element:HTMLElement,options?:Record<string,unknown>)=>LeafletMap;tileLayer:(url:string,options?:Record<string,unknown>)=>TileLayer;geoJSON:(data:unknown,options?:Record<string,unknown>)=>LeafletLayer;circleMarker:(latlng:unknown,options?:Record<string,unknown>)=>LeafletLayer;polygon:(latlngs:[number,number][],options?:Record<string,unknown>)=>LeafletLayer;control:{zoom:(options?:Record<string,unknown>)=>{addTo:(map:LeafletMap)=>unknown}}}
 
 const CORCOVADO_CENTER:[number,number]=[-39.699435,-73.205363]
 const ESRI_IMAGERY="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
 const copy={
- en:{title:"Farm Map · Satellite",subtitle:"Fundo Corcovado · canonical GIS",layers:"GIS layers",focus:"Focus farm",fullscreen:"Fullscreen",exitFullscreen:"Exit fullscreen",loading:"Loading satellite map…",error:"The satellite farm map could not be loaded.",baseError:"Satellite imagery could not be loaded.",geometry:"Map layers",geometryNote:"Canonical GIS starts hidden. Operational blocks can be shown with a provisional landmark-derived alignment; their source x/y positions remain unchanged until surveyed geographic bounds are confirmed.",blocks:"Operational blocks",blocksNote:"Provisional georeference",source:"Satellite · Esri World Imagery",close:"Close",ready:"ready",loadingState:"loading",errorState:"error",idle:"idle",provisional:"provisional"},
- es:{title:"Mapa de la granja · Satélite",subtitle:"Fundo Corcovado · GIS canónico",layers:"Capas GIS",focus:"Centrar predio",fullscreen:"Pantalla completa",exitFullscreen:"Salir de pantalla completa",loading:"Cargando mapa satelital…",error:"No fue posible cargar el mapa satelital de la granja.",baseError:"No fue posible cargar la imagen satelital.",geometry:"Capas del mapa",geometryNote:"El GIS canónico parte oculto. Los bloques operacionales pueden mostrarse con una alineación provisional derivada de hitos físicos; sus posiciones x/y originales no cambian hasta confirmar límites geográficos levantados.",blocks:"Bloques operacionales",blocksNote:"Georreferencia provisional",source:"Satélite · Esri World Imagery",close:"Cerrar",ready:"lista",loadingState:"cargando",errorState:"error",idle:"pendiente",provisional:"provisional"},
- de:{title:"Hofkarte · Satellit",subtitle:"Fundo Corcovado · kanonisches GIS",layers:"GIS-Ebenen",focus:"Hof zentrieren",fullscreen:"Vollbild",exitFullscreen:"Vollbild beenden",loading:"Satellitenkarte wird geladen…",error:"Die Satelliten-Hofkarte konnte nicht geladen werden.",baseError:"Das Satellitenbild konnte nicht geladen werden.",geometry:"Kartenebenen",geometryNote:"Kanonische GIS-Ebenen starten ausgeblendet. Operative Blöcke können mit einer provisorischen, aus sichtbaren Landmarken abgeleiteten Ausrichtung gezeigt werden; ihre ursprünglichen x/y-Positionen bleiben unverändert, bis vermessene geografische Grenzen bestätigt sind.",blocks:"Operative Blöcke",blocksNote:"Provisorische Georeferenz",source:"Satellit · Esri World Imagery",close:"Schließen",ready:"bereit",loadingState:"lädt",errorState:"Fehler",idle:"wartet",provisional:"provisorisch"}
+ en:{title:"Farm Map · Satellite",subtitle:"Fundo Corcovado · canonical GIS",layers:"GIS layers",focus:"Focus farm",fullscreen:"Fullscreen",exitFullscreen:"Exit fullscreen",loading:"Loading satellite map…",error:"The satellite farm map could not be loaded.",baseError:"Satellite imagery could not be loaded.",geometry:"Map layers",geometryNote:"Canonical GIS starts hidden. Operational blocks use a provisional landmark-derived alignment and can be dragged directly on the satellite; moving them updates the same canonical x/y position used by Operational view, not surveyed lat/lon.",blocks:"Operational blocks",blocksNote:"Drag to reposition · provisional georeference",source:"Satellite · Esri World Imagery",close:"Close",ready:"ready",loadingState:"loading",errorState:"error",idle:"idle",provisional:"provisional",saveError:"Could not save this block position."},
+ es:{title:"Mapa de la granja · Satélite",subtitle:"Fundo Corcovado · GIS canónico",layers:"Capas GIS",focus:"Centrar predio",fullscreen:"Pantalla completa",exitFullscreen:"Salir de pantalla completa",loading:"Cargando mapa satelital…",error:"No fue posible cargar el mapa satelital de la granja.",baseError:"No fue posible cargar la imagen satelital.",geometry:"Capas del mapa",geometryNote:"El GIS canónico parte oculto. Los bloques operacionales usan una alineación provisional derivada de hitos y se pueden arrastrar directamente sobre el satélite; moverlos actualiza la misma posición x/y canónica de la vista Operational, no lat/lon levantados.",blocks:"Bloques operacionales",blocksNote:"Arrastra para mover · georreferencia provisional",source:"Satélite · Esri World Imagery",close:"Cerrar",ready:"lista",loadingState:"cargando",errorState:"error",idle:"pendiente",provisional:"provisional",saveError:"No fue posible guardar la posición del bloque."},
+ de:{title:"Hofkarte · Satellit",subtitle:"Fundo Corcovado · kanonisches GIS",layers:"GIS-Ebenen",focus:"Hof zentrieren",fullscreen:"Vollbild",exitFullscreen:"Vollbild beenden",loading:"Satellitenkarte wird geladen…",error:"Die Satelliten-Hofkarte konnte nicht geladen werden.",baseError:"Das Satellitenbild konnte nicht geladen werden.",geometry:"Kartenebenen",geometryNote:"Kanonische GIS-Ebenen starten ausgeblendet. Operative Blöcke verwenden eine provisorische Landmarken-Ausrichtung und können direkt auf dem Satellitenbild verschoben werden; dabei wird dieselbe kanonische x/y-Position wie in Operational aktualisiert, nicht vermessene Lat/Lon.",blocks:"Operative Blöcke",blocksNote:"Zum Verschieben ziehen · provisorische Georeferenz",source:"Satellit · Esri World Imagery",close:"Schließen",ready:"bereit",loadingState:"lädt",errorState:"Fehler",idle:"wartet",provisional:"provisorisch",saveError:"Die Blockposition konnte nicht gespeichert werden."}
 } as const
 
 const overlayColor=(name:string)=>{const value=name.toLowerCase();if(value.includes("agua"))return"#7BA7B8";if(value.includes("proteccion"))return"#96A983";if(value.includes("pmf"))return"#C3A66D";if(value.includes("interes"))return"#B7ADA0";return"#F0EEE7"}
 const n=(value:number|string|undefined,fallback=0)=>{const parsed=Number(value);return Number.isFinite(parsed)?parsed:fallback}
+const clamp=(value:number,min:number,max:number)=>Math.max(min,Math.min(max,value))
 const isOperationalArea=(type:string)=>["field_block","greenhouse","tunnel","farm_area"].includes(type)
 
 export default function OrchardFarmMapSatellitePage(){
@@ -41,6 +43,7 @@ export default function OrchardFarmMapSatellitePage(){
  const layerRefs=useRef<Map<string,LeafletLayer>>(new Map())
  const blockLayerRefs=useRef<Map<string,LeafletLayer>>(new Map())
  const coordinateCacheRef=useRef<Map<string,[number,number][]>>(new Map())
+ const activeDragCleanupRef=useRef<(()=>void)|null>(null)
  const [overlays,setOverlays]=useState<GisOverlay[]>([])
  const [farmObjects,setFarmObjects]=useState<FarmMapObject[]>([])
  const [visibleIds,setVisibleIds]=useState<Set<string>>(new Set())
@@ -91,21 +94,56 @@ export default function OrchardFarmMapSatellitePage(){
    const initiallyVisible=overlays.filter(row=>visibleIdsRef.current.has(row.id))
    void Promise.all(initiallyVisible.map(row=>loadOverlay(L,map,row))).then(()=>{if(cancelled)return;focusFarm(map);requestAnimationFrame(()=>map.invalidateSize());setLoading(false)})
   }).catch(()=>{if(!cancelled){setError(text.error);setLoading(false)}})
-  return()=>{cancelled=true;setMapReady(false);mapRef.current?.remove();mapRef.current=null;leafletRef.current=null;layerRefs.current.clear();blockLayerRefs.current.clear();coordinateCacheRef.current.clear()}
+  return()=>{cancelled=true;activeDragCleanupRef.current?.();activeDragCleanupRef.current=null;setMapReady(false);mapRef.current?.remove();mapRef.current=null;leafletRef.current=null;layerRefs.current.clear();blockLayerRefs.current.clear();coordinateCacheRef.current.clear()}
  },[overlays,text.error])
 
  useEffect(()=>{
   const map=mapRef.current;const L=leafletRef.current;if(!mapReady||!map||!L)return
+  activeDragCleanupRef.current?.();activeDragCleanupRef.current=null
   for(const layer of blockLayerRefs.current.values())if(map.hasLayer(layer))map.removeLayer(layer)
   blockLayerRefs.current.clear()
   if(!showBlocks)return
   for(const item of farmObjects.filter(row=>isOperationalArea(row.object_type))){
-   const polygon=farmMapRectToLatLngs({xPct:n(item.x_pct),yPct:n(item.y_pct),widthPct:n(item.width_pct,9),heightPct:n(item.height_pct,13),rotationDeg:n(item.rotation_deg)})
-   const layer=L.polygon(polygon,{color:"#d7b17a",weight:1.5,opacity:.9,dashArray:"5 4",fillColor:"#d7b17a",fillOpacity:.08})
+   const rect={xPct:n(item.x_pct),yPct:n(item.y_pct),widthPct:n(item.width_pct,9),heightPct:n(item.height_pct,13),rotationDeg:n(item.rotation_deg)}
+   const layer=L.polygon(farmMapRectToLatLngs(rect),{color:"#d7b17a",weight:1.8,opacity:.95,dashArray:"5 4",fillColor:"#d7b17a",fillOpacity:.11,className:"cursor-move"})
    layer.bindTooltip?.(`${item.name} · ${text.provisional}`,{direction:"center",permanent:false,opacity:.9})
+   const beginDrag=(event:LeafletMouseEvent)=>{
+    event.originalEvent?.preventDefault?.();event.originalEvent?.stopPropagation?.()
+    activeDragCleanupRef.current?.()
+    map.dragging.disable()
+    const startImage=latLngToImagePoint(event.latlng)
+    const startX=rect.xPct;const startY=rect.yPct
+    let nextX=startX;let nextY=startY;let finished=false
+    const onMove=(moveEvent:LeafletMouseEvent)=>{
+     const image=latLngToImagePoint(moveEvent.latlng)
+     nextX=clamp(startX+((image.x-startImage.x)/PROVISIONAL_GEOREF.imageWidth)*100,2,98)
+     nextY=clamp(startY+((image.y-startImage.y)/PROVISIONAL_GEOREF.imageHeight)*100,2,98)
+     layer.setLatLngs?.(farmMapRectToLatLngs({...rect,xPct:nextX,yPct:nextY}))
+    }
+    const cleanup=()=>{
+     map.off("mousemove",onMove);map.off("touchmove",onMove)
+     document.removeEventListener("mouseup",finish)
+     document.removeEventListener("touchend",finish)
+     document.removeEventListener("touchcancel",finish)
+     map.dragging.enable();activeDragCleanupRef.current=null
+    }
+    const finish=()=>{
+     if(finished)return
+     finished=true;cleanup()
+     if(Math.abs(nextX-startX)<0.0001&&Math.abs(nextY-startY)<0.0001)return
+     setFarmObjects(current=>current.map(row=>row.id===item.id?{...row,x_pct:nextX,y_pct:nextY}:row))
+     void supabase.from("orchard_farm_map_objects").update({x_pct:nextX,y_pct:nextY,updated_at:new Date().toISOString()}).eq("id",item.id).then(result=>{if(result.error)setError(text.saveError)})
+    }
+    activeDragCleanupRef.current=cleanup
+    map.on("mousemove",onMove);map.on("touchmove",onMove)
+    document.addEventListener("mouseup",finish,{once:true})
+    document.addEventListener("touchend",finish,{once:true})
+    document.addEventListener("touchcancel",finish,{once:true})
+   }
+   layer.on?.("mousedown",beginDrag);layer.on?.("touchstart",beginDrag)
    blockLayerRefs.current.set(item.id,layer);map.addLayer(layer)
   }
- },[farmObjects,showBlocks,text.provisional,mapReady])
+ },[farmObjects,showBlocks,text.provisional,text.saveError,mapReady,supabase])
 
  useEffect(()=>{
   const onFullscreenChange=()=>{
