@@ -13,7 +13,7 @@ export default function TaskListLayout({ children }: { children: ReactNode }) {
           display: none !important;
         }
 
-        [data-heirloom-task-list-parity="true"] main > main > nav[aria-label="Workload views"] {
+        [data-heirloom-task-list-parity="true"] main > main > nav {
           min-height: 44px !important;
           margin: 0 0 24px !important;
           padding: 0 !important;
@@ -21,7 +21,7 @@ export default function TaskListLayout({ children }: { children: ReactNode }) {
           gap: 0 !important;
         }
 
-        [data-heirloom-task-list-parity="true"] main > main > nav[aria-label="Workload views"] a {
+        [data-heirloom-task-list-parity="true"] main > main > nav a {
           min-height: 44px !important;
           padding: 0 14px !important;
           border-radius: 0 !important;
@@ -35,7 +35,7 @@ export default function TaskListLayout({ children }: { children: ReactNode }) {
           box-shadow: none !important;
         }
 
-        [data-heirloom-task-list-parity="true"] main > main input[placeholder*="Search"] {
+        [data-heirloom-task-list-parity="true"] main > main input[type="text"] {
           max-width: 210px !important;
           min-height: 40px !important;
           border-radius: 7px !important;
