@@ -50,15 +50,16 @@ const chartItems:GroupItem[] = [
   { href:"/orchard/charts/seeders", label:{en:"Seeders",es:"Sembradoras",de:"Sägeräte"} },
   { href:"/orchard/charts/crop-yield", label:{en:"Crop yield",es:"Rendimiento de cultivos",de:"Kulturertrag"} },
 ]
-const settingsItems:GroupItem[] = [
-  { href:"/orchard/settings", label:{en:"Farm settings",es:"Configuración de granja",de:"Hofeinstellungen"} },
-  { href:"/orchard/settings/farm-data", label:{en:"Farm data",es:"Datos de granja",de:"Hofdaten"} },
-  { href:"/orchard/settings/team", label:{en:"Team",es:"Equipo",de:"Team"} },
-]
+const settingsItem:NavItem = {
+  href:"/orchard/settings",
+  label:{en:"Settings",es:"Configuración",de:"Einstellungen"},
+  icon:Settings,
+  includeChildren:true,
+}
 const copy = {
-  en:{farm:"Black Swan Orchard",owner:"Owner · BS",season:"Season",mySeason:"MY SEASON",myFarm:"MY FARM",more:"MORE",logout:"Sign out",loading:"Loading season…",charts:"Charts",settings:"Settings"},
-  es:{farm:"Black Swan Orchard",owner:"Propietario · BS",season:"Temporada",mySeason:"MI TEMPORADA",myFarm:"MI GRANJA",more:"MÁS",logout:"Cerrar sesión",loading:"Cargando temporada…",charts:"Gráficos",settings:"Configuración"},
-  de:{farm:"Black Swan Orchard",owner:"Eigentümer · BS",season:"Saison",mySeason:"MEINE SAISON",myFarm:"MEIN HOF",more:"MEHR",logout:"Abmelden",loading:"Saison wird geladen…",charts:"Diagramme",settings:"Einstellungen"},
+  en:{farm:"Black Swan Orchard",owner:"Owner · BS",season:"Season",mySeason:"MY SEASON",myFarm:"MY FARM",more:"MORE",logout:"Sign out",loading:"Loading season…",charts:"Charts"},
+  es:{farm:"Black Swan Orchard",owner:"Propietario · BS",season:"Temporada",mySeason:"MI TEMPORADA",myFarm:"MI GRANJA",more:"MÁS",logout:"Cerrar sesión",loading:"Cargando temporada…",charts:"Gráficos"},
+  de:{farm:"Black Swan Orchard",owner:"Eigentümer · BS",season:"Saison",mySeason:"MEINE SAISON",myFarm:"MEIN HOF",more:"MEHR",logout:"Abmelden",loading:"Saison wird geladen…",charts:"Diagramme"},
 } as const
 
 function stripLocale(pathname:string){return pathname.replace(/^\/(en|es|de)(?=\/|$)/,"")||"/"}
@@ -93,7 +94,7 @@ export function OrchardSidebar({isOpen=true,onClose}:{isOpen?:boolean;onClose?:(
     <nav className="min-h-0 flex-1 overflow-y-auto px-3 py-3">
       <div className="space-y-0.5">{topItems.map(renderItem)}</div><div className="my-3 border-t border-[#302e29]"/><p className="px-3 pb-1.5 text-[9px] font-semibold tracking-[.15em] text-[#777169]">{text.mySeason}</p><div className="space-y-0.5">{seasonItems.map(renderItem)}</div><div className="my-3 border-t border-[#302e29]"/><p className="px-3 pb-1.5 text-[9px] font-semibold tracking-[.15em] text-[#777169]">{text.myFarm}</p><div className="space-y-0.5">{farmItems.map(renderItem)}</div>
       {renderGroup(text.charts,BarChart3,chartItems,internalPathname.startsWith("/orchard/charts"))}
-      {renderGroup(text.settings,Settings,settingsItems,internalPathname.startsWith("/orchard/settings"))}
+      {renderItem(settingsItem)}
       <details className="group mt-0.5"><summary className="flex min-h-10 cursor-pointer list-none items-center justify-between rounded-md px-3 text-[13px] text-[#c2bbb0] hover:bg-[#24231f] hover:text-[#f1eee7] marker:content-none [&::-webkit-details-marker]:hidden"><span>{text.more}</span><ChevronDown className="h-4 w-4 transition-transform group-open:rotate-180"/></summary><div className="mt-0.5 space-y-0.5 border-l border-[#302e29] pl-2">{advancedItems.map(renderItem)}</div></details>
     </nav>
     <div className="space-y-2 border-t border-[#302e29] p-3"><LanguageSwitcher/><button type="button" onClick={logout} className="flex min-h-10 w-full items-center gap-3 rounded-md px-3 text-[13px] text-[#c2bbb0] hover:bg-[#24231f] hover:text-[#f1eee7]"><span className="flex h-7 w-7 items-center justify-center rounded-full bg-[#174335] text-[11px] font-semibold text-[#bde1cf]">{userInitials}</span><span className="flex-1 text-left">{text.logout}</span><LogOut className="h-4 w-4"/></button></div>
