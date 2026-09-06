@@ -5,6 +5,7 @@ import { useMemo, useState, useEffect } from "react"
 import Link from "next/link"
 import { Sidebar } from "./sidebar"
 import { OrchardSidebar } from "@/components/orchard/orchard-sidebar"
+import { OrchardDesktopHeader } from "@/components/orchard/orchard-desktop-header"
 import { OrchardHarvestSectionNav } from "@/components/orchard/harvest-section-nav"
 import { BookingsSectionNav } from "@/components/bookings-section-nav"
 import { HospitalityCommandStrip } from "@/components/hospitality-command-strip"
@@ -118,6 +119,7 @@ export function AppLayout({ children }: AppLayoutProps) {
       )}
 
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+        {orchardShell ? <OrchardDesktopHeader /> : null}
         <div className={`sticky top-0 z-40 flex h-14 items-center justify-between border-b border-border bg-sidebar px-3 sm:h-16 sm:px-4 ${mobileOnlyClass}`}>
           <div className="flex items-center gap-1">
             <button
@@ -152,7 +154,7 @@ export function AppLayout({ children }: AppLayoutProps) {
           </button>
         </div>
 
-        <main className="relative min-h-0 min-w-0 flex-1 overflow-y-auto bg-background overflow-x-hidden">
+        <main className="relative min-h-0 min-w-0 flex-1 overflow-y-auto bg-background overflow-x-hidden" style={orchardShell ? ({ "--orchard-nav-height": "56px" } as React.CSSProperties) : undefined}>
           {orchardShell && <OrchardHarvestSectionNav />}
           {bookingsShell && <BookingsSectionNav />}
           {bookingsRoot && <HospitalityCommandStrip />}
