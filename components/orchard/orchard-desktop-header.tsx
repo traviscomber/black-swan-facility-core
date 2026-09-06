@@ -9,11 +9,7 @@ import { useLanguage } from "@/lib/hooks/use-language"
 
 type Locale = "en" | "es" | "de"
 type Plan = { id: string; name: string; season: string | null; status: string }
-
-type RouteTitle = {
-  prefix: string
-  title: Record<Locale, string>
-}
+type RouteTitle = { prefix: string; title: Record<Locale, string> }
 
 const routeTitles: RouteTitle[] = [
   { prefix: "/orchard/getting-started", title: { en: "Getting Started with Black Swan", es: "Primeros pasos con Black Swan", de: "Erste Schritte mit Black Swan" } },
@@ -28,7 +24,13 @@ const routeTitles: RouteTitle[] = [
   { prefix: "/orchard/work", title: { en: "Tasks", es: "Tareas", de: "Aufgaben" } },
   { prefix: "/orchard/farm-map", title: { en: "Farm Map", es: "Mapa de la granja", de: "Hofkarte" } },
   { prefix: "/orchard/notes", title: { en: "Notes", es: "Notas", de: "Notizen" } },
+  { prefix: "/orchard/charts/tasks", title: { en: "Task Chart", es: "Gráfico de tareas", de: "Aufgabendiagramm" } },
+  { prefix: "/orchard/charts/crops", title: { en: "Crop Chart", es: "Gráfico de cultivos", de: "Kulturdiagramm" } },
   { prefix: "/orchard/charts", title: { en: "Charts", es: "Gráficos", de: "Diagramme" } },
+  { prefix: "/orchard/settings/collaborators", title: { en: "Collaborators", es: "Colaboradores", de: "Mitarbeitende" } },
+  { prefix: "/orchard/settings/farms", title: { en: "Farms", es: "Granjas", de: "Höfe" } },
+  { prefix: "/orchard/settings/sales-channels", title: { en: "Sales Channels", es: "Canales de venta", de: "Vertriebskanäle" } },
+  { prefix: "/orchard/settings/task-management", title: { en: "Task Management", es: "Gestión de tareas", de: "Aufgabenverwaltung" } },
   { prefix: "/orchard/settings", title: { en: "Settings", es: "Configuración", de: "Einstellungen" } },
   { prefix: "/orchard/library", title: { en: "Agronomic Library", es: "Biblioteca agronómica", de: "Agronomische Bibliothek" } },
   { prefix: "/orchard/care", title: { en: "Care", es: "Cuidados", de: "Pflege" } },
