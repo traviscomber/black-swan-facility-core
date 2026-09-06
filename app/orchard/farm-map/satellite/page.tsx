@@ -52,6 +52,7 @@ export default function OrchardFarmMapSatellitePage(){
  const [error,setError]=useState<string|null>(null)
  const [baseError,setBaseError]=useState(false)
  const [isFullscreen,setIsFullscreen]=useState(false)
+ const [mapReady,setMapReady]=useState(false)
 
  useEffect(()=>{
   let cancelled=false
@@ -73,12 +74,14 @@ export default function OrchardFarmMapSatellitePage(){
  useEffect(()=>{
   if(!mapContainerRef.current||overlays.length===0)return
   let cancelled=false
+  setMapReady(false)
   void import("leaflet").then(module=>{
    const L=module as unknown as RuntimeLeaflet
    if(cancelled||!mapContainerRef.current)return
    leafletRef.current=L
    const map=L.map(mapContainerRef.current,{zoomControl:false,attributionControl:true,minZoom:4,maxZoom:20}).setView(CORCOVADO_CENTER,18)
    mapRef.current=map
+   setMapReady(true)
    L.control.zoom({position:"bottomleft"}).addTo(map)
    const base=L.tileLayer(ESRI_IMAGERY,{maxZoom:20,maxNativeZoom:19,tileSize:256,attribution:"Imagery © Esri and contributors"})
    let tileFailures=0
@@ -88,11 +91,11 @@ export default function OrchardFarmMapSatellitePage(){
    const initiallyVisible=overlays.filter(row=>visibleIdsRef.current.has(row.id))
    void Promise.all(initiallyVisible.map(row=>loadOverlay(L,map,row))).then(()=>{if(cancelled)return;focusFarm(map);requestAnimationFrame(()=>map.invalidateSize());setLoading(false)})
   }).catch(()=>{if(!cancelled){setError(text.error);setLoading(false)}})
-  return()=>{cancelled=true;mapRef.current?.remove();mapRef.current=null;leafletRef.current=null;layerRefs.current.clear();blockLayerRefs.current.clear();coordinateCacheRef.current.clear()}
+  return()=>{cancelled=true;setMapReady(false);mapRef.current?.remove();mapRef.current=null;leafletRef.current=null;layerRefs.current.clear();blockLayerRefs.current.clear();coordinateCacheRef.current.clear()}
  },[overlays,text.error])
 
  useEffect(()=>{
-  const map=mapRef.current;const L=leafletRef.current;if(!map||!L)return
+  const map=mapRef.current;const L=leafletRef.current;if(!mapReady||!map||!L)return
   for(const layer of blockLayerRefs.current.values())if(map.hasLayer(layer))map.removeLayer(layer)
   blockLayerRefs.current.clear()
   if(!showBlocks)return
@@ -102,7 +105,7 @@ export default function OrchardFarmMapSatellitePage(){
    layer.bindTooltip?.(`${item.name} · ${text.provisional}`,{direction:"center",permanent:false,opacity:.9})
    blockLayerRefs.current.set(item.id,layer);map.addLayer(layer)
   }
- },[farmObjects,showBlocks,text.provisional])
+ },[farmObjects,showBlocks,text.provisional,mapReady])
 
  useEffect(()=>{
   const onFullscreenChange=()=>{
