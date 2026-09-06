@@ -3,6 +3,7 @@ import { readFile } from "node:fs/promises"
 import test from "node:test"
 
 const migrationPath = "supabase/migrations/20260901183000_orchard_bed_meter_capacity.sql"
+const xlsReconciliationPath = "supabase/migrations/20260906232422_orchard_reconcile_xls_bed_meters.sql"
 
 test("bed-meter migration stores explicit planning and allocation quantities", async () => {
   const source = await readFile(migrationPath, "utf8")
@@ -68,4 +69,51 @@ test("harvest desk attributes actual output only through exact reconciled succes
   assert.doesNotMatch(source, /totals\.get\(crop\)/)
   assert.doesNotMatch(source, /harvests\.filter\([^\n]*harvest_date[^\n]*planned_/)
   assert.doesNotMatch(source, /find\([^\n]*harvest_date[^\n]*planned_/)
+})
+
+test("Black Swan bed metres follow explicit XLS 10m-bed provenance instead of the legacy Heirloom 30m geometry", async () => {
+  const source = await readFile(xlsReconciliationPath, "utf8")
+  assert.match(source, /knowledge_source_snapshot->'beds_10m'/)
+  assert.match(source, /\* 10 as source_bed_m/)
+  assert.match(source, /planned_bed_m = beds_10m \* 30/)
+  assert.match(source, /planned_bed_m = beds_10m \* 10/)
+  assert.match(source, /beds_10m \* 10 \* 0\.762/)
+})
+
+test("production-data reconciliation remains replay-safe when imports are absent", async () => {
+  const source = await readFile(xlsReconciliationPath, "utf8")
+  assert.match(source, /if v_plan_count = 0 then/)
+  assert.match(source, /canonical 2026\/27 imported Game Plan is absent/)
+  assert.match(source, /if v_numeric = 0 then/)
+  assert.match(source, /no numeric beds_10m import provenance exists/)
+  assert.match(source, /return;/)
+})
+
+test("XLS bed-meter reconciliation is guarded to the verified production state", async () => {
+  const source = await readFile(xlsReconciliationPath, "utf8")
+  assert.match(source, /v_total <> 66/)
+  assert.match(source, /v_numeric <> 65/)
+  assert.match(source, /v_inflated <> 48/)
+  assert.match(source, /v_null_numeric <> 17/)
+  assert.match(source, /v_unknown <> 1/)
+  assert.match(source, /v_area_exact <> 65/)
+  assert.match(source, /v_alloc_total <> 783/)
+  assert.match(source, /v_alloc_source_total <> 261/)
+})
+
+test("XLS correction preserves bed identities and closes numeric(10,2) residue per succession", async () => {
+  const source = await readFile(xlsReconciliationPath, "utf8")
+  assert.match(source, /round\(allocated_length_m \/ 3, 2\) as rounded_length/)
+  assert.match(source, /source_bed_m - coalesce\(/)
+  assert.match(source, /partition by crop_succession_id/)
+  assert.match(source, /allocated_length_m = resolved\.new_length/)
+  assert.match(source, /allocated_area_sqm = resolved\.new_length \* resolved\.width_m/)
+  assert.doesNotMatch(source, /delete from public\.orchard_bed_allocations/i)
+  assert.doesNotMatch(source, /insert into public\.orchard_bed_allocations/i)
+  assert.doesNotMatch(source, /bed_id\s*=/i)
+  assert.match(source, /v_reconciled <> 65/)
+  assert.match(source, /v_unknown <> 1/)
+  assert.match(source, /v_total_bed_m <> 426/)
+  assert.match(source, /v_alloc_total <> 261/)
+  assert.match(source, /v_bad_capacity <> 0/)
 })
