@@ -25,7 +25,11 @@ const seasonItems:NavItem[] = [
   { href:"/orchard/seed-orders", label:{en:"Seeds & transplants",es:"Semillas y trasplantes",de:"Saatgut & Jungpflanzen"}, icon:FlaskConical },
   { href:"/orchard/nursery/overview", label:{en:"Nursery",es:"Vivero",de:"Anzucht"}, icon:Sprout },
   { href:"/orchard/harvest/season", label:{en:"Harvests",es:"Cosechas",de:"Ernten"}, icon:Leaf, includeChildren:true },
-  { href:"/orchard/work/week-board", label:{en:"Tasks",es:"Tareas",de:"Aufgaben"}, icon:ClipboardList, includeChildren:true },
+]
+const taskItems:GroupItem[] = [
+  { href:"/orchard/work/list", label:{en:"List",es:"Lista",de:"Liste"} },
+  { href:"/orchard/work/week-board", label:{en:"Week Board",es:"Week Board",de:"Wochenboard"} },
+  { href:"/orchard/work/workload-graph", label:{en:"My Workload Graph",es:"Mi gráfico de carga",de:"Meine Arbeitslast"} },
 ]
 const farmItems:NavItem[] = [
   { href:"/orchard/farm-map", label:{en:"Farm map",es:"Mapa de la granja",de:"Hofkarte"}, icon:Map },
@@ -57,9 +61,9 @@ const settingsItem:NavItem = {
   includeChildren:true,
 }
 const copy = {
-  en:{farm:"Black Swan Orchard",owner:"Owner · BS",season:"Season",mySeason:"MY SEASON",myFarm:"MY FARM",more:"MORE",logout:"Sign out",loading:"Loading season…",charts:"Charts"},
-  es:{farm:"Black Swan Orchard",owner:"Propietario · BS",season:"Temporada",mySeason:"MI TEMPORADA",myFarm:"MI GRANJA",more:"MÁS",logout:"Cerrar sesión",loading:"Cargando temporada…",charts:"Gráficos"},
-  de:{farm:"Black Swan Orchard",owner:"Eigentümer · BS",season:"Saison",mySeason:"MEINE SAISON",myFarm:"MEIN HOF",more:"MEHR",logout:"Abmelden",loading:"Saison wird geladen…",charts:"Diagramme"},
+  en:{farm:"Black Swan Orchard",owner:"Owner · BS",season:"Season",mySeason:"MY SEASON",myFarm:"MY FARM",more:"MORE",logout:"Sign out",loading:"Loading season…",charts:"Charts",tasks:"Tasks"},
+  es:{farm:"Black Swan Orchard",owner:"Propietario · BS",season:"Temporada",mySeason:"MI TEMPORADA",myFarm:"MI GRANJA",more:"MÁS",logout:"Cerrar sesión",loading:"Cargando temporada…",charts:"Gráficos",tasks:"Tareas"},
+  de:{farm:"Black Swan Orchard",owner:"Eigentümer · BS",season:"Saison",mySeason:"MEINE SAISON",myFarm:"MEIN HOF",more:"MEHR",logout:"Abmelden",loading:"Saison wird geladen…",charts:"Diagramme",tasks:"Aufgaben"},
 } as const
 
 function stripLocale(pathname:string){return pathname.replace(/^\/(en|es|de)(?=\/|$)/,"")||"/"}
@@ -69,7 +73,6 @@ function itemActive(pathname:string,item:NavItem){
   if(item.href==="/orchard/crops/catalog")return pathname.startsWith("/orchard/crops")
   if(item.href==="/orchard/crop-map/overview")return pathname.startsWith("/orchard/crop-map")
   if(item.href==="/orchard/harvest/season")return pathname.startsWith("/orchard/harvest")
-  if(item.href==="/orchard/work/week-board")return pathname.startsWith("/orchard/work")
   return Boolean(item.includeChildren&&pathname.startsWith(`${item.href}/`))
 }
 
@@ -92,7 +95,7 @@ export function OrchardSidebar({isOpen=true,onClose}:{isOpen?:boolean;onClose?:(
       <label className="mt-3 block md:hidden"><span className="mb-1.5 block text-[10px] font-semibold uppercase tracking-[.14em] text-[#918b82]">{text.season}</span><select value={selected?.id??""} onChange={event=>changePlan(event.target.value)} disabled={loading||!plans.length} className="h-10 w-full rounded-md border border-[#3a3731] bg-[#1a1917] px-2.5 text-xs text-[#f1eee7] outline-none focus:border-[#8bcba8]">{loading?<option>{text.loading}</option>:plans.map(plan=><option key={plan.id} value={plan.id}>{plan.season??plan.name}</option>)}</select></label>
     </div>
     <nav className="min-h-0 flex-1 overflow-y-auto px-3 py-3">
-      <div className="space-y-0.5">{topItems.map(renderItem)}</div><div className="my-3 border-t border-[#302e29]"/><p className="px-3 pb-1.5 text-[9px] font-semibold tracking-[.15em] text-[#777169]">{text.mySeason}</p><div className="space-y-0.5">{seasonItems.map(renderItem)}</div><div className="my-3 border-t border-[#302e29]"/><p className="px-3 pb-1.5 text-[9px] font-semibold tracking-[.15em] text-[#777169]">{text.myFarm}</p><div className="space-y-0.5">{farmItems.map(renderItem)}</div>
+      <div className="space-y-0.5">{topItems.map(renderItem)}</div><div className="my-3 border-t border-[#302e29]"/><p className="px-3 pb-1.5 text-[9px] font-semibold tracking-[.15em] text-[#777169]">{text.mySeason}</p><div className="space-y-0.5">{seasonItems.map(renderItem)}{renderGroup(text.tasks,ClipboardList,taskItems,internalPathname.startsWith("/orchard/work"))}</div><div className="my-3 border-t border-[#302e29]"/><p className="px-3 pb-1.5 text-[9px] font-semibold tracking-[.15em] text-[#777169]">{text.myFarm}</p><div className="space-y-0.5">{farmItems.map(renderItem)}</div>
       {renderGroup(text.charts,BarChart3,chartItems,internalPathname.startsWith("/orchard/charts"))}
       {renderItem(settingsItem)}
       <details className="group mt-0.5"><summary className="flex min-h-10 cursor-pointer list-none items-center justify-between rounded-md px-3 text-[13px] text-[#c2bbb0] hover:bg-[#24231f] hover:text-[#f1eee7] marker:content-none [&::-webkit-details-marker]:hidden"><span>{text.more}</span><ChevronDown className="h-4 w-4 transition-transform group-open:rotate-180"/></summary><div className="mt-0.5 space-y-0.5 border-l border-[#302e29] pl-2">{advancedItems.map(renderItem)}</div></details>
