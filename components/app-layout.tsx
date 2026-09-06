@@ -154,7 +154,7 @@ export function AppLayout({ children }: AppLayoutProps) {
           </button>
         </div>
 
-        <main className="relative min-h-0 min-w-0 flex-1 overflow-y-auto bg-background overflow-x-hidden">
+        <main className="relative min-h-0 min-w-0 flex-1 overflow-y-auto bg-background overflow-x-hidden" style={orchardShell ? ({ "--orchard-nav-height": "56px" } as React.CSSProperties) : undefined}>
           {orchardShell && <OrchardHarvestSectionNav />}
           {bookingsShell && <BookingsSectionNav />}
           {bookingsRoot && <HospitalityCommandStrip />}
