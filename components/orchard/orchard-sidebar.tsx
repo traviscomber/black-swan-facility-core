@@ -55,10 +55,10 @@ const seasonItems:NavItem[] = [
 
 const farmItems:NavItem[] = [
   { href:"/orchard/farm-map", label:{en:"Farm map",es:"Mapa de la granja",de:"Hofkarte"}, icon:Map },
+  { href:"/orchard/notes", label:{en:"Notes",es:"Notas",de:"Notizen"}, icon:StickyNote },
 ]
 
 const advancedItems:NavItem[] = [
-  { href:"/orchard/notes", label:{en:"Notes",es:"Notas",de:"Notizen"}, icon:StickyNote },
   { href:"/orchard/crops", label:{en:"Live crop operations",es:"En terreno",de:"Aktive Kulturen"}, icon:Sprout },
   { href:"/orchard/library", label:{en:"Agronomic library",es:"Biblioteca agronómica",de:"Agronomische Bibliothek"}, icon:BookOpen, includeChildren:true },
   { href:"/orchard/care", label:{en:"Care",es:"Cuidados",de:"Pflege"}, icon:Leaf },
@@ -178,12 +178,12 @@ export function OrchardSidebar({isOpen=true,onClose}:{isOpen?:boolean;onClose?:(
       <div className="my-3 border-t border-[#302e29]"/>
       <p className="px-3 pb-1.5 text-[9px] font-semibold tracking-[.15em] text-[#777169]">{text.myFarm}</p>
       <div className="space-y-0.5">{farmItems.map(item=>renderItem(item))}</div>
+      {renderGroup(text.charts,BarChart3,chartItems,internalPathname.startsWith("/orchard/charts"))}
+      {renderGroup(text.settings,Settings,settingsItems,internalPathname.startsWith("/orchard/settings"))}
       <details className="group mt-0.5">
         <summary className="flex min-h-10 cursor-pointer list-none items-center justify-between rounded-md px-3 text-[13px] text-[#c2bbb0] hover:bg-[#24231f] hover:text-[#f1eee7] marker:content-none [&::-webkit-details-marker]:hidden"><span>{text.more}</span><ChevronDown className="h-4 w-4 transition-transform group-open:rotate-180"/></summary>
         <div className="mt-0.5 space-y-0.5 border-l border-[#302e29] pl-2">{advancedItems.map(item=>renderItem(item,true))}</div>
       </details>
-      {renderGroup(text.charts,BarChart3,chartItems,internalPathname.startsWith("/orchard/charts"))}
-      {renderGroup(text.settings,Settings,settingsItems,internalPathname.startsWith("/orchard/settings"))}
     </nav>
 
     <div className="space-y-2 border-t border-[#302e29] p-3">
