@@ -3,7 +3,7 @@ import test from "node:test"
 import { readFileSync } from "node:fs"
 
 const migration = readFileSync(
-  new URL("../supabase/migrations/20260904011500_enforce_fuel_location_scope.sql", import.meta.url),
+  new URL("../supabase/migrations/20260904005051_enforce_fuel_location_scope.sql", import.meta.url),
   "utf8",
 )
 const uploadRoute = readFileSync(
