@@ -25,8 +25,7 @@ declare
   v_alloc_total numeric;
   v_alloc_source_total numeric;
 begin
-  select count(*), min(id)
-    into v_plan_count, v_plan_id
+  select count(*) into v_plan_count
   from public.orchard_game_plans
   where name = 'BS Orchard — Crop Plan 2026/27'
     and season = '2026/27';
@@ -34,6 +33,11 @@ begin
   if v_plan_count <> 1 then
     raise exception 'Expected exactly one canonical 2026/27 Orchard Game Plan, found %', v_plan_count;
   end if;
+
+  select id into v_plan_id
+  from public.orchard_game_plans
+  where name = 'BS Orchard — Crop Plan 2026/27'
+    and season = '2026/27';
 
   with rows as (
     select
