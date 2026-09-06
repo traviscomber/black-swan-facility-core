@@ -2,10 +2,15 @@
 -- `beds_10m` source semantics after the physical layout moved from the Heirloom
 -- 30 m reference geometry to Black Swan's canonical 10 m beds.
 --
--- Historical Heirloom migrations remain untouched for auditability. This
--- migration corrects current canonical planning quantities only where the XLS
--- provenance is explicit and internally corroborated by planned_area_sqm.
--- Existing physical bed identities and date ranges are preserved.
+-- This is a production-data reconciliation, not a schema/data bootstrap. Fresh
+-- environments created only from repository migrations may not contain the
+-- imported Black Swan workbook rows. In that case this migration is an explicit
+-- no-op so migration replay remains deterministic. Once any applicable XLS
+-- `beds_10m` provenance exists, the exact audited production guards below are
+-- mandatory and partial/unexpected source states fail closed.
+--
+-- Historical Heirloom migrations remain untouched for auditability. Existing
+-- physical bed identities and date ranges are preserved.
 
 begin;
 
@@ -23,11 +28,19 @@ declare
   v_current_physical integer;
   v_alloc_total numeric;
   v_alloc_source_total numeric;
+  v_reconciled integer;
+  v_total_bed_m numeric;
+  v_bad_capacity integer;
 begin
   select count(*) into v_plan_count
   from public.orchard_game_plans
   where name = 'BS Orchard — Crop Plan 2026/27'
     and season = '2026/27';
+
+  if v_plan_count = 0 then
+    raise notice 'Skipping XLS bed-meter reconciliation: canonical 2026/27 imported Game Plan is absent in this environment';
+    return;
+  end if;
 
   if v_plan_count <> 1 then
     raise exception 'Expected exactly one canonical 2026/27 Orchard Game Plan, found %', v_plan_count;
@@ -65,6 +78,11 @@ begin
     )
   into v_total, v_numeric, v_inflated, v_null_numeric, v_unknown, v_area_exact
   from rows;
+
+  if v_numeric = 0 then
+    raise notice 'Skipping XLS bed-meter reconciliation: no numeric beds_10m import provenance exists in this environment';
+    return;
+  end if;
 
   if v_total <> 66
      or v_numeric <> 65
@@ -112,118 +130,87 @@ begin
     raise exception 'Current allocation guard failed: assigned %, current_physical %, allocated %, source %',
       v_assigned, v_current_physical, v_alloc_total, v_alloc_source_total;
   end if;
-end $$;
 
--- Preserve every existing bed ID and date range. Because allocated_length_m is
--- numeric(10,2), independently dividing each fragment by three would introduce
--- cent-level residue. All but the last fragment are rounded proportionally;
--- the final fragment receives only the rounding residue so each succession
--- closes exactly to its explicit XLS source_bed_m.
-with plan as (
-  select id
-  from public.orchard_game_plans
-  where name = 'BS Orchard — Crop Plan 2026/27'
-    and season = '2026/27'
-), targets as (
-  select
-    s.id,
-    (s.knowledge_source_snapshot->>'beds_10m')::numeric * 10 as source_bed_m
-  from public.orchard_crop_successions s
-  join public.orchard_crop_cycles c on c.id = s.crop_cycle_id
-  where c.game_plan_id = (select id from plan)
-    and s.status <> 'cancelled'
-    and jsonb_typeof(s.knowledge_source_snapshot->'beds_10m') = 'number'
-    and (s.knowledge_source_snapshot->>'beds_10m')::numeric > 0
-    and s.planned_bed_m = (s.knowledge_source_snapshot->>'beds_10m')::numeric * 30
-), ordered as (
-  select
-    a.id as allocation_id,
-    a.crop_succession_id,
-    a.allocated_length_m,
-    b.width_m,
-    t.source_bed_m,
-    row_number() over (
-      partition by a.crop_succession_id
-      order by p.name, b.planning_order nulls last, b.name, a.id
-    ) as rn,
-    count(*) over (partition by a.crop_succession_id) as fragment_count
-  from public.orchard_bed_allocations a
-  join targets t on t.id = a.crop_succession_id
-  join public.orchard_beds b on b.id = a.bed_id
-  join public.orchard_plots p on p.id = b.plot_id
-  where p.name ~ '^(Current 0[1-5]|Expansion 0[1-3])$'
-), rounded as (
-  select
-    *,
-    round(allocated_length_m / 3, 2) as rounded_length
-  from ordered
-), resolved as (
-  select
-    allocation_id,
-    width_m,
-    case
-      when rn < fragment_count then rounded_length
-      else source_bed_m - coalesce(
-        sum(rounded_length) filter (where rn < fragment_count)
-          over (partition by crop_succession_id),
-        0
+  -- Preserve every existing bed ID and date range. Because allocated_length_m
+  -- is numeric(10,2), independently dividing each fragment by three would
+  -- introduce cent-level residue. All but the last fragment are rounded
+  -- proportionally; the final fragment receives only the rounding residue so
+  -- each succession closes exactly to its explicit XLS source_bed_m.
+  with targets as (
+    select
+      s.id,
+      (s.knowledge_source_snapshot->>'beds_10m')::numeric * 10 as source_bed_m
+    from public.orchard_crop_successions s
+    join public.orchard_crop_cycles c on c.id = s.crop_cycle_id
+    where c.game_plan_id = v_plan_id
+      and s.status <> 'cancelled'
+      and jsonb_typeof(s.knowledge_source_snapshot->'beds_10m') = 'number'
+      and (s.knowledge_source_snapshot->>'beds_10m')::numeric > 0
+      and s.planned_bed_m = (s.knowledge_source_snapshot->>'beds_10m')::numeric * 30
+  ), ordered as (
+    select
+      a.id as allocation_id,
+      a.crop_succession_id,
+      a.allocated_length_m,
+      b.width_m,
+      t.source_bed_m,
+      row_number() over (
+        partition by a.crop_succession_id
+        order by p.name, b.planning_order nulls last, b.name, a.id
+      ) as rn,
+      count(*) over (partition by a.crop_succession_id) as fragment_count
+    from public.orchard_bed_allocations a
+    join targets t on t.id = a.crop_succession_id
+    join public.orchard_beds b on b.id = a.bed_id
+    join public.orchard_plots p on p.id = b.plot_id
+    where p.name ~ '^(Current 0[1-5]|Expansion 0[1-3])$'
+  ), rounded as (
+    select *, round(allocated_length_m / 3, 2) as rounded_length
+    from ordered
+  ), resolved as (
+    select
+      allocation_id,
+      width_m,
+      case
+        when rn < fragment_count then rounded_length
+        else source_bed_m - coalesce(
+          sum(rounded_length) filter (where rn < fragment_count)
+            over (partition by crop_succession_id),
+          0
+        )
+      end as new_length
+    from rounded
+  )
+  update public.orchard_bed_allocations a
+  set allocated_length_m = resolved.new_length,
+      allocated_area_sqm = resolved.new_length * resolved.width_m,
+      notes = concat_ws(
+        ' | ',
+        nullif(a.notes, ''),
+        '2026-09-06 XLS reconciliation: retained existing bed identity/date range; allocation length rescaled from legacy Heirloom 30 m reference to explicit Black Swan beds_10m source.'
       )
-    end as new_length
-  from rounded
-)
-update public.orchard_bed_allocations a
-set allocated_length_m = resolved.new_length,
-    allocated_area_sqm = resolved.new_length * resolved.width_m,
-    notes = concat_ws(
-      ' | ',
-      nullif(a.notes, ''),
-      '2026-09-06 XLS reconciliation: retained existing bed identity/date range; allocation length rescaled from legacy Heirloom 30 m reference to explicit Black Swan beds_10m source.'
-    )
-from resolved
-where a.id = resolved.allocation_id;
+  from resolved
+  where a.id = resolved.allocation_id;
 
--- For all 65 successions with explicit numeric XLS provenance, canonical demand
--- is the number of 10 m beds multiplied by 10 m. This corrects the 48 legacy
--- ×30 values and recovers the 17 source-backed NULLs.
-with plan as (
-  select id
-  from public.orchard_game_plans
-  where name = 'BS Orchard — Crop Plan 2026/27'
-    and season = '2026/27'
-), source as (
-  select
-    s.id,
-    (s.knowledge_source_snapshot->>'beds_10m')::numeric * 10 as source_bed_m
-  from public.orchard_crop_successions s
-  join public.orchard_crop_cycles c on c.id = s.crop_cycle_id
-  where c.game_plan_id = (select id from plan)
-    and s.status <> 'cancelled'
-    and jsonb_typeof(s.knowledge_source_snapshot->'beds_10m') = 'number'
-    and (s.knowledge_source_snapshot->>'beds_10m')::numeric > 0
-)
-update public.orchard_crop_successions s
-set planned_bed_m = source.source_bed_m,
-    updated_at = now()
-from source
-where s.id = source.id
-  and s.planned_bed_m is distinct from source.source_bed_m;
-
-do $$
-declare
-  v_plan_id uuid;
-  v_total integer;
-  v_reconciled integer;
-  v_unknown integer;
-  v_total_bed_m numeric;
-  v_assigned integer;
-  v_alloc_total numeric;
-  v_alloc_source_total numeric;
-  v_bad_capacity integer;
-begin
-  select id into v_plan_id
-  from public.orchard_game_plans
-  where name = 'BS Orchard — Crop Plan 2026/27'
-    and season = '2026/27';
+  -- All 65 source-backed successions use explicit 10 m-bed semantics. This
+  -- corrects 48 legacy ×30 values and recovers 17 source-backed NULLs.
+  with source as (
+    select
+      s.id,
+      (s.knowledge_source_snapshot->>'beds_10m')::numeric * 10 as source_bed_m
+    from public.orchard_crop_successions s
+    join public.orchard_crop_cycles c on c.id = s.crop_cycle_id
+    where c.game_plan_id = v_plan_id
+      and s.status <> 'cancelled'
+      and jsonb_typeof(s.knowledge_source_snapshot->'beds_10m') = 'number'
+      and (s.knowledge_source_snapshot->>'beds_10m')::numeric > 0
+  )
+  update public.orchard_crop_successions s
+  set planned_bed_m = source.source_bed_m,
+      updated_at = now()
+  from source
+  where s.id = source.id
+    and s.planned_bed_m is distinct from source.source_bed_m;
 
   with rows as (
     select
