@@ -16,7 +16,7 @@ type RouteTitle = {
 }
 
 const routeTitles: RouteTitle[] = [
-  { prefix: "/orchard/getting-started", title: { en: "Getting Started", es: "Iniciación", de: "Einrichtung" } },
+  { prefix: "/orchard/getting-started", title: { en: "Getting Started with Black Swan", es: "Primeros pasos con Black Swan", de: "Erste Schritte mit Black Swan" } },
   { prefix: "/orchard/dashboard", title: { en: "Dashboard", es: "Dashboard", de: "Dashboard" } },
   { prefix: "/orchard/crops/catalog", title: { en: "Crop Selection", es: "Selección de cultivos", de: "Kulturauswahl" } },
   { prefix: "/orchard/game-plan", title: { en: "Game Plan", es: "Plan estratégico", de: "Saisonplan" } },
