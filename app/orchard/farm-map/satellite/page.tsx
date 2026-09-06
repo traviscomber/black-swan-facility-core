@@ -111,7 +111,6 @@ export default function OrchardFarmMapSatellitePage(){
    layer.bindTooltip?.(`${item.name} · ${text.provisional}`,{direction:"center",permanent:false,opacity:.9})
    const beginDrag=(event:LeafletMouseEvent)=>{
     event.originalEvent?.preventDefault?.();event.originalEvent?.stopPropagation?.()
-    setSelectedBlockId(item.id);setDrawerOpen(false)
     activeDragCleanupRef.current?.()
     map.dragging.disable()
     const startImage=latLngToImagePoint(event.latlng)
@@ -132,7 +131,7 @@ export default function OrchardFarmMapSatellitePage(){
     }
     const finish=()=>{
      if(finished)return
-     finished=true;cleanup()
+     finished=true;cleanup();setSelectedBlockId(item.id);setDrawerOpen(false)
      if(Math.abs(nextX-startX)<0.0001&&Math.abs(nextY-startY)<0.0001)return
      setFarmObjects(current=>current.map(row=>row.id===item.id?{...row,x_pct:nextX,y_pct:nextY}:row))
      void supabase.from("orchard_farm_map_objects").update({x_pct:nextX,y_pct:nextY,updated_at:new Date().toISOString()}).eq("id",item.id).then(result=>{if(result.error)setError(text.saveError)})
