@@ -105,6 +105,9 @@ export function GamePlanSeasonToolbar() {
 
   const suffix = resolvedPlanId ? `?game_plan=${encodeURIComponent(resolvedPlanId)}` : ""
   const advancedHref = `/${language}/orchard/game-plan${suffix}`
+  const addHref = resolvedPlanId
+    ? `/${language}/orchard/game-plan?game_plan=${encodeURIComponent(resolvedPlanId)}&focus=add-cycle`
+    : `/${language}/orchard/game-plan?focus=add-cycle`
   const cropMapHref = `/${language}/orchard/crop-map/overview${suffix}`
 
   useEffect(() => {
@@ -189,7 +192,7 @@ export function GamePlanSeasonToolbar() {
           </div>}
         </div>
 
-        <Link href={advancedHref} className="ml-auto inline-flex min-h-9 items-center gap-2 rounded-md bg-[var(--orchard-green)] px-4 text-sm font-medium text-[#10130f] transition-opacity hover:opacity-90">
+        <Link href={addHref} className="ml-auto inline-flex min-h-9 items-center gap-2 rounded-md bg-[var(--orchard-green)] px-4 text-sm font-medium text-[#10130f] transition-opacity hover:opacity-90">
           <Plus className="h-4 w-4" />{text.add}
         </Link>
       </div>
