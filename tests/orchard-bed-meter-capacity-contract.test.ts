@@ -80,6 +80,15 @@ test("Black Swan bed metres follow explicit XLS 10m-bed provenance instead of th
   assert.match(source, /beds_10m \* 10 \* 0\.762/)
 })
 
+test("production-data reconciliation remains replay-safe when imports are absent", async () => {
+  const source = await readFile(xlsReconciliationPath, "utf8")
+  assert.match(source, /if v_plan_count = 0 then/)
+  assert.match(source, /canonical 2026\/27 imported Game Plan is absent/)
+  assert.match(source, /if v_numeric = 0 then/)
+  assert.match(source, /no numeric beds_10m import provenance exists/)
+  assert.match(source, /return;/)
+})
+
 test("XLS bed-meter reconciliation is guarded to the verified production state", async () => {
   const source = await readFile(xlsReconciliationPath, "utf8")
   assert.match(source, /v_total <> 66/)
