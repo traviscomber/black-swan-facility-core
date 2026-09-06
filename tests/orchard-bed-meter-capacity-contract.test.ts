@@ -125,7 +125,7 @@ test("unresolved bed metres require explicit operator input and never infer from
   assert.match(source, /value<=0/)
   assert.match(source, /\.is\("planned_bed_m",null\)/)
   assert.match(source, /never estimates or auto-fills a value/)
-  assert.match(source, /Do not infer metres from plants, area, yield or another crop/)
+  assert.match(source, /Do not infer metres from plants, area, yield, cultivar, another crop, or another season/)
   assert.match(source, /knowledge_source_snapshot/)
   assert.doesNotMatch(source, /planned_area_sqm\s*[*/+-]/)
   assert.doesNotMatch(source, /planned_plants\s*[*/+-]/)
