@@ -4,7 +4,7 @@ import test from "node:test"
 
 const migrationPath = "supabase/migrations/20260901183000_orchard_bed_meter_capacity.sql"
 const xlsReconciliationPath = "supabase/migrations/20260906232422_orchard_reconcile_xls_bed_meters.sql"
-const bedMeterAuditPath = "supabase/migrations/20260906234000_orchard_audit_bed_meter_changes.sql"
+const bedMeterAuditPath = "supabase/migrations/20260906234921_orchard_audit_bed_meter_changes.sql"
 
 test("bed-meter migration stores explicit planning and allocation quantities", async () => {
   const source = await readFile(migrationPath, "utf8")
