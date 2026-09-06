@@ -69,3 +69,26 @@ test("harvest desk attributes actual output only through exact reconciled succes
   assert.doesNotMatch(source, /harvests\.filter\([^\n]*harvest_date[^\n]*planned_/)
   assert.doesNotMatch(source, /find\([^\n]*harvest_date[^\n]*planned_/)
 })
+
+test("missing bed metres are resolved only through explicit operator input", async () => {
+  const source = await readFile("app/orchard/game-plan/bed-meters/page.tsx", "utf8")
+
+  assert.match(source, /planned_bed_m:value/)
+  assert.match(source, /Number\(values\[item\.id\]\)/)
+  assert.match(source, /value<=0/)
+  assert.match(source, /\.is\("planned_bed_m",null\)/)
+  assert.match(source, /never estimates or auto-fills a value/)
+  assert.match(source, /Do not infer metres from plants, area, yield or another crop/)
+  assert.doesNotMatch(source, /planned_area_sqm\s*[*/+-]/)
+  assert.doesNotMatch(source, /planned_plants\s*[*/+-]/)
+})
+
+test("Crop Map sends bed-meter blockers to the explicit planning-input workspace", async () => {
+  const source = await readFile("app/orchard/crop-map/overview/quick-assign.tsx", "utf8")
+
+  assert.match(source, /missingBedMeters = blocked\.filter/)
+  assert.match(source, /\/orchard\/game-plan\/bed-meters/)
+  assert.match(source, /resolveBedMeters/)
+  assert.match(source, /Nothing is placed automatically/)
+  assert.match(source, /orchard_place_succession_bed_meters/)
+})
