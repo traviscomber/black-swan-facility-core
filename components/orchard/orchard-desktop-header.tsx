@@ -21,7 +21,7 @@ const routeTitles: RouteTitle[] = [
   { prefix: "/orchard/crops/catalog", title: { en: "Crop Selection", es: "Selección de cultivos", de: "Kulturauswahl" } },
   { prefix: "/orchard/game-plan", title: { en: "Game Plan", es: "Plan estratégico", de: "Saisonplan" } },
   { prefix: "/orchard/crop-map", title: { en: "Crop Map", es: "Mapa de cultivos", de: "Anbaukarte" } },
-  { prefix: "/orchard/seed-orders", title: { en: "Seed Orders", es: "Semillas y trasplantes", de: "Saatgutbestellungen" } },
+  { prefix: "/orchard/seed-orders", title: { en: "Seeds & Transplants", es: "Semillas y trasplantes", de: "Saatgut & Jungpflanzen" } },
   { prefix: "/orchard/nursery", title: { en: "Nursery", es: "Vivero", de: "Anzucht" } },
   { prefix: "/orchard/harvest", title: { en: "Harvests", es: "Cosechas", de: "Ernten" } },
   { prefix: "/orchard/work", title: { en: "Tasks", es: "Tareas", de: "Aufgaben" } },
