@@ -1,39 +1,121 @@
+.orchard-dashboard-workspace {
+  --dashboard-control-height: 40px;
+}
+
+.orchard-dashboard-workspace > .mx-auto:first-of-type {
+  padding-top: 0.375rem !important;
+}
+
+.orchard-dashboard-workspace > .mx-auto:first-of-type > section {
+  min-height: 3.5rem;
+  border: 0 !important;
+  border-bottom: 1px solid var(--orchard-line) !important;
+  background: transparent !important;
+  padding: 0 0 0.75rem !important;
+}
+
+.orchard-dashboard-workspace > .mx-auto:first-of-type label {
+  max-width: 14rem;
+  flex: 0 1 14rem !important;
+}
+
+.orchard-dashboard-workspace > .mx-auto:first-of-type label > span {
+  display: none !important;
+}
+
+.orchard-dashboard-workspace > .mx-auto:first-of-type select {
+  min-width: 13.75rem !important;
+  height: var(--dashboard-control-height) !important;
+  border-color: #35332e !important;
+  background: #171614 !important;
+  padding-inline: 0.875rem !important;
+  color: #dedad2 !important;
+}
+
+.orchard-dashboard-workspace > .mx-auto:first-of-type button {
+  height: var(--dashboard-control-height) !important;
+  border-color: #35332e !important;
+  background: #171614 !important;
+  color: #c8c3ba !important;
+}
+
+.orchard-dashboard-workspace > .mx-auto:first-of-type button:hover {
+  background: #23221e !important;
+  color: #f1eee7 !important;
+}
+
 .orchard-dashboard-workspace [data-orchard-dashboard] {
-  padding-top: 1rem !important;
+  padding-top: 0.25rem !important;
 }
 
 .orchard-dashboard-workspace [data-orchard-dashboard] > header {
-  margin-bottom: 1rem !important;
-  padding-bottom: 1rem !important;
-  gap: 0.75rem !important;
+  min-height: 3.25rem;
+  margin-bottom: 0.75rem !important;
+  padding-bottom: 0.75rem !important;
+  justify-content: flex-end !important;
+  border-bottom: 1px solid var(--orchard-line) !important;
+  gap: 0.5rem !important;
 }
 
-.orchard-dashboard-workspace [data-orchard-dashboard] > header h1 {
-  margin-top: 0.375rem !important;
-  font-size: 2rem !important;
-  line-height: 2.25rem !important;
+/* The shared Orchard desktop header owns the page title and season selector, as in Heirloom. */
+.orchard-dashboard-workspace [data-orchard-dashboard] > header > div:first-child {
+  display: none !important;
+}
+
+.orchard-dashboard-workspace [data-orchard-dashboard] > header > div:last-child {
+  margin-left: auto !important;
+}
+
+.orchard-dashboard-workspace [data-orchard-dashboard] > header button {
+  min-height: var(--dashboard-control-height) !important;
+  border-color: #35332e !important;
+  background: #171614 !important;
+  color: #c8c3ba !important;
 }
 
 .orchard-dashboard-workspace [data-orchard-dashboard] > section.grid {
   gap: 0.75rem !important;
 }
 
+.orchard-dashboard-workspace [data-orchard-dashboard] article {
+  border-color: #302f2b !important;
+  background: #171614 !important;
+}
+
 .orchard-dashboard-workspace [data-orchard-dashboard] article > header {
-  padding: 0.625rem 0.75rem !important;
+  min-height: 2.875rem;
+  padding: 0.625rem 0.875rem !important;
+  border-color: #302f2b !important;
 }
 
 .orchard-dashboard-workspace [data-orchard-dashboard] article > header h2 {
-  font-size: 1rem !important;
-  line-height: 1.5rem !important;
+  font-size: 0.95rem !important;
+  line-height: 1.35rem !important;
   font-weight: 500 !important;
+  letter-spacing: -0.01em;
 }
 
-.orchard-dashboard-workspace > .mx-auto:first-of-type {
-  padding-top: 0.75rem !important;
+.orchard-dashboard-workspace [data-orchard-dashboard] article > header svg {
+  color: #8fcbb0 !important;
 }
 
 @media (max-width: 1279px) {
   .orchard-dashboard-workspace [data-orchard-dashboard] > section.grid {
     gap: 0.625rem !important;
+  }
+}
+
+@media (max-width: 767px) {
+  .orchard-dashboard-workspace > .mx-auto:first-of-type label {
+    max-width: none;
+    flex: 1 1 auto !important;
+  }
+
+  .orchard-dashboard-workspace > .mx-auto:first-of-type select {
+    min-width: 0 !important;
+  }
+
+  .orchard-dashboard-workspace [data-orchard-dashboard] > header > div:first-child {
+    display: block !important;
   }
 }
