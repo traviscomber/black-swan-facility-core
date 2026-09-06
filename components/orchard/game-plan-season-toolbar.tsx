@@ -6,14 +6,12 @@ import { createPortal } from "react-dom"
 import { ChevronDown, Layers3, Plus, SlidersHorizontal, Sprout } from "lucide-react"
 import { useLanguage } from "@/lib/hooks/use-language"
 
-
 type Locale = "en" | "es" | "de"
 type TypeFilter = "all" | "direct_sow" | "transplant"
 
 const copy = {
   en: {
     crops: "Crops",
-    allCrops: "All crops",
     filters: "Filters",
     allTypes: "All planting types",
     direct: "Direct sow",
@@ -28,7 +26,6 @@ const copy = {
   },
   es: {
     crops: "Cultivos",
-    allCrops: "Todos los cultivos",
     filters: "Filtros",
     allTypes: "Todos los tipos de plantación",
     direct: "Siembra directa",
@@ -43,7 +40,6 @@ const copy = {
   },
   de: {
     crops: "Kulturen",
-    allCrops: "Alle Kulturen",
     filters: "Filter",
     allTypes: "Alle Pflanztypen",
     direct: "Direktsaat",
@@ -132,45 +128,48 @@ export function GamePlanSeasonToolbar() {
 
   if (!host) return null
 
+  const buttonClass = "inline-flex min-h-9 items-center gap-2 rounded-md border border-[#34322d] bg-[#171614] px-3 text-sm text-[#c2bbb0] transition-colors hover:bg-[#24231f] hover:text-[#f1eee7]"
+  const menuClass = "absolute left-0 top-[calc(100%+6px)] z-50 min-w-52 rounded-md border border-[#34322d] bg-[#171614] p-1 text-[#d5d0c7] shadow-xl"
+
   return createPortal(
-    <section className="relative z-40 border-b border-[var(--orchard-line)] bg-white px-4 py-2.5 sm:px-6 lg:px-8" aria-label="Game Plan controls">
+    <section className="relative z-40 border-b border-[#302f2b] bg-[#11110f] px-4 py-2.5 sm:px-6 lg:px-8" aria-label="Game Plan controls">
       <div className="flex flex-wrap items-center gap-2">
-        <label className="relative inline-flex min-h-9 items-center border border-[var(--orchard-line)] bg-white text-sm">
-          <Sprout className="ml-3 h-4 w-4 text-muted-foreground" />
+        <label className="relative inline-flex min-h-9 items-center rounded-md border border-[#34322d] bg-[#171614] text-sm text-[#c2bbb0]">
+          <Sprout className="ml-3 h-4 w-4 text-[#8f8a81]" />
           <span className="sr-only">{text.crops}</span>
-          <select value={cropFilter} onChange={event => setCropFilter(event.target.value)} className="h-9 min-w-[150px] appearance-none bg-transparent pl-2 pr-8 text-sm outline-none">
+          <select value={cropFilter} onChange={event => setCropFilter(event.target.value)} className="h-9 min-w-[150px] appearance-none bg-transparent pl-2 pr-8 text-sm text-[#d5d0c7] outline-none">
             <option value="all">{text.crops}</option>
             {cropNames.map(name => <option key={name} value={name}>{name}</option>)}
           </select>
-          <ChevronDown className="pointer-events-none absolute right-2.5 h-3.5 w-3.5 text-muted-foreground" />
+          <ChevronDown className="pointer-events-none absolute right-2.5 h-3.5 w-3.5 text-[#8f8a81]" />
         </label>
 
         <div className="relative">
-          <button type="button" onClick={() => { setFiltersOpen(value => !value); setActionsOpen(false) }} className={`inline-flex min-h-9 items-center gap-2 border px-3 text-sm ${typeFilter !== "all" ? "border-[var(--orchard-green)] bg-[var(--orchard-green)]/10" : "border-[var(--orchard-line)] bg-white"}`}>
+          <button type="button" onClick={() => { setFiltersOpen(value => !value); setActionsOpen(false) }} className={`${buttonClass} ${typeFilter !== "all" ? "border-[var(--orchard-green)] text-[var(--orchard-green)]" : ""}`}>
             <SlidersHorizontal className="h-4 w-4" />{text.filters}<ChevronDown className="h-3.5 w-3.5" />
           </button>
-          {filtersOpen && <div className="absolute left-0 top-[calc(100%+6px)] z-50 min-w-56 border border-[var(--orchard-line)] bg-white p-1 shadow-xl">
-            {(["all", "direct_sow", "transplant"] as TypeFilter[]).map(value => <button key={value} type="button" onClick={() => { setTypeFilter(value); setFiltersOpen(false) }} className={`flex w-full items-center justify-between px-3 py-2 text-left text-sm hover:bg-[var(--bs-surface-secondary)] ${typeFilter === value ? "font-medium text-[var(--orchard-green)]" : ""}`}>
+          {filtersOpen && <div className={menuClass}>
+            {(["all", "direct_sow", "transplant"] as TypeFilter[]).map(value => <button key={value} type="button" onClick={() => { setTypeFilter(value); setFiltersOpen(false) }} className={`flex w-full items-center justify-between rounded px-3 py-2 text-left text-sm hover:bg-[#24231f] ${typeFilter === value ? "font-medium text-[var(--orchard-green)]" : ""}`}>
               <span>{value === "all" ? text.allTypes : value === "direct_sow" ? text.direct : text.transplant}</span>{typeFilter === value ? <span>✓</span> : null}
             </button>)}
           </div>}
         </div>
 
-        <button type="button" onClick={toggleSuccessions} title={expanded ? text.collapse : text.expand} className="inline-flex min-h-9 items-center gap-2 border border-[var(--orchard-line)] bg-white px-3 text-sm">
+        <button type="button" onClick={toggleSuccessions} title={expanded ? text.collapse : text.expand} className={buttonClass}>
           <Layers3 className="h-4 w-4" />{text.successions}
         </button>
 
         <div className="relative">
-          <button type="button" onClick={() => { setActionsOpen(value => !value); setFiltersOpen(false) }} className="inline-flex min-h-9 items-center gap-2 border border-[var(--orchard-line)] bg-white px-3 text-sm">
+          <button type="button" onClick={() => { setActionsOpen(value => !value); setFiltersOpen(false) }} className={buttonClass}>
             {text.actions}<ChevronDown className="h-3.5 w-3.5" />
           </button>
-          {actionsOpen && <div className="absolute left-0 top-[calc(100%+6px)] z-50 min-w-52 border border-[var(--orchard-line)] bg-white p-1 shadow-xl">
-            <Link href={advancedHref} className="block px-3 py-2 text-sm hover:bg-[var(--bs-surface-secondary)]">{text.edit}</Link>
-            <Link href={cropMapHref} className="block px-3 py-2 text-sm hover:bg-[var(--bs-surface-secondary)]">{text.cropMap}</Link>
+          {actionsOpen && <div className={menuClass}>
+            <Link href={advancedHref} className="block rounded px-3 py-2 text-sm hover:bg-[#24231f] hover:text-white">{text.edit}</Link>
+            <Link href={cropMapHref} className="block rounded px-3 py-2 text-sm hover:bg-[#24231f] hover:text-white">{text.cropMap}</Link>
           </div>}
         </div>
 
-        <Link href={advancedHref} className="ml-auto inline-flex min-h-9 items-center gap-2 bg-[var(--orchard-green)] px-4 text-sm font-medium text-[#10130f]">
+        <Link href={advancedHref} className="ml-auto inline-flex min-h-9 items-center gap-2 rounded-md bg-[var(--orchard-green)] px-4 text-sm font-medium text-[#10130f] transition-opacity hover:opacity-90">
           <Plus className="h-4 w-4" />{text.add}
         </Link>
       </div>
