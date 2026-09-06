@@ -1,6 +1,6 @@
 import assert from "node:assert/strict"
 import test from "node:test"
-import { farmMapRectToLatLngs, imagePointToLatLng, PROVISIONAL_GEOREF } from "../lib/orchard/farm-map-provisional-georef"
+import { farmMapRectToLatLngs, imagePointToLatLng, PROVISIONAL_GEOREF } from "../lib/orchard/farm-map-provisional-georef.ts"
 
 test("provisional Farm Map georeference preserves observed anchor landmarks", () => {
   assert.equal(PROVISIONAL_GEOREF.status, "provisional")
