@@ -4,6 +4,7 @@ import test from "node:test"
 
 const migrationPath = "supabase/migrations/20260901183000_orchard_bed_meter_capacity.sql"
 const xlsReconciliationPath = "supabase/migrations/20260906232422_orchard_reconcile_xls_bed_meters.sql"
+const bedMeterAuditPath = "supabase/migrations/20260906234921_orchard_audit_bed_meter_changes.sql"
 
 test("bed-meter migration stores explicit planning and allocation quantities", async () => {
   const source = await readFile(migrationPath, "utf8")
@@ -138,4 +139,18 @@ test("Crop Map sends only unresolved bed-meter blockers to the explicit planning
   assert.match(source, /resolveBedMeters/)
   assert.match(source, /Nothing is placed automatically/)
   assert.match(source, /orchard_place_succession_bed_meters/)
+})
+
+test("planned bed metre audit is replay-safe and preserves the canonical private audit pipeline", async () => {
+  const source = await readFile(bedMeterAuditPath, "utf8")
+  assert.match(source, /create schema if not exists private_audit/)
+  assert.match(source, /create table if not exists public\.critical_action_audit_log/)
+  assert.match(source, /create or replace function private_audit\.capture_critical_action\(\)/)
+  assert.match(source, /security definer/)
+  assert.match(source, /set search_path to 'pg_catalog', 'public'/)
+  assert.match(source, /insert into public\.critical_action_audit_log/)
+  assert.match(source, /revoke all on function private_audit\.capture_critical_action\(\)/)
+  assert.match(source, /after update of planned_bed_m on public\.orchard_crop_successions/)
+  assert.match(source, /old\.planned_bed_m is distinct from new\.planned_bed_m/)
+  assert.match(source, /private_audit\.capture_critical_action\('orchard_planning'\)/)
 })
