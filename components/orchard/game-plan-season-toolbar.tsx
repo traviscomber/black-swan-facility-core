@@ -4,10 +4,12 @@ import Link from "next/link"
 import { useEffect, useMemo, useState } from "react"
 import { createPortal } from "react-dom"
 import { ChevronDown, Layers3, Plus, SlidersHorizontal, Sprout } from "lucide-react"
+import { createBrowserClient } from "@/lib/supabase/client"
 import { useLanguage } from "@/lib/hooks/use-language"
 
 type Locale = "en" | "es" | "de"
 type TypeFilter = "all" | "direct_sow" | "transplant"
+type PlanRow = { id: string; status: string }
 
 const copy = {
   en: {
@@ -70,6 +72,13 @@ export function GamePlanSeasonToolbar() {
   const { language } = useLanguage()
   const locale: Locale = language
   const text = copy[locale]
+  const supabase = useMemo(() => createBrowserClient(), [])
+  const params = useMemo(() => {
+    if (typeof window === "undefined") return new URLSearchParams()
+    return new URLSearchParams(window.location.search)
+  }, [])
+  const requestedPlan = params.get("game_plan")
+
   const [host, setHost] = useState<HTMLElement | null>(null)
   const [cropFilter, setCropFilter] = useState("all")
   const [typeFilter, setTypeFilter] = useState<TypeFilter>("all")
@@ -77,13 +86,24 @@ export function GamePlanSeasonToolbar() {
   const [expanded, setExpanded] = useState(true)
   const [filtersOpen, setFiltersOpen] = useState(false)
   const [actionsOpen, setActionsOpen] = useState(false)
+  const [resolvedPlanId, setResolvedPlanId] = useState<string | null>(requestedPlan)
 
-  const params = useMemo(() => {
-    if (typeof window === "undefined") return new URLSearchParams()
-    return new URLSearchParams(window.location.search)
-  }, [])
-  const gamePlan = params.get("game_plan")
-  const suffix = gamePlan ? `?game_plan=${encodeURIComponent(gamePlan)}` : ""
+  useEffect(() => {
+    if (requestedPlan) {
+      setResolvedPlanId(requestedPlan)
+      return
+    }
+    let live = true
+    void supabase.from("orchard_game_plans").select("id,status").order("start_date", { ascending: false }).then(result => {
+      if (!live || result.error) return
+      const plans = (result.data ?? []) as PlanRow[]
+      const selected = plans.find(plan => plan.status === "active") ?? plans.find(plan => plan.status === "draft") ?? plans[0] ?? null
+      setResolvedPlanId(selected?.id ?? null)
+    })
+    return () => { live = false }
+  }, [requestedPlan, supabase])
+
+  const suffix = resolvedPlanId ? `?game_plan=${encodeURIComponent(resolvedPlanId)}` : ""
   const advancedHref = `/${language}/orchard/game-plan${suffix}`
   const cropMapHref = `/${language}/orchard/crop-map/overview${suffix}`
 
