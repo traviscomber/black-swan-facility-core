@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect } from "react"
-import { usePathname, useSearchParams } from "next/navigation"
+import { usePathname } from "next/navigation"
 import { useLanguage } from "@/lib/hooks/use-language"
 
 const createCycleLabel = {
@@ -12,15 +12,15 @@ const createCycleLabel = {
 
 export function GamePlanRouteFocus() {
   const pathname = usePathname() ?? ""
-  const searchParams = useSearchParams()
   const { language } = useLanguage()
-  const planId = searchParams.get("game_plan")
-  const focus = searchParams.get("focus")
 
   useEffect(() => {
     const internalPath = pathname.replace(/^\/(en|es|de)(?=\/|$)/, "")
     if (internalPath !== "/orchard/game-plan") return
 
+    const searchParams = new URLSearchParams(window.location.search)
+    const planId = searchParams.get("game_plan")
+    const focus = searchParams.get("focus")
     let planSelected = !planId
     let focusApplied = focus !== "add-cycle"
 
@@ -59,7 +59,7 @@ export function GamePlanRouteFocus() {
       observer.disconnect()
       window.clearTimeout(timeout)
     }
-  }, [focus, language, pathname, planId])
+  }, [language, pathname])
 
   return null
 }
