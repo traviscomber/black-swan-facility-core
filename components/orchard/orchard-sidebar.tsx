@@ -126,43 +126,43 @@ export function OrchardSidebar({isOpen=true,onClose}:{isOpen?:boolean;onClose?:(
     router.push(`${pathname}?${params.toString()}`)
   }
   const logout=async()=>{await supabase.auth.signOut();router.push(`/${language}/auth/login`)}
-  const renderItem=(item:NavItem)=>{const Icon=item.icon;const active=itemActive(internalPathname,item);return <Link key={item.href} href={localizedHref(item.href)} onClick={onClose} aria-current={active?"page":undefined} className={cn("flex min-h-10 items-center gap-3 rounded-md px-3 text-sm transition-colors",active?"bg-primary/10 font-medium text-primary":"text-muted-foreground hover:bg-muted hover:text-foreground")}><Icon className="h-4 w-4 shrink-0"/><span className="truncate">{item.label[locale]}</span></Link>}
+  const renderItem=(item:NavItem)=>{const Icon=item.icon;const active=itemActive(internalPathname,item);return <Link key={item.href} href={localizedHref(item.href)} onClick={onClose} aria-current={active?"page":undefined} className={cn("flex min-h-10 items-center gap-3 rounded-md px-3 text-[13px] transition-colors",active?"bg-[#14382d] font-medium text-[#9bd8b8]":"text-[#c2bbb0] hover:bg-[#24231f] hover:text-[#f1eee7]")}><Icon className="h-4 w-4 shrink-0"/><span className="truncate">{item.label[locale]}</span></Link>}
 
-  return <div data-orchard-sidebar className={cn("fixed inset-y-0 left-0 z-50 flex h-screen w-64 flex-col border-r border-border bg-sidebar text-sidebar-foreground transition-transform duration-300 md:relative md:inset-auto md:z-auto md:h-full md:translate-x-0",isOpen?"translate-x-0":"-translate-x-full")}>
-    <div className="border-b border-border px-4 py-4">
+  return <div data-orchard-sidebar className={cn("fixed inset-y-0 left-0 z-50 flex h-screen w-64 flex-col border-r border-[#302e29] bg-[#11110f] text-[#f1eee7] transition-transform duration-300 md:relative md:inset-auto md:z-auto md:h-full md:translate-x-0",isOpen?"translate-x-0":"-translate-x-full")}>
+    <div className="border-b border-[#302e29] px-3 py-3">
       <div className="flex items-start justify-between gap-2">
-        <Link href={localizedHref("/orchard/dashboard")} onClick={onClose} className="flex min-w-0 items-center gap-3">
-          <img src="/blackswan-logo.png" alt="Black Swan" className="h-9 w-9 shrink-0 object-contain"/>
-          <div className="min-w-0"><p className="truncate text-sm font-semibold">{text.farm}</p><p className="mt-0.5 text-[11px] text-muted-foreground">{text.owner}</p></div>
+        <Link href={localizedHref("/orchard/dashboard")} onClick={onClose} className="flex min-w-0 flex-1 items-center gap-3 rounded-md border border-[#34322d] bg-[#24231f] px-2.5 py-2.5 transition-colors hover:bg-[#2a2924]">
+          <img src="/blackswan-logo.png" alt="Black Swan" className="h-8 w-8 shrink-0 object-contain"/>
+          <div className="min-w-0"><p className="truncate text-[13px] font-semibold text-[#f1eee7]">{text.farm}</p><p className="mt-0.5 text-[10px] text-[#918b82]">{text.owner}</p></div>
         </Link>
-        <button type="button" onClick={onClose} className="rounded p-1 hover:bg-muted md:hidden" aria-label="Close"><X className="h-4 w-4"/></button>
+        <button type="button" onClick={onClose} className="rounded p-1 hover:bg-[#24231f] md:hidden" aria-label="Close"><X className="h-4 w-4"/></button>
       </div>
-      <label className="mt-4 block">
-        <span className="mb-1.5 block text-[10px] font-semibold uppercase tracking-[.14em] text-muted-foreground">{text.season}</span>
-        <select value={selected?.id??""} onChange={event=>changePlan(event.target.value)} disabled={loading||!plans.length} className="h-10 w-full rounded-md border border-border bg-background px-2.5 text-xs text-foreground outline-none focus:border-primary">
+      <label className="mt-3 block md:hidden">
+        <span className="mb-1.5 block text-[10px] font-semibold uppercase tracking-[.14em] text-[#918b82]">{text.season}</span>
+        <select value={selected?.id??""} onChange={event=>changePlan(event.target.value)} disabled={loading||!plans.length} className="h-10 w-full rounded-md border border-[#3a3731] bg-[#1a1917] px-2.5 text-xs text-[#f1eee7] outline-none focus:border-[#8bcba8]">
           {loading?<option>{text.loading}</option>:plans.map(plan=><option key={plan.id} value={plan.id}>{plan.season??plan.name}</option>)}
         </select>
       </label>
     </div>
 
-    <nav className="min-h-0 flex-1 overflow-y-auto px-3 py-4">
-      <div className="space-y-1">{topItems.map(renderItem)}</div>
-      <div className="my-4 border-t border-border"/>
-      <p className="px-3 pb-1.5 text-[10px] font-semibold tracking-[.14em] text-muted-foreground">{text.mySeason}</p>
-      <div className="space-y-1">{seasonItems.map(renderItem)}</div>
-      <div className="my-4 border-t border-border"/>
-      <p className="px-3 pb-1.5 text-[10px] font-semibold tracking-[.14em] text-muted-foreground">{text.myFarm}</p>
-      <div className="space-y-1">{farmItems.map(renderItem)}</div>
-      <details className="group mt-1">
-        <summary className="flex min-h-10 cursor-pointer list-none items-center justify-between rounded-md px-3 text-sm text-muted-foreground hover:bg-muted hover:text-foreground marker:content-none [&::-webkit-details-marker]:hidden"><span>{text.more}</span><ChevronDown className="h-4 w-4 transition-transform group-open:rotate-180"/></summary>
-        <div className="mt-1 space-y-1 border-l border-border pl-2">{advancedItems.map(renderItem)}</div>
+    <nav className="min-h-0 flex-1 overflow-y-auto px-3 py-3">
+      <div className="space-y-0.5">{topItems.map(renderItem)}</div>
+      <div className="my-3 border-t border-[#302e29]"/>
+      <p className="px-3 pb-1.5 text-[9px] font-semibold tracking-[.15em] text-[#777169]">{text.mySeason}</p>
+      <div className="space-y-0.5">{seasonItems.map(renderItem)}</div>
+      <div className="my-3 border-t border-[#302e29]"/>
+      <p className="px-3 pb-1.5 text-[9px] font-semibold tracking-[.15em] text-[#777169]">{text.myFarm}</p>
+      <div className="space-y-0.5">{farmItems.map(renderItem)}</div>
+      <details className="group mt-0.5">
+        <summary className="flex min-h-10 cursor-pointer list-none items-center justify-between rounded-md px-3 text-[13px] text-[#c2bbb0] hover:bg-[#24231f] hover:text-[#f1eee7] marker:content-none [&::-webkit-details-marker]:hidden"><span>{text.more}</span><ChevronDown className="h-4 w-4 transition-transform group-open:rotate-180"/></summary>
+        <div className="mt-0.5 space-y-0.5 border-l border-[#302e29] pl-2">{advancedItems.map(renderItem)}</div>
       </details>
-      <Link href={localizedHref("/orchard/settings")} onClick={onClose} aria-current={internalPathname==="/orchard/settings"?"page":undefined} className={cn("mt-1 flex min-h-10 items-center gap-3 rounded-md px-3 text-sm transition-colors",internalPathname==="/orchard/settings"?"bg-primary/10 font-medium text-primary":"text-muted-foreground hover:bg-muted hover:text-foreground")}><Settings className="h-4 w-4"/><span>{text.settings}</span></Link>
+      <Link href={localizedHref("/orchard/settings")} onClick={onClose} aria-current={internalPathname==="/orchard/settings"?"page":undefined} className={cn("mt-0.5 flex min-h-10 items-center gap-3 rounded-md px-3 text-[13px] transition-colors",internalPathname==="/orchard/settings"?"bg-[#14382d] font-medium text-[#9bd8b8]":"text-[#c2bbb0] hover:bg-[#24231f] hover:text-[#f1eee7]")}><Settings className="h-4 w-4"/><span>{text.settings}</span></Link>
     </nav>
 
-    <div className="space-y-3 border-t border-border p-3">
+    <div className="space-y-2 border-t border-[#302e29] p-3">
       <LanguageSwitcher/>
-      <button type="button" onClick={logout} className="flex min-h-10 w-full items-center gap-3 rounded-md px-3 text-sm text-muted-foreground hover:bg-muted hover:text-foreground"><span className="flex h-7 w-7 items-center justify-center rounded-full bg-primary text-[11px] font-semibold text-primary-foreground">{userInitials}</span><span className="flex-1 text-left">{text.logout}</span><LogOut className="h-4 w-4"/></button>
+      <button type="button" onClick={logout} className="flex min-h-10 w-full items-center gap-3 rounded-md px-3 text-[13px] text-[#c2bbb0] hover:bg-[#24231f] hover:text-[#f1eee7]"><span className="flex h-7 w-7 items-center justify-center rounded-full bg-[#174335] text-[11px] font-semibold text-[#bde1cf]">{userInitials}</span><span className="flex-1 text-left">{text.logout}</span><LogOut className="h-4 w-4"/></button>
     </div>
   </div>
 }
