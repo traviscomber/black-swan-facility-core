@@ -1,6 +1,6 @@
 import assert from "node:assert/strict"
 import test from "node:test"
-import { farmMapRectToLatLngs, imagePointToLatLng, PROVISIONAL_GEOREF } from "../lib/orchard/farm-map-provisional-georef.ts"
+import { farmMapRectToLatLngs, imagePointToLatLng, latLngToFarmMapPercent, latLngToImagePoint, PROVISIONAL_GEOREF } from "../lib/orchard/farm-map-provisional-georef.ts"
 
 test("provisional Farm Map georeference preserves observed anchor landmarks", () => {
   assert.equal(PROVISIONAL_GEOREF.status, "provisional")
@@ -8,7 +8,21 @@ test("provisional Farm Map georeference preserves observed anchor landmarks", ()
     const projected = imagePointToLatLng(anchor.image)
     assert.ok(Math.abs(projected.lat - anchor.geo.lat) < 1e-10)
     assert.ok(Math.abs(projected.lng - anchor.geo.lng) < 1e-10)
+    const inverse = latLngToImagePoint(anchor.geo)
+    assert.ok(Math.abs(inverse.x - anchor.image.x) < 1e-8)
+    assert.ok(Math.abs(inverse.y - anchor.image.y) < 1e-8)
   }
+})
+
+test("provisional georeference round-trips arbitrary Farm Map positions", () => {
+  const image = { x: 153.25, y: 241.5 }
+  const geo = imagePointToLatLng(image)
+  const inverse = latLngToImagePoint(geo)
+  assert.ok(Math.abs(inverse.x - image.x) < 1e-8)
+  assert.ok(Math.abs(inverse.y - image.y) < 1e-8)
+  const pct = latLngToFarmMapPercent(geo)
+  assert.ok(Math.abs(pct.xPct - (image.x / PROVISIONAL_GEOREF.imageWidth) * 100) < 1e-8)
+  assert.ok(Math.abs(pct.yPct - (image.y / PROVISIONAL_GEOREF.imageHeight) * 100) < 1e-8)
 })
 
 test("farm-map rectangles become finite geographic polygons without rewriting source percentages", () => {
