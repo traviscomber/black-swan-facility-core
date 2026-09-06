@@ -5,6 +5,7 @@ import test from "node:test"
 const migrationPath = "supabase/migrations/20260901183000_orchard_bed_meter_capacity.sql"
 const xlsReconciliationPath = "supabase/migrations/20260906232422_orchard_reconcile_xls_bed_meters.sql"
 const bedMeterAuditPath = "supabase/migrations/20260906234921_orchard_audit_bed_meter_changes.sql"
+const sanmarzaRecoveryPath = "supabase/migrations/20260906235500_orchard_recover_sanmarza1_bed_quantity.sql"
 
 test("bed-meter migration stores explicit planning and allocation quantities", async () => {
   const source = await readFile(migrationPath, "utf8")
@@ -153,4 +154,26 @@ test("planned bed metre audit is replay-safe and preserves the canonical private
   assert.match(source, /after update of planned_bed_m on public\.orchard_crop_successions/)
   assert.match(source, /old\.planned_bed_m is distinct from new\.planned_bed_m/)
   assert.match(source, /private_audit\.capture_critical_action\('orchard_planning'\)/)
+})
+
+test("sanmarza1 recovery is deterministic source repair and never physical placement", async () => {
+  const source = await readFile(sanmarzaRecoveryPath, "utf8")
+  assert.match(source, /source_cell', 'F54'/)
+  assert.match(source, /source_column', 'Beds quantity'/)
+  assert.match(source, /raw_excel_serial', 46143\.0/)
+  assert.match(source, /cell_number_format', 'd\.m'/)
+  assert.match(source, /displayed_value', '1\.5'/)
+  assert.match(source, /workbook_sha256', 'e29b581d0c2190b8ea43d8116ce19cfac85f8b9be6f1abdb2b676e984d186683'/)
+  assert.match(source, /planned_bed_m = 15\.00/)
+  assert.match(source, /planned_area_sqm = 11\.430/)
+  assert.match(source, /v_numeric_source <> 65/)
+  assert.match(source, /v_numeric_source <> 66/)
+  assert.match(source, /v_planned_bed_m_total <> 441/)
+  assert.match(source, /v_area_total <> 336\.042/)
+  assert.match(source, /v_assigned <> 34 or v_ready <> 32 or v_blocked <> 0/)
+  assert.match(source, /v_audit_after <> v_audit_before \+ 1/)
+  assert.match(source, /changed_fields @> array\['planned_bed_m'\]::text\[\]/)
+  assert.doesNotMatch(source, /insert into public\.orchard_bed_allocations/i)
+  assert.doesNotMatch(source, /update public\.orchard_bed_allocations/i)
+  assert.doesNotMatch(source, /orchard_place_succession_bed_meters\s*\(/i)
 })
