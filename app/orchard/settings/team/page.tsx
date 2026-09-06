@@ -1,2 +1,2 @@
-import { OrchardExactSettings } from "@/components/orchard/orchard-exact-settings"
-export default function Page(){return <OrchardExactSettings mode="team"/>}
+import { OrchardTeamSettings } from "@/components/orchard/orchard-team-settings"
+export default function Page(){return <OrchardTeamSettings/>}

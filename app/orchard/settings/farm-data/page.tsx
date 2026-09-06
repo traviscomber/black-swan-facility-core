@@ -1,2 +1,2 @@
-import { OrchardExactSettings } from "@/components/orchard/orchard-exact-settings"
-export default function Page(){return <OrchardExactSettings mode="farm-data"/>}
+import { OrchardFarmDataHub } from "@/components/orchard/orchard-farm-data-hub"
+export default function Page(){return <OrchardFarmDataHub/>}
