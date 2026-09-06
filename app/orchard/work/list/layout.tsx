@@ -10,7 +10,27 @@ export default function TaskListLayout({ children }: { children: ReactNode }) {
         }
 
         [data-heirloom-task-list-parity="true"] main > main > header {
+          display: flex !important;
+          min-height: 52px !important;
+          margin: 0 !important;
+          padding: 8px 0 !important;
+          align-items: center !important;
+          justify-content: flex-end !important;
+          border-bottom: 0 !important;
+        }
+
+        [data-heirloom-task-list-parity="true"] main > main > header > div:first-child {
           display: none !important;
+        }
+
+        [data-heirloom-task-list-parity="true"] main > main > header > div:last-child {
+          margin-left: auto !important;
+          gap: 8px !important;
+        }
+
+        [data-heirloom-task-list-parity="true"] main > main > header button {
+          min-height: 38px !important;
+          border-radius: 6px !important;
         }
 
         [data-heirloom-task-list-parity="true"] main > main > nav {
