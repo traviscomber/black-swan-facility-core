@@ -92,12 +92,16 @@ test("XLS bed-meter reconciliation is guarded to the verified production state",
   assert.match(source, /v_alloc_source_total <> 261/)
 })
 
-test("XLS correction preserves current bed identities and only shrinks inflated allocation quantities", async () => {
+test("XLS correction preserves bed identities and closes numeric(10,2) residue per succession", async () => {
   const source = await readFile(xlsReconciliationPath, "utf8")
-  assert.match(source, /allocated_length_m = a\.allocated_length_m \/ 3/)
-  assert.match(source, /allocated_area_sqm = \(a\.allocated_length_m \/ 3\) \* b\.width_m/)
+  assert.match(source, /round\(allocated_length_m \/ 3, 2\) as rounded_length/)
+  assert.match(source, /source_bed_m - coalesce\(/)
+  assert.match(source, /partition by crop_succession_id/)
+  assert.match(source, /allocated_length_m = resolved\.new_length/)
+  assert.match(source, /allocated_area_sqm = resolved\.new_length \* resolved\.width_m/)
   assert.doesNotMatch(source, /delete from public\.orchard_bed_allocations/i)
   assert.doesNotMatch(source, /insert into public\.orchard_bed_allocations/i)
+  assert.doesNotMatch(source, /bed_id\s*=/i)
   assert.match(source, /v_reconciled <> 65/)
   assert.match(source, /v_unknown <> 1/)
   assert.match(source, /v_total_bed_m <> 426/)
