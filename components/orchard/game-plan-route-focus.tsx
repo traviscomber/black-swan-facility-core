@@ -26,7 +26,8 @@ export function GamePlanRouteFocus() {
 
     const apply = () => {
       if (!planSelected && planId) {
-        const target = Array.from(document.querySelectorAll<HTMLElement>(`[id="entity-${planId}"]`)).find(node => node instanceof HTMLButtonElement)
+        const targetId = `entity-${planId}`
+        const target = Array.from(document.querySelectorAll<HTMLElement>("[id^='entity-']")).find(node => node.id === targetId && node instanceof HTMLButtonElement)
         if (target instanceof HTMLButtonElement) {
           target.click()
           planSelected = true
