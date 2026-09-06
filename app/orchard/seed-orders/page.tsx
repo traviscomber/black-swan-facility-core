@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { useCallback, useEffect, useMemo, useState } from "react"
-import { AlertTriangle, ArrowRight, CheckCircle2, Loader2, ShoppingCart, Sprout } from "lucide-react"
+import { AlertTriangle, ArrowRight, CheckCircle2, Download, Loader2, Search, ShoppingCart, Sprout } from "lucide-react"
 import { AppLayout } from "@/components/app-layout"
 import { OrchardNavigation } from "@/components/orchard/orchard-navigation"
 import { Badge } from "@/components/ui/badge"
@@ -23,6 +23,7 @@ import {
 } from "@/lib/orchard/seed-procurement"
 
 type Locale = "en" | "es" | "de"
+type SeedOrderView = "seeds" | "transplants"
 type Plan = { id: string; season: string | null; status: string }
 type Cycle = { id: string; game_plan_id: string; crop_name: string; variety: string | null; cycle_type: string }
 type Succession = {
@@ -75,13 +76,14 @@ const LOCALE: Record<Locale, string> = { en: "en-US", es: "es-CL", de: "de-DE" }
 const COPY = {
   en: {
     eyebrow: "Orchard · Procurement",
-    title: "Seeds & transplants",
+    title: "Seeds & Transplants",
     description: "One purchasing board from the physically reconciled crop plan. Orchard owns the agronomic requirement; the central Procurement workflow owns request, quotation, approval, order, receiving and inventory status.",
     crop: "Crop", cultivar: "Cultivar", nursery: "First nursery sowing", planting: "First planting", weight: "Weight", seeds: "Seeds / tubers", order: "Procurement status",
     notRequested: "Not requested", create: "Create request", creating: "Creating…", open: "Open request", technical: "Method & evidence", empty: "No physically allocated seed demand for this plan.",
     requestError: "The procurement request could not be created.", locationError: "Farm Area 1 is not available in your procurement location scope.", loadError: "The seed procurement board could not be loaded.",
     gross: "Gross plan requirement", grossHelp: "Inventory is not deducted here. A procurement request is created only by an explicit operator action and then follows the canonical Black Swan purchasing workflow.",
     allocation: "physical plantings", source: "Dietrich 2026/27 + canonical Crop Map", changed: "Plan demand changed", requestQty: "requested", direct: "Direct sow", transplant: "Nursery / transplant",
+    seedsTab: "Seeds", transplantsTab: "Transplants", search: "Search crops...", export: "Export", noMatches: "No crops match this view.", rows: "rows",
   },
   es: {
     eyebrow: "Huerto · Compras",
@@ -92,6 +94,7 @@ const COPY = {
     requestError: "No fue posible crear la solicitud de compra.", locationError: "Farm Area 1 no está disponible dentro de tu scope de Compras.", loadError: "No fue posible cargar el tablero de compras de semillas.",
     gross: "Requerimiento bruto del plan", grossHelp: "Aquí no se descuenta inventario. Una solicitud de compra sólo se crea por acción explícita del operador y después sigue el flujo canónico de Compras de Black Swan.",
     allocation: "plantaciones físicas", source: "Dietrich 2026/27 + Crop Map canónico", changed: "Cambió la demanda del plan", requestQty: "solicitado", direct: "Siembra directa", transplant: "Almácigo / trasplante",
+    seedsTab: "Semillas", transplantsTab: "Trasplantes", search: "Buscar cultivos...", export: "Exportar", noMatches: "No hay cultivos para esta vista.", rows: "filas",
   },
   de: {
     eyebrow: "Orchard · Beschaffung",
@@ -102,6 +105,7 @@ const COPY = {
     requestError: "Die Beschaffungsanforderung konnte nicht erstellt werden.", locationError: "Farm Area 1 ist in deinem Beschaffungsbereich nicht verfügbar.", loadError: "Die Saatgut-Beschaffungsübersicht konnte nicht geladen werden.",
     gross: "Bruttobedarf des Plans", grossHelp: "Bestand wird hier nicht abgezogen. Eine Beschaffungsanforderung entsteht nur durch eine explizite Operator-Aktion und folgt danach dem kanonischen Black-Swan-Einkaufsprozess.",
     allocation: "physische Pflanzungen", source: "Dietrich 2026/27 + kanonische Crop Map", changed: "Planbedarf geändert", requestQty: "angefordert", direct: "Direktsaat", transplant: "Anzucht / Pflanzung",
+    seedsTab: "Saatgut", transplantsTab: "Jungpflanzen", search: "Kulturen suchen...", export: "Exportieren", noMatches: "Keine Kulturen entsprechen dieser Ansicht.", rows: "Zeilen",
   },
 } as const
 
@@ -136,6 +140,9 @@ function requestStatusClass(status: string) {
   if (["submitted", "under_review"].includes(status)) return "border-amber-500/30 text-amber-200"
   return "border-border text-muted-foreground"
 }
+function csvCell(value: string | number | null | undefined) {
+  return `"${String(value ?? "").replace(/"/g, '""')}"`
+}
 
 export default function OrchardSeedOrdersPage() {
   const supabase = useMemo(() => createBrowserClient(), [])
@@ -153,6 +160,8 @@ export default function OrchardSeedOrdersPage() {
   const [loading, setLoading] = useState(true)
   const [creatingRef, setCreatingRef] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [view, setView] = useState<SeedOrderView>("seeds")
+  const [query, setQuery] = useState("")
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -229,6 +238,15 @@ export default function OrchardSeedOrdersPage() {
     return map
   }, [requests])
 
+  const visibleLines = useMemo(() => {
+    const normalizedQuery = query.trim().toLowerCase()
+    return lines.filter((line) => {
+      if (view === "transplants" && line.cycleType !== "transplant") return false
+      if (!normalizedQuery) return true
+      return `${line.crop} ${line.variety ?? ""}`.toLowerCase().includes(normalizedQuery)
+    })
+  }, [lines, query, view])
+
   const dateLabel = (value: string | null) => value ? new Date(`${value}T12:00:00`).toLocaleDateString(locale, { day: "2-digit", month: "short", year: "numeric" }) : "—"
   const valueLabel = (value: number) => value.toLocaleString(locale, { maximumFractionDigits: 1 })
   const unitLabel = (unit: ProcurementUnit) => unit === "seed_count" ? (lang === "es" ? "semillas" : lang === "de" ? "Samen" : "seeds") : unit === "tuber_count" ? (lang === "es" ? "tubérculos" : lang === "de" ? "Knollen" : "tubers") : "g"
@@ -242,6 +260,35 @@ export default function OrchardSeedOrdersPage() {
     rejected: lang === "es" ? "Rechazada" : lang === "de" ? "Abgelehnt" : "Rejected",
     converted: lang === "es" ? "Convertida" : lang === "de" ? "Umgewandelt" : "Converted",
   } as Record<string, string>)[status] ?? status
+
+  const exportCsv = () => {
+    if (visibleLines.length === 0) return
+    const rows = [
+      [text.crop, text.cultivar, text.nursery, text.planting, text.weight, text.seeds, text.order],
+      ...visibleLines.map((line) => {
+        const request = requestByRef.get(line.sourceRef)
+        return [
+          line.crop,
+          line.variety ?? "",
+          line.firstNurserySowing ?? "",
+          line.firstPlanting ?? "",
+          line.unit === "g" ? `${line.value} g` : "",
+          line.unit === "g" ? "" : `${line.value} ${unitLabel(line.unit)}`,
+          request ? statusLabel(request.status) : text.notRequested,
+        ]
+      }),
+    ]
+    const csv = rows.map((row) => row.map(csvCell).join(",")).join("\n")
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" })
+    const url = URL.createObjectURL(blob)
+    const anchor = document.createElement("a")
+    anchor.href = url
+    anchor.download = `orchard-${view}-${plan?.season ?? "season"}.csv`
+    document.body.appendChild(anchor)
+    anchor.click()
+    anchor.remove()
+    URL.revokeObjectURL(url)
+  }
 
   const createRequest = async (line: DemandLine) => {
     if (!plan || creatingRef) return
@@ -284,7 +331,7 @@ export default function OrchardSeedOrdersPage() {
   const technicalHref = `/${language}/orchard/game-plan/propagation${plan ? `?game_plan=${encodeURIComponent(plan.id)}` : ""}`
 
   return <AppLayout><OrchardNavigation/><main className="mx-auto w-full max-w-[1560px] px-4 pb-16 pt-7 sm:px-6 lg:px-8">
-    <header className="mb-6 flex flex-col gap-4 border-b border-[var(--orchard-line)] pb-6 lg:flex-row lg:items-end lg:justify-between">
+    <header className="mb-4 flex flex-col gap-4 border-b border-[var(--orchard-line)] pb-4 lg:flex-row lg:items-end lg:justify-between">
       <div className="max-w-4xl">
         <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--orchard-green)]">{text.eyebrow}</p>
         <div className="mt-2 flex flex-wrap items-center gap-3"><h1 className="text-3xl font-normal sm:text-4xl">{text.title}</h1>{plan?.season ? <Badge variant="secondary">{plan.season}</Badge> : null}</div>
@@ -293,20 +340,35 @@ export default function OrchardSeedOrdersPage() {
       <Button variant="outline" asChild><Link href={technicalHref}>{text.technical}<ArrowRight className="ml-2 h-4 w-4"/></Link></Button>
     </header>
 
-    {error ? <div className="mb-5 flex gap-3 border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-200"><AlertTriangle className="mt-0.5 h-4 w-4 shrink-0"/><span>{error}</span></div> : null}
+    <nav className="mb-5 flex items-center gap-6 border-b border-[var(--orchard-line)]" aria-label={text.title}>
+      <button type="button" onClick={() => setView("seeds")} aria-current={view === "seeds" ? "page" : undefined} className={`relative pb-3 text-sm ${view === "seeds" ? "text-foreground" : "text-muted-foreground hover:text-foreground"}`}>
+        {text.seedsTab}{view === "seeds" ? <span className="absolute inset-x-0 -bottom-px h-px bg-[var(--orchard-green)]"/> : null}
+      </button>
+      <button type="button" onClick={() => setView("transplants")} aria-current={view === "transplants" ? "page" : undefined} className={`relative pb-3 text-sm ${view === "transplants" ? "text-foreground" : "text-muted-foreground hover:text-foreground"}`}>
+        {text.transplantsTab}{view === "transplants" ? <span className="absolute inset-x-0 -bottom-px h-px bg-[var(--orchard-green)]"/> : null}
+      </button>
+    </nav>
 
-    <section className="mb-5 grid gap-px bg-[var(--bs-divider-subtle)] sm:grid-cols-3">
-      <Metric label={text.gross} value={String(lines.length)} detail={`${scopedSuccessions.length} ${text.allocation}`} />
-      <Metric label={text.order} value={String(lines.filter((line) => requestByRef.has(line.sourceRef)).length)} detail={`${lines.length} ${text.crop.toLowerCase()}`} />
-      <Metric label={text.source} value={plan?.season ?? "—"} detail="Farm Area 1" />
+    <section className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <label className="flex min-h-10 w-full max-w-sm items-center gap-2 border border-[var(--orchard-line)] bg-[var(--bs-surface-primary)] px-3">
+        <Search className="h-4 w-4 text-muted-foreground"/>
+        <span className="sr-only">{text.search}</span>
+        <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={text.search} className="h-8 w-full border-0 bg-transparent text-sm outline-none"/>
+      </label>
+      <div className="flex items-center gap-3">
+        <span className="text-xs text-muted-foreground">{visibleLines.length} {text.rows}</span>
+        <button type="button" onClick={exportCsv} disabled={visibleLines.length === 0} className="inline-flex min-h-10 items-center gap-2 px-2 text-sm text-[var(--orchard-green)] hover:text-foreground disabled:opacity-40">
+          <Download className="h-4 w-4"/>{text.export}
+        </button>
+      </div>
     </section>
 
-    <div className="mb-5 flex gap-3 border-l-2 border-[var(--bs-warm-amber)] pl-4 text-sm leading-6 text-muted-foreground"><ShoppingCart className="mt-1 h-4 w-4 shrink-0"/><span>{text.grossHelp}</span></div>
+    {error ? <div className="mb-5 flex gap-3 border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-200"><AlertTriangle className="mt-0.5 h-4 w-4 shrink-0"/><span>{error}</span></div> : null}
 
-    {loading ? <div className="flex min-h-48 items-center justify-center text-sm text-muted-foreground"><Loader2 className="mr-2 h-4 w-4 animate-spin"/>…</div> : lines.length === 0 ? <div className="border border-[var(--bs-divider-subtle)] p-10 text-center text-sm text-muted-foreground">{text.empty}</div> : <div className="overflow-x-auto border border-[var(--bs-divider-subtle)] bg-[var(--bs-surface-primary)]">
+    {loading ? <div className="flex min-h-48 items-center justify-center text-sm text-muted-foreground"><Loader2 className="mr-2 h-4 w-4 animate-spin"/>…</div> : lines.length === 0 ? <div className="border border-[var(--bs-divider-subtle)] p-10 text-center text-sm text-muted-foreground">{text.empty}</div> : visibleLines.length === 0 ? <div className="border border-[var(--bs-divider-subtle)] p-10 text-center text-sm text-muted-foreground">{text.noMatches}</div> : <div className="overflow-x-auto border border-[var(--bs-divider-subtle)] bg-[var(--bs-surface-primary)]">
       <table className="w-full min-w-[1120px] border-collapse text-sm">
-        <thead className="bg-[var(--bs-surface-secondary)] text-left text-[10px] uppercase tracking-[.12em] text-muted-foreground"><tr><th className="px-4 py-3">{text.crop}</th><th className="px-4 py-3">{text.cultivar}</th><th className="px-4 py-3">{text.nursery}</th><th className="px-4 py-3">{text.planting}</th><th className="px-4 py-3 text-right">{text.weight}</th><th className="px-4 py-3 text-right">{text.seeds}</th><th className="px-4 py-3">{text.order}</th></tr></thead>
-        <tbody>{lines.map((line) => {
+        <thead className="sticky top-0 z-10 bg-[var(--bs-surface-secondary)] text-left text-[10px] uppercase tracking-[.12em] text-muted-foreground"><tr><th className="px-4 py-3">{text.crop}</th><th className="px-4 py-3">{text.cultivar}</th><th className="px-4 py-3">{text.nursery}</th><th className="px-4 py-3">{text.planting}</th><th className="px-4 py-3 text-right">{text.weight}</th><th className="px-4 py-3 text-right">{text.seeds}</th><th className="px-4 py-3">{text.order}</th></tr></thead>
+        <tbody>{visibleLines.map((line) => {
           const request = requestByRef.get(line.sourceRef) ?? null
           const demandChanged = Boolean(request && (Math.abs(Number(request.quantity) - line.value) > 0.01 || request.unit !== unitLabel(line.unit)))
           return <tr key={line.sourceRef} className="border-t border-[var(--bs-divider-subtle)] align-middle">
@@ -322,7 +384,15 @@ export default function OrchardSeedOrdersPage() {
       </table>
     </div>}
 
-    <footer className="mt-5 flex flex-col gap-2 border-t border-[var(--bs-divider-subtle)] pt-4 text-xs leading-5 text-muted-foreground sm:flex-row sm:items-center sm:justify-between"><span>{text.source}. {lines.length} {text.crop.toLowerCase()} · {scopedSuccessions.length} {text.allocation}.</span><span className="inline-flex items-center gap-1.5"><CheckCircle2 className="h-3.5 w-3.5"/>Procurement status is canonical; no purchase order is created automatically.</span></footer>
+    <section className="mb-5 grid gap-px bg-[var(--bs-divider-subtle)] sm:grid-cols-3">
+      <Metric label={text.gross} value={String(lines.length)} detail={`${scopedSuccessions.length} ${text.allocation}`} />
+      <Metric label={text.order} value={String(lines.filter((line) => requestByRef.has(line.sourceRef)).length)} detail={`${lines.length} ${text.crop.toLowerCase()}`} />
+      <Metric label={text.source} value={plan?.season ?? "—"} detail="Farm Area 1" />
+    </section>
+
+    <div className="mb-5 flex gap-3 border-l-2 border-[var(--bs-warm-amber)] pl-4 text-sm leading-6 text-muted-foreground"><ShoppingCart className="mt-1 h-4 w-4 shrink-0"/><span>{text.grossHelp}</span></div>
+
+    <footer className="mt-5 flex flex-col gap-2 border-t border-[var(--bs-divider-subtle)] pt-4 text-xs leading-5 text-muted-foreground sm:flex-row sm:items-center sm:justify-between"><span>{text.source}. {visibleLines.length}/{lines.length} {text.crop.toLowerCase()} · {scopedSuccessions.length} {text.allocation}.</span><span className="inline-flex items-center gap-1.5"><CheckCircle2 className="h-3.5 w-3.5"/>Procurement status is canonical; no purchase order is created automatically.</span></footer>
   </main></AppLayout>
 }
 
