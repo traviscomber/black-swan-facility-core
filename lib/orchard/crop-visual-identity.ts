@@ -6,7 +6,7 @@ export const CROP_FAMILY_COLORS: Record<CropVisualFamily, string> = {
   ROOT: "#D08B2E",
   CUCURBIT: "#4D9AAA",
   FRUITING: "#CD6274",
-  UNCLASSIFIED: "#8F8A81",
+  UNCLASSIFIED: "#8E74C9",
 }
 
 export function normalizeCropIdentity(value: string) {
