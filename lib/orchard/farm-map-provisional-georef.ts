@@ -64,6 +64,28 @@ export function imagePointToLatLng(point: ImagePoint): LatLng {
   }
 }
 
+export function latLngToImagePoint(point: LatLng): ImagePoint {
+  const meters = geoToMeters(point)
+  const east = meters.x - aMeters.x
+  const north = meters.y - aMeters.y
+  const cos = Math.cos(angle)
+  const sin = Math.sin(angle)
+  const dx = (cos * east + sin * north) / scale
+  const dy = (-sin * east + cos * north) / scale
+  return {
+    x: ANCHOR_A.image.x + dx,
+    y: ANCHOR_A.image.y - dy,
+  }
+}
+
+export function latLngToFarmMapPercent(point: LatLng) {
+  const image = latLngToImagePoint(point)
+  return {
+    xPct: (image.x / IMAGE_WIDTH) * 100,
+    yPct: (image.y / IMAGE_HEIGHT) * 100,
+  }
+}
+
 export function farmMapRectToLatLngs(rect: FarmMapRect): [number, number][] {
   const cx = (rect.xPct / 100) * IMAGE_WIDTH
   const cy = (rect.yPct / 100) * IMAGE_HEIGHT
