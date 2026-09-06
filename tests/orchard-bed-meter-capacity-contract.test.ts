@@ -117,3 +117,25 @@ test("XLS correction preserves bed identities and closes numeric(10,2) residue p
   assert.match(source, /v_alloc_total <> 261/)
   assert.match(source, /v_bad_capacity <> 0/)
 })
+
+test("unresolved bed metres require explicit operator input and never infer from crop context", async () => {
+  const source = await readFile("app/orchard/game-plan/bed-meters/page.tsx", "utf8")
+  assert.match(source, /planned_bed_m:value/)
+  assert.match(source, /Number\(values\[item\.id\]\)/)
+  assert.match(source, /value<=0/)
+  assert.match(source, /\.is\("planned_bed_m",null\)/)
+  assert.match(source, /never estimates or auto-fills a value/)
+  assert.match(source, /Do not infer metres from plants, area, yield or another crop/)
+  assert.match(source, /knowledge_source_snapshot/)
+  assert.doesNotMatch(source, /planned_area_sqm\s*[*/+-]/)
+  assert.doesNotMatch(source, /planned_plants\s*[*/+-]/)
+})
+
+test("Crop Map sends only unresolved bed-meter blockers to the explicit planning-input workspace", async () => {
+  const source = await readFile("app/orchard/crop-map/overview/quick-assign.tsx", "utf8")
+  assert.match(source, /missingBedMeters = blocked\.filter/)
+  assert.match(source, /\/orchard\/game-plan\/bed-meters/)
+  assert.match(source, /resolveBedMeters/)
+  assert.match(source, /Nothing is placed automatically/)
+  assert.match(source, /orchard_place_succession_bed_meters/)
+})
