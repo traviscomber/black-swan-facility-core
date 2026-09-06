@@ -127,16 +127,21 @@ export function OrchardSidebar({isOpen=true,onClose}:{isOpen?:boolean;onClose?:(
   }
   const logout=async()=>{await supabase.auth.signOut();router.push(`/${language}/auth/login`)}
   const renderItem=(item:NavItem)=>{const Icon=item.icon;const active=itemActive(internalPathname,item);return <Link key={item.href} href={localizedHref(item.href)} onClick={onClose} aria-current={active?"page":undefined} className={cn("flex min-h-10 items-center gap-3 rounded-md px-3 text-[13px] transition-colors",active?"bg-[#14382d] font-medium text-[#9bd8b8]":"text-[#c2bbb0] hover:bg-[#24231f] hover:text-[#f1eee7]")}><Icon className="h-4 w-4 shrink-0"/><span className="truncate">{item.label[locale]}</span></Link>}
+  const ownerRole=text.owner.split(" · ")[0]
 
   return <div data-orchard-sidebar className={cn("fixed inset-y-0 left-0 z-50 flex h-screen w-64 flex-col border-r border-[#302e29] bg-[#11110f] text-[#f1eee7] transition-transform duration-300 md:relative md:inset-auto md:z-auto md:h-full md:translate-x-0",isOpen?"translate-x-0":"-translate-x-full")}>
-    <div className="border-b border-[#302e29] px-3 py-3">
-      <div className="flex items-start justify-between gap-2">
-        <Link href={localizedHref("/orchard/dashboard")} onClick={onClose} className="flex min-w-0 flex-1 items-center gap-3 rounded-md border border-[#34322d] bg-[#24231f] px-2.5 py-2.5 transition-colors hover:bg-[#2a2924]">
-          <img src="/blackswan-logo.png" alt="Black Swan" className="h-8 w-8 shrink-0 object-contain"/>
-          <div className="min-w-0"><p className="truncate text-[13px] font-semibold text-[#f1eee7]">{text.farm}</p><p className="mt-0.5 text-[10px] text-[#918b82]">{text.owner}</p></div>
+    <div className="border-b border-[#302e29] px-3 pb-3 pt-4">
+      <div className="flex items-center justify-between gap-2 px-1">
+        <Link href={localizedHref("/orchard/dashboard")} onClick={onClose} className="flex min-w-0 items-center gap-2.5 text-[#9bd8b8] hover:text-[#bde1cf]">
+          <img src="/blackswan-logo.png" alt="Black Swan" className="h-7 w-7 shrink-0 object-contain"/>
+          <span className="truncate text-[15px] font-semibold tracking-[-0.02em]">{text.farm}</span>
         </Link>
         <button type="button" onClick={onClose} className="rounded p-1 hover:bg-[#24231f] md:hidden" aria-label="Close"><X className="h-4 w-4"/></button>
       </div>
+      <Link href={localizedHref("/orchard/dashboard")} onClick={onClose} className="mt-3 flex min-w-0 items-center gap-3 rounded-md bg-[#24231f] px-3 py-2.5 transition-colors hover:bg-[#2a2924]">
+        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#174335] text-[11px] font-semibold text-[#bde1cf]">BS</span>
+        <div className="min-w-0 flex-1"><p className="text-[10px] text-[#918b82]">{ownerRole}</p><p className="mt-0.5 truncate text-[13px] font-medium text-[#f1eee7]">BS</p></div>
+      </Link>
       <label className="mt-3 block md:hidden">
         <span className="mb-1.5 block text-[10px] font-semibold uppercase tracking-[.14em] text-[#918b82]">{text.season}</span>
         <select value={selected?.id??""} onChange={event=>changePlan(event.target.value)} disabled={loading||!plans.length} className="h-10 w-full rounded-md border border-[#3a3731] bg-[#1a1917] px-2.5 text-xs text-[#f1eee7] outline-none focus:border-[#8bcba8]">
