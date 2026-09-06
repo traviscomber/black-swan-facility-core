@@ -209,7 +209,7 @@ test("Orchard decision cockpit localizes the refresh action", async () => {
 })
 
 test("Orchard soil migration preserves canonical columns and exposes compatibility aliases", async () => {
-  const source = await readFile("supabase/migrations/20260829235000_orchard_soil_compat_aliases.sql", "utf8")
+  const source = await readFile("supabase/migrations/20260829232430_orchard_soil_compat_aliases.sql", "utf8")
 
   assert.match(source, /application_date date generated always as \(amendment_date\) stored/)
   assert.match(source, /description text generated always as \(notes\) stored/)
