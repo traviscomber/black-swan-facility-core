@@ -22,6 +22,11 @@ import {
   Sprout,
   StickyNote,
   TestTube2,
+  Users,
+  Store,
+  ListChecks,
+  SlidersHorizontal,
+  Building2,
   X,
 } from "lucide-react"
 import { LanguageSwitcher } from "@/components/language-switcher"
@@ -65,10 +70,23 @@ const advancedItems:NavItem[] = [
   { href:"/orchard/analytics", label:{en:"Data & analytics",es:"Datos y análisis",de:"Daten & Analyse"}, icon:BarChart3 },
 ]
 
+const chartItems:NavItem[] = [
+  { href:"/orchard/charts/tasks", label:{en:"Task Chart",es:"Gráfico de tareas",de:"Aufgabendiagramm"}, icon:ListChecks },
+  { href:"/orchard/charts/crops", label:{en:"Crop Chart",es:"Gráfico de cultivos",de:"Kulturdiagramm"}, icon:Sprout },
+]
+
+const settingsItems:NavItem[] = [
+  { href:"/orchard/settings", label:{en:"Preferences",es:"Preferencias",de:"Präferenzen"}, icon:SlidersHorizontal },
+  { href:"/orchard/settings/collaborators", label:{en:"Collaborators",es:"Colaboradores",de:"Mitarbeitende"}, icon:Users },
+  { href:"/orchard/settings/farms", label:{en:"Farms",es:"Granjas",de:"Höfe"}, icon:Building2 },
+  { href:"/orchard/settings/sales-channels", label:{en:"Sales Channels",es:"Canales de venta",de:"Vertriebskanäle"}, icon:Store },
+  { href:"/orchard/settings/task-management", label:{en:"Task Management",es:"Gestión de tareas",de:"Aufgabenverwaltung"}, icon:ListChecks },
+]
+
 const copy = {
-  en:{farm:"Black Swan Orchard",owner:"Owner · BS",season:"Season",mySeason:"MY SEASON",myFarm:"MY FARM",more:"MORE",logout:"Sign out",loading:"Loading season…",settings:"Settings"},
-  es:{farm:"Black Swan Orchard",owner:"Propietario · BS",season:"Temporada",mySeason:"MI TEMPORADA",myFarm:"MI GRANJA",more:"MÁS",logout:"Cerrar sesión",loading:"Cargando temporada…",settings:"Configuración"},
-  de:{farm:"Black Swan Orchard",owner:"Eigentümer · BS",season:"Saison",mySeason:"MEINE SAISON",myFarm:"MEIN HOF",more:"MEHR",logout:"Abmelden",loading:"Saison wird geladen…",settings:"Einstellungen"},
+  en:{farm:"Black Swan Orchard",owner:"Owner · BS",season:"Season",mySeason:"MY SEASON",myFarm:"MY FARM",more:"MORE",logout:"Sign out",loading:"Loading season…",charts:"Charts",settings:"Settings"},
+  es:{farm:"Black Swan Orchard",owner:"Propietario · BS",season:"Temporada",mySeason:"MI TEMPORADA",myFarm:"MI GRANJA",more:"MÁS",logout:"Cerrar sesión",loading:"Cargando temporada…",charts:"Gráficos",settings:"Configuración"},
+  de:{farm:"Black Swan Orchard",owner:"Eigentümer · BS",season:"Saison",mySeason:"MEINE SAISON",myFarm:"MEIN HOF",more:"MEHR",logout:"Abmelden",loading:"Saison wird geladen…",charts:"Diagramme",settings:"Einstellungen"},
 } as const
 
 function stripLocale(pathname:string){return pathname.replace(/^\/(en|es|de)(?=\/|$)/,"")||"/"}
@@ -116,6 +134,7 @@ export function OrchardSidebar({isOpen=true,onClose}:{isOpen?:boolean;onClose?:(
   const selected=plans.find(plan=>plan.id===requested)??plans.find(plan=>plan.status==="active")??plans.find(plan=>plan.status==="draft")??plans[0]??null
   const localizedHref=(href:string)=>{
     const params=new URLSearchParams(searchParams.toString())
+    params.delete("tab")
     if(selected?.id)params.set("game_plan",selected.id)
     const query=params.toString()
     return `/${language}${href}${query?`?${query}`:""}`
@@ -126,7 +145,8 @@ export function OrchardSidebar({isOpen=true,onClose}:{isOpen?:boolean;onClose?:(
     router.push(`${pathname}?${params.toString()}`)
   }
   const logout=async()=>{await supabase.auth.signOut();router.push(`/${language}/auth/login`)}
-  const renderItem=(item:NavItem)=>{const Icon=item.icon;const active=itemActive(internalPathname,item);return <Link key={item.href} href={localizedHref(item.href)} onClick={onClose} aria-current={active?"page":undefined} className={cn("flex min-h-10 items-center gap-3 rounded-md px-3 text-[13px] transition-colors",active?"bg-[#14382d] font-medium text-[#9bd8b8]":"text-[#c2bbb0] hover:bg-[#24231f] hover:text-[#f1eee7]")}><Icon className="h-4 w-4 shrink-0"/><span className="truncate">{item.label[locale]}</span></Link>}
+  const renderItem=(item:NavItem,compact=false)=>{const Icon=item.icon;const active=itemActive(internalPathname,item);return <Link key={item.href} href={localizedHref(item.href)} onClick={onClose} aria-current={active?"page":undefined} className={cn("flex min-h-10 items-center gap-3 rounded-md px-3 text-[13px] transition-colors",compact&&"min-h-9 pl-4 text-[12px]",active?"bg-[#14382d] font-medium text-[#9bd8b8]":"text-[#c2bbb0] hover:bg-[#24231f] hover:text-[#f1eee7]")}><Icon className="h-4 w-4 shrink-0"/><span className="truncate">{item.label[locale]}</span></Link>}
+  const renderGroup=(label:string,icon:typeof Home,items:NavItem[],open:boolean)=>{const Icon=icon;return <details className="group mt-0.5" defaultOpen={open}><summary className={cn("flex min-h-10 cursor-pointer list-none items-center gap-3 rounded-md px-3 text-[13px] text-[#c2bbb0] hover:bg-[#24231f] hover:text-[#f1eee7] marker:content-none [&::-webkit-details-marker]:hidden",open&&"text-[#f1eee7]")}><Icon className="h-4 w-4 shrink-0"/><span className="flex-1">{label}</span><ChevronDown className="h-4 w-4 transition-transform group-open:rotate-180"/></summary><div className="mt-0.5 space-y-0.5 border-l border-[#302e29] pl-2">{items.map(item=>renderItem(item,true))}</div></details>}
   const ownerRole=text.owner.split(" · ")[0]
 
   return <div data-orchard-sidebar className={cn("fixed inset-y-0 left-0 z-50 flex h-screen w-64 flex-col border-r border-[#302e29] bg-[#11110f] text-[#f1eee7] transition-transform duration-300 md:relative md:inset-auto md:z-auto md:h-full md:translate-x-0",isOpen?"translate-x-0":"-translate-x-full")}>
@@ -151,18 +171,19 @@ export function OrchardSidebar({isOpen=true,onClose}:{isOpen?:boolean;onClose?:(
     </div>
 
     <nav className="min-h-0 flex-1 overflow-y-auto px-3 py-3">
-      <div className="space-y-0.5">{topItems.map(renderItem)}</div>
+      <div className="space-y-0.5">{topItems.map(item=>renderItem(item))}</div>
       <div className="my-3 border-t border-[#302e29]"/>
       <p className="px-3 pb-1.5 text-[9px] font-semibold tracking-[.15em] text-[#777169]">{text.mySeason}</p>
-      <div className="space-y-0.5">{seasonItems.map(renderItem)}</div>
+      <div className="space-y-0.5">{seasonItems.map(item=>renderItem(item))}</div>
       <div className="my-3 border-t border-[#302e29]"/>
       <p className="px-3 pb-1.5 text-[9px] font-semibold tracking-[.15em] text-[#777169]">{text.myFarm}</p>
-      <div className="space-y-0.5">{farmItems.map(renderItem)}</div>
+      <div className="space-y-0.5">{farmItems.map(item=>renderItem(item))}</div>
       <details className="group mt-0.5">
         <summary className="flex min-h-10 cursor-pointer list-none items-center justify-between rounded-md px-3 text-[13px] text-[#c2bbb0] hover:bg-[#24231f] hover:text-[#f1eee7] marker:content-none [&::-webkit-details-marker]:hidden"><span>{text.more}</span><ChevronDown className="h-4 w-4 transition-transform group-open:rotate-180"/></summary>
-        <div className="mt-0.5 space-y-0.5 border-l border-[#302e29] pl-2">{advancedItems.map(renderItem)}</div>
+        <div className="mt-0.5 space-y-0.5 border-l border-[#302e29] pl-2">{advancedItems.map(item=>renderItem(item,true))}</div>
       </details>
-      <Link href={localizedHref("/orchard/settings")} onClick={onClose} aria-current={internalPathname==="/orchard/settings"?"page":undefined} className={cn("mt-0.5 flex min-h-10 items-center gap-3 rounded-md px-3 text-[13px] transition-colors",internalPathname==="/orchard/settings"?"bg-[#14382d] font-medium text-[#9bd8b8]":"text-[#c2bbb0] hover:bg-[#24231f] hover:text-[#f1eee7]")}><Settings className="h-4 w-4"/><span>{text.settings}</span></Link>
+      {renderGroup(text.charts,BarChart3,chartItems,internalPathname.startsWith("/orchard/charts"))}
+      {renderGroup(text.settings,Settings,settingsItems,internalPathname.startsWith("/orchard/settings"))}
     </nav>
 
     <div className="space-y-2 border-t border-[#302e29] p-3">
