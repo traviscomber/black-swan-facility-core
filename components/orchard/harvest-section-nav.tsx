@@ -11,6 +11,14 @@ const copy = {
   de: { channels: "Verkaufskanäle", season: "Saisonernte", weekly: "Wochenernten", farmSettings: "Hofeinstellungen", farmData: "Hofdaten", team: "Team" },
 } as const
 
+const SETTINGS_DENSITY_CSS = `
+@media (min-width:768px) {
+  body:has(nav[aria-label="Settings workspace"]) main h1 {
+    display: none !important;
+  }
+}
+`
+
 function stripLocale(pathname: string) {
   return pathname.replace(/^\/(en|es|de)(?=\/|$)/, "") || "/"
 }
@@ -39,7 +47,8 @@ export function OrchardHarvestSectionNav() {
         { href: "/orchard/harvest/desk", label: text.weekly, icon: Leaf, active: pathname === "/orchard/harvest/desk" },
       ]
 
-  return (
+  return <>
+    {inSettingsWorkspace ? <style>{SETTINGS_DENSITY_CSS}</style> : null}
     <nav
       aria-label={inSettingsWorkspace ? "Settings workspace" : "Harvest workspace"}
       className="sticky top-0 z-30 flex min-h-12 w-full items-stretch overflow-x-auto border-b border-[var(--bs-divider-subtle)] bg-[var(--orchard-canvas,#171512)] px-3 sm:px-5"
@@ -60,5 +69,5 @@ export function OrchardHarvestSectionNav() {
         )
       })}
     </nav>
-  )
+  </>
 }
