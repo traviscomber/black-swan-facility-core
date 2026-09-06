@@ -107,29 +107,40 @@ export default function OrchardFarmMapSatellitePage(){
    const rect={xPct:n(item.x_pct),yPct:n(item.y_pct),widthPct:n(item.width_pct,9),heightPct:n(item.height_pct,13),rotationDeg:n(item.rotation_deg)}
    const layer=L.polygon(farmMapRectToLatLngs(rect),{color:"#d7b17a",weight:1.8,opacity:.95,dashArray:"5 4",fillColor:"#d7b17a",fillOpacity:.11,className:"cursor-move"})
    layer.bindTooltip?.(`${item.name} · ${text.provisional}`,{direction:"center",permanent:false,opacity:.9})
-   layer.on?.("mousedown",event=>{
+   const beginDrag=(event:LeafletMouseEvent)=>{
     event.originalEvent?.preventDefault?.();event.originalEvent?.stopPropagation?.()
     activeDragCleanupRef.current?.()
     map.dragging.disable()
     const startImage=latLngToImagePoint(event.latlng)
     const startX=rect.xPct;const startY=rect.yPct
-    let nextX=startX;let nextY=startY
+    let nextX=startX;let nextY=startY;let finished=false
     const onMove=(moveEvent:LeafletMouseEvent)=>{
      const image=latLngToImagePoint(moveEvent.latlng)
      nextX=clamp(startX+((image.x-startImage.x)/PROVISIONAL_GEOREF.imageWidth)*100,2,98)
      nextY=clamp(startY+((image.y-startImage.y)/PROVISIONAL_GEOREF.imageHeight)*100,2,98)
      layer.setLatLngs?.(farmMapRectToLatLngs({...rect,xPct:nextX,yPct:nextY}))
     }
-    const cleanup=()=>{map.off("mousemove",onMove);map.off("mouseup",onUp);map.dragging.enable();activeDragCleanupRef.current=null}
-    const onUp=()=>{
-     cleanup()
+    const cleanup=()=>{
+     map.off("mousemove",onMove);map.off("touchmove",onMove)
+     document.removeEventListener("mouseup",finish)
+     document.removeEventListener("touchend",finish)
+     document.removeEventListener("touchcancel",finish)
+     map.dragging.enable();activeDragCleanupRef.current=null
+    }
+    const finish=()=>{
+     if(finished)return
+     finished=true;cleanup()
      if(Math.abs(nextX-startX)<0.0001&&Math.abs(nextY-startY)<0.0001)return
      setFarmObjects(current=>current.map(row=>row.id===item.id?{...row,x_pct:nextX,y_pct:nextY}:row))
      void supabase.from("orchard_farm_map_objects").update({x_pct:nextX,y_pct:nextY,updated_at:new Date().toISOString()}).eq("id",item.id).then(result=>{if(result.error)setError(text.saveError)})
     }
     activeDragCleanupRef.current=cleanup
-    map.on("mousemove",onMove);map.on("mouseup",onUp)
-   })
+    map.on("mousemove",onMove);map.on("touchmove",onMove)
+    document.addEventListener("mouseup",finish,{once:true})
+    document.addEventListener("touchend",finish,{once:true})
+    document.addEventListener("touchcancel",finish,{once:true})
+   }
+   layer.on?.("mousedown",beginDrag);layer.on?.("touchstart",beginDrag)
    blockLayerRefs.current.set(item.id,layer);map.addLayer(layer)
   }
  },[farmObjects,showBlocks,text.provisional,text.saveError,mapReady,supabase])
