@@ -14,10 +14,11 @@ type GisOverlay={id:string;name:string;file_url:string;file_type:string|null;is_
 type FarmMapObject={id:string;object_type:string;name:string;x_pct:number|string;y_pct:number|string;width_pct:number|string;height_pct:number|string;rotation_deg:number|string;is_visible:boolean}
 type OverlayState="idle"|"loading"|"ready"|"error"
 type LeafletBounds={isValid:()=>boolean}
-type LeafletMouseEvent={latlng:{lat:number;lng:number};originalEvent?:{preventDefault?:()=>void;stopPropagation?:()=>void}}
+type DragSource={clientX?:number;clientY?:number;touches?:ArrayLike<{clientX:number;clientY:number}>;changedTouches?:ArrayLike<{clientX:number;clientY:number}>;preventDefault?:()=>void;stopPropagation?:()=>void}
+type LeafletMouseEvent={latlng:{lat:number;lng:number};originalEvent?:DragSource}
 type LeafletLayer={addTo:(map:LeafletMap)=>LeafletLayer;getBounds?:()=>LeafletBounds;bindTooltip?:(content:string,options?:Record<string,unknown>)=>LeafletLayer;on?:(event:string,handler:(event:LeafletMouseEvent)=>void)=>LeafletLayer;setLatLngs?:(latlngs:[number,number][])=>LeafletLayer}
 type TileLayer=LeafletLayer&{on:(event:string,handler:()=>void)=>TileLayer}
-type LeafletMap={setView:(center:[number,number],zoom:number)=>LeafletMap;fitBounds:(bounds:[[number,number],[number,number]],options?:Record<string,unknown>)=>LeafletMap;addLayer:(layer:LeafletLayer)=>LeafletMap;removeLayer:(layer:LeafletLayer)=>LeafletMap;hasLayer:(layer:LeafletLayer)=>boolean;invalidateSize:()=>void;remove:()=>void;on:(event:string,handler:(event:LeafletMouseEvent)=>void)=>LeafletMap;off:(event:string,handler:(event:LeafletMouseEvent)=>void)=>LeafletMap;dragging:{disable:()=>void;enable:()=>void}}
+type LeafletMap={setView:(center:[number,number],zoom:number)=>LeafletMap;fitBounds:(bounds:[[number,number],[number,number]],options?:Record<string,unknown>)=>LeafletMap;addLayer:(layer:LeafletLayer)=>LeafletMap;removeLayer:(layer:LeafletLayer)=>LeafletMap;hasLayer:(layer:LeafletLayer)=>boolean;invalidateSize:()=>void;remove:()=>void;containerPointToLatLng:(point:[number,number])=>{lat:number;lng:number};dragging:{disable:()=>void;enable:()=>void}}
 type RuntimeLeaflet={map:(element:HTMLElement,options?:Record<string,unknown>)=>LeafletMap;tileLayer:(url:string,options?:Record<string,unknown>)=>TileLayer;geoJSON:(data:unknown,options?:Record<string,unknown>)=>LeafletLayer;circleMarker:(latlng:unknown,options?:Record<string,unknown>)=>LeafletLayer;polygon:(latlngs:[number,number][],options?:Record<string,unknown>)=>LeafletLayer;control:{zoom:(options?:Record<string,unknown>)=>{addTo:(map:LeafletMap)=>unknown}}}
 
 const CORCOVADO_CENTER:[number,number]=[-39.699435,-73.205363]
@@ -32,6 +33,14 @@ const overlayColor=(name:string)=>{const value=name.toLowerCase();if(value.inclu
 const n=(value:number|string|undefined,fallback=0)=>{const parsed=Number(value);return Number.isFinite(parsed)?parsed:fallback}
 const clamp=(value:number,min:number,max:number)=>Math.max(min,Math.min(max,value))
 const isOperationalArea=(type:string)=>["field_block","greenhouse","tunnel","farm_area"].includes(type)
+const dragClientPoint=(event:DragSource|MouseEvent|TouchEvent|undefined)=>{
+ if(!event)return null
+ const source=event as DragSource
+ const touch=source.touches?.[0]??source.changedTouches?.[0]
+ const clientX=touch?.clientX??source.clientX
+ const clientY=touch?.clientY??source.clientY
+ return Number.isFinite(clientX)&&Number.isFinite(clientY)?{x:Number(clientX),y:Number(clientY)}:null
+}
 
 export default function OrchardFarmMapSatellitePage(){
  const {language}=useLanguage();const lang:Locale=language;const text=copy[lang]
@@ -112,18 +121,26 @@ export default function OrchardFarmMapSatellitePage(){
    const beginDrag=(event:LeafletMouseEvent)=>{
     event.originalEvent?.preventDefault?.();event.originalEvent?.stopPropagation?.()
     activeDragCleanupRef.current?.()
+    const container=mapContainerRef.current
+    const startClient=dragClientPoint(event.originalEvent)
+    if(!container||!startClient)return
     map.dragging.disable()
-    const startImage=latLngToImagePoint(event.latlng)
+    const bounds=container.getBoundingClientRect()
+    const toImagePoint=(client:{x:number;y:number})=>latLngToImagePoint(map.containerPointToLatLng([client.x-bounds.left,client.y-bounds.top]))
+    const startImage=toImagePoint(startClient)
     const startX=rect.xPct;const startY=rect.yPct
     let nextX=startX;let nextY=startY;let finished=false
-    const onMove=(moveEvent:LeafletMouseEvent)=>{
-     const image=latLngToImagePoint(moveEvent.latlng)
+    const onMove=(moveEvent:MouseEvent|TouchEvent)=>{
+     moveEvent.preventDefault()
+     const client=dragClientPoint(moveEvent);if(!client)return
+     const image=toImagePoint(client)
      nextX=clamp(startX+((image.x-startImage.x)/PROVISIONAL_GEOREF.imageWidth)*100,2,98)
      nextY=clamp(startY+((image.y-startImage.y)/PROVISIONAL_GEOREF.imageHeight)*100,2,98)
      layer.setLatLngs?.(farmMapRectToLatLngs({...rect,xPct:nextX,yPct:nextY}))
     }
     const cleanup=()=>{
-     map.off("mousemove",onMove);map.off("touchmove",onMove)
+     document.removeEventListener("mousemove",onMove)
+     document.removeEventListener("touchmove",onMove)
      document.removeEventListener("mouseup",finish)
      document.removeEventListener("touchend",finish)
      document.removeEventListener("touchcancel",finish)
@@ -137,7 +154,8 @@ export default function OrchardFarmMapSatellitePage(){
      void supabase.from("orchard_farm_map_objects").update({x_pct:nextX,y_pct:nextY,updated_at:new Date().toISOString()}).eq("id",item.id).then(result=>{if(result.error)setError(text.saveError)})
     }
     activeDragCleanupRef.current=cleanup
-    map.on("mousemove",onMove);map.on("touchmove",onMove)
+    document.addEventListener("mousemove",onMove,{passive:false})
+    document.addEventListener("touchmove",onMove,{passive:false})
     document.addEventListener("mouseup",finish,{once:true})
     document.addEventListener("touchend",finish,{once:true})
     document.addEventListener("touchcancel",finish,{once:true})
