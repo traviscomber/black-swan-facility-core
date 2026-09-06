@@ -39,10 +39,25 @@ body:has([data-orchard-seed-orders-layout]) main table tbody tr:hover td:first-c
     padding: 20px 40px 40px !important;
   }
 
-  body:has([data-orchard-seed-orders-layout]) main > header,
-  body:has([data-orchard-seed-orders-layout]) main > section:first-of-type,
-  body:has([data-orchard-seed-orders-layout]) main > section:first-of-type + div:not([class*="overflow-x-auto"]) {
+  body:has([data-orchard-seed-orders-layout]) main > header {
     display: none !important;
+  }
+
+  body:has([data-orchard-seed-orders-layout]) main > section:first-of-type {
+    margin-bottom: 12px !important;
+    padding: 8px 0 12px !important;
+  }
+
+  body:has([data-orchard-seed-orders-layout]) main > section:first-of-type label {
+    max-width: 240px !important;
+    min-height: 40px !important;
+    border-radius: 7px !important;
+    border-color: #34322d !important;
+    background: #151513 !important;
+  }
+
+  body:has([data-orchard-seed-orders-layout]) main > section:first-of-type input {
+    font-size: 12px !important;
   }
 
   body:has([data-orchard-seed-orders-layout]) main > div.overflow-x-auto {
