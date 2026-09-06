@@ -39,8 +39,7 @@ body:has([data-orchard-seed-orders-layout]) main table tbody tr:hover td:first-c
     padding: 20px 40px 40px !important;
   }
 
-  body:has([data-orchard-seed-orders-layout]) main > header,
-  body:has([data-orchard-seed-orders-layout]) main > section:first-of-type + div:not([class*="overflow-x-auto"]) {
+  body:has([data-orchard-seed-orders-layout]) main > header {
     display: none !important;
   }
 
