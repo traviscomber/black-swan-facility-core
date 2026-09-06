@@ -5,8 +5,7 @@
 -- Historical Heirloom migrations remain untouched for auditability. This
 -- migration corrects current canonical planning quantities only where the XLS
 -- provenance is explicit and internally corroborated by planned_area_sqm.
--- Existing physical bed identities are preserved; allocation lengths are scaled
--- proportionally rather than moving plantings to different beds.
+-- Existing physical bed identities and date ranges are preserved.
 
 begin;
 
@@ -80,7 +79,6 @@ begin
   with source as (
     select
       s.id,
-      s.planned_bed_m,
       (s.knowledge_source_snapshot->>'beds_10m')::numeric * 10 as source_bed_m
     from public.orchard_crop_successions s
     join public.orchard_crop_cycles c on c.id = s.crop_cycle_id
@@ -116,17 +114,20 @@ begin
   end if;
 end $$;
 
--- Preserve every current physical bed identity and date range. The existing
--- allocation footprint came from the inflated 30 m reference quantity, so each
--- segment is reduced proportionally to one third. No bed is added, removed or
--- substituted by this update.
+-- Preserve every existing bed ID and date range. Because allocated_length_m is
+-- numeric(10,2), independently dividing each fragment by three would introduce
+-- cent-level residue. All but the last fragment are rounded proportionally;
+-- the final fragment receives only the rounding residue so each succession
+-- closes exactly to its explicit XLS source_bed_m.
 with plan as (
   select id
   from public.orchard_game_plans
   where name = 'BS Orchard — Crop Plan 2026/27'
     and season = '2026/27'
 ), targets as (
-  select s.id
+  select
+    s.id,
+    (s.knowledge_source_snapshot->>'beds_10m')::numeric * 10 as source_bed_m
   from public.orchard_crop_successions s
   join public.orchard_crop_cycles c on c.id = s.crop_cycle_id
   where c.game_plan_id = (select id from plan)
@@ -134,22 +135,56 @@ with plan as (
     and jsonb_typeof(s.knowledge_source_snapshot->'beds_10m') = 'number'
     and (s.knowledge_source_snapshot->>'beds_10m')::numeric > 0
     and s.planned_bed_m = (s.knowledge_source_snapshot->>'beds_10m')::numeric * 30
+), ordered as (
+  select
+    a.id as allocation_id,
+    a.crop_succession_id,
+    a.allocated_length_m,
+    b.width_m,
+    t.source_bed_m,
+    row_number() over (
+      partition by a.crop_succession_id
+      order by p.name, b.planning_order nulls last, b.name, a.id
+    ) as rn,
+    count(*) over (partition by a.crop_succession_id) as fragment_count
+  from public.orchard_bed_allocations a
+  join targets t on t.id = a.crop_succession_id
+  join public.orchard_beds b on b.id = a.bed_id
+  join public.orchard_plots p on p.id = b.plot_id
+  where p.name ~ '^(Current 0[1-5]|Expansion 0[1-3])$'
+), rounded as (
+  select
+    *,
+    round(allocated_length_m / 3, 2) as rounded_length
+  from ordered
+), resolved as (
+  select
+    allocation_id,
+    width_m,
+    case
+      when rn < fragment_count then rounded_length
+      else source_bed_m - coalesce(
+        sum(rounded_length) filter (where rn < fragment_count)
+          over (partition by crop_succession_id),
+        0
+      )
+    end as new_length
+  from rounded
 )
 update public.orchard_bed_allocations a
-set allocated_length_m = a.allocated_length_m / 3,
-    allocated_area_sqm = (a.allocated_length_m / 3) * b.width_m,
+set allocated_length_m = resolved.new_length,
+    allocated_area_sqm = resolved.new_length * resolved.width_m,
     notes = concat_ws(
       ' | ',
       nullif(a.notes, ''),
-      '2026-09-06 XLS reconciliation: retained existing bed identity/date range; allocation length scaled from legacy Heirloom 30 m reference to explicit Black Swan beds_10m source.'
+      '2026-09-06 XLS reconciliation: retained existing bed identity/date range; allocation length rescaled from legacy Heirloom 30 m reference to explicit Black Swan beds_10m source.'
     )
-from public.orchard_beds b
-where b.id = a.bed_id
-  and a.crop_succession_id in (select id from targets);
+from resolved
+where a.id = resolved.allocation_id;
 
--- For all 65 successions with explicit numeric XLS provenance, the canonical
--- planning demand is the number of 10 m beds multiplied by 10 m. This both
--- corrects the 48 legacy ×30 values and recovers the 17 source-backed NULLs.
+-- For all 65 successions with explicit numeric XLS provenance, canonical demand
+-- is the number of 10 m beds multiplied by 10 m. This corrects the 48 legacy
+-- ×30 values and recovers the 17 source-backed NULLs.
 with plan as (
   select id
   from public.orchard_game_plans
