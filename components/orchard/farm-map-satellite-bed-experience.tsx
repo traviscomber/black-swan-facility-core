@@ -244,9 +244,9 @@ export function FarmMapSatelliteExperience() {
       beds.forEach((bed, index) => {
         const points = strips[index]
         if (!points) return
-        const primary = primaryBedAllocation(bed), hasPlan = primary != null, color = hasPlan ? cropFamilyColor(primary.family) : "#8f8a81"
-        const bedLayer = L.polygon(points, { color, weight: active ? 1.35 : .9, opacity: hasPlan ? .96 : .72, fillColor: hasPlan ? color : "#5d5a54", fillOpacity: hasPlan ? .21 : .08, interactive: true })
-        bedLayer.bindTooltip?.(`<b><i style="background:${safe(color)}"></i>${safe(bedCode(bed))}</b><span>${safe(bedPlanText(bed, text.noPlan))}</span>`, { permanent: false, sticky: true, direction: "top", opacity: 1, className: `orchard-bed-hover${hasPlan ? "" : " orchard-bed-hover-empty"}` })
+        const primary = primaryBedAllocation(bed), hasPlan = primary != null, fill = hasPlan ? cropFamilyColor(primary.family) : "#8f8a81"
+        const bedLayer = L.polygon(points, { color: active ? "#bde1cf" : "#f1eee7", weight: active ? 1.05 : .55, opacity: active ? .82 : .42, fillColor: hasPlan ? fill : "#5d5a54", fillOpacity: hasPlan ? (active ? .28 : .18) : .035, interactive: true })
+        bedLayer.bindTooltip?.(`<b><i style="background:${safe(fill)}"></i>${safe(bedCode(bed))}</b><span>${safe(bedPlanText(bed, text.noPlan))}</span>`, { permanent: false, sticky: true, direction: "top", opacity: 1, className: `orchard-bed-hover${hasPlan ? "" : " orchard-bed-hover-empty"}` })
         bedLayer.on?.("mousedown", (e) => { e.originalEvent?.stopPropagation?.(); setSelected(o.id); setDrawer(false) })
         bedLayers.current.set(`${o.id}:${bed.id}`, bedLayer); map.addLayer(bedLayer)
       })
