@@ -1,14 +1,14 @@
 "use client"
 
 import Link from "next/link"
-import { CalendarRange, Leaf, Store } from "lucide-react"
+import { CalendarRange, Database, Leaf, Settings2, Store, Users } from "lucide-react"
 import { usePathname, useSearchParams } from "next/navigation"
 import { useLanguage } from "@/lib/hooks/use-language"
 
 const copy = {
-  en: { channels: "Sales Channels", season: "Season Harvests", weekly: "Weekly Harvests" },
-  es: { channels: "Canales de venta", season: "Cosecha temporada", weekly: "Cosechas semanales" },
-  de: { channels: "Verkaufskanäle", season: "Saisonernte", weekly: "Wochenernten" },
+  en: { channels: "Sales Channels", season: "Season Harvests", weekly: "Weekly Harvests", farmSettings: "Farm settings", farmData: "Farm data", team: "Team" },
+  es: { channels: "Canales de venta", season: "Cosecha temporada", weekly: "Cosechas semanales", farmSettings: "Configuración de granja", farmData: "Datos de granja", team: "Equipo" },
+  de: { channels: "Verkaufskanäle", season: "Saisonernte", weekly: "Wochenernten", farmSettings: "Hofeinstellungen", farmData: "Hofdaten", team: "Team" },
 } as const
 
 function stripLocale(pathname: string) {
@@ -22,19 +22,26 @@ export function OrchardHarvestSectionNav() {
   const text = copy[language as keyof typeof copy] ?? copy.en
 
   const inHarvestWorkspace = pathname === "/orchard/commercial" || pathname.startsWith("/orchard/harvest")
-  if (!inHarvestWorkspace) return null
+  const inSettingsWorkspace = pathname === "/orchard/settings" || pathname.startsWith("/orchard/settings/")
+  if (!inHarvestWorkspace && !inSettingsWorkspace) return null
 
   const query = searchParams.toString()
   const href = (path: string) => `/${language}${path}${query ? `?${query}` : ""}`
-  const items = [
-    { href: "/orchard/commercial", label: text.channels, icon: Store, active: pathname === "/orchard/commercial" },
-    { href: "/orchard/harvest/season", label: text.season, icon: CalendarRange, active: pathname === "/orchard/harvest/season" },
-    { href: "/orchard/harvest/desk", label: text.weekly, icon: Leaf, active: pathname === "/orchard/harvest/desk" },
-  ]
+  const items = inSettingsWorkspace
+    ? [
+        { href: "/orchard/settings", label: text.farmSettings, icon: Settings2, active: pathname === "/orchard/settings" },
+        { href: "/orchard/settings/farm-data", label: text.farmData, icon: Database, active: pathname === "/orchard/settings/farm-data" },
+        { href: "/orchard/settings/team", label: text.team, icon: Users, active: pathname === "/orchard/settings/team" },
+      ]
+    : [
+        { href: "/orchard/commercial", label: text.channels, icon: Store, active: pathname === "/orchard/commercial" },
+        { href: "/orchard/harvest/season", label: text.season, icon: CalendarRange, active: pathname === "/orchard/harvest/season" },
+        { href: "/orchard/harvest/desk", label: text.weekly, icon: Leaf, active: pathname === "/orchard/harvest/desk" },
+      ]
 
   return (
     <nav
-      aria-label="Harvest workspace"
+      aria-label={inSettingsWorkspace ? "Settings workspace" : "Harvest workspace"}
       className="sticky top-0 z-30 flex min-h-12 w-full items-stretch overflow-x-auto border-b border-[var(--bs-divider-subtle)] bg-[var(--orchard-canvas,#171512)] px-3 sm:px-5"
     >
       {items.map((item) => {
