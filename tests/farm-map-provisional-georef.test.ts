@@ -1,5 +1,6 @@
 import assert from "node:assert/strict"
 import test from "node:test"
+import { farmMapBedPolygons } from "../lib/orchard/farm-map-bed-layout.ts"
 import { farmMapRectToLatLngs, imagePointToLatLng, latLngToFarmMapPercent, latLngToImagePoint, PROVISIONAL_GEOREF } from "../lib/orchard/farm-map-provisional-georef.ts"
 
 test("provisional Farm Map georeference preserves observed anchor landmarks", () => {
@@ -34,4 +35,15 @@ test("farm-map rectangles become finite geographic polygons without rewriting so
     assert.ok(lat < -39.69 && lat > -39.71)
     assert.ok(lng < -73.19 && lng > -73.22)
   }
+})
+
+test("farm-map bed layout preserves ten canonical beds and their path gaps", () => {
+  const field: [number, number][] = [[0, 0], [0, 10], [10, 10], [10, 0]]
+  const beds = farmMapBedPolygons(field, { bedCount: 10, bedWidthM: 0.76, pathWidthM: 0.4 })
+
+  assert.equal(beds.length, 10)
+  assert.deepEqual(beds[0][0], [0, 0])
+  assert.ok(Math.abs(beds[9][1][1] - 10) < 1e-10)
+  assert.ok(beds[1][0][1] > beds[0][1][1])
+  assert.ok(beds.every((bed) => bed.length === 4 && bed.flat().every(Number.isFinite)))
 })
