@@ -20,7 +20,7 @@ const orchardReferenceMigration = readFileSync(
   "utf8",
 )
 const orchardTriggerRpcMigration = readFileSync(
-  new URL("../supabase/migrations/20260829235500_orchard_trigger_functions_not_rpc.sql", import.meta.url),
+  new URL("../supabase/migrations/20260829234905_orchard_trigger_functions_not_rpc.sql", import.meta.url),
   "utf8",
 )
 const orchardChartsPage = readFileSync(new URL("../app/orchard/charts/page.tsx", import.meta.url), "utf8")
