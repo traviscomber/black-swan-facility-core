@@ -1,5 +1,6 @@
 "use client"
 
+import Link from "next/link"
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { AlertTriangle, ArrowRight, CheckCircle2, MapPin, X } from "lucide-react"
 import { useSearchParams } from "next/navigation"
@@ -38,6 +39,7 @@ const COPY = {
     ready: "ready",
     blocked: "blocked",
     blockedHelp: "Blocked plantings still need planned bed metres or complete dates before physical assignment.",
+    resolveBedMeters: "Resolve missing bed metres",
     complete: "All reconciled plantings have a physical allocation.",
     loadError: "Could not load physical allocation data.",
     assignError: "Could not assign this planting.",
@@ -56,6 +58,7 @@ const COPY = {
     ready: "listas",
     blocked: "bloqueadas",
     blockedHelp: "Las plantaciones bloqueadas aún necesitan bed-m planificados o fechas completas antes de la asignación física.",
+    resolveBedMeters: "Resolver metros de cama faltantes",
     complete: "Todas las plantaciones reconciliadas tienen asignación física.",
     loadError: "No fue posible cargar las asignaciones físicas.",
     assignError: "No fue posible asignar esta plantación.",
@@ -74,6 +77,7 @@ const COPY = {
     ready: "bereit",
     blocked: "blockiert",
     blockedHelp: "Blockierte Pflanzungen benötigen noch geplante Beetmeter oder vollständige Termine vor der physischen Zuordnung.",
+    resolveBedMeters: "Fehlende Beetmeter ergänzen",
     complete: "Alle abgeglichenen Pflanzungen sind physisch zugeordnet.",
     loadError: "Physische Zuordnungen konnten nicht geladen werden.",
     assignError: "Pflanzung konnte nicht zugeordnet werden.",
@@ -160,6 +164,8 @@ export function CropMapQuickAssign() {
         || a.sequence_no - b.sequence_no
     })
   const blocked = planSuccessions.filter(item => !assignedIds.has(item.id) && !isReady(item))
+  const missingBedMeters = blocked.filter(item => !(Number(item.planned_bed_m) > 0)).length
+  const bedMeterHref = `/${language}/orchard/game-plan/bed-meters${plan ? `?game_plan=${encodeURIComponent(plan.id)}` : ""}`
 
   useEffect(() => {
     if (!pending.length) {
@@ -232,6 +238,7 @@ export function CropMapQuickAssign() {
           {blocked.length ? <span className="text-[10px] uppercase tracking-[.1em] text-[#b9a57a]">{blocked.length} {text.blocked}</span> : null}
         </div>
         <p className="mt-1 text-[11px] leading-4 text-[#aaa69c]">{pending.length ? text.help : blocked.length ? text.blockedHelp : text.complete}</p>
+        {missingBedMeters ? <Link href={bedMeterHref} className="mt-1 inline-flex text-[11px] font-medium text-[#bde1cf] hover:underline">{text.resolveBedMeters} ({missingBedMeters}) →</Link> : null}
       </div>
       <button type="button" onClick={() => setOpen(false)} aria-label={text.close} className="grid h-8 w-8 shrink-0 place-items-center rounded-md text-[#8f8a81] hover:bg-white/5">
         <X className="h-4 w-4" />
