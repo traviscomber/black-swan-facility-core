@@ -19,6 +19,12 @@ body:has([data-orchard-farm-map-layout]) main section > div:first-child > div > 
   letter-spacing: 0.01em;
 }
 
+@media (min-width: 768px) {
+  body:has([data-orchard-farm-map-layout]) [data-orchard-farm-map-layout] main > main > header {
+    display: none !important;
+  }
+}
+
 @media (max-width: 767px) {
   body:has([data-orchard-farm-map-layout]) main section > div:first-child > div > button[style*="left:"] > span {
     font-size: 8px;
