@@ -20,8 +20,27 @@ body:has([data-orchard-farm-map-layout]) main section > div:first-child > div > 
 }
 
 @media (min-width: 768px) {
+  body:has([data-orchard-farm-map-layout]) [data-orchard-farm-map-layout] main > main {
+    min-height: 0 !important;
+  }
+
   body:has([data-orchard-farm-map-layout]) [data-orchard-farm-map-layout] main > main > header {
     display: none !important;
+  }
+
+  body:has([data-orchard-farm-map-layout]) main section > div.absolute.bottom-4.left-4 > button:first-child {
+    width: auto !important;
+    gap: 7px;
+    padding: 0 12px !important;
+    color: #e8e5dc;
+  }
+
+  body:has([data-orchard-farm-map-layout]) main section > div.absolute.bottom-4.left-4 > button:first-child::after {
+    content: attr(aria-label);
+    white-space: nowrap;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.01em;
   }
 }
 
