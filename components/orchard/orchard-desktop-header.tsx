@@ -19,6 +19,7 @@ const routeTitles: RouteTitle[] = [
   { prefix: "/orchard/getting-started", title: { en: "Getting Started with Black Swan", es: "Primeros pasos con Black Swan", de: "Erste Schritte mit Black Swan" } },
   { prefix: "/orchard/dashboard", title: { en: "Dashboard", es: "Dashboard", de: "Dashboard" } },
   { prefix: "/orchard/crops/catalog", title: { en: "Crop Selection", es: "Selección de cultivos", de: "Kulturauswahl" } },
+  { prefix: "/orchard/game-plan/season", title: { en: "Game Plan - Planting Schedule", es: "Plan estratégico - Calendario de siembra", de: "Saisonplan - Pflanzkalender" } },
   { prefix: "/orchard/game-plan", title: { en: "Game Plan", es: "Plan estratégico", de: "Saisonplan" } },
   { prefix: "/orchard/crop-map", title: { en: "Crop Map", es: "Mapa de cultivos", de: "Anbaukarte" } },
   { prefix: "/orchard/seed-orders", title: { en: "Seeds & Transplants", es: "Semillas y trasplantes", de: "Saatgut & Jungpflanzen" } },
