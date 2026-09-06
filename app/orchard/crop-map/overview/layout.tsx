@@ -1,4 +1,5 @@
 import type { ReactNode } from "react"
+import { CropMapQuickAssign } from "./quick-assign"
 
 export default function CropMapOverviewLayout({ children }: { children: ReactNode }) {
   return <div data-heirloom-crop-map-parity="true" className="contents">
@@ -92,5 +93,6 @@ export default function CropMapOverviewLayout({ children }: { children: ReactNod
       }
     `}</style>
     {children}
+    <CropMapQuickAssign />
   </div>
 }
