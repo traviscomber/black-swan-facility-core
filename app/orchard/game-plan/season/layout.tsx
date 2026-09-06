@@ -1,8 +1,10 @@
 import type { ReactNode } from "react"
+import { GamePlanSeasonToolbar } from "@/components/orchard/game-plan-season-toolbar"
 import { CurrentWeekFocus } from "./current-week-focus"
 
 export default function SeasonLayout({ children }:{ children:ReactNode }) {
   return <div data-season-schedule-parity="true" className="contents">
+    <GamePlanSeasonToolbar/>
     <CurrentWeekFocus/>
     <style>{`
       @media (min-width: 768px) {
@@ -14,18 +16,21 @@ export default function SeasonLayout({ children }:{ children:ReactNode }) {
           display: none !important;
         }
 
-        [data-season-schedule-parity="true"] main > header + section {
+        [data-season-schedule-parity="true"] main > header + section,
+        [data-season-schedule-parity="true"] main > header + div[data-game-plan-season-toolbar] + section {
           padding: 10px 12px !important;
           background: #11110f !important;
           border-bottom-color: #302f2b !important;
         }
 
-        [data-season-schedule-parity="true"] main > header + section > div:first-child {
+        [data-season-schedule-parity="true"] main > header + section > div:first-child,
+        [data-season-schedule-parity="true"] main > header + div[data-game-plan-season-toolbar] + section > div:first-child {
           align-items: center !important;
           gap: 10px !important;
         }
 
-        [data-season-schedule-parity="true"] main > header + section label {
+        [data-season-schedule-parity="true"] main > header + section label,
+        [data-season-schedule-parity="true"] main > header + div[data-game-plan-season-toolbar] + section label {
           min-height: 36px !important;
           max-width: 240px !important;
           border-radius: 6px !important;
@@ -33,11 +38,13 @@ export default function SeasonLayout({ children }:{ children:ReactNode }) {
           background: #171614 !important;
         }
 
-        [data-season-schedule-parity="true"] main > header + section label input {
+        [data-season-schedule-parity="true"] main > header + section label input,
+        [data-season-schedule-parity="true"] main > header + div[data-game-plan-season-toolbar] + section label input {
           font-size: 12px !important;
         }
 
-        [data-season-schedule-parity="true"] main > header + section > div:last-child {
+        [data-season-schedule-parity="true"] main > header + section > div:last-child,
+        [data-season-schedule-parity="true"] main > header + div[data-game-plan-season-toolbar] + section > div:last-child {
           margin-top: 6px !important;
           gap: 12px !important;
           color: #8f8a81 !important;
