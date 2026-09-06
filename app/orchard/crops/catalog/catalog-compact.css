@@ -1,32 +1,106 @@
 body:has([data-orchard-crop-catalog-layout]) main > section.grid article > div:first-child {
-  height: 5.5rem !important;
+  height: 8.75rem !important;
+}
+
+body:has([data-orchard-crop-catalog-layout]) main > section.grid article > div:first-child img {
+  object-fit: contain !important;
+  padding: 0.9rem !important;
+}
+
+body:has([data-orchard-crop-catalog-layout]) main > section.grid article > div:first-child > span {
+  display: none !important;
+}
+
+body:has([data-orchard-crop-catalog-layout]) main > section.grid article {
+  border: 1px solid #292824 !important;
+  border-radius: 0.5rem !important;
+  box-shadow: none !important;
+  background: #181816 !important;
 }
 
 body:has([data-orchard-crop-catalog-layout]) main > section.grid article > div:last-child {
-  padding: 0.625rem !important;
+  padding: 0.75rem !important;
+  background: #181816 !important;
 }
 
 body:has([data-orchard-crop-catalog-layout]) main > section.grid article h2 {
-  min-height: 2.35em !important;
-  font-size: 0.9375rem !important;
+  min-height: auto !important;
+  font-size: 1rem !important;
+  line-height: 1.25 !important;
 }
 
 body:has([data-orchard-crop-catalog-layout]) main > section.grid article h2 + p {
-  margin-top: 0.125rem !important;
+  margin-top: 0.2rem !important;
+  min-height: 1.15rem !important;
 }
 
 body:has([data-orchard-crop-catalog-layout]) main > section.grid article h2 + p + div {
-  margin-top: 0.5rem !important;
-  padding-top: 0.5rem !important;
+  display: grid !important;
+  grid-template-columns: 1fr !important;
+  margin-top: 0.7rem !important;
+  padding-top: 0 !important;
+  border-top: 0 !important;
 }
 
-body:has([data-orchard-crop-catalog-layout]) main > section.grid article h2 + p + div a,
-body:has([data-orchard-crop-catalog-layout]) main > section.grid article h2 + p + div span {
-  min-height: 2rem !important;
+body:has([data-orchard-crop-catalog-layout]) main > section.grid article h2 + p + div > :first-child {
+  display: none !important;
+}
+
+body:has([data-orchard-crop-catalog-layout]) main > section.grid article h2 + p + div > a:last-child {
+  min-height: 2.5rem !important;
+  width: 100% !important;
+  justify-content: center !important;
+  background: #1f6a58 !important;
+  color: #f3f0e9 !important;
+  border-radius: 0.375rem !important;
+}
+
+body:has([data-orchard-crop-catalog-layout]) main > section.grid {
+  gap: 0.875rem !important;
+  background: transparent !important;
+}
+
+@media (min-width: 768px) {
+  body:has([data-orchard-crop-catalog-layout]) main {
+    padding-top: 1.5rem !important;
+  }
+
+  body:has([data-orchard-crop-catalog-layout]) main > header {
+    display: none !important;
+  }
+
+  body:has([data-orchard-crop-catalog-layout]) main > header + section {
+    margin-bottom: 0.8rem !important;
+  }
+
+  body:has([data-orchard-crop-catalog-layout]) main > header + section > label {
+    max-width: 15rem !important;
+    min-height: 2.5rem !important;
+    border-radius: 0.5rem !important;
+    background: #151513 !important;
+  }
+
+  body:has([data-orchard-crop-catalog-layout]) main > header + section button {
+    min-height: 2.5rem !important;
+    border-radius: 0.5rem !important;
+  }
+
+  body:has([data-orchard-crop-catalog-layout]) main > header + section button:last-child {
+    min-width: 8.1rem !important;
+    justify-content: center !important;
+    background: #1f6a58 !important;
+    color: #f3f0e9 !important;
+  }
+}
+
+@media (min-width: 1280px) {
+  body:has([data-orchard-crop-catalog-layout]) main > section.grid {
+    grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+  }
 }
 
 @media (min-width: 1536px) {
   body:has([data-orchard-crop-catalog-layout]) main > section.grid {
-    grid-template-columns: repeat(6, minmax(0, 1fr)) !important;
+    grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
   }
 }
