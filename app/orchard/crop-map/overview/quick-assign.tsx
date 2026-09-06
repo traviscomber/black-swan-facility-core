@@ -1,7 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useState } from "react"
-import { ArrowRight, CheckCircle2, MapPin, X } from "lucide-react"
+import { AlertTriangle, ArrowRight, CheckCircle2, MapPin, X } from "lucide-react"
 import { useSearchParams } from "next/navigation"
 import { createBrowserClient } from "@/lib/supabase/client"
 import { useLanguage } from "@/lib/hooks/use-language"
@@ -27,7 +27,7 @@ const PHYSICAL_BLOCK = /^(Current 0[1-5]|Expansion 0[1-3])$/
 const COPY = {
   en: {
     title: "Quick assign",
-    help: "Choose a pending planting, its physical block and its starting bed. Nothing is placed automatically.",
+    help: "Choose a ready planting, its physical block and its starting bed. Nothing is placed automatically.",
     planting: "Planting",
     block: "Block",
     bed: "Starting bed",
@@ -35,7 +35,9 @@ const COPY = {
     chooseBed: "Choose bed",
     assign: "Assign & next",
     assigning: "Assigning…",
-    remaining: "pending",
+    ready: "ready",
+    blocked: "blocked",
+    blockedHelp: "Blocked plantings still need planned bed metres or complete dates before physical assignment.",
     complete: "All reconciled plantings have a physical allocation.",
     loadError: "Could not load physical allocation data.",
     assignError: "Could not assign this planting.",
@@ -43,7 +45,7 @@ const COPY = {
   },
   es: {
     title: "Asignación rápida",
-    help: "Elige una plantación pendiente, su bloque físico y su cama inicial. Nada se asigna automáticamente.",
+    help: "Elige una plantación lista, su bloque físico y su cama inicial. Nada se asigna automáticamente.",
     planting: "Plantación",
     block: "Bloque",
     bed: "Cama inicial",
@@ -51,7 +53,9 @@ const COPY = {
     chooseBed: "Elegir cama",
     assign: "Asignar y seguir",
     assigning: "Asignando…",
-    remaining: "pendientes",
+    ready: "listas",
+    blocked: "bloqueadas",
+    blockedHelp: "Las plantaciones bloqueadas aún necesitan bed-m planificados o fechas completas antes de la asignación física.",
     complete: "Todas las plantaciones reconciliadas tienen asignación física.",
     loadError: "No fue posible cargar las asignaciones físicas.",
     assignError: "No fue posible asignar esta plantación.",
@@ -59,7 +63,7 @@ const COPY = {
   },
   de: {
     title: "Schnell zuordnen",
-    help: "Offene Pflanzung, physischen Block und Startbeet wählen. Nichts wird automatisch zugeordnet.",
+    help: "Bereite Pflanzung, physischen Block und Startbeet wählen. Nichts wird automatisch zugeordnet.",
     planting: "Pflanzung",
     block: "Block",
     bed: "Startbeet",
@@ -67,7 +71,9 @@ const COPY = {
     chooseBed: "Beet wählen",
     assign: "Zuordnen & weiter",
     assigning: "Wird zugeordnet…",
-    remaining: "offen",
+    ready: "bereit",
+    blocked: "blockiert",
+    blockedHelp: "Blockierte Pflanzungen benötigen noch geplante Beetmeter oder vollständige Termine vor der physischen Zuordnung.",
     complete: "Alle abgeglichenen Pflanzungen sind physisch zugeordnet.",
     loadError: "Physische Zuordnungen konnten nicht geladen werden.",
     assignError: "Pflanzung konnte nicht zugeordnet werden.",
@@ -138,8 +144,14 @@ export function CropMapQuickAssign() {
       .filter(allocation => physicalBedIds.has(allocation.bed_id))
       .map(allocation => allocation.crop_succession_id),
   )
-  const pending = successions
-    .filter(item => planCycleIds.has(item.crop_cycle_id) && Number(item.planned_bed_m) > 0 && !assignedIds.has(item.id))
+  const planSuccessions = successions.filter(item => planCycleIds.has(item.crop_cycle_id))
+  const isReady = (item: Succession) => Boolean(
+    Number(item.planned_bed_m) > 0
+    && (item.planned_transplant_date ?? item.planned_sow_date)
+    && (item.planned_last_harvest_date ?? item.planned_first_harvest_date),
+  )
+  const pending = planSuccessions
+    .filter(item => isReady(item) && !assignedIds.has(item.id))
     .sort((a, b) => {
       const aDate = a.planned_transplant_date ?? a.planned_sow_date ?? "9999-12-31"
       const bDate = b.planned_transplant_date ?? b.planned_sow_date ?? "9999-12-31"
@@ -147,6 +159,7 @@ export function CropMapQuickAssign() {
         || (cycleById.get(a.crop_cycle_id)?.crop_name ?? "").localeCompare(cycleById.get(b.crop_cycle_id)?.crop_name ?? "")
         || a.sequence_no - b.sequence_no
     })
+  const blocked = planSuccessions.filter(item => !assignedIds.has(item.id) && !isReady(item))
 
   useEffect(() => {
     if (!pending.length) {
@@ -192,7 +205,7 @@ export function CropMapQuickAssign() {
     await load()
   }
 
-  if (!pending.length && !error) return null
+  if (!pending.length && !blocked.length && !error) return null
 
   if (!open) {
     return <button
@@ -202,7 +215,8 @@ export function CropMapQuickAssign() {
       className="fixed bottom-4 right-[284px] z-[75] inline-flex min-h-10 items-center gap-2 rounded-lg border border-[#45413a] bg-[#171715]/95 px-3 text-xs font-medium text-[#bde1cf] shadow-lg backdrop-blur-md hover:bg-[#211f1b] max-lg:right-4"
     >
       <MapPin className="h-4 w-4" />
-      {text.title} · {pending.length}
+      <span>{text.title} · {pending.length} {text.ready}</span>
+      {blocked.length ? <span className="text-[#b9a57a]">· {blocked.length} {text.blocked}</span> : null}
     </button>
   }
 
@@ -212,11 +226,12 @@ export function CropMapQuickAssign() {
   >
     <div className="mb-3 flex items-start justify-between gap-4">
       <div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <strong className="text-sm font-semibold">{text.title}</strong>
-          <span className="text-[10px] uppercase tracking-[.1em] text-[#79c5aa]">{pending.length} {text.remaining}</span>
+          <span className="text-[10px] uppercase tracking-[.1em] text-[#79c5aa]">{pending.length} {text.ready}</span>
+          {blocked.length ? <span className="text-[10px] uppercase tracking-[.1em] text-[#b9a57a]">{blocked.length} {text.blocked}</span> : null}
         </div>
-        <p className="mt-1 text-[11px] leading-4 text-[#aaa69c]">{pending.length ? text.help : text.complete}</p>
+        <p className="mt-1 text-[11px] leading-4 text-[#aaa69c]">{pending.length ? text.help : blocked.length ? text.blockedHelp : text.complete}</p>
       </div>
       <button type="button" onClick={() => setOpen(false)} aria-label={text.close} className="grid h-8 w-8 shrink-0 place-items-center rounded-md text-[#8f8a81] hover:bg-white/5">
         <X className="h-4 w-4" />
@@ -251,7 +266,7 @@ export function CropMapQuickAssign() {
       <button type="button" onClick={() => void assign()} disabled={!selected || !selectedPlotId || !selectedBedId || placing} className="mt-auto inline-flex h-10 items-center justify-center gap-2 rounded-md bg-[#79c5aa] px-4 text-xs font-semibold text-[#13241d] disabled:cursor-not-allowed disabled:opacity-40">
         {placing ? text.assigning : text.assign}<ArrowRight className="h-3.5 w-3.5" />
       </button>
-    </div> : <div className="flex items-center gap-2 py-1 text-sm text-[#79c5aa]"><CheckCircle2 className="h-4 w-4" />{text.complete}</div>}
+    </div> : blocked.length ? <div className="flex items-start gap-2 py-1 text-sm text-[#b9a57a]"><AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" /><span><strong>{blocked.length} {text.blocked}</strong><span className="mt-0.5 block text-[11px] leading-4 text-[#aaa69c]">{text.blockedHelp}</span></span></div> : <div className="flex items-center gap-2 py-1 text-sm text-[#79c5aa]"><CheckCircle2 className="h-4 w-4" />{text.complete}</div>}
 
     {error ? <p className="mt-2 text-[11px] leading-4 text-red-300" role="alert">{error}</p> : null}
     {selected && selectedCycle ? <p className="mt-2 text-[10px] text-[#77726a]">{selectedCycle.crop_name} #{selected.sequence_no} · {Number(selected.planned_bed_m)} bed-m</p> : null}
