@@ -17,6 +17,7 @@ import { useLanguage } from "@/lib/hooks/use-language"
 
 type Locale = "en" | "es" | "de"
 type CountStatus = "counted" | "pending"
+type Unit = "seeds" | "grams" | "tubers" | "plants" | "units"
 type SeedLot = {
   id: string
   crop_name: string
@@ -24,6 +25,7 @@ type SeedLot = {
   lot_code: string | null
   supplier: string | null
   quantity_seeds: number
+  quantity_value: number | null
   quantity_unit: string | null
   count_status: CountStatus
   storage_location: string | null
@@ -43,7 +45,8 @@ type LotForm = {
 }
 
 const blankLot: LotForm = { crop_name: "", quantity: "", quantity_unit: "", variety: "", lot_code: "", supplier: "", storage_location: "", notes: "" }
-const unitOptions = ["seeds", "tubers", "plants", "units"] as const
+const unitOptions: Unit[] = ["seeds", "grams", "tubers", "plants", "units"]
+const isValidPhysicalQuantity = (value: number, unit: string) => Number.isFinite(value) && value > 0 && (unit === "grams" || Number.isInteger(value))
 
 const copy = {
   en: {
@@ -52,9 +55,9 @@ const copy = {
     description: "Record what is physically on hand without turning the season plan into inventory.",
     back: "Seeds & transplants",
     addTitle: "Add stock",
-    addHelp: "Crop is required. Add the physical count and unit when known; leave the count blank when stock exists but still needs counting.",
+    addHelp: "Crop is required. Add the physical quantity and unit when known; leave the quantity blank when stock exists but still needs counting.",
     crop: "Crop",
-    quantity: "Physical count",
+    quantity: "Physical quantity",
     unit: "Unit",
     optional: "Optional details",
     variety: "Variety",
@@ -70,7 +73,7 @@ const copy = {
     counted: "Counted",
     none: "No physical stock recorded yet.",
     countTitle: "Complete a pending count",
-    countHelp: "Choose a confirmed stock item, enter the physical count and unit, and keep the original lot identity.",
+    countHelp: "Choose a confirmed stock item, enter the physical quantity and unit, and keep the original lot identity.",
     choose: "Choose pending stock",
     apply: "Save count",
     noPending: "There are no pending counts.",
@@ -78,7 +81,7 @@ const copy = {
     error: "Could not save stock",
     loadError: "Could not load physical stock",
     saved: "Stock saved",
-    units: { seeds: "Seeds", tubers: "Tubers / seed potatoes", plants: "Plants", units: "Units" },
+    units: { seeds: "Seeds", grams: "Grams", tubers: "Tubers / seed potatoes", plants: "Plants", units: "Units" },
   },
   es: {
     eyebrow: "Huerto · Stock físico",
@@ -86,9 +89,9 @@ const copy = {
     description: "Registra lo que existe físicamente sin convertir el plan de temporada en inventario.",
     back: "Semillas y trasplantes",
     addTitle: "Agregar stock",
-    addHelp: "El cultivo es obligatorio. Agrega conteo físico y unidad cuando los conozcas; deja el conteo vacío si el stock existe pero aún falta contarlo.",
+    addHelp: "El cultivo es obligatorio. Agrega cantidad física y unidad cuando las conozcas; deja la cantidad vacía si el stock existe pero aún falta contarlo.",
     crop: "Cultivo",
-    quantity: "Conteo físico",
+    quantity: "Cantidad física",
     unit: "Unidad",
     optional: "Detalles opcionales",
     variety: "Variedad",
@@ -104,7 +107,7 @@ const copy = {
     counted: "Contado",
     none: "Aún no hay stock físico registrado.",
     countTitle: "Completar un conteo pendiente",
-    countHelp: "Elige un stock confirmado, ingresa el conteo físico y su unidad, y conserva la identidad del lote original.",
+    countHelp: "Elige un stock confirmado, ingresa la cantidad física y su unidad, y conserva la identidad del lote original.",
     choose: "Elegir stock pendiente",
     apply: "Guardar conteo",
     noPending: "No hay conteos pendientes.",
@@ -112,7 +115,7 @@ const copy = {
     error: "No fue posible guardar el stock",
     loadError: "No fue posible cargar el stock físico",
     saved: "Stock guardado",
-    units: { seeds: "Semillas", tubers: "Tubérculos / papa semilla", plants: "Plantas", units: "Unidades" },
+    units: { seeds: "Semillas", grams: "Gramos", tubers: "Tubérculos / papa semilla", plants: "Plantas", units: "Unidades" },
   },
   de: {
     eyebrow: "Obstbau · Physischer Bestand",
@@ -146,7 +149,7 @@ const copy = {
     error: "Bestand konnte nicht gespeichert werden",
     loadError: "Physischer Bestand konnte nicht geladen werden",
     saved: "Bestand gespeichert",
-    units: { seeds: "Saatgut", tubers: "Knollen / Pflanzkartoffeln", plants: "Pflanzen", units: "Einheiten" },
+    units: { seeds: "Saatgut", grams: "Gramm", tubers: "Knollen / Pflanzkartoffeln", plants: "Pflanzen", units: "Einheiten" },
   },
 } as const
 
@@ -173,7 +176,7 @@ export default function QuickStockPage() {
     setError(null)
     const result = await supabase
       .from("orchard_seed_lots")
-      .select("id,crop_name,variety,lot_code,supplier,quantity_seeds,quantity_unit,count_status,storage_location,notes,created_at")
+      .select("id,crop_name,variety,lot_code,supplier,quantity_seeds,quantity_value,quantity_unit,count_status,storage_location,notes,created_at")
       .order("created_at", { ascending: false })
     if (result.error) setError(`${text.loadError}: ${result.error.message}`)
     else setLots((result.data ?? []) as SeedLot[])
@@ -190,14 +193,15 @@ export default function QuickStockPage() {
     if (!crop) return
     const hasCount = form.quantity.trim() !== ""
     const quantity = hasCount ? Number(form.quantity) : 0
-    if (hasCount && (!Number.isInteger(quantity) || quantity <= 0 || !form.quantity_unit)) return
+    if (hasCount && (!form.quantity_unit || !isValidPhysicalQuantity(quantity, form.quantity_unit))) return
 
     setSaving(true)
     setError(null)
     setMessage(null)
     const result = await supabase.from("orchard_seed_lots").insert({
       crop_name: crop,
-      quantity_seeds: quantity,
+      quantity_seeds: hasCount && form.quantity_unit === "seeds" ? quantity : 0,
+      quantity_value: hasCount ? quantity : null,
       quantity_unit: hasCount ? form.quantity_unit : null,
       count_status: hasCount ? "counted" : "pending",
       variety: form.variety.trim() || null,
@@ -218,13 +222,19 @@ export default function QuickStockPage() {
   async function completeCount(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     const quantity = Number(pendingQuantity)
-    if (!pendingLotId || !Number.isInteger(quantity) || quantity <= 0 || !pendingUnit) return
+    if (!pendingLotId || !pendingUnit || !isValidPhysicalQuantity(quantity, pendingUnit)) return
     setSaving(true)
     setError(null)
     setMessage(null)
     const result = await supabase
       .from("orchard_seed_lots")
-      .update({ quantity_seeds: quantity, quantity_unit: pendingUnit, count_status: "counted", updated_at: new Date().toISOString() })
+      .update({
+        quantity_seeds: pendingUnit === "seeds" ? quantity : 0,
+        quantity_value: quantity,
+        quantity_unit: pendingUnit,
+        count_status: "counted",
+        updated_at: new Date().toISOString(),
+      })
       .eq("id", pendingLotId)
     if (result.error) setError(`${text.error}: ${result.error.message}`)
     else {
@@ -256,7 +266,7 @@ export default function QuickStockPage() {
             <form className="space-y-4" onSubmit={addStock}>
               <div className="grid gap-4 sm:grid-cols-2">
                 <Field label={text.crop}><Input value={form.crop_name} onChange={(e)=>setForm((v)=>({...v,crop_name:e.target.value}))} required autoFocus/></Field>
-                <Field label={text.quantity}><Input type="number" min="1" step="1" value={form.quantity} onChange={(e)=>setForm((v)=>({...v,quantity:e.target.value}))} placeholder="—"/></Field>
+                <Field label={text.quantity}><Input type="number" min="0.01" step="any" value={form.quantity} onChange={(e)=>setForm((v)=>({...v,quantity:e.target.value}))} placeholder="—"/></Field>
               </div>
               <Field label={text.unit}><Select value={form.quantity_unit} onValueChange={(value)=>setForm((v)=>({...v,quantity_unit:value}))}><SelectTrigger><SelectValue placeholder="—"/></SelectTrigger><SelectContent>{unitOptions.map((unit)=><SelectItem key={unit} value={unit}>{text.units[unit]}</SelectItem>)}</SelectContent></Select></Field>
               <details className="border-t border-[var(--orchard-line)] pt-4"><summary className="cursor-pointer text-sm font-medium text-muted-foreground">{text.optional}</summary><div className="mt-4 grid gap-4 sm:grid-cols-2"><Field label={text.variety}><Input value={form.variety} onChange={(e)=>setForm((v)=>({...v,variety:e.target.value}))}/></Field><Field label={text.lot}><Input value={form.lot_code} onChange={(e)=>setForm((v)=>({...v,lot_code:e.target.value}))}/></Field><Field label={text.supplier}><Input value={form.supplier} onChange={(e)=>setForm((v)=>({...v,supplier:e.target.value}))}/></Field><Field label={text.storage}><Input value={form.storage_location} onChange={(e)=>setForm((v)=>({...v,storage_location:e.target.value}))}/></Field><div className="sm:col-span-2"><Field label={text.notes}><Textarea value={form.notes} onChange={(e)=>setForm((v)=>({...v,notes:e.target.value}))}/></Field></div></div></details>
@@ -267,13 +277,13 @@ export default function QuickStockPage() {
 
         <Card>
           <CardHeader><CardTitle>{text.current}</CardTitle><CardDescription>{text.currentHelp}</CardDescription></CardHeader>
-          <CardContent>{loading ? <div className="flex items-center gap-2 py-8 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin"/>Loading…</div> : lots.length===0 ? <p className="py-8 text-sm text-muted-foreground">{text.none}</p> : <div className="grid gap-3 sm:grid-cols-2">{lots.map((lot)=><div key={lot.id} className="border border-[var(--orchard-line)] bg-[var(--bs-surface-secondary)] p-4"><div className="flex items-start justify-between gap-3"><div><p className="font-medium">{lot.crop_name}{lot.variety?` · ${lot.variety}`:""}</p><p className="mt-1 text-xs text-muted-foreground">{lot.lot_code||lot.supplier||lot.storage_location||"—"}</p></div>{lot.count_status==="pending"?<Badge variant="outline">{text.pending}</Badge>:<Badge variant="secondary">{text.counted}</Badge>}</div><div className="mt-4 flex items-baseline gap-2"><span className="text-2xl font-medium">{lot.count_status==="pending"?"—":lot.quantity_seeds.toLocaleString(locale)}</span><span className="text-xs text-muted-foreground">{lot.count_status==="pending"?text.pending:(lot.quantity_unit && text.units[lot.quantity_unit as keyof typeof text.units])||lot.quantity_unit||""}</span></div></div>)}</div>}</CardContent>
+          <CardContent>{loading ? <div className="flex items-center gap-2 py-8 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin"/>Loading…</div> : lots.length===0 ? <p className="py-8 text-sm text-muted-foreground">{text.none}</p> : <div className="grid gap-3 sm:grid-cols-2">{lots.map((lot)=>{const value=lot.quantity_value??(lot.quantity_unit===null||lot.quantity_unit==="seeds"?lot.quantity_seeds:null);return <div key={lot.id} className="border border-[var(--orchard-line)] bg-[var(--bs-surface-secondary)] p-4"><div className="flex items-start justify-between gap-3"><div><p className="font-medium">{lot.crop_name}{lot.variety?` · ${lot.variety}`:""}</p><p className="mt-1 text-xs text-muted-foreground">{lot.lot_code||lot.supplier||lot.storage_location||"—"}</p></div>{lot.count_status==="pending"?<Badge variant="outline">{text.pending}</Badge>:<Badge variant="secondary">{text.counted}</Badge>}</div><div className="mt-4 flex items-baseline gap-2"><span className="text-2xl font-medium">{lot.count_status==="pending"||value==null?"—":value.toLocaleString(locale)}</span><span className="text-xs text-muted-foreground">{lot.count_status==="pending"?text.pending:(lot.quantity_unit && text.units[lot.quantity_unit as Unit])||lot.quantity_unit||text.units.seeds}</span></div></div>})}</div>}</CardContent>
         </Card>
       </div>
 
       <Card>
         <CardHeader><CardTitle>{text.countTitle}</CardTitle><CardDescription>{text.countHelp}</CardDescription></CardHeader>
-        <CardContent>{pendingLots.length===0 ? <p className="text-sm text-muted-foreground">{text.noPending}</p> : <form className="grid gap-4 md:grid-cols-[1.4fr_.7fr_.8fr_auto] md:items-end" onSubmit={completeCount}><Field label={text.choose}><Select value={pendingLotId} onValueChange={setPendingLotId}><SelectTrigger><SelectValue placeholder="—"/></SelectTrigger><SelectContent>{pendingLots.map((lot)=><SelectItem key={lot.id} value={lot.id}>{lot.crop_name}{lot.variety?` · ${lot.variety}`:""}</SelectItem>)}</SelectContent></Select></Field><Field label={text.quantity}><Input type="number" min="1" step="1" value={pendingQuantity} onChange={(e)=>setPendingQuantity(e.target.value)}/></Field><Field label={text.unit}><Select value={pendingUnit} onValueChange={setPendingUnit}><SelectTrigger><SelectValue placeholder="—"/></SelectTrigger><SelectContent>{unitOptions.map((unit)=><SelectItem key={unit} value={unit}>{text.units[unit]}</SelectItem>)}</SelectContent></Select></Field><Button type="submit" disabled={saving||!pendingLotId||!pendingQuantity||!pendingUnit}><Scale className="mr-2 h-4 w-4"/>{text.apply}</Button></form>}</CardContent>
+        <CardContent>{pendingLots.length===0 ? <p className="text-sm text-muted-foreground">{text.noPending}</p> : <form className="grid gap-4 md:grid-cols-[1.4fr_.7fr_.8fr_auto] md:items-end" onSubmit={completeCount}><Field label={text.choose}><Select value={pendingLotId} onValueChange={setPendingLotId}><SelectTrigger><SelectValue placeholder="—"/></SelectTrigger><SelectContent>{pendingLots.map((lot)=><SelectItem key={lot.id} value={lot.id}>{lot.crop_name}{lot.variety?` · ${lot.variety}`:""}</SelectItem>)}</SelectContent></Select></Field><Field label={text.quantity}><Input type="number" min="0.01" step="any" value={pendingQuantity} onChange={(e)=>setPendingQuantity(e.target.value)}/></Field><Field label={text.unit}><Select value={pendingUnit} onValueChange={setPendingUnit}><SelectTrigger><SelectValue placeholder="—"/></SelectTrigger><SelectContent>{unitOptions.map((unit)=><SelectItem key={unit} value={unit}>{text.units[unit]}</SelectItem>)}</SelectContent></Select></Field><Button type="submit" disabled={saving||!pendingLotId||!pendingQuantity||!pendingUnit}><Scale className="mr-2 h-4 w-4"/>{text.apply}</Button></form>}</CardContent>
       </Card>
 
       <Link href={`/${language}/orchard/nursery/advanced${query}`} className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"><Settings2 className="h-4 w-4"/>{text.advanced}</Link>
