@@ -40,6 +40,14 @@ body:has([data-orchard-seed-orders-layout]) main table tbody tr:hover td:first-c
   }
 
   body:has([data-orchard-seed-orders-layout]) main > header {
+    display: flex !important;
+    margin-bottom: 12px !important;
+    padding-bottom: 12px !important;
+    justify-content: flex-end !important;
+    align-items: flex-end !important;
+  }
+
+  body:has([data-orchard-seed-orders-layout]) main > header > div:first-child {
     display: none !important;
   }
 
