@@ -57,7 +57,7 @@ export default function SeasonHarvestsPage(){
  const requested=typeof window!=="undefined"?new URLSearchParams(window.location.search).get("game_plan"):null
  const plan=plans.find(p=>p.id===requested)??plans.find(p=>p.status==="active")??plans.find(p=>p.status==="draft")??plans[0]??null
  const cycleById=new Map(cycles.filter(c=>c.game_plan_id===plan?.id).map(c=>[c.id,c]));const allocatedIds=new Set(allocations.map(a=>a.crop_succession_id));const scoped=successions.filter(s=>cycleById.has(s.crop_cycle_id)&&allocatedIds.has(s.id)&&s.planned_first_harvest_date&&s.planned_last_harvest_date&&Number(s.planned_bed_m)>0);const successionById=new Map(scoped.map(s=>[s.id,s]));const categoryByCrop=new Map(profiles.map(p=>[normalize(p.crop_name),p.category]));
- const seasonYear=plan?.season?.match(/\d{4}/)?.[0]??"2026";const scopedMin=scoped.map(s=>s.planned_first_harvest_date!).sort()[0]??null;const scopedMax=scoped.map(s=>s.planned_last_harvest_date!).sort().at(-1)??null;const minDate=plan?.start_date??scopedMin??`${seasonYear}-08-01`;const maxDate=plan?.end_date??scopedMax??minDate;const weeks=weekKeys(minDate,maxDate)
+ const seasonYear=plan?.season?.match(/\d{4}/)?.[0]??"2026";const scopedMin=scoped.map(s=>s.planned_first_harvest_date!).sort()[0]??null;const scopedMax=scoped.map(s=>s.planned_last_harvest_date!).sort().at(-1)??null;const minDate=scopedMin??plan?.start_date??`${seasonYear}-08-01`;const maxDate=scopedMax??plan?.end_date??minDate;const weeks=weekKeys(minDate,maxDate)
  const cropTypes=[...new Set(profiles.map(p=>p.category).filter((v):v is string=>Boolean(v)))].sort()
 
  const rows=useMemo<Row[]>(()=>{
