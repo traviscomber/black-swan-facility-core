@@ -4,6 +4,10 @@ import test from "node:test"
 
 const migrationPath = new URL("../supabase/migrations/20260826200745_harden_procurement_sourcing_workflow.sql", import.meta.url)
 const source = await readFile(migrationPath, "utf8")
+const orchardBulkApprovalPath = new URL("../supabase/migrations/20260907041500_procurement_bulk_orchard_seed_approval.sql", import.meta.url)
+const orchardBulkApproval = await readFile(orchardBulkApprovalPath, "utf8")
+const orchardApprovalPagePath = new URL("../app/procurement/approvals/orchard-sourcing/page.tsx", import.meta.url)
+const orchardApprovalPage = await readFile(orchardApprovalPagePath, "utf8")
 
 function includesSql(fragment: string) {
   return source.toLowerCase().includes(fragment.toLowerCase())
@@ -55,4 +59,21 @@ test("all sourcing mutation RPCs are unavailable to public and anon", () => {
   assert.ok(includesSql("revoke all on function public.submit_procurement_supplier_quote"))
   assert.ok(includesSql("revoke all on function public.build_procurement_comparison"))
   assert.ok(includesSql("revoke all on function public.approve_procurement_comparison"))
+})
+
+test("Orchard bulk sourcing approval preserves segregation of duties", () => {
+  assert.match(orchardBulkApproval, /public\.is_procurement_approver\(\)/)
+  assert.match(orchardBulkApproval, /requested_by = v_actor/)
+  assert.match(orchardBulkApproval, /Self-approval is not allowed/)
+  assert.match(orchardBulkApproval, /public\.decide_procurement_request\(v_request\.id, 'approved'/)
+  assert.doesNotMatch(orchardBulkApproval, /procurement_purchase_orders/)
+})
+
+test("Orchard sourcing cockpit uses audited approval RPCs instead of direct writes", () => {
+  assert.match(orchardApprovalPage, /approve_orchard_seed_requests_bulk/)
+  assert.match(orchardApprovalPage, /set_supplier_approval/)
+  assert.match(orchardApprovalPage, /selfBlocked/)
+  assert.doesNotMatch(orchardApprovalPage, /from\("procurement_requests"\)\.update/)
+  assert.doesNotMatch(orchardApprovalPage, /from\("suppliers"\)\.update/)
+  assert.doesNotMatch(orchardApprovalPage, /procurement_purchase_orders/)
 })
