@@ -197,3 +197,23 @@ test("core Orchard crop surfaces share one canonical family color identity", asy
     assert.match(source, /cropColor/)
   }
 })
+
+test("Notes keeps the Heirloom two-pane workflow while separating canonical history evidence from operator notes", async () => {
+  const source = await readFile("app/orchard/notes/page.tsx", "utf8")
+
+  assert.match(source, /type NoteView="operator"\|"history"/)
+  assert.match(source, /isHistoryNote/)
+  assert.match(source, /note\.note_type===\"lesson\"/)
+  assert.match(source, /startsWith\(\"BS history \"\)/)
+  assert.match(source, /useState<NoteView>\(\"operator\"\)/)
+  assert.match(source, /operatorNotes=notes\.filter/)
+  assert.match(source, /historyNotes=notes\.filter/)
+  assert.match(source, /lg:grid-cols-\[360px_minmax\(0,1fr\)\]/)
+  assert.match(source, /Search notes…/)
+  assert.match(source, /Create note/)
+  assert.match(source, /You have not created any notes yet/)
+  assert.match(source, /Click on a note to preview its content/)
+  assert.match(source, /note_type:\"observation\"/)
+  assert.match(source, /setView\(\"operator\"\)/)
+  assert.doesNotMatch(source, /delete\(\)|update\(\{/)
+})
