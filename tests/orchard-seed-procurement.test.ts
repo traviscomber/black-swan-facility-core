@@ -32,6 +32,18 @@ test("direct sow procurement scales the native 30m gram rate", () => {
   })
 })
 
+test("published direct-sowing rates can be converted to explicit seed counts", () => {
+  assert.deepEqual(estimateDirectProcurement({
+    plannedBedM: 10,
+    densityG: { unit: "seed_count", seedsPerFootPerRow: 1.5, rowsPerBed: 2, sourceKey: "test" },
+  }), {
+    value: 99,
+    unit: "seed_count",
+    basis: "external_direct_rate",
+    reason: null,
+  })
+})
+
 test("potato procurement is counted as tubers, not grams or seed count", () => {
   assert.deepEqual(estimateTuberProcurement({ plannedBedM: 120, spacingCm: 15 }), {
     value: 800,
@@ -48,18 +60,46 @@ test("workbook density and spacing strings parse deterministically", () => {
   assert.equal(parseCentimeters("N/A"), null)
 })
 
-test("direct procurement resolver accepts explicit or density-invariant source evidence only", () => {
+test("direct procurement resolver accepts explicit or density-invariant source evidence", () => {
   const rows = directSowReference as DirectProcurementReferenceRow[]
   assert.equal(resolveDirectProcurementReference("Radishes", rows)?.densityG, 90)
   assert.equal(resolveDirectProcurementReference("Mizuna", rows)?.densityG, 85)
   assert.equal(resolveDirectProcurementReference("Tatsoi", rows)?.densityG, 115)
   assert.equal(resolveDirectProcurementReference("Storage Beetroot", rows)?.densityG, 35)
-  assert.equal(resolveDirectProcurementReference("Corn", rows), null)
-  assert.equal(resolveDirectProcurementReference("Shallots", rows), null)
-  assert.equal(resolveDirectProcurementReference("White Radish (Daikon)", rows), null)
 })
 
-test("direct procurement resolver blocks ambiguous cultivar densities", () => {
+test("2026/27 Arugula uses the exact 12-row 4cm Astro source profile", () => {
+  const rows = directSowReference as DirectProcurementReferenceRow[]
+  const reference = resolveDirectProcurementReference("Arugula", rows)
+  assert.equal(reference?.densityG, 115)
+  assert.equal(reference?.evidence, "season_plan_match")
+})
+
+test("external references close Corn, Shallots and Daikon without inventing gram densities", () => {
+  const rows = directSowReference as DirectProcurementReferenceRow[]
+  const corn = resolveDirectProcurementReference("Corn", rows)
+  const shallots = resolveDirectProcurementReference("Shallots", rows)
+  const daikon = resolveDirectProcurementReference("White Radish (Daikon)", rows)
+
+  assert.equal(corn?.evidence, "external_reference")
+  assert.equal(shallots?.evidence, "external_reference")
+  assert.equal(daikon?.evidence, "external_reference")
+  assert.match(corn?.sourceUrl ?? "", /extension\.umn\.edu/)
+  assert.match(shallots?.sourceUrl ?? "", /johnnyseeds\.com/)
+  assert.match(daikon?.sourceUrl ?? "", /extension\.umn\.edu/)
+
+  assert.deepEqual(estimateDirectProcurement({ plannedBedM: 10, densityG: corn?.densityG ?? null }), {
+    value: 99, unit: "seed_count", basis: "external_direct_rate", reason: null,
+  })
+  assert.deepEqual(estimateDirectProcurement({ plannedBedM: 5, densityG: shallots?.densityG ?? null }), {
+    value: 985, unit: "seed_count", basis: "external_direct_rate", reason: null,
+  })
+  assert.deepEqual(estimateDirectProcurement({ plannedBedM: 3, densityG: daikon?.densityG ?? null }), {
+    value: 296, unit: "seed_count", basis: "external_direct_rate", reason: null,
+  })
+})
+
+test("direct procurement resolver still blocks unscoped ambiguous cultivar densities", () => {
   const rows: DirectProcurementReferenceRow[] = [
     { crop: "Rucula", cultivar: "Astro", density_30m: "10g" },
     { crop: "Rucula", cultivar: "Rocket", density_30m: "20g" },
