@@ -109,6 +109,14 @@ test("Orchard seeds navigation opens a request-ready board without bypassing Pro
   assert.doesNotMatch(board, /procurement_purchase_orders"\)\.insert/)
 })
 
+test("seed procurement scan keeps the bulk action visible on desktop", () => {
+  const board = readFileSync(new URL("../app/orchard/seed-orders/page.tsx", import.meta.url), "utf8")
+  const scanCss = readFileSync(new URL("../app/orchard/seed-orders/seed-orders-scan.css", import.meta.url), "utf8")
+  assert.match(board, /createRequests\(missingReady, BULK_KEY\)/)
+  assert.doesNotMatch(scanCss, /main > header\s*\{[^}]*display:\s*none\s*!important/s)
+  assert.match(scanCss, /main > header > div:first-child\s*\{[^}]*display:\s*none\s*!important/s)
+})
+
 test("planned-plants reconciliation is source guarded and never claims execution", () => {
   const migration = readFileSync(new URL("../supabase/migrations/20260907021056_orchard_reconcile_planned_plants_10m.sql", import.meta.url), "utf8")
   assert.match(migration, /v_legacy_matches <> 22/)
