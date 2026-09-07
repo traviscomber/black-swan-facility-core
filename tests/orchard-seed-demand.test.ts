@@ -83,9 +83,16 @@ test("Advanced nursery never auto-fills seeds when transplant demand is incomple
 test("Quick stock preserves physical presence without inventing a zero count", () => {
   const source = readFileSync(new URL("../app/orchard/nursery/quick-stock/page.tsx", import.meta.url), "utf8")
   assert.match(source, /count_status:\s*hasCount\s*\?\s*"counted"\s*:\s*"pending"/)
-  assert.match(source, /quantity_seeds:\s*hasCount\s*\?\s*Number\(form\.quantity\)\s*:\s*0/)
+  assert.match(source, /quantity_value:\s*hasCount\s*\?\s*quantity\s*:\s*null/)
   assert.match(source, /Pending count means physical stock has been confirmed but no quantity has been invented\./)
   assert.match(source, /count_status\s*===\s*"pending"/)
+})
+
+test("Quick stock keeps non-seed units out of nursery seed-count coverage", () => {
+  const source = readFileSync(new URL("../app/orchard/nursery/quick-stock/page.tsx", import.meta.url), "utf8")
+  assert.match(source, /"grams"/)
+  assert.match(source, /quantity_seeds:\s*hasCount\s*&&\s*form\.quantity_unit\s*===\s*"seeds"\s*\?\s*quantity\s*:\s*0/)
+  assert.match(source, /quantity_seeds:\s*pendingUnit\s*===\s*"seeds"\s*\?\s*quantity\s*:\s*0/)
 })
 
 test("Seeds hub keeps quick stock as the primary stock action", () => {
