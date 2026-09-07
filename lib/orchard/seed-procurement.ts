@@ -1,5 +1,14 @@
 export type ProcurementUnit = "seed_count" | "g" | "tuber_count"
-export type ProcurementBasis = "explicit_germination" | "workbook_global_fallback" | "direct_sow_density" | "manual_spacing"
+export type ProcurementBasis = "explicit_germination" | "workbook_global_fallback" | "direct_sow_density" | "external_direct_rate" | "manual_spacing"
+
+export type DirectSeedCountRate = {
+  unit: "seed_count"
+  seedsPerFootPerRow: number
+  rowsPerBed: number
+  sourceKey: string
+}
+
+export type DirectProcurementRate = number | DirectSeedCountRate
 
 export type ProcurementDemand = {
   value: number | null
@@ -34,14 +43,28 @@ export function estimateTransplantProcurement(input: {
 
 export function estimateDirectProcurement(input: {
   plannedBedM: number | null
-  densityG: number | null
+  densityG: DirectProcurementRate | null
   referenceBedM?: number | null
 }): ProcurementDemand {
-  const referenceBedM = input.referenceBedM ?? 30
   if (!positive(input.plannedBedM)) return { value: null, unit: "g", basis: null, reason: "missing_planned_bed_m" }
-  if (!positive(input.densityG)) return { value: null, unit: "g", basis: null, reason: "missing_direct_seed_density" }
+
+  if (input.densityG && typeof input.densityG === "object") {
+    if (!positive(input.densityG.seedsPerFootPerRow) || !positive(input.densityG.rowsPerBed)) {
+      return { value: null, unit: "seed_count", basis: null, reason: "missing_direct_seed_density" }
+    }
+    const totalRowFeet = input.plannedBedM! * 3.280839895013123 * input.densityG.rowsPerBed
+    return {
+      value: Math.ceil(totalRowFeet * input.densityG.seedsPerFootPerRow),
+      unit: "seed_count",
+      basis: "external_direct_rate",
+      reason: null,
+    }
+  }
+
+  const referenceBedM = input.referenceBedM ?? 30
+  if (!positive(input.densityG as number | null)) return { value: null, unit: "g", basis: null, reason: "missing_direct_seed_density" }
   if (!positive(referenceBedM)) return { value: null, unit: "g", basis: null, reason: "missing_reference_bed_m" }
-  return { value: (input.densityG! / referenceBedM!) * input.plannedBedM!, unit: "g", basis: "direct_sow_density", reason: null }
+  return { value: ((input.densityG as number) / referenceBedM!) * input.plannedBedM!, unit: "g", basis: "direct_sow_density", reason: null }
 }
 
 export function estimateTuberProcurement(input: { plannedBedM: number | null; spacingCm: number | null }): ProcurementDemand {
