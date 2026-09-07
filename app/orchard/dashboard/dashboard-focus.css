@@ -95,6 +95,7 @@
 }
 
 .orchard-dashboard-workspace [data-orchard-dashboard] {
+  position: relative;
   padding-top: 0.125rem !important;
 }
 
@@ -169,6 +170,23 @@
 }
 
 @media (min-width: 1280px) {
+  /* Keep dashboard selection, profile actions and Edit layout on one quiet toolbar. */
+  .orchard-dashboard-workspace [data-orchard-dashboard] > header {
+    position: absolute !important;
+    z-index: 4;
+    top: -3.75rem;
+    right: 0;
+    width: auto;
+    min-height: var(--dashboard-control-height) !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
+  }
+
+  .orchard-dashboard-workspace [data-orchard-dashboard] > section.grid {
+    margin-top: 0.25rem;
+  }
+
   /*
    * Stable editorial composition:
    * operation left, weather/quick context center, crop list as the persistent right rail.
