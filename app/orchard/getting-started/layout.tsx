@@ -64,21 +64,21 @@ export default function GettingStartedParityLayout({ children }: { children: Rea
           align-items: stretch !important;
           justify-content: center !important;
           gap: 26px !important;
-          border: 1px solid #d9ddd6 !important;
+          border: 1px solid var(--orchard-line) !important;
           border-radius: 0 14px 14px 0 !important;
-          background: #eef1ec !important;
-          color: #172019 !important;
+          background: var(--bs-surface-primary) !important;
+          color: var(--bs-text-primary) !important;
         }
 
         [data-heirloom-getting-started-parity="true"] main > main > section:first-of-type > div:first-child p:first-child {
-          color: #536158 !important;
+          color: var(--bs-text-muted) !important;
           font-size: 10px !important;
         }
 
         [data-heirloom-getting-started-parity="true"] main > main > section:first-of-type > div:first-child p:last-child {
           font-size: 64px !important;
           line-height: 1 !important;
-          color: #1f6a58 !important;
+          color: var(--orchard-green) !important;
         }
 
         [data-heirloom-getting-started-parity="true"] main > main > section:first-of-type > div:last-child {
@@ -86,12 +86,12 @@ export default function GettingStartedParityLayout({ children }: { children: Rea
         }
 
         [data-heirloom-getting-started-parity="true"] main > main > section:first-of-type > div:last-child > div:first-child {
-          color: #536158 !important;
+          color: var(--bs-text-secondary) !important;
         }
 
         [data-heirloom-getting-started-parity="true"] main > main > section:first-of-type > div:last-child > div:last-child {
           height: 6px !important;
-          background: #d5dbd4 !important;
+          background: var(--bs-surface-secondary) !important;
         }
 
         [data-heirloom-getting-started-parity="true"] main > main > section:nth-of-type(2),
