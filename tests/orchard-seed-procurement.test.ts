@@ -61,10 +61,10 @@ test("direct procurement resolver accepts explicit or density-invariant source e
 
 test("direct procurement resolver blocks ambiguous cultivar densities", () => {
   const rows: DirectProcurementReferenceRow[] = [
-    { crop: "Example", cultivar: "A", density_30m: "10g" },
-    { crop: "Example", cultivar: "B", density_30m: "20g" },
+    { crop: "Rucula", cultivar: "Astro", density_30m: "10g" },
+    { crop: "Rucula", cultivar: "Rocket", density_30m: "20g" },
   ]
-  assert.equal(resolveDirectProcurementReference("Unknown", rows), null)
+  assert.equal(resolveDirectProcurementReference("Arugula", rows), null)
 })
 
 test("technical propagation keeps gross plan demand before inventory consolidation", () => {
@@ -110,7 +110,7 @@ test("Orchard seeds navigation opens a request-ready board without bypassing Pro
 })
 
 test("planned-plants reconciliation is source guarded and never claims execution", () => {
-  const migration = readFileSync(new URL("../supabase/migrations/20260907020000_orchard_reconcile_planned_plants_10m.sql", import.meta.url), "utf8")
+  const migration = readFileSync(new URL("../supabase/migrations/20260907021056_orchard_reconcile_planned_plants_10m.sql", import.meta.url), "utf8")
   assert.match(migration, /v_legacy_matches <> 22/)
   assert.match(migration, /v_missing <> 18/)
   assert.match(migration, /v_target_total <> 2551/)
@@ -119,4 +119,14 @@ test("planned-plants reconciliation is source guarded and never claims execution
   assert.match(migration, /v_seed_requests <> 0/)
   assert.doesNotMatch(migration, /planned_sow_date\s*=/)
   assert.doesNotMatch(migration, /status\s*=/)
+})
+
+test("seed supplier candidates remain pending and inactive", () => {
+  const migration = readFileSync(new URL("../supabase/migrations/20260907021106_orchard_seed_supplier_candidates.sql", import.meta.url), "utf8")
+  assert.match(migration, /Cooprinsem Valdivia/)
+  assert.match(migration, /Anasac Agropecuario/)
+  assert.match(migration, /is_active = false/)
+  assert.match(migration, /approval_status = 'pending'/)
+  assert.match(migration, /must remain pending and inactive/)
+  assert.doesNotMatch(migration, /approval_status = 'approved'/)
 })
