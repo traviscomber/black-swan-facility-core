@@ -26,6 +26,7 @@ type Employee = { id: string; name: string; role?: string | null }
 type Volunteer = { id: string; name: string; volunteer_role?: string | null }
 type Location = { id: string; name: string; latitude?: number | null; longitude?: number | null }
 type Priority = "baja" | "media" | "alta" | "urgente"
+type ReviewMode = "none" | "review"
 
 export function AddTaskDialog({ open, onOpenChange, onTaskCreated, prefill }: AddTaskDialogProps) {
   const supabase = useMemo(() => createBrowserClient(), [])
@@ -41,6 +42,7 @@ export function AddTaskDialog({ open, onOpenChange, onTaskCreated, prefill }: Ad
   const [estimatedMinutes, setEstimatedMinutes] = useState("")
   const [animalHandling, setAnimalHandling] = useState(false)
   const [safetyNotes, setSafetyNotes] = useState("")
+  const [reviewMode, setReviewMode] = useState<ReviewMode>("none")
   const [employeeIds, setEmployeeIds] = useState<string[]>([])
   const [volunteerIds, setVolunteerIds] = useState<string[]>([])
   const [employees, setEmployees] = useState<Employee[]>([])
@@ -113,6 +115,7 @@ export function AddTaskDialog({ open, onOpenChange, onTaskCreated, prefill }: Ad
     setEstimatedMinutes("")
     setAnimalHandling(false)
     setSafetyNotes("")
+    setReviewMode("none")
     setEmployeeIds([])
     setVolunteerIds([])
     setError(null)
@@ -130,7 +133,7 @@ export function AddTaskDialog({ open, onOpenChange, onTaskCreated, prefill }: Ad
     setIsSubmitting(true)
     setError(null)
     const location = locations.find((item) => item.id === locationId)
-    const { error: rpcError } = await supabase.rpc("create_operational_task_atomic", {
+    const { data: taskId, error: rpcError } = await supabase.rpc("create_operational_task_atomic", {
       p_title: cleanTitle,
       p_description: description.trim() || null,
       p_priority: priority,
@@ -158,8 +161,29 @@ export function AddTaskDialog({ open, onOpenChange, onTaskCreated, prefill }: Ad
       return
     }
 
+    let reviewQueued = false
+    if (reviewMode === "review" && taskId) {
+      const { error: reviewError } = await supabase.rpc("request_task_escalation", {
+        p_task_id: taskId,
+        p_escalation_choice: "unsure",
+        p_reason: null,
+      })
+      if (reviewError) {
+        toast({ title: "Tarea creada", description: "La tarea se creó, pero no fue posible enviarla para revisión." })
+      } else {
+        reviewQueued = true
+      }
+    }
+
     const total = employeeIds.length + volunteerIds.length
-    toast({ title: "Tarea creada", description: `${cleanTitle} quedó asignada a ${total} persona${total === 1 ? "" : "s"}.` })
+    if (reviewMode !== "review" || reviewQueued) {
+      toast({
+        title: reviewQueued ? "Tarea enviada para revisión" : "Tarea creada",
+        description: reviewQueued
+          ? `${cleanTitle} quedó creada y marcada Para revisión.`
+          : `${cleanTitle} quedó asignada a ${total} persona${total === 1 ? "" : "s"}.`,
+      })
+    }
     resetForm()
     setIsSubmitting(false)
     onTaskCreated()
@@ -193,6 +217,7 @@ export function AddTaskDialog({ open, onOpenChange, onTaskCreated, prefill }: Ad
             <div className="space-y-2"><Label>Duración estimada</Label><Input type="number" min="5" max="1440" step="5" value={estimatedMinutes} onChange={(event) => setEstimatedMinutes(event.target.value)} placeholder="Minutos" /></div>
           </div>
           <div className="grid gap-4 sm:grid-cols-2"><div className="space-y-2"><Label htmlFor="task-date">Fecha objetivo</Label><Input id="task-date" type="date" value={dueDate} onChange={(event) => setDueDate(event.target.value)} /></div><div className="space-y-2"><Label>Lugar</Label><Select value={locationId || "none"} onValueChange={(value) => setLocationId(value === "none" ? "" : value)}><SelectTrigger><SelectValue placeholder="Sin ubicación específica" /></SelectTrigger><SelectContent><SelectItem value="none">Sin ubicación específica</SelectItem>{locations.map((location) => <SelectItem key={location.id} value={location.id}>{location.name}</SelectItem>)}</SelectContent></Select></div></div>
+          <div className="space-y-2"><Label>Revisión</Label><Select value={reviewMode} onValueChange={(value: ReviewMode) => setReviewMode(value)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="none">No requiere revisión</SelectItem><SelectItem value="review">Para revisión</SelectItem></SelectContent></Select></div>
           <div className="rounded-lg border p-4"><label className="flex items-start gap-3"><Checkbox checked={animalHandling} onCheckedChange={(checked) => setAnimalHandling(Boolean(checked))} /><span><span className="block text-sm font-medium">Incluye manejo o cercanía con animales</span><span className="block text-xs text-muted-foreground">Activa advertencias y exige instrucciones de seguridad claras.</span></span></label>{(animalHandling || safetyNotes) && <div className="mt-3 space-y-2"><Label>Indicaciones de seguridad</Label><Textarea value={safetyNotes} onChange={(event) => setSafetyNotes(event.target.value)} rows={3} placeholder="Riesgos, supervisión y acciones no autorizadas" /></div>}</div>
           <div className="grid gap-4 lg:grid-cols-2"><AssigneeList title="Trabajadores" empty="No hay trabajadores activos." items={employees.map((item) => ({ id: item.id, name: item.name, subtitle: item.role }))} selected={employeeIds} onToggle={(id) => toggle(employeeIds, id, setEmployeeIds)} /><AssigneeList title="Voluntarios" empty="No hay voluntarios activos." items={volunteers.map((item) => ({ id: item.id, name: item.name, subtitle: item.volunteer_role }))} selected={volunteerIds} onToggle={(id) => toggle(volunteerIds, id, setVolunteerIds)} /></div>
           <p className="text-xs text-muted-foreground">{employeeIds.length} trabajador{employeeIds.length === 1 ? "" : "es"} y {volunteerIds.length} voluntario{volunteerIds.length === 1 ? "" : "s"} seleccionados.</p>
