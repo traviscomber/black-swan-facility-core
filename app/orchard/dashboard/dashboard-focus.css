@@ -46,7 +46,7 @@
 
 /* Next actions is a compact operating strip, not a second hero. */
 [data-orchard-next-actions] {
-  padding-top: 0.75rem !important;
+  padding-top: 0.5rem !important;
 }
 
 [data-orchard-next-actions] > div {
@@ -57,15 +57,15 @@
 [data-orchard-next-actions] > div > div:first-child {
   display: flex;
   align-items: center;
-  gap: 1rem;
-  padding: 0.625rem 1rem !important;
+  gap: 0.75rem;
+  padding: 0.45rem 0.85rem !important;
 }
 
 [data-orchard-next-actions] > div > div:first-child > p:first-child {
   flex: 0 0 auto;
   white-space: nowrap;
-  font-size: 0.6rem !important;
-  letter-spacing: 0.15em !important;
+  font-size: 0.56rem !important;
+  letter-spacing: 0.14em !important;
 }
 
 [data-orchard-next-actions] > div > div:first-child > div {
@@ -75,23 +75,23 @@
 }
 
 [data-orchard-next-actions] h2 {
-  font-size: 1rem !important;
-  line-height: 1.35rem !important;
+  font-size: 0.95rem !important;
+  line-height: 1.2rem !important;
   font-weight: 500 !important;
 }
 
 [data-orchard-next-actions] > div > div:first-child > div > p {
-  font-size: 0.68rem !important;
+  font-size: 0.62rem !important;
 }
 
 [data-orchard-next-actions] > div > div:nth-child(2) > div > div:first-child {
-  padding-top: 0.5rem !important;
-  padding-bottom: 0.5rem !important;
+  padding-top: 0.4rem !important;
+  padding-bottom: 0.4rem !important;
 }
 
 [data-orchard-next-actions] > div > div:nth-child(2) > div > div:nth-child(2) > div {
-  padding-top: 0.625rem !important;
-  padding-bottom: 0.625rem !important;
+  padding-top: 0.48rem !important;
+  padding-bottom: 0.48rem !important;
 }
 
 .orchard-dashboard-workspace [data-orchard-dashboard] {
@@ -125,7 +125,7 @@
 }
 
 .orchard-dashboard-workspace [data-orchard-dashboard] > section.grid {
-  gap: 0.75rem !important;
+  gap: 0.7rem !important;
   align-items: start !important;
 }
 
@@ -141,14 +141,14 @@
 }
 
 .orchard-dashboard-workspace [data-orchard-dashboard] article > header {
-  min-height: 2.625rem;
-  padding: 0.55rem 0.8rem !important;
+  min-height: 2.4rem;
+  padding: 0.45rem 0.75rem !important;
   border-color: #302f2b !important;
 }
 
 .orchard-dashboard-workspace [data-orchard-dashboard] article > header h2 {
-  font-size: 0.9rem !important;
-  line-height: 1.25rem !important;
+  font-size: 0.86rem !important;
+  line-height: 1.2rem !important;
   font-weight: 500 !important;
   letter-spacing: -0.01em;
 }
@@ -158,14 +158,41 @@
 }
 
 .orchard-dashboard-workspace [data-orchard-dashboard] textarea {
-  min-height: 5.75rem !important;
+  min-height: 5.1rem !important;
 }
 
-/*
- * Daily Dashboard must not present imported BS history records as operator Notes.
- * Historical evidence remains available in the dedicated Notes > History evidence view.
- * Until the dashboard source is explicitly operator-note scoped, omit this widget entirely.
- */
+/* Weather is read at a glance; seven rows should fit without dominating the dashboard. */
+.orchard-dashboard-workspace [data-orchard-dashboard] > section.grid > div:has(article > p.border-t) article > div > div {
+  padding-top: 0.48rem !important;
+  padding-bottom: 0.48rem !important;
+}
+
+.orchard-dashboard-workspace [data-orchard-dashboard] > section.grid > div:has(article > p.border-t) article > div > div span.flex {
+  width: 1.9rem !important;
+  height: 1.9rem !important;
+}
+
+.orchard-dashboard-workspace [data-orchard-dashboard] > section.grid > div:has(article > p.border-t) article > div > div p.text-lg {
+  font-size: 0.95rem !important;
+  line-height: 1.1rem !important;
+}
+
+/* Crop Distribution is a scanning rail, not a card gallery. */
+.orchard-dashboard-workspace [data-orchard-dashboard] > section.grid > div:has(article [style*="background-color"]) article > div > div {
+  padding-top: 0.48rem !important;
+  padding-bottom: 0.48rem !important;
+}
+
+.orchard-dashboard-workspace [data-orchard-dashboard] > section.grid > div:has(article [style*="background-color"]) article span[style*="background-color"] {
+  width: 1.55rem !important;
+  height: 1.55rem !important;
+}
+
+.orchard-dashboard-workspace [data-orchard-dashboard] > section.grid > div:has(article [style*="background-color"]) article p.text-base {
+  font-size: 0.9rem !important;
+}
+
+/* Daily Dashboard must not present imported BS history records as operator Notes. */
 .orchard-dashboard-workspace [data-orchard-dashboard] > section.grid > div:has(article a[href*="/orchard/notes"]) {
   display: none !important;
 }
@@ -184,14 +211,9 @@
   }
 
   .orchard-dashboard-workspace [data-orchard-dashboard] > section.grid {
-    margin-top: 0.25rem;
+    margin-top: 0.2rem;
   }
 
-  /*
-   * Stable editorial composition without cross-column dead space:
-   * Tasks + Revenue form the left stack, Weather + Notepad + Milestones the center,
-   * and Crop Distribution remains the persistent right rail.
-   */
   .orchard-dashboard-workspace [data-orchard-dashboard] > section.grid:not(:has(.cursor-grab)) {
     display: grid !important;
     grid-template-columns: minmax(0, 1.08fr) minmax(0, 1fr) minmax(19rem, 0.82fr) !important;
@@ -229,7 +251,7 @@
   }
 
   .orchard-dashboard-workspace [data-orchard-dashboard] > section.grid:not(:has(.cursor-grab)) > div:has(article [style*="background-color"]) article > div {
-    max-height: 46rem !important;
+    max-height: 43rem !important;
   }
 
   .orchard-dashboard-workspace [data-orchard-dashboard] > section.grid:not(:has(.cursor-grab)) > div:has(article [class*="grid-cols-[78px_1fr]"]) {
@@ -268,7 +290,7 @@
 
   [data-orchard-next-actions] > div > div:first-child {
     display: block;
-    padding: 0.75rem !important;
+    padding: 0.7rem !important;
   }
 
   [data-orchard-next-actions] > div > div:first-child > div {
