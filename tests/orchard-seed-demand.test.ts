@@ -79,3 +79,18 @@ test("Advanced nursery never auto-fills seeds when transplant demand is incomple
   assert.match(source, /seeds_sown: outstanding && outstanding > 0 \? outstanding\.toString\(\) : ""/)
   assert.match(source, /text\.incompleteHelp/)
 })
+
+test("Quick stock preserves physical presence without inventing a zero count", () => {
+  const source = readFileSync(new URL("../app/orchard/nursery/quick-stock/page.tsx", import.meta.url), "utf8")
+  assert.match(source, /count_status:\s*hasCount\s*\?\s*"counted"\s*:\s*"pending"/)
+  assert.match(source, /quantity_seeds:\s*hasCount\s*\?\s*Number\(form\.quantity\)\s*:\s*0/)
+  assert.match(source, /Pending count means physical stock has been confirmed but no quantity has been invented\./)
+  assert.match(source, /count_status\s*===\s*"pending"/)
+})
+
+test("Seeds hub keeps quick stock as the primary stock action", () => {
+  const source = readFileSync(new URL("../app/orchard/nursery/page.tsx", import.meta.url), "utf8")
+  assert.match(source, /\/orchard\/nursery\/quick-stock/)
+  assert.match(source, /Add or count stock/)
+  assert.match(source, /Advanced stock management/)
+})
