@@ -82,10 +82,10 @@ export default function OrchardSettingsPage(){
         <div className="space-y-4">
           <Card title={text.frost} help={text.frostHelp}>
             <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
-              <Field label={text.lastHard}><input value={settings.last_hard_frost_md??""} onChange={e=>update("last_hard_frost_md",e.target.value||null)} placeholder="MM-DD" className="farm-field"/></Field>
-              <Field label={text.lastLight}><input value={settings.last_light_frost_md??""} onChange={e=>update("last_light_frost_md",e.target.value||null)} placeholder="MM-DD" className="farm-field"/></Field>
-              <Field label={text.firstLight}><input value={settings.first_light_frost_md??""} onChange={e=>update("first_light_frost_md",e.target.value||null)} placeholder="MM-DD" className="farm-field"/></Field>
-              <Field label={text.firstHard}><input value={settings.first_hard_frost_md??""} onChange={e=>update("first_hard_frost_md",e.target.value||null)} placeholder="MM-DD" className="farm-field"/></Field>
+              <Field label={text.lastHard}><input value={settings.last_hard_frost_md??""} onChange={e=>update("last_hard_frost_md",e.target.value||null)} placeholder="DD/MM" className="farm-field"/></Field>
+              <Field label={text.lastLight}><input value={settings.last_light_frost_md??""} onChange={e=>update("last_light_frost_md",e.target.value||null)} placeholder="DD/MM" className="farm-field"/></Field>
+              <Field label={text.firstLight}><input value={settings.first_light_frost_md??""} onChange={e=>update("first_light_frost_md",e.target.value||null)} placeholder="DD/MM" className="farm-field"/></Field>
+              <Field label={text.firstHard}><input value={settings.first_hard_frost_md??""} onChange={e=>update("first_hard_frost_md",e.target.value||null)} placeholder="DD/MM" className="farm-field"/></Field>
             </div>
             <div className="mt-4 border-t border-[var(--orchard-line-soft)] pt-3"><span className="text-[9px] uppercase tracking-[.1em] text-muted-foreground">{text.frostSource}</span><p className="mt-1 text-[11px] text-[#c9c1b6]">{settings.frost_source??text.notSet}</p></div>
           </Card>
