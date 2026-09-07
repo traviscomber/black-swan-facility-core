@@ -47,7 +47,7 @@ const COPY = {
     description: "Estado vivo observado del trabajo de Raimundo. Esta superficie no modifica Asana ni convierte observaciones en tareas canónicas de Black Swan.",
     readOnly: "Sólo lectura",
     readOnlyDetail: "Los 191 snapshots históricos permanecen separados en Tareas → Asana por conciliar. Aquí sólo se muestra evidencia viva observada.",
-    openUnique: "Abiertas únicas",
+    openObserved: "Abiertas observadas",
     exactIdentity: "Con GID exacto",
     favorites: "Desde Favoritos",
     projects: "Proyectos observados",
@@ -55,7 +55,7 @@ const COPY = {
     allProjects: "Todos los proyectos",
     refresh: "Actualizar vista",
     tasksTitle: "Trabajo vivo observado",
-    tasksDetail: "Una fila por combinación tarea + proyecto. Cuando existe GID real de Asana, esa evidencia tiene prioridad.",
+    tasksDetail: "Se conserva cada observación abierta registrada. Las filas con GID real de Asana tienen identidad exacta; las privadas mantienen su evidencia de sesión.",
     scopeTitle: "Ámbito de Raimundo",
     scopeDetail: "Proyectos y portafolios observados bajo su responsabilidad. Los conteos sólo aparecen cuando fueron verificados.",
     noTasks: "No hay tareas que coincidan con el filtro.",
@@ -77,14 +77,14 @@ const COPY = {
     completed: "cerradas",
     total: "total",
     loadError: "No fue posible cargar la evidencia viva de Asana.",
-    identityNote: "La ausencia de GID no significa que la tarea no exista: varios proyectos privados sólo fueron visibles en la sesión autenticada de Raimundo.",
+    identityNote: "La ausencia de GID no significa que la tarea no exista: varios proyectos privados sólo fueron visibles en la sesión autenticada de Raimundo. Se preservan filas repetidas cuando Asana contiene tareas distintas con el mismo nombre.",
   },
   en: {
     title: "Live Asana",
     description: "Observed live state of Raimundo's work. This surface does not modify Asana or turn observations into canonical Black Swan tasks.",
     readOnly: "Read only",
     readOnlyDetail: "The 191 historical snapshots remain separate under Tasks → Asana reconciliation. This view shows only observed live evidence.",
-    openUnique: "Unique open",
+    openObserved: "Observed open",
     exactIdentity: "Exact GID",
     favorites: "From Favorites",
     projects: "Observed projects",
@@ -92,7 +92,7 @@ const COPY = {
     allProjects: "All projects",
     refresh: "Refresh view",
     tasksTitle: "Observed live work",
-    tasksDetail: "One row per task + project combination. When an exact Asana GID exists, that evidence takes priority.",
+    tasksDetail: "Every recorded open observation is preserved. Rows with a real Asana GID have exact identity; private rows retain session evidence.",
     scopeTitle: "Raimundo scope",
     scopeDetail: "Projects and portfolios observed under his responsibility. Counts appear only when verified.",
     noTasks: "No tasks match this filter.",
@@ -114,14 +114,14 @@ const COPY = {
     completed: "closed",
     total: "total",
     loadError: "Live Asana evidence could not be loaded.",
-    identityNote: "A missing GID does not mean the task does not exist: several private projects were only visible in Raimundo's authenticated session.",
+    identityNote: "A missing GID does not mean the task does not exist: several private projects were only visible in Raimundo's authenticated session. Repeated rows are preserved when Asana contains distinct tasks with the same name.",
   },
   de: {
     title: "Asana live",
     description: "Beobachteter Live-Stand von Raimundos Arbeit. Diese Ansicht ändert Asana nicht und macht Beobachtungen nicht zu kanonischen Black-Swan-Aufgaben.",
     readOnly: "Nur lesen",
     readOnlyDetail: "Die 191 historischen Snapshots bleiben unter Aufgaben → Asana-Abgleich getrennt. Hier wird nur beobachtete Live-Evidenz gezeigt.",
-    openUnique: "Eindeutig offen",
+    openObserved: "Beobachtet offen",
     exactIdentity: "Exakte GID",
     favorites: "Aus Favoriten",
     projects: "Beobachtete Projekte",
@@ -129,7 +129,7 @@ const COPY = {
     allProjects: "Alle Projekte",
     refresh: "Ansicht aktualisieren",
     tasksTitle: "Beobachtete Live-Arbeit",
-    tasksDetail: "Eine Zeile je Kombination aus Aufgabe und Projekt. Eine exakte Asana-GID hat Vorrang.",
+    tasksDetail: "Jede erfasste offene Beobachtung bleibt erhalten. Zeilen mit echter Asana-GID haben eine exakte Identität; private Zeilen behalten Sitzungsnachweise.",
     scopeTitle: "Raimundos Bereich",
     scopeDetail: "Beobachtete Projekte und Portfolios unter seiner Verantwortung. Zähler erscheinen nur, wenn sie verifiziert wurden.",
     noTasks: "Keine Aufgaben entsprechen dem Filter.",
@@ -151,32 +151,12 @@ const COPY = {
     completed: "geschlossen",
     total: "gesamt",
     loadError: "Live-Asana-Evidenz konnte nicht geladen werden.",
-    identityNote: "Eine fehlende GID bedeutet nicht, dass die Aufgabe nicht existiert: mehrere private Projekte waren nur in Raimundos authentifizierter Sitzung sichtbar.",
+    identityNote: "Eine fehlende GID bedeutet nicht, dass die Aufgabe nicht existiert: mehrere private Projekte waren nur in Raimundos authentifizierter Sitzung sichtbar. Wiederholte Zeilen bleiben erhalten, wenn Asana verschiedene Aufgaben mit demselben Namen enthält.",
   },
 } as const
 
 function normalize(value: string | null | undefined) {
   return (value ?? "").trim().toLocaleLowerCase()
-}
-
-function sourceRank(row: LiveObservation) {
-  if (row.external_task_id) return 3
-  if (row.source_surface === "asana_favorites_project") return 2
-  if (row.source_surface === "asana_my_tasks") return 1
-  return 0
-}
-
-function dedupeOpen(rows: LiveObservation[]) {
-  const grouped = new Map<string, LiveObservation>()
-  for (const row of rows) {
-    if (row.task_status !== "open") continue
-    const key = `${normalize(row.task_title)}|${normalize(row.project_name)}`
-    const current = grouped.get(key)
-    if (!current || sourceRank(row) > sourceRank(current) || (sourceRank(row) === sourceRank(current) && row.last_seen_at > current.last_seen_at)) {
-      grouped.set(key, row)
-    }
-  }
-  return [...grouped.values()]
 }
 
 function safeDate(value: string | null) {
@@ -225,11 +205,10 @@ export default function AsanaLivePage() {
 
   useEffect(() => { void load() }, [load])
 
-  const uniqueOpen = useMemo(() => dedupeOpen(observations), [observations])
-  const projectNames = useMemo(() => [...new Set(uniqueOpen.map((row) => row.project_name).filter((value): value is string => Boolean(value)))].sort((a, b) => a.localeCompare(b, locale)), [locale, uniqueOpen])
+  const projectNames = useMemo(() => [...new Set(observations.map((row) => row.project_name).filter((value): value is string => Boolean(value)))].sort((a, b) => a.localeCompare(b, locale)), [locale, observations])
   const filtered = useMemo(() => {
     const needle = normalize(search)
-    return uniqueOpen
+    return observations
       .filter((row) => projectFilter === "all" || row.project_name === projectFilter)
       .filter((row) => !needle || normalize(row.task_title).includes(needle) || normalize(row.project_name).includes(needle) || normalize(row.assignee_label).includes(needle))
       .sort((a, b) => {
@@ -239,10 +218,10 @@ export default function AsanaLivePage() {
         const projectCompare = (a.project_name ?? "").localeCompare(b.project_name ?? "", locale)
         return projectCompare || a.task_title.localeCompare(b.task_title, locale)
       })
-  }, [locale, projectFilter, search, uniqueOpen])
+  }, [locale, observations, projectFilter, search])
 
-  const exactCount = uniqueOpen.filter((row) => Boolean(row.external_task_id)).length
-  const favoritesCount = uniqueOpen.filter((row) => row.source_surface === "asana_favorites_project").length
+  const exactCount = observations.filter((row) => Boolean(row.external_task_id)).length
+  const favoritesCount = observations.filter((row) => row.source_surface === "asana_favorites_project").length
   const observedProjectCount = projects.filter((row) => row.resource_type === "project").length
   const date = useMemo(() => new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeZone: "America/Santiago" }), [locale])
   const dateTime = useMemo(() => new Intl.DateTimeFormat(locale, { dateStyle: "short", timeStyle: "short", timeZone: "America/Santiago" }), [locale])
@@ -261,7 +240,7 @@ export default function AsanaLivePage() {
     {error && <div className="flex gap-3 border-l-2 border-destructive bg-destructive/5 p-4 text-sm text-destructive"><AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />{error}</div>}
 
     <div className="grid grid-cols-2 gap-x-6 gap-y-4 border-y py-4 lg:grid-cols-4">
-      <Metric icon={CheckCircle2} label={copy.openUnique} value={uniqueOpen.length} locale={locale} />
+      <Metric icon={CheckCircle2} label={copy.openObserved} value={observations.length} locale={locale} />
       <Metric icon={ShieldCheck} label={copy.exactIdentity} value={exactCount} locale={locale} />
       <Metric icon={Users} label={copy.favorites} value={favoritesCount} locale={locale} />
       <Metric icon={Calendar} label={copy.projects} value={observedProjectCount} locale={locale} />
@@ -281,7 +260,7 @@ export default function AsanaLivePage() {
           const due = safeDate(row.due_on)
           const sourceLabel = row.external_task_id ? copy.api : row.source_surface === "asana_favorites_project" ? copy.favorite : row.source_surface === "asana_my_tasks" ? copy.myTasks : copy.unknownSource
           const href = row.source_surface_url || row.project_url
-          return <article key={`${normalize(row.task_title)}|${normalize(row.project_name)}`} className="py-4">
+          return <article key={row.id} className="py-4">
             <div className="flex items-start justify-between gap-4"><div className="min-w-0"><h3 className="font-medium leading-snug">{row.task_title}</h3><p className="mt-1 text-xs text-muted-foreground">{row.project_name || copy.projectUnknown}</p></div><Badge variant="outline">{copy.open}</Badge></div>
             <div className="mt-2 flex flex-wrap gap-2"><Badge variant="secondary">{sourceLabel}</Badge>{row.external_task_id && <Badge variant="outline">{copy.exact}</Badge>}{row.recency_class === "browser_only" && <Badge variant="outline">{copy.browserOnly}</Badge>}</div>
             <div className="mt-3 grid gap-1.5 text-xs text-muted-foreground sm:grid-cols-2">
