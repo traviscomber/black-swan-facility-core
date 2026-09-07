@@ -45,6 +45,7 @@ export const osAreas: OsArea[] = [
       { key: "bookings", nameKey: "nav.bookings", href: "/bookings", area: "operations", tipKey: "nav.bookings_tip", viewDomain: "booking", action: "booking.modify", department: "booking" },
       { key: "activities", nameKey: "nav.activities", href: "/activities-calendar", area: "operations", tipKey: "nav.activities_tip", viewDomain: "operations", department: "operations" },
       { key: "tasks", nameKey: "nav.tasks", href: "/tasks", area: "operations", tipKey: "nav.tasks_tip", viewDomain: "operations", department: "operations" },
+      { key: "asana-live", nameKey: "nav.asana_live", href: "/asana-live", area: "operations", tipKey: "nav.asana_live_tip", viewDomain: "operations", adminOnly: true, department: "operations" },
       { key: "checklists", nameKey: "nav.checklists", href: "/checklists", area: "operations", tipKey: "nav.checklists_tip", viewDomain: "operations", department: "operations" },
       { key: "procurement", nameKey: "nav.procurement", href: "/procurement", area: "operations", tipKey: "nav.procurement_tip", viewDomain: "procurement", action: "procurement.operate", department: "procurement" },
       { key: "maintenance", nameKey: "nav.maintenance", href: "/maintenance", area: "operations", tipKey: "nav.maintenance_tip", viewDomain: "maintenance", action: "maintenance.operate", department: "maintenance" },
