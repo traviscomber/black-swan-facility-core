@@ -92,6 +92,11 @@ begin
        v_legacy_matches, v_old_total, v_target_total
   from x;
 
+  -- Seed requests are inserted directly by the authenticated Orchard board.
+  -- Serialize those inserts before checking the zero-request guard so a request
+  -- cannot be created from legacy counts between this check and the update.
+  lock table public.procurement_requests in share row exclusive mode;
+
   select count(*) into v_seed_requests
   from public.procurement_requests
   where source_type = 'orchard_seed_plan';
