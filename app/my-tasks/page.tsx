@@ -48,9 +48,9 @@ type ViewTab = "pendientes" | "completadas" | "todas"
 
 const LOCALES = { en: "en-US", es: "es-CL", de: "de-DE" } as const
 const COPY = {
-  en: { eyebrow: "Black Swan · Personal workspace", title: "My tasks", description: "Your assigned work is the first operational view after sign-in.", pending: "Open", today: "Due today", completedWeek: "Completed this week", loadError: "Your tasks could not be loaded.", noProfile: "This account is not linked to an employee profile yet.", tabPending: "Open", tabCompleted: "Completed", tabAll: "All mine", empty: "No tasks in this view.", allTasks: "All operational tasks", select: "Select a task to review instructions, status, comments and evidence.", overdue: "Overdue", inProgress: "In progress", due: "Due", minutes: "min" },
-  es: { eyebrow: "Black Swan · Espacio personal", title: "Mis tareas", description: "Tu trabajo asignado es la primera vista operativa después de iniciar sesión.", pending: "Abiertas", today: "Para hoy", completedWeek: "Completadas esta semana", loadError: "No fue posible cargar tus tareas.", noProfile: "Esta cuenta todavía no está vinculada a un perfil de trabajador.", tabPending: "Abiertas", tabCompleted: "Completadas", tabAll: "Todas las mías", empty: "No hay tareas en esta vista.", allTasks: "Todas las tareas operativas", select: "Selecciona una tarea para revisar instrucciones, estado, comentarios y evidencia.", overdue: "Vencida", inProgress: "En curso", due: "Fecha", minutes: "min" },
-  de: { eyebrow: "Black Swan · Persönlicher Bereich", title: "Meine Aufgaben", description: "Deine zugewiesene Arbeit ist die erste operative Ansicht nach der Anmeldung.", pending: "Offen", today: "Heute fällig", completedWeek: "Diese Woche erledigt", loadError: "Deine Aufgaben konnten nicht geladen werden.", noProfile: "Dieses Konto ist noch keinem Mitarbeiterprofil zugeordnet.", tabPending: "Offen", tabCompleted: "Erledigt", tabAll: "Alle meine", empty: "Keine Aufgaben in dieser Ansicht.", allTasks: "Alle operativen Aufgaben", select: "Wähle eine Aufgabe, um Anweisungen, Status, Kommentare und Nachweise zu prüfen.", overdue: "Überfällig", inProgress: "In Bearbeitung", due: "Fällig", minutes: "Min" },
+  en: { eyebrow: "Black Swan · Personal workspace", title: "My tasks", description: "Open work is routed from the operational activities linked to your profile.", pending: "Open", today: "Due today", completedWeek: "Completed this week", loadError: "Your tasks could not be loaded.", noProfile: "This account is not linked to an employee profile yet.", tabPending: "Open", tabCompleted: "Completed", tabAll: "All mine", empty: "No tasks in this view.", allTasks: "All operational tasks", select: "Select a task to review instructions, status, comments and evidence.", overdue: "Overdue", inProgress: "In progress", due: "Due", minutes: "min" },
+  es: { eyebrow: "Black Swan · Espacio personal", title: "Mis tareas", description: "El trabajo abierto se enruta desde las actividades operacionales asociadas a tu perfil.", pending: "Abiertas", today: "Para hoy", completedWeek: "Completadas esta semana", loadError: "No fue posible cargar tus tareas.", noProfile: "Esta cuenta todavía no está vinculada a un perfil de trabajador.", tabPending: "Abiertas", tabCompleted: "Completadas", tabAll: "Todas las mías", empty: "No hay tareas en esta vista.", allTasks: "Todas las tareas operativas", select: "Selecciona una tarea para revisar instrucciones, estado, comentarios y evidencia.", overdue: "Vencida", inProgress: "En curso", due: "Fecha", minutes: "min" },
+  de: { eyebrow: "Black Swan · Persönlicher Bereich", title: "Meine Aufgaben", description: "Offene Arbeit wird aus den deinem Profil zugeordneten operativen Bereichen abgeleitet.", pending: "Offen", today: "Heute fällig", completedWeek: "Diese Woche erledigt", loadError: "Deine Aufgaben konnten nicht geladen werden.", noProfile: "Dieses Konto ist noch keinem Mitarbeiterprofil zugeordnet.", tabPending: "Offen", tabCompleted: "Erledigt", tabAll: "Alle meine", empty: "Keine Aufgaben in dieser Ansicht.", allTasks: "Alle operativen Aufgaben", select: "Wähle eine Aufgabe, um Anweisungen, Status, Kommentare und Nachweise zu prüfen.", overdue: "Überfällig", inProgress: "In Bearbeitung", due: "Fällig", minutes: "Min" },
 } as const
 
 const priorityClasses: Record<TaskPriority, string> = {
@@ -111,18 +111,20 @@ export default function MyTasksPage() {
       return
     }
 
-    const { data: assignments, error: assignmentError } = await supabase
-      .from("task_assignments")
-      .select("task_id")
-      .eq("employee_id", employeeId)
+    const [{ data: routedRows, error: routedError }, { data: assignments, error: assignmentError }] = await Promise.all([
+      supabase.rpc("get_my_routed_task_ids"),
+      supabase.from("task_assignments").select("task_id").eq("employee_id", employeeId),
+    ])
 
-    if (assignmentError) {
+    if (routedError || assignmentError) {
       setError(copy.loadError)
       setIsLoading(false)
       return
     }
 
-    const taskIds = Array.from(new Set((assignments ?? []).map((item) => item.task_id).filter(Boolean))) as string[]
+    const routedTaskIds = new Set((routedRows ?? []).map((item: { task_id?: string | null }) => item.task_id).filter(Boolean) as string[])
+    const historicalTaskIds = (assignments ?? []).map((item) => item.task_id).filter(Boolean) as string[]
+    const taskIds = Array.from(new Set([...routedTaskIds, ...historicalTaskIds]))
     if (taskIds.length === 0) {
       setTasks([])
       setSelectedTask(null)
@@ -143,7 +145,9 @@ export default function MyTasksPage() {
       return
     }
 
-    const nextTasks = (taskRows ?? []) as PersonalTask[]
+    const nextTasks = ((taskRows ?? []) as PersonalTask[]).filter((task) =>
+      routedTaskIds.has(task.id) || task.status === "completada" || task.status === "cancelada",
+    )
     const selectedId = new URLSearchParams(window.location.search).get("selected")
     setTasks(nextTasks)
     setSelectedTask((current) => selectedId ? nextTasks.find((task) => task.id === selectedId) ?? null : current ? nextTasks.find((task) => task.id === current.id) ?? null : null)
