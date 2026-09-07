@@ -14,12 +14,13 @@ const copy = {
     planTitle: "1. Required by the plan",
     planBody: "See gross seed, gram and seed-tuber requirements for the reconciled plantings before deducting stock.",
     planAction: "Open purchase requirement",
-    stockTitle: "2. Seed stock & lots",
-    stockBody: "Record receipts, lots, germination evidence and inventory movements only after the plan requirement is clear.",
-    stockAction: "Manage stock",
+    stockTitle: "2. Physical stock & lots",
+    stockBody: "Add what is physically on hand in seconds. Crop first; count and unit when known. Lot, supplier and storage details can be completed later.",
+    stockAction: "Add or count stock",
     nurseryTitle: "3. Nursery & transplant readiness",
     nurseryBody: "Follow started batches, hardening and what is actually ready to move to the field.",
     nurseryAction: "Open nursery",
+    advanced: "Advanced seed & nursery management",
     rule: "Order of work",
     ruleBody: "Plan requirement → available stock → purchase gap → nursery execution. These are different states and are not mixed into one number.",
   },
@@ -30,12 +31,13 @@ const copy = {
     planTitle: "1. Requerido por el plan",
     planBody: "Ve el requerimiento bruto de semillas, gramos y tubérculos para las plantaciones reconciliadas antes de descontar stock.",
     planAction: "Abrir requerimiento de compra",
-    stockTitle: "2. Stock y lotes de semillas",
-    stockBody: "Registra recepciones, lotes, germinación e inventario sólo después de tener claro el requerimiento del plan.",
-    stockAction: "Gestionar stock",
+    stockTitle: "2. Stock físico y lotes",
+    stockBody: "Agrega lo que existe físicamente en segundos. Primero el cultivo; conteo y unidad cuando los conozcas. Lote, proveedor y ubicación se pueden completar después.",
+    stockAction: "Agregar o contar stock",
     nurseryTitle: "3. Almácigos y trasplante",
     nurseryBody: "Sigue lotes iniciados, endurecimiento y lo que realmente está listo para pasar al campo.",
     nurseryAction: "Abrir vivero",
+    advanced: "Gestión avanzada de semillas y almácigos",
     rule: "Orden de trabajo",
     ruleBody: "Requerimiento del plan → stock disponible → déficit de compra → ejecución en almácigo. Son estados distintos y no se mezclan en un solo número.",
   },
@@ -46,12 +48,13 @@ const copy = {
     planTitle: "1. Bedarf laut Plan",
     planBody: "Bruttobedarf an Saatgut, Gramm und Pflanzkartoffeln für abgeglichene Pflanzungen vor Bestandsabzug.",
     planAction: "Einkaufsbedarf öffnen",
-    stockTitle: "2. Saatgutbestand & Partien",
-    stockBody: "Wareneingänge, Partien, Keimungsnachweise und Bestandsbewegungen erst nach Klärung des Planbedarfs verwalten.",
-    stockAction: "Bestand verwalten",
+    stockTitle: "2. Physischer Bestand & Partien",
+    stockBody: "Tatsächlichen Bestand in Sekunden erfassen. Zuerst Kultur; Menge und Einheit, sobald bekannt. Partie, Lieferant und Lagerort können später ergänzt werden.",
+    stockAction: "Bestand hinzufügen oder zählen",
     nurseryTitle: "3. Anzucht & Pflanzbereitschaft",
     nurseryBody: "Gestartete Chargen, Abhärtung und tatsächlich pflanzbereite Jungpflanzen verfolgen.",
     nurseryAction: "Anzucht öffnen",
+    advanced: "Erweiterte Saatgut- & Anzuchtverwaltung",
     rule: "Arbeitsreihenfolge",
     ruleBody: "Planbedarf → verfügbarer Bestand → Einkaufslücke → Anzuchtausführung. Diese Zustände werden nicht zu einer Zahl vermischt.",
   },
@@ -65,7 +68,7 @@ export default function OrchardSeedsHubPage() {
 
   const steps = [
     { icon: PackageOpen, title: text.planTitle, body: text.planBody, action: text.planAction, href: href("/orchard/game-plan/propagation"), primary: true },
-    { icon: Boxes, title: text.stockTitle, body: text.stockBody, action: text.stockAction, href: href("/orchard/nursery/advanced"), primary: false },
+    { icon: Boxes, title: text.stockTitle, body: text.stockBody, action: text.stockAction, href: href("/orchard/nursery/quick-stock"), primary: false },
     { icon: Sprout, title: text.nurseryTitle, body: text.nurseryBody, action: text.nurseryAction, href: href("/orchard/nursery/overview"), primary: false },
   ]
 
@@ -83,7 +86,7 @@ export default function OrchardSeedsHubPage() {
         </Link>)}
       </div>
 
-      <div className="mt-6 border-t border-[var(--orchard-line)] pt-5"><p className="text-[10px] font-semibold uppercase tracking-[.16em] text-muted-foreground">{text.rule}</p><p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">{text.ruleBody}</p></div>
+      <div className="mt-6 flex flex-wrap items-center gap-x-6 gap-y-3 border-t border-[var(--orchard-line)] pt-5"><div><p className="text-[10px] font-semibold uppercase tracking-[.16em] text-muted-foreground">{text.rule}</p><p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">{text.ruleBody}</p></div><Link href={href("/orchard/nursery/advanced")} className="inline-flex items-center gap-2 text-sm font-medium text-[var(--orchard-green)]">{text.advanced}<ArrowRight className="h-4 w-4"/></Link></div>
     </div>
   </main></AppLayout>
 }
