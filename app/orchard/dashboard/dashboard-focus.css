@@ -157,20 +157,20 @@
   color: #8fcbb0 !important;
 }
 
-/* Tighten low-value text blocks so data, not frames, controls the rhythm. */
 .orchard-dashboard-workspace [data-orchard-dashboard] textarea {
   min-height: 5.75rem !important;
 }
 
-.orchard-dashboard-workspace [data-orchard-dashboard] > section.grid > div:has(article a[href*="/orchard/notes"]) article a p:last-child {
-  display: -webkit-box !important;
-  overflow: hidden !important;
-  -webkit-box-orient: vertical !important;
-  -webkit-line-clamp: 1 !important;
+/*
+ * Daily Dashboard must not present imported BS history records as operator Notes.
+ * Historical evidence remains available in the dedicated Notes > History evidence view.
+ * Until the dashboard source is explicitly operator-note scoped, omit this widget entirely.
+ */
+.orchard-dashboard-workspace [data-orchard-dashboard] > section.grid > div:has(article a[href*="/orchard/notes"]) {
+  display: none !important;
 }
 
 @media (min-width: 1280px) {
-  /* Keep dashboard selection, profile actions and Edit layout on one quiet toolbar. */
   .orchard-dashboard-workspace [data-orchard-dashboard] > header {
     position: absolute !important;
     z-index: 4;
@@ -188,10 +188,9 @@
   }
 
   /*
-   * Stable editorial composition:
-   * left pairs Tasks + Revenue against Weather, then Notes against Notepad + Milestones.
-   * Crop Distribution remains the persistent right rail.
-   * Pairing comparable vertical stacks prevents tall center/right widgets from creating dead space.
+   * Stable editorial composition without cross-column dead space:
+   * Tasks + Revenue form the left stack, Weather + Notepad + Milestones the center,
+   * and Crop Distribution remains the persistent right rail.
    */
   .orchard-dashboard-workspace [data-orchard-dashboard] > section.grid:not(:has(.cursor-grab)) {
     display: grid !important;
@@ -199,8 +198,8 @@
     grid-template-areas:
       "tasks weather crops"
       "revenue weather crops"
-      "notes notepad crops"
-      "notes milestones crops" !important;
+      "revenue notepad crops"
+      ". milestones crops" !important;
     grid-auto-flow: row !important;
   }
 
@@ -220,10 +219,6 @@
     grid-area: notepad !important;
   }
 
-  .orchard-dashboard-workspace [data-orchard-dashboard] > section.grid:not(:has(.cursor-grab)) > div:has(article a[href*="/orchard/notes"]) {
-    grid-area: notes !important;
-  }
-
   .orchard-dashboard-workspace [data-orchard-dashboard] > section.grid:not(:has(.cursor-grab)) > div:has(article [style*="background-color"]) {
     grid-area: crops !important;
     height: 100%;
@@ -241,7 +236,6 @@
     grid-area: milestones !important;
   }
 
-  /* Current empty milestone state fallback. */
   .orchard-dashboard-workspace [data-orchard-dashboard] > section.grid:not(:has(.cursor-grab)) > div:nth-child(7) {
     grid-area: milestones;
   }
