@@ -99,5 +99,5 @@ test("Seeds hub keeps quick stock as the primary stock action", () => {
   const source = readFileSync(new URL("../app/orchard/nursery/page.tsx", import.meta.url), "utf8")
   assert.match(source, /\/orchard\/nursery\/quick-stock/)
   assert.match(source, /Add or count stock/)
-  assert.match(source, /Advanced stock management/)
+  assert.match(source, /Advanced seed & nursery management/)
 })
