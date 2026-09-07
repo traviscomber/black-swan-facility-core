@@ -1,4 +1,4 @@
-import { parseApproxGrams } from "@/lib/orchard/seed-procurement"
+import { parseApproxGrams } from "./seed-procurement.ts"
 
 export type DirectProcurementReferenceRow = {
   crop: string
