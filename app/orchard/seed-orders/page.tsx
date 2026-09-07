@@ -7,20 +7,20 @@ import { AppLayout } from "@/components/app-layout"
 import { OrchardNavigation } from "@/components/orchard/orchard-navigation"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { createBrowserClient } from "@/lib/supabase/client"
-import { useLanguage } from "@/lib/hooks/use-language"
 import directSowReference from "@/data/orchard/dietrich-direct-sow-2026-27.json"
+import { resolveDirectProcurementReference, type DirectProcurementReferenceRow } from "@/lib/orchard/direct-procurement-reference"
 import { ORCHARD_GERMINATION_PLANNING_REFERENCE } from "@/lib/orchard/germination-reference"
 import {
   estimateDirectProcurement,
   estimateTransplantProcurement,
   estimateTuberProcurement,
-  parseApproxGrams,
   parseCentimeters,
   type ProcurementBasis,
   type ProcurementDemand,
   type ProcurementUnit,
 } from "@/lib/orchard/seed-procurement"
+import { useLanguage } from "@/lib/hooks/use-language"
+import { createBrowserClient } from "@/lib/supabase/client"
 
 type Locale = "en" | "es" | "de"
 type SeedOrderView = "seeds" | "transplants"
@@ -40,7 +40,6 @@ type Succession = {
 }
 type Allocation = { crop_succession_id: string }
 type CropLibraryRow = { id: string; crop_name: string; germination_rate_pct: number | null; seeds_per_plant: number | null }
-type DirectRow = { crop: string; cultivar: string; density_30m: string }
 type ProcurementRequest = {
   id: string
   request_number: string | null
@@ -56,56 +55,53 @@ type DemandLine = {
   crop: string
   variety: string | null
   cycleType: string
-  value: number
+  value: number | null
   unit: ProcurementUnit
-  basis: ProcurementBasis
+  basis: ProcurementBasis | null
+  reason: string | null
+  status: "ready" | "blocked"
   firstNurserySowing: string | null
   firstPlanting: string | null
   sourceRef: string
 }
 
-const DIRECT_SOURCE_CROP_BY_CANONICAL: Record<string, string> = {
-  Arugula: "Rucula",
-  "Bush Beans": "Beans (bush)",
-  Carrots: "Carrots",
-  Peas: "Sweet peas",
-}
 const POTATO_SPACING: Record<string, string> = { "New Potatoes": "15 cm", "Storage Potatoes": "20 cm" }
 const LOCALE: Record<Locale, string> = { en: "en-US", es: "es-CL", de: "de-DE" }
+const BULK_KEY = "__bulk__"
 
 const COPY = {
   en: {
-    eyebrow: "Orchard · Procurement",
-    title: "Seeds & Transplants",
-    description: "One purchasing board from the physically reconciled crop plan. Orchard owns the agronomic requirement; the central Procurement workflow owns request, quotation, approval, order, receiving and inventory status.",
+    eyebrow: "Orchard · Procurement", title: "Seeds & Transplants",
+    description: "One purchasing board from the physically reconciled crop plan. Orchard owns the agronomic requirement; Procurement owns request, quotation, approval, order, receiving and inventory.",
     crop: "Crop", cultivar: "Cultivar", nursery: "First nursery sowing", planting: "First planting", weight: "Weight", seeds: "Seeds / tubers", order: "Procurement status",
     notRequested: "Not requested", create: "Create request", creating: "Creating…", open: "Open request", technical: "Method & evidence", empty: "No physically allocated seed demand for this plan.",
     requestError: "The procurement request could not be created.", locationError: "Farm Area 1 is not available in your procurement location scope.", loadError: "The seed procurement board could not be loaded.",
-    gross: "Gross plan requirement", grossHelp: "Inventory is not deducted here. A procurement request is created only by an explicit operator action and then follows the canonical Black Swan purchasing workflow.",
+    gross: "Gross plan requirement", grossHelp: "Inventory is not deducted here. Requests are created only by an explicit operator action and then follow the canonical Black Swan purchasing workflow.",
     allocation: "physical plantings", source: "Dietrich 2026/27 + canonical Crop Map", changed: "Plan demand changed", requestQty: "requested", direct: "Direct sow", transplant: "Nursery / transplant",
     seedsTab: "Seeds", transplantsTab: "Transplants", search: "Search crops...", export: "Export", noMatches: "No crops match this view.", rows: "rows",
+    ready: "Ready to request", blocked: "Needs evidence", requested: "Requested", bulk: "Create all ready", blockedDensity: "Seed density is not source-backed yet", blockedPlants: "Plant count is not reconciled yet", blockedGeneric: "Procurement evidence is incomplete",
   },
   es: {
-    eyebrow: "Huerto · Compras",
-    title: "Semillas y trasplantes",
-    description: "Un solo tablero de compra desde el plan de cultivos físicamente reconciliado. Orchard es dueño del requerimiento agronómico; el flujo central de Compras es dueño de solicitud, cotización, aprobación, orden, recepción e inventario.",
+    eyebrow: "Huerto · Compras", title: "Semillas y trasplantes",
+    description: "Un solo tablero de compra desde el plan de cultivos físicamente reconciliado. Orchard es dueño del requerimiento agronómico; Compras es dueño de solicitud, cotización, aprobación, orden, recepción e inventario.",
     crop: "Cultivo", cultivar: "Cultivar", nursery: "Primera siembra almácigo", planting: "Primera plantación", weight: "Peso", seeds: "Semillas / tubérculos", order: "Estado de compra",
     notRequested: "Sin solicitar", create: "Crear solicitud", creating: "Creando…", open: "Abrir solicitud", technical: "Método y evidencia", empty: "No hay demanda de semillas físicamente asignada para este plan.",
     requestError: "No fue posible crear la solicitud de compra.", locationError: "Farm Area 1 no está disponible dentro de tu scope de Compras.", loadError: "No fue posible cargar el tablero de compras de semillas.",
-    gross: "Requerimiento bruto del plan", grossHelp: "Aquí no se descuenta inventario. Una solicitud de compra sólo se crea por acción explícita del operador y después sigue el flujo canónico de Compras de Black Swan.",
+    gross: "Requerimiento bruto del plan", grossHelp: "Aquí no se descuenta inventario. Las solicitudes se crean sólo por una acción explícita del operador y después siguen el flujo canónico de Compras de Black Swan.",
     allocation: "plantaciones físicas", source: "Dietrich 2026/27 + Crop Map canónico", changed: "Cambió la demanda del plan", requestQty: "solicitado", direct: "Siembra directa", transplant: "Almácigo / trasplante",
     seedsTab: "Semillas", transplantsTab: "Trasplantes", search: "Buscar cultivos...", export: "Exportar", noMatches: "No hay cultivos para esta vista.", rows: "filas",
+    ready: "Listas para solicitar", blocked: "Requieren evidencia", requested: "Solicitadas", bulk: "Crear todas las solicitudes listas", blockedDensity: "Falta densidad de semilla respaldada por fuente", blockedPlants: "Falta reconciliar cantidad de plantas", blockedGeneric: "La evidencia de compra está incompleta",
   },
   de: {
-    eyebrow: "Orchard · Beschaffung",
-    title: "Saatgut & Jungpflanzen",
-    description: "Eine Beschaffungsübersicht aus dem physisch abgeglichenen Anbauplan. Orchard verantwortet den agronomischen Bedarf; der zentrale Einkauf verantwortet Anforderung, Angebot, Freigabe, Bestellung, Wareneingang und Bestand.",
+    eyebrow: "Orchard · Beschaffung", title: "Saatgut & Jungpflanzen",
+    description: "Eine Beschaffungsübersicht aus dem physisch abgeglichenen Anbauplan. Orchard verantwortet den agronomischen Bedarf; Einkauf verantwortet Anforderung, Angebot, Freigabe, Bestellung, Wareneingang und Bestand.",
     crop: "Kultur", cultivar: "Sorte", nursery: "Erste Aussaat Anzucht", planting: "Erste Pflanzung", weight: "Gewicht", seeds: "Samen / Knollen", order: "Beschaffungsstatus",
     notRequested: "Nicht angefordert", create: "Anforderung erstellen", creating: "Wird erstellt…", open: "Anforderung öffnen", technical: "Methode & Nachweise", empty: "Kein physisch zugeordneter Saatgutbedarf für diesen Plan.",
     requestError: "Die Beschaffungsanforderung konnte nicht erstellt werden.", locationError: "Farm Area 1 ist in deinem Beschaffungsbereich nicht verfügbar.", loadError: "Die Saatgut-Beschaffungsübersicht konnte nicht geladen werden.",
-    gross: "Bruttobedarf des Plans", grossHelp: "Bestand wird hier nicht abgezogen. Eine Beschaffungsanforderung entsteht nur durch eine explizite Operator-Aktion und folgt danach dem kanonischen Black-Swan-Einkaufsprozess.",
+    gross: "Bruttobedarf des Plans", grossHelp: "Bestand wird hier nicht abgezogen. Anforderungen entstehen nur durch eine explizite Bedieneraktion und folgen danach dem kanonischen Black-Swan-Einkaufsprozess.",
     allocation: "physische Pflanzungen", source: "Dietrich 2026/27 + kanonische Crop Map", changed: "Planbedarf geändert", requestQty: "angefordert", direct: "Direktsaat", transplant: "Anzucht / Pflanzung",
     seedsTab: "Saatgut", transplantsTab: "Jungpflanzen", search: "Kulturen suchen...", export: "Exportieren", noMatches: "Keine Kulturen entsprechen dieser Ansicht.", rows: "Zeilen",
+    ready: "Anforderungsbereit", blocked: "Nachweis fehlt", requested: "Angefordert", bulk: "Alle fertigen Anforderungen erstellen", blockedDensity: "Quellengestützte Saatdichte fehlt", blockedPlants: "Pflanzenzahl ist noch nicht abgeglichen", blockedGeneric: "Beschaffungsnachweise sind unvollständig",
   },
 } as const
 
@@ -114,35 +110,46 @@ function earliest(current: string | null, candidate: string | null) {
   if (!current || candidate < current) return candidate
   return current
 }
+
 function addDemand(map: Map<string, DemandLine>, planId: string, cycle: Cycle, succession: Succession, demand: ProcurementDemand) {
-  if (demand.value == null || !demand.basis) return
   const variety = cycle.variety?.trim() || null
   const key = `${cycle.crop_name}|${variety ?? ""}|${demand.unit}`
   const existing = map.get(key)
+  const ready = demand.value != null && Boolean(demand.basis)
   const firstNurserySowing = cycle.cycle_type === "transplant" ? succession.planned_sow_date : null
   const firstPlanting = cycle.cycle_type === "transplant" ? succession.planned_transplant_date : succession.planned_sow_date
   const sourceRef = [planId, cycle.crop_name, variety ?? "generic", demand.unit].join("|")
+  const blocked = existing?.status === "blocked" || !ready
+
   map.set(key, {
     crop: cycle.crop_name,
     variety,
     cycleType: cycle.cycle_type,
-    value: (existing?.value ?? 0) + demand.value,
+    value: blocked ? null : (existing?.value ?? 0) + (demand.value ?? 0),
     unit: demand.unit,
-    basis: existing?.basis ?? demand.basis,
+    basis: blocked ? null : (existing?.basis ?? demand.basis),
+    reason: blocked ? (existing?.reason ?? demand.reason ?? "incomplete_procurement_evidence") : null,
+    status: blocked ? "blocked" : "ready",
     firstNurserySowing: earliest(existing?.firstNurserySowing ?? null, firstNurserySowing),
     firstPlanting: earliest(existing?.firstPlanting ?? null, firstPlanting),
     sourceRef,
   })
 }
+
 function requestStatusClass(status: string) {
   if (["approved", "approved_for_quotation", "final_approved", "converted"].includes(status)) return "border-emerald-500/30 text-emerald-300"
   if (status === "rejected") return "border-red-500/30 text-red-300"
   if (["submitted", "under_review"].includes(status)) return "border-amber-500/30 text-amber-200"
   return "border-border text-muted-foreground"
 }
+
 function csvCell(value: string | number | null | undefined) {
-  return `"${String(value ?? "").replace(/"/g, '""')}"`
+  const raw = String(value ?? "")
+  const safe = /^\s*[=+\-@]/.test(raw) ? `'${raw}` : raw
+  return `"${safe.replace(/"/g, '""')}"`
 }
+
+const procurementUnit = (unit: ProcurementUnit) => unit === "seed_count" ? "seeds" : unit === "tuber_count" ? "tubers" : "g"
 
 export default function OrchardSeedOrdersPage() {
   const supabase = useMemo(() => createBrowserClient(), [])
@@ -224,10 +231,8 @@ export default function OrchardSeedOrdersPage() {
         addDemand(map, plan.id, cycle, succession, estimateTuberProcurement({ plannedBedM: succession.planned_bed_m, spacingCm: parseCentimeters(potatoSpacing) }))
         continue
       }
-      const sourceCrop = DIRECT_SOURCE_CROP_BY_CANONICAL[cycle.crop_name]
-      const rows = sourceCrop ? (directSowReference as DirectRow[]).filter((row) => row.crop === sourceCrop && (row.cultivar === "All" || cycle.crop_name === "Arugula")) : []
-      const profile = rows.find((row) => row.cultivar === "All") ?? rows[0]
-      addDemand(map, plan.id, cycle, succession, estimateDirectProcurement({ plannedBedM: succession.planned_bed_m, densityG: parseApproxGrams(profile?.density_30m), referenceBedM: 30 }))
+      const reference = resolveDirectProcurementReference(cycle.crop_name, directSowReference as DirectProcurementReferenceRow[])
+      addDemand(map, plan.id, cycle, succession, estimateDirectProcurement({ plannedBedM: succession.planned_bed_m, densityG: reference?.densityG ?? null, referenceBedM: 30 }))
     }
     return Array.from(map.values()).sort((a, b) => a.crop.localeCompare(b.crop) || (a.variety ?? "").localeCompare(b.variety ?? ""))
   }, [plan, scopedSuccessions, cycleById, libraryById])
@@ -241,15 +246,22 @@ export default function OrchardSeedOrdersPage() {
   const visibleLines = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase()
     return lines.filter((line) => {
+      if (view === "seeds" && line.cycleType === "transplant") return false
       if (view === "transplants" && line.cycleType !== "transplant") return false
       if (!normalizedQuery) return true
       return `${line.crop} ${line.variety ?? ""}`.toLowerCase().includes(normalizedQuery)
     })
   }, [lines, query, view])
 
+  const readyLines = lines.filter((line) => line.status === "ready")
+  const blockedLines = lines.filter((line) => line.status === "blocked")
+  const requestedLines = readyLines.filter((line) => requestByRef.has(line.sourceRef))
+  const missingReady = readyLines.filter((line) => !requestByRef.has(line.sourceRef))
+
   const dateLabel = (value: string | null) => value ? new Date(`${value}T12:00:00`).toLocaleDateString(locale, { day: "2-digit", month: "short", year: "numeric" }) : "—"
   const valueLabel = (value: number) => value.toLocaleString(locale, { maximumFractionDigits: 1 })
   const unitLabel = (unit: ProcurementUnit) => unit === "seed_count" ? (lang === "es" ? "semillas" : lang === "de" ? "Samen" : "seeds") : unit === "tuber_count" ? (lang === "es" ? "tubérculos" : lang === "de" ? "Knollen" : "tubers") : "g"
+  const reasonLabel = (reason: string | null) => reason === "missing_direct_seed_density" ? text.blockedDensity : reason === "missing_planned_plants" ? text.blockedPlants : text.blockedGeneric
   const statusLabel = (status: string) => ({
     draft: lang === "es" ? "Borrador" : lang === "de" ? "Entwurf" : "Draft",
     submitted: lang === "es" ? "Enviada" : lang === "de" ? "Eingereicht" : "Submitted",
@@ -268,56 +280,48 @@ export default function OrchardSeedOrdersPage() {
       ...visibleLines.map((line) => {
         const request = requestByRef.get(line.sourceRef)
         return [
-          line.crop,
-          line.variety ?? "",
-          line.firstNurserySowing ?? "",
-          line.firstPlanting ?? "",
-          line.unit === "g" ? `${line.value} g` : "",
-          line.unit === "g" ? "" : `${line.value} ${unitLabel(line.unit)}`,
-          request ? statusLabel(request.status) : text.notRequested,
+          line.crop, line.variety ?? "", line.firstNurserySowing ?? "", line.firstPlanting ?? "",
+          line.status === "ready" && line.unit === "g" ? `${line.value} g` : "",
+          line.status === "ready" && line.unit !== "g" ? `${line.value} ${unitLabel(line.unit)}` : "",
+          line.status === "blocked" ? reasonLabel(line.reason) : request ? statusLabel(request.status) : text.notRequested,
         ]
       }),
     ]
     const csv = rows.map((row) => row.map(csvCell).join(",")).join("\n")
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" })
+    const blob = new Blob(["\ufeff", csv], { type: "text/csv;charset=utf-8" })
     const url = URL.createObjectURL(blob)
     const anchor = document.createElement("a")
     anchor.href = url
-    anchor.download = `orchard-${view}-${plan?.season ?? "season"}.csv`
+    anchor.download = `black-swan-orchard-${view}-${plan?.season ?? "season"}.csv`
     document.body.appendChild(anchor)
     anchor.click()
     anchor.remove()
     URL.revokeObjectURL(url)
   }
 
-  const createRequest = async (line: DemandLine) => {
-    if (!plan || creatingRef) return
-    if (!farmLocation) { setError(text.locationError); return }
-    setCreatingRef(line.sourceRef)
+  const createRequests = async (candidateLines: DemandLine[], key: string) => {
+    if (!plan || creatingRef || !farmLocation) { if (!farmLocation) setError(text.locationError); return }
+    const pending = candidateLines.filter((line) => line.status === "ready" && line.value != null && !requestByRef.has(line.sourceRef))
+    if (pending.length === 0) return
+    setCreatingRef(key)
     setError(null)
     const { data: authData } = await supabase.auth.getUser()
     if (!authData.user) { setError(text.requestError); setCreatingRef(null); return }
-    const unit = unitLabel(line.unit)
-    const cropLabel = line.variety ? `${line.crop} · ${line.variety}` : line.crop
-    const { error: insertError } = await supabase.from("procurement_requests").insert({
-      title: `Orchard ${plan.season ?? ""} · ${cropLabel}`.trim(),
-      description: `${text.gross}: ${valueLabel(line.value)} ${unit}. ${text.source}.`,
-      business_justification: `${text.gross}: ${cropLabel} · ${plan.season ?? ""}`.trim(),
-      category: "Supplies",
-      quantity: line.value,
-      unit,
-      priority: "normal",
-      status: "submitted",
-      required_date: null,
-      region: "Los Ríos",
-      commune: "Valdivia",
-      location_id: farmLocation.id,
-      delivery_location: "Farm Area 1",
-      requested_by: authData.user.id,
-      source_type: "orchard_seed_plan",
-      source_ref: line.sourceRef,
-      source_path: `/orchard/seed-orders?game_plan=${plan.id}`,
+    const rows = pending.map((line) => {
+      const cropLabel = line.variety ? `${line.crop} · ${line.variety}` : line.crop
+      const stableUnit = procurementUnit(line.unit)
+      return {
+        title: `Orchard ${plan.season ?? ""} · ${cropLabel}`.trim(),
+        description: `${text.gross}: ${valueLabel(line.value!)} ${stableUnit}. ${text.source}.`,
+        business_justification: `${text.gross}: ${cropLabel} · ${plan.season ?? ""}`.trim(),
+        category: "Supplies", quantity: line.value, unit: stableUnit, priority: "normal", status: "submitted",
+        required_date: line.firstNurserySowing ?? line.firstPlanting,
+        region: "Los Ríos", commune: "Valdivia", location_id: farmLocation.id, delivery_location: "Farm Area 1",
+        requested_by: authData.user.id, source_type: "orchard_seed_plan", source_ref: line.sourceRef,
+        source_path: `/orchard/seed-orders?game_plan=${plan.id}`,
+      }
     })
+    const { error: insertError } = await supabase.from("procurement_requests").insert(rows)
     if (insertError) {
       console.error("orchard procurement request creation failed", insertError)
       setError(text.requestError)
@@ -337,30 +341,28 @@ export default function OrchardSeedOrdersPage() {
         <div className="mt-2 flex flex-wrap items-center gap-3"><h1 className="text-3xl font-normal sm:text-4xl">{text.title}</h1>{plan?.season ? <Badge variant="secondary">{plan.season}</Badge> : null}</div>
         <p className="mt-3 max-w-3xl text-sm leading-6 text-muted-foreground">{text.description}</p>
       </div>
-      <Button variant="outline" asChild><Link href={technicalHref}>{text.technical}<ArrowRight className="ml-2 h-4 w-4"/></Link></Button>
+      <div className="flex flex-wrap gap-2">
+        <Button variant="outline" asChild><Link href={technicalHref}>{text.technical}<ArrowRight className="ml-2 h-4 w-4"/></Link></Button>
+        <Button onClick={() => void createRequests(missingReady, BULK_KEY)} disabled={creatingRef !== null || missingReady.length === 0 || !farmLocation}>
+          {creatingRef === BULK_KEY ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <ShoppingCart className="mr-2 h-4 w-4"/>}{text.bulk}{missingReady.length ? ` · ${missingReady.length}` : ""}
+        </Button>
+      </div>
     </header>
 
+    <section className="mb-5 grid gap-px bg-[var(--bs-divider-subtle)] sm:grid-cols-3">
+      <Metric label={text.ready} value={String(readyLines.length)} detail={`${scopedSuccessions.length} ${text.allocation}`} />
+      <Metric label={text.blocked} value={String(blockedLines.length)} detail={blockedLines.map((line) => line.crop).join(" · ") || "—"} />
+      <Metric label={text.requested} value={String(requestedLines.length)} detail={`${readyLines.length} ${text.crop.toLowerCase()}`} />
+    </section>
+
     <nav className="mb-5 flex items-center gap-6 border-b border-[var(--orchard-line)]" aria-label={text.title}>
-      <button type="button" onClick={() => setView("seeds")} aria-current={view === "seeds" ? "page" : undefined} className={`relative pb-3 text-sm ${view === "seeds" ? "text-foreground" : "text-muted-foreground hover:text-foreground"}`}>
-        {text.seedsTab}{view === "seeds" ? <span className="absolute inset-x-0 -bottom-px h-px bg-[var(--orchard-green)]"/> : null}
-      </button>
-      <button type="button" onClick={() => setView("transplants")} aria-current={view === "transplants" ? "page" : undefined} className={`relative pb-3 text-sm ${view === "transplants" ? "text-foreground" : "text-muted-foreground hover:text-foreground"}`}>
-        {text.transplantsTab}{view === "transplants" ? <span className="absolute inset-x-0 -bottom-px h-px bg-[var(--orchard-green)]"/> : null}
-      </button>
+      <button type="button" onClick={() => setView("seeds")} aria-current={view === "seeds" ? "page" : undefined} className={`relative pb-3 text-sm ${view === "seeds" ? "text-foreground" : "text-muted-foreground hover:text-foreground"}`}>{text.seedsTab}{view === "seeds" ? <span className="absolute inset-x-0 -bottom-px h-px bg-[var(--orchard-green)]"/> : null}</button>
+      <button type="button" onClick={() => setView("transplants")} aria-current={view === "transplants" ? "page" : undefined} className={`relative pb-3 text-sm ${view === "transplants" ? "text-foreground" : "text-muted-foreground hover:text-foreground"}`}>{text.transplantsTab}{view === "transplants" ? <span className="absolute inset-x-0 -bottom-px h-px bg-[var(--orchard-green)]"/> : null}</button>
     </nav>
 
     <section className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-      <label className="flex min-h-10 w-full max-w-sm items-center gap-2 border border-[var(--orchard-line)] bg-[var(--bs-surface-primary)] px-3">
-        <Search className="h-4 w-4 text-muted-foreground"/>
-        <span className="sr-only">{text.search}</span>
-        <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={text.search} className="h-8 w-full border-0 bg-transparent text-sm outline-none"/>
-      </label>
-      <div className="flex items-center gap-3">
-        <span className="text-xs text-muted-foreground">{visibleLines.length} {text.rows}</span>
-        <button type="button" onClick={exportCsv} disabled={visibleLines.length === 0} className="inline-flex min-h-10 items-center gap-2 px-2 text-sm text-[var(--orchard-green)] hover:text-foreground disabled:opacity-40">
-          <Download className="h-4 w-4"/>{text.export}
-        </button>
-      </div>
+      <label className="flex min-h-10 w-full max-w-sm items-center gap-2 border border-[var(--orchard-line)] bg-[var(--bs-surface-primary)] px-3"><Search className="h-4 w-4 text-muted-foreground"/><span className="sr-only">{text.search}</span><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={text.search} className="h-8 w-full border-0 bg-transparent text-sm outline-none"/></label>
+      <div className="flex items-center gap-3"><span className="text-xs text-muted-foreground">{visibleLines.length} {text.rows}</span><button type="button" onClick={exportCsv} disabled={visibleLines.length === 0} className="inline-flex min-h-10 items-center gap-2 px-2 text-sm text-[var(--orchard-green)] hover:text-foreground disabled:opacity-40"><Download className="h-4 w-4"/>{text.export}</button></div>
     </section>
 
     {error ? <div className="mb-5 flex gap-3 border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-200"><AlertTriangle className="mt-0.5 h-4 w-4 shrink-0"/><span>{error}</span></div> : null}
@@ -370,32 +372,25 @@ export default function OrchardSeedOrdersPage() {
         <thead className="sticky top-0 z-10 bg-[var(--bs-surface-secondary)] text-left text-[10px] uppercase tracking-[.12em] text-muted-foreground"><tr><th className="px-4 py-3">{text.crop}</th><th className="px-4 py-3">{text.cultivar}</th><th className="px-4 py-3">{text.nursery}</th><th className="px-4 py-3">{text.planting}</th><th className="px-4 py-3 text-right">{text.weight}</th><th className="px-4 py-3 text-right">{text.seeds}</th><th className="px-4 py-3">{text.order}</th></tr></thead>
         <tbody>{visibleLines.map((line) => {
           const request = requestByRef.get(line.sourceRef) ?? null
-          const demandChanged = Boolean(request && (Math.abs(Number(request.quantity) - line.value) > 0.01 || request.unit !== unitLabel(line.unit)))
+          const demandChanged = Boolean(request && line.value != null && (Math.abs(Number(request.quantity) - line.value) > 0.01 || request.unit !== procurementUnit(line.unit)))
           return <tr key={line.sourceRef} className="border-t border-[var(--bs-divider-subtle)] align-middle">
             <td className="px-4 py-3"><div className="flex items-center gap-2"><Sprout className="h-4 w-4 text-[var(--orchard-green)]"/><div><p className="font-medium">{line.crop}</p><p className="mt-0.5 text-[10px] uppercase tracking-[.1em] text-muted-foreground">{line.cycleType === "transplant" ? text.transplant : text.direct}</p></div></div></td>
             <td className="px-4 py-3 text-muted-foreground">{line.variety ?? "—"}</td>
             <td className="px-4 py-3 tabular-nums">{dateLabel(line.firstNurserySowing)}</td>
             <td className="px-4 py-3 tabular-nums">{dateLabel(line.firstPlanting)}</td>
-            <td className="px-4 py-3 text-right tabular-nums">{line.unit === "g" ? `${valueLabel(line.value)} g` : "—"}</td>
-            <td className="px-4 py-3 text-right tabular-nums">{line.unit === "g" ? "—" : `${valueLabel(line.value)} ${unitLabel(line.unit)}`}</td>
-            <td className="px-4 py-3">{request ? <div className="flex min-w-[220px] items-center justify-between gap-3"><div><Badge variant="outline" className={requestStatusClass(request.status)}>{statusLabel(request.status)}</Badge>{demandChanged ? <p className="mt-1 text-[10px] text-amber-300">{text.changed} · {text.requestQty} {valueLabel(Number(request.quantity))} {request.unit}</p> : <p className="mt-1 text-[10px] text-muted-foreground">{request.request_number ?? request.id.slice(0, 8)}</p>}</div><Button size="sm" variant="ghost" asChild><Link href={`/${language}/procurement/requests/${request.id}`}>{text.open}<ArrowRight className="ml-1 h-3.5 w-3.5"/></Link></Button></div> : <div className="flex min-w-[220px] items-center justify-between gap-3"><span className="text-xs text-muted-foreground">{text.notRequested}</span><Button size="sm" onClick={() => void createRequest(line)} disabled={creatingRef !== null || !farmLocation}>{creatingRef === line.sourceRef ? <><Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin"/>{text.creating}</> : text.create}</Button></div>}</td>
+            <td className="px-4 py-3 text-right tabular-nums">{line.status === "ready" && line.unit === "g" ? `${valueLabel(line.value!)} g` : "—"}</td>
+            <td className="px-4 py-3 text-right tabular-nums">{line.status === "ready" && line.unit !== "g" ? `${valueLabel(line.value!)} ${unitLabel(line.unit)}` : "—"}</td>
+            <td className="px-4 py-3">{line.status === "blocked" ? <div className="flex min-w-[220px] items-start gap-2 text-xs text-amber-200"><AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0"/><span>{reasonLabel(line.reason)}</span></div> : request ? <div className="flex min-w-[220px] items-center justify-between gap-3"><div><Badge variant="outline" className={requestStatusClass(request.status)}>{statusLabel(request.status)}</Badge>{demandChanged ? <p className="mt-1 text-[10px] text-amber-300">{text.changed} · {text.requestQty} {valueLabel(Number(request.quantity))} {request.unit}</p> : <p className="mt-1 text-[10px] text-muted-foreground">{request.request_number ?? request.id.slice(0, 8)}</p>}</div><Button size="sm" variant="ghost" asChild><Link href={`/${language}/procurement/requests/${request.id}`}>{text.open}<ArrowRight className="ml-1 h-3.5 w-3.5"/></Link></Button></div> : <div className="flex min-w-[220px] items-center justify-between gap-3"><span className="text-xs text-muted-foreground">{text.notRequested}</span><Button size="sm" onClick={() => void createRequests([line], line.sourceRef)} disabled={creatingRef !== null || !farmLocation}>{creatingRef === line.sourceRef ? <><Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin"/>{text.creating}</> : text.create}</Button></div>}</td>
           </tr>
         })}</tbody>
       </table>
     </div>}
 
-    <section className="mb-5 grid gap-px bg-[var(--bs-divider-subtle)] sm:grid-cols-3">
-      <Metric label={text.gross} value={String(lines.length)} detail={`${scopedSuccessions.length} ${text.allocation}`} />
-      <Metric label={text.order} value={String(lines.filter((line) => requestByRef.has(line.sourceRef)).length)} detail={`${lines.length} ${text.crop.toLowerCase()}`} />
-      <Metric label={text.source} value={plan?.season ?? "—"} detail="Farm Area 1" />
-    </section>
-
-    <div className="mb-5 flex gap-3 border-l-2 border-[var(--bs-warm-amber)] pl-4 text-sm leading-6 text-muted-foreground"><ShoppingCart className="mt-1 h-4 w-4 shrink-0"/><span>{text.grossHelp}</span></div>
-
+    <div className="mt-5 flex gap-3 border-l-2 border-[var(--bs-warm-amber)] pl-4 text-sm leading-6 text-muted-foreground"><ShoppingCart className="mt-1 h-4 w-4 shrink-0"/><span>{text.grossHelp}</span></div>
     <footer className="mt-5 flex flex-col gap-2 border-t border-[var(--bs-divider-subtle)] pt-4 text-xs leading-5 text-muted-foreground sm:flex-row sm:items-center sm:justify-between"><span>{text.source}. {visibleLines.length}/{lines.length} {text.crop.toLowerCase()} · {scopedSuccessions.length} {text.allocation}.</span><span className="inline-flex items-center gap-1.5"><CheckCircle2 className="h-3.5 w-3.5"/>Procurement status is canonical; no purchase order is created automatically.</span></footer>
   </main></AppLayout>
 }
 
 function Metric({ label, value, detail }: { label: string; value: string; detail: string }) {
-  return <div className="bg-[var(--bs-surface-primary)] p-5"><p className="text-[10px] uppercase tracking-[.12em] text-muted-foreground">{label}</p><p className="mt-2 text-3xl tabular-nums">{value}</p><p className="mt-2 text-xs text-muted-foreground">{detail}</p></div>
+  return <div className="min-w-0 bg-[var(--bs-surface-primary)] p-5"><p className="text-[10px] uppercase tracking-[.12em] text-muted-foreground">{label}</p><p className="mt-2 text-3xl tabular-nums">{value}</p><p className="mt-2 truncate text-xs text-muted-foreground" title={detail}>{detail}</p></div>
 }
