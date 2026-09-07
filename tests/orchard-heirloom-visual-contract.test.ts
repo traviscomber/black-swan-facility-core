@@ -217,3 +217,20 @@ test("Notes keeps the Heirloom two-pane workflow while separating canonical hist
   assert.match(source, /setView\(\"operator\"\)/)
   assert.doesNotMatch(source, /delete\(\)|update\(\{/)
 })
+
+test("reference charts expose useful Heirloom-style table controls without importing Heirloom data", async () => {
+  const source = await readFile("components/orchard/orchard-reference-chart.tsx", "utf8")
+
+  assert.match(source, /Search crops…/)
+  assert.match(source, /filters:"Filters"/)
+  assert.match(source, /export:"Export"/)
+  assert.match(source, /hideEmpty/)
+  assert.match(source, /downloadCsv/)
+  assert.match(source, /black-swan-\$\{mode\}\.csv/)
+  assert.match(source, /ArrowUpDown/)
+  assert.match(source, /compareCells/)
+  assert.match(source, /sortIndex/)
+  assert.match(source, /visibleRows/)
+  assert.match(source, /t\.unknown/)
+  assert.doesNotMatch(source, /app\.heirloom\.ag|res\.cloudinary\.com/)
+})
