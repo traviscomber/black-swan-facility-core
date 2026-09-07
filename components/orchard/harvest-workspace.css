@@ -44,22 +44,22 @@ body:has([data-orchard-harvest-view="channels"]) main > main > section:first-chi
 }
 
 /* Put channel creation before analytics. This is especially important while no channels exist. */
-body:has([data-orchard-harvest-view="channels"]) main > main > section:has(form input[aria-label="Name"]) {
+body:has([data-orchard-harvest-view="channels"]) main > main > section:has(form input:is([aria-label="Name"],[aria-label="Nombre"])) {
   order: -2;
   grid-template-columns: minmax(0, 1.2fr) minmax(0, .8fr) !important;
   gap: .75rem !important;
 }
 
-body:has([data-orchard-harvest-view="channels"]) main > main > section:has(form input[aria-label="Name"]) [data-slot="card"] {
+body:has([data-orchard-harvest-view="channels"]) main > main > section:has(form input:is([aria-label="Name"],[aria-label="Nombre"])) [data-slot="card"] {
   border-radius: 0 !important;
 }
 
-body:has([data-orchard-harvest-view="channels"]) main > main > section:has(form input[aria-label="Name"]) [data-slot="card-header"] {
+body:has([data-orchard-harvest-view="channels"]) main > main > section:has(form input:is([aria-label="Name"],[aria-label="Nombre"])) [data-slot="card-header"] {
   padding-bottom: .75rem !important;
 }
 
-/* These repeat the hero metrics and add noise on the channel setup page. */
-body:has([data-orchard-harvest-view="channels"]) main > main > section:has(svg.lucide-badge-dollar-sign) {
+/* These four cards repeat the hero metrics. Target the unique pipeline metric, not the setup cards. */
+body:has([data-orchard-harvest-view="channels"]) main > main > section:has(svg.lucide-circle-dollar-sign) {
   display: none !important;
 }
 
@@ -134,7 +134,7 @@ body:has([data-orchard-harvest-view="season"]) main > main > p.mt-4 {
 }
 
 @media (max-width: 1279px) {
-  body:has([data-orchard-harvest-view="channels"]) main > main > section:has(form input[aria-label="Name"]) {
+  body:has([data-orchard-harvest-view="channels"]) main > main > section:has(form input:is([aria-label="Name"],[aria-label="Nombre"])) {
     grid-template-columns: 1fr !important;
   }
 }
