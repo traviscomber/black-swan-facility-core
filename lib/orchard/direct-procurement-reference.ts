@@ -1,15 +1,19 @@
-import { parseApproxGrams } from "./seed-procurement.ts"
+import { parseApproxGrams, parseCentimeters, type DirectProcurementRate } from "./seed-procurement.ts"
 
 export type DirectProcurementReferenceRow = {
   crop: string
   cultivar: string
   density_30m: string
+  rows_per_bed?: number
+  spacing_cm?: string
 }
 
 export type DirectProcurementReference = {
   sourceCrop: string
-  densityG: number
-  evidence: "all_cultivars" | "single_reference" | "density_invariant"
+  densityG: DirectProcurementRate
+  evidence: "all_cultivars" | "single_reference" | "density_invariant" | "season_plan_match" | "external_reference"
+  sourceLabel?: string
+  sourceUrl?: string
 }
 
 const SOURCE_CROP_BY_CANONICAL: Record<string, string> = {
@@ -23,22 +27,69 @@ const SOURCE_CROP_BY_CANONICAL: Record<string, string> = {
   "Storage Beetroot": "Beets",
 }
 
+const EXTERNAL_DIRECT_REFERENCE: Record<string, DirectProcurementReference> = {
+  Corn: {
+    sourceCrop: "Sweet corn",
+    densityG: { unit: "seed_count", seedsPerFootPerRow: 1.5, rowsPerBed: 2, sourceKey: "umn_sweet_corn_2_rows_8in_300_per_100ft_bed" },
+    evidence: "external_reference",
+    sourceLabel: "University of Minnesota Extension · Crop and field planning tools for vegetable farmers",
+    sourceUrl: "https://extension.umn.edu/vegetable-growing-guides-farmers/crop-and-field-planning-tools-vegetable-farmers",
+  },
+  Shallots: {
+    sourceCrop: "Shallots",
+    densityG: { unit: "seed_count", seedsPerFootPerRow: 20, rowsPerBed: 3, sourceKey: "johnnys_shallot_direct_seed_20_per_ft" },
+    evidence: "external_reference",
+    sourceLabel: "Johnny's Selected Seeds · Shallots key growing information",
+    sourceUrl: "https://www.johnnyseeds.com/growers-library/vegetables/shallots/shallots-key-growing-information.html",
+  },
+  "White Radish (Daikon)": {
+    sourceCrop: "Storage radish / Daikon",
+    densityG: { unit: "seed_count", seedsPerFootPerRow: 10, rowsPerBed: 3, sourceKey: "umn_storage_radish_3_rows_10_per_ft" },
+    evidence: "external_reference",
+    sourceLabel: "University of Minnesota Extension · Crop and field planning tools for vegetable farmers",
+    sourceUrl: "https://extension.umn.edu/vegetable-growing-guides-farmers/crop-and-field-planning-tools-vegetable-farmers",
+  },
+}
+
+function currentSeasonSourceMatch(canonicalCrop: string, rows: DirectProcurementReferenceRow[]): DirectProcurementReference | null {
+  if (canonicalCrop !== "Arugula") return null
+  const match = rows.find((row) =>
+    row.crop === "Rucula" &&
+    row.cultivar.trim().toLowerCase() === "astro" &&
+    row.rows_per_bed === 12 &&
+    parseCentimeters(row.spacing_cm) === 4,
+  )
+  const densityG = match ? parseApproxGrams(match.density_30m) : null
+  if (!densityG) return null
+  return {
+    sourceCrop: "Rucula",
+    densityG,
+    evidence: "season_plan_match",
+    sourceLabel: "Dietrich 2026/27 Ds Chart · Rucula / Astro · 12 rows · 4 cm",
+  }
+}
+
 /**
- * Resolves only a source-backed 30 m gram density.
+ * Resolves a source-backed direct-sowing procurement rate.
  *
- * We prefer an explicit `All` cultivar row. Otherwise a source is usable only
- * when it has one row or every matching row has the same gram density. This
- * keeps cultivar ambiguity from silently becoming a purchasing assumption.
+ * Workbook gram densities remain preferred. A season-specific Arugula row is
+ * allowed only because the current 2026/27 Crop Chart uses the same 4 cm
+ * spacing as the 12-row Astro source profile. Corn, shallots and daikon have
+ * no Dietrich gram row, so they use explicit published direct-seeding rates
+ * stored here with source provenance instead of inventing a local density.
  */
 export function resolveDirectProcurementReference(
   canonicalCrop: string,
   rows: DirectProcurementReferenceRow[],
 ): DirectProcurementReference | null {
   const sourceCrop = SOURCE_CROP_BY_CANONICAL[canonicalCrop]
-  if (!sourceCrop) return null
+  if (!sourceCrop) return EXTERNAL_DIRECT_REFERENCE[canonicalCrop] ?? null
 
   const matching = rows.filter((row) => row.crop === sourceCrop)
-  if (matching.length === 0) return null
+  if (matching.length === 0) return EXTERNAL_DIRECT_REFERENCE[canonicalCrop] ?? null
+
+  const seasonalMatch = currentSeasonSourceMatch(canonicalCrop, matching)
+  if (seasonalMatch) return seasonalMatch
 
   const allCultivars = matching.find((row) => row.cultivar.trim().toLowerCase() === "all")
   if (allCultivars) {
