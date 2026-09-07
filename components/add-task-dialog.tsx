@@ -27,6 +27,8 @@ type Volunteer = { id: string; name: string; volunteer_role?: string | null }
 type Location = { id: string; name: string; latitude?: number | null; longitude?: number | null }
 type Priority = "baja" | "media" | "alta" | "urgente"
 type ReviewMode = "none" | "review"
+type ReviewRequirement = { required?: boolean; reason?: string | null }
+type ReviewResult = { required?: boolean; forced?: boolean; reason?: string | null; request_id?: string | null }
 
 export function AddTaskDialog({ open, onOpenChange, onTaskCreated, prefill }: AddTaskDialogProps) {
   const supabase = useMemo(() => createBrowserClient(), [])
@@ -40,9 +42,11 @@ export function AddTaskDialog({ open, onOpenChange, onTaskCreated, prefill }: Ad
   const [dueDate, setDueDate] = useState("")
   const [locationId, setLocationId] = useState("")
   const [estimatedMinutes, setEstimatedMinutes] = useState("")
+  const [estimatedCost, setEstimatedCost] = useState("")
   const [animalHandling, setAnimalHandling] = useState(false)
   const [safetyNotes, setSafetyNotes] = useState("")
   const [reviewMode, setReviewMode] = useState<ReviewMode>("none")
+  const [forcedReviewReason, setForcedReviewReason] = useState<string | null>(null)
   const [employeeIds, setEmployeeIds] = useState<string[]>([])
   const [volunteerIds, setVolunteerIds] = useState<string[]>([])
   const [employees, setEmployees] = useState<Employee[]>([])
@@ -87,7 +91,28 @@ export function AddTaskDialog({ open, onOpenChange, onTaskCreated, prefill }: Ad
     if (prefill.locationId) setLocationId(prefill.locationId)
   }, [open, prefill])
 
+  useEffect(() => {
+    if (!open) return
+    const value = estimatedCost.trim()
+    if (!value || Number(value) <= 0 || Number.isNaN(Number(value))) {
+      setForcedReviewReason(null)
+      return
+    }
+    const timer = window.setTimeout(() => {
+      void supabase.rpc("get_task_review_requirement", { p_estimated_cost_clp: Number(value) }).then(({ data, error: requirementError }) => {
+        if (requirementError) {
+          setForcedReviewReason(null)
+          return
+        }
+        const requirement = (data ?? {}) as ReviewRequirement
+        setForcedReviewReason(requirement.required ? requirement.reason ?? "Esta tarea requiere revisión." : null)
+      })
+    }, 250)
+    return () => window.clearTimeout(timer)
+  }, [estimatedCost, open, supabase])
+
   const templatesForArea = area ? operationalTaskTemplates.filter((template) => template.area === area) : operationalTaskTemplates
+  const effectiveReviewMode: ReviewMode = forcedReviewReason ? "review" : reviewMode
 
   function applyTemplate(value: string) {
     setTemplateId(value)
@@ -113,9 +138,11 @@ export function AddTaskDialog({ open, onOpenChange, onTaskCreated, prefill }: Ad
     setDueDate("")
     setLocationId("")
     setEstimatedMinutes("")
+    setEstimatedCost("")
     setAnimalHandling(false)
     setSafetyNotes("")
     setReviewMode("none")
+    setForcedReviewReason(null)
     setEmployeeIds([])
     setVolunteerIds([])
     setError(null)
@@ -129,6 +156,7 @@ export function AddTaskDialog({ open, onOpenChange, onTaskCreated, prefill }: Ad
     const cleanTitle = title.trim()
     if (!cleanTitle) return setError("El título es obligatorio.")
     if (employeeIds.length + volunteerIds.length === 0) return setError("Selecciona al menos una persona responsable.")
+    if (estimatedCost && (Number.isNaN(Number(estimatedCost)) || Number(estimatedCost) < 0)) return setError("El costo estimado no es válido.")
 
     setIsSubmitting(true)
     setError(null)
@@ -155,35 +183,31 @@ export function AddTaskDialog({ open, onOpenChange, onTaskCreated, prefill }: Ad
       p_source_path: prefill?.sourcePath ?? null,
     })
 
-    if (rpcError) {
-      setError(`No fue posible crear la tarea: ${rpcError.message}`)
+    if (rpcError || !taskId) {
+      setError(`No fue posible crear la tarea: ${rpcError?.message ?? "No se recibió el identificador de la tarea."}`)
       setIsSubmitting(false)
       return
     }
 
-    let reviewQueued = false
-    if (reviewMode === "review" && taskId) {
-      const { error: reviewError } = await supabase.rpc("request_task_escalation", {
-        p_task_id: taskId,
-        p_escalation_choice: "unsure",
-        p_reason: null,
-      })
-      if (reviewError) {
-        toast({ title: "Tarea creada", description: "La tarea se creó, pero no fue posible enviarla para revisión." })
-      } else {
-        reviewQueued = true
-      }
-    }
+    const { data: reviewData, error: reviewError } = await supabase.rpc("finalize_task_review", {
+      p_task_id: taskId,
+      p_estimated_cost_clp: estimatedCost ? Number(estimatedCost) : null,
+      p_manual_review: reviewMode === "review",
+    })
 
-    const total = employeeIds.length + volunteerIds.length
-    if (reviewMode !== "review" || reviewQueued) {
+    if (reviewError) {
+      toast({ title: "Tarea creada", description: "La tarea se creó, pero no fue posible evaluar su revisión obligatoria." })
+    } else {
+      const review = (reviewData ?? {}) as ReviewResult
+      const total = employeeIds.length + volunteerIds.length
       toast({
-        title: reviewQueued ? "Tarea enviada para revisión" : "Tarea creada",
-        description: reviewQueued
-          ? `${cleanTitle} quedó creada y marcada Para revisión.`
+        title: review.required ? "Tarea enviada para revisión" : "Tarea creada",
+        description: review.required
+          ? `${cleanTitle} quedó Para revisión${review.forced && review.reason ? ` · ${review.reason}` : "."}`
           : `${cleanTitle} quedó asignada a ${total} persona${total === 1 ? "" : "s"}.`,
       })
     }
+
     resetForm()
     setIsSubmitting(false)
     onTaskCreated()
@@ -216,8 +240,16 @@ export function AddTaskDialog({ open, onOpenChange, onTaskCreated, prefill }: Ad
             <div className="space-y-2"><Label>Prioridad</Label><Select value={priority} onValueChange={(value: Priority) => setPriority(value)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="baja">Baja</SelectItem><SelectItem value="media">Media</SelectItem><SelectItem value="alta">Alta</SelectItem><SelectItem value="urgente">Urgente</SelectItem></SelectContent></Select></div>
             <div className="space-y-2"><Label>Duración estimada</Label><Input type="number" min="5" max="1440" step="5" value={estimatedMinutes} onChange={(event) => setEstimatedMinutes(event.target.value)} placeholder="Minutos" /></div>
           </div>
-          <div className="grid gap-4 sm:grid-cols-2"><div className="space-y-2"><Label htmlFor="task-date">Fecha objetivo</Label><Input id="task-date" type="date" value={dueDate} onChange={(event) => setDueDate(event.target.value)} /></div><div className="space-y-2"><Label>Lugar</Label><Select value={locationId || "none"} onValueChange={(value) => setLocationId(value === "none" ? "" : value)}><SelectTrigger><SelectValue placeholder="Sin ubicación específica" /></SelectTrigger><SelectContent><SelectItem value="none">Sin ubicación específica</SelectItem>{locations.map((location) => <SelectItem key={location.id} value={location.id}>{location.name}</SelectItem>)}</SelectContent></Select></div></div>
-          <div className="space-y-2"><Label>Revisión</Label><Select value={reviewMode} onValueChange={(value: ReviewMode) => setReviewMode(value)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="none">No requiere revisión</SelectItem><SelectItem value="review">Para revisión</SelectItem></SelectContent></Select></div>
+          <div className="grid gap-4 sm:grid-cols-3">
+            <div className="space-y-2"><Label htmlFor="task-date">Fecha objetivo</Label><Input id="task-date" type="date" value={dueDate} onChange={(event) => setDueDate(event.target.value)} /></div>
+            <div className="space-y-2"><Label>Lugar</Label><Select value={locationId || "none"} onValueChange={(value) => setLocationId(value === "none" ? "" : value)}><SelectTrigger><SelectValue placeholder="Sin ubicación específica" /></SelectTrigger><SelectContent><SelectItem value="none">Sin ubicación específica</SelectItem>{locations.map((location) => <SelectItem key={location.id} value={location.id}>{location.name}</SelectItem>)}</SelectContent></Select></div>
+            <div className="space-y-2"><Label htmlFor="task-cost">Costo estimado (CLP)</Label><Input id="task-cost" type="number" min="0" step="1000" value={estimatedCost} onChange={(event) => setEstimatedCost(event.target.value)} placeholder="Opcional" /></div>
+          </div>
+          <div className="space-y-2">
+            <Label>Revisión</Label>
+            <Select value={effectiveReviewMode} disabled={Boolean(forcedReviewReason)} onValueChange={(value: ReviewMode) => setReviewMode(value)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="none">No requiere revisión</SelectItem><SelectItem value="review">Para revisión</SelectItem></SelectContent></Select>
+            {forcedReviewReason && <p className="text-xs text-amber-500">Para revisión · {forcedReviewReason}</p>}
+          </div>
           <div className="rounded-lg border p-4"><label className="flex items-start gap-3"><Checkbox checked={animalHandling} onCheckedChange={(checked) => setAnimalHandling(Boolean(checked))} /><span><span className="block text-sm font-medium">Incluye manejo o cercanía con animales</span><span className="block text-xs text-muted-foreground">Activa advertencias y exige instrucciones de seguridad claras.</span></span></label>{(animalHandling || safetyNotes) && <div className="mt-3 space-y-2"><Label>Indicaciones de seguridad</Label><Textarea value={safetyNotes} onChange={(event) => setSafetyNotes(event.target.value)} rows={3} placeholder="Riesgos, supervisión y acciones no autorizadas" /></div>}</div>
           <div className="grid gap-4 lg:grid-cols-2"><AssigneeList title="Trabajadores" empty="No hay trabajadores activos." items={employees.map((item) => ({ id: item.id, name: item.name, subtitle: item.role }))} selected={employeeIds} onToggle={(id) => toggle(employeeIds, id, setEmployeeIds)} /><AssigneeList title="Voluntarios" empty="No hay voluntarios activos." items={volunteers.map((item) => ({ id: item.id, name: item.name, subtitle: item.volunteer_role }))} selected={volunteerIds} onToggle={(id) => toggle(volunteerIds, id, setVolunteerIds)} /></div>
           <p className="text-xs text-muted-foreground">{employeeIds.length} trabajador{employeeIds.length === 1 ? "" : "es"} y {volunteerIds.length} voluntario{volunteerIds.length === 1 ? "" : "s"} seleccionados.</p>
