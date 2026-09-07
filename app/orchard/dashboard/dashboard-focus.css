@@ -7,11 +7,11 @@
 }
 
 .orchard-dashboard-workspace > .mx-auto:first-of-type > section {
-  min-height: 3.5rem;
+  min-height: 3.25rem;
   border: 0 !important;
   border-bottom: 1px solid var(--orchard-line) !important;
   background: transparent !important;
-  padding: 0 0 0.75rem !important;
+  padding: 0 0 0.625rem !important;
 }
 
 .orchard-dashboard-workspace > .mx-auto:first-of-type label {
@@ -35,8 +35,8 @@
 .orchard-dashboard-workspace > .mx-auto:first-of-type button {
   height: var(--dashboard-control-height) !important;
   border-color: #35332e !important;
-  background: #171614 !important;
-  color: #c8c3ba !important;
+  background: transparent !important;
+  color: #aaa59c !important;
 }
 
 .orchard-dashboard-workspace > .mx-auto:first-of-type button:hover {
@@ -44,20 +44,70 @@
   color: #f1eee7 !important;
 }
 
+/* Next actions is a compact operating strip, not a second hero. */
+[data-orchard-next-actions] {
+  padding-top: 0.75rem !important;
+}
+
+[data-orchard-next-actions] > div {
+  border-color: #302f2b !important;
+  background: #1b1a17 !important;
+}
+
+[data-orchard-next-actions] > div > div:first-child {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.625rem 1rem !important;
+}
+
+[data-orchard-next-actions] > div > div:first-child > p:first-child {
+  flex: 0 0 auto;
+  white-space: nowrap;
+  font-size: 0.6rem !important;
+  letter-spacing: 0.15em !important;
+}
+
+[data-orchard-next-actions] > div > div:first-child > div {
+  margin-top: 0 !important;
+  flex: 1 1 auto;
+  align-items: center !important;
+}
+
+[data-orchard-next-actions] h2 {
+  font-size: 1rem !important;
+  line-height: 1.35rem !important;
+  font-weight: 500 !important;
+}
+
+[data-orchard-next-actions] > div > div:first-child > div > p {
+  font-size: 0.68rem !important;
+}
+
+[data-orchard-next-actions] > div > div:nth-child(2) > div > div:first-child {
+  padding-top: 0.5rem !important;
+  padding-bottom: 0.5rem !important;
+}
+
+[data-orchard-next-actions] > div > div:nth-child(2) > div > div:nth-child(2) > div {
+  padding-top: 0.625rem !important;
+  padding-bottom: 0.625rem !important;
+}
+
 .orchard-dashboard-workspace [data-orchard-dashboard] {
-  padding-top: 0.25rem !important;
+  padding-top: 0.125rem !important;
 }
 
 .orchard-dashboard-workspace [data-orchard-dashboard] > header {
-  min-height: 3.25rem;
-  margin-bottom: 0.75rem !important;
-  padding-bottom: 0.75rem !important;
+  min-height: 3rem;
+  margin-bottom: 0.625rem !important;
+  padding-bottom: 0.625rem !important;
   justify-content: flex-end !important;
   border-bottom: 1px solid var(--orchard-line) !important;
   gap: 0.5rem !important;
 }
 
-/* The shared Orchard desktop header owns the page title and season selector, as in Heirloom. */
+/* The shared Orchard desktop header owns the page title and season selector. */
 .orchard-dashboard-workspace [data-orchard-dashboard] > header > div:first-child {
   display: none !important;
 }
@@ -69,28 +119,35 @@
 .orchard-dashboard-workspace [data-orchard-dashboard] > header button {
   min-height: var(--dashboard-control-height) !important;
   border-color: #35332e !important;
-  background: #171614 !important;
-  color: #c8c3ba !important;
+  background: transparent !important;
+  color: #aaa59c !important;
 }
 
 .orchard-dashboard-workspace [data-orchard-dashboard] > section.grid {
   gap: 0.75rem !important;
+  align-items: start !important;
+}
+
+.orchard-dashboard-workspace [data-orchard-dashboard] > section.grid > div {
+  min-width: 0;
+  align-self: start;
 }
 
 .orchard-dashboard-workspace [data-orchard-dashboard] article {
   border-color: #302f2b !important;
   background: #171614 !important;
+  box-shadow: none !important;
 }
 
 .orchard-dashboard-workspace [data-orchard-dashboard] article > header {
-  min-height: 2.875rem;
-  padding: 0.625rem 0.875rem !important;
+  min-height: 2.625rem;
+  padding: 0.55rem 0.8rem !important;
   border-color: #302f2b !important;
 }
 
 .orchard-dashboard-workspace [data-orchard-dashboard] article > header h2 {
-  font-size: 0.95rem !important;
-  line-height: 1.35rem !important;
+  font-size: 0.9rem !important;
+  line-height: 1.25rem !important;
   font-weight: 500 !important;
   letter-spacing: -0.01em;
 }
@@ -99,9 +156,86 @@
   color: #8fcbb0 !important;
 }
 
-@media (max-width: 1279px) {
+/* Tighten low-value text blocks so data, not frames, controls the rhythm. */
+.orchard-dashboard-workspace [data-orchard-dashboard] textarea {
+  min-height: 5.75rem !important;
+}
+
+.orchard-dashboard-workspace [data-orchard-dashboard] > section.grid > div:has(article a[href*="/orchard/notes"]) article a p:last-child {
+  display: -webkit-box !important;
+  overflow: hidden !important;
+  -webkit-box-orient: vertical !important;
+  -webkit-line-clamp: 1 !important;
+}
+
+@media (min-width: 1280px) {
+  /*
+   * Stable editorial composition:
+   * operation left, weather/quick context center, crop list as the persistent right rail.
+   * :has() identifies widgets by their real content so saved ordering does not create holes.
+   */
+  .orchard-dashboard-workspace [data-orchard-dashboard] > section.grid:not(:has(.cursor-grab)) {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1.08fr) minmax(0, 1fr) minmax(19rem, 0.82fr) !important;
+    grid-template-areas:
+      "tasks weather crops"
+      "revenue weather crops"
+      "revenue notepad crops"
+      "notes milestones crops" !important;
+    grid-auto-flow: row !important;
+  }
+
+  .orchard-dashboard-workspace [data-orchard-dashboard] > section.grid:not(:has(.cursor-grab)) > div:has(article > .grid.grid-cols-2) {
+    grid-area: tasks !important;
+  }
+
+  .orchard-dashboard-workspace [data-orchard-dashboard] > section.grid:not(:has(.cursor-grab)) > div:has(article > p.border-t) {
+    grid-area: weather !important;
+  }
+
+  .orchard-dashboard-workspace [data-orchard-dashboard] > section.grid:not(:has(.cursor-grab)) > div:has(svg[aria-label="Source-backed monthly revenue timeline"]) {
+    grid-area: revenue !important;
+  }
+
+  .orchard-dashboard-workspace [data-orchard-dashboard] > section.grid:not(:has(.cursor-grab)) > div:has(textarea) {
+    grid-area: notepad !important;
+  }
+
+  .orchard-dashboard-workspace [data-orchard-dashboard] > section.grid:not(:has(.cursor-grab)) > div:has(article a[href*="/orchard/notes"]) {
+    grid-area: notes !important;
+  }
+
+  .orchard-dashboard-workspace [data-orchard-dashboard] > section.grid:not(:has(.cursor-grab)) > div:has(article [style*="background-color"]) {
+    grid-area: crops !important;
+    height: 100%;
+  }
+
+  .orchard-dashboard-workspace [data-orchard-dashboard] > section.grid:not(:has(.cursor-grab)) > div:has(article [style*="background-color"]) article {
+    height: 100%;
+  }
+
+  .orchard-dashboard-workspace [data-orchard-dashboard] > section.grid:not(:has(.cursor-grab)) > div:has(article [style*="background-color"]) article > div {
+    max-height: 46rem !important;
+  }
+
+  .orchard-dashboard-workspace [data-orchard-dashboard] > section.grid:not(:has(.cursor-grab)) > div:has(article [class*="grid-cols-[78px_1fr]"]) {
+    grid-area: milestones !important;
+  }
+
+  /* Current empty milestone state fallback. */
+  .orchard-dashboard-workspace [data-orchard-dashboard] > section.grid:not(:has(.cursor-grab)) > div:nth-child(7) {
+    grid-area: milestones;
+  }
+}
+
+@media (min-width: 768px) and (max-width: 1279px) {
   .orchard-dashboard-workspace [data-orchard-dashboard] > section.grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
     gap: 0.625rem !important;
+  }
+
+  [data-orchard-next-actions] > div > div:first-child > div > p {
+    display: none;
   }
 }
 
@@ -117,5 +251,18 @@
 
   .orchard-dashboard-workspace [data-orchard-dashboard] > header > div:first-child {
     display: block !important;
+  }
+
+  [data-orchard-next-actions] > div > div:first-child {
+    display: block;
+    padding: 0.75rem !important;
+  }
+
+  [data-orchard-next-actions] > div > div:first-child > div {
+    margin-top: 0.25rem !important;
+  }
+
+  [data-orchard-next-actions] > div > div:first-child > div > p {
+    display: none;
   }
 }
