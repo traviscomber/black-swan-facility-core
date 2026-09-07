@@ -4,6 +4,7 @@ import Link from "next/link"
 import { CalendarRange, Database, Leaf, Settings2, Store, Users } from "lucide-react"
 import { usePathname, useSearchParams } from "next/navigation"
 import { useLanguage } from "@/lib/hooks/use-language"
+import "./harvest-workspace.css"
 
 const copy = {
   en: { channels: "Sales Channels", season: "Season Harvests", weekly: "Weekly Harvests", farmSettings: "Farm settings", farmData: "Farm data", team: "Team" },
@@ -33,6 +34,7 @@ export function OrchardHarvestSectionNav() {
   const inSettingsWorkspace = pathname === "/orchard/settings" || pathname.startsWith("/orchard/settings/")
   if (!inHarvestWorkspace && !inSettingsWorkspace) return null
 
+  const harvestView = pathname === "/orchard/commercial" ? "channels" : pathname === "/orchard/harvest/season" ? "season" : pathname === "/orchard/harvest/desk" ? "weekly" : "harvest"
   const query = searchParams.toString()
   const href = (path: string) => `/${language}${path}${query ? `?${query}` : ""}`
   const items = inSettingsWorkspace
@@ -49,6 +51,7 @@ export function OrchardHarvestSectionNav() {
 
   return <>
     {inSettingsWorkspace ? <style>{SETTINGS_DENSITY_CSS}</style> : null}
+    {inHarvestWorkspace ? <span data-orchard-harvest-view={harvestView} hidden aria-hidden="true" /> : null}
     <nav
       aria-label={inSettingsWorkspace ? "Settings workspace" : "Harvest workspace"}
       className="sticky top-0 z-30 flex min-h-12 w-full items-stretch overflow-x-auto border-b border-[var(--bs-divider-subtle)] bg-[var(--orchard-canvas,#171512)] px-3 sm:px-5"
