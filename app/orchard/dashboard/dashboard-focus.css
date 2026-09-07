@@ -189,8 +189,9 @@
 
   /*
    * Stable editorial composition:
-   * operation left, weather/quick context center, crop list as the persistent right rail.
-   * :has() identifies widgets by their real content so saved ordering does not create holes.
+   * left pairs Tasks + Revenue against Weather, then Notes against Notepad + Milestones.
+   * Crop Distribution remains the persistent right rail.
+   * Pairing comparable vertical stacks prevents tall center/right widgets from creating dead space.
    */
   .orchard-dashboard-workspace [data-orchard-dashboard] > section.grid:not(:has(.cursor-grab)) {
     display: grid !important;
@@ -198,7 +199,7 @@
     grid-template-areas:
       "tasks weather crops"
       "revenue weather crops"
-      "revenue notepad crops"
+      "notes notepad crops"
       "notes milestones crops" !important;
     grid-auto-flow: row !important;
   }
