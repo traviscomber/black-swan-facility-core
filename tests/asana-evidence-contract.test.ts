@@ -14,11 +14,11 @@ test("historical Asana evidence is explicitly separated from current work", () =
   assert.doesNotMatch(asanaHistory, /\/api\/asana-live\/sync/)
 })
 
-test("historical Asana uses explicit canonical account links instead of local-part guessing", () => {
-  assert.match(asanaHistory, /"juan vial": "travis@blackswn\.org"/)
-  assert.match(asanaHistory, /"raimundo colvin": "raimundo@blackswn\.org"/)
-  assert.match(asanaHistory, /function linkedAsanaEmail\(identity: CurrentIdentity\)/)
+test("historical Asana uses canonical identity links instead of local-part guessing", () => {
+  assert.match(asanaHistory, /asana_identity_links/)
+  assert.match(asanaHistory, /select\("asana_email"\)/)
   assert.match(asanaHistory, /function belongsToIdentity/)
+  assert.doesNotMatch(asanaHistory, /ASANA_EMAIL_BY_EMPLOYEE/)
   assert.doesNotMatch(asanaHistory, /function localPart/)
 })
 
@@ -27,6 +27,7 @@ test("current Asana API state is persisted separately from historical observatio
   assert.match(asanaSync, /upsert\(currentRows, \{ onConflict: "external_task_id" \}\)/)
   assert.doesNotMatch(asanaSync, /\.from\("asana_live_observations"\)/)
   assert.match(asanaSync, /created_at_source/)
+  assert.match(asanaSync, /last_synced_at/)
 })
 
 test("historical Asana snapshots remain read-only in task details", () => {
