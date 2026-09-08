@@ -137,8 +137,34 @@ export async function POST() {
     )
   }
 
+  const { data: baseline, error: baselineReadError } = await supabase
+    .from("asana_sync_baselines")
+    .select("cutover_at")
+    .eq("workspace_gid", workspaceGid)
+    .maybeSingle()
+
+  const cutoverAt = baseline?.cutover_at ?? null
+  const cutoverMs = cutoverAt ? Date.parse(cutoverAt) : Number.NaN
+  if (baselineReadError || !cutoverAt || !Number.isFinite(cutoverMs)) {
+    console.error("[Asana Live] Current-task cutover missing", baselineReadError)
+    return NextResponse.json(
+      { success: false, status: "baseline_missing", users: users.length, workspaceObserved: tasks.length },
+      { status: 500 },
+    )
+  }
+
+  // The workspace fetch is intentionally broad so a single integration token can
+  // observe every assignee it is allowed to see. Only tasks created on/after the
+  // explicit Black Swan cutover become current intake. Older open Asana backlog
+  // remains historical evidence and is never written into the current task store.
+  const currentTasks = tasks.filter((task) => {
+    if (!task.created_at) return false
+    const createdMs = Date.parse(task.created_at)
+    return Number.isFinite(createdMs) && createdMs >= cutoverMs
+  })
+
   const observedAt = new Date().toISOString()
-  const currentRows = tasks.map((task) => {
+  const currentRows = currentTasks.map((task) => {
     const project = firstProject(task)
     return {
       external_task_id: task.gid,
@@ -170,7 +196,7 @@ export async function POST() {
       console.error("[Asana Live] Current task persistence failed", currentWriteError)
       const forbidden = /row-level security|permission denied/i.test(currentWriteError.message)
       return NextResponse.json(
-        { success: false, status: forbidden ? "forbidden" : "write_failed", users: users.length, observed: tasks.length, error: currentWriteError.message },
+        { success: false, status: forbidden ? "forbidden" : "write_failed", users: users.length, observed: currentTasks.length, workspaceObserved: tasks.length, error: currentWriteError.message },
         { status: forbidden ? 403 : 500 },
       )
     }
@@ -184,7 +210,7 @@ export async function POST() {
   if (baselineError) {
     console.error("[Asana Live] Sync freshness persistence failed", baselineError)
     return NextResponse.json(
-      { success: false, status: "freshness_write_failed", users: users.length, observed: tasks.length, error: baselineError.message },
+      { success: false, status: "freshness_write_failed", users: users.length, observed: currentTasks.length, workspaceObserved: tasks.length, error: baselineError.message },
       { status: 500 },
     )
   }
@@ -199,7 +225,10 @@ export async function POST() {
     updated_at: string
   }>()
 
-  for (const task of tasks) {
+  // The historical title catalog was seeded once from the archived backlog.
+  // Subsequent refreshes append/update only genuinely new intake, so old open
+  // backlog does not get artificially promoted as recent assignment material.
+  for (const task of currentTasks) {
     const normalized = normalizeTitle(task.name)
     if (!normalized) continue
     const project = firstProject(task)
@@ -229,11 +258,13 @@ export async function POST() {
     success: true,
     status: catalogStatus === "failed" ? "partial" : "synced",
     users: users.length,
-    observed: tasks.length,
-    synced: tasks.length,
+    workspaceObserved: tasks.length,
+    observed: currentTasks.length,
+    synced: currentTasks.length,
     failed: 0,
     catalog: catalogStatus,
     titles: titleMap.size,
+    cutoverAt,
     observedAt,
   })
 }
