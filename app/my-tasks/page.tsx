@@ -58,19 +58,8 @@ type CurrentAsanaTask = {
 }
 type ViewTab = "pendientes" | "completadas" | "todas"
 
-type CurrentIdentity = {
-  employeeName: string | null
-  employeeEmail: string | null
-  accountEmail: string
-  roleKey: string | null
-}
-
 const LOCALES = { en: "en-US", es: "es-CL", de: "de-DE" } as const
 const DEFAULT_WORKSPACE_GID = "1205953160575908"
-const ASANA_EMAIL_BY_EMPLOYEE: Record<string, string> = {
-  "juan vial": "travis@blackswn.org",
-  "raimundo colvin": "raimundo@blackswn.org",
-}
 
 const COPY = {
   en: { eyebrow: "Black Swan · Personal workspace", title: "My tasks", description: "Only explicitly assigned Black Swan work and new Asana intake are shown here. Historical Asana backlog and demo routing stay separate.", pending: "Open", today: "Due today", completedWeek: "Completed this week", loadError: "Your tasks could not be loaded.", noProfile: "This account is not linked to an employee profile yet.", tabPending: "Open", tabCompleted: "Completed", tabAll: "All mine", empty: "No current tasks in this view.", allTasks: "All operational tasks", history: "Asana history", select: "Select a Black Swan task to review instructions, status, comments and evidence.", overdue: "Overdue", inProgress: "In progress", due: "Due", minutes: "min", asanaNew: "New from Asana", asanaNewDetail: "Only tasks created in Asana on or after the current-work cutover and still present in the latest workspace sync are shown.", sync: "Refresh from Asana", syncing: "Syncing…", syncOk: "Asana refreshed", syncFailed: "Asana could not be synchronized." },
@@ -95,12 +84,6 @@ function isHistoricalAsanaTask(task: PersonalTask) {
 
 function isDemoTask(task: PersonalTask) {
   return task.title.trim().startsWith("[DEMO]") || task.source_label?.startsWith("DEMO") === true
-}
-
-function linkedAsanaEmail(identity: CurrentIdentity) {
-  const mapped = ASANA_EMAIL_BY_EMPLOYEE[normalize(identity.employeeName)]
-  if (mapped) return mapped
-  return [identity.employeeEmail, identity.accountEmail].map(normalize).find((email) => email.endsWith("@blackswn.org")) ?? null
 }
 
 export default function MyTasksPage() {
@@ -149,16 +132,9 @@ export default function MyTasksPage() {
 
     const employeeId = profile?.employee_id ?? null
     const employee = Array.isArray(profile?.employees) ? profile?.employees[0] : profile?.employees
-    const resolvedIdentity: CurrentIdentity = {
-      employeeName: (employee as { name?: string | null } | null)?.name ?? null,
-      employeeEmail: (employee as { email?: string | null } | null)?.email ?? null,
-      accountEmail: profile?.email || user.email || "",
-      roleKey: profile?.role_key ?? null,
-    }
-    const asanaEmail = linkedAsanaEmail(resolvedIdentity)
-    setEmployeeName(resolvedIdentity.employeeName ?? resolvedIdentity.accountEmail ?? null)
+    setEmployeeName((employee as { name?: string | null } | null)?.name ?? profile?.email ?? user.email ?? null)
     setHasEmployeeProfile(Boolean(employeeId))
-    setCanSyncAsana(["admin", "approver"].includes(normalize(resolvedIdentity.roleKey)))
+    setCanSyncAsana(["admin", "approver"].includes(normalize(profile?.role_key)))
 
     if (!employeeId) {
       setTasks([])
@@ -168,19 +144,19 @@ export default function MyTasksPage() {
       return
     }
 
-    const [{ data: assignments, error: assignmentError }, baselineResult, latestSyncResult] = await Promise.all([
+    const [assignmentsResult, baselineResult, identityResult] = await Promise.all([
       supabase.from("task_assignments").select("task_id").eq("employee_id", employeeId),
       supabase.from("asana_sync_baselines").select("cutover_at").eq("workspace_gid", DEFAULT_WORKSPACE_GID).maybeSingle(),
-      supabase.from("asana_current_tasks").select("last_seen_at").order("last_seen_at", { ascending: false }).limit(1).maybeSingle(),
+      supabase.from("asana_identity_links").select("asana_email,asana_user_gid").eq("employee_id", employeeId).eq("is_active", true).maybeSingle(),
     ])
 
-    if (assignmentError) {
+    if (assignmentsResult.error) {
       setError(copy.loadError)
       setIsLoading(false)
       return
     }
 
-    const assignedTaskIds = (assignments ?? []).map((item) => item.task_id).filter(Boolean) as string[]
+    const assignedTaskIds = (assignmentsResult.data ?? []).map((item) => item.task_id).filter(Boolean) as string[]
     let nextTasks: PersonalTask[] = []
     if (assignedTaskIds.length > 0) {
       const { data: taskRows, error: taskError } = await supabase
@@ -200,18 +176,28 @@ export default function MyTasksPage() {
 
     let nextAsanaTasks: CurrentAsanaTask[] = []
     const cutoverAt = baselineResult.data?.cutover_at ?? null
-    const latestSeenAt = latestSyncResult.data?.last_seen_at ?? null
-    if (asanaEmail && cutoverAt && latestSeenAt) {
-      const { data: currentRows, error: currentError } = await supabase
+    const asanaEmail = identityResult.data?.asana_email ?? null
+    if (asanaEmail && cutoverAt) {
+      const latestSyncResult = await supabase
         .from("asana_current_tasks")
-        .select("external_task_id,task_title,project_name,assignee_label,assignee_email,start_on,due_on,created_at_source,modified_at_source,source_url,last_seen_at")
-        .eq("task_status", "open")
+        .select("last_seen_at")
         .eq("assignee_email", asanaEmail)
-        .eq("last_seen_at", latestSeenAt)
-        .gte("created_at_source", cutoverAt)
-        .order("due_on", { ascending: true, nullsFirst: false })
-        .order("created_at_source", { ascending: false })
-      if (!currentError) nextAsanaTasks = (currentRows ?? []) as CurrentAsanaTask[]
+        .order("last_seen_at", { ascending: false })
+        .limit(1)
+        .maybeSingle()
+      const latestSeenAt = latestSyncResult.data?.last_seen_at ?? null
+      if (latestSeenAt) {
+        const { data: currentRows, error: currentError } = await supabase
+          .from("asana_current_tasks")
+          .select("external_task_id,task_title,project_name,assignee_label,assignee_email,start_on,due_on,created_at_source,modified_at_source,source_url,last_seen_at")
+          .eq("task_status", "open")
+          .eq("assignee_email", asanaEmail)
+          .eq("last_seen_at", latestSeenAt)
+          .gte("created_at_source", cutoverAt)
+          .order("due_on", { ascending: true, nullsFirst: false })
+          .order("created_at_source", { ascending: false })
+        if (!currentError) nextAsanaTasks = (currentRows ?? []) as CurrentAsanaTask[]
+      }
     }
 
     const selectedId = new URLSearchParams(window.location.search).get("selected")
