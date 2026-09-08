@@ -10,7 +10,7 @@ export type AuthorizedNavItem = { key: string; label: string; href: string }
 export type AuthorizedNavigation = { role?: string; is_member?: boolean; items?: AuthorizedNavItem[] }
 
 const labels: Record<string, string> = {
-  bookings: 'Reservas', activities: 'Actividades', tasks: 'Tareas', checklists: 'Checklists', procurement: 'Compras', maintenance: 'Mantenimiento', issues: 'Incidencias',
+  bookings: 'Reservas', activities: 'Actividades', tasks: 'Tareas', 'asana-live': 'Asana en vivo', checklists: 'Checklists', procurement: 'Compras', maintenance: 'Mantenimiento', issues: 'Incidencias',
   'guest-requests': 'Solicitudes de huéspedes', employees: 'Personas', 'property-management': 'Propiedades', inventory: 'Inventario', energy: 'Energía', map: 'Mapa', orchard: 'Huerto', vineyard: 'Viñedo', cattle: 'Ganadería',
   'cattle-health': 'Salud animal', fuel: 'Combustibles', budget: 'Presupuesto', approvals: 'Aprobaciones', documents: 'Documentos', reconciliation: 'Conciliación', accounting: 'Contabilidad', invoices: 'Facturas',
 }
@@ -85,7 +85,10 @@ export async function loadAuthorizedNavigationWith({
   if (routeError || !routeAccess || typeof routeAccess !== 'object') throw new Error(routeError?.message || 'Unable to load route access')
 
   const access = routeAccess as { role_key?: string; is_admin?: boolean }
-  const capabilityItems = filterOsAreas(osAreas, normalizeCapabilitySnapshot(routeAccess), { is_admin: Boolean(access.is_admin) })
+  const capabilityItems = filterOsAreas(osAreas, normalizeCapabilitySnapshot(routeAccess), {
+    is_admin: Boolean(access.is_admin),
+    role: access.role_key,
+  })
     .flatMap((area) => area.items)
     .map((item) => ({ key: item.key, label: readableLabel(item.key), href: item.href }))
   const serverNavigation = await loadServerNavigation(supabase, token, apiUrl, fetchImpl)
