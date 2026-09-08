@@ -146,7 +146,7 @@ export default function MyTasksPage() {
 
     const [assignmentsResult, baselineResult, identityResult] = await Promise.all([
       supabase.from("task_assignments").select("task_id").eq("employee_id", employeeId),
-      supabase.from("asana_sync_baselines").select("cutover_at").eq("workspace_gid", DEFAULT_WORKSPACE_GID).maybeSingle(),
+      supabase.from("asana_sync_baselines").select("cutover_at,last_synced_at").eq("workspace_gid", DEFAULT_WORKSPACE_GID).maybeSingle(),
       supabase.from("asana_identity_links").select("asana_email,asana_user_gid").eq("employee_id", employeeId).eq("is_active", true).maybeSingle(),
     ])
 
@@ -176,28 +176,19 @@ export default function MyTasksPage() {
 
     let nextAsanaTasks: CurrentAsanaTask[] = []
     const cutoverAt = baselineResult.data?.cutover_at ?? null
+    const latestSeenAt = baselineResult.data?.last_synced_at ?? null
     const asanaEmail = identityResult.data?.asana_email ?? null
-    if (asanaEmail && cutoverAt) {
-      const latestSyncResult = await supabase
+    if (asanaEmail && cutoverAt && latestSeenAt) {
+      const { data: currentRows, error: currentError } = await supabase
         .from("asana_current_tasks")
-        .select("last_seen_at")
+        .select("external_task_id,task_title,project_name,assignee_label,assignee_email,start_on,due_on,created_at_source,modified_at_source,source_url,last_seen_at")
+        .eq("task_status", "open")
         .eq("assignee_email", asanaEmail)
-        .order("last_seen_at", { ascending: false })
-        .limit(1)
-        .maybeSingle()
-      const latestSeenAt = latestSyncResult.data?.last_seen_at ?? null
-      if (latestSeenAt) {
-        const { data: currentRows, error: currentError } = await supabase
-          .from("asana_current_tasks")
-          .select("external_task_id,task_title,project_name,assignee_label,assignee_email,start_on,due_on,created_at_source,modified_at_source,source_url,last_seen_at")
-          .eq("task_status", "open")
-          .eq("assignee_email", asanaEmail)
-          .eq("last_seen_at", latestSeenAt)
-          .gte("created_at_source", cutoverAt)
-          .order("due_on", { ascending: true, nullsFirst: false })
-          .order("created_at_source", { ascending: false })
-        if (!currentError) nextAsanaTasks = (currentRows ?? []) as CurrentAsanaTask[]
-      }
+        .eq("last_seen_at", latestSeenAt)
+        .gte("created_at_source", cutoverAt)
+        .order("due_on", { ascending: true, nullsFirst: false })
+        .order("created_at_source", { ascending: false })
+      if (!currentError) nextAsanaTasks = (currentRows ?? []) as CurrentAsanaTask[]
     }
 
     const selectedId = new URLSearchParams(window.location.search).get("selected")
