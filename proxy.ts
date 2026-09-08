@@ -58,6 +58,12 @@ function isItControlPath(pathname: string) {
   return isPathFamily(pathname, "/admin/it-control")
 }
 
+function isRoleRestrictedPathAllowed(pathname: string, roleKey: string | null | undefined) {
+  if (!isPathFamily(pathname, "/asana-live")) return true
+  const role = (roleKey ?? "").trim().toLowerCase()
+  return role === "admin" || role === "approver"
+}
+
 function isSafeInternalStartPath(value: unknown): value is string {
   return typeof value === "string" && value.startsWith("/") && !value.startsWith("//") && value !== "/"
 }
@@ -66,7 +72,7 @@ export function getRouteRequirement(pathname: string): RouteRequirement | null {
   if (isPathFamily(pathname, "/bookings/invoices")) return { domain: "finance", required: "view" }
   if (isPathFamily(pathname, "/bookings/requests")) return { domain: "operations", required: "view" }
   if (isPathFamily(pathname, "/bookings")) return { domain: "booking", required: "view" }
-  if (isPathFamily(pathname, "/activities-calendar") || isPathFamily(pathname, "/tasks") || isPathFamily(pathname, "/checklists")) return { domain: "operations", required: "view" }
+  if (isPathFamily(pathname, "/activities-calendar") || isPathFamily(pathname, "/tasks") || isPathFamily(pathname, "/checklists") || isPathFamily(pathname, "/asana-live")) return { domain: "operations", required: "view" }
   if (isPathFamily(pathname, "/employees") || isPathFamily(pathname, "/os/people")) return { domain: "people", required: "view" }
   if (isPathFamily(pathname, "/map")) return { domain: "map", required: "view" }
   if (isItControlPath(pathname)) return null
@@ -236,11 +242,11 @@ export async function proxy(request: NextRequest) {
       ? osProfile.os_start_path
       : "/os"
     const startRequirement = getRouteRequirement(preferredStartPath)
-    const startAllowed = !startRequirement || hasCapability(
+    const startAllowed = (!startRequirement || hasCapability(
       capabilitySnapshot,
       startRequirement.domain,
       startRequirement.required,
-    )
+    )) && isRoleRestrictedPathAllowed(preferredStartPath, routeAccess.role_key)
     const activeLocale = locale ?? DEFAULT_LOCALE
 
     return setLocaleCookie(
@@ -252,6 +258,14 @@ export async function proxy(request: NextRequest) {
   const requirement = getRouteRequirement(effectivePathname)
 
   if (effectivePathname === "/auth/login") {
+    const activeLocale = locale ?? DEFAULT_LOCALE
+    return setLocaleCookie(
+      NextResponse.redirect(localizedUrl(request, activeLocale, "/")),
+      activeLocale,
+    )
+  }
+
+  if (!apiRequest && !isRoleRestrictedPathAllowed(effectivePathname, routeAccess.role_key)) {
     const activeLocale = locale ?? DEFAULT_LOCALE
     return setLocaleCookie(
       NextResponse.redirect(localizedUrl(request, activeLocale, "/")),

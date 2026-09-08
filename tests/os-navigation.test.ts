@@ -12,7 +12,7 @@ test("defines exactly six stable OS areas", () => {
 
 test("preserves established routes while resolving areas", () => {
   const cases: Array<[string, string]> = [
-    ["/os", "today"], ["/bookings", "operations"], ["/activities-calendar", "operations"], ["/tasks", "operations"],
+    ["/os", "today"], ["/bookings", "operations"], ["/activities-calendar", "operations"], ["/tasks", "operations"], ["/asana-live", "operations"],
     ["/employees", "people"], ["/property-management", "places-assets"], ["/inventory", "places-assets"],
     ["/budgets", "finance"], ["/bookings/invoices", "finance"], ["/accounting", "finance"], ["/os/discovery", "network"],
   ]
@@ -27,7 +27,23 @@ test("view capability controls visibility independently from write actions", () 
   const hrefs = visible.flatMap((area) => area.items.map((item) => item.href))
   assert.equal(hrefs.includes("/bookings"), true)
   assert.equal(hrefs.includes("/activities-calendar"), true)
+  assert.equal(hrefs.includes("/asana-live"), false)
   assert.equal(hrefs.includes("/budgets"), false)
+})
+
+test("live Asana requires both operations view and an explicitly allowed role", () => {
+  const operations = normalizeCapabilitySnapshot({ domains: { operations: ["view"] } })
+  const approverHrefs = filterOsAreas(osAreas, operations, { is_admin: false, role: "approver" })
+    .flatMap((area) => area.items.map((item) => item.href))
+  const operatorHrefs = filterOsAreas(osAreas, operations, { is_admin: false, role: "operator" })
+    .flatMap((area) => area.items.map((item) => item.href))
+  const noOperations = normalizeCapabilitySnapshot({ domains: {} })
+  const approverWithoutCapability = filterOsAreas(osAreas, noOperations, { is_admin: false, role: "approver" })
+    .flatMap((area) => area.items.map((item) => item.href))
+
+  assert.equal(approverHrefs.includes("/asana-live"), true)
+  assert.equal(operatorHrefs.includes("/asana-live"), false)
+  assert.equal(approverWithoutCapability.includes("/asana-live"), false)
 })
 
 test("map is hidden without map view even when other places capabilities exist", () => {
@@ -41,7 +57,7 @@ test("map is hidden without map view even when other places capabilities exist",
 
 test("keeps all six area hubs while server-authorized children stay out of static navigation", () => {
   const snapshot = normalizeCapabilitySnapshot({ domains: { people: ["admin"], network: ["admin"] } })
-  const visible = filterOsAreas(osAreas, snapshot, { is_admin: true })
+  const visible = filterOsAreas(osAreas, snapshot, { is_admin: true, role: "admin" })
   assert.deepEqual(visible.map((area) => area.key), expectedKeys)
   const hrefs = visible.flatMap((area) => area.items.map((item) => item.href))
   assert.equal(hrefs.includes("/os/discovery"), false)
@@ -78,6 +94,7 @@ test("ranking never grants capabilities or rewrites direct URLs", () => {
   const filtered = filterOsAreas(osAreas, snapshot, access)
   const hrefs = filtered.flatMap((area) => area.items.map((item) => item.href))
   assert.equal(hrefs.includes("/bookings"), true)
+  assert.equal(hrefs.includes("/asana-live"), false)
   assert.equal(hrefs.includes("/budgets"), false)
   assert.equal(resolveAreaForPath("/bookings/calendar"), "operations")
 })
@@ -131,6 +148,7 @@ test("Operations API outage falls back to canonical RPCs without granting routes
   assert.equal(navigation.role, "hospitality")
   assert.equal(keys.includes("bookings"), true)
   assert.equal(keys.includes("tasks"), true)
+  assert.equal(keys.includes("asana-live"), false)
   assert.equal(keys.includes("events"), true)
   assert.equal(keys.includes("discovery"), true)
   assert.equal(keys.includes("maintenance"), false)
