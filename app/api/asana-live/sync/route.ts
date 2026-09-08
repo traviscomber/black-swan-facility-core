@@ -167,19 +167,39 @@ export async function POST() {
       last_seen_at: observedAt,
     }
 
-    const { error } = await supabase.from("asana_live_observations").upsert(row, { onConflict: "external_task_id" })
-    if (!error) {
+    // external_task_id is protected by a partial unique index. PostgREST cannot
+    // target that index with ON CONFLICT, so persist deterministically as
+    // update-first / insert-if-missing instead of upsert(onConflict).
+    const { data: updated, error: updateError } = await supabase
+      .from("asana_live_observations")
+      .update(row)
+      .eq("external_task_id", task.gid)
+      .select("id")
+
+    if (updateError) {
+      failures.push({ gid: task.gid, error: updateError.message })
+      continue
+    }
+
+    if ((updated ?? []).length > 0) {
       synced += 1
       continue
     }
-    if (error.code === "23505") {
+
+    const { error: insertError } = await supabase.from("asana_live_observations").insert(row)
+    if (!insertError) {
+      synced += 1
+      continue
+    }
+    if (insertError.code === "23505") {
       collisions += 1
       continue
     }
-    failures.push({ gid: task.gid, error: error.message })
+    failures.push({ gid: task.gid, error: insertError.message })
   }
 
   if (failures.length > 0 && synced === 0) {
+    console.error("[Asana Live] Persistence failed", { users: users.length, observed: tasks.length, failures: failures.slice(0, 5) })
     const forbidden = failures.some((failure) => /row-level security|permission denied/i.test(failure.error))
     return NextResponse.json(
       { success: false, status: forbidden ? "forbidden" : "write_failed", users: users.length, observed: tasks.length, synced, collisions, failures: failures.slice(0, 5) },
