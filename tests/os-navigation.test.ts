@@ -195,4 +195,4 @@ test("malformed successful Operations API payload uses the canonical RPC fallbac
   assert.equal(navigation.role, "hospitality")
   assert.equal(keys.includes("bookings"), true)
   assert.equal(keys.includes("events"), true)
-}
+})
