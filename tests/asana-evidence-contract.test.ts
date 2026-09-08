@@ -3,6 +3,7 @@ import test from "node:test"
 import { readFileSync } from "node:fs"
 
 const asanaLive = readFileSync(new URL("../app/asana-live/page.tsx", import.meta.url), "utf8")
+const asanaSync = readFileSync(new URL("../app/api/asana-live/sync/route.ts", import.meta.url), "utf8")
 const taskDetail = readFileSync(new URL("../components/task-detail-panel.tsx", import.meta.url), "utf8")
 
 test("live Asana evidence separates current, legacy, private and unclassified observations", () => {
@@ -24,6 +25,13 @@ test("live Asana uses explicit canonical account links instead of local-part gue
   assert.match(asanaLive, /if \(linkedEmail && asanaEmail\) return asanaEmail === linkedEmail/)
   assert.doesNotMatch(asanaLive, /function localPart/)
   assert.doesNotMatch(asanaLive, /same identifier before @/)
+})
+
+test("live Asana persistence does not target the partial external task index with PostgREST upsert", () => {
+  assert.doesNotMatch(asanaSync, /upsert\(row, \{ onConflict: "external_task_id" \}\)/)
+  assert.match(asanaSync, /\.update\(row\)/)
+  assert.match(asanaSync, /\.eq\("external_task_id", task\.gid\)/)
+  assert.match(asanaSync, /\.insert\(row\)/)
 })
 
 test("historical Asana snapshots remain read-only in task details", () => {
