@@ -25,10 +25,12 @@ test("current personal work uses canonical Asana identity links instead of hardc
   assert.doesNotMatch(myTasksPage, /"juan vial": "travis@blackswn\.org"/)
 })
 
-test("workspace synchronization is no longer pinned to one assignee", () => {
-  assert.match(syncRoute, /fetchWorkspaceUsers/)
-  assert.match(syncRoute, /fetchIncompleteTasksForUser/)
+test("workspace synchronization searches only post-cutover intake and includes unassigned tasks", () => {
+  assert.match(syncRoute, /fetchCurrentWorkspaceTasks/)
+  assert.match(syncRoute, /workspaces\/\$\{workspaceGid\}\/tasks\/search/)
+  assert.match(syncRoute, /created_at\.after/)
   assert.match(syncRoute, /assignee_email: task\.assignee\?\.email/)
+  assert.match(syncRoute, /const unassigned = currentTasks\.filter/)
+  assert.doesNotMatch(syncRoute, /fetchWorkspaceUsers/)
   assert.doesNotMatch(syncRoute, /DEFAULT_RAIMUNDO_GID/)
-  assert.doesNotMatch(syncRoute, /ASANA_RAIMUNDO_GID/)
 })
