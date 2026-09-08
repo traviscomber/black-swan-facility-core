@@ -9,6 +9,10 @@ const accessMigrationSource = readFileSync(
   new URL("../supabase/migrations/20260908143000_ai_agentic_access.sql", import.meta.url),
   "utf8",
 )
+const accessAclMigrationSource = readFileSync(
+  new URL("../supabase/migrations/20260908162000_harden_ai_agentic_access_acl.sql", import.meta.url),
+  "utf8",
+)
 
 test("central AI router keeps trivial interactions deterministic", () => {
   assert.equal(classifyCentralAIMode("Hola"), "DIRECT")
@@ -28,6 +32,8 @@ test("central AI router forces requested side effects through FULL_AGENTIC", () 
 
 test("FULL_AGENTIC requires an explicit per-user grant", () => {
   assert.match(routeSource, /from\(["']ai_agentic_access["']\)/)
+  assert.match(routeSource, /select\(["']enabled["']\)/)
+  assert.match(routeSource, /eq\(["']user_id["'], user\.id\)/)
   assert.match(routeSource, /agentic_access_denied/)
   assert.match(routeSource, /status: 403/)
   assert.match(routeSource, /agentic_access_check_failed/)
@@ -36,6 +42,16 @@ test("FULL_AGENTIC requires an explicit per-user grant", () => {
   assert.match(accessMigrationSource, /tomas@blackswn\.org/)
   assert.match(accessMigrationSource, /juan@n3uralia\.com/)
   assert.match(accessMigrationSource, /raimundo@blackswn\.org/)
+})
+
+test("agentic access registry is read-only and self-scoped for authenticated clients", () => {
+  assert.match(accessAclMigrationSource, /revoke all on table public\.ai_agentic_access from anon/i)
+  assert.match(
+    accessAclMigrationSource,
+    /revoke insert, update, delete, truncate, references, trigger on table public\.ai_agentic_access from authenticated/i,
+  )
+  assert.match(accessAclMigrationSource, /grant select on table public\.ai_agentic_access to authenticated/i)
+  assert.match(accessAclMigrationSource, /for select[\s\S]*to authenticated[\s\S]*auth\.uid\(\)\) = user_id/i)
 })
 
 test("FULL_AGENTIC is confirmation-gated and cannot execute external effects yet", () => {
