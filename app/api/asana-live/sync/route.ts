@@ -6,6 +6,7 @@ export const dynamic = "force-dynamic"
 
 const ASANA_API_BASE = "https://app.asana.com/api/1.0"
 const DEFAULT_WORKSPACE_GID = "1205953160575908"
+const SYNC_ROLES = new Set(["admin", "approver"])
 
 type AsanaProject = { gid: string; name: string }
 type AsanaUser = { gid: string; name: string; email: string | null }
@@ -42,31 +43,14 @@ async function asanaJson<T>(url: URL, token: string): Promise<AsanaPage<T>> {
   return (await response.json()) as AsanaPage<T>
 }
 
-async function fetchWorkspaceUsers(token: string, workspaceGid: string) {
-  const users: AsanaUser[] = []
-  let offset: string | null = null
-  for (let page = 0; page < 20; page += 1) {
-    const url = new URL(`${ASANA_API_BASE}/users`)
-    url.searchParams.set("workspace", workspaceGid)
-    url.searchParams.set("limit", "100")
-    url.searchParams.set("opt_fields", "gid,name,email")
-    if (offset) url.searchParams.set("offset", offset)
-    const payload = await asanaJson<AsanaUser>(url, token)
-    users.push(...payload.data)
-    offset = payload.next_page?.offset ?? null
-    if (!offset) break
-  }
-  return users
-}
-
-async function fetchIncompleteTasksForUser(token: string, workspaceGid: string, assignee: AsanaUser) {
+async function fetchCurrentWorkspaceTasks(token: string, workspaceGid: string, cutoverAt: string) {
   const tasks: AsanaTask[] = []
   let offset: string | null = null
+
   for (let page = 0; page < 20; page += 1) {
-    const url = new URL(`${ASANA_API_BASE}/tasks`)
-    url.searchParams.set("workspace", workspaceGid)
-    url.searchParams.set("assignee", assignee.gid)
-    url.searchParams.set("completed_since", "now")
+    const url = new URL(`${ASANA_API_BASE}/workspaces/${workspaceGid}/tasks/search`)
+    url.searchParams.set("completed", "false")
+    url.searchParams.set("created_at.after", cutoverAt)
     url.searchParams.set("limit", "100")
     url.searchParams.set(
       "opt_fields",
@@ -91,24 +75,12 @@ async function fetchIncompleteTasksForUser(token: string, workspaceGid: string, 
     )
     if (offset) url.searchParams.set("offset", offset)
     const payload = await asanaJson<AsanaTask>(url, token)
-    tasks.push(...payload.data.map((task) => ({ ...task, assignee: task.assignee ?? assignee })))
+    tasks.push(...payload.data)
     offset = payload.next_page?.offset ?? null
     if (!offset) break
   }
+
   return tasks
-}
-
-async function fetchWorkspaceTasks(token: string) {
-  const workspaceGid = process.env.ASANA_WORKSPACE_GID?.trim() || DEFAULT_WORKSPACE_GID
-  const users = await fetchWorkspaceUsers(token, workspaceGid)
-  const taskMap = new Map<string, AsanaTask>()
-
-  for (const user of users) {
-    const tasks = await fetchIncompleteTasksForUser(token, workspaceGid, user)
-    for (const task of tasks) taskMap.set(task.gid, task)
-  }
-
-  return { workspaceGid, users, tasks: [...taskMap.values()] }
 }
 
 export async function POST() {
@@ -118,25 +90,21 @@ export async function POST() {
     return NextResponse.json({ success: false, status: "unauthorized" }, { status: 401 })
   }
 
+  const { data: accessProfile, error: accessError } = await supabase
+    .from("user_access_profiles")
+    .select("role_key")
+    .eq("user_id", authData.user.id)
+    .eq("is_active", true)
+    .maybeSingle()
+
+  if (accessError || !SYNC_ROLES.has((accessProfile?.role_key ?? "").trim().toLocaleLowerCase())) {
+    return NextResponse.json({ success: false, status: "forbidden" }, { status: 403 })
+  }
+
   const token = process.env.ASANA_ACCESS_TOKEN?.trim()
   if (!token) return NextResponse.json({ success: false, status: "not_configured" }, { status: 503 })
 
-  let workspaceGid = process.env.ASANA_WORKSPACE_GID?.trim() || DEFAULT_WORKSPACE_GID
-  let users: AsanaUser[] = []
-  let tasks: AsanaTask[] = []
-  try {
-    const result = await fetchWorkspaceTasks(token)
-    workspaceGid = result.workspaceGid
-    users = result.users
-    tasks = result.tasks
-  } catch (error) {
-    console.error("[Asana Live] Workspace fetch failed", error)
-    return NextResponse.json(
-      { success: false, status: "asana_fetch_failed", error: error instanceof Error ? error.message : "Asana fetch failed" },
-      { status: 502 },
-    )
-  }
-
+  const workspaceGid = process.env.ASANA_WORKSPACE_GID?.trim() || DEFAULT_WORKSPACE_GID
   const { data: baseline, error: baselineReadError } = await supabase
     .from("asana_sync_baselines")
     .select("cutover_at")
@@ -147,16 +115,24 @@ export async function POST() {
   const cutoverMs = cutoverAt ? Date.parse(cutoverAt) : Number.NaN
   if (baselineReadError || !cutoverAt || !Number.isFinite(cutoverMs)) {
     console.error("[Asana Live] Current-task cutover missing", baselineReadError)
+    return NextResponse.json({ success: false, status: "baseline_missing" }, { status: 500 })
+  }
+
+  let tasks: AsanaTask[] = []
+  try {
+    // Search the workspace by creation time instead of walking historical work
+    // assignee-by-assignee. This includes unassigned new tasks, which are vital
+    // to the assignment queue, while excluding pre-cutover backlog at source.
+    tasks = await fetchCurrentWorkspaceTasks(token, workspaceGid, cutoverAt)
+  } catch (error) {
+    console.error("[Asana Live] Current workspace search failed", error)
     return NextResponse.json(
-      { success: false, status: "baseline_missing", users: users.length, workspaceObserved: tasks.length },
-      { status: 500 },
+      { success: false, status: "asana_search_failed", error: error instanceof Error ? error.message : "Asana search failed" },
+      { status: 502 },
     )
   }
 
-  // The workspace fetch is intentionally broad so a single integration token can
-  // observe every assignee it is allowed to see. Only tasks created on/after the
-  // explicit Black Swan cutover become current intake. Older open Asana backlog
-  // remains historical evidence and is never written into the current task store.
+  // Fail closed if Asana ever returns a row outside the requested window.
   const currentTasks = tasks.filter((task) => {
     if (!task.created_at) return false
     const createdMs = Date.parse(task.created_at)
@@ -196,7 +172,7 @@ export async function POST() {
       console.error("[Asana Live] Current task persistence failed", currentWriteError)
       const forbidden = /row-level security|permission denied/i.test(currentWriteError.message)
       return NextResponse.json(
-        { success: false, status: forbidden ? "forbidden" : "write_failed", users: users.length, observed: currentTasks.length, workspaceObserved: tasks.length, error: currentWriteError.message },
+        { success: false, status: forbidden ? "forbidden" : "write_failed", observed: currentTasks.length, error: currentWriteError.message },
         { status: forbidden ? 403 : 500 },
       )
     }
@@ -210,7 +186,7 @@ export async function POST() {
   if (baselineError) {
     console.error("[Asana Live] Sync freshness persistence failed", baselineError)
     return NextResponse.json(
-      { success: false, status: "freshness_write_failed", users: users.length, observed: currentTasks.length, workspaceObserved: tasks.length, error: baselineError.message },
+      { success: false, status: "freshness_write_failed", observed: currentTasks.length, error: baselineError.message },
       { status: 500 },
     )
   }
@@ -225,9 +201,8 @@ export async function POST() {
     updated_at: string
   }>()
 
-  // The historical title catalog was seeded once from the archived backlog.
-  // Subsequent refreshes append/update only genuinely new intake, so old open
-  // backlog does not get artificially promoted as recent assignment material.
+  // Historical titles were seeded once into the catalog. From this point on we
+  // append/update only new intake so old backlog never gets promoted as recent.
   for (const task of currentTasks) {
     const normalized = normalizeTitle(task.name)
     if (!normalized) continue
@@ -254,13 +229,13 @@ export async function POST() {
     }
   }
 
+  const unassigned = currentTasks.filter((task) => !task.assignee?.gid).length
   return NextResponse.json({
     success: true,
     status: catalogStatus === "failed" ? "partial" : "synced",
-    users: users.length,
-    workspaceObserved: tasks.length,
     observed: currentTasks.length,
     synced: currentTasks.length,
+    unassigned,
     failed: 0,
     catalog: catalogStatus,
     titles: titleMap.size,
