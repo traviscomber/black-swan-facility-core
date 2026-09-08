@@ -2,15 +2,15 @@
 
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 import Link from 'next/link'
-import { AlertTriangle, ArrowRight, CheckCircle2, ClipboardList, FileCheck2, Sparkles, Wrench } from 'lucide-react'
+import { AlertTriangle, ArrowRight, CheckCircle2, ClipboardList, ExternalLink, FileCheck2, RefreshCw, Sparkles, Wrench } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { createClient } from '@/lib/supabase/client'
 import { useOsPersona } from '@/lib/hooks/use-os-persona'
 import { loadAuthorizedNavigation, type AuthorizedNavigation as Navigation, type AuthorizedNavItem as NavItem } from '@/lib/os/authorized-navigation-client'
 
-type WorkKind = 'task' | 'maintenance' | 'issue' | 'housekeeping'
-type WorkFilter = 'all' | WorkKind
+type WorkKind = 'maintenance' | 'issue' | 'housekeeping'
 type WorkItem = {
   id: string
   kind: WorkKind
@@ -22,6 +22,44 @@ type WorkItem = {
   dueDate: string | null
   blocked?: boolean
   scope: 'mine' | 'triage'
+}
+type DashboardTask = {
+  id: string
+  title: string
+  status: string
+  detail: string | null
+  dueDate: string | null
+  priority: string | null
+  source: 'asana' | 'system'
+  sourceUrl: string | null
+  systemTaskId: string | null
+  syncRequired: boolean
+  matchBasis: 'external_ref' | 'exact_title' | null
+}
+type SystemTaskRow = {
+  id: string
+  title: string | null
+  status: string | null
+  priority: string | null
+  due_date: string | null
+  task_category: string | null
+  source_label: string | null
+}
+type CurrentAsanaTaskRow = {
+  external_task_id: string
+  task_title: string
+  task_status: string
+  project_name: string | null
+  assignee_label: string | null
+  assignee_email: string | null
+  assignee_external_id: string | null
+  due_on: string | null
+  source_url: string | null
+  last_seen_at: string
+}
+type TaskExternalRefRow = {
+  task_id: string
+  external_task_id: string | null
 }
 type IssueRow = {
   id: string
@@ -48,12 +86,27 @@ type CostCenterApprovalGroup = {
   totals: Record<string, number>
 }
 
+const DEFAULT_WORKSPACE_GID = '1205953160575908'
+const ASANA_MY_TASKS_URL = 'https://app.asana.com/0/my-tasks'
+
 function hasNavKey(navigation: Navigation, key: string) {
   return Boolean(navigation.items?.some((item) => item.key === key))
 }
 
 function chileDateKey() {
   return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Santiago', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date())
+}
+
+function normalizeTitle(value: string | null | undefined) {
+  return (value ?? '').trim().replace(/\s+/g, ' ').toLocaleLowerCase('es')
+}
+
+function isHistoricalAsanaTask(task: SystemTaskRow) {
+  return task.task_category?.startsWith('asana_import') === true || task.source_label?.startsWith('Asana ·') === true
+}
+
+function isDemoTask(task: SystemTaskRow) {
+  return task.title?.trim().startsWith('[DEMO]') === true || task.source_label?.startsWith('DEMO') === true
 }
 
 function normalizedPriority(value: string | null) {
@@ -67,6 +120,17 @@ function priorityRank(value: string | null) {
   if (priority === 'medium' || priority === 'media') return 2
   if (priority === 'low' || priority === 'baja') return 3
   return 4
+}
+
+function sortDashboardTasks(items: DashboardTask[]) {
+  return [...items].sort((a, b) => {
+    if (a.source !== b.source) return a.source === 'asana' ? -1 : 1
+    if (a.dueDate && b.dueDate && a.dueDate !== b.dueDate) return a.dueDate.localeCompare(b.dueDate)
+    if (a.dueDate !== b.dueDate) return a.dueDate ? -1 : 1
+    const priorityDelta = priorityRank(a.priority) - priorityRank(b.priority)
+    if (priorityDelta !== 0) return priorityDelta
+    return a.title.localeCompare(b.title, 'es')
+  })
 }
 
 function sortWorkItems(items: WorkItem[], today: string) {
@@ -115,12 +179,17 @@ export function FieldAdminHome() {
   const supabase = useMemo(() => createClient(), [])
   const { employeeId, firstName, personaLabel } = useOsPersona()
   const [navigation, setNavigation] = useState<Navigation | null>(null)
-  const [work, setWork] = useState<WorkItem[]>([])
-  const [workFilter, setWorkFilter] = useState<WorkFilter>('all')
+  const [tasks, setTasks] = useState<DashboardTask[]>([])
+  const [operations, setOperations] = useState<WorkItem[]>([])
   const [attention, setAttention] = useState<AttentionSignal[]>([])
   const [financeApprovals, setFinanceApprovals] = useState<CostCenterApprovalGroup[]>([])
   const [canApproveFinance, setCanApproveFinance] = useState(false)
+  const [canSyncAsana, setCanSyncAsana] = useState(false)
+  const [hasAsanaIdentity, setHasAsanaIdentity] = useState(false)
   const [financeLoadError, setFinanceLoadError] = useState<string | null>(null)
+  const [asanaLoadError, setAsanaLoadError] = useState<string | null>(null)
+  const [syncMessage, setSyncMessage] = useState<string | null>(null)
+  const [syncing, setSyncing] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -128,11 +197,14 @@ export function FieldAdminHome() {
     setLoading(true)
     setError(null)
     setFinanceLoadError(null)
+    setAsanaLoadError(null)
     try {
       const nav = await loadAuthorizedNavigation()
       setNavigation(nav)
+      setCanSyncAsana(hasNavKey(nav, 'asana-live'))
       const today = chileDateKey()
-      const personal: WorkItem[] = []
+      const nextOperations: WorkItem[] = []
+      const nextTasks: DashboardTask[] = []
 
       const financePermissionResult = await supabase.rpc('can_finance_approve')
       const financeAllowed = !financePermissionResult.error && Boolean(financePermissionResult.data)
@@ -154,30 +226,124 @@ export function FieldAdminHome() {
       }
 
       if (employeeId && hasNavKey(nav, 'tasks')) {
-        const assignments = await supabase.from('task_assignments').select('task_id').eq('employee_id', employeeId)
-        if (assignments.error) throw assignments.error
-        const taskIds = (assignments.data ?? []).map((row) => row.task_id)
-        if (taskIds.length > 0) {
-          const tasks = await supabase
+        const [assignmentsResult, identityResult, baselineResult] = await Promise.all([
+          supabase.from('task_assignments').select('task_id').eq('employee_id', employeeId),
+          supabase.from('asana_identity_links').select('asana_email,asana_user_gid').eq('employee_id', employeeId).eq('is_active', true).maybeSingle(),
+          supabase.from('asana_sync_baselines').select('cutover_at,last_synced_at').eq('workspace_gid', DEFAULT_WORKSPACE_GID).maybeSingle(),
+        ])
+
+        if (assignmentsResult.error) throw assignmentsResult.error
+        const identity = identityResult.error ? null : identityResult.data
+        setHasAsanaIdentity(Boolean(identity?.asana_email || identity?.asana_user_gid))
+        if (identityResult.error) setAsanaLoadError('No fue posible resolver tu identidad Asana. Tus asignaciones Black Swan siguen disponibles.')
+
+        const assignedTaskIds = (assignmentsResult.data ?? []).map((row) => row.task_id).filter(Boolean) as string[]
+        let systemRows: SystemTaskRow[] = []
+        if (assignedTaskIds.length > 0) {
+          const systemResult = await supabase
             .from('tasks')
-            .select('id,title,status,priority,due_date')
-            .in('id', taskIds)
+            .select('id,title,status,priority,due_date,task_category,source_label')
+            .in('id', assignedTaskIds)
             .not('status', 'in', '(completada,completed,cancelled,canceled)')
             .order('due_date', { ascending: true, nullsFirst: false })
-            .limit(12)
-          if (tasks.error) throw tasks.error
-          personal.push(...(tasks.data ?? []).map((item) => ({
-            id: item.id,
-            kind: 'task' as const,
-            title: item.title || 'Tarea operativa',
-            status: item.status,
-            detail: item.due_date ? `Vence ${item.due_date}${item.priority ? ` · ${item.priority}` : ''}` : item.priority,
-            href: '/tasks',
-            priority: item.priority,
-            dueDate: item.due_date,
-            scope: 'mine' as const,
-          })))
+          if (systemResult.error) throw systemResult.error
+          systemRows = ((systemResult.data ?? []) as SystemTaskRow[]).filter((task) => !isHistoricalAsanaTask(task) && !isDemoTask(task))
         }
+
+        const systemById = new Map(systemRows.map((task) => [task.id, task]))
+        const systemByTitle = new Map<string, SystemTaskRow[]>()
+        for (const task of systemRows) {
+          const key = normalizeTitle(task.title)
+          if (!key) continue
+          const bucket = systemByTitle.get(key) ?? []
+          bucket.push(task)
+          systemByTitle.set(key, bucket)
+        }
+
+        const externalRefByAsanaId = new Map<string, SystemTaskRow>()
+        if (systemRows.length > 0) {
+          const refsResult = await supabase
+            .from('task_external_refs')
+            .select('task_id,external_task_id')
+            .eq('provider', 'asana')
+            .in('task_id', systemRows.map((task) => task.id))
+          if (!refsResult.error) {
+            for (const ref of (refsResult.data ?? []) as TaskExternalRefRow[]) {
+              const systemTask = systemById.get(ref.task_id)
+              if (systemTask && ref.external_task_id) externalRefByAsanaId.set(ref.external_task_id, systemTask)
+            }
+          }
+        }
+
+        const asanaRows: CurrentAsanaTaskRow[] = []
+        const cutoverAt = baselineResult.error ? null : baselineResult.data?.cutover_at ?? null
+        const latestSeenAt = baselineResult.error ? null : baselineResult.data?.last_synced_at ?? null
+        if (baselineResult.error && identity) setAsanaLoadError('No fue posible leer la última sincronización de Asana. Mostramos tus asignaciones Black Swan como respaldo.')
+
+        if (identity && cutoverAt && latestSeenAt) {
+          let currentQuery = supabase
+            .from('asana_current_tasks')
+            .select('external_task_id,task_title,task_status,project_name,assignee_label,assignee_email,assignee_external_id,due_on,source_url,last_seen_at')
+            .eq('task_status', 'open')
+            .eq('last_seen_at', latestSeenAt)
+            .gte('created_at_source', cutoverAt)
+            .order('due_on', { ascending: true, nullsFirst: false })
+
+          if (identity.asana_user_gid) currentQuery = currentQuery.eq('assignee_external_id', identity.asana_user_gid)
+          else if (identity.asana_email) currentQuery = currentQuery.eq('assignee_email', identity.asana_email)
+
+          const currentResult = await currentQuery
+          if (currentResult.error) {
+            setAsanaLoadError('No fue posible cargar Asana. Mostramos tus asignaciones Black Swan como respaldo.')
+          } else {
+            asanaRows.push(...((currentResult.data ?? []) as CurrentAsanaTaskRow[]))
+          }
+        }
+
+        const matchedSystemIds = new Set<string>()
+        for (const asanaTask of asanaRows) {
+          let matchedSystem = externalRefByAsanaId.get(asanaTask.external_task_id) ?? null
+          let matchBasis: DashboardTask['matchBasis'] = matchedSystem ? 'external_ref' : null
+          if (!matchedSystem) {
+            const titleMatches = systemByTitle.get(normalizeTitle(asanaTask.task_title)) ?? []
+            matchedSystem = titleMatches.find((candidate) => !matchedSystemIds.has(candidate.id)) ?? null
+            if (matchedSystem) matchBasis = 'exact_title'
+          }
+          if (matchedSystem) matchedSystemIds.add(matchedSystem.id)
+
+          nextTasks.push({
+            id: `asana:${asanaTask.external_task_id}`,
+            title: asanaTask.task_title,
+            status: asanaTask.task_status,
+            detail: [asanaTask.project_name, matchedSystem ? 'Consolidada con Black Swan' : null].filter(Boolean).join(' · ') || 'Asana',
+            dueDate: asanaTask.due_on,
+            priority: matchedSystem?.priority ?? null,
+            source: 'asana',
+            sourceUrl: asanaTask.source_url,
+            systemTaskId: matchedSystem?.id ?? null,
+            syncRequired: false,
+            matchBasis,
+          })
+        }
+
+        for (const task of systemRows) {
+          if (matchedSystemIds.has(task.id)) continue
+          nextTasks.push({
+            id: `system:${task.id}`,
+            title: task.title || 'Tarea operativa',
+            status: task.status || 'open',
+            detail: task.due_date ? `Vence ${task.due_date}${task.priority ? ` · ${task.priority}` : ''}` : task.priority,
+            dueDate: task.due_date,
+            priority: task.priority,
+            source: 'system',
+            sourceUrl: null,
+            systemTaskId: task.id,
+            syncRequired: Boolean(identity?.asana_email || identity?.asana_user_gid),
+            matchBasis: null,
+          })
+        }
+      } else {
+        setHasAsanaIdentity(false)
       }
 
       if (employeeId && hasNavKey(nav, 'maintenance')) {
@@ -189,7 +355,7 @@ export function FieldAdminHome() {
           .order('fecha_objetivo', { ascending: true, nullsFirst: false })
           .limit(12)
         if (maintenance.error) throw maintenance.error
-        personal.push(...(maintenance.data ?? []).map((item) => ({
+        nextOperations.push(...(maintenance.data ?? []).map((item) => ({
           id: item.id,
           kind: 'maintenance' as const,
           title: item.title || 'Mantenimiento',
@@ -212,7 +378,7 @@ export function FieldAdminHome() {
           .order('service_date', { ascending: true, nullsFirst: false })
           .limit(12)
         if (housekeeping.error) throw housekeeping.error
-        personal.push(...(housekeeping.data ?? []).map((item) => ({
+        nextOperations.push(...(housekeeping.data ?? []).map((item) => ({
           id: item.id,
           kind: 'housekeeping' as const,
           title: item.task_type || 'Housekeeping',
@@ -234,7 +400,7 @@ export function FieldAdminHome() {
           .limit(12)
         if (issues.error) throw issues.error
         const issueRows = (issues.data ?? []) as unknown as IssueRow[]
-        personal.push(...issueRows
+        nextOperations.push(...issueRows
           .filter((item) => (item.issue_task_assignments ?? []).length === 0)
           .map((item) => {
             const priority = item.severity || item.priority
@@ -282,15 +448,20 @@ export function FieldAdminHome() {
         { key: 'replenishment', label: 'Reposición en curso', value: replenishment.count ?? 0, detail: 'Necesidades todavía abiertas', href: '/inventory/replenishment' },
       ].filter((signal) => signal.value > 0)
 
-      setWork(sortWorkItems(personal, today))
+      setTasks(sortDashboardTasks(nextTasks))
+      setOperations(sortWorkItems(nextOperations, today))
       setAttention(nextAttention)
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'No fue posible cargar la operación del campo')
-      setWork([])
+      setTasks([])
+      setOperations([])
       setAttention([])
       setFinanceApprovals([])
       setCanApproveFinance(false)
+      setCanSyncAsana(false)
+      setHasAsanaIdentity(false)
       setFinanceLoadError(null)
+      setAsanaLoadError(null)
     } finally {
       setLoading(false)
     }
@@ -298,19 +469,26 @@ export function FieldAdminHome() {
 
   useEffect(() => { void load() }, [load])
 
+  const syncAsana = useCallback(async () => {
+    setSyncing(true)
+    setSyncMessage(null)
+    try {
+      const response = await fetch('/api/asana-live/sync', { method: 'POST' })
+      const payload = await response.json().catch(() => ({}))
+      if (!response.ok) {
+        setSyncMessage('No fue posible actualizar Asana.')
+        return
+      }
+      setSyncMessage(`Asana actualizado · ${payload.synced ?? 0} tareas vigentes`)
+      await load()
+    } catch {
+      setSyncMessage('No fue posible actualizar Asana.')
+    } finally {
+      setSyncing(false)
+    }
+  }, [load])
+
   const financeApprovalCount = useMemo(() => financeApprovals.reduce((sum, group) => sum + group.count, 0), [financeApprovals])
-  const workCounts = useMemo(() => work.reduce<Record<WorkKind, number>>((counts, item) => {
-    counts[item.kind] += 1
-    return counts
-  }, { task: 0, maintenance: 0, issue: 0, housekeeping: 0 }), [work])
-  const visibleWork = useMemo(() => workFilter === 'all' ? work : work.filter((item) => item.kind === workFilter), [work, workFilter])
-  const workFilters: Array<{ key: WorkFilter; label: string; count: number }> = [
-    { key: 'all', label: 'Todo', count: work.length },
-    { key: 'task', label: 'Tareas', count: workCounts.task },
-    { key: 'maintenance', label: 'Mantenimiento', count: workCounts.maintenance },
-    { key: 'issue', label: 'Incidencias', count: workCounts.issue },
-    { key: 'housekeeping', label: 'Housekeeping', count: workCounts.housekeeping },
-  ]
 
   const quickWorkspaces = useMemo(() => {
     const items = navigation?.items ?? []
@@ -379,36 +557,43 @@ export function FieldAdminHome() {
       <section className="space-y-3">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <h2 className="text-lg font-semibold">Mi trabajo</h2>
-            <p className="text-sm text-muted-foreground">Una sola cola para tareas, mantenimiento, housekeeping e incidencias que todavía necesitan convertirse en trabajo ejecutable.</p>
+            <h2 className="text-lg font-semibold">Tareas</h2>
+            <p className="text-sm text-muted-foreground">Asana es la fuente principal. Las asignaciones Black Swan sólo aparecen como respaldo cuando no existe una tarea Asana vigente equivalente.</p>
           </div>
-          {!loading && work.length > 0 && (
-            <div className="flex flex-wrap gap-2" aria-label="Filtrar trabajo por tipo">
-              {workFilters.map((filter) => (
-                <button
-                  key={filter.key}
-                  type="button"
-                  onClick={() => setWorkFilter(filter.key)}
-                  aria-pressed={workFilter === filter.key}
-                  className={`rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${workFilter === filter.key ? 'border-primary bg-primary text-primary-foreground' : 'hover:bg-muted'}`}
-                >
-                  {filter.label} · {filter.count}
-                </button>
-              ))}
-            </div>
-          )}
+          <div className="flex flex-wrap gap-2">
+            {canSyncAsana && hasAsanaIdentity && <Button variant="outline" size="sm" onClick={() => void syncAsana()} disabled={syncing || loading}><RefreshCw className={`mr-2 h-4 w-4 ${syncing ? 'animate-spin' : ''}`} />{syncing ? 'Actualizando…' : 'Actualizar Asana'}</Button>}
+            <Link href="/my-tasks" className="inline-flex h-9 items-center gap-2 rounded-md border px-3 text-sm font-medium transition-colors hover:bg-muted">Abrir Mis tareas <ArrowRight className="h-3.5 w-3.5" /></Link>
+          </div>
+        </div>
+        {syncMessage && <div className="border-l-2 border-primary/60 bg-primary/5 p-3 text-sm">{syncMessage}</div>}
+        {asanaLoadError && <div className="border-l-2 border-amber-400/60 bg-amber-500/5 p-3 text-sm text-muted-foreground">{asanaLoadError}</div>}
+        {loading ? (
+          <div className="rounded border border-dashed p-5 text-sm text-muted-foreground">Actualizando tareas…</div>
+        ) : !employeeId ? (
+          <div className="rounded border border-dashed p-5 text-sm text-muted-foreground">Tu usuario todavía no tiene una identidad de empleado vinculada.</div>
+        ) : tasks.length === 0 ? (
+          <div className="flex items-center gap-3 rounded border border-dashed p-5 text-sm text-muted-foreground"><CheckCircle2 className="h-5 w-5" /><span>No tienes tareas vigentes en Asana ni asignaciones Black Swan de respaldo.</span></div>
+        ) : (
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+            {tasks.map((task) => <DashboardTaskCard key={task.id} task={task} />)}
+          </div>
+        )}
+      </section>
+
+      <section className="space-y-3">
+        <div>
+          <h2 className="text-lg font-semibold">Operación asignada</h2>
+          <p className="text-sm text-muted-foreground">Mantenimiento, housekeeping e incidencias de triaje quedan separados de la cola de tareas.</p>
         </div>
         {loading ? (
           <div className="rounded border border-dashed p-5 text-sm text-muted-foreground">Actualizando tu operación…</div>
         ) : !employeeId ? (
           <div className="rounded border border-dashed p-5 text-sm text-muted-foreground">Tu usuario todavía no tiene una identidad de empleado vinculada.</div>
-        ) : work.length === 0 ? (
-          <div className="flex items-center gap-3 rounded border border-dashed p-5 text-sm text-muted-foreground"><CheckCircle2 className="h-5 w-5" /><span>No tienes trabajo asignado ni incidencias pendientes de triaje.</span></div>
-        ) : visibleWork.length === 0 ? (
-          <div className="rounded border border-dashed p-5 text-sm text-muted-foreground">No hay trabajo de este tipo en tu cola actual.</div>
+        ) : operations.length === 0 ? (
+          <div className="flex items-center gap-3 rounded border border-dashed p-5 text-sm text-muted-foreground"><CheckCircle2 className="h-5 w-5" /><span>No tienes mantenimiento, housekeeping ni incidencias pendientes de triaje.</span></div>
         ) : (
           <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-            {visibleWork.map((item) => <WorkCard key={`${item.kind}-${item.id}`} item={item} />)}
+            {operations.map((item) => <WorkCard key={`${item.kind}-${item.id}`} item={item} />)}
           </div>
         )}
       </section>
@@ -444,15 +629,44 @@ export function FieldAdminHome() {
   )
 }
 
+function DashboardTaskCard({ task }: { task: DashboardTask }) {
+  const detail = task.detail || (task.source === 'asana' ? 'Asana' : 'Asignación Black Swan')
+  return (
+    <div className="rounded-lg border p-4">
+      <div className="flex items-start gap-3">
+        <div className="mt-0.5 text-primary"><ClipboardList className="h-4 w-4" /></div>
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="font-medium">{task.title}</p>
+            <Badge variant={task.source === 'asana' ? 'secondary' : 'outline'}>{task.source === 'asana' ? 'Asana' : 'Black Swan'}</Badge>
+            {task.matchBasis && <Badge variant="outline">Consolidada</Badge>}
+            {task.syncRequired && <Badge variant="outline">Falta en Asana</Badge>}
+          </div>
+          <p className="mt-1 text-xs text-muted-foreground">{detail}</p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            <Badge variant="outline">{task.status}</Badge>
+            {task.priority && <Badge variant={priorityRank(task.priority) <= 1 ? 'destructive' : 'outline'}>{task.priority}</Badge>}
+            {task.dueDate && <Badge variant="outline">Vence {task.dueDate}</Badge>}
+          </div>
+          {task.syncRequired && <p className="mt-3 text-xs text-amber-300">Créala en Asana para mantener estado y vencimiento sincronizados. Black Swan no la crea automáticamente.</p>}
+          <div className="mt-3 flex flex-wrap gap-3 text-xs font-medium">
+            {task.source === 'asana' && task.sourceUrl && <a href={task.sourceUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-primary hover:underline">Abrir en Asana <ExternalLink className="h-3.5 w-3.5" /></a>}
+            {task.systemTaskId && <Link href={`/tasks?selected=${task.systemTaskId}`} className="inline-flex items-center gap-1 text-primary hover:underline">Abrir en Black Swan <ArrowRight className="h-3.5 w-3.5" /></Link>}
+            {task.syncRequired && <a href={ASANA_MY_TASKS_URL} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-primary hover:underline">Crear en Asana <ExternalLink className="h-3.5 w-3.5" /></a>}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function WorkCard({ item }: { item: WorkItem }) {
   const icon: ReactNode = item.kind === 'maintenance'
     ? <Wrench className="h-4 w-4" />
     : item.kind === 'housekeeping'
       ? <Sparkles className="h-4 w-4" />
-      : item.kind === 'issue'
-        ? <AlertTriangle className="h-4 w-4" />
-        : <ClipboardList className="h-4 w-4" />
-  const kindLabel = item.kind === 'maintenance' ? 'Mantenimiento' : item.kind === 'housekeeping' ? 'Housekeeping' : item.kind === 'issue' ? 'Incidencia' : 'Tarea'
+      : <AlertTriangle className="h-4 w-4" />
+  const kindLabel = item.kind === 'maintenance' ? 'Mantenimiento' : item.kind === 'housekeeping' ? 'Housekeeping' : 'Incidencia'
 
   return (
     <Link href={item.href} className="rounded-lg border p-4 transition-colors hover:bg-muted/40">
