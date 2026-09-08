@@ -36,6 +36,11 @@ type RecencyFilter = "all" | "current_2026" | "legacy_open" | "browser_only" | "
 
 const LOCALES = { en: "en-US", es: "es-CL", de: "de-DE" } as const
 
+const ASANA_EMAIL_BY_EMPLOYEE: Record<string, string> = {
+  "juan vial": "travis@blackswn.org",
+  "raimundo colvin": "raimundo@blackswn.org",
+}
+
 const COPY = {
   es: {
     title: "Mis tareas de Asana",
@@ -59,7 +64,7 @@ const COPY = {
     freshest: "Última observación",
     identity: "Usuario",
     tasksTitle: "Mis tareas observadas",
-    tasksDetail: "Sólo aparecen tareas cuyo responsable de Asana coincide con tu identidad Black Swan. El vínculo usa nombre, email y, cuando los dominios son distintos, el mismo identificador antes de @.",
+    tasksDetail: "Sólo aparecen tareas cuyo responsable de Asana coincide con la cuenta Asana vinculada explícitamente a tu identidad Black Swan.",
     noTasks: "No hay tareas de Asana asociadas a este usuario.",
     projectUnknown: "Sin proyecto",
     exact: "GID exacto",
@@ -95,7 +100,7 @@ const COPY = {
     freshest: "Latest observation",
     identity: "User",
     tasksTitle: "My observed tasks",
-    tasksDetail: "Only tasks whose Asana assignee matches your Black Swan identity are shown. Matching uses name, email and, when domains differ, the same identifier before @.",
+    tasksDetail: "Only tasks whose Asana assignee matches the Asana account explicitly linked to your Black Swan identity are shown.",
     noTasks: "No Asana tasks are associated with this user.",
     projectUnknown: "No project",
     exact: "Exact GID",
@@ -131,7 +136,7 @@ const COPY = {
     freshest: "Letzte Beobachtung",
     identity: "Benutzer",
     tasksTitle: "Meine beobachteten Aufgaben",
-    tasksDetail: "Es werden nur Aufgaben angezeigt, deren Asana-Verantwortlicher Ihrer Black-Swan-Identität entspricht. Der Abgleich verwendet Name, E-Mail und bei unterschiedlichen Domains denselben Bezeichner vor @.",
+    tasksDetail: "Es werden nur Aufgaben angezeigt, deren Asana-Verantwortlicher dem ausdrücklich mit Ihrer Black-Swan-Identität verknüpften Asana-Konto entspricht.",
     noTasks: "Diesem Benutzer sind keine Asana-Aufgaben zugeordnet.",
     projectUnknown: "Ohne Projekt",
     exact: "Exakte GID",
@@ -151,10 +156,6 @@ function normalize(value: string | null | undefined) {
   return (value ?? "").trim().toLocaleLowerCase()
 }
 
-function localPart(value: string | null | undefined) {
-  return normalize(value).split("@")[0] ?? ""
-}
-
 function safeDate(value: string | null) {
   return value ? new Date(`${value}T12:00:00`) : null
 }
@@ -166,17 +167,26 @@ function observationClass(row: LiveObservation): Exclude<RecencyFilter, "all"> {
   return "unclassified"
 }
 
+function linkedAsanaEmail(identity: CurrentIdentity) {
+  const mapped = ASANA_EMAIL_BY_EMPLOYEE[normalize(identity.employeeName)]
+  if (mapped) return mapped
+
+  const exactBlackSwanEmail = [identity.email, identity.employeeEmail]
+    .map(normalize)
+    .find((email) => email.endsWith("@blackswn.org"))
+
+  return exactBlackSwanEmail || null
+}
+
 function belongsToIdentity(row: LiveObservation, identity: CurrentIdentity) {
-  const blackSwanEmails = [identity.email, identity.employeeEmail].map(normalize).filter(Boolean)
-  const blackSwanNames = [identity.employeeName].map(normalize).filter(Boolean)
   const asanaEmail = normalize(row.collaborator_label)
   const asanaName = normalize(row.assignee_label)
+  const employeeName = normalize(identity.employeeName)
+  const linkedEmail = linkedAsanaEmail(identity)
 
-  if (asanaEmail && blackSwanEmails.includes(asanaEmail)) return true
-  if (asanaName && blackSwanNames.includes(asanaName)) return true
-
-  const asanaLocal = localPart(asanaEmail)
-  if (asanaLocal.length >= 3 && blackSwanEmails.some((email) => localPart(email) === asanaLocal)) return true
+  if (linkedEmail && asanaEmail) return asanaEmail === linkedEmail
+  if (linkedEmail && !asanaEmail && employeeName && asanaName) return asanaName === employeeName
+  if (!linkedEmail && employeeName && asanaName) return asanaName === employeeName
 
   return false
 }
