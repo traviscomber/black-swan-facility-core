@@ -1,6 +1,7 @@
 -- Harden the FULL_AGENTIC access registry to least privilege.
 -- The orchestration API only needs authenticated users to read their own row.
 
+revoke all on table public.ai_agentic_access from public;
 revoke all on table public.ai_agentic_access from anon;
 revoke insert, update, delete, truncate, references, trigger on table public.ai_agentic_access from authenticated;
 grant select on table public.ai_agentic_access to authenticated;
