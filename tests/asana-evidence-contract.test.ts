@@ -2,36 +2,32 @@ import assert from "node:assert/strict"
 import test from "node:test"
 import { readFileSync } from "node:fs"
 
-const asanaLive = readFileSync(new URL("../app/asana-live/page.tsx", import.meta.url), "utf8")
+const asanaHistory = readFileSync(new URL("../app/asana-live/page.tsx", import.meta.url), "utf8")
 const asanaSync = readFileSync(new URL("../app/api/asana-live/sync/route.ts", import.meta.url), "utf8")
 const taskDetail = readFileSync(new URL("../components/task-detail-panel.tsx", import.meta.url), "utf8")
 
-test("live Asana evidence separates current, legacy, private and unclassified observations", () => {
-  assert.match(asanaLive, /type RecencyFilter = "all" \| "current_2026" \| "legacy_open" \| "browser_only" \| "unclassified"/)
-  assert.match(asanaLive, /These counts are evidence classes, not a total of current tasks/)
-  assert.match(asanaLive, /Estos conteos son clases de evidencia, no un total de tareas actuales/)
-  assert.doesNotMatch(asanaLive, /value=\{observations\.length\}/)
-  assert.match(asanaLive, /observationClass\(row\) === recencyFilter/)
-  assert.match(asanaLive, /current2026Count/)
-  assert.match(asanaLive, /legacyOpenCount/)
-  assert.match(asanaLive, /privateObservedCount/)
-  assert.match(asanaLive, /unclassifiedCount/)
+test("historical Asana evidence is explicitly separated from current work", () => {
+  assert.match(asanaHistory, /Histórico Asana/)
+  assert.match(asanaHistory, /No se usa para calcular tus tareas vigentes/)
+  assert.match(asanaHistory, /Archivo · sólo lectura/)
+  assert.match(asanaHistory, /asana_live_observations/)
+  assert.doesNotMatch(asanaHistory, /\/api\/asana-live\/sync/)
 })
 
-test("live Asana uses explicit canonical account links instead of local-part guessing", () => {
-  assert.match(asanaLive, /"juan vial": "travis@blackswn\.org"/)
-  assert.match(asanaLive, /"raimundo colvin": "raimundo@blackswn\.org"/)
-  assert.match(asanaLive, /function linkedAsanaEmail\(identity: CurrentIdentity\)/)
-  assert.match(asanaLive, /if \(linkedEmail && asanaEmail\) return asanaEmail === linkedEmail/)
-  assert.doesNotMatch(asanaLive, /function localPart/)
-  assert.doesNotMatch(asanaLive, /same identifier before @/)
+test("historical Asana uses canonical identity links instead of local-part guessing", () => {
+  assert.match(asanaHistory, /asana_identity_links/)
+  assert.match(asanaHistory, /select\("asana_email"\)/)
+  assert.match(asanaHistory, /function belongsToIdentity/)
+  assert.doesNotMatch(asanaHistory, /ASANA_EMAIL_BY_EMPLOYEE/)
+  assert.doesNotMatch(asanaHistory, /function localPart/)
 })
 
-test("live Asana persistence does not target the partial external task index with PostgREST upsert", () => {
-  assert.doesNotMatch(asanaSync, /upsert\(row, \{ onConflict: "external_task_id" \}\)/)
-  assert.match(asanaSync, /\.update\(row\)/)
-  assert.match(asanaSync, /\.eq\("external_task_id", task\.gid\)/)
-  assert.match(asanaSync, /\.insert\(row\)/)
+test("current Asana API state is persisted separately from historical observation evidence", () => {
+  assert.match(asanaSync, /\.from\("asana_current_tasks"\)/)
+  assert.match(asanaSync, /upsert\(currentRows, \{ onConflict: "external_task_id" \}\)/)
+  assert.doesNotMatch(asanaSync, /\.from\("asana_live_observations"\)/)
+  assert.match(asanaSync, /created_at_source/)
+  assert.match(asanaSync, /last_synced_at/)
 })
 
 test("historical Asana snapshots remain read-only in task details", () => {
