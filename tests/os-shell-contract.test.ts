@@ -2,6 +2,7 @@ import assert from "node:assert/strict"
 import test from "node:test"
 import { readFileSync } from "node:fs"
 import "./operations-control-plane-contract.test.ts"
+import "./asana-evidence-contract.test.ts"
 
 const layout = readFileSync(new URL("../app/os/layout.tsx", import.meta.url), "utf8")
 const rootLayout = readFileSync(new URL("../app/layout.tsx", import.meta.url), "utf8")
