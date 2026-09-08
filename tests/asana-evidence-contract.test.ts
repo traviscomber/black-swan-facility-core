@@ -17,6 +17,15 @@ test("live Asana evidence separates current, legacy, private and unclassified ob
   assert.match(asanaLive, /unclassifiedCount/)
 })
 
+test("live Asana uses explicit canonical account links instead of local-part guessing", () => {
+  assert.match(asanaLive, /"juan vial": "travis@blackswn\.org"/)
+  assert.match(asanaLive, /"raimundo colvin": "raimundo@blackswn\.org"/)
+  assert.match(asanaLive, /function linkedAsanaEmail\(identity: CurrentIdentity\)/)
+  assert.match(asanaLive, /if \(linkedEmail && asanaEmail\) return asanaEmail === linkedEmail/)
+  assert.doesNotMatch(asanaLive, /function localPart/)
+  assert.doesNotMatch(asanaLive, /same identifier before @/)
+})
+
 test("historical Asana snapshots remain read-only in task details", () => {
   assert.match(taskDetail, /isHistoricalAsanaSnapshot/)
   assert.match(taskDetail, /const readOnlyAsanaSnapshot = isHistoricalAsanaSnapshot\(task\)/)
