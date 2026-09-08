@@ -108,7 +108,7 @@ async function fetchWorkspaceTasks(token: string) {
     for (const task of tasks) taskMap.set(task.gid, task)
   }
 
-  return { users, tasks: [...taskMap.values()] }
+  return { workspaceGid, users, tasks: [...taskMap.values()] }
 }
 
 export async function POST() {
@@ -121,10 +121,12 @@ export async function POST() {
   const token = process.env.ASANA_ACCESS_TOKEN?.trim()
   if (!token) return NextResponse.json({ success: false, status: "not_configured" }, { status: 503 })
 
+  let workspaceGid = process.env.ASANA_WORKSPACE_GID?.trim() || DEFAULT_WORKSPACE_GID
   let users: AsanaUser[] = []
   let tasks: AsanaTask[] = []
   try {
     const result = await fetchWorkspaceTasks(token)
+    workspaceGid = result.workspaceGid
     users = result.users
     tasks = result.tasks
   } catch (error) {
@@ -159,16 +161,31 @@ export async function POST() {
     }
   })
 
-  const { error: currentWriteError } = await supabase
-    .from("asana_current_tasks")
-    .upsert(currentRows, { onConflict: "external_task_id" })
+  if (currentRows.length > 0) {
+    const { error: currentWriteError } = await supabase
+      .from("asana_current_tasks")
+      .upsert(currentRows, { onConflict: "external_task_id" })
 
-  if (currentWriteError) {
-    console.error("[Asana Live] Current task persistence failed", currentWriteError)
-    const forbidden = /row-level security|permission denied/i.test(currentWriteError.message)
+    if (currentWriteError) {
+      console.error("[Asana Live] Current task persistence failed", currentWriteError)
+      const forbidden = /row-level security|permission denied/i.test(currentWriteError.message)
+      return NextResponse.json(
+        { success: false, status: forbidden ? "forbidden" : "write_failed", users: users.length, observed: tasks.length, error: currentWriteError.message },
+        { status: forbidden ? 403 : 500 },
+      )
+    }
+  }
+
+  const { error: baselineError } = await supabase
+    .from("asana_sync_baselines")
+    .update({ last_synced_at: observedAt })
+    .eq("workspace_gid", workspaceGid)
+
+  if (baselineError) {
+    console.error("[Asana Live] Sync freshness persistence failed", baselineError)
     return NextResponse.json(
-      { success: false, status: forbidden ? "forbidden" : "write_failed", users: users.length, observed: tasks.length, error: currentWriteError.message },
-      { status: forbidden ? 403 : 500 },
+      { success: false, status: "freshness_write_failed", users: users.length, observed: tasks.length, error: baselineError.message },
+      { status: 500 },
     )
   }
 
