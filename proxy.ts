@@ -24,6 +24,11 @@ type EffectiveAccess = {
   is_admin?: boolean
   departments?: unknown
 }
+type OsProfile = {
+  os_start_path?: string | null
+  os_persona_key?: string | null
+  os_primary_domain?: string | null
+}
 
 type RouteRequirement = { domain: string; required: CapabilityLevel }
 
@@ -68,7 +73,20 @@ function isSafeInternalStartPath(value: unknown): value is string {
   return typeof value === "string" && value.startsWith("/") && !value.startsWith("//") && value !== "/"
 }
 
+function isExternalOrchardProfile(profile: OsProfile | null | undefined) {
+  return profile?.os_persona_key === "external_orchard" && profile?.os_primary_domain === "orchard"
+}
+
+function externalOrchardPageAllowed(pathname: string) {
+  return pathname === "/" || isPathFamily(pathname, "/orchard")
+}
+
+function externalOrchardApiAllowed(pathname: string) {
+  return isPathFamily(pathname, "/api/orchard") || isPathFamily(pathname, "/api/auth")
+}
+
 export function getRouteRequirement(pathname: string): RouteRequirement | null {
+  if (isPathFamily(pathname, "/orchard") || isPathFamily(pathname, "/api/orchard")) return { domain: "orchard", required: "view" }
   if (isPathFamily(pathname, "/bookings/invoices")) return { domain: "finance", required: "view" }
   if (isPathFamily(pathname, "/bookings/requests")) return { domain: "operations", required: "view" }
   if (isPathFamily(pathname, "/bookings")) return { domain: "booking", required: "view" }
@@ -203,14 +221,35 @@ export async function proxy(request: NextRequest) {
     return setLocaleCookie(NextResponse.redirect(loginUrl), activeLocale)
   }
 
-  const { data: routeAccessData, error: routeAccessError } = await supabase.rpc(
-    "get_current_route_access",
-  )
+  const [{ data: routeAccessData, error: routeAccessError }, { data: osProfileData }] = await Promise.all([
+    supabase.rpc("get_current_route_access"),
+    supabase
+      .from("user_access_profiles")
+      .select("os_start_path,os_persona_key,os_primary_domain")
+      .eq("user_id", user.id)
+      .maybeSingle(),
+  ])
 
   const routeAccess = (routeAccessData ?? {}) as RouteAccess
+  const osProfile = (osProfileData ?? null) as OsProfile | null
+  const externalOrchard = isExternalOrchardProfile(osProfile)
   const capabilitySnapshot = routeAccessError
     ? normalizeCapabilitySnapshot(null)
     : normalizeCapabilitySnapshot(routeAccess)
+
+  if (externalOrchard) {
+    if (apiRequest && !externalOrchardApiAllowed(effectivePathname)) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+    }
+    if (!apiRequest && !externalOrchardPageAllowed(effectivePathname)) {
+      const activeLocale = locale ?? DEFAULT_LOCALE
+      const preferredStartPath = isSafeInternalStartPath(osProfile?.os_start_path) ? osProfile.os_start_path : "/orchard/getting-started"
+      return setLocaleCookie(
+        NextResponse.redirect(localizedUrl(request, activeLocale, preferredStartPath)),
+        activeLocale,
+      )
+    }
+  }
 
   if (!apiRequest && isItControlPath(effectivePathname)) {
     const { data: effectiveAccessData, error: effectiveAccessError } = await supabase.rpc(
@@ -232,15 +271,11 @@ export async function proxy(request: NextRequest) {
   }
 
   if (!apiRequest && effectivePathname === "/") {
-    const { data: osProfile } = await supabase
-      .from("user_access_profiles")
-      .select("os_start_path")
-      .eq("user_id", user.id)
-      .maybeSingle()
-
     const preferredStartPath = isSafeInternalStartPath(osProfile?.os_start_path)
       ? osProfile.os_start_path
-      : "/os"
+      : externalOrchard
+        ? "/orchard/getting-started"
+        : "/os"
     const startRequirement = getRouteRequirement(preferredStartPath)
     const startAllowed = (!startRequirement || hasCapability(
       capabilitySnapshot,
@@ -248,9 +283,10 @@ export async function proxy(request: NextRequest) {
       startRequirement.required,
     )) && isRoleRestrictedPathAllowed(preferredStartPath, routeAccess.role_key)
     const activeLocale = locale ?? DEFAULT_LOCALE
+    const fallbackPath = externalOrchard ? "/orchard/getting-started" : "/os"
 
     return setLocaleCookie(
-      NextResponse.redirect(localizedUrl(request, activeLocale, startAllowed ? preferredStartPath : "/os")),
+      NextResponse.redirect(localizedUrl(request, activeLocale, startAllowed ? preferredStartPath : fallbackPath)),
       activeLocale,
     )
   }
