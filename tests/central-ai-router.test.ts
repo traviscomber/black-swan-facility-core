@@ -5,6 +5,10 @@ import { classifyCentralAIMode } from "../lib/ai/central-router"
 
 const routeSource = readFileSync(new URL("../app/api/ai/orchestrate/route.ts", import.meta.url), "utf8")
 const routerSource = readFileSync(new URL("../lib/ai/central-router.ts", import.meta.url), "utf8")
+const accessMigrationSource = readFileSync(
+  new URL("../supabase/migrations/20260908143000_ai_agentic_access.sql", import.meta.url),
+  "utf8",
+)
 
 test("central AI router keeps trivial interactions deterministic", () => {
   assert.equal(classifyCentralAIMode("Hola"), "DIRECT")
@@ -22,8 +26,20 @@ test("central AI router forces requested side effects through FULL_AGENTIC", () 
   assert.equal(classifyCentralAIMode("Necesito que actualices la reserva"), "FULL_AGENTIC")
 })
 
+test("FULL_AGENTIC requires an explicit per-user grant", () => {
+  assert.match(routeSource, /from\(["']ai_agentic_access["']\)/)
+  assert.match(routeSource, /agentic_access_denied/)
+  assert.match(routeSource, /status: 403/)
+  assert.match(routeSource, /agentic_access_check_failed/)
+  assert.match(accessMigrationSource, /auth\.uid\(\) = user_id/)
+  assert.match(accessMigrationSource, /santiago@blackswn\.org/)
+  assert.match(accessMigrationSource, /tomas@blackswn\.org/)
+  assert.match(accessMigrationSource, /juan@n3uralia\.com/)
+  assert.match(accessMigrationSource, /raimundo@blackswn\.org/)
+})
+
 test("FULL_AGENTIC is confirmation-gated and cannot execute external effects yet", () => {
-  assert.match(routeSource, /mode === ["']FULL_AGENTIC["'] && confirmed/)
+  assert.match(routeSource, /if \(confirmed\)/)
   assert.match(routeSource, /execution_not_enabled/)
   assert.match(routeSource, /blocked_no_authorized_executor/)
   assert.doesNotMatch(routerSource, /agentService\.executeAgentAction/)
