@@ -27,11 +27,11 @@ test("live Asana uses explicit canonical account links instead of local-part gue
   assert.doesNotMatch(asanaLive, /same identifier before @/)
 })
 
-test("live Asana persistence does not target the partial external task index with PostgREST upsert", () => {
-  assert.doesNotMatch(asanaSync, /upsert\(row, \{ onConflict: "external_task_id" \}\)/)
-  assert.match(asanaSync, /\.update\(row\)/)
-  assert.match(asanaSync, /\.eq\("external_task_id", task\.gid\)/)
-  assert.match(asanaSync, /\.insert\(row\)/)
+test("current Asana API state is persisted separately from historical observation evidence", () => {
+  assert.match(asanaSync, /\.from\("asana_current_tasks"\)/)
+  assert.match(asanaSync, /upsert\(currentRows, \{ onConflict: "external_task_id" \}\)/)
+  assert.doesNotMatch(asanaSync, /\.from\("asana_live_observations"\)/)
+  assert.match(asanaSync, /created_at_source/)
 })
 
 test("historical Asana snapshots remain read-only in task details", () => {
