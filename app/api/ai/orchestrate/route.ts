@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
+import { buildCentralAICanonicalContext } from "@/lib/ai/canonical-context"
 import { classifyCentralAIMode, routeCentralAI } from "@/lib/ai/central-router"
 
 export const runtime = "nodejs"
@@ -92,14 +93,25 @@ export async function POST(request: Request) {
     }
   }
 
+  let operationalContext = undefined
+  if (mode !== "DIRECT") {
+    try {
+      operationalContext = (await buildCentralAICanonicalContext(supabase, mode)) ?? undefined
+    } catch (error) {
+      console.error("[Black Swan AI] Canonical context unavailable", {
+        mode,
+        userId: user.id,
+        error: error instanceof Error ? error.message : "unknown_error",
+      })
+    }
+  }
+
   try {
     const result = await routeCentralAI({
       message,
       context: {
-        user: {
-          id: user.id,
-          email: user.email ?? null,
-        },
+        authorization: { authenticated: true },
+        operational: operationalContext,
       },
     })
 

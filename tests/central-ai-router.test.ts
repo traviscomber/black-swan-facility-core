@@ -5,6 +5,7 @@ import { classifyCentralAIMode } from "../lib/ai/central-router"
 
 const routeSource = readFileSync(new URL("../app/api/ai/orchestrate/route.ts", import.meta.url), "utf8")
 const routerSource = readFileSync(new URL("../lib/ai/central-router.ts", import.meta.url), "utf8")
+const canonicalContextSource = readFileSync(new URL("../lib/ai/canonical-context.ts", import.meta.url), "utf8")
 const accessMigrationSource = readFileSync(
   new URL("../supabase/migrations/20260908143000_ai_agentic_access.sql", import.meta.url),
   "utf8",
@@ -69,8 +70,44 @@ test("server AI calls remain on the canonical direct Responses API wrapper", () 
   assert.doesNotMatch(routeSource, /from ["']ai["']/)
 })
 
-test("orchestration API requires authenticated Supabase user context", () => {
+test("orchestration authenticates with Supabase but does not send user identifiers to the model", () => {
   assert.match(routeSource, /supabase\.auth\.getUser\(\)/)
   assert.match(routeSource, /status: 401/)
-  assert.match(routeSource, /user:\s*\{[\s\S]*id: user\.id,[\s\S]*email: user\.email/)
+  assert.match(routeSource, /authorization:\s*\{ authenticated: true \}/)
+  assert.doesNotMatch(routeSource, /email:\s*user\.email/)
+  assert.doesNotMatch(routeSource, /context:\s*\{[\s\S]*id:\s*user\.id/)
+})
+
+test("FASTTRACK and FULL_AGENTIC receive bounded capability-scoped canonical OS evidence", () => {
+  assert.match(routeSource, /if \(mode !== ["']DIRECT["']\)/)
+  assert.match(routeSource, /buildCentralAICanonicalContext\(supabase, mode\)/)
+  assert.match(canonicalContextSource, /get_current_route_access/)
+  assert.match(canonicalContextSource, /normalizeCapabilitySnapshot/)
+  assert.match(canonicalContextSource, /hasCapability\(capabilities, ["']booking["'], ["']view["']\)/)
+  assert.match(canonicalContextSource, /hasCapability\(capabilities, ["']maintenance["'], ["']view["']\)/)
+  assert.match(canonicalContextSource, /hasCapability\(capabilities, ["']procurement["'], ["']view["']\)/)
+  assert.match(canonicalContextSource, /hasCapability\(capabilities, ["']operations["'], ["']view["']\)/)
+  assert.match(canonicalContextSource, /hasCapability\(capabilities, ["']finance["'], ["']view["']\)/)
+  assert.match(canonicalContextSource, /const ROW_LIMIT = 5/)
+  assert.match(canonicalContextSource, /attention: attention\.slice\(0, 20\)/)
+})
+
+test("canonical AI context mirrors the OS attention surfaces and degrades explicitly", () => {
+  for (const source of [
+    "reservation_operational_exceptions",
+    "finance_approval_queue",
+    "maintenance_tasks",
+    "procurement_requests",
+    "tasks",
+    "issues",
+  ]) {
+    assert.match(canonicalContextSource, new RegExp(source))
+  }
+  assert.match(canonicalContextSource, /unavailableSources/)
+  assert.match(canonicalContextSource, /America\/Santiago/)
+  assert.match(routerSource, /DATO OBSERVADO/)
+  assert.match(routerSource, /INTERPRETACION/)
+  assert.match(routerSource, /PROPUESTA/)
+  assert.match(routerSource, /Nunca interpretes una fuente ausente o unavailableSources como cero/)
+  assert.doesNotMatch(canonicalContextSource, /select\([^\n]*(email|phone|user_id|auth_id|token|secret)/i)
 })
