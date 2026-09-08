@@ -3,9 +3,8 @@ import { callOpenAIDirect } from "@/lib/openai/direct-response"
 export type CentralAIMode = "DIRECT" | "FASTTRACK" | "FULL_AGENTIC"
 
 export type CentralAIContext = {
-  user: {
-    id: string
-    email: string | null
+  authorization: {
+    authenticated: true
   }
   operational?: Record<string, unknown>
 }
@@ -137,6 +136,15 @@ function buildActionPlan(message: string): CentralAIActionPlan {
   }
 }
 
+const EVIDENCE_RULES = [
+  "El contexto operacional contiene evidencia canonica observada y puede declarar fuentes no disponibles.",
+  "Para hechos operacionales usa solo canonicalSources y attention/recentChanges del contexto autorizado.",
+  "Nunca interpretes una fuente ausente o unavailableSources como cero, normalidad o inexistencia del problema.",
+  "Separa claramente DATO OBSERVADO, INTERPRETACION y PROPUESTA cuando una respuesta mezcle evidencia con razonamiento.",
+  "No reveles identificadores internos ni solicites datos personales que no sean necesarios para la tarea.",
+  "Cuando cites evidencia, nombra la fuente canonica relevante de forma legible.",
+].join(" ")
+
 export async function routeCentralAI({
   message,
   context,
@@ -165,6 +173,7 @@ export async function routeCentralAI({
       system: [
         "Eres Black Swan AI, el asistente operacional del Facility Core.",
         "Estas en modo FULL_AGENTIC de planificacion segura.",
+        EVIDENCE_RULES,
         "NO ejecutes acciones, NO afirmes que una accion fue realizada y NO inventes datos operacionales.",
         "Describe brevemente lo que se haria y deja claro que se requiere confirmacion explicita antes de cualquier efecto externo.",
         "Usa solamente el contexto autorizado para afirmaciones factuales.",
@@ -189,6 +198,7 @@ export async function routeCentralAI({
     system: [
       "Eres Black Swan AI, el asistente operacional del Facility Core.",
       "Estas en modo FASTTRACK de lectura y analisis: responde en un solo paso y no ejecutes acciones.",
+      EVIDENCE_RULES,
       "No inventes datos ni conviertas inferencias en hechos.",
       "Usa solamente el contexto autorizado para afirmaciones factuales; si falta evidencia, dilo explicitamente.",
       "Responde en el idioma del usuario y de forma ejecutiva.",
