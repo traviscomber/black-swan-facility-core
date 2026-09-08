@@ -36,6 +36,8 @@ type DashboardTask = {
   syncRequired: boolean
   matchBasis: 'external_ref' | 'exact_title' | null
 }
+type TaskDateBucket = 'today' | 'overdue' | 'upcoming' | 'later' | 'unscheduled'
+type TaskDateFilter = 'all' | TaskDateBucket
 type SystemTaskRow = {
   id: string
   title: string | null
@@ -88,6 +90,22 @@ type CostCenterApprovalGroup = {
 
 const DEFAULT_WORKSPACE_GID = '1205953160575908'
 const ASANA_MY_TASKS_URL = 'https://app.asana.com/0/my-tasks'
+const TASK_DATE_BUCKET_ORDER: TaskDateBucket[] = ['today', 'overdue', 'upcoming', 'later', 'unscheduled']
+const TASK_DATE_LABELS: Record<TaskDateFilter, string> = {
+  all: 'Todas',
+  today: 'Hoy',
+  overdue: 'Vencidas',
+  upcoming: 'Próximas',
+  later: 'Más tarde',
+  unscheduled: 'Sin fecha',
+}
+const TASK_DATE_DESCRIPTIONS: Record<TaskDateBucket, string> = {
+  today: 'Vencen hoy',
+  overdue: 'Fecha vencida',
+  upcoming: 'Próximos 7 días',
+  later: 'Después de los próximos 7 días',
+  unscheduled: 'Todavía sin fecha de entrega',
+}
 
 function hasNavKey(navigation: Navigation, key: string) {
   return Boolean(navigation.items?.some((item) => item.key === key))
@@ -95,6 +113,20 @@ function hasNavKey(navigation: Navigation, key: string) {
 
 function chileDateKey() {
   return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Santiago', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date())
+}
+
+function addDaysDateKey(dateKey: string, days: number) {
+  const date = new Date(`${dateKey}T12:00:00.000Z`)
+  date.setUTCDate(date.getUTCDate() + days)
+  return date.toISOString().slice(0, 10)
+}
+
+function taskDateBucket(dueDate: string | null, today: string): TaskDateBucket {
+  if (!dueDate) return 'unscheduled'
+  if (dueDate === today) return 'today'
+  if (dueDate < today) return 'overdue'
+  if (dueDate <= addDaysDateKey(today, 7)) return 'upcoming'
+  return 'later'
 }
 
 function normalizeTitle(value: string | null | undefined) {
@@ -122,8 +154,10 @@ function priorityRank(value: string | null) {
   return 4
 }
 
-function sortDashboardTasks(items: DashboardTask[]) {
+function sortDashboardTasks(items: DashboardTask[], today: string) {
   return [...items].sort((a, b) => {
+    const bucketDelta = TASK_DATE_BUCKET_ORDER.indexOf(taskDateBucket(a.dueDate, today)) - TASK_DATE_BUCKET_ORDER.indexOf(taskDateBucket(b.dueDate, today))
+    if (bucketDelta !== 0) return bucketDelta
     if (a.source !== b.source) return a.source === 'asana' ? -1 : 1
     if (a.dueDate && b.dueDate && a.dueDate !== b.dueDate) return a.dueDate.localeCompare(b.dueDate)
     if (a.dueDate !== b.dueDate) return a.dueDate ? -1 : 1
@@ -180,6 +214,8 @@ export function FieldAdminHome() {
   const { employeeId, firstName, personaLabel } = useOsPersona()
   const [navigation, setNavigation] = useState<Navigation | null>(null)
   const [tasks, setTasks] = useState<DashboardTask[]>([])
+  const [taskDateFilter, setTaskDateFilter] = useState<TaskDateFilter>('all')
+  const [todayKey, setTodayKey] = useState(chileDateKey)
   const [operations, setOperations] = useState<WorkItem[]>([])
   const [attention, setAttention] = useState<AttentionSignal[]>([])
   const [financeApprovals, setFinanceApprovals] = useState<CostCenterApprovalGroup[]>([])
@@ -193,6 +229,11 @@ export function FieldAdminHome() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
+  useEffect(() => {
+    const interval = window.setInterval(() => setTodayKey(chileDateKey()), 60_000)
+    return () => window.clearInterval(interval)
+  }, [])
+
   const load = useCallback(async () => {
     setLoading(true)
     setError(null)
@@ -203,6 +244,7 @@ export function FieldAdminHome() {
       setNavigation(nav)
       setCanSyncAsana(hasNavKey(nav, 'asana-live'))
       const today = chileDateKey()
+      setTodayKey(today)
       const nextOperations: WorkItem[] = []
       const nextTasks: DashboardTask[] = []
 
@@ -448,7 +490,7 @@ export function FieldAdminHome() {
         { key: 'replenishment', label: 'Reposición en curso', value: replenishment.count ?? 0, detail: 'Necesidades todavía abiertas', href: '/inventory/replenishment' },
       ].filter((signal) => signal.value > 0)
 
-      setTasks(sortDashboardTasks(nextTasks))
+      setTasks(sortDashboardTasks(nextTasks, today))
       setOperations(sortWorkItems(nextOperations, today))
       setAttention(nextAttention)
     } catch (caught) {
@@ -489,6 +531,21 @@ export function FieldAdminHome() {
   }, [load])
 
   const financeApprovalCount = useMemo(() => financeApprovals.reduce((sum, group) => sum + group.count, 0), [financeApprovals])
+  const taskBucketCounts = useMemo(() => {
+    const counts: Record<TaskDateBucket, number> = { today: 0, overdue: 0, upcoming: 0, later: 0, unscheduled: 0 }
+    for (const task of tasks) counts[taskDateBucket(task.dueDate, todayKey)] += 1
+    return counts
+  }, [tasks, todayKey])
+  const visibleTaskBuckets = useMemo(() => {
+    const allowed = taskDateFilter === 'all' ? TASK_DATE_BUCKET_ORDER : [taskDateFilter]
+    return allowed
+      .map((bucket) => ({ bucket, tasks: tasks.filter((task) => taskDateBucket(task.dueDate, todayKey) === bucket) }))
+      .filter((group) => group.tasks.length > 0)
+  }, [taskDateFilter, tasks, todayKey])
+  const taskDateFilters: Array<{ key: TaskDateFilter; label: string; count: number }> = [
+    { key: 'all', label: TASK_DATE_LABELS.all, count: tasks.length },
+    ...TASK_DATE_BUCKET_ORDER.map((key) => ({ key, label: TASK_DATE_LABELS[key], count: taskBucketCounts[key] })),
+  ]
 
   const quickWorkspaces = useMemo(() => {
     const items = navigation?.items ?? []
@@ -558,13 +615,28 @@ export function FieldAdminHome() {
         <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <h2 className="text-lg font-semibold">Tareas</h2>
-            <p className="text-sm text-muted-foreground">Asana es la fuente principal. Las asignaciones Black Swan sólo aparecen como respaldo cuando no existe una tarea Asana vigente equivalente.</p>
+            <p className="text-sm text-muted-foreground">Asana es la fuente principal. Hoy aparece primero; después vencidas, próximas, más tarde y tareas sin fecha. Las asignaciones Black Swan sólo aparecen como respaldo cuando no existe una tarea Asana vigente equivalente.</p>
           </div>
           <div className="flex flex-wrap gap-2">
             {canSyncAsana && hasAsanaIdentity && <Button variant="outline" size="sm" onClick={() => void syncAsana()} disabled={syncing || loading}><RefreshCw className={`mr-2 h-4 w-4 ${syncing ? 'animate-spin' : ''}`} />{syncing ? 'Actualizando…' : 'Actualizar Asana'}</Button>}
             <Link href="/my-tasks" className="inline-flex h-9 items-center gap-2 rounded-md border px-3 text-sm font-medium transition-colors hover:bg-muted">Abrir Mis tareas <ArrowRight className="h-3.5 w-3.5" /></Link>
           </div>
         </div>
+        {!loading && tasks.length > 0 && (
+          <div className="flex flex-wrap gap-2" aria-label="Filtrar tareas por fecha">
+            {taskDateFilters.map((filter) => (
+              <button
+                key={filter.key}
+                type="button"
+                onClick={() => setTaskDateFilter(filter.key)}
+                aria-pressed={taskDateFilter === filter.key}
+                className={`rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${taskDateFilter === filter.key ? 'border-primary bg-primary text-primary-foreground' : 'hover:bg-muted'}`}
+              >
+                {filter.label} · {filter.count}
+              </button>
+            ))}
+          </div>
+        )}
         {syncMessage && <div className="border-l-2 border-primary/60 bg-primary/5 p-3 text-sm">{syncMessage}</div>}
         {asanaLoadError && <div className="border-l-2 border-amber-400/60 bg-amber-500/5 p-3 text-sm text-muted-foreground">{asanaLoadError}</div>}
         {loading ? (
@@ -573,9 +645,24 @@ export function FieldAdminHome() {
           <div className="rounded border border-dashed p-5 text-sm text-muted-foreground">Tu usuario todavía no tiene una identidad de empleado vinculada.</div>
         ) : tasks.length === 0 ? (
           <div className="flex items-center gap-3 rounded border border-dashed p-5 text-sm text-muted-foreground"><CheckCircle2 className="h-5 w-5" /><span>No tienes tareas vigentes en Asana ni asignaciones Black Swan de respaldo.</span></div>
+        ) : visibleTaskBuckets.length === 0 ? (
+          <div className="rounded border border-dashed p-5 text-sm text-muted-foreground">No hay tareas en este rango de fecha.</div>
         ) : (
-          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-            {tasks.map((task) => <DashboardTaskCard key={task.id} task={task} />)}
+          <div className="space-y-5">
+            {visibleTaskBuckets.map(({ bucket, tasks: bucketTasks }) => (
+              <div key={bucket} className="space-y-2">
+                <div className="flex items-end justify-between gap-3 border-b pb-2">
+                  <div>
+                    <h3 className="text-sm font-semibold">{TASK_DATE_LABELS[bucket]}</h3>
+                    <p className="text-xs text-muted-foreground">{TASK_DATE_DESCRIPTIONS[bucket]}</p>
+                  </div>
+                  <Badge variant={bucket === 'today' ? 'secondary' : 'outline'}>{bucketTasks.length}</Badge>
+                </div>
+                <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                  {bucketTasks.map((task) => <DashboardTaskCard key={task.id} task={task} today={todayKey} />)}
+                </div>
+              </div>
+            ))}
           </div>
         )}
       </section>
@@ -629,10 +716,18 @@ export function FieldAdminHome() {
   )
 }
 
-function DashboardTaskCard({ task }: { task: DashboardTask }) {
+function DashboardTaskCard({ task, today }: { task: DashboardTask; today: string }) {
   const detail = task.detail || (task.source === 'asana' ? 'Asana' : 'Asignación Black Swan')
+  const bucket = taskDateBucket(task.dueDate, today)
+  const dueLabel = bucket === 'today'
+    ? 'Hoy'
+    : bucket === 'overdue'
+      ? `Vencida · ${task.dueDate}`
+      : task.dueDate
+        ? `Vence ${task.dueDate}`
+        : null
   return (
-    <div className="rounded-lg border p-4">
+    <div className={`rounded-lg border p-4 ${bucket === 'today' ? 'border-primary/50 bg-primary/5' : ''}`}>
       <div className="flex items-start gap-3">
         <div className="mt-0.5 text-primary"><ClipboardList className="h-4 w-4" /></div>
         <div className="min-w-0 flex-1">
@@ -646,7 +741,7 @@ function DashboardTaskCard({ task }: { task: DashboardTask }) {
           <div className="mt-2 flex flex-wrap gap-2">
             <Badge variant="outline">{task.status}</Badge>
             {task.priority && <Badge variant={priorityRank(task.priority) <= 1 ? 'destructive' : 'outline'}>{task.priority}</Badge>}
-            {task.dueDate && <Badge variant="outline">Vence {task.dueDate}</Badge>}
+            {dueLabel && <Badge variant={bucket === 'today' ? 'secondary' : bucket === 'overdue' ? 'destructive' : 'outline'}>{dueLabel}</Badge>}
           </div>
           {task.syncRequired && <p className="mt-3 text-xs text-amber-300">Créala en Asana para mantener estado y vencimiento sincronizados. Black Swan no la crea automáticamente.</p>}
           <div className="mt-3 flex flex-wrap gap-3 text-xs font-medium">
