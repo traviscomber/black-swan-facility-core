@@ -42,19 +42,54 @@ export async function POST(request: Request) {
 
   const mode = classifyCentralAIMode(message)
 
-  if (mode === "FULL_AGENTIC" && confirmed) {
-    return NextResponse.json(
-      {
-        success: false,
-        error: "execution_not_enabled",
-        mode,
-        requiresConfirmation: true,
-        executionStatus: "blocked_no_authorized_executor",
-        message:
-          "La confirmacion fue recibida, pero este orquestador aun no tiene habilitada la ejecucion de efectos externos.",
-      },
-      { status: 409 },
-    )
+  if (mode === "FULL_AGENTIC") {
+    const { data: agenticAccess, error: agenticAccessError } = await supabase
+      .from("ai_agentic_access")
+      .select("enabled")
+      .eq("user_id", user.id)
+      .maybeSingle()
+
+    if (agenticAccessError) {
+      console.error("[Black Swan AI] Agentic access check failed", {
+        userId: user.id,
+        error: agenticAccessError.message,
+      })
+      return NextResponse.json(
+        {
+          success: false,
+          error: "agentic_access_check_failed",
+          mode,
+        },
+        { status: 503 },
+      )
+    }
+
+    if (agenticAccess?.enabled !== true) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "agentic_access_denied",
+          mode,
+          requiresConfirmation: false,
+        },
+        { status: 403 },
+      )
+    }
+
+    if (confirmed) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "execution_not_enabled",
+          mode,
+          requiresConfirmation: true,
+          executionStatus: "blocked_no_authorized_executor",
+          message:
+            "La confirmacion fue recibida, pero este orquestador aun no tiene habilitada la ejecucion de efectos externos.",
+        },
+        { status: 409 },
+      )
+    }
   }
 
   try {
