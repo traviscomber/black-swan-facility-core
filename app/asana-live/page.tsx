@@ -25,17 +25,7 @@ type HistoricalObservation = {
   last_seen_at: string
 }
 
-type CurrentIdentity = {
-  email: string
-  employeeName: string | null
-  employeeEmail: string | null
-}
-
 const LOCALES = { en: "en-US", es: "es-CL", de: "de-DE" } as const
-const ASANA_EMAIL_BY_EMPLOYEE: Record<string, string> = {
-  "juan vial": "travis@blackswn.org",
-  "raimundo colvin": "raimundo@blackswn.org",
-}
 
 const COPY = {
   es: {
@@ -110,19 +100,10 @@ function normalize(value: string | null | undefined) {
   return (value ?? "").trim().toLocaleLowerCase()
 }
 
-function linkedAsanaEmail(identity: CurrentIdentity) {
-  const mapped = ASANA_EMAIL_BY_EMPLOYEE[normalize(identity.employeeName)]
-  if (mapped) return mapped
-  return [identity.employeeEmail, identity.email].map(normalize).find((email) => email.endsWith("@blackswn.org")) ?? null
-}
-
-function belongsToIdentity(row: HistoricalObservation, identity: CurrentIdentity) {
-  const linkedEmail = linkedAsanaEmail(identity)
-  const asanaEmail = normalize(row.collaborator_label)
-  const asanaName = normalize(row.assignee_label)
-  const employeeName = normalize(identity.employeeName)
-  if (linkedEmail && asanaEmail) return asanaEmail === linkedEmail
-  if (employeeName && asanaName) return employeeName === asanaName
+function belongsToIdentity(row: HistoricalObservation, asanaEmail: string | null, employeeName: string | null) {
+  const observedEmail = normalize(row.collaborator_label)
+  if (asanaEmail && observedEmail) return observedEmail === normalize(asanaEmail)
+  if (!observedEmail && employeeName && row.assignee_label) return normalize(row.assignee_label) === normalize(employeeName)
   return false
 }
 
@@ -133,7 +114,7 @@ export default function AsanaHistoryPage() {
   const copy = COPY[lang]
   const locale = LOCALES[lang]
   const supabase = useMemo(() => createBrowserClient(), [])
-  const [identity, setIdentity] = useState<CurrentIdentity | null>(null)
+  const [identityLabel, setIdentityLabel] = useState<string>("—")
   const [rows, setRows] = useState<HistoricalObservation[]>([])
   const [search, setSearch] = useState("")
   const [projectFilter, setProjectFilter] = useState("all")
@@ -151,29 +132,43 @@ export default function AsanaHistoryPage() {
       return
     }
 
-    const [profileResult, historyResult] = await Promise.all([
-      supabase.from("user_access_profiles").select("email,employees(name,email)").eq("user_id", authData.user.id).eq("is_active", true).maybeSingle(),
-      supabase.from("asana_live_observations").select("id,task_title,task_status,project_name,due_on,due_label,assignee_label,collaborator_label,external_task_id,source_surface,source_surface_url,first_seen_at,last_seen_at").order("last_seen_at", { ascending: false }),
-    ])
+    const { data: profile, error: profileError } = await supabase
+      .from("user_access_profiles")
+      .select("employee_id,email,employees(name,email)")
+      .eq("user_id", authData.user.id)
+      .eq("is_active", true)
+      .maybeSingle()
 
-    if (profileResult.error || historyResult.error) {
+    if (profileError) {
       setError(copy.loadError)
       setLoading(false)
       return
     }
 
-    const profile = profileResult.data as {
-      email: string | null
-      employees: { name: string | null; email: string | null } | Array<{ name: string | null; email: string | null }> | null
-    } | null
+    const employeeId = profile?.employee_id ?? null
     const employee = Array.isArray(profile?.employees) ? profile?.employees[0] ?? null : profile?.employees ?? null
-    const resolved: CurrentIdentity = {
-      email: profile?.email || authData.user.email || "",
-      employeeName: employee?.name ?? null,
-      employeeEmail: employee?.email ?? null,
+    const employeeName = (employee as { name?: string | null } | null)?.name ?? null
+    setIdentityLabel(employeeName || profile?.email || authData.user.email || "—")
+
+    if (!employeeId) {
+      setRows([])
+      setLoading(false)
+      return
     }
-    setIdentity(resolved)
-    setRows(((historyResult.data ?? []) as HistoricalObservation[]).filter((row) => belongsToIdentity(row, resolved)))
+
+    const [identityResult, historyResult] = await Promise.all([
+      supabase.from("asana_identity_links").select("asana_email").eq("employee_id", employeeId).eq("is_active", true).maybeSingle(),
+      supabase.from("asana_live_observations").select("id,task_title,task_status,project_name,due_on,due_label,assignee_label,collaborator_label,external_task_id,source_surface,source_surface_url,first_seen_at,last_seen_at").order("last_seen_at", { ascending: false }),
+    ])
+
+    if (identityResult.error || historyResult.error) {
+      setError(copy.loadError)
+      setLoading(false)
+      return
+    }
+
+    const asanaEmail = identityResult.data?.asana_email ?? null
+    setRows(((historyResult.data ?? []) as HistoricalObservation[]).filter((row) => belongsToIdentity(row, asanaEmail, employeeName)))
     setLoading(false)
   }, [copy.loadError, lang, router, supabase])
 
@@ -194,7 +189,7 @@ export default function AsanaHistoryPage() {
       <div>
         <div className="flex flex-wrap items-center gap-2"><h1 className="text-2xl font-medium text-accent sm:text-3xl">{copy.title}</h1><Badge variant="outline"><ShieldCheck className="mr-1 h-3.5 w-3.5" />{copy.readOnly}</Badge></div>
         <p className="mt-1 max-w-3xl text-sm text-muted-foreground">{copy.description}</p>
-        <p className="mt-2 inline-flex items-center gap-1.5 text-xs text-muted-foreground"><UserRound className="h-3.5 w-3.5" />{copy.identity}: {identity?.employeeName || identity?.email || "—"}</p>
+        <p className="mt-2 inline-flex items-center gap-1.5 text-xs text-muted-foreground"><UserRound className="h-3.5 w-3.5" />{copy.identity}: {identityLabel}</p>
       </div>
       <Button variant="outline" onClick={() => router.push(`/${lang}/my-tasks`)}>{copy.back}</Button>
     </header>
