@@ -8,6 +8,26 @@ const nonOperationalFixtures = new Set([
   "components/orchard/orchard-visual-truth-policy.tsx",
   "components/orchard/orchard-shell-e2e-harness.tsx",
 ])
+const stockRemoteBudgetByFile = new Map([
+  ["app/orchard/care/page.tsx", 2],
+  ["app/orchard/charts/page.tsx", 1],
+  ["app/orchard/crop-map/page.tsx", 3],
+  ["app/orchard/crops/page.tsx", 2],
+  ["app/orchard/decisions/page.tsx", 1],
+  ["app/orchard/equipment/page.tsx", 1],
+  ["app/orchard/field/advanced/page.tsx", 1],
+  ["app/orchard/game-plan/page.tsx", 1],
+  ["app/orchard/harvest/page.tsx", 1],
+  ["app/orchard/library/page.tsx", 1],
+  ["app/orchard/lifecycle/page.tsx", 2],
+  ["app/orchard/nursery/advanced/page.tsx", 1],
+  ["app/orchard/performance/page.tsx", 4],
+  ["app/orchard/pests/page.tsx", 1],
+  ["app/orchard/reports/page.tsx", 1],
+  ["app/orchard/season-summary/advanced/page.tsx", 2],
+  ["app/orchard/soil/page.tsx", 1],
+  ["app/orchard/work/page.tsx", 8],
+])
 const allowedStaticPatterns = [
   /logo/i,
   /icon/i,
@@ -21,6 +41,10 @@ const allowedStaticPatterns = [
 function extension(path) {
   const index = path.lastIndexOf(".")
   return index >= 0 ? path.slice(index) : ""
+}
+
+function normalizedRelative(path) {
+  return relative(process.cwd(), path).replaceAll("\\", "/")
 }
 
 async function walk(root) {
@@ -42,7 +66,7 @@ const findings = []
 for (const root of roots) {
   for (const file of await walk(root)) {
     const source = await readFile(file, "utf8")
-    const rel = relative(process.cwd(), file)
+    const rel = normalizedRelative(file)
     const auditOperationalImageUse = !nonOperationalFixtures.has(rel)
 
     if (auditOperationalImageUse) {
@@ -74,6 +98,24 @@ for (const root of roots) {
 }
 
 const unique = Array.from(new Map(findings.map(item => [`${item.severity}|${item.type}|${item.file}|${item.line}|${item.value}`, item])).values())
+const stockCounts = new Map()
+for (const item of unique) {
+  if (item.type !== "stock_remote") continue
+  stockCounts.set(item.file, (stockCounts.get(item.file) ?? 0) + 1)
+}
+
+const stockRegressions = []
+for (const [file, count] of stockCounts) {
+  const budget = stockRemoteBudgetByFile.get(file) ?? 0
+  if (count > budget) stockRegressions.push({ file, count, budget })
+}
+
 console.log(`[image-audit] findings=${unique.length}`)
 for (const item of unique) console.log(`[image-audit] ${item.severity} ${item.type} ${item.file}:${item.line} ${item.value}`)
+console.log(`[image-audit] stock-debt=${Array.from(stockCounts.values()).reduce((sum, count) => sum + count, 0)} temporary ceiling; cleanup may only reduce it`)
+for (const { file, count, budget } of stockRegressions) {
+  console.error(`[image-audit] REGRESSION ${file}: stock_remote=${count}, allowed temporary ceiling=${budget}`)
+}
 console.log(`[image-audit] policy=Operational images should come from canonical metadata/data. Stock imagery is not authoritative.`)
+
+if (stockRegressions.length > 0) process.exitCode = 1
