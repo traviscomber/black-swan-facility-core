@@ -9,7 +9,6 @@ const nonOperationalFixtures = new Set([
   "components/orchard/orchard-shell-e2e-harness.tsx",
 ])
 const stockRemoteBudgetByFile = new Map([
-  ["app/orchard/care/page.tsx", 2],
   ["app/orchard/crop-map/page.tsx", 3],
   ["app/orchard/crops/page.tsx", 2],
   ["app/orchard/field/advanced/page.tsx", 1],
