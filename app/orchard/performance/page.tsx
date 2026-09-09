@@ -21,25 +21,9 @@ type Harvest={crop_succession_id:string|null;crop_id:string;harvest_date:string;
 type Row={succession:Succession;label:string;cropName:string;actualSow:string|null;actualTransplant:string|null;actualFirstHarvest:string|null;actualLastHarvest:string|null;actualPlants:number|null;nurseryLosses:number;harvestQuantity:number|null;harvestUnit:string|null;cropYield:number|null;cropYieldUnit:string|null}
 type Photo={src:string}
 type SupportedLanguage="en"|"es"|"de"
-const img=(id:string,w=1800)=>`https://images.unsplash.com/photo-${id}?auto=format&fit=crop&q=92&w=${w}`
-const HERO:Photo={src:img("1500382017468-9049fed747ef",2200)}
-const CROP_PHOTOS={
- tomato:{src:"https://unsplash.com/photos/WHHbA0kU8Qg/download?force=true&w=1800"},
- lettuce:{src:"https://unsplash.com/photos/SXztF2mpCTA/download?force=true&w=1800"},
- carrot:{src:img("1590868309235-ea34bed7bd7f")},
- basil:{src:"https://unsplash.com/photos/T4uyB67uZ40/download?force=true&w=1800"},
- pepper:{src:img("1563565375-f3fdfdbefa83")},
- zucchini:{src:img("1563252722-6434563a985d")},
- onion:{src:img("1508747703725-719777637510")},
- parsley:{src:img("1590759668628-05b0fc34bb70")},
- spinach:{src:img("1576045057995-568f588f82fb")},
- arugula:{src:img("1603048719539-9ecb4aa395e3")},
- potato:{src:img("1590165482129-1b8b27698780")},
- beet:{src:img("1593105544559-ecb03bf76f82")},
- radish:{src:img("1582284540020-8acbe03f4924")},
- neutral:{src:img("1498579397066-22750a3cb424")},
-} as const
-const cropPhoto=(name:string):Photo=>{const k=name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"");if(k.includes("tomat"))return CROP_PHOTOS.tomato;if(k.includes("lettuce")||k.includes("lechug"))return CROP_PHOTOS.lettuce;if(k.includes("carrot")||k.includes("zanahor"))return CROP_PHOTOS.carrot;if(k.includes("basil")||k.includes("albahac"))return CROP_PHOTOS.basil;if(k.includes("pepper")||k.includes("piment"))return CROP_PHOTOS.pepper;if(k.includes("zucchini")||k.includes("zapallo italiano")||k.includes("calabacin"))return CROP_PHOTOS.zucchini;if(k.includes("onion")||k.includes("ceboll"))return CROP_PHOTOS.onion;if(k.includes("parsley")||k.includes("perej"))return CROP_PHOTOS.parsley;if(k.includes("spinach")||k.includes("espinac"))return CROP_PHOTOS.spinach;if(k.includes("arugula")||k.includes("rucul"))return CROP_PHOTOS.arugula;if(k.includes("potato")||k.includes("papa"))return CROP_PHOTOS.potato;if(k.includes("beet")||k.includes("betarr"))return CROP_PHOTOS.beet;if(k.includes("radish")||k.includes("raban"))return CROP_PHOTOS.radish;return CROP_PHOTOS.neutral}
+const visualSurface=(label:string)=>{const seed=[...label].reduce((sum,char)=>sum+char.charCodeAt(0),0);const ridge=455+(seed%100);const svg=`<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="700" viewBox="0 0 1200 700"><rect width="1200" height="700" fill="#0b0f0d"/><path d="M0 ${ridge} C240 ${ridge-95} 450 ${ridge+65} 690 ${ridge-25} S990 ${ridge-85} 1200 ${ridge-10} V700 H0Z" fill="#14241a"/><path d="M0 ${ridge+70} C260 ${ridge-25} 520 ${ridge+115} 790 ${ridge+20} S1030 ${ridge-10} 1200 ${ridge+40}" fill="none" stroke="#356447" stroke-width="18" opacity=".7"/><circle cx="${170+(seed%590)}" cy="${155+(seed%190)}" r="58" fill="#1c3928" opacity=".8"/></svg>`;return `data:image/svg+xml,${encodeURIComponent(svg)}`}
+const HERO:Photo={src:visualSurface("performance")}
+const cropPhoto=(name:string):Photo=>({src:visualSurface(name)})
 const copy={
  en:{kicker:"Orchard · Performance",cropFallback:"Crop",title:"Execution Intelligence",description:"Compare planned timing and volume with recorded field execution without undocumented performance thresholds.",refresh:"Refresh",successions:"Planned successions",started:"Starts recorded",startVariance:"Sow variance",harvested:"Harvested",coverage:"Execution coverage",timing:"Timing comparison",timingHelp:"Actual nursery, transplant and harvest dates compared directly with each planned succession.",volume:"Volume conversion",volumeHelp:"Planned plants versus real transplanted or planted quantities, with harvest evidence kept in its recorded unit.",planned:"Plan",actual:"Actual",sow:"Sow",transplant:"Transplant",firstHarvest:"First harvest",plants:"Plants",losses:"Nursery losses",harvest:"Harvest",noActual:"No actual yet",noData:"No crop successions available for this scope.",loadError:"Could not load performance data",daysEarly:"days early",daysLate:"days late",onPlan:"on plan",notPlanned:"not planned",execution:"Execution",variance:"Variance",conversion:"Conversion",allRecords:"All records"},
  es:{kicker:"Huerto · Desempeño",cropFallback:"Cultivo",title:"Inteligencia de Ejecución",description:"Compara fechas y volumen planificados con la ejecución registrada sin umbrales de desempeño no documentados.",refresh:"Actualizar",successions:"Sucesiones planificadas",started:"Inicios registrados",startVariance:"Variación de siembra",harvested:"Cosechadas",coverage:"Cobertura de ejecución",timing:"Comparación temporal",timingHelp:"Fechas reales de almácigo, trasplante y cosecha comparadas directamente con cada sucesión planificada.",volume:"Conversión de volumen",volumeHelp:"Plantas planificadas versus trasplantadas o plantadas, manteniendo la cosecha en su unidad registrada.",planned:"Plan",actual:"Real",sow:"Siembra",transplant:"Trasplante",firstHarvest:"Primera cosecha",plants:"Plantas",losses:"Pérdidas de almácigo",harvest:"Cosecha",noActual:"Sin real aún",noData:"No hay sucesiones para este alcance.",loadError:"No fue posible cargar desempeño",daysEarly:"días antes",daysLate:"días tarde",onPlan:"en fecha",notPlanned:"sin plan",execution:"Ejecución",variance:"Variación",conversion:"Conversión",allRecords:"Todos los registros"},
