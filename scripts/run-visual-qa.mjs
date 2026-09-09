@@ -57,6 +57,18 @@ async function capture(browser, { name, viewport, path, rootTestId }) {
     await page.getByTestId("e2e-hydrated").waitFor({ state: "visible" })
     await page.waitForFunction(() => document.querySelector('[data-testid="e2e-hydrated"]')?.textContent === "ready")
     await page.getByTestId(rootTestId).waitFor({ state: "visible" })
+
+    if (path.includes("surface=orchard")) {
+      const [imageDisplay, figureDisplay, rootHeight] = await Promise.all([
+        page.getByTestId("qa-stock-image").evaluate((element) => getComputedStyle(element).display),
+        page.getByTestId("qa-stock-figure").evaluate((element) => getComputedStyle(element).display),
+        page.getByTestId("orchard-mobile-shell-root").evaluate((element) => element.getBoundingClientRect().height),
+      ])
+      if (imageDisplay !== "none") pageErrors.push(`Orchard visual truth failed: stock image display=${imageDisplay}`)
+      if (figureDisplay !== "none") pageErrors.push(`Orchard visual truth failed: stock figure display=${figureDisplay}`)
+      if (!(rootHeight > 0)) pageErrors.push("Orchard visual truth failed: operational root collapsed")
+    }
+
     await page.screenshot({ path: `${outputDir}/${name}.png`, fullPage: true })
     return { name, viewport, url: page.url(), pageErrors, consoleErrors }
   } finally {
