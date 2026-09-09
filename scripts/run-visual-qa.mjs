@@ -69,6 +69,17 @@ async function capture(browser, { name, viewport, path, rootTestId }) {
       if (!(rootHeight > 0)) pageErrors.push("Orchard visual truth failed: operational root collapsed")
     }
 
+    if (viewport.width <= 767 && path.includes("priority=")) {
+      const priorityNav = page.locator("[data-orchard-priority-nav]")
+      await priorityNav.waitFor({ state: "visible" })
+      const position = await priorityNav.evaluate((element) => getComputedStyle(element).position)
+      if (position !== "sticky") pageErrors.push(`Orchard mobile field nav failed: position=${position}`)
+      await page.evaluate(() => window.scrollTo(0, Math.min(520, document.documentElement.scrollHeight)))
+      await page.waitForTimeout(100)
+      const navTop = await priorityNav.evaluate((element) => element.getBoundingClientRect().top)
+      if (navTop < 0 || navTop > 24) pageErrors.push(`Orchard mobile field nav failed after scroll: top=${navTop}`)
+    }
+
     await page.screenshot({ path: `${outputDir}/${name}.png`, fullPage: true })
     return { name, viewport, url: page.url(), pageErrors, consoleErrors }
   } finally {
