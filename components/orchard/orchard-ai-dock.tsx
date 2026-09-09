@@ -140,20 +140,20 @@ export function OrchardAiDock({ hidden = false }: { hidden?: boolean }) {
       type="button"
       aria-label={text.open}
       onClick={() => setOpen(true)}
-      className="fixed bottom-5 right-5 z-[95] grid h-12 w-12 place-items-center rounded-xl border border-[rgba(231,225,216,.18)] bg-[#1f624d] text-[#f5f7f5] shadow-[0_12px_32px_rgba(0,0,0,.35)] transition-transform hover:scale-[1.03] hover:bg-[#27765d] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8bcba8] sm:bottom-6 sm:right-6"
+      className="fixed bottom-[calc(1.25rem+env(safe-area-inset-bottom))] right-5 z-[95] grid h-12 w-12 place-items-center rounded-xl border border-[rgba(231,225,216,.18)] bg-[#1f624d] text-[#f5f7f5] shadow-[0_12px_32px_rgba(0,0,0,.35)] transition-transform hover:scale-[1.03] hover:bg-[#27765d] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8bcba8] sm:bottom-6 sm:right-6"
     >
       <Bot className="h-5 w-5" aria-hidden="true"/>
     </button>
 
-    {open && <aside aria-label={text.title} className="fixed inset-x-3 bottom-3 z-[100] flex max-h-[min(78dvh,720px)] flex-col overflow-hidden rounded-xl border border-[rgba(231,225,216,.16)] bg-[#171512] text-[#e7e1d8] shadow-[0_24px_70px_rgba(0,0,0,.58)] sm:inset-x-auto sm:bottom-6 sm:right-6 sm:w-[420px]">
+    {open && <aside aria-label={text.title} className="fixed inset-x-3 bottom-[calc(.75rem+env(safe-area-inset-bottom))] z-[100] flex max-h-[calc(78dvh-env(safe-area-inset-bottom))] flex-col overflow-hidden rounded-xl border border-[rgba(231,225,216,.16)] bg-[#171512] text-[#e7e1d8] shadow-[0_24px_70px_rgba(0,0,0,.58)] sm:inset-x-auto sm:bottom-6 sm:right-6 sm:max-h-[min(78dvh,720px)] sm:w-[420px]">
       <header className="flex items-start justify-between gap-4 border-b border-[rgba(231,225,216,.12)] bg-[#211e1a] px-4 py-4">
         <div>
           <div className="flex items-center gap-2"><Bot className="h-4 w-4 text-[#8bcba8]"/><h2 className="text-base font-medium text-[#f0ebe4]">{text.title}</h2></div>
           {gamePlanId && <p className="mt-1 text-[11px] font-medium uppercase tracking-[.12em] text-[#8bcba8]">{text.scope}</p>}
         </div>
         <div className="flex items-center gap-1">
-          <button type="button" aria-label={text.clear} onClick={clearChat} className="grid h-9 w-9 place-items-center rounded-lg border border-[rgba(231,225,216,.10)] bg-[#2b2722] text-[#c9c0b5] hover:bg-[#39342d] hover:text-[#f0ebe4]"><Trash2 className="h-4 w-4"/></button>
-          <button type="button" aria-label={text.close} onClick={() => setOpen(false)} className="grid h-9 w-9 place-items-center rounded-lg border border-[rgba(231,225,216,.10)] bg-[#2b2722] text-[#c9c0b5] hover:bg-[#39342d] hover:text-[#f0ebe4]"><X className="h-4 w-4"/></button>
+          <button type="button" aria-label={text.clear} onClick={clearChat} className="grid h-11 w-11 place-items-center rounded-lg border border-[rgba(231,225,216,.10)] bg-[#2b2722] text-[#c9c0b5] hover:bg-[#39342d] hover:text-[#f0ebe4]"><Trash2 className="h-4 w-4"/></button>
+          <button type="button" aria-label={text.close} onClick={() => setOpen(false)} className="grid h-11 w-11 place-items-center rounded-lg border border-[rgba(231,225,216,.10)] bg-[#2b2722] text-[#c9c0b5] hover:bg-[#39342d] hover:text-[#f0ebe4]"><X className="h-4 w-4"/></button>
         </div>
       </header>
 
@@ -181,11 +181,11 @@ export function OrchardAiDock({ hidden = false }: { hidden?: boolean }) {
             rows={2}
             aria-label={text.placeholder}
             placeholder={text.placeholder}
-            className="min-h-12 flex-1 resize-none bg-transparent px-2 py-1.5 text-sm text-[#f0ebe4] outline-none placeholder:text-[#9f968b]"
+            className="min-h-12 flex-1 resize-none bg-transparent px-2 py-1.5 text-base text-[#f0ebe4] outline-none placeholder:text-[#9f968b] sm:text-sm"
           />
-          <button type="submit" aria-label={text.send} disabled={!question.trim() || loading} className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-[#8bcba8] text-[#102018] transition-colors hover:bg-[#a1d8b9] disabled:cursor-not-allowed disabled:opacity-35"><Send className="h-4 w-4"/></button>
+          <button type="submit" aria-label={text.send} disabled={!question.trim() || loading} className="grid h-11 w-11 shrink-0 place-items-center rounded-lg bg-[#8bcba8] text-[#102018] transition-colors hover:bg-[#a1d8b9] disabled:cursor-not-allowed disabled:opacity-35"><Send className="h-4 w-4"/></button>
         </form>
-        <Link href={fullHref} className="mt-2 flex items-center justify-center gap-1.5 rounded-lg py-2 text-xs font-medium text-[#a9e3c2] hover:bg-[rgba(139,203,168,.10)] hover:text-[#c7efd8]">{text.full}<ExternalLink className="h-3.5 w-3.5"/></Link>
+        <Link href={fullHref} className="mt-2 flex min-h-11 items-center justify-center gap-1.5 rounded-lg px-3 text-xs font-medium text-[#a9e3c2] hover:bg-[rgba(139,203,168,.10)] hover:text-[#c7efd8]">{text.full}<ExternalLink className="h-3.5 w-3.5"/></Link>
       </footer>
     </aside>}
   </>
