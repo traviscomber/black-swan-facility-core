@@ -104,18 +104,23 @@ for (const item of unique) {
   stockCounts.set(item.file, (stockCounts.get(item.file) ?? 0) + 1)
 }
 
-const stockRegressions = []
-for (const [file, count] of stockCounts) {
+const stockBudgetDrift = []
+const budgetFiles = new Set([...stockRemoteBudgetByFile.keys(), ...stockCounts.keys()])
+for (const file of budgetFiles) {
+  const count = stockCounts.get(file) ?? 0
   const budget = stockRemoteBudgetByFile.get(file) ?? 0
-  if (count > budget) stockRegressions.push({ file, count, budget })
+  if (count !== budget) stockBudgetDrift.push({ file, count, budget })
 }
 
 console.log(`[image-audit] findings=${unique.length}`)
 for (const item of unique) console.log(`[image-audit] ${item.severity} ${item.type} ${item.file}:${item.line} ${item.value}`)
-console.log(`[image-audit] stock-debt=${Array.from(stockCounts.values()).reduce((sum, count) => sum + count, 0)} temporary ceiling; cleanup may only reduce it`)
-for (const { file, count, budget } of stockRegressions) {
-  console.error(`[image-audit] REGRESSION ${file}: stock_remote=${count}, allowed temporary ceiling=${budget}`)
+const stockDebt = Array.from(stockCounts.values()).reduce((sum, count) => sum + count, 0)
+const stockBudget = Array.from(stockRemoteBudgetByFile.values()).reduce((sum, count) => sum + count, 0)
+console.log(`[image-audit] stock-debt=${stockDebt}; locked-budget=${stockBudget}; any cleanup must lower the matching per-file budget in the same change`)
+for (const { file, count, budget } of stockBudgetDrift) {
+  const direction = count > budget ? "REGRESSION" : "BUDGET_NOT_RATCHETED"
+  console.error(`[image-audit] ${direction} ${file}: stock_remote=${count}, locked budget=${budget}`)
 }
 console.log(`[image-audit] policy=Operational images should come from canonical metadata/data. Stock imagery is not authoritative.`)
 
-if (stockRegressions.length > 0) process.exitCode = 1
+if (stockBudgetDrift.length > 0) process.exitCode = 1
