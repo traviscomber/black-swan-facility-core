@@ -22,6 +22,7 @@ test("central AI router sends read-only reasoning to FASTTRACK", () => {
 
 test("central AI router forces requested side effects through FULL_AGENTIC", () => {
   assert.equal(classifyCentralAIMode("Crea una tarea para mañana"), "FULL_AGENTIC")
+  assert.equal(classifyCentralAIMode("Cree una tarea para revisar la bomba"), "FULL_AGENTIC")
   assert.equal(classifyCentralAIMode("Puedes enviar este resumen al equipo?"), "FULL_AGENTIC")
   assert.equal(classifyCentralAIMode("Necesito que actualices la reserva"), "FULL_AGENTIC")
 })
@@ -38,10 +39,12 @@ test("FULL_AGENTIC requires an explicit per-user grant", () => {
   assert.match(accessMigrationSource, /raimundo@blackswn\.org/)
 })
 
-test("FULL_AGENTIC is confirmation-gated and cannot execute external effects yet", () => {
-  assert.match(routeSource, /if \(confirmed\)/)
-  assert.match(routeSource, /execution_not_enabled/)
-  assert.match(routeSource, /blocked_no_authorized_executor/)
+test("FULL_AGENTIC only executes the allowlisted internal task capability after explicit proposal confirmation", () => {
+  assert.match(routeSource, /proposalId/)
+  assert.match(routeSource, /explicit_confirmation_required/)
+  assert.match(routeSource, /execute_ai_action_proposal/)
+  assert.match(routeSource, /create_ai_task_proposal/)
+  assert.match(routeSource, /blocked_unsupported_capability/)
   assert.doesNotMatch(routerSource, /agentService\.executeAgentAction/)
   assert.doesNotMatch(routerSource, /concierge\/webhook/)
   assert.doesNotMatch(routerSource, /GREEN_API|sendMessage/)
