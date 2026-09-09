@@ -6,7 +6,9 @@ import { OrchardShellE2EHarness } from "@/components/orchard/orchard-shell-e2e-h
 
 export function VisualE2EHarnessRouter() {
   const searchParams = useSearchParams()
-  return searchParams.get("surface") === "orchard"
-    ? <OrchardShellE2EHarness />
-    : <BookingCalendarE2EHarness />
+  if (searchParams.get("surface") !== "orchard") return <BookingCalendarE2EHarness />
+
+  const priority = searchParams.get("priority")
+  const prioritySurface = priority === "crop-map" || priority === "work" ? priority : null
+  return <OrchardShellE2EHarness prioritySurface={prioritySurface} />
 }
