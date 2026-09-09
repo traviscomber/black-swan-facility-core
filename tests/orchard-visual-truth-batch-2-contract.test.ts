@@ -8,6 +8,7 @@ const library = readFileSync(new URL("../app/orchard/library/page.tsx", import.m
 const charts = readFileSync(new URL("../app/orchard/charts/page.tsx", import.meta.url), "utf8")
 const reports = readFileSync(new URL("../app/orchard/reports/page.tsx", import.meta.url), "utf8")
 const pests = readFileSync(new URL("../app/orchard/pests/page.tsx", import.meta.url), "utf8")
+const harvest = readFileSync(new URL("../app/orchard/harvest/page.tsx", import.meta.url), "utf8")
 
 test("Soil and Decisions render recorded evidence without stock photography", () => {
   for (const source of [soil, decisions]) {
@@ -50,4 +51,17 @@ test("Pests preserves recorded field evidence and CRUD while removing stock crop
   assert.match(pests, /\.insert\(/)
   assert.match(pests, /\.update\(/)
   assert.match(pests, /\.delete\(/)
+})
+
+test("Harvest preserves canonical traceability and unit-safe performance without stock imagery", () => {
+  assert.doesNotMatch(harvest, /unsplash\.com|images\.unsplash\.com|CROP_PHOTOS|HERO_PHOTO|FALLBACK_PHOTO|cropPhotoUrl|<img\b|<Image\b/)
+  assert.match(harvest, /orchard_harvest_records/)
+  assert.match(harvest, /harvest_lot_code/)
+  assert.match(harvest, /outputByUnit/)
+  assert.match(harvest, /scopeGamePlanGraph/)
+  assert.match(harvest, /yield_unit/)
+  assert.match(harvest, /bedArea/)
+  assert.match(harvest, /productivity/)
+  assert.match(harvest, /\.insert\(/)
+  assert.match(harvest, /\.delete\(/)
 })
