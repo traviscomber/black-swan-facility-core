@@ -1,14 +1,7 @@
 import { notFound } from "next/navigation"
-import { BookingCalendarE2EHarness } from "@/components/booking-calendar-e2e-harness"
-import { OrchardShellE2EHarness } from "@/components/orchard/orchard-shell-e2e-harness"
+import { VisualE2EHarnessRouter } from "@/components/visual-e2e-harness-router"
 
-export default async function BookingCalendarE2EPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ surface?: string }>
-}) {
+export default function BookingCalendarE2EPage() {
   if (process.env.E2E_CALENDAR_HARNESS !== "1") notFound()
-  const params = await searchParams
-  if (params.surface === "orchard") return <OrchardShellE2EHarness />
-  return <BookingCalendarE2EHarness />
+  return <VisualE2EHarnessRouter />
 }
