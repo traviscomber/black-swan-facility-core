@@ -13,7 +13,6 @@ const stockRemoteBudgetByFile = new Map([
   ["app/orchard/crops/page.tsx", 2],
   ["app/orchard/game-plan/page.tsx", 1],
   ["app/orchard/lifecycle/page.tsx", 2],
-  ["app/orchard/nursery/advanced/page.tsx", 1],
   ["app/orchard/performance/page.tsx", 4],
   ["app/orchard/season-summary/advanced/page.tsx", 2],
   ["app/orchard/work/page.tsx", 8],

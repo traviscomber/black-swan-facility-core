@@ -11,6 +11,7 @@ const pests = readFileSync(new URL("../app/orchard/pests/page.tsx", import.meta.
 const harvest = readFileSync(new URL("../app/orchard/harvest/page.tsx", import.meta.url), "utf8")
 const care = readFileSync(new URL("../app/orchard/care/page.tsx", import.meta.url), "utf8")
 const fieldAdvanced = readFileSync(new URL("../app/orchard/field/advanced/page.tsx", import.meta.url), "utf8")
+const nurseryAdvanced = readFileSync(new URL("../app/orchard/nursery/advanced/page.tsx", import.meta.url), "utf8")
 
 test("Soil and Decisions render recorded evidence without stock photography", () => {
   for (const source of [soil, decisions]) assert.doesNotMatch(source, /unsplash\.com|images\.unsplash\.com|<img\b|<Image\b/)
@@ -64,4 +65,20 @@ test("Field Advanced preserves scoped operational signals and task transitions w
   assert.match(fieldAdvanced, /scopeGamePlanGraph/)
   assert.match(fieldAdvanced, /\.update\(changes\)/)
   assert.match(fieldAdvanced, /"en_progreso"\|"completada"/)
+})
+
+test("Nursery Advanced preserves physical scoping, evidence-safe demand and audited inventory without stock imagery", () => {
+  assert.doesNotMatch(nurseryAdvanced, /unsplash\.com|images\.unsplash\.com|CROP_PHOTOS|FALLBACK_PHOTO|STAGE_PHOTOS|NURSERY_HERO|seedPhoto|batchPhoto|imageUrl|<img\b|<Image\b/)
+  assert.match(nurseryAdvanced, /orchard_seed_lots/)
+  assert.match(nurseryAdvanced, /orchard_seed_inventory_movements/)
+  assert.match(nurseryAdvanced, /orchard_nursery_batches/)
+  assert.match(nurseryAdvanced, /orchard_bed_allocations/)
+  assert.match(nurseryAdvanced, /cycle_type === "transplant"/)
+  assert.match(nurseryAdvanced, /planned_transplant_date != null/)
+  assert.match(nurseryAdvanced, /estimateTransplantSeedDemand/)
+  assert.match(nurseryAdvanced, /estimate\.status === "ready"/)
+  assert.match(nurseryAdvanced, /orchard_adjust_seed_inventory/)
+  assert.match(nurseryAdvanced, /\.insert\(/)
+  assert.match(nurseryAdvanced, /\.update\(/)
+  assert.match(nurseryAdvanced, /\.delete\(/)
 })
