@@ -44,20 +44,24 @@ function stopServer() {
   }
 }
 
-async function capture(page, name, viewport) {
+async function capture(browser, { name, viewport, path, rootTestId }) {
+  const page = await browser.newPage({ viewport })
   const pageErrors = []
   const consoleErrors = []
   page.on("pageerror", (error) => pageErrors.push(error.message))
   page.on("console", (message) => {
     if (message.type() === "error") consoleErrors.push(message.text())
   })
-  await page.setViewportSize(viewport)
-  await page.goto(`${baseURL}${harnessPath}`, { waitUntil: "networkidle" })
-  await page.getByTestId("e2e-hydrated").waitFor({ state: "visible" })
-  await page.waitForFunction(() => document.querySelector('[data-testid="e2e-hydrated"]')?.textContent === "ready")
-  await page.getByTestId("booking-calendar-root").waitFor({ state: "visible" })
-  await page.screenshot({ path: `${outputDir}/${name}.png`, fullPage: true })
-  return { name, viewport, url: page.url(), pageErrors, consoleErrors }
+  try {
+    await page.goto(`${baseURL}${path}`, { waitUntil: "networkidle" })
+    await page.getByTestId("e2e-hydrated").waitFor({ state: "visible" })
+    await page.waitForFunction(() => document.querySelector('[data-testid="e2e-hydrated"]')?.textContent === "ready")
+    await page.getByTestId(rootTestId).waitFor({ state: "visible" })
+    await page.screenshot({ path: `${outputDir}/${name}.png`, fullPage: true })
+    return { name, viewport, url: page.url(), pageErrors, consoleErrors }
+  } finally {
+    await page.close()
+  }
 }
 
 try {
@@ -65,11 +69,14 @@ try {
   await waitForServer()
   const browser = await chromium.launch()
   try {
-    const page = await browser.newPage()
-    const captures = [
-      await capture(page, "booking-calendar-desktop", { width: 1440, height: 960 }),
-      await capture(page, "booking-calendar-mobile", { width: 390, height: 844 }),
+    const specs = [
+      { name: "booking-calendar-desktop", viewport: { width: 1440, height: 960 }, path: harnessPath, rootTestId: "booking-calendar-root" },
+      { name: "booking-calendar-mobile", viewport: { width: 390, height: 844 }, path: harnessPath, rootTestId: "booking-calendar-root" },
+      { name: "orchard-shell-desktop", viewport: { width: 1440, height: 960 }, path: `${harnessPath}?surface=orchard`, rootTestId: "orchard-mobile-shell-root" },
+      { name: "orchard-shell-mobile", viewport: { width: 390, height: 844 }, path: `${harnessPath}?surface=orchard`, rootTestId: "orchard-mobile-shell-root" },
     ]
+    const captures = []
+    for (const spec of specs) captures.push(await capture(browser, spec))
     await writeFile(`${outputDir}/summary.json`, `${JSON.stringify({ baseURL, captures }, null, 2)}\n`)
     const failures = captures.flatMap((capture) => [...capture.pageErrors, ...capture.consoleErrors])
     if (failures.length > 0) throw new Error(`Visual QA detected browser errors: ${failures.join(" | ")}`)
