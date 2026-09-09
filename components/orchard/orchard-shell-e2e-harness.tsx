@@ -2,17 +2,21 @@
 
 import { OrchardMobileShell } from "@/components/orchard/orchard-mobile-shell"
 import { OrchardNavigation } from "@/components/orchard/orchard-navigation"
+import { OrchardPrioritySurface } from "@/components/orchard/orchard-priority-surface"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Textarea } from "@/components/ui/textarea"
 
-export function OrchardShellE2EHarness() {
+type PrioritySurface = "crop-map" | "work" | null
+
+export function OrchardShellE2EHarness({ prioritySurface = null }: { prioritySurface?: PrioritySurface }) {
   return (
     <>
       <OrchardNavigation />
       <OrchardMobileShell />
+      {prioritySurface ? <OrchardPrioritySurface surfaceOverride={prioritySurface} qaMode /> : null}
       <span data-testid="e2e-hydrated" className="sr-only">ready</span>
       <main data-testid="orchard-mobile-shell-root" className="min-h-screen bg-background px-3 py-4 sm:px-6 sm:py-8">
         <div className="mx-auto max-w-5xl space-y-5">
@@ -28,6 +32,25 @@ export function OrchardShellE2EHarness() {
             <Button role="tab" aria-selected="false" variant="ghost">QA-TAB-03</Button>
             <Button role="tab" aria-selected="false" variant="ghost">QA-TAB-04</Button>
           </div>
+
+          {prioritySurface === "crop-map" ? (
+            <div data-testid="qa-crop-map-grid" className="grid grid-cols-12 gap-4">
+              <Card className="col-span-8">
+                <CardHeader><CardTitle>QA-CROP-MAP-PRIMARY</CardTitle><CardDescription>QA-CROP-MAP-GRID-01</CardDescription></CardHeader>
+                <CardContent><div className="overflow-x-auto"><div className="min-w-[760px] rounded-lg border p-4">QA-PLANNER-LANE-001</div></div></CardContent>
+              </Card>
+              <Card className="col-span-4">
+                <CardHeader><CardTitle>QA-CROP-MAP-QUEUE</CardTitle><CardDescription>QA-CROP-MAP-GRID-02</CardDescription></CardHeader>
+                <CardContent>QA-CROP-MAP-CONTENT</CardContent>
+              </Card>
+            </div>
+          ) : null}
+
+          {prioritySurface === "work" ? (
+            <div data-testid="qa-work-week" className="grid gap-2 xl:grid-cols-7">
+              {Array.from({ length: 7 }, (_, index) => <Card key={index}><CardContent className="p-3">QA-DAY-{index + 1}</CardContent></Card>)}
+            </div>
+          ) : null}
 
           <div className="grid gap-4 md:grid-cols-2">
             <Card>
