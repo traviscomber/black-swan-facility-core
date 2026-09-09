@@ -57,7 +57,9 @@ const PRIORITY_SURFACE_CSS = `
 `
 
 function stripLocale(pathname: string) {
-  return pathname.replace(/^\/(en|es|de)(?=\/|$)/, "") || "/"
+  const localized = pathname.replace(/^\/(en|es|de)(?=\/|$)/, "") || "/"
+  if (localized === "/") return localized
+  return localized.replace(/\/+$/, "") || "/"
 }
 
 export function OrchardPrioritySurface({
