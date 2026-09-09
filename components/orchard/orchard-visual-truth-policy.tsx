@@ -20,7 +20,7 @@ const ORCHARD_VISUAL_TRUTH_CSS = `
 [data-orchard-image-policy] :is(div, section):has(> img[src*="unsplash.com/photos"]),
 [data-orchard-image-policy] :is(div, section):has(> img[src*="images.pexels.com"]),
 [data-orchard-image-policy] :is(div, section):has(> img[src*="pixabay.com"]) {
-  background-color: hsl(var(--card)) !important;
+  background-color: var(--card) !important;
 }
 
 [data-orchard-image-policy] :is(div, section):has(> img[src*="images.unsplash.com"]) > [class*="absolute"][class*="inset-0"],
