@@ -3,6 +3,7 @@
 import { OrchardMobileShell } from "@/components/orchard/orchard-mobile-shell"
 import { OrchardNavigation } from "@/components/orchard/orchard-navigation"
 import { OrchardPrioritySurface } from "@/components/orchard/orchard-priority-surface"
+import { OrchardVisualTruthPolicy } from "@/components/orchard/orchard-visual-truth-policy"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -13,9 +14,10 @@ type PrioritySurface = "crop-map" | "work" | null
 
 export function OrchardShellE2EHarness({ prioritySurface = null }: { prioritySurface?: PrioritySurface }) {
   return (
-    <>
+    <div data-orchard-image-policy>
       <OrchardNavigation />
       <OrchardMobileShell />
+      <OrchardVisualTruthPolicy />
       {prioritySurface ? <OrchardPrioritySurface surfaceOverride={prioritySurface} qaMode /> : null}
       <span data-testid="e2e-hydrated" className="sr-only">ready</span>
       <main data-testid="orchard-mobile-shell-root" className="min-h-screen bg-background px-3 py-4 sm:px-6 sm:py-8">
@@ -25,6 +27,16 @@ export function OrchardShellE2EHarness({ prioritySurface = null }: { prioritySur
             <h1>QA-SHELL-001</h1>
             <p className="max-w-2xl text-sm text-muted-foreground">QA-RESPONSIVE-REFERENCE-001</p>
           </header>
+
+          <figure data-testid="qa-stock-figure" className="min-h-32 overflow-hidden rounded-xl border bg-muted">
+            <img
+              data-testid="qa-stock-image"
+              loading="lazy"
+              src="https://images.unsplash.com/qa-stock-fixture.jpg"
+              alt="QA stock fixture"
+              className="h-32 w-full object-cover"
+            />
+          </figure>
 
           <div role="tablist" aria-label="QA-TABS" className="flex gap-2 rounded-xl border p-1">
             <Button role="tab" aria-selected="true" variant="secondary">QA-TAB-01</Button>
@@ -118,6 +130,6 @@ export function OrchardShellE2EHarness({ prioritySurface = null }: { prioritySur
           </div>
         </div>
       </main>
-    </>
+    </div>
   )
 }
