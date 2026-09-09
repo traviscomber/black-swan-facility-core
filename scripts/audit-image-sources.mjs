@@ -3,7 +3,11 @@ import { join, relative } from "node:path"
 
 const roots = ["app", "components", "lib"]
 const sourceExtensions = new Set([".js", ".jsx", ".mjs", ".ts", ".tsx"])
-const stockHosts = ["images.unsplash.com", "source.unsplash.com", "images.pexels.com", "pixabay.com"]
+const stockHosts = ["images.unsplash.com", "source.unsplash.com", "unsplash.com/photos", "images.pexels.com", "pixabay.com"]
+const nonOperationalFixtures = new Set([
+  "components/orchard/orchard-visual-truth-policy.tsx",
+  "components/orchard/orchard-shell-e2e-harness.tsx",
+])
 const allowedStaticPatterns = [
   /logo/i,
   /icon/i,
@@ -39,19 +43,22 @@ for (const root of roots) {
   for (const file of await walk(root)) {
     const source = await readFile(file, "utf8")
     const rel = relative(process.cwd(), file)
+    const auditOperationalImageUse = !nonOperationalFixtures.has(rel)
 
-    for (const host of stockHosts) {
-      let index = source.indexOf(host)
-      while (index >= 0) {
-        findings.push({ severity: "BLOCK", type: "stock_remote", file: rel, line: lineOf(source, index), value: host })
-        index = source.indexOf(host, index + host.length)
+    if (auditOperationalImageUse) {
+      for (const host of stockHosts) {
+        let index = source.indexOf(host)
+        while (index >= 0) {
+          findings.push({ severity: "BLOCK", type: "stock_remote", file: rel, line: lineOf(source, index), value: host })
+          index = source.indexOf(host, index + host.length)
+        }
       }
     }
 
     const literalImage = /<(?:img|Image)\b[^>]*?\bsrc\s*=\s*["']([^"']+)["']/gms
     for (const match of source.matchAll(literalImage)) {
       const value = match[1]
-      if (!allowedStaticPatterns.some(pattern => pattern.test(value))) {
+      if (auditOperationalImageUse && !allowedStaticPatterns.some(pattern => pattern.test(value))) {
         findings.push({ severity: "REVIEW", type: "literal_image_src", file: rel, line: lineOf(source, match.index ?? 0), value })
       }
     }
@@ -59,7 +66,7 @@ for (const root of roots) {
     const remoteImage = /https?:\/\/[^"'`\s)]+(?:\.(?:png|jpe?g|webp|gif|avif|svg)(?:\?[^"'`\s)]*)?|\/storage\/v1\/object\/[^"'`\s)]+)/gim
     for (const match of source.matchAll(remoteImage)) {
       const value = match[0]
-      if (!value.includes("supabase.co/storage/v1/object/public/orchard-crop-photos")) {
+      if (auditOperationalImageUse && !value.includes("supabase.co/storage/v1/object/public/orchard-crop-photos")) {
         findings.push({ severity: "REVIEW", type: "remote_image_literal", file: rel, line: lineOf(source, match.index ?? 0), value })
       }
     }
