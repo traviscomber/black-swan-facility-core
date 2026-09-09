@@ -12,6 +12,8 @@ const harvest = readFileSync(new URL("../app/orchard/harvest/page.tsx", import.m
 const care = readFileSync(new URL("../app/orchard/care/page.tsx", import.meta.url), "utf8")
 const fieldAdvanced = readFileSync(new URL("../app/orchard/field/advanced/page.tsx", import.meta.url), "utf8")
 const nurseryAdvanced = readFileSync(new URL("../app/orchard/nursery/advanced/page.tsx", import.meta.url), "utf8")
+const lifecycle = readFileSync(new URL("../app/orchard/lifecycle/page.tsx", import.meta.url), "utf8")
+const crops = readFileSync(new URL("../app/orchard/crops/page.tsx", import.meta.url), "utf8")
 
 test("Soil and Decisions render recorded evidence without stock photography", () => {
   for (const source of [soil, decisions]) assert.doesNotMatch(source, /unsplash\.com|images\.unsplash\.com|<img\b|<Image\b/)
@@ -81,4 +83,24 @@ test("Nursery Advanced preserves physical scoping, evidence-safe demand and audi
   assert.match(nurseryAdvanced, /\.insert\(/)
   assert.match(nurseryAdvanced, /\.update\(/)
   assert.match(nurseryAdvanced, /\.delete\(/)
+})
+
+test("Lifecycle and Crops keep canonical operational lineage while using only local data surfaces", () => {
+  for (const source of [lifecycle, crops]) assert.doesNotMatch(source, /unsplash\.com|images\.unsplash\.com|source\.unsplash\.com/)
+  assert.match(lifecycle, /orchard_succession_lifecycle/)
+  assert.match(lifecycle, /orchard_succession_lifecycle_history/)
+  assert.match(lifecycle, /lifecycle_source/)
+  assert.match(lifecycle, /persisted_status/)
+  assert.match(lifecycle, /effective_status/)
+  assert.match(lifecycle, /syncGamePlanQuery/)
+  assert.match(crops, /orchard_crops/)
+  assert.match(crops, /orchard_bed_allocations/)
+  assert.match(crops, /orchard_care_logs/)
+  assert.match(crops, /orchard_pest_logs/)
+  assert.match(crops, /operational_area", "huerto_vinedo/)
+  assert.match(crops, /scopeGamePlanGraph/)
+  assert.match(crops, /planCropSnapshot/)
+  assert.match(crops, /\.insert\(/)
+  assert.match(crops, /\.update\(/)
+  assert.match(crops, /\.delete\(/)
 })
