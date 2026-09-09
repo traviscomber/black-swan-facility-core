@@ -41,25 +41,14 @@ const activityLabels: Record<"en" | "es" | "de", Record<string, string>> = {
   de: { watering: "Bewässerung", feeding: "Düngung", weeding: "Unkrautpflege", pruning: "Schnitt", cultivation: "Bodenbearbeitung", inspection: "Kontrolle" },
 }
 const locales = { en: "en-US", es: "es-CL", de: "de-DE" } as const
-const photo = (id: string) => `https://images.unsplash.com/${id}?auto=format&fit=crop&w=1800&q=92`
-const cropsHero = "https://unsplash.com/photos/WHHbA0kU8Qg/download?force=true&w=2200&q=95"
-const cropPhoto = (name: string) => {
-  const key = name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")
-  if (key.includes("tomato") || key.includes("tomate")) return photo("photo-1592924357228-91a4daadcfea")
-  if (key.includes("lettuce") || key.includes("lechuga")) return photo("photo-1622206151226-18ca2c9ab4a1")
-  if (key.includes("radish") || key.includes("rabanito") || key.includes("rabano")) return photo("photo-1582284540020-8acbe03f4924")
-  if (key.includes("onion") || key.includes("cebolla")) return photo("photo-1508747703725-719777637510")
-  if (key.includes("carrot") || key.includes("zanahoria")) return photo("photo-1447175008436-054170c2e979")
-  if (key.includes("arugula") || key.includes("rocket") || key.includes("rucula")) return photo("photo-1603048719539-9ecb4aa395e3")
-  if (key.includes("spinach") || key.includes("espinaca")) return photo("photo-1576045057995-568f588f82fb")
-  if (key.includes("basil") || key.includes("albahaca")) return photo("photo-1618375569909-3c8616cf7733")
-  if (key.includes("parsley") || key.includes("perejil")) return photo("photo-1590759668628-05b0fc34bb70")
-  if (key.includes("potato") || key.includes("papa")) return photo("photo-1518977676601-b53f82aba655")
-  if (key.includes("beet") || key.includes("betarraga")) return photo("photo-1593105544559-ecb03bf76f82")
-  if (key.includes("pepper") || key.includes("pimenton")) return photo("photo-1563565375-f3fdfdbefa83")
-  if (key.includes("zucchini") || key.includes("zapallo italiano")) return photo("photo-1563252722-6434563a985d")
-  return photo("photo-1416879595882-3373a0480b5b")
+const visualSurface = (label: string) => {
+  const seed = [...label].reduce((sum, char) => sum + char.charCodeAt(0), 0)
+  const ridge = 470 + (seed % 90)
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="700" viewBox="0 0 1200 700"><rect width="1200" height="700" fill="#0b0f0d"/><path d="M0 ${ridge} C220 ${ridge - 90} 430 ${ridge + 70} 650 ${ridge - 20} S980 ${ridge - 95} 1200 ${ridge - 5} V700 H0Z" fill="#14241a"/><path d="M0 ${ridge + 70} C260 ${ridge - 20} 490 ${ridge + 120} 760 ${ridge + 25} S1030 ${ridge - 5} 1200 ${ridge + 45}" fill="none" stroke="#356447" stroke-width="18" opacity=".7"/><circle cx="${140 + (seed % 620)}" cy="${180 + (seed % 170)}" r="54" fill="#1c3928" opacity=".8"/></svg>`
+  return `data:image/svg+xml,${encodeURIComponent(svg)}`
 }
+const cropsHero = visualSurface("crops")
+const cropPhoto = (name: string) => visualSurface(name)
 const localDateKey = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}` }
 const daysUntil = (value: string | null) => value ? Math.ceil((new Date(`${value}T12:00:00`).getTime() - new Date(`${localDateKey()}T12:00:00`).getTime()) / 86400000) : null
 const normalize = (value: string | null | undefined) => (value ?? "").trim().toLowerCase()
