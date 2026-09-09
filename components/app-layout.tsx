@@ -8,6 +8,7 @@ import { OrchardSidebar } from "@/components/orchard/orchard-sidebar"
 import { OrchardDesktopHeader } from "@/components/orchard/orchard-desktop-header"
 import { OrchardHarvestSectionNav } from "@/components/orchard/harvest-section-nav"
 import { OrchardMobileShell } from "@/components/orchard/orchard-mobile-shell"
+import { OrchardPrioritySurface } from "@/components/orchard/orchard-priority-surface"
 import { BookingsSectionNav } from "@/components/bookings-section-nav"
 import { HospitalityCommandStrip } from "@/components/hospitality-command-strip"
 import { ObjectCommandPalette } from "./object-command-palette"
@@ -158,6 +159,7 @@ export function AppLayout({ children }: AppLayoutProps) {
 
         <main className="relative min-h-0 min-w-0 flex-1 overflow-y-auto bg-background overflow-x-hidden" style={orchardShell ? ({ "--orchard-nav-height": "56px" } as React.CSSProperties) : undefined}>
           {orchardShell && <OrchardHarvestSectionNav />}
+          {orchardShell && <OrchardPrioritySurface />}
           {bookingsShell && <BookingsSectionNav />}
           {bookingsRoot && <HospitalityCommandStrip />}
           {children}
