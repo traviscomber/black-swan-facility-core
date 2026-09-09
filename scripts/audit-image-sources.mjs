@@ -10,8 +10,6 @@ const nonOperationalFixtures = new Set([
 ])
 const stockRemoteBudgetByFile = new Map([
   ["app/orchard/crop-map/page.tsx", 3],
-  ["app/orchard/crops/page.tsx", 2],
-  ["app/orchard/lifecycle/page.tsx", 2],
   ["app/orchard/performance/page.tsx", 4],
   ["app/orchard/season-summary/advanced/page.tsx", 2],
   ["app/orchard/work/page.tsx", 8],
