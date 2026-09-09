@@ -30,14 +30,6 @@ const ORCHARD_VISUAL_TRUTH_CSS = `
 [data-orchard-image-policy] :is(div, section):has(> img[src*="pixabay.com"]) > [class*="absolute"][class*="inset-0"] {
   background: transparent !important;
 }
-
-@media (max-width: 767px) {
-  [data-orchard-image-policy] :is(div, section):has(> img[src*="unsplash.com"]),
-  [data-orchard-image-policy] :is(div, section):has(> img[src*="pexels.com"]),
-  [data-orchard-image-policy] :is(div, section):has(> img[src*="pixabay.com"]) {
-    min-height: 0 !important;
-  }
-}
 `
 
 export function OrchardVisualTruthPolicy() {
