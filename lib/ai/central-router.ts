@@ -34,6 +34,7 @@ const DIRECT_PATTERNS = [
 const ACTION_VERBS = [
   "crea",
   "crear",
+  "cree",
   "crees",
   "create",
   "actualiza",
