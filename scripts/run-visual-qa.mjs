@@ -74,6 +74,8 @@ try {
       { name: "booking-calendar-mobile", viewport: { width: 390, height: 844 }, path: harnessPath, rootTestId: "booking-calendar-root" },
       { name: "orchard-shell-desktop", viewport: { width: 1440, height: 960 }, path: `${harnessPath}?surface=orchard`, rootTestId: "orchard-mobile-shell-root" },
       { name: "orchard-shell-mobile", viewport: { width: 390, height: 844 }, path: `${harnessPath}?surface=orchard`, rootTestId: "orchard-mobile-shell-root" },
+      { name: "orchard-crop-map-mobile", viewport: { width: 390, height: 844 }, path: `${harnessPath}?surface=orchard&priority=crop-map`, rootTestId: "qa-crop-map-grid" },
+      { name: "orchard-work-mobile", viewport: { width: 390, height: 844 }, path: `${harnessPath}?surface=orchard&priority=work`, rootTestId: "qa-work-week" },
     ]
     const captures = []
     for (const spec of specs) captures.push(await capture(browser, spec))
