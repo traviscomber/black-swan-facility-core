@@ -7,6 +7,7 @@ import { Sidebar } from "./sidebar"
 import { OrchardSidebar } from "@/components/orchard/orchard-sidebar"
 import { OrchardDesktopHeader } from "@/components/orchard/orchard-desktop-header"
 import { OrchardHarvestSectionNav } from "@/components/orchard/harvest-section-nav"
+import { OrchardMobileShell } from "@/components/orchard/orchard-mobile-shell"
 import { BookingsSectionNav } from "@/components/bookings-section-nav"
 import { HospitalityCommandStrip } from "@/components/hospitality-command-strip"
 import { ObjectCommandPalette } from "./object-command-palette"
@@ -106,6 +107,7 @@ export function AppLayout({ children }: AppLayoutProps) {
   return (
     <div className="flex h-screen w-full bg-background">
       <ObjectCommandPalette access={access} canAccessDepartment={canAccessDepartment} />
+      {orchardShell ? <OrchardMobileShell /> : null}
 
       <div className={`brand-sidebar-shell hidden flex-shrink-0 ${desktopSidebarClasses} ${sidebarSurface}`}>
         <DesktopSidebar isOpen={true} onClose={() => {}} />
