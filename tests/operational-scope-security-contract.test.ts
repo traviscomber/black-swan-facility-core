@@ -1,6 +1,7 @@
 import assert from "node:assert/strict"
 import test from "node:test"
 import { readFileSync } from "node:fs"
+import { parseAuthorizedAction } from "../lib/ai/authorized-executor.ts"
 
 const nullLocationMigration = readFileSync(
   new URL("../supabase/migrations/20260827184610_fail_closed_null_operational_scope.sql", import.meta.url),
@@ -25,6 +26,11 @@ const orchardTriggerRpcMigration = readFileSync(
 )
 const orchardChartsPage = readFileSync(new URL("../app/orchard/charts/page.tsx", import.meta.url), "utf8")
 const orchardServiceWorker = readFileSync(new URL("../public/orchard-sw.js", import.meta.url), "utf8")
+const aiExecutorMigration = readFileSync(
+  new URL("../supabase/migrations/20260908131500_create_ai_action_executor_v1.sql", import.meta.url),
+  "utf8",
+)
+const aiOrchestrateRoute = readFileSync(new URL("../app/api/ai/orchestrate/route.ts", import.meta.url), "utf8")
 
 test("location-specific operational scopes fail closed when an object has no location", () => {
   assert.match(nullLocationMigration, /s\.location_id is null/)
@@ -91,4 +97,56 @@ test("Orchard PWA never caches API responses or offline mutations", () => {
   assert.match(orchardServiceWorker, /url\.pathname\.startsWith\("\/api\/"\)/)
   assert.match(orchardServiceWorker, /request\.mode === "navigate"/)
   assert.doesNotMatch(orchardServiceWorker, /indexedDB|backgroundSync|sync\.register/)
+})
+
+test("AI executor recognizes only explicit low-risk internal task creation", () => {
+  assert.deepEqual(parseAuthorizedAction("Crea una tarea para revisar la bomba norte"), {
+    capability: "task.create_internal",
+    title: "revisar la bomba norte",
+    description: null,
+  })
+  assert.deepEqual(parseAuthorizedAction("Cree una tarea para revisar la bomba norte"), {
+    capability: "task.create_internal",
+    title: "revisar la bomba norte",
+    description: null,
+  })
+  assert.equal(parseAuthorizedAction("Aprueba la orden de compra 42"), null)
+  assert.equal(parseAuthorizedAction("Elimina la tarea 42"), null)
+  assert.equal(parseAuthorizedAction("Envía un correo al proveedor"), null)
+})
+
+test("AI proposals are owner-bound, expiring and not directly writable by authenticated clients", () => {
+  assert.match(aiExecutorMigration, /created_by uuid not null default auth\.uid\(\)/i)
+  assert.match(aiExecutorMigration, /expires_at timestamptz not null default \(now\(\) \+ interval '15 minutes'\)/i)
+  assert.match(aiExecutorMigration, /revoke all on table public\.ai_action_proposals from anon, authenticated/i)
+  assert.match(aiExecutorMigration, /grant select on table public\.ai_action_proposals to authenticated/i)
+  assert.match(aiExecutorMigration, /using \(created_by = auth\.uid\(\)\)/i)
+})
+
+test("AI executor is static-allowlisted, scope-aware and replay-resistant", () => {
+  assert.match(aiExecutorMigration, /capability in \('task\.create_internal'\)/i)
+  assert.match(aiExecutorMigration, /v_proposal\.capability <> 'task\.create_internal'/i)
+  assert.match(aiExecutorMigration, /ai_agentic_access[\s\S]*enabled = true/i)
+  assert.match(aiExecutorMigration, /can_access_operational_task_scope\(v_operational_area, v_location_id\)/i)
+  assert.match(aiExecutorMigration, /for update;/i)
+  assert.match(aiExecutorMigration, /v_proposal\.status <> 'awaiting_confirmation'/i)
+  assert.doesNotMatch(aiExecutorMigration, /execute\s+format|execute\s+v_|net\.http|pg_net/i)
+})
+
+test("AI task execution remains low-risk and terminal state is audited", () => {
+  assert.match(aiExecutorMigration, /insert into public\.tasks\(title, description, status, location_id, operational_area\)/i)
+  assert.match(aiExecutorMigration, /values \(v_title, v_description, 'nueva', v_location_id, v_operational_area\)/i)
+  assert.match(aiExecutorMigration, /set status = 'executing'/i)
+  assert.match(aiExecutorMigration, /set status = 'succeeded'/i)
+  assert.match(aiExecutorMigration, /set status = 'failed'/i)
+  assert.match(aiExecutorMigration, /set status = 'expired'/i)
+  assert.doesNotMatch(aiExecutorMigration, /assigned_to|estimated_cost_clp|purchase|invoice|payment|webhook/i)
+})
+
+test("AI confirmation is bound to proposal identity and unsupported capabilities fail closed", () => {
+  assert.match(aiOrchestrateRoute, /proposalId/)
+  assert.match(aiOrchestrateRoute, /explicit_confirmation_required/)
+  assert.match(aiOrchestrateRoute, /execute_ai_action_proposal/)
+  assert.match(aiOrchestrateRoute, /blocked_unsupported_capability/)
+  assert.doesNotMatch(aiOrchestrateRoute, /execute_ai_action_proposal[\s\S]{0,300}p_payload/i)
 })
