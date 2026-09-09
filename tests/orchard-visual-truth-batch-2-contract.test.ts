@@ -10,6 +10,7 @@ const reports = readFileSync(new URL("../app/orchard/reports/page.tsx", import.m
 const pests = readFileSync(new URL("../app/orchard/pests/page.tsx", import.meta.url), "utf8")
 const harvest = readFileSync(new URL("../app/orchard/harvest/page.tsx", import.meta.url), "utf8")
 const care = readFileSync(new URL("../app/orchard/care/page.tsx", import.meta.url), "utf8")
+const fieldAdvanced = readFileSync(new URL("../app/orchard/field/advanced/page.tsx", import.meta.url), "utf8")
 
 test("Soil and Decisions render recorded evidence without stock photography", () => {
   for (const source of [soil, decisions]) assert.doesNotMatch(source, /unsplash\.com|images\.unsplash\.com|<img\b|<Image\b/)
@@ -50,4 +51,17 @@ test("Care preserves recorded interventions and field evidence without stock ima
   assert.match(care, /scopeGamePlanGraph/)
   assert.match(care, /\.insert\(/)
   assert.match(care, /\.delete\(/)
+})
+
+test("Field Advanced preserves scoped operational signals and task transitions without stock imagery", () => {
+  assert.doesNotMatch(fieldAdvanced, /unsplash\.com|images\.unsplash\.com|PHOTOS|photo\(|<img\b|<Image\b/)
+  assert.match(fieldAdvanced, /orchard_game_plans/)
+  assert.match(fieldAdvanced, /orchard_crop_successions/)
+  assert.match(fieldAdvanced, /orchard_succession_lifecycle/)
+  assert.match(fieldAdvanced, /orchard_nursery_batches/)
+  assert.match(fieldAdvanced, /orchard_pest_logs/)
+  assert.match(fieldAdvanced, /operational_area","huerto_vinedo/)
+  assert.match(fieldAdvanced, /scopeGamePlanGraph/)
+  assert.match(fieldAdvanced, /\.update\(changes\)/)
+  assert.match(fieldAdvanced, /"en_progreso"\|"completada"/)
 })
