@@ -14,6 +14,8 @@ const fieldAdvanced = readFileSync(new URL("../app/orchard/field/advanced/page.t
 const nurseryAdvanced = readFileSync(new URL("../app/orchard/nursery/advanced/page.tsx", import.meta.url), "utf8")
 const lifecycle = readFileSync(new URL("../app/orchard/lifecycle/page.tsx", import.meta.url), "utf8")
 const crops = readFileSync(new URL("../app/orchard/crops/page.tsx", import.meta.url), "utf8")
+const performance = readFileSync(new URL("../app/orchard/performance/page.tsx", import.meta.url), "utf8")
+const seasonSummary = readFileSync(new URL("../app/orchard/season-summary/advanced/page.tsx", import.meta.url), "utf8")
 
 test("Soil and Decisions render recorded evidence without stock photography", () => {
   for (const source of [soil, decisions]) assert.doesNotMatch(source, /unsplash\.com|images\.unsplash\.com|<img\b|<Image\b/)
@@ -103,4 +105,23 @@ test("Lifecycle and Crops keep canonical operational lineage while using only lo
   assert.match(crops, /\.insert\(/)
   assert.match(crops, /\.update\(/)
   assert.match(crops, /\.delete\(/)
+})
+
+test("Performance and Season Summary preserve evidence-based analytics without stock imagery", () => {
+  for (const source of [performance, seasonSummary]) assert.doesNotMatch(source, /unsplash\.com|images\.unsplash\.com|source\.unsplash\.com/)
+  assert.match(performance, /orchard_crop_successions/)
+  assert.match(performance, /orchard_nursery_batches/)
+  assert.match(performance, /orchard_crops/)
+  assert.match(performance, /orchard_harvest_records/)
+  assert.match(performance, /scopeGamePlanGraph/)
+  assert.match(performance, /harvest_unit/)
+  assert.match(performance, /daysBetween/)
+  assert.match(seasonSummary, /orchard_harvest_records/)
+  assert.match(seasonSummary, /orchard_pest_logs/)
+  assert.match(seasonSummary, /orchard_notes/)
+  assert.match(seasonSummary, /orchard_care_logs/)
+  assert.match(seasonSummary, /orchard_sales_commitments/)
+  assert.match(seasonSummary, /scopeGamePlanGraph/)
+  assert.match(seasonSummary, /total_market_value/)
+  assert.match(seasonSummary, /currencyUnspecified/)
 })
