@@ -89,7 +89,11 @@ export function OrchardPrioritySurface({
   return <>
     <style>{PRIORITY_SURFACE_CSS}</style>
     <span data-orchard-priority-surface={surface} hidden aria-hidden="true" />
-    <nav aria-label={qaMode ? "QA-PRIORITY-NAV" : "Orchard field view"} className="mx-3 mt-3 grid grid-cols-2 gap-1 rounded-xl border border-border bg-card p-1 md:hidden">
+    <nav
+      data-orchard-priority-nav
+      aria-label={qaMode ? "QA-PRIORITY-NAV" : "Orchard field view"}
+      className="sticky top-2 z-30 mx-3 mt-3 grid grid-cols-2 gap-1 rounded-xl border border-border bg-card/95 p-1 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-card/85 md:hidden"
+    >
       {items.map((item) => {
         const Icon = item.icon
         const active = item.key === surface
