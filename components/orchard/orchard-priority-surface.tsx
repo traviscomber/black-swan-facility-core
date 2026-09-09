@@ -12,6 +12,8 @@ const COPY = {
   de: { map: "Anbaukarte", work: "Arbeit" },
 } as const
 
+type PrioritySurface = "crop-map" | "work"
+
 const PRIORITY_SURFACE_CSS = `
 @media (max-width: 767px) {
   body:has([data-orchard-priority-surface="work"]) main section[class*="min-h-"][class*="overflow-hidden"] {
@@ -58,27 +60,34 @@ function stripLocale(pathname: string) {
   return pathname.replace(/^\/(en|es|de)(?=\/|$)/, "") || "/"
 }
 
-export function OrchardPrioritySurface() {
+export function OrchardPrioritySurface({
+  surfaceOverride,
+  qaMode = false,
+}: {
+  surfaceOverride?: PrioritySurface
+  qaMode?: boolean
+} = {}) {
   const pathname = usePathname() || "/"
   const internalPath = stripLocale(pathname)
-  const surface = internalPath === "/orchard/crop-map" ? "crop-map" : internalPath === "/orchard/work" ? "work" : null
+  const detectedSurface: PrioritySurface | null = internalPath === "/orchard/crop-map" ? "crop-map" : internalPath === "/orchard/work" ? "work" : null
+  const surface = surfaceOverride ?? detectedSurface
   const searchParams = useSearchParams()
   const { language } = useLanguage()
-  const text = COPY[language as keyof typeof COPY] ?? COPY.en
+  const text = qaMode ? { map: "QA-MAP", work: "QA-WORK" } : (COPY[language as keyof typeof COPY] ?? COPY.en)
 
   if (!surface) return null
 
   const gamePlan = searchParams.get("game_plan")
   const suffix = gamePlan ? `?game_plan=${encodeURIComponent(gamePlan)}` : ""
   const items = [
-    { key: "crop-map", href: `/${language}/orchard/crop-map${suffix}`, label: text.map, icon: Map },
-    { key: "work", href: `/${language}/orchard/work${suffix}`, label: text.work, icon: ListChecks },
+    { key: "crop-map", href: qaMode ? "#qa-map" : `/${language}/orchard/crop-map${suffix}`, label: text.map, icon: Map },
+    { key: "work", href: qaMode ? "#qa-work" : `/${language}/orchard/work${suffix}`, label: text.work, icon: ListChecks },
   ] as const
 
   return <>
     <style>{PRIORITY_SURFACE_CSS}</style>
     <span data-orchard-priority-surface={surface} hidden aria-hidden="true" />
-    <nav aria-label="Orchard field view" className="mx-3 mt-3 grid grid-cols-2 gap-1 rounded-xl border border-border bg-card p-1 md:hidden">
+    <nav aria-label={qaMode ? "QA-PRIORITY-NAV" : "Orchard field view"} className="mx-3 mt-3 grid grid-cols-2 gap-1 rounded-xl border border-border bg-card p-1 md:hidden">
       {items.map((item) => {
         const Icon = item.icon
         const active = item.key === surface
