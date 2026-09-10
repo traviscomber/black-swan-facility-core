@@ -1,22 +1,14 @@
 "use client"
 
 import { useCallback, useRef, useState } from "react"
-import { format } from "date-fns"
 import type { SupabaseClient } from "@supabase/supabase-js"
 import { toast } from "sonner"
 import type { CalendarEvent, Bed } from "@/components/calendar/timeline-row"
 
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
 export interface MoveState {
-  /** The reservation event being dragged */
   event: CalendarEvent
-  /** Pointer id for capture tracking */
   pointerId: number
-  /** X where the pointer was pressed (for delta calc) */
   startX: number
-  /** Bed the event originated from */
   sourceBedId: string
 }
 
@@ -39,7 +31,6 @@ export interface UseCalendarInteractionOptions {
   setEvents: React.Dispatch<React.SetStateAction<CalendarEvent[]>>
   isResizing: boolean
   confirmingReservationId: string | null
-  /** Ref so the hook always reads the latest value without needing to be re-created */
   isBulkModeRef: React.MutableRefObject<boolean>
   captureRect: (id: string, el: HTMLElement | null) => void
   pendingFlipIds: React.MutableRefObject<string[]>
@@ -47,9 +38,10 @@ export interface UseCalendarInteractionOptions {
   onMoveComplete: () => Promise<void>
 }
 
-// ---------------------------------------------------------------------------
-// Hook
-// ---------------------------------------------------------------------------
+function overlaps(a: CalendarEvent, b: CalendarEvent) {
+  return a.starts_on < b.ends_on && a.ends_on > b.starts_on
+}
+
 export function useCalendarInteraction({
   supabase,
   events,
@@ -62,252 +54,142 @@ export function useCalendarInteraction({
   blockRefs,
   onMoveComplete,
 }: UseCalendarInteractionOptions) {
-  const [moveState, setMoveState]             = useState<MoveState | null>(null)
+  const [moveState, setMoveState] = useState<MoveState | null>(null)
   const [dropTargetBedId, setDropTargetBedId] = useState<string | null>(null)
   const [movingReservationId, setMovingReservationId] = useState<string | null>(null)
-  const [moveConflict, setMoveConflict]       = useState(false)
-  const [creatingRange, setCreatingRange]     = useState<CreatingRange | null>(null)
-
-  // Ref to the source element that holds pointer capture
+  const [moveConflict, setMoveConflict] = useState(false)
+  const [creatingRange, setCreatingRange] = useState<CreatingRange | null>(null)
   const captureElRef = useRef<HTMLElement | null>(null)
 
-  // -------------------------------------------------------------------------
-  // beginMove — called from onPointerDown on a reservation button
-  // -------------------------------------------------------------------------
-  const beginMove = useCallback(
-    (
-      event: CalendarEvent,
-      pointerEvent: React.PointerEvent<HTMLElement>,
-    ) => {
-      if (
-        event.event_type !== "reservation" ||
-        isResizing ||
-        confirmingReservationId ||
-        isBulkModeRef.current
-      ) return
+  const beginMove = useCallback((event: CalendarEvent, pointerEvent: React.PointerEvent<HTMLElement>) => {
+    if (event.event_type !== "reservation" || isResizing || confirmingReservationId || isBulkModeRef.current) return
+    pointerEvent.preventDefault()
+    pointerEvent.stopPropagation()
+    pointerEvent.currentTarget.setPointerCapture(pointerEvent.pointerId)
+    captureElRef.current = pointerEvent.currentTarget
+    setMoveState({ event, pointerId: pointerEvent.pointerId, startX: pointerEvent.clientX, sourceBedId: event.bed_id })
+    setDropTargetBedId(null)
+    setMoveConflict(false)
+  }, [confirmingReservationId, isBulkModeRef, isResizing])
 
-      pointerEvent.preventDefault()
-      pointerEvent.stopPropagation()
-      pointerEvent.currentTarget.setPointerCapture(pointerEvent.pointerId)
-      captureElRef.current = pointerEvent.currentTarget
+  // Pointer movement is deliberately local-only. The visible range already has
+  // reservations and blocks, so conflict feedback requires no network request.
+  // The database remains authoritative and is checked once on pointer-up.
+  const updateMove = useCallback((pointerEvent: React.PointerEvent<HTMLElement>, beds: Bed[]) => {
+    if (!moveState || moveState.pointerId !== pointerEvent.pointerId) return
+    pointerEvent.preventDefault()
 
-      setMoveState({
-        event,
-        pointerId: pointerEvent.pointerId,
-        startX: pointerEvent.clientX,
-        sourceBedId: event.bed_id,
-      })
-      setDropTargetBedId(null)
-    },
-    [isResizing, confirmingReservationId, isBulkModeRef],
-  )
+    const captured = captureElRef.current
+    if (captured?.hasPointerCapture(pointerEvent.pointerId)) captured.releasePointerCapture(pointerEvent.pointerId)
+    const target = document.elementFromPoint(pointerEvent.clientX, pointerEvent.clientY)
+    if (captured) captured.setPointerCapture(pointerEvent.pointerId)
 
-  // -------------------------------------------------------------------------
-  // updateMove — called from onPointerMove on the same element
-  // Uses elementFromPoint to detect which bed row the pointer is over
-  // Validates availability in real-time and shows conflict state
-  // -------------------------------------------------------------------------
-  const updateMove = useCallback(
-    async (pointerEvent: React.PointerEvent<HTMLElement>, beds: Bed[]) => {
-      if (!moveState || moveState.pointerId !== pointerEvent.pointerId) return
-      pointerEvent.preventDefault()
+    let node: Element | null = target
+    let foundBedId: string | null = null
+    while (node) {
+      const value = node.getAttribute("data-bed-id")
+      if (value) { foundBedId = value; break }
+      node = node.parentElement
+    }
 
-      // Release capture temporarily to hit-test the element underneath
-      const el = captureElRef.current
-      if (el) el.releasePointerCapture(pointerEvent.pointerId)
+    const validTarget = foundBedId && beds.some((bed) => bed.id === foundBedId) ? foundBedId : null
+    const nextDropTarget = validTarget !== moveState.sourceBedId ? validTarget : null
+    setDropTargetBedId(nextDropTarget)
 
-      const target = document.elementFromPoint(pointerEvent.clientX, pointerEvent.clientY)
+    if (!nextDropTarget) { setMoveConflict(false); return }
+    const conflict = events.some((event) => event.bed_id === nextDropTarget && event.event_id !== moveState.event.event_id && overlaps(event, moveState.event))
+    setMoveConflict(conflict)
+  }, [events, moveState])
 
-      if (el) el.setPointerCapture(pointerEvent.pointerId)
-
-      // Walk up DOM looking for data-bed-id
-      let node: Element | null = target
-      let foundBedId: string | null = null
-      while (node) {
-        const attr = node.getAttribute("data-bed-id")
-        if (attr) { foundBedId = attr; break }
-        node = node.parentElement
-      }
-
-      const nextDropTarget = foundBedId !== moveState.sourceBedId ? foundBedId : null
-      setDropTargetBedId(nextDropTarget)
-
-      // Validate availability for the target bed if changed
-      if (nextDropTarget && nextDropTarget !== moveState.sourceBedId) {
-        const targetBed = beds.find((b) => b.id === nextDropTarget)
-        if (targetBed) {
-          const { data: available } = await supabase.rpc(
-            "is_booking_inventory_available",
-            {
-              p_bed_id:                   targetBed.id,
-              p_room_id:                  targetBed.room.id,
-              p_location_id:              targetBed.room.location_id,
-              p_check_in:                 moveState.event.starts_on,
-              p_check_out:                moveState.event.ends_on,
-              p_exclude_reservation_id:   moveState.event.event_id,
-            },
-          )
-          setMoveConflict(!available)
-        }
-      } else {
-        setMoveConflict(false)
-      }
-    },
-    [moveState, supabase],
-  )
-
-  // -------------------------------------------------------------------------
-  // commitMove — called from onPointerUp
-  // -------------------------------------------------------------------------
-  const commitMove = useCallback(
-    async (pointerEvent: React.PointerEvent<HTMLElement>, beds: Bed[]) => {
-      if (!moveState || moveState.pointerId !== pointerEvent.pointerId) {
-        cancelMove()
-        return
-      }
-      pointerEvent.preventDefault()
-      pointerEvent.stopPropagation()
-
-      if (captureElRef.current?.hasPointerCapture(pointerEvent.pointerId)) {
-        captureElRef.current.releasePointerCapture(pointerEvent.pointerId)
-      }
-
-      const currentDropTarget = dropTargetBedId
-      const draggedEvent      = moveState.event
-
-      // Clear move state immediately so UI is responsive
-      setMoveState(null)
-      setDropTargetBedId(null)
-      captureElRef.current = null
-
-      // No target or same bed — nothing to do
-      const targetBed = beds.find((b) => b.id === currentDropTarget)
-      if (!targetBed || targetBed.id === draggedEvent.bed_id) return
-
-      // -----------------------------------------------------------------------
-      // Network: check availability then update
-      // -----------------------------------------------------------------------
-      setMovingReservationId(draggedEvent.event_id)
-
-      const { data: available, error: availabilityError } = await supabase.rpc(
-        "is_booking_inventory_available",
-        {
-          p_bed_id:                   targetBed.id,
-          p_room_id:                  targetBed.room.id,
-          p_location_id:              targetBed.room.location_id,
-          p_check_in:                 draggedEvent.starts_on,
-          p_check_out:                draggedEvent.ends_on,
-          p_exclude_reservation_id:   draggedEvent.event_id,
-        },
-      )
-
-      if (availabilityError) {
-        toast.error("No fue posible validar la disponibilidad")
-        setMovingReservationId(null)
-        return
-      }
-      if (!available) {
-        toast.error("La cama seleccionada no está disponible para esas fechas")
-        setMovingReservationId(null)
-        return
-      }
-
-      const previousEvents = events
-
-      // FLIP: capture before optimistic update
-      captureRect(draggedEvent.event_id, blockRefs.current.get(draggedEvent.event_id) ?? null)
-      pendingFlipIds.current.push(draggedEvent.event_id)
-
-      setEvents((current) =>
-        current.map((e) =>
-          e.event_id === draggedEvent.event_id && e.event_type === "reservation"
-            ? { ...e, bed_id: targetBed.id, room_id: targetBed.room.id, location_id: targetBed.room.location_id }
-            : e,
-        ),
-      )
-
-      const { error: updateError } = await supabase
-        .from("reservations")
-        .update({
-          bed_id:       targetBed.id,
-          room_id:      targetBed.room.id,
-          location_id:  targetBed.room.location_id,
-          booking_type: "BED",
-        })
-        .eq("id", draggedEvent.event_id)
-
-      if (updateError) {
-        // FLIP: capture rollback position and animate back
-        captureRect(draggedEvent.event_id, blockRefs.current.get(draggedEvent.event_id) ?? null)
-        pendingFlipIds.current.push(draggedEvent.event_id)
-        setEvents(previousEvents)
-        toast.error("El movimiento fue rechazado y se restauró la reserva")
-      } else {
-        toast.success(
-          `Reserva movida a Hab. ${targetBed.room.room_number} · ${targetBed.bed_number}`,
-        )
-        await onMoveComplete()
-      }
-
-      setMovingReservationId(null)
-    },
-    [
-      moveState,
-      dropTargetBedId,
-      events,
-      supabase,
-      captureRect,
-      pendingFlipIds,
-      blockRefs,
-      setEvents,
-      onMoveComplete,
-    ],
-  )
-
-  // -------------------------------------------------------------------------
-  // cancelMove — pointer cancel or escape
-  // -------------------------------------------------------------------------
   const cancelMove = useCallback(() => {
     setMoveState(null)
     setDropTargetBedId(null)
+    setMoveConflict(false)
     captureElRef.current = null
   }, [])
 
-  // -------------------------------------------------------------------------
-  // Creation callbacks — wired from CreationSelection
-  // -------------------------------------------------------------------------
-  const beginCreation = useCallback((range: CreatingRange) => {
-    setCreatingRange(range)
-  }, [])
+  const commitMove = useCallback(async (pointerEvent: React.PointerEvent<HTMLElement>, beds: Bed[]) => {
+    if (!moveState || moveState.pointerId !== pointerEvent.pointerId) { cancelMove(); return }
+    pointerEvent.preventDefault()
+    pointerEvent.stopPropagation()
 
-  const abortCreation = useCallback(() => {
-    setCreatingRange(null)
-  }, [])
+    if (captureElRef.current?.hasPointerCapture(pointerEvent.pointerId)) captureElRef.current.releasePointerCapture(pointerEvent.pointerId)
 
-  const commitCreation = useCallback((range: CreatingRange) => {
-    setCreatingRange(null)
-    // Caller (page.tsx) will handle opening the dialog with preselected dates
-  }, [])
+    const currentDropTarget = dropTargetBedId
+    const draggedEvent = moveState.event
+    const knownConflict = moveConflict
+    setMoveState(null)
+    setDropTargetBedId(null)
+    setMoveConflict(false)
+    captureElRef.current = null
 
-  // Expose dragging event for move preview rendering in target bed row
+    const targetBed = beds.find((bed) => bed.id === currentDropTarget)
+    if (!targetBed || targetBed.id === draggedEvent.bed_id) return
+    if (knownConflict) { toast.error("La cama seleccionada tiene un conflicto visible para esas fechas"); return }
+
+    setMovingReservationId(draggedEvent.event_id)
+
+    // One authoritative availability check per completed drag, never per pointer move.
+    const { data: available, error: availabilityError } = await supabase.rpc("is_booking_inventory_available", {
+      p_bed_id: targetBed.id,
+      p_room_id: targetBed.room.id,
+      p_location_id: targetBed.room.location_id,
+      p_check_in: draggedEvent.starts_on,
+      p_check_out: draggedEvent.ends_on,
+      p_exclude_reservation_id: draggedEvent.event_id,
+    })
+
+    if (availabilityError) {
+      toast.error("No fue posible validar la disponibilidad")
+      setMovingReservationId(null)
+      return
+    }
+    if (!available) {
+      toast.error("La cama seleccionada no está disponible para esas fechas")
+      setMovingReservationId(null)
+      return
+    }
+
+    const previousEvents = events
+    captureRect(draggedEvent.event_id, blockRefs.current.get(draggedEvent.event_id) ?? null)
+    pendingFlipIds.current.push(draggedEvent.event_id)
+    setEvents((current) => current.map((event) => event.event_id === draggedEvent.event_id && event.event_type === "reservation" ? { ...event, bed_id: targetBed.id, room_id: targetBed.room.id, location_id: targetBed.room.location_id } : event))
+
+    const { error: updateError } = await supabase.from("reservations").update({
+      bed_id: targetBed.id,
+      room_id: targetBed.room.id,
+      location_id: targetBed.room.location_id,
+      booking_type: "BED",
+    }).eq("id", draggedEvent.event_id)
+
+    if (updateError) {
+      captureRect(draggedEvent.event_id, blockRefs.current.get(draggedEvent.event_id) ?? null)
+      pendingFlipIds.current.push(draggedEvent.event_id)
+      setEvents(previousEvents)
+      toast.error("El movimiento fue rechazado y se restauró la reserva")
+    } else {
+      toast.success(`Reserva movida a Hab. ${targetBed.room.room_number} · ${targetBed.bed_number}`)
+      await onMoveComplete()
+    }
+    setMovingReservationId(null)
+  }, [blockRefs, cancelMove, captureRect, dropTargetBedId, events, moveConflict, moveState, onMoveComplete, pendingFlipIds, setEvents, supabase])
+
+  const beginCreation = useCallback((range: CreatingRange) => { setCreatingRange(range) }, [])
+  const abortCreation = useCallback(() => { setCreatingRange(null) }, [])
+  const commitCreation = useCallback((_range: CreatingRange) => { setCreatingRange(null) }, [])
   const draggingEvent = moveState?.event ?? null
 
   return {
-    // State exposed to TimelineGrid/TimelineRow
-    draggingEventId:     moveState?.event.event_id ?? null,
+    draggingEventId: moveState?.event.event_id ?? null,
     dropTargetBedId,
     movingReservationId,
     moveConflict,
     creatingRange,
     draggingEvent,
-
-    // Handlers — Move
     beginMove,
     updateMove,
     commitMove,
     cancelMove,
-
-    // Handlers — Creation
     beginCreation,
     abortCreation,
     commitCreation,
