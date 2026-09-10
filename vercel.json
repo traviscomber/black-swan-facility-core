@@ -3,7 +3,7 @@
   "crons": [],
   "git": {
     "deploymentEnabled": {
-      "feat/booking-calendar-low-cpu-bedbooking": false
+      "feat/booking-calendar-low-cpu-bedbooking": true
     }
   }
 }
