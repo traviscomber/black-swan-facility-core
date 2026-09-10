@@ -99,6 +99,12 @@ const copy = {
 }>
 
 const dateLocales = { en: enUS, es, de } satisfies Record<Language, typeof enUS>
+const locationTones = [
+  "border-l-emerald-500/50 bg-emerald-500/5",
+  "border-l-amber-500/50 bg-amber-500/5",
+  "border-l-cyan-500/50 bg-cyan-500/5",
+  "border-l-violet-500/50 bg-violet-500/5",
+]
 type InventoryGroup = { locationId: string; locationName: string; rooms: Array<{ roomId: string; roomNumber: string; beds: Bed[] }> }
 
 export function TimelineGrid(props: TimelineGridProps) {
@@ -211,9 +217,9 @@ export function TimelineGrid(props: TimelineGridProps) {
         </div>}
       </div>
 
-      <div ref={scrollRef} className="overflow-auto">
+      <div ref={scrollRef} data-booking-calendar className="overflow-auto">
         <div style={{ minWidth: totalWidth }}>
-          <div className="sticky top-0 z-30 flex border-b bg-background shadow-sm">
+          <div className="sticky top-0 z-30 flex border-b bg-background">
             <div className="sticky left-0 z-40 flex shrink-0 items-center gap-2 border-r bg-background px-3 text-xs font-semibold" style={{ width: LABEL_WIDTH, height: 42 }}>
               {visibleReservationEvents.length > 0 && <button type="button" onClick={isBulkMode ? onClearSelection : onSelectAll} className="shrink-0 text-muted-foreground transition hover:text-foreground" aria-label={isBulkMode ? c.deselectAll : c.selectAll}>{isBulkMode ? <CheckSquare className="h-4 w-4 text-primary" /> : <Square className="h-4 w-4" />}</button>}
               <span>{c.rooms}</span>{hydrated && <span className="ml-auto text-[9px] font-normal text-muted-foreground">{c.savedView}</span>}
@@ -231,15 +237,15 @@ export function TimelineGrid(props: TimelineGridProps) {
             </div>
           </div>
 
-          {loading ? <div className="p-12 text-center text-muted-foreground">{c.loading}</div> : visibleBeds.length === 0 ? <div className="p-12 text-center text-muted-foreground">{c.empty}</div> : inventoryGroups.map((location) => {
+          {loading ? <div className="p-12 text-center text-muted-foreground">{c.loading}</div> : visibleBeds.length === 0 ? <div className="p-12 text-center text-muted-foreground">{c.empty}</div> : inventoryGroups.map((location, locationIndex) => {
             const locationCollapsed = collapsedLocations.has(location.locationId)
             const bedCount = location.rooms.reduce((sum, room) => sum + room.beds.length, 0)
-            return <div key={location.locationId} className="[content-visibility:auto] [contain-intrinsic-size:180px]">
-              <button type="button" onClick={() => toggleStoredSet(location.locationId, "collapsedLocations")} className="sticky left-0 z-20 flex h-8 w-full items-center border-b bg-muted/70 text-left text-[11px] font-semibold backdrop-blur"><span className="sticky left-0 flex h-full items-center gap-2 border-r px-3" style={{ width: LABEL_WIDTH }}>{locationCollapsed ? <ChevronRight className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}<Building2 className="h-3.5 w-3.5" /><span className="truncate">{location.locationName}</span><span className="ml-auto text-[9px] font-normal text-muted-foreground">{location.rooms.length} {c.roomAbbr} · {bedCount} {c.beds}</span></span></button>
+            return <div key={location.locationId} data-booking-location={location.locationId} className={`${locationTones[locationIndex % locationTones.length]} border-l-2 [content-visibility:auto] [contain-intrinsic-size:180px]`}>
+              <button type="button" onClick={() => toggleStoredSet(location.locationId, "collapsedLocations")} className="sticky left-0 z-20 flex h-8 w-full items-center border-b bg-muted/55 text-left text-[11px] font-semibold"><span className="sticky left-0 flex h-full items-center gap-2 border-r px-3" style={{ width: LABEL_WIDTH }}>{locationCollapsed ? <ChevronRight className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}<Building2 className="h-3.5 w-3.5" /><span className="truncate">{location.locationName}</span><span className="ml-auto text-[9px] font-normal text-muted-foreground">{location.rooms.length} {c.roomAbbr} · {bedCount} {c.beds}</span></span></button>
               {!locationCollapsed && location.rooms.map((room) => {
                 const roomCollapsed = collapsedRooms.has(room.roomId)
-                return <div key={room.roomId} className="[content-visibility:auto] [contain-intrinsic-size:80px]">
-                  <button type="button" onClick={() => toggleStoredSet(room.roomId, "collapsedRooms")} className="sticky left-0 z-20 flex h-7 w-full items-center border-b bg-background/95 text-left text-[11px] font-medium"><span className="sticky left-0 flex h-full items-center gap-2 border-r pl-6 pr-3" style={{ width: LABEL_WIDTH }}>{roomCollapsed ? <ChevronRight className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}<DoorOpen className="h-3.5 w-3.5" /><span>{c.roomPrefix} {room.roomNumber}</span><span className="ml-auto text-[9px] text-muted-foreground">{room.beds.length}</span></span></button>
+                return <div key={room.roomId} data-booking-room={room.roomId} className="[content-visibility:auto] [contain-intrinsic-size:80px]">
+                  <button type="button" onClick={() => toggleStoredSet(room.roomId, "collapsedRooms")} className="sticky left-0 z-20 flex h-7 w-full items-center border-b bg-background/90 text-left text-[11px] font-medium"><span className="sticky left-0 flex h-full items-center gap-2 border-r pl-6 pr-3" style={{ width: LABEL_WIDTH }}>{roomCollapsed ? <ChevronRight className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}<DoorOpen className="h-3.5 w-3.5" /><span>{c.roomPrefix} {room.roomNumber}</span><span className="ml-auto text-[9px] text-muted-foreground">{room.beds.length}</span></span></button>
                   {!roomCollapsed && room.beds.map((bed) => <TimelineRow key={bed.id} bed={bed} bedEvents={eventsByBed.get(bed.id) ?? []} {...sharedRowProps} />)}
                 </div>
               })}
