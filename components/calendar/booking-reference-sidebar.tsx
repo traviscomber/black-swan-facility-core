@@ -79,10 +79,7 @@ function NavLink({ href, active, icon: Icon, children, inset = false }: {
   inset?: boolean
 }) {
   return (
-    <Link
-      href={href}
-      className={`booking-reference-nav-link ${active ? "is-active" : ""} ${inset ? "is-inset" : ""}`}
-    >
+    <Link href={href} className={`booking-reference-nav-link ${active ? "is-active" : ""} ${inset ? "is-inset" : ""}`}>
       {Icon ? <Icon className="h-4 w-4 shrink-0" /> : <span className="w-4 shrink-0" />}
       <span className="truncate">{children}</span>
     </Link>
@@ -107,28 +104,23 @@ export function BookingReferenceSidebar() {
 
       <nav className="booking-reference-nav">
         <NavLink href={href("/bookings/calendar")} active={active("/bookings/calendar")} icon={CalendarDays}>{c.calendar}</NavLink>
-
         <div className="booking-reference-nav-group">
           <div className="booking-reference-nav-parent"><LayoutList className="h-4 w-4" /><span>{c.bookings}</span><ChevronDown className="ml-auto h-3.5 w-3.5" /></div>
           <NavLink href={href("/bookings")} active={pathname === href("/bookings")} inset>{c.reservationList}</NavLink>
           <NavLink href={href("/bookings/guests")} active={active("/bookings/guests")} inset>{c.clients}</NavLink>
         </div>
-
         <div className="booking-reference-nav-group">
           <div className="booking-reference-nav-parent"><BadgeDollarSign className="h-4 w-4" /><span>{c.priceList}</span><ChevronDown className="ml-auto h-3.5 w-3.5" /></div>
           <NavLink href={href("/bookings/charges")} active={active("/bookings/charges")} inset>{c.charges}</NavLink>
           <NavLink href={href("/bookings/extras")} active={active("/bookings/extras")} inset>{c.additionalServices}</NavLink>
         </div>
-
         <NavLink href={href("/bookings/audit")} active={active("/bookings/audit")} icon={SlidersHorizontal}>{c.reports}</NavLink>
         <NavLink href={href("/bookings/invoices")} active={active("/bookings/invoices")} icon={ReceiptText}>{c.invoices}</NavLink>
-
         <div className="booking-reference-nav-group">
           <div className="booking-reference-nav-parent"><Settings2 className="h-4 w-4" /><span>{c.reservationSystem}</span><ChevronDown className="ml-auto h-3.5 w-3.5" /></div>
           <NavLink href={href("/bookings/facilities")} active={active("/bookings/facilities")} inset>{c.properties}</NavLink>
           <NavLink href={href("/bookings/blocks")} active={active("/bookings/blocks")} inset>{c.blocks}</NavLink>
         </div>
-
         <NavLink href={href("/bookings/activities")} active={active("/bookings/activities")} icon={Sparkles}>{c.operations}</NavLink>
         <NavLink href={href("/employees")} active={active("/employees")} icon={Users}>{c.employees}</NavLink>
       </nav>
