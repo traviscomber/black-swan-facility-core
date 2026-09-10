@@ -1,7 +1,7 @@
 /* BedBooking-inspired density layer. Scoped to calendar route only. */
 .booking-calendar-bedbooking-shell {
   min-height: 100dvh;
-  background: hsl(var(--background));
+  background: var(--background);
 }
 
 .booking-calendar-bedbooking-shell > div {
@@ -38,6 +38,7 @@
   display: none;
 }
 
+/* Search + property + status + range become one compact rail. */
 .booking-calendar-bedbooking-shell > div > div > :nth-child(4) {
   border-radius: 0 !important;
   box-shadow: none !important;
@@ -56,16 +57,35 @@
   padding-block: 8px !important;
 }
 
+/* The booking board owns the viewport and scrolls internally. */
 .booking-calendar-bedbooking-shell [data-booking-calendar] {
   min-height: calc(100dvh - 210px);
+  max-height: calc(100dvh - 210px);
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
 }
 
 .booking-calendar-bedbooking-shell [data-booking-calendar] button {
   touch-action: manipulation;
 }
 
+/* Property bands are intentionally subtle: enough visual grouping without
+   competing with reservation status colors. */
+.booking-calendar-bedbooking-shell [data-booking-location] {
+  contain: layout paint style;
+}
+
+.booking-calendar-bedbooking-shell [data-booking-room] {
+  contain: layout style;
+}
+
 @media (max-width: 1023px) {
   .booking-calendar-bedbooking-shell > div {
     padding: 8px !important;
+  }
+
+  .booking-calendar-bedbooking-shell [data-booking-calendar] {
+    min-height: calc(100dvh - 250px);
+    max-height: calc(100dvh - 250px);
   }
 }
