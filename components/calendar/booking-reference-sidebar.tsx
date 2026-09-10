@@ -2,19 +2,8 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { useState } from "react"
-import {
-  BadgeDollarSign,
-  CalendarDays,
-  ChevronDown,
-  ChevronLeft,
-  LayoutList,
-  ReceiptText,
-  Settings2,
-  SlidersHorizontal,
-  Sparkles,
-  Users,
-} from "lucide-react"
+import { useEffect, useState } from "react"
+import { BadgeDollarSign, CalendarDays, ChevronDown, ChevronLeft, LayoutList, ReceiptText, Settings2, SlidersHorizontal, Sparkles, Users } from "lucide-react"
 import { useLanguage } from "@/lib/hooks/use-language"
 
 const copy = {
@@ -33,6 +22,14 @@ function NavGroup({ label, icon: Icon, open, onToggle, children }: { label: stri
   return <div className={`booking-reference-nav-group ${open ? "is-open" : ""}`}><button type="button" className="booking-reference-nav-parent" aria-expanded={open} onClick={onToggle}><Icon className="booking-reference-nav-icon h-4 w-4 shrink-0" /><span className="booking-reference-nav-label truncate">{label}</span><ChevronDown className="booking-reference-chevron ml-auto h-3.5 w-3.5" /></button>{open && <div className="booking-reference-nav-children">{children}</div>}</div>
 }
 
+function groupForPath(pathname: string): GroupKey | null {
+  if (/\/bookings\/(guests)?\/?$/.test(pathname) || /\/bookings\/?$/.test(pathname)) return "bookings"
+  if (/\/bookings\/(charges|extras)(\/|$)/.test(pathname)) return "prices"
+  if (/\/bookings\/audit(\/|$)/.test(pathname)) return "reports"
+  if (/\/bookings\/(facilities|blocks)(\/|$)/.test(pathname)) return "reservation"
+  return null
+}
+
 export function BookingReferenceSidebar() {
   const pathname = usePathname() || "/"
   const { language } = useLanguage()
@@ -41,7 +38,14 @@ export function BookingReferenceSidebar() {
   const href = (path: string) => `${base}${path}`
   const active = (path: string) => pathname === href(path) || pathname.startsWith(`${href(path)}/`)
   const [collapsed, setCollapsed] = useState(false)
-  const [openGroups, setOpenGroups] = useState<Set<GroupKey>>(() => new Set(["reservation"]))
+  const [openGroups, setOpenGroups] = useState<Set<GroupKey>>(() => new Set([groupForPath(pathname) ?? "reservation"]))
+
+  useEffect(() => {
+    const current = groupForPath(pathname)
+    if (!current) return
+    setOpenGroups((groups) => groups.has(current) ? groups : new Set([...groups, current]))
+  }, [pathname])
+
   function toggleGroup(key: GroupKey) { setOpenGroups((current) => { const next = new Set(current); if (next.has(key)) next.delete(key); else next.add(key); return next }) }
 
   return <aside className={`booking-reference-sidebar ${collapsed ? "is-collapsed" : ""}`} aria-label="Booking navigation">
