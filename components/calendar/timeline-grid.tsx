@@ -6,6 +6,7 @@ import { de, enUS, es } from "date-fns/locale"
 import { BedDouble, Building2, CheckSquare, ChevronDown, ChevronRight, CircleDollarSign, ConciergeBell, DoorOpen, Flag, Keyboard, Layers3, Rows3, Sparkles, Square, TriangleAlert, Wrench } from "lucide-react"
 import { CardContent } from "@/components/ui/card"
 import { TimelineRow, DAY_WIDTH, LABEL_WIDTH, type Bed, type CalendarEvent, type ResizeState, type TimelineRowProps } from "./timeline-row"
+import { ReservationQuickInspector } from "./reservation-quick-inspector"
 import type { ReservationResizeEdge } from "@/app/bookings/calendar/use-reservation-resize-state"
 import { useCalendarAutoscroll } from "@/app/bookings/calendar/use-calendar-autoscroll"
 import { CalendarDailyOperationsSummary } from "@/components/calendar/calendar-daily-operations-summary"
@@ -69,6 +70,14 @@ const layerIcons: Array<{ key: CalendarLayerKey; Icon: typeof BedDouble }> = [
   { key: "maintenance", Icon: Wrench },
 ]
 
+const propertyBandClasses = [
+  "bg-emerald-950/20 border-l-emerald-500/50",
+  "bg-amber-950/20 border-l-amber-500/50",
+  "bg-violet-950/20 border-l-violet-500/50",
+  "bg-cyan-950/20 border-l-cyan-500/50",
+  "bg-rose-950/20 border-l-rose-500/50",
+]
+
 const copy = {
   en: {
     layers: { milestones: "Milestones", housekeeping: "Housekeeping", hospitality: "Hospitality", services: "Services", activities: "Activities", payments: "Payments", issues: "Issues", maintenance: "Maintenance" },
@@ -130,6 +139,7 @@ export function TimelineGrid(props: TimelineGridProps) {
   const collapsedLocations = useMemo(() => new Set(preferences.collapsedLocations), [preferences.collapsedLocations])
   const collapsedRooms = useMemo(() => new Set(preferences.collapsedRooms), [preferences.collapsedRooms])
   const [showKeyboardHelp, setShowKeyboardHelp] = useState(false)
+  const [inspectedReservation, setInspectedReservation] = useState<CalendarEvent | null>(null)
 
   const inventoryGroups = useMemo<InventoryGroup[]>(() => {
     const locations = new Map<string, InventoryGroup>()
@@ -184,6 +194,10 @@ export function TimelineGrid(props: TimelineGridProps) {
       return { ...current, [key]: Array.from(next) }
     })
   }
+  function inspectReservation(event: CalendarEvent) {
+    if (event.event_type !== "reservation") return
+    setInspectedReservation(event)
+  }
 
   const sharedRowProps: Omit<TimelineRowProps, "bed" | "bedEvents"> = {
     dates, timelineWidth, isTouchDevice, activeLayers, selectedIds, conflictIds, isBulkMode, onToggleSelect,
@@ -191,13 +205,13 @@ export function TimelineGrid(props: TimelineGridProps) {
     onEventPointerMove, onEventPointerUp, onEventPointerCancel, resizeState, resizingReservationId,
     confirmingReservationId, isResizing, resizeConflict, onBeginResize, onMoveResize, onFinishResize, onClearResize,
     blockRefCallback, eventGeometry, geometryForDates, onRowClick, creatingRange, onCreationStart, onCreationAbort,
-    onCreationCommit, onOpenReservation, onOpenBlock,
+    onCreationCommit, onOpenReservation: inspectReservation, onOpenBlock,
   }
 
   return (
     <CardContent className="p-0">
       <div className="border-b bg-background">
-        <div className="flex min-h-10 flex-wrap items-center gap-2 px-3 py-1.5">
+        <div className="flex min-h-9 flex-wrap items-center gap-2 px-3 py-1">
           <button type="button" onClick={() => setPreferences((current) => ({ ...current, showLayerToolbar: !current.showLayerToolbar }))} className={`inline-flex items-center gap-1 rounded-[3px] border px-2 py-1 text-[11px] font-medium transition ${preferences.showLayerToolbar ? "border-primary bg-primary text-primary-foreground" : "bg-background hover:bg-muted"}`}><Layers3 className="h-3.5 w-3.5" />{c.layersButton}</button>
           <button type="button" onClick={() => setPreferences((current) => ({ ...current, showSummary: !current.showSummary }))} className={`inline-flex items-center gap-1 rounded-[3px] border px-2 py-1 text-[11px] transition ${preferences.showSummary ? "border-primary/40 bg-primary/10 text-primary" : "bg-background text-muted-foreground hover:bg-muted"}`}><Rows3 className="h-3.5 w-3.5" />{c.summary}</button>
           <button type="button" onClick={() => setShowKeyboardHelp((current) => !current)} className="inline-flex items-center gap-1 rounded-[3px] border bg-background px-2 py-1 text-[11px] text-muted-foreground hover:bg-muted"><Keyboard className="h-3.5 w-3.5" />{c.shortcuts}</button>
@@ -214,7 +228,7 @@ export function TimelineGrid(props: TimelineGridProps) {
       <div ref={scrollRef} className="overflow-auto">
         <div style={{ minWidth: totalWidth }}>
           <div className="sticky top-0 z-30 flex border-b bg-background shadow-sm">
-            <div className="sticky left-0 z-40 flex shrink-0 items-center gap-2 border-r bg-background px-3 text-xs font-semibold" style={{ width: LABEL_WIDTH, height: 42 }}>
+            <div className="sticky left-0 z-40 flex shrink-0 items-center gap-2 border-r bg-background px-3 text-xs font-semibold" style={{ width: LABEL_WIDTH, height: 38 }}>
               {visibleReservationEvents.length > 0 && <button type="button" onClick={isBulkMode ? onClearSelection : onSelectAll} className="shrink-0 text-muted-foreground transition hover:text-foreground" aria-label={isBulkMode ? c.deselectAll : c.selectAll}>{isBulkMode ? <CheckSquare className="h-4 w-4 text-primary" /> : <Square className="h-4 w-4" />}</button>}
               <span>{c.rooms}</span>{hydrated && <span className="ml-auto text-[9px] font-normal text-muted-foreground">{c.savedView}</span>}
             </div>
@@ -223,7 +237,7 @@ export function TimelineGrid(props: TimelineGridProps) {
                 const weekend = date.getDay() === 0 || date.getDay() === 6
                 const monthBoundary = index === 0 || date.getDate() === 1
                 const today = isSameDay(date, new Date())
-                return <div key={date.toISOString()} className={`relative flex flex-col items-center justify-center border-r text-center ${weekend ? "bg-muted/35" : ""} ${today ? "border-x border-amber-400 bg-amber-50" : ""} ${monthBoundary ? "border-l-2 border-l-foreground/20" : ""}`} style={{ height: 42 }}>
+                return <div key={date.toISOString()} className={`relative flex flex-col items-center justify-center border-r text-center ${weekend ? "bg-muted/35" : ""} ${today ? "border-x border-primary/50 bg-primary/10" : ""} ${monthBoundary ? "border-l-2 border-l-foreground/20" : ""}`} style={{ height: 38 }}>
                   {monthBoundary && <span className="absolute left-1 top-0 text-[8px] font-semibold uppercase tracking-wide text-muted-foreground">{format(date, "MMM", { locale: dateLocale })}</span>}
                   <div className="text-[9px] uppercase text-muted-foreground">{format(date, "EEE", { locale: dateLocale })}</div><div className="text-sm font-semibold leading-none">{format(date, "dd")}</div>
                 </div>
@@ -231,15 +245,16 @@ export function TimelineGrid(props: TimelineGridProps) {
             </div>
           </div>
 
-          {loading ? <div className="p-12 text-center text-muted-foreground">{c.loading}</div> : visibleBeds.length === 0 ? <div className="p-12 text-center text-muted-foreground">{c.empty}</div> : inventoryGroups.map((location) => {
+          {loading ? <div className="p-12 text-center text-muted-foreground">{c.loading}</div> : visibleBeds.length === 0 ? <div className="p-12 text-center text-muted-foreground">{c.empty}</div> : inventoryGroups.map((location, locationIndex) => {
             const locationCollapsed = collapsedLocations.has(location.locationId)
             const bedCount = location.rooms.reduce((sum, room) => sum + room.beds.length, 0)
-            return <div key={location.locationId} className="[content-visibility:auto] [contain-intrinsic-size:180px]">
-              <button type="button" onClick={() => toggleStoredSet(location.locationId, "collapsedLocations")} className="sticky left-0 z-20 flex h-8 w-full items-center border-b bg-muted/70 text-left text-[11px] font-semibold backdrop-blur"><span className="sticky left-0 flex h-full items-center gap-2 border-r px-3" style={{ width: LABEL_WIDTH }}>{locationCollapsed ? <ChevronRight className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}<Building2 className="h-3.5 w-3.5" /><span className="truncate">{location.locationName}</span><span className="ml-auto text-[9px] font-normal text-muted-foreground">{location.rooms.length} {c.roomAbbr} · {bedCount} {c.beds}</span></span></button>
+            const propertyBand = propertyBandClasses[locationIndex % propertyBandClasses.length]
+            return <div key={location.locationId} className={`border-l-2 [content-visibility:auto] [contain-intrinsic-size:160px] ${propertyBand}`}>
+              <button type="button" onClick={() => toggleStoredSet(location.locationId, "collapsedLocations")} className="sticky left-0 z-20 flex h-7 w-full items-center border-b bg-background/80 text-left text-[11px] font-semibold backdrop-blur"><span className="sticky left-0 flex h-full items-center gap-2 border-r px-3" style={{ width: LABEL_WIDTH }}>{locationCollapsed ? <ChevronRight className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}<Building2 className="h-3.5 w-3.5" /><span className="truncate">{location.locationName}</span><span className="ml-auto text-[9px] font-normal text-muted-foreground">{location.rooms.length} {c.roomAbbr} · {bedCount} {c.beds}</span></span></button>
               {!locationCollapsed && location.rooms.map((room) => {
                 const roomCollapsed = collapsedRooms.has(room.roomId)
-                return <div key={room.roomId} className="[content-visibility:auto] [contain-intrinsic-size:80px]">
-                  <button type="button" onClick={() => toggleStoredSet(room.roomId, "collapsedRooms")} className="sticky left-0 z-20 flex h-7 w-full items-center border-b bg-background/95 text-left text-[11px] font-medium"><span className="sticky left-0 flex h-full items-center gap-2 border-r pl-6 pr-3" style={{ width: LABEL_WIDTH }}>{roomCollapsed ? <ChevronRight className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}<DoorOpen className="h-3.5 w-3.5" /><span>{c.roomPrefix} {room.roomNumber}</span><span className="ml-auto text-[9px] text-muted-foreground">{room.beds.length}</span></span></button>
+                return <div key={room.roomId} className="[content-visibility:auto] [contain-intrinsic-size:72px]">
+                  <button type="button" onClick={() => toggleStoredSet(room.roomId, "collapsedRooms")} className="sticky left-0 z-20 flex h-6 w-full items-center border-b bg-background/95 text-left text-[11px] font-medium"><span className="sticky left-0 flex h-full items-center gap-2 border-r pl-6 pr-3" style={{ width: LABEL_WIDTH }}>{roomCollapsed ? <ChevronRight className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}<DoorOpen className="h-3.5 w-3.5" /><span>{c.roomPrefix} {room.roomNumber}</span><span className="ml-auto text-[9px] text-muted-foreground">{room.beds.length}</span></span></button>
                   {!roomCollapsed && room.beds.map((bed) => <TimelineRow key={bed.id} bed={bed} bedEvents={eventsByBed.get(bed.id) ?? []} {...sharedRowProps} />)}
                 </div>
               })}
@@ -248,6 +263,13 @@ export function TimelineGrid(props: TimelineGridProps) {
           {preferences.showSummary && <CalendarDailyOperationsSummary dates={dates} reservations={visibleReservationEvents} timelineWidth={timelineWidth} />}
         </div>
       </div>
+
+      <ReservationQuickInspector
+        reservation={inspectedReservation}
+        open={Boolean(inspectedReservation)}
+        onOpenChange={(open) => { if (!open) setInspectedReservation(null) }}
+        onOpenFull={(event) => { setInspectedReservation(null); onOpenReservation(event) }}
+      />
     </CardContent>
   )
 }
