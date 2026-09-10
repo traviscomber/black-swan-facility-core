@@ -10,10 +10,13 @@ test("BedBooking verified room nomenclature stays exact", () => {
 })
 
 test("visible BedBooking reference inventory remains captured without guessing unresolved property mappings", () => {
-  assert.equal(VERIFIED_BEDBOOKING_REFERENCE_ROWS.length, 16)
+  assert.equal(VERIFIED_BEDBOOKING_REFERENCE_ROWS.length, 33)
   assert.ok(VERIFIED_BEDBOOKING_REFERENCE_ROWS.some((row) => row.displayName === "TO-Arrayan" && row.guestCapacity === 2))
   assert.ok(VERIFIED_BEDBOOKING_REFERENCE_ROWS.some((row) => row.displayName === "CP-Bandurrias" && row.guestCapacity === 2))
   assert.ok(VERIFIED_BEDBOOKING_REFERENCE_ROWS.some((row) => row.displayName === "CH-Avellano" && row.guestCapacity === 6))
+  assert.ok(VERIFIED_BEDBOOKING_REFERENCE_ROWS.some((row) => row.displayName === "PH3- Prairie House 3" && row.guestCapacity === 2))
+  assert.ok(VERIFIED_BEDBOOKING_REFERENCE_ROWS.some((row) => row.displayName === "PC- Puerto Claro 3" && row.guestCapacity === 2))
+  assert.ok(VERIFIED_BEDBOOKING_REFERENCE_ROWS.some((row) => row.displayName === "Glamping Tent" && row.guestCapacity === 2))
 })
 
 test("unverified rooms fall back to canonical names instead of fabricated BedBooking prefixes", () => {
