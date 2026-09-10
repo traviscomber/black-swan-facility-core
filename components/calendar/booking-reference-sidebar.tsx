@@ -28,7 +28,7 @@ const copy = {
     reports: "Reports and finances", statistics: "Statistics", financialReport: "Financial Report", roomReport: "Room report", occupancyReport: "Occupancy report", localTaxReport: "Local Tax Report", paymentList: "Payment list", registrationBook: "Registration book", exportBookings: "Export bookings",
     invoices: "Invoices", open: "Open", taxes: "Taxes", taxRates: "Tax rates",
     reservationSystem: "Reservation system", paymentMethods: "Payment methods", amenities: "Amenities", notifications: "Notifications", licenseNumber: "License number",
-    salesChannels: "Sales channels", airbnb: "Airbnb", booking: "Booking", iCalendar: "iCalendar", employees: "Employees", profile: "Profile", hide: "Hide", show: "Show", notConfigured: "Not configured yet",
+    salesChannels: "Sales channels", airbnb: "Airbnb", booking: "Booking", iCalendar: "iCalendar", employees: "Employees", profile: "Profile", hide: "Hide", show: "Show", notConfigured: "Not configured yet", backToOs: "Back to Black Swan OS",
   },
   es: {
     calendar: "Calendario", premium: "Premium", bookings: "Reservas", reservationList: "Lista de reservas", clients: "Huéspedes", messageTemplates: "Plantillas de mensajes",
@@ -36,7 +36,7 @@ const copy = {
     reports: "Reportes y finanzas", statistics: "Estadísticas", financialReport: "Reporte financiero", roomReport: "Reporte por habitación", occupancyReport: "Reporte de ocupación", localTaxReport: "Reporte de impuesto local", paymentList: "Lista de pagos", registrationBook: "Libro de registro", exportBookings: "Exportar reservas",
     invoices: "Facturas", open: "Abiertas", taxes: "Impuestos", taxRates: "Tasas de impuesto",
     reservationSystem: "Sistema de reservas", paymentMethods: "Métodos de pago", amenities: "Amenities", notifications: "Notificaciones", licenseNumber: "Número de licencia",
-    salesChannels: "Canales de venta", airbnb: "Airbnb", booking: "Booking", iCalendar: "iCalendar", employees: "Equipo", profile: "Perfil", hide: "Ocultar", show: "Mostrar", notConfigured: "Aún no configurado",
+    salesChannels: "Canales de venta", airbnb: "Airbnb", booking: "Booking", iCalendar: "iCalendar", employees: "Equipo", profile: "Perfil", hide: "Ocultar", show: "Mostrar", notConfigured: "Aún no configurado", backToOs: "Volver a Black Swan OS",
   },
   de: {
     calendar: "Kalender", premium: "Premium", bookings: "Buchungen", reservationList: "Reservierungsliste", clients: "Gäste", messageTemplates: "Nachrichtenvorlagen",
@@ -44,7 +44,7 @@ const copy = {
     reports: "Berichte und Finanzen", statistics: "Statistiken", financialReport: "Finanzbericht", roomReport: "Zimmerbericht", occupancyReport: "Belegungsbericht", localTaxReport: "Lokaler Steuerbericht", paymentList: "Zahlungsliste", registrationBook: "Melderegister", exportBookings: "Buchungen exportieren",
     invoices: "Rechnungen", open: "Offen", taxes: "Steuern", taxRates: "Steuersätze",
     reservationSystem: "Reservierungssystem", paymentMethods: "Zahlungsmethoden", amenities: "Ausstattung", notifications: "Benachrichtigungen", licenseNumber: "Lizenznummer",
-    salesChannels: "Vertriebskanäle", airbnb: "Airbnb", booking: "Booking", iCalendar: "iCalendar", employees: "Mitarbeiter", profile: "Profil", hide: "Ausblenden", show: "Einblenden", notConfigured: "Noch nicht konfiguriert",
+    salesChannels: "Vertriebskanäle", airbnb: "Airbnb", booking: "Booking", iCalendar: "iCalendar", employees: "Mitarbeiter", profile: "Profil", hide: "Ausblenden", show: "Einblenden", notConfigured: "Noch nicht konfiguriert", backToOs: "Zurück zu Black Swan OS",
   },
 } as const
 
@@ -104,7 +104,13 @@ export function BookingReferenceSidebar() {
   function toggleGroup(key: GroupKey) { setOpenGroups((current) => { const next = new Set(current); if (next.has(key)) next.delete(key); else next.add(key); return next }) }
 
   return <aside className={`booking-reference-sidebar ${collapsed ? "is-collapsed" : ""}`} aria-label="Booking navigation" data-booking-reference-sidebar>
-    <div className="booking-reference-brand"><img src="/blackswan-logo.png" alt="Black Swan" className="booking-reference-logo h-5 w-5 object-contain" /><span className="booking-reference-brand-name">BlackSwan</span><span className="booking-reference-brand-pill"><Crown className="h-3 w-3" />{c.premium}</span></div>
+    <div className="booking-reference-brand">
+      <Link href={href("/os")} className="booking-reference-brand-home" aria-label={c.backToOs} title={c.backToOs}>
+        <img src="/blackswan-logo.png" alt="Black Swan" className="booking-reference-logo h-5 w-5 object-contain" />
+        <span className="booking-reference-brand-name">BlackSwan</span>
+      </Link>
+      <span className="booking-reference-brand-pill"><Crown className="h-3 w-3" />{c.premium}</span>
+    </div>
     <nav className="booking-reference-nav">
       <NavLink href={href("/bookings/calendar")} active={active("/bookings/calendar")} icon={CalendarDays}>{c.calendar}</NavLink>
       <NavLink icon={Crown} title={c.notConfigured}>{c.premium}</NavLink>
