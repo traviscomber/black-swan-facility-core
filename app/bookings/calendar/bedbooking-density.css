@@ -1,0 +1,71 @@
+/* BedBooking-inspired density layer. Scoped to calendar route only. */
+.booking-calendar-bedbooking-shell {
+  min-height: 100dvh;
+  background: hsl(var(--background));
+}
+
+.booking-calendar-bedbooking-shell > div {
+  min-height: 100dvh;
+  padding: 10px !important;
+}
+
+.booking-calendar-bedbooking-shell > div > div {
+  max-width: none !important;
+}
+
+.booking-calendar-bedbooking-shell > div > div.space-y-5 > :not([hidden]) ~ :not([hidden]) {
+  margin-top: 8px !important;
+}
+
+/* Calendar first: suppress duplicated KPI bands above the board. */
+.booking-calendar-bedbooking-shell > div > div > :nth-child(2),
+.booking-calendar-bedbooking-shell > div > div > :nth-child(3) {
+  display: none;
+}
+
+.booking-calendar-bedbooking-shell > div > div > :first-child {
+  gap: 8px !important;
+  min-height: 44px;
+  padding-inline: 2px;
+}
+
+.booking-calendar-bedbooking-shell > div > div > :first-child h1 {
+  font-size: 1.25rem !important;
+  line-height: 1.6rem !important;
+}
+
+.booking-calendar-bedbooking-shell > div > div > :first-child p:not(:first-child) {
+  display: none;
+}
+
+.booking-calendar-bedbooking-shell > div > div > :nth-child(4) {
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}
+
+.booking-calendar-bedbooking-shell > div > div > :nth-child(4) > div {
+  padding: 8px !important;
+}
+
+.booking-calendar-bedbooking-shell .overflow-hidden {
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}
+
+.booking-calendar-bedbooking-shell .overflow-hidden > [data-slot="card-header"] {
+  padding-block: 8px !important;
+}
+
+.booking-calendar-bedbooking-shell [data-booking-calendar] {
+  min-height: calc(100dvh - 210px);
+}
+
+.booking-calendar-bedbooking-shell [data-booking-calendar] button {
+  touch-action: manipulation;
+}
+
+@media (max-width: 1023px) {
+  .booking-calendar-bedbooking-shell > div {
+    padding: 8px !important;
+  }
+}
