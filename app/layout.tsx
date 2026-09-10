@@ -13,8 +13,6 @@ const montserrat = Montserrat({
   display: "swap",
 })
 
-export const revalidate = 0
-
 const metadataDescriptions = {
   en: "Blackswan Facility Core internal system for operational management, facility traceability and user-based access control.",
   es: "Sistema interno de Blackswan Facility Core para la gestión operativa, trazabilidad de instalaciones y control de acceso por usuario.",
