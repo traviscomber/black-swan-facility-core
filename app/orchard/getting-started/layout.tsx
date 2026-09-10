@@ -1,7 +1,20 @@
+"use client"
+
+import Link from "next/link"
 import type { ReactNode } from "react"
+import { useSearchParams } from "next/navigation"
+import { MapPinned, MoveRight } from "lucide-react"
+import { useLanguage } from "@/lib/hooks/use-language"
+
+const copy={
+ en:{title:"One shared farm, your active Game Plan",body:"Black Swan Orchard uses the farm's shared physical plots and beds. You do not need to create a second Orchard. Create your planting here; when a crop is already placed and needs another bed, use Edit placements.",edit:"Edit existing placements"},
+ es:{title:"Un huerto compartido, tu Plan de Cultivo activo",body:"Black Swan Orchard usa los sectores y camas físicas compartidas del fundo. No necesitas crear un segundo Orchard. Crea aquí tu plantación; si un cultivo ya está ubicado y debe cambiar de cama, usa Editar ubicaciones.",edit:"Editar ubicaciones existentes"},
+ de:{title:"Eine gemeinsame Farm, dein aktiver Anbauplan",body:"Black Swan Orchard verwendet die gemeinsamen physischen Flächen und Beete der Farm. Ein zweiter Orchard muss nicht angelegt werden. Lege hier die Pflanzung an; wenn eine bereits zugeordnete Kultur in ein anderes Beet soll, nutze Zuordnungen bearbeiten.",edit:"Bestehende Zuordnungen bearbeiten"}
+} as const
 
 export default function GettingStartedParityLayout({ children }: { children: ReactNode }) {
-  return <div data-heirloom-getting-started-parity="true" className="contents">
+ const{language}=useLanguage();const text=copy[language];const searchParams=useSearchParams();const gamePlan=searchParams.get("game_plan");const editHref=`/${language}/orchard/crop-map${gamePlan?`?game_plan=${encodeURIComponent(gamePlan)}`:""}`
+ return <div data-heirloom-getting-started-parity="true" className="contents">
     <style>{`
       @media (min-width: 1024px) {
         [data-heirloom-getting-started-parity="true"] main > main {
@@ -116,5 +129,8 @@ export default function GettingStartedParityLayout({ children }: { children: Rea
       }
     `}</style>
     {children}
+    <aside data-orchard-onboarding-placement-guide className="fixed bottom-3 left-3 z-[44] max-w-[min(520px,calc(100vw-6rem))] border border-white/15 bg-[#171715]/95 p-3 text-[#e8e5dc] shadow-xl backdrop-blur sm:bottom-5 sm:left-5 sm:p-4">
+      <div className="flex gap-3"><div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center border border-[#79c5aa]/35 bg-[#24342d] text-[#9fd6bd]"><MapPinned className="h-4 w-4"/></div><div className="min-w-0"><p className="text-sm font-semibold">{text.title}</p><p className="mt-1 text-xs leading-5 text-[#aaa69c]">{text.body}</p><Link href={editHref} className="mt-2 inline-flex min-h-11 items-center gap-2 border border-[#79c5aa]/50 bg-[#24342d] px-3 text-xs font-medium text-[#bfe9d7]"><MoveRight className="h-4 w-4"/>{text.edit}</Link></div></div>
+    </aside>
   </div>
 }

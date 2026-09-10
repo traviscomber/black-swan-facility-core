@@ -128,6 +128,22 @@ test("Crop Map is a Heirloom-style temporal bed board grounded in canonical allo
   assert.match(source, /minmax\(16px,1fr\)/)
 })
 
+test("Crop Map makes initial placement and reassignment two explicit modes", async () => {
+  const layout = await readFile("app/orchard/crop-map/layout.tsx", "utf8")
+  const gettingStarted = await readFile("app/orchard/getting-started/layout.tsx", "utf8")
+  assert.match(layout, /data-orchard-placement-guide/)
+  assert.match(layout, /data-placement-mode="assign"/)
+  assert.match(layout, /data-placement-mode="edit"/)
+  assert.match(layout, /\/orchard\/crop-map\/overview/)
+  assert.match(layout, /\/orchard\/crop-map/)
+  assert.match(layout, /searchParams\.toString\(\)/)
+  assert.match(layout, /remove its current allocation|quita su asignación actual|aktuelle Zuordnung entfernen/)
+  assert.match(gettingStarted, /data-orchard-onboarding-placement-guide/)
+  assert.match(gettingStarted, /shared physical plots and beds|sectores y camas físicas compartidas|gemeinsamen physischen Flächen und Beete/)
+  assert.match(gettingStarted, /game_plan/)
+  assert.match(gettingStarted, /Edit existing placements|Editar ubicaciones existentes|Bestehende Zuordnungen bearbeiten/)
+})
+
 test("Crop Map quick assign distinguishes ready work from blocked evidence", async () => {
   const source = await readFile("app/orchard/crop-map/overview/quick-assign.tsx", "utf8")
   assert.match(source, /const planSuccessions = successions\.filter/)
