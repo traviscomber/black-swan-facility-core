@@ -1,5 +1,6 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
+  "buildCommand": "pnpm typecheck && pnpm audit:images && node scripts/audit-i18n-global.mjs && node scripts/check-no-ai-sdk.mjs && pnpm test:booking && NODE_OPTIONS=--import=./scripts/suppress-known-build-warning.mjs next build",
   "crons": [],
   "git": {
     "deploymentEnabled": {
