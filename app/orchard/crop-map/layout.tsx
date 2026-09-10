@@ -1,8 +1,10 @@
 "use client"
 
+import Link from "next/link"
 import type { ReactNode } from "react"
 import { useEffect, useMemo, useState } from "react"
-import { CheckCircle2, MapPin, Sparkles } from "lucide-react"
+import { usePathname, useSearchParams } from "next/navigation"
+import { CheckCircle2, MapPin, MoveRight, Sparkles, Sprout } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
 import { createBrowserClient } from "@/lib/supabase/client"
@@ -10,12 +12,31 @@ import { useLanguage } from "@/lib/hooks/use-language"
 
 type FocusedAllocation={id:string;bed_id:string;crop_succession_id:string;planned_start_date:string;planned_end_date:string;allocated_area_sqm:number|null;planned_plants:number|null}
 type Bed={id:string;plot_id:string;name:string;code:string|null};type Plot={id:string;name:string};type Succession={id:string;crop_cycle_id:string;sequence_no:number};type Cycle={id:string;crop_name:string;variety:string|null}
-const copy={en:{succession:"Allocated succession",created:"Allocation created by Orchard AI",badge:"Created",plants:"plants"},es:{succession:"Sucesión asignada",created:"Asignación creada por Orchard AI",badge:"Creada",plants:"plantas"},de:{succession:"Zugeordnete Folge",created:"Zuordnung von Orchard AI erstellt",badge:"Erstellt",plants:"Pflanzen"}} as const
+const copy={
+ en:{succession:"Allocated succession",created:"Allocation created by Orchard AI",badge:"Created",plants:"plants",placementTitle:"Crop placement",placementHelp:"Assign new plantings in the timeline. To move an existing crop, open Edit placements, remove its current allocation, then place it again in the correct bed.",assign:"Assign new",edit:"Edit placements"},
+ es:{succession:"Sucesión asignada",created:"Asignación creada por Orchard AI",badge:"Creada",plants:"plantas",placementTitle:"Ubicación de cultivos",placementHelp:"Asigna plantaciones nuevas en la línea de tiempo. Para mover un cultivo ya ubicado, abre Editar ubicaciones, quita su asignación actual y vuelve a ubicarlo en la cama correcta.",assign:"Asignar nuevas",edit:"Editar ubicaciones"},
+ de:{succession:"Zugeordnete Folge",created:"Zuordnung von Orchard AI erstellt",badge:"Erstellt",plants:"Pflanzen",placementTitle:"Kulturzuordnung",placementHelp:"Neue Pflanzungen werden in der Zeitleiste zugeordnet. Um eine bestehende Kultur zu verschieben, Zuordnungen bearbeiten öffnen, die aktuelle Zuordnung entfernen und sie anschließend dem richtigen Beet neu zuordnen.",assign:"Neu zuordnen",edit:"Zuordnungen bearbeiten"}
+} as const
+
+function internalPath(pathname:string){return pathname.replace(/^\/(en|es|de)(?=\/|$)/,"")||"/"}
 
 export default function CropMapLayout({children}:{children:ReactNode}){
- const supabase=useMemo(()=>createBrowserClient(),[]);const{language}=useLanguage();const text=copy[language];const[entityId,setEntityId]=useState<string|null>(null),[allocation,setAllocation]=useState<FocusedAllocation|null>(null),[bed,setBed]=useState<Bed|null>(null),[plot,setPlot]=useState<Plot|null>(null),[succession,setSuccession]=useState<Succession|null>(null),[cycle,setCycle]=useState<Cycle|null>(null)
+ const supabase=useMemo(()=>createBrowserClient(),[]);const{language}=useLanguage();const text=copy[language];const pathname=internalPath(usePathname()||"/");const searchParams=useSearchParams();const query=searchParams.toString();const suffix=query?`?${query}`:"";const assignHref=`/${language}/orchard/crop-map/overview${suffix}`;const editHref=`/${language}/orchard/crop-map${suffix}`;const editing=pathname==="/orchard/crop-map"
+ const[entityId,setEntityId]=useState<string|null>(null),[allocation,setAllocation]=useState<FocusedAllocation|null>(null),[bed,setBed]=useState<Bed|null>(null),[plot,setPlot]=useState<Plot|null>(null),[succession,setSuccession]=useState<Succession|null>(null),[cycle,setCycle]=useState<Cycle|null>(null)
  useEffect(()=>{const params=new URLSearchParams(window.location.search);if(params.get("from")==="orchard-ai")setEntityId(params.get("entity"))},[])
  useEffect(()=>{if(!entityId)return;let cancelled=false;async function loadFocus(){const allocationResult=await supabase.from("orchard_bed_allocations").select("id,bed_id,crop_succession_id,planned_start_date,planned_end_date,allocated_area_sqm,planned_plants").eq("id",entityId).maybeSingle();if(cancelled||allocationResult.error||!allocationResult.data)return;const nextAllocation=allocationResult.data as FocusedAllocation;const[bedResult,successionResult]=await Promise.all([supabase.from("orchard_beds").select("id,plot_id,name,code").eq("id",nextAllocation.bed_id).maybeSingle(),supabase.from("orchard_crop_successions").select("id,crop_cycle_id,sequence_no").eq("id",nextAllocation.crop_succession_id).maybeSingle()]);if(cancelled)return;const nextBed=(bedResult.data??null) as Bed|null,nextSuccession=(successionResult.data??null) as Succession|null;setAllocation(nextAllocation);setBed(nextBed);setSuccession(nextSuccession);const[plotResult,cycleResult]=await Promise.all([nextBed?supabase.from("orchard_plots").select("id,name").eq("id",nextBed.plot_id).maybeSingle():Promise.resolve({data:null}),nextSuccession?supabase.from("orchard_crop_cycles").select("id,crop_name,variety").eq("id",nextSuccession.crop_cycle_id).maybeSingle():Promise.resolve({data:null})]);if(cancelled)return;setPlot((plotResult.data??null) as Plot|null);setCycle((cycleResult.data??null) as Cycle|null)}void loadFocus();return()=>{cancelled=true}},[entityId,supabase])
  const cropLabel=cycle?`${cycle.crop_name}${cycle.variety?` · ${cycle.variety}`:""}${succession?` #${succession.sequence_no}`:""}`:text.succession;const bedLabel=bed?`${plot?.name?`${plot.name} · `:""}${bed.name}${bed.code?` · ${bed.code}`:""}`:"—"
- return <>{allocation&&<div className="sticky top-0 z-[45] border-b border-primary/40 bg-background/95 px-4 py-3 backdrop-blur sm:px-8"><Card className="mx-auto max-w-[1500px] border-primary/40 bg-primary/5 shadow-lg"><CardContent className="flex flex-wrap items-center gap-4 p-4"><div className="flex h-10 w-10 items-center justify-center border border-primary/30 bg-primary/10 text-primary"><Sparkles className="h-5 w-5"/></div><div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><p className="font-semibold">{text.created}</p><Badge><CheckCircle2 className="mr-1 h-3.5 w-3.5"/>{text.badge}</Badge></div><p className="mt-1 text-sm text-muted-foreground">{cropLabel} · {bedLabel}</p><p className="mt-1 text-xs text-muted-foreground">{allocation.planned_start_date} → {allocation.planned_end_date}{allocation.allocated_area_sqm!=null?` · ${allocation.allocated_area_sqm} m²`:""}{allocation.planned_plants!=null?` · ${allocation.planned_plants} ${text.plants}`:""}</p></div><div className="flex items-center gap-2 text-xs text-muted-foreground"><MapPin className="h-4 w-4"/>ID: {allocation.id}</div></CardContent></Card></div>}{children}</>
+ return <>
+  <div data-orchard-placement-guide className="border-b border-white/10 bg-[#171715] px-4 py-3 text-[#e8e5dc] sm:px-6">
+   <div className="mx-auto flex max-w-[1500px] flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+    <div className="min-w-0"><p className="text-xs font-semibold uppercase tracking-[.12em] text-[#9fd6bd]">{text.placementTitle}</p><p className="mt-1 max-w-4xl text-xs leading-5 text-[#aaa69c]">{text.placementHelp}</p></div>
+    <div className="flex shrink-0 gap-2">
+     <Link data-placement-mode="assign" href={assignHref} className={`inline-flex min-h-11 items-center gap-2 border px-3 text-xs font-medium ${!editing?"border-[#79c5aa] bg-[#24342d] text-[#bfe9d7]":"border-white/15 bg-[#23231f] text-[#c4c0b6]"}`}><Sprout className="h-4 w-4"/>{text.assign}</Link>
+     <Link data-placement-mode="edit" href={editHref} className={`inline-flex min-h-11 items-center gap-2 border px-3 text-xs font-medium ${editing?"border-[#79c5aa] bg-[#24342d] text-[#bfe9d7]":"border-white/15 bg-[#23231f] text-[#c4c0b6]"}`}><MoveRight className="h-4 w-4"/>{text.edit}</Link>
+    </div>
+   </div>
+  </div>
+  {allocation&&<div className="sticky top-0 z-[45] border-b border-primary/40 bg-background/95 px-4 py-3 backdrop-blur sm:px-8"><Card className="mx-auto max-w-[1500px] border-primary/40 bg-primary/5 shadow-lg"><CardContent className="flex flex-wrap items-center gap-4 p-4"><div className="flex h-10 w-10 items-center justify-center border border-primary/30 bg-primary/10 text-primary"><Sparkles className="h-5 w-5"/></div><div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><p className="font-semibold">{text.created}</p><Badge><CheckCircle2 className="mr-1 h-3.5 w-3.5"/>{text.badge}</Badge></div><p className="mt-1 text-sm text-muted-foreground">{cropLabel} · {bedLabel}</p><p className="mt-1 text-xs text-muted-foreground">{allocation.planned_start_date} → {allocation.planned_end_date}{allocation.allocated_area_sqm!=null?` · ${allocation.allocated_area_sqm} m²`:""}{allocation.planned_plants!=null?` · ${allocation.planned_plants} ${text.plants}`:""}</p></div><div className="flex items-center gap-2 text-xs text-muted-foreground"><MapPin className="h-4 w-4"/>ID: {allocation.id}</div></CardContent></Card></div>}
+  {children}
+ </>
 }
