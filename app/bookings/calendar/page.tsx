@@ -29,7 +29,7 @@ interface RoomBlock { id: string; room_id: string; start_date: string; end_date:
 interface ResizeRpcResult { success: boolean; message: string; check_in: string; check_out: string }
 interface BulkConflict { reservation_id: string; reason: string }
 
-const DAY_WIDTH = 96
+const DAY_WIDTH = 46
 function formatClp(value: number) { return new Intl.NumberFormat("es-CL", { style: "currency", currency: "CLP", maximumFractionDigits: 0 }).format(value) }
 function intervalsOverlap(startA: string, endA: string, startB: string, endB: string) { return parseISO(startA) < parseISO(endB) && parseISO(endA) > parseISO(startB) }
 
@@ -61,8 +61,8 @@ export default function BookingsCalendarPage() {
   const pendingFlipIds = useRef<string[]>([])
   const isBulkModeRef = useRef(false)
   const loadEventsRef = useRef<() => Promise<void>>(async () => {})
-  const realtimeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const inventoryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const realtimeEventsTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const realtimeInventoryTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useLayoutEffect(() => {
     if (pendingFlipIds.current.length === 0) return
@@ -149,12 +149,12 @@ export default function BookingsCalendarPage() {
   useEffect(() => { void loadInitialData() }, [loadInitialData])
   useEffect(() => {
     const scheduleEvents = () => {
-      if (realtimeTimerRef.current) clearTimeout(realtimeTimerRef.current)
-      realtimeTimerRef.current = setTimeout(() => void loadEventsRef.current(), 180)
+      if (realtimeEventsTimer.current) clearTimeout(realtimeEventsTimer.current)
+      realtimeEventsTimer.current = setTimeout(() => void loadEventsRef.current(), 180)
     }
     const scheduleInventory = () => {
-      if (inventoryTimerRef.current) clearTimeout(inventoryTimerRef.current)
-      inventoryTimerRef.current = setTimeout(() => { void loadInventory(); void loadEventsRef.current() }, 220)
+      if (realtimeInventoryTimer.current) clearTimeout(realtimeInventoryTimer.current)
+      realtimeInventoryTimer.current = setTimeout(() => { void loadInventory(); void loadEventsRef.current() }, 220)
     }
     const channel = supabase.channel("bookings-calendar-v7")
       .on("postgres_changes", { event: "*", schema: "public", table: "reservations" }, scheduleEvents)
@@ -163,8 +163,8 @@ export default function BookingsCalendarPage() {
       .on("postgres_changes", { event: "*", schema: "public", table: "rooms" }, scheduleInventory)
       .subscribe()
     return () => {
-      if (realtimeTimerRef.current) clearTimeout(realtimeTimerRef.current)
-      if (inventoryTimerRef.current) clearTimeout(inventoryTimerRef.current)
+      if (realtimeEventsTimer.current) clearTimeout(realtimeEventsTimer.current)
+      if (realtimeInventoryTimer.current) clearTimeout(realtimeInventoryTimer.current)
       supabase.removeChannel(channel)
     }
   }, [loadInventory, supabase])
@@ -225,7 +225,7 @@ export default function BookingsCalendarPage() {
   function clearSelection() { setSelectedIds(new Set()); setBulkConflicts([]) }
 
   function eventAt(bedId: string, date: Date, type: CalendarEvent["event_type"]) { return (eventsByBed.get(bedId) ?? []).find((event) => event.event_type === type && date >= parseISO(event.starts_on) && date < parseISO(event.ends_on)) }
-  function geometryForDates(startsOn: string, endsOn: string) { const eventStart = parseISO(startsOn) < startDate ? startDate : parseISO(startsOn); const eventEnd = parseISO(endsOn) > endDate ? endDate : parseISO(endsOn); const offsetDays = Math.max(0, differenceInCalendarDays(eventStart, startDate)); const durationDays = Math.max(1, differenceInCalendarDays(eventEnd, eventStart)); return { left: offsetDays * DAY_WIDTH + 4, width: Math.max(24, durationDays * DAY_WIDTH - 8) } }
+  function geometryForDates(startsOn: string, endsOn: string) { const eventStart = parseISO(startsOn) < startDate ? startDate : parseISO(startsOn); const eventEnd = parseISO(endsOn) > endDate ? endDate : parseISO(endsOn); const offsetDays = Math.max(0, differenceInCalendarDays(eventStart, startDate)); const durationDays = Math.max(1, differenceInCalendarDays(eventEnd, eventStart)); return { left: offsetDays * DAY_WIDTH + 2, width: Math.max(22, durationDays * DAY_WIDTH - 4) } }
   function eventGeometry(event: CalendarEvent) { return geometryForDates(event.starts_on, event.ends_on) }
 
   function openNewReservation(bed: Bed, date: Date) { if (eventAt(bed.id, date, "block") || eventAt(bed.id, date, "reservation")) return; setPreselectedBed(bed); setPreselectedDate(date); setNewReservationOpen(true) }
