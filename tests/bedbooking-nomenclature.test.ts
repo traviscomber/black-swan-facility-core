@@ -1,6 +1,6 @@
 import assert from "node:assert/strict"
 import test from "node:test"
-import { getBedBookingDisplayIdentity, VERIFIED_BEDBOOKING_REFERENCE_ROWS } from "../lib/bookings/bedbooking-nomenclature.ts"
+import { getBedBookingDisplayIdentity, getBedBookingReferenceIndex, VERIFIED_BEDBOOKING_REFERENCE_ROWS } from "../lib/bookings/bedbooking-nomenclature.ts"
 
 test("BedBooking verified room nomenclature stays exact", () => {
   assert.deepEqual(getBedBookingDisplayIdentity({ propertyName: "Clubhouse", roomNumber: "Notro" }), { displayName: "CH-Notro", guestCapacity: 2, source: "bedbooking_verified" })
@@ -26,8 +26,12 @@ test("complete BedBooking reference inventory remains captured in exact display 
   ])
   assert.equal(VERIFIED_BEDBOOKING_REFERENCE_ROWS[0].displayName, "TO-Arrayan")
   assert.equal(VERIFIED_BEDBOOKING_REFERENCE_ROWS[40].displayName, "Glamping Tent")
+  assert.equal(getBedBookingReferenceIndex("TO-Arrayan"), 0)
+  assert.equal(getBedBookingReferenceIndex("PH2- Prairie House 1"), 27)
+  assert.equal(getBedBookingReferenceIndex("Glamping Tent"), 40)
 })
 
 test("unverified canonical rooms still fall back instead of receiving fabricated source mappings", () => {
   assert.deepEqual(getBedBookingDisplayIdentity({ propertyName: "Unknown House", roomNumber: "Room A" }), { displayName: "Room A", guestCapacity: null, source: "canonical_fallback" })
+  assert.equal(getBedBookingReferenceIndex("Room A"), Number.MAX_SAFE_INTEGER)
 })
