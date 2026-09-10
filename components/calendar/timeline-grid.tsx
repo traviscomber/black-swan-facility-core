@@ -13,7 +13,7 @@ import { CalendarDailyOperationsSummary } from "@/components/calendar/calendar-d
 import type { CalendarLayerKey } from "@/components/calendar/reservation-operational-lanes"
 import { useCalendarViewPreferences } from "@/components/calendar/use-calendar-view-preferences"
 import { useLanguage, type Language } from "@/lib/hooks/use-language"
-import { getBedBookingDisplayIdentity } from "@/lib/bookings/bedbooking-nomenclature"
+import { getBedBookingDisplayIdentity, getBedBookingReferenceIndex } from "@/lib/bookings/bedbooking-nomenclature"
 
 export interface TimelineGridProps {
   dates: Date[]
@@ -163,10 +163,24 @@ export function TimelineGrid(props: TimelineGridProps) {
       room.beds.push(bed)
       locations.set(locationId, location)
     }
-    return Array.from(locations.values()).sort((a, b) => a.locationName.localeCompare(b.locationName)).map((location) => ({
-      ...location,
-      rooms: location.rooms.sort((a, b) => a.roomNumber.localeCompare(b.roomNumber, undefined, { numeric: true })).map((room) => ({ ...room, beds: room.beds.sort((a, b) => a.bed_number.localeCompare(b.bed_number, undefined, { numeric: true })) })),
-    }))
+    return Array.from(locations.values())
+      .map((location) => ({
+        ...location,
+        rooms: location.rooms
+          .sort((a, b) => {
+            const aIdentity = getBedBookingDisplayIdentity({ propertyName: location.locationName, roomNumber: a.roomNumber })
+            const bIdentity = getBedBookingDisplayIdentity({ propertyName: location.locationName, roomNumber: b.roomNumber })
+            const sourceOrder = getBedBookingReferenceIndex(aIdentity.displayName) - getBedBookingReferenceIndex(bIdentity.displayName)
+            return sourceOrder || a.roomNumber.localeCompare(b.roomNumber, undefined, { numeric: true })
+          })
+          .map((room) => ({ ...room, beds: room.beds.sort((a, b) => a.bed_number.localeCompare(b.bed_number, undefined, { numeric: true })) })),
+      }))
+      .sort((a, b) => {
+        const aFirst = a.rooms[0] ? getBedBookingDisplayIdentity({ propertyName: a.locationName, roomNumber: a.rooms[0].roomNumber }) : null
+        const bFirst = b.rooms[0] ? getBedBookingDisplayIdentity({ propertyName: b.locationName, roomNumber: b.rooms[0].roomNumber }) : null
+        const sourceOrder = getBedBookingReferenceIndex(aFirst?.displayName ?? "") - getBedBookingReferenceIndex(bFirst?.displayName ?? "")
+        return sourceOrder || a.locationName.localeCompare(b.locationName)
+      })
   }, [visibleBeds])
 
   const roomCount = useMemo(() => inventoryGroups.reduce((sum, location) => sum + location.rooms.length, 0), [inventoryGroups])
