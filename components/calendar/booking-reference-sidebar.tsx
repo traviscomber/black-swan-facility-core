@@ -103,8 +103,8 @@ export function BookingReferenceSidebar() {
 
   function toggleGroup(key: GroupKey) { setOpenGroups((current) => { const next = new Set(current); if (next.has(key)) next.delete(key); else next.add(key); return next }) }
 
-  return <aside className={`booking-reference-sidebar ${collapsed ? "is-collapsed" : ""}`} aria-label="Booking navigation">
-    <div className="booking-reference-brand"><img src="/blackswan-logo.png" alt="Black Swan" className="booking-reference-logo h-5 w-5 object-contain" /><span className="booking-reference-brand-name">BlackSwan</span><span className="booking-reference-brand-pill">Booking</span></div>
+  return <aside className={`booking-reference-sidebar ${collapsed ? "is-collapsed" : ""}`} aria-label="Booking navigation" data-booking-reference-sidebar>
+    <div className="booking-reference-brand"><img src="/blackswan-logo.png" alt="Black Swan" className="booking-reference-logo h-5 w-5 object-contain" /><span className="booking-reference-brand-name">BlackSwan</span><span className="booking-reference-brand-pill"><Crown className="h-3 w-3" />{c.premium}</span></div>
     <nav className="booking-reference-nav">
       <NavLink href={href("/bookings/calendar")} active={active("/bookings/calendar")} icon={CalendarDays}>{c.calendar}</NavLink>
       <NavLink icon={Crown} title={c.notConfigured}>{c.premium}</NavLink>
