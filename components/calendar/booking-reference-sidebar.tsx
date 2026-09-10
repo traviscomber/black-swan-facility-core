@@ -19,6 +19,9 @@ import {
 } from "lucide-react"
 import { useLanguage } from "@/lib/hooks/use-language"
 
+const SIDEBAR_COLLAPSED_KEY = "black-swan.booking.sidebar.collapsed"
+const SIDEBAR_GROUPS_KEY = "black-swan.booking.sidebar.groups"
+
 const copy = {
   en: {
     calendar: "Calendar", premium: "Premium", bookings: "Bookings", reservationList: "Reservation list", clients: "Clients", messageTemplates: "Message templates",
@@ -80,10 +83,29 @@ export function BookingReferenceSidebar() {
   const [openGroups, setOpenGroups] = useState<Set<GroupKey>>(() => new Set([groupForPath(pathname) ?? "reservation"]))
 
   useEffect(() => {
+    try {
+      setCollapsed(window.localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === "1")
+      const saved = window.localStorage.getItem(SIDEBAR_GROUPS_KEY)
+      if (saved) {
+        const parsed = JSON.parse(saved) as GroupKey[]
+        if (Array.isArray(parsed)) setOpenGroups(new Set(parsed))
+      }
+    } catch {}
+  }, [])
+
+  useEffect(() => {
     const current = groupForPath(pathname)
     if (!current) return
     setOpenGroups((groups) => groups.has(current) ? groups : new Set([...groups, current]))
   }, [pathname])
+
+  useEffect(() => {
+    try { window.localStorage.setItem(SIDEBAR_COLLAPSED_KEY, collapsed ? "1" : "0") } catch {}
+  }, [collapsed])
+
+  useEffect(() => {
+    try { window.localStorage.setItem(SIDEBAR_GROUPS_KEY, JSON.stringify([...openGroups])) } catch {}
+  }, [openGroups])
 
   function toggleGroup(key: GroupKey) { setOpenGroups((current) => { const next = new Set(current); if (next.has(key)) next.delete(key); else next.add(key); return next }) }
 
