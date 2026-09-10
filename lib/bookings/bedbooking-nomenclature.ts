@@ -35,6 +35,23 @@ export const VERIFIED_BEDBOOKING_REFERENCE_ROWS = [
   { displayName: "Garden House 1", guestCapacity: 2 },
   { displayName: "Garden House 2", guestCapacity: 2 },
   { displayName: "Garden House 3", guestCapacity: 2 },
+  { displayName: "PH1- Prairie House 1", guestCapacity: 2 },
+  { displayName: "PH1- Prairie House 2", guestCapacity: 2 },
+  { displayName: "PH1- Prairie House 3", guestCapacity: 2 },
+  { displayName: "PH2- Prairie House 1", guestCapacity: 2 },
+  { displayName: "PH2- Prairie House 2", guestCapacity: 2 },
+  { displayName: "PH2- Prairie House 3", guestCapacity: 2 },
+  { displayName: "PH3- Prairie House 1", guestCapacity: 2 },
+  { displayName: "PH3- Prairie House 2", guestCapacity: 2 },
+  { displayName: "PH3- Prairie House 3", guestCapacity: 2 },
+  { displayName: "CH- Chef House 1", guestCapacity: 2 },
+  { displayName: "CH- Chef House 2", guestCapacity: 2 },
+  { displayName: "PC- Puerto Claro 1", guestCapacity: 2 },
+  { displayName: "PC- Puerto Claro 2", guestCapacity: 2 },
+  { displayName: "PC- Puerto Claro 3", guestCapacity: 2 },
+  { displayName: "CH-Canelo", guestCapacity: 2 },
+  { displayName: "CH-Laurel", guestCapacity: 2 },
+  { displayName: "Glamping Tent", guestCapacity: 2 },
 ] as const
 
 function key(propertyName: string, roomNumber: string) {
