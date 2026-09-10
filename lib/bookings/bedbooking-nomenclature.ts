@@ -16,6 +16,13 @@ const VERIFIED_BEDBOOKING_ROOM_IDENTITIES = new Map<string, BedBookingDisplayIde
   ["garden house::habitación 1", { displayName: "Garden House 1", guestCapacity: 2, source: "bedbooking_verified" }],
   ["garden house::habitación 2", { displayName: "Garden House 2", guestCapacity: 2, source: "bedbooking_verified" }],
   ["garden house::habitación 3", { displayName: "Garden House 3", guestCapacity: 2, source: "bedbooking_verified" }],
+  ["bamboo house::room 1", { displayName: "BH-Bamboo House 1", guestCapacity: 2, source: "bedbooking_verified" }],
+  ["bamboo house::room 2", { displayName: "BH-Bamboo House 2", guestCapacity: 2, source: "bedbooking_verified" }],
+  ["bamboo house::room 3", { displayName: "BH-Bamboo House 3", guestCapacity: 2, source: "bedbooking_verified" }],
+  ["ed office::oficina", { displayName: "Office Room", guestCapacity: 1, source: "bedbooking_verified" }],
+  ["prairy house 2::room1", { displayName: "PH2- Prairie House 1", guestCapacity: 2, source: "bedbooking_verified" }],
+  ["prairy house 2::room2", { displayName: "PH2- Prairie House 2", guestCapacity: 2, source: "bedbooking_verified" }],
+  ["prairy house 2::room3", { displayName: "PH2- Prairie House 3", guestCapacity: 2, source: "bedbooking_verified" }],
 ])
 
 export const VERIFIED_BEDBOOKING_REFERENCE_ROWS = [
@@ -35,6 +42,14 @@ export const VERIFIED_BEDBOOKING_REFERENCE_ROWS = [
   { displayName: "Garden House 1", guestCapacity: 2 },
   { displayName: "Garden House 2", guestCapacity: 2 },
   { displayName: "Garden House 3", guestCapacity: 2 },
+  { displayName: "BH-Bamboo House 1", guestCapacity: 2 },
+  { displayName: "BH-Bamboo House 2", guestCapacity: 2 },
+  { displayName: "BH-Bamboo House 3", guestCapacity: 2 },
+  { displayName: "Hotelito 1", guestCapacity: 2 },
+  { displayName: "Hotelito 2", guestCapacity: 2 },
+  { displayName: "Hotelito 3", guestCapacity: 2 },
+  { displayName: "Office Room", guestCapacity: 1 },
+  { displayName: "Office Room 2", guestCapacity: 1 },
   { displayName: "PH1- Prairie House 1", guestCapacity: 2 },
   { displayName: "PH1- Prairie House 2", guestCapacity: 2 },
   { displayName: "PH1- Prairie House 3", guestCapacity: 2 },
