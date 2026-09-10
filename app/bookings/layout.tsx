@@ -26,7 +26,7 @@ export default function BookingsLayout({ children }: { children: React.ReactNode
 
   return (
     <AccessGate action="booking.modify" department="booking">
-      <div className="booking-workspace" data-locale={BOOKING_LAYOUT_LOCALE[language]}>
+      <div className="booking-workspace contents" data-locale={BOOKING_LAYOUT_LOCALE[language]}>
         <BookingsLegacyLocalizationBridge />
         <div className="booking-calendar-reference-frame">
           <BookingReferenceSidebar />
