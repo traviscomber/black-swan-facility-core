@@ -8,78 +8,24 @@
   overflow: hidden;
   background: #101112;
 }
-
-.booking-calendar-reference-frame:has(.booking-reference-sidebar.is-collapsed) {
-  grid-template-columns: 56px minmax(0, 1fr);
-}
-
-.booking-calendar-bedbooking-shell {
-  min-width: 0;
-  width: 100%;
-  max-width: 100%;
-  min-height: 100dvh;
-  overflow: hidden;
-  background: var(--background);
-}
-
-.booking-calendar-bedbooking-shell > div {
-  min-width: 0;
-  width: 100%;
-  max-width: 100%;
-  min-height: 100dvh;
-  overflow: hidden;
-}
+.booking-calendar-reference-frame:has(.booking-reference-sidebar.is-collapsed) { grid-template-columns: 56px minmax(0, 1fr); }
+.booking-calendar-bedbooking-shell { min-width: 0; width: 100%; max-width: 100%; min-height: 100dvh; overflow: hidden; background: #111213; }
+.booking-calendar-bedbooking-shell > div { min-width: 0; width: 100%; max-width: 100%; min-height: 100dvh; overflow: hidden; }
 .booking-calendar-bedbooking-shell > div > div { min-width: 0; max-width: none !important; }
 .booking-calendar-bedbooking-shell .overflow-hidden { border-radius: 0 !important; box-shadow: none !important; }
-
-.booking-reference-sidebar {
-  position: sticky;
-  top: 0;
-  z-index: 50;
-  display: flex;
-  width: 254px;
-  max-width: 254px;
-  height: 100dvh;
-  min-height: 0;
-  flex: 0 0 254px;
-  flex-direction: column;
-  overflow: hidden;
-  border-right: 1px solid #2a2b2c;
-  background: #111213;
-  color: #f3f3f3;
-  transition: width 150ms ease, max-width 150ms ease, flex-basis 150ms ease;
-  font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-}
-
-.booking-reference-sidebar.is-collapsed {
-  width: 56px;
-  max-width: 56px;
-  flex-basis: 56px;
-}
-
-.booking-reference-brand {
-  display: flex;
-  height: 61px;
-  flex: 0 0 61px;
-  align-items: center;
-  gap: 7px;
-  padding: 0 10px;
-  overflow: hidden;
-}
+.booking-reference-sidebar { position: sticky; top: 0; z-index: 50; display: flex; width: 254px; max-width: 254px; height: 100dvh; min-height: 0; flex: 0 0 254px; flex-direction: column; overflow: hidden; border-right: 1px solid #2a2b2c; background: #111213; color: #f3f3f3; transition: width 150ms ease, max-width 150ms ease, flex-basis 150ms ease; font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+.booking-reference-sidebar.is-collapsed { width: 56px; max-width: 56px; flex-basis: 56px; }
+.booking-reference-brand { display: flex; height: 61px; flex: 0 0 61px; align-items: center; gap: 7px; padding: 0 10px; overflow: hidden; border-bottom: 1px solid rgba(255,255,255,.04); }
 .booking-reference-logo { width: 20px !important; height: 20px !important; flex: 0 0 20px; object-fit: contain; opacity: .96; }
 .booking-reference-brand-name { white-space: nowrap; font-size: 16px; font-weight: 650; letter-spacing: -.035em; color: #e8e8e8; }
 .booking-reference-brand-pill { margin-left: auto; min-width: 91px; border-radius: 4px; background: #04b958; padding: 6px 10px; font-size: 10px; font-weight: 700; line-height: 1; text-align: center; color: white; text-transform: none; letter-spacing: .01em; }
-
 .booking-reference-nav { min-height: 0; flex: 1; overflow-y: auto; overflow-x: hidden; padding: 2px 8px 16px; scrollbar-width: auto; scrollbar-color: #666 #353535; }
 .booking-reference-nav::-webkit-scrollbar { width: 8px; }
 .booking-reference-nav::-webkit-scrollbar-track { background: #353535; border-radius: 7px; }
 .booking-reference-nav::-webkit-scrollbar-thumb { background: #666; border-radius: 7px; }
 .booking-reference-nav::-webkit-scrollbar-thumb:hover { background: #777; }
-
-.booking-reference-nav-link,
-.booking-reference-nav-parent { display: flex; min-height: 34px; width: 100%; align-items: center; gap: 10px; border: 0; border-radius: 6px; background: transparent; padding: 0 10px; font-size: 12px; font-weight: 450; line-height: 1; text-align: left; color: rgba(255,255,255,.90); text-decoration: none; cursor: pointer; }
-.booking-reference-nav-link:hover,
-.booking-reference-nav-parent:hover { background: rgba(255,255,255,.045); color: #fff; }
+.booking-reference-nav-link,.booking-reference-nav-parent { display: flex; min-height: 34px; width: 100%; align-items: center; gap: 10px; border: 0; border-radius: 6px; background: transparent; padding: 0 10px; font-size: 12px; font-weight: 450; line-height: 1; text-align: left; color: rgba(255,255,255,.90); text-decoration: none; cursor: pointer; }
+.booking-reference-nav-link:hover,.booking-reference-nav-parent:hover { background: rgba(255,255,255,.045); color: #fff; }
 .booking-reference-nav-link.is-active:not(.is-inset) { background: #15261d; color: #00ce63; }
 .booking-reference-nav-link.is-unavailable { cursor: default; color: rgba(255,255,255,.88); }
 .booking-reference-nav-link.is-unavailable:hover { background: transparent; color: rgba(255,255,255,.88); }
@@ -92,49 +38,53 @@
 .booking-reference-nav-children { overflow: hidden; padding-bottom: 2px; }
 .booking-reference-chevron { transition: transform 140ms ease; color: rgba(255,255,255,.80); stroke-width: 1.7; }
 .booking-reference-nav-group.is-open .booking-reference-chevron { transform: rotate(180deg); }
-.booking-reference-nav-group + .booking-reference-nav-group,
-.booking-reference-nav-link + .booking-reference-nav-group,
-.booking-reference-nav-group + .booking-reference-nav-link,
-.booking-reference-nav-link + .booking-reference-nav-link { margin-top: 1px; }
-
+.booking-reference-nav-group + .booking-reference-nav-group,.booking-reference-nav-link + .booking-reference-nav-group,.booking-reference-nav-group + .booking-reference-nav-link,.booking-reference-nav-link + .booking-reference-nav-link { margin-top: 1px; }
 .booking-channel-dot { width: 12px; height: 12px; flex: 0 0 12px; border-radius: 999px; }
 .booking-channel-dot.is-airbnb { background: #ff4f64; }
 .booking-channel-dot.is-booking { background: #1657b7; }
 .booking-channel-dot.is-ical { background: #ffbd24; }
-.booking-reference-sidebar-footer { flex: 0 0 55px; padding: 8px 7px; background: #111213; }
+.booking-reference-sidebar-footer { flex: 0 0 55px; padding: 8px 7px; background: #111213; border-top: 1px solid rgba(255,255,255,.04); }
 .booking-reference-hide { display: flex; min-height: 34px; width: 100%; align-items: center; justify-content: flex-end; gap: 8px; border: 0; border-radius: 4px; background: transparent; padding: 0 9px; font-size: 11px; color: #00ce63; cursor: pointer; }
 .booking-reference-hide:hover { background: rgba(255,255,255,.04); }
-
 .booking-reference-sidebar.is-collapsed .booking-reference-brand { height: 61px; flex-basis: 61px; justify-content: center; padding-inline: 0; }
 .booking-reference-sidebar.is-collapsed .booking-reference-logo { width: 30px !important; height: 30px !important; flex-basis: 30px; border-radius: 999px; padding: 5px; background: #f3f3f3; }
-.booking-reference-sidebar.is-collapsed .booking-reference-brand-name,
-.booking-reference-sidebar.is-collapsed .booking-reference-brand-pill,
-.booking-reference-sidebar.is-collapsed .booking-reference-nav-label,
-.booking-reference-sidebar.is-collapsed .booking-reference-chevron,
-.booking-reference-sidebar.is-collapsed .booking-reference-nav-spacer,
-.booking-reference-sidebar.is-collapsed .booking-reference-nav-children { display: none; }
+.booking-reference-sidebar.is-collapsed .booking-reference-brand-name,.booking-reference-sidebar.is-collapsed .booking-reference-brand-pill,.booking-reference-sidebar.is-collapsed .booking-reference-nav-label,.booking-reference-sidebar.is-collapsed .booking-reference-chevron,.booking-reference-sidebar.is-collapsed .booking-reference-nav-spacer,.booking-reference-sidebar.is-collapsed .booking-reference-nav-children { display: none; }
 .booking-reference-sidebar.is-collapsed .booking-reference-nav { padding: 8px 7px 16px; scrollbar-width: none; }
 .booking-reference-sidebar.is-collapsed .booking-reference-nav::-webkit-scrollbar { display: none; }
-.booking-reference-sidebar.is-collapsed .booking-reference-nav-link,
-.booking-reference-sidebar.is-collapsed .booking-reference-nav-parent,
-.booking-reference-sidebar.is-collapsed .booking-reference-hide { justify-content: center; min-height: 34px; gap: 0; padding-inline: 0; margin-inline: 0; width: 100%; }
+.booking-reference-sidebar.is-collapsed .booking-reference-nav-link,.booking-reference-sidebar.is-collapsed .booking-reference-nav-parent,.booking-reference-sidebar.is-collapsed .booking-reference-hide { justify-content: center; min-height: 34px; gap: 0; padding-inline: 0; margin-inline: 0; width: 100%; }
 .booking-reference-sidebar.is-collapsed .booking-reference-nav-link.is-inset { display: none; }
 .booking-reference-sidebar.is-collapsed .booking-reference-hide-icon { transform: rotate(180deg); }
 
-.booking-calendar-bedbooking-shell > div > .sticky.top-0 { min-width: 0; width: 100%; max-width: 100%; min-height: 52px; overflow: hidden; }
-.booking-calendar-bedbooking-shell > div > .sticky.top-0 > div:first-child { min-height: 52px !important; max-width: 100%; padding-top: 6px !important; padding-bottom: 6px !important; }
-.booking-calendar-bedbooking-shell > div > .sticky.top-0 > div:nth-child(2) { min-height: 43px !important; max-width: 100%; }
+/* BedBooking-like single operational strip: keep the second row compact instead of letting it dominate the calendar. */
+.booking-calendar-bedbooking-shell > div > .sticky.top-0 { min-width: 0; width: 100%; max-width: 100%; min-height: 0; overflow: hidden; background: #17191a !important; }
+.booking-calendar-bedbooking-shell > div > .sticky.top-0 > div:first-child { min-height: 58px !important; max-width: 100%; padding: 7px 10px !important; gap: 8px !important; }
+.booking-calendar-bedbooking-shell > div > .sticky.top-0 > div:nth-child(2) { min-height: 36px !important; height: 36px; max-width: 100%; padding: 3px 8px !important; border-top-color: rgba(255,255,255,.045) !important; background: #151718; }
+.booking-calendar-bedbooking-shell > div > .sticky.top-0 > div:nth-child(2) input,
+.booking-calendar-bedbooking-shell > div > .sticky.top-0 > div:nth-child(2) button { height: 30px !important; }
+.booking-calendar-bedbooking-shell > div > .sticky.top-0 > div:first-child input,
+.booking-calendar-bedbooking-shell > div > .sticky.top-0 > div:first-child button { border-radius: 4px !important; }
+.booking-calendar-bedbooking-shell > div > .sticky.top-0 > div:first-child button:not([class*="bg-emerald"]) { background: #111314; border-color: rgba(255,255,255,.08); }
+.booking-calendar-bedbooking-shell > div > .sticky.top-0 > div:first-child button[class*="bg-emerald"] { background: #04b958 !important; border-radius: 5px !important; }
 
-.booking-calendar-bedbooking-shell [data-booking-calendar] { min-width: 0; width: 100%; max-width: 100%; min-height: calc(100dvh - 95px); max-height: calc(100dvh - 95px); overflow: auto; overscroll-behavior: contain; scrollbar-gutter: stable; }
+.booking-calendar-bedbooking-shell [data-booking-calendar] { min-width: 0; width: 100%; max-width: 100%; min-height: calc(100dvh - 94px); max-height: calc(100dvh - 94px); overflow: auto; overscroll-behavior: contain; scrollbar-gutter: stable; background: #151718; }
 .booking-calendar-bedbooking-shell [data-booking-calendar] > * { max-width: none; }
 .booking-calendar-bedbooking-shell [data-booking-calendar] button { touch-action: manipulation; }
 .booking-calendar-bedbooking-shell [data-booking-location] { contain: layout paint style; }
 .booking-calendar-bedbooking-shell [data-booking-room] { contain: layout style; }
 
+/* Match the reference density and quiet the helper chrome so rooms + bookings dominate. */
+.booking-calendar-bedbooking-shell [data-booking-calendar] [data-calendar-helper] { opacity: .58; }
+.booking-calendar-bedbooking-shell [data-booking-calendar] .border-amber-400.bg-amber-50 { background: rgba(0,185,88,.20) !important; border-color: rgba(0,206,99,.55) !important; }
+.booking-calendar-bedbooking-shell [data-booking-calendar] .bg-amber-50 { background: rgba(0,185,88,.14) !important; }
+.booking-calendar-bedbooking-shell [data-booking-calendar] .text-amber-950 { color: #f3f3f3 !important; }
+.booking-calendar-bedbooking-shell [data-booking-calendar] [class*="rounded-xl"],
+.booking-calendar-bedbooking-shell [data-booking-calendar] [class*="rounded-lg"] { border-radius: 4px !important; }
+.booking-calendar-bedbooking-shell [data-booking-calendar] [class*="shadow-"] { box-shadow: none !important; }
+
 @media (prefers-reduced-motion: reduce) { .booking-reference-sidebar, .booking-reference-chevron { transition: none; } }
 @media (max-width: 1023px) {
-  .booking-calendar-reference-frame,
-  .booking-calendar-reference-frame:has(.booking-reference-sidebar.is-collapsed) { grid-template-columns: minmax(0, 1fr); max-width: 100vw; }
+  .booking-calendar-reference-frame,.booking-calendar-reference-frame:has(.booking-reference-sidebar.is-collapsed) { grid-template-columns: minmax(0, 1fr); max-width: 100vw; }
   .booking-reference-sidebar { display: none; }
+  .booking-calendar-bedbooking-shell > div > .sticky.top-0 > div:nth-child(2) { height: auto; min-height: 40px !important; }
   .booking-calendar-bedbooking-shell [data-booking-calendar] { min-height: calc(100dvh - 140px); max-height: calc(100dvh - 140px); }
 }
