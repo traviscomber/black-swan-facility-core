@@ -19,8 +19,8 @@ export function useCalendarViewPreferences(defaultLayers: CalendarLayerKey[]) {
     activeLayers: defaultLayers,
     collapsedLocations: [],
     collapsedRooms: [],
-    showSummary: true,
-    showLayerToolbar: true,
+    showSummary: false,
+    showLayerToolbar: false,
   })
 
   useEffect(() => {
@@ -32,8 +32,8 @@ export function useCalendarViewPreferences(defaultLayers: CalendarLayerKey[]) {
           activeLayers: Array.isArray(saved.activeLayers) ? saved.activeLayers : current.activeLayers,
           collapsedLocations: Array.isArray(saved.collapsedLocations) ? saved.collapsedLocations : [],
           collapsedRooms: Array.isArray(saved.collapsedRooms) ? saved.collapsedRooms : [],
-          showSummary: typeof saved.showSummary === "boolean" ? saved.showSummary : true,
-          showLayerToolbar: typeof saved.showLayerToolbar === "boolean" ? saved.showLayerToolbar : true,
+          showSummary: typeof saved.showSummary === "boolean" ? saved.showSummary : false,
+          showLayerToolbar: typeof saved.showLayerToolbar === "boolean" ? saved.showLayerToolbar : false,
         }))
       }
     } catch {

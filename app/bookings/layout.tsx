@@ -4,7 +4,9 @@ import type React from "react"
 import { usePathname } from "next/navigation"
 import { AccessGate } from "@/components/access/access-gate"
 import { BookingsLegacyLocalizationBridge } from "@/components/bookings-legacy-localization-bridge"
+import { BookingReferenceSidebar } from "@/components/calendar/booking-reference-sidebar"
 import { useLanguage } from "@/lib/hooks/use-language"
+import "./calendar/bedbooking-density.css"
 
 const ROUTE_LOCALES = new Set(["en", "es", "de"])
 const BOOKING_LAYOUT_LOCALE = { en: "en", es: "es", de: "de" } as const
@@ -26,7 +28,10 @@ export default function BookingsLayout({ children }: { children: React.ReactNode
     <AccessGate action="booking.modify" department="booking">
       <div className="booking-workspace contents" data-locale={BOOKING_LAYOUT_LOCALE[language]}>
         <BookingsLegacyLocalizationBridge />
-        {children}
+        <div className="booking-calendar-reference-frame">
+          <BookingReferenceSidebar />
+          <main className="booking-calendar-bedbooking-shell min-w-0">{children}</main>
+        </div>
       </div>
     </AccessGate>
   )
