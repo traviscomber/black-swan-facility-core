@@ -69,6 +69,14 @@ export const VERIFIED_BEDBOOKING_REFERENCE_ROWS = [
   { displayName: "Glamping Tent", guestCapacity: 2 },
 ] as const
 
+const VERIFIED_BY_DISPLAY_NAME = new Map<string, BedBookingDisplayIdentity>(
+  VERIFIED_BEDBOOKING_REFERENCE_ROWS.map((row) => [row.displayName.toLocaleLowerCase("es-CL"), { ...row, source: "bedbooking_verified" as const }]),
+)
+
+const VERIFIED_REFERENCE_INDEX = new Map<string, number>(
+  VERIFIED_BEDBOOKING_REFERENCE_ROWS.map((row, index) => [row.displayName.toLocaleLowerCase("es-CL"), index]),
+)
+
 function key(propertyName: string, roomNumber: string) {
   return `${propertyName.trim().toLocaleLowerCase("es-CL")}::${roomNumber.trim().toLocaleLowerCase("es-CL")}`
 }
@@ -83,8 +91,18 @@ function fallbackDisplayName(propertyName: string, roomNumber: string) {
   return normalizedRoom || normalizedProperty
 }
 
+export function getBedBookingReferenceIndex(displayName: string) {
+  return VERIFIED_REFERENCE_INDEX.get(displayName.trim().toLocaleLowerCase("es-CL")) ?? Number.MAX_SAFE_INTEGER
+}
+
 export function getBedBookingDisplayIdentity({ propertyName, roomNumber }: RoomIdentity): BedBookingDisplayIdentity {
-  return VERIFIED_BEDBOOKING_ROOM_IDENTITIES.get(key(propertyName, roomNumber)) ?? {
+  const mapped = VERIFIED_BEDBOOKING_ROOM_IDENTITIES.get(key(propertyName, roomNumber))
+  if (mapped) return mapped
+
+  const direct = VERIFIED_BY_DISPLAY_NAME.get(roomNumber.trim().toLocaleLowerCase("es-CL"))
+  if (direct) return direct
+
+  return {
     displayName: fallbackDisplayName(propertyName, roomNumber),
     guestCapacity: null,
     source: "canonical_fallback",
