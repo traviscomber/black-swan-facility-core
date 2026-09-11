@@ -62,10 +62,13 @@ test("Santiago profile is CEO plus Hospitality and starts in the reservation cal
   assert.match(personaHook, /os_primary_domain, os_start_path/)
 })
 
-test("Hospitality keeps the reservation calendar primary and mounts its pulse inside the common shell", () => {
+test("Hospitality keeps reservations primary and calendar one click away inside the common shell", () => {
   assert.match(appLayout, /bookingsRoot && <HospitalityCommandStrip/)
   assert.doesNotMatch(bookingsPage, /HospitalityCommandStrip/)
-  assert.match(bookingsPage, /BookingOperationsTimelinePage/)
+  assert.match(bookingsPage, /Reservation list/)
+  assert.match(bookingsPage, /href=\{`\/\$\{language\}\/bookings\/calendar`\}/)
+  assert.match(bookingsPage, /href=\{`\/\$\{language\}\/bookings\/reservations\/\$\{row\.id\}`\}/)
+  assert.doesNotMatch(bookingsPage, /BookingOperationsTimelinePage/)
   assert.doesNotMatch(bookingsPage, /DailyOperationsPanel/)
   assert.doesNotMatch(bookingsPage, /CompactBookingQuickActions/)
 })
