@@ -1,4 +1,177 @@
-/* BedBooking-density shell overrides for legacy booking routes. */
+/* BedBooking-inspired operational density for Black Swan reservations.
+   This stylesheet intentionally changes presentation only. Business logic,
+   inventory calculations and booking mutations remain untouched. */
+
+.booking-workspace {
+  --booking-shell: #151412;
+  --booking-panel: #1c1a17;
+  --booking-panel-2: #23201c;
+  --booking-line: rgba(255, 255, 255, 0.08);
+  --booking-line-strong: rgba(255, 255, 255, 0.14);
+  --booking-text: #f4efe8;
+  --booking-muted: #aaa197;
+  --booking-accent: #93c9aa;
+  --booking-today: rgba(147, 201, 170, 0.12);
+}
+
+.booking-workspace > div.min-h-screen > div.mx-auto > :nth-child(2),
+.booking-workspace > div.min-h-screen > div.mx-auto > :nth-child(3) {
+  display: none !important;
+}
+
+.booking-workspace > div.min-h-screen {
+  min-height: 100dvh !important;
+  padding: 10px !important;
+  background: var(--booking-shell) !important;
+}
+
+.booking-workspace > div.min-h-screen > div.mx-auto {
+  max-width: none !important;
+  gap: 0 !important;
+}
+
+.booking-workspace > div.min-h-screen > div.mx-auto > :first-child {
+  min-height: 54px;
+  margin-bottom: 8px;
+  padding: 0 4px;
+  align-items: center;
+}
+
+.booking-workspace > div.min-h-screen > div.mx-auto > :first-child h1 {
+  font-size: 20px !important;
+  line-height: 1.15 !important;
+  font-weight: 560 !important;
+  letter-spacing: -0.015em !important;
+}
+
+.booking-workspace > div.min-h-screen > div.mx-auto > :first-child p:first-child {
+  margin-bottom: 2px !important;
+  font-size: 9px !important;
+  letter-spacing: 0.15em !important;
+}
+
+@media (min-width: 900px) {
+  .booking-workspace > div.min-h-screen > div.mx-auto > :first-child p:last-child {
+    display: none;
+  }
+}
+
+.booking-workspace > div.min-h-screen > div.mx-auto > :first-child button,
+.booking-workspace > div.min-h-screen > div.mx-auto > :first-child a {
+  min-height: 34px !important;
+  border-radius: 3px !important;
+}
+
+.booking-workspace > div.min-h-screen > div.mx-auto > :nth-child(4) {
+  margin-bottom: 8px !important;
+  border-color: var(--booking-line) !important;
+  border-radius: 3px !important;
+  background: var(--booking-panel) !important;
+  box-shadow: none !important;
+}
+
+.booking-workspace > div.min-h-screen > div.mx-auto > :nth-child(4) > div {
+  gap: 6px !important;
+  padding: 7px !important;
+}
+
+.booking-workspace > div.min-h-screen > div.mx-auto > :nth-child(4) input,
+.booking-workspace > div.min-h-screen > div.mx-auto > :nth-child(4) button[role="combobox"] {
+  height: 34px !important;
+  min-height: 34px !important;
+  border-radius: 2px !important;
+  border-color: var(--booking-line-strong) !important;
+  background: var(--booking-panel-2) !important;
+}
+
+.booking-workspace [data-slot="card"] {
+  box-shadow: none !important;
+}
+
+.booking-workspace [data-slot="card"]:has(.overflow-auto),
+.booking-workspace [data-slot="card"]:has([class*="overflow-x"]) {
+  border-color: var(--booking-line) !important;
+  border-radius: 3px !important;
+}
+
+.booking-workspace .border-b.bg-background,
+.booking-workspace .border-b.bg-card,
+.booking-workspace .sticky {
+  border-color: var(--booking-line) !important;
+}
+
+.booking-workspace .booking-calendar-grid,
+.booking-workspace [data-booking-calendar] {
+  background: var(--booking-panel) !important;
+}
+
+.booking-workspace [data-today="true"],
+.booking-workspace .bg-primary\/5,
+.booking-workspace .bg-primary\/10 {
+  background: var(--booking-today) !important;
+}
+
+.booking-workspace .booking-calendar-row,
+.booking-workspace [data-calendar-row] {
+  min-height: 40px !important;
+}
+
+.booking-workspace button {
+  transition-duration: 100ms !important;
+}
+
+.booking-workspace button:has(svg.lucide-layers-3),
+.booking-workspace button:has(svg.lucide-rows-3),
+.booking-workspace button:has(svg.lucide-keyboard) {
+  min-height: 28px !important;
+  border-radius: 2px !important;
+}
+
+.booking-workspace button[data-reservation-id],
+.booking-workspace [data-event-type="reservation"] {
+  border-radius: 2px !important;
+  box-shadow: none !important;
+}
+
+.booking-workspace .fixed.inset-0.z-50.flex.justify-end > aside {
+  width: min(520px, 100vw) !important;
+  max-width: 520px !important;
+  background: var(--booking-panel) !important;
+}
+
+.booking-workspace .fixed.inset-0.z-50.flex.justify-end > aside section {
+  border-color: var(--booking-line) !important;
+}
+
+.booking-workspace .fixed.inset-0.z-50.flex.justify-end > aside .grid.grid-cols-2 {
+  gap: 7px !important;
+}
+
+.booking-workspace .fixed.inset-0.z-50.flex.justify-end > aside .grid.grid-cols-2 > * {
+  border-radius: 3px !important;
+}
+
+[data-slot="dialog-content"]:has([data-slot="dialog-title"]) {
+  border-radius: 4px;
+}
+
+@media (min-width: 900px) {
+  [data-slot="dialog-content"]:has([data-slot="dialog-title"]) {
+    max-width: 680px;
+  }
+}
+
+@media (max-width: 899px) {
+  .booking-workspace > div.min-h-screen {
+    padding: 6px !important;
+  }
+
+  .booking-workspace > div.min-h-screen > div.mx-auto > :first-child {
+    min-height: auto;
+  }
+}
+
+/* Shared density for the remaining operation-heavy sections. */
 .booking-calendar-bedbooking-shell {
   min-width: 0;
   background: #111213;
@@ -50,8 +223,6 @@
   background: rgba(255,255,255,.025);
 }
 
-/* Legacy operations routes still contain larger card-based composition.
-   Keep their business logic intact while flattening them into the same dense workspace. */
 .booking-workspace[data-booking-section="operations"] .booking-calendar-bedbooking-shell > div,
 .booking-workspace[data-booking-section="handovers"] .booking-calendar-bedbooking-shell > div {
   max-width: none !important;
@@ -85,7 +256,6 @@
   margin-top: .75rem !important;
 }
 
-/* Keep the Stay Cockpit narrow enough to preserve timeline context. */
 .booking-workspace[data-booking-section="operations"] .fixed.inset-0.z-50.flex.justify-end > aside {
   width: min(430px,100vw) !important;
   max-width: 430px !important;
