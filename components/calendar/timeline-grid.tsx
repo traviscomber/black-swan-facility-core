@@ -300,7 +300,7 @@ export function TimelineGrid(props: TimelineGridProps) {
         </div>
       </div>
 
-      <ReservationQuickInspector reservation={inspectedReservation} open={Boolean(inspectedReservation)} onOpenChange={(open) => { if (!open) setInspectedReservation(null) }} onOpenFull={(event) => { setInspectedReservation(null); onOpenReservation(event) }} />
+      <ReservationQuickInspector reservation={inspectedReservation} open={Boolean(inspectedReservation)} onOpenChange={(open) => { if (!open) setInspectedReservation(null) }} onOpenFull={(event) => { setInspectedReservation(null); window.location.assign(`/${language}/bookings/reservations/${event.event_id}`) }} />
     </CardContent>
   )
 }
