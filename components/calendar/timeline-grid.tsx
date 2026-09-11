@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
-import { addDays, format, isSameDay } from "date-fns"
+import { addDays, format } from "date-fns"
 import { de, enUS, es } from "date-fns/locale"
 import { BedDouble, CheckSquare, CircleDollarSign, ConciergeBell, Flag, Keyboard, Layers3, Rows3, Sparkles, Square, TriangleAlert, Wrench } from "lucide-react"
 import { CardContent } from "@/components/ui/card"
@@ -14,6 +14,7 @@ import type { CalendarLayerKey } from "@/components/calendar/reservation-operati
 import { useCalendarViewPreferences } from "@/components/calendar/use-calendar-view-preferences"
 import { useLanguage, type Language } from "@/lib/hooks/use-language"
 import { getBedBookingDisplayIdentity, getBedBookingReferenceIndex } from "@/lib/bookings/bedbooking-nomenclature"
+import { isBookingToday } from "@/lib/booking/timezone"
 
 export interface TimelineGridProps {
   dates: Date[]
@@ -187,7 +188,7 @@ export function TimelineGrid(props: TimelineGridProps) {
 
   useEffect(() => {
     if (!scrollRef.current || dates.length === 0) return
-    const todayIndex = dates.findIndex((date) => isSameDay(date, new Date()))
+    const todayIndex = dates.findIndex((date) => isBookingToday(date))
     if (todayIndex >= 0) scrollRef.current.scrollLeft = todayIndex * DAY_WIDTH
   }, [dates, scrollRef])
 
@@ -253,7 +254,7 @@ export function TimelineGrid(props: TimelineGridProps) {
               {dates.map((date, index) => {
                 const weekend = date.getDay() === 0 || date.getDay() === 6
                 const monthBoundary = index === 0 || date.getDate() === 1
-                const today = isSameDay(date, new Date())
+                const today = isBookingToday(date)
                 return <div key={date.toISOString()} className={`relative flex flex-col items-center justify-center border-r border-white/10 text-center text-white ${weekend ? "bg-black/10" : ""} ${today ? "bg-emerald-600" : ""} ${monthBoundary ? "border-l border-l-white/20" : ""}`} style={{ height: 44 }}>
                   {monthBoundary && <span className="absolute left-1 top-0 text-[8px] font-medium uppercase tracking-wide text-white/45">{format(date, "MMM", { locale: dateLocale })}</span>}
                   <div className={`text-[9px] ${today ? "text-white" : "text-white/65"}`}>{format(date, "EEE", { locale: dateLocale })}</div><div className="text-sm font-medium leading-none">{format(date, "dd")}</div>
