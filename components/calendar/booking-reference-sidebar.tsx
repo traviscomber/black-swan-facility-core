@@ -85,6 +85,8 @@ export function BookingReferenceSidebar() {
   const href = (path: string) => `${base}${path}`
   const active = (path: string) => pathname === href(path) || pathname.startsWith(`${href(path)}/`)
   const selectedChannel = searchParams.get("channel")
+  const selectedView = searchParams.get("view")
+  const ratesActive = active("/bookings/rates")
   const [collapsed, setCollapsed] = useState(false)
   const [openGroups, setOpenGroups] = useState<Set<GroupKey>>(() => new Set([groupForPath(pathname) ?? "bookings"]))
 
@@ -145,8 +147,8 @@ export function BookingReferenceSidebar() {
       </NavGroup>
 
       <NavGroup label={c.priceList} icon={BadgeDollarSign} open={openGroups.has("prices")} onToggle={() => toggleGroup("prices")}>
-        <NavLink href={href("/bookings/rates")} active={active("/bookings/rates")} inset>{c.setPrices}</NavLink>
-        <NavLink inset title={c.notConfigured}>{c.configuration}</NavLink>
+        <NavLink href={href("/bookings/rates")} active={ratesActive && selectedView !== "configuration"} inset>{c.setPrices}</NavLink>
+        <NavLink href={`${href("/bookings/rates")}?view=configuration`} active={ratesActive && selectedView === "configuration"} inset>{c.configuration}</NavLink>
         <NavLink inset title={c.notConfigured}>{c.prepayment}</NavLink>
         <NavLink href={href("/bookings/extras")} active={active("/bookings/extras")} inset>{c.additionalServices}</NavLink>
       </NavGroup>
