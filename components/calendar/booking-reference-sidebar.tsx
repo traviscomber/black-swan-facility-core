@@ -72,7 +72,7 @@ function groupForPath(pathname: string): GroupKey | null {
   if (/\/bookings\/(activities|operations|charges|blocks|rooms|handovers|audit)(\/|$)/.test(pathname)) return "operations"
   if (/\/bookings\/(rates|extras)(\/|$)/.test(pathname)) return "prices"
   if (/\/bookings\/payment-methods(\/|$)/.test(pathname)) return "reservation"
-  if (/\/bookings\/(revenue|payments)(\/|$)/.test(pathname)) return "reports"
+  if (/\/bookings\/(revenue|payments|registration-book)(\/|$)/.test(pathname)) return "reports"
   if (/\/bookings\/invoices(\/|$)/.test(pathname)) return "invoices"
   if (/\/bookings\/channels(\/|$)/.test(pathname)) return "channels"
   return null
@@ -164,7 +164,7 @@ export function BookingReferenceSidebar() {
         <NavLink inset title={c.notConfigured}>{c.occupancyReport}</NavLink>
         <NavLink inset title={c.notConfigured}>{c.localTaxReport}</NavLink>
         <NavLink href={href("/bookings/payments")} active={active("/bookings/payments")} inset>{c.paymentList}</NavLink>
-        <NavLink inset title={c.notConfigured}>{c.registrationBook}</NavLink>
+        <NavLink href={href("/bookings/registration-book")} active={active("/bookings/registration-book")} inset>{c.registrationBook}</NavLink>
         <NavLink inset title={c.notConfigured}>{c.exportBookings}</NavLink>
       </NavGroup>
 
