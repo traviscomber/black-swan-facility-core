@@ -184,7 +184,7 @@ export function BookingReferenceSidebar() {
         <NavLink href={`${href("/bookings/channels")}?channel=ical`} active={active("/bookings/channels") && selectedChannel === "ical"} inset dot="ical">{c.iCalendar}</NavLink>
       </NavGroup>
 
-      <NavLink href={href("/employees")} active={active("/employees")} icon={Users}>{c.employees}</NavLink>
+      <NavLink href={href("/bookings/employees")} active={active("/bookings/employees")} icon={Users}>{c.employees}</NavLink>
       <NavLink href={href("/bookings/profile")} active={active("/bookings/profile")} icon={UserRound}>{c.profile}</NavLink>
     </nav>
 
