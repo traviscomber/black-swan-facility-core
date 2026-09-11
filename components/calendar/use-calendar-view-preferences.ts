@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import type { CalendarLayerKey } from "@/components/calendar/reservation-operational-lanes"
 
-const STORAGE_KEY = "black-swan.booking-calendar.preferences.v1"
+const STORAGE_KEY = "black-swan.booking-calendar.preferences.v2"
 
 export interface CalendarViewPreferences {
   activeLayers: CalendarLayerKey[]
