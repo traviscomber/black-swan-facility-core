@@ -1,0 +1,206 @@
+/* Booking subsections v2
+   One layout contract for every route inside the BedBooking-style workspace.
+   Presentation only: canonical data, mutations and permissions remain unchanged. */
+
+.booking-calendar-bedbooking-shell {
+  display: flex;
+  min-width: 0;
+  min-height: 100dvh;
+  height: 100dvh;
+  flex: 1 1 auto;
+  flex-direction: column;
+  overflow: hidden;
+  background: #111213;
+}
+
+/* Every booking subsection must consume only the content column. */
+.booking-calendar-bedbooking-shell > section,
+.booking-calendar-bedbooking-shell > div:not([data-booking-mobile-nav]),
+.booking-calendar-bedbooking-shell > main {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.booking-calendar-bedbooking-shell > section {
+  min-height: 0 !important;
+  height: 100%;
+  flex: 1 1 auto;
+  overflow: hidden;
+}
+
+/* Shared subsection anatomy: compact header, command strip, one primary work surface. */
+.booking-calendar-bedbooking-shell > section > header {
+  min-height: 58px !important;
+  flex: 0 0 auto;
+  border-bottom: 1px solid rgba(255,255,255,.08) !important;
+  background: #17191a !important;
+  padding: 8px 12px !important;
+}
+
+.booking-calendar-bedbooking-shell > section > header h1 {
+  font-size: 15px !important;
+  line-height: 20px !important;
+  font-weight: 550 !important;
+  letter-spacing: -.01em !important;
+}
+
+.booking-calendar-bedbooking-shell > section > header p {
+  font-size: 11px !important;
+  line-height: 15px !important;
+  color: rgba(255,255,255,.44) !important;
+}
+
+.booking-calendar-bedbooking-shell > section > header button,
+.booking-calendar-bedbooking-shell > section > header a {
+  min-height: 32px !important;
+  height: 32px !important;
+  border-radius: 3px !important;
+  font-size: 11px !important;
+}
+
+.booking-calendar-bedbooking-shell > section > header + div {
+  min-width: 0;
+}
+
+/* Tables own their scroll instead of widening the workspace underneath the sidebar. */
+.booking-calendar-bedbooking-shell table {
+  max-width: none;
+}
+
+.booking-calendar-bedbooking-shell section > .overflow-auto,
+.booking-calendar-bedbooking-shell section > .overflow-x-auto {
+  min-height: 0;
+  flex: 1 1 auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+}
+
+.booking-calendar-bedbooking-shell table thead th {
+  height: 34px;
+  padding-top: 6px !important;
+  padding-bottom: 6px !important;
+}
+
+.booking-calendar-bedbooking-shell table tbody td {
+  padding-top: 8px !important;
+  padding-bottom: 8px !important;
+}
+
+/* Root reservation list + Guests: maintain a bounded work surface. */
+.booking-workspace[data-booking-section="reservations"] .booking-calendar-bedbooking-shell > section,
+.booking-workspace[data-booking-section="guests"] .booking-calendar-bedbooking-shell > section,
+.booking-workspace[data-booking-section="rates"] .booking-calendar-bedbooking-shell > section,
+.booking-workspace[data-booking-section="extras"] .booking-calendar-bedbooking-shell > section,
+.booking-workspace[data-booking-section="payments"] .booking-calendar-bedbooking-shell > section,
+.booking-workspace[data-booking-section="requests"] .booking-calendar-bedbooking-shell > section,
+.booking-workspace[data-booking-section="blocks"] .booking-calendar-bedbooking-shell > section,
+.booking-workspace[data-booking-section="charges"] .booking-calendar-bedbooking-shell > section,
+.booking-workspace[data-booking-section="rooms"] .booking-calendar-bedbooking-shell > section,
+.booking-workspace[data-booking-section="audit"] .booking-calendar-bedbooking-shell > section,
+.booking-workspace[data-booking-section="reports"] .booking-calendar-bedbooking-shell > section,
+.booking-workspace[data-booking-section="revenue"] .booking-calendar-bedbooking-shell > section,
+.booking-workspace[data-booking-section="invoices"] .booking-calendar-bedbooking-shell > section,
+.booking-workspace[data-booking-section="facilities"] .booking-calendar-bedbooking-shell > section,
+.booking-workspace[data-booking-section="channels"] .booking-calendar-bedbooking-shell > section,
+.booking-workspace[data-booking-section="profile"] .booking-calendar-bedbooking-shell > section {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Stay Cockpit legacy page: AppLayout is transparent in Booking, so normalize its
+   PageHeader + content siblings here instead of creating another shell. */
+.booking-workspace[data-booking-section="operations"] .booking-calendar-bedbooking-shell > [data-slot="page-header"] {
+  min-height: 58px !important;
+  flex: 0 0 auto;
+  border-bottom: 1px solid rgba(255,255,255,.08) !important;
+  background: #17191a !important;
+  padding: 8px 12px !important;
+}
+
+.booking-workspace[data-booking-section="operations"] .booking-calendar-bedbooking-shell > [data-slot="page-header"] + div {
+  min-height: 0;
+  flex: 1 1 auto;
+  overflow: auto;
+  padding: 8px !important;
+}
+
+/* Hide the old dashboard KPI wall. Operational counts remain available in the
+   calendar/detail surfaces; the timeline is the primary object. */
+.booking-workspace[data-booking-section="operations"] .booking-calendar-bedbooking-shell > [data-slot="page-header"] + div > .grid:first-child {
+  display: none !important;
+}
+
+/* Flatten the legacy filter card into a command strip. */
+.booking-workspace[data-booking-section="operations"] .booking-calendar-bedbooking-shell > [data-slot="page-header"] + div > [data-slot="card"] {
+  margin: 0 0 8px !important;
+  border: 0 !important;
+  border-bottom: 1px solid rgba(255,255,255,.08) !important;
+  border-radius: 0 !important;
+  background: #151718 !important;
+  box-shadow: none !important;
+}
+
+.booking-workspace[data-booking-section="operations"] .booking-calendar-bedbooking-shell > [data-slot="page-header"] + div > [data-slot="card"] [data-slot="card-content"] {
+  padding: 6px 8px !important;
+}
+
+.booking-workspace[data-booking-section="operations"] .booking-calendar-bedbooking-shell > [data-slot="page-header"] + div > [data-slot="card"] button,
+.booking-workspace[data-booking-section="operations"] .booking-calendar-bedbooking-shell > [data-slot="page-header"] + div > [data-slot="card"] input,
+.booking-workspace[data-booking-section="operations"] .booking-calendar-bedbooking-shell > [data-slot="page-header"] + div > [data-slot="card"] select {
+  min-height: 30px !important;
+  height: 30px !important;
+  border-radius: 3px !important;
+  font-size: 11px !important;
+}
+
+/* Daily operations and handovers: remove dashboard spacing while preserving action density. */
+.booking-workspace[data-booking-section="activities"] .booking-calendar-bedbooking-shell,
+.booking-workspace[data-booking-section="handovers"] .booking-calendar-bedbooking-shell {
+  min-width: 0;
+}
+
+.booking-workspace[data-booking-section="activities"] [data-slot="card"],
+.booking-workspace[data-booking-section="handovers"] [data-slot="card"] {
+  border-radius: 3px !important;
+  border-color: rgba(255,255,255,.08) !important;
+  box-shadow: none !important;
+}
+
+/* Detail drawers belong to the main workspace, not to the sidebar. */
+.booking-workspace .fixed.inset-0.z-50.flex.justify-end > aside {
+  right: 0;
+  left: auto;
+}
+
+@media (max-width: 1023px) {
+  .booking-calendar-bedbooking-shell {
+    height: 100dvh;
+  }
+
+  .booking-calendar-bedbooking-shell > section > header {
+    min-height: auto !important;
+    align-items: flex-start !important;
+    flex-wrap: wrap;
+  }
+
+  .booking-calendar-bedbooking-shell > section > header > div:last-child {
+    max-width: 100%;
+    flex-wrap: wrap;
+  }
+
+  .booking-calendar-bedbooking-shell > section > header + div {
+    overflow-x: auto;
+  }
+}
+
+@media (max-width: 640px) {
+  .booking-calendar-bedbooking-shell > section > header {
+    padding: 8px !important;
+  }
+
+  .booking-calendar-bedbooking-shell > section > header a,
+  .booking-calendar-bedbooking-shell > section > header button {
+    min-height: 36px !important;
+    height: 36px !important;
+  }
+}
