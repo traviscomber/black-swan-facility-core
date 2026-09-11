@@ -136,7 +136,7 @@ export default function RoomsPage() {
             const roomBeds = beds.filter((bed) => bed.room_id === room.id)
             const capacity = room.capacity || room.max_guests || 2
             return <tr key={room.id} className="bg-[#111213] hover:bg-white/[0.025]">
-              <td className="px-4 py-2.5"><Link href={`/bookings/rooms/${room.id}`} className="inline-flex items-center gap-2 font-medium hover:text-emerald-300"><BedDouble className="h-3.5 w-3.5 text-muted-foreground" />{room.room_number}</Link></td>
+              <td className="px-4 py-2.5"><Link href={`/${language}/bookings/rooms/${room.id}`} aria-label={`${copy.title} ${room.room_number}`} className="inline-flex items-center gap-2 rounded-[2px] font-medium outline-none hover:text-emerald-300 focus-visible:ring-1 focus-visible:ring-emerald-400"><BedDouble className="h-3.5 w-3.5 text-muted-foreground" />{room.room_number}</Link></td>
               <td className="px-4 py-2.5 text-muted-foreground">{room.locationName ?? "—"}</td>
               <td className="px-4 py-2.5 text-muted-foreground">{roomTypeLabel(room.room_type)}</td>
               <td className="px-4 py-2.5">{capacity}</td>
