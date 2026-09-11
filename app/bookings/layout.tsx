@@ -17,6 +17,11 @@ function stripLocale(pathname: string) {
   return `/${segments.join("/")}` || "/"
 }
 
+function bookingSection(pathname: string) {
+  const segment = pathname.replace(/^\/bookings\/?/, "").split("/")[0]
+  return segment || "reservations"
+}
+
 export default function BookingsLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname() || "/"
   const { language } = useLanguage()
@@ -26,7 +31,7 @@ export default function BookingsLayout({ children }: { children: React.ReactNode
 
   return (
     <AccessGate action="booking.modify" department="booking">
-      <div className="booking-workspace contents" data-locale={BOOKING_LAYOUT_LOCALE[language]}>
+      <div className="booking-workspace contents" data-locale={BOOKING_LAYOUT_LOCALE[language]} data-booking-section={bookingSection(internalPathname)}>
         <BookingsLegacyLocalizationBridge />
         <div className="booking-calendar-reference-frame">
           <BookingReferenceSidebar />
