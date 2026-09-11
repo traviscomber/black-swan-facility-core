@@ -5,10 +5,11 @@ import Link from "next/link"
 import { createBrowserClient } from "@/lib/supabase/client"
 import { Badge } from "@/components/ui/badge"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Edit, FileText, MessageCircle, Plus, Search, Star, Trash2, CalendarDays } from "lucide-react"
+import { Edit, FileText, MessageCircle, Plus, Search, Trash2, CalendarDays } from "lucide-react"
 import { AddGuestDialog } from "@/components/add-guest-dialog"
 import { EditGuestDialog } from "@/components/edit-guest-dialog"
-import { format, isAfter, isBefore, parseISO, startOfDay } from "date-fns"
+import { format, parseISO } from "date-fns"
+import { bookingDateKey } from "@/lib/booking/timezone"
 import { useLanguage } from "@/lib/hooks/use-language"
 import { guestTranslations } from "@/lib/translations/guests"
 
@@ -41,11 +42,11 @@ export default function GuestsPage() {
   }
 
   const enrichedGuests = useMemo(() => {
-    const today = startOfDay(new Date())
+    const today = bookingDateKey()
     return guests.map((guest) => {
       const reservations = (guest.reservations ?? []).filter((reservation) => normalizeStatus(reservation.status) !== "cancelled")
-      const completed = reservations.filter((reservation) => isBefore(parseISO(reservation.check_out), today) || normalizeStatus(reservation.status) === "checked_out").sort((a, b) => b.check_in.localeCompare(a.check_in))
-      const upcoming = reservations.filter((reservation) => isAfter(parseISO(reservation.check_in), today)).sort((a, b) => a.check_in.localeCompare(b.check_in))
+      const completed = reservations.filter((reservation) => reservation.check_out < today || normalizeStatus(reservation.status) === "checked_out").sort((a, b) => b.check_in.localeCompare(a.check_in))
+      const upcoming = reservations.filter((reservation) => reservation.check_in > today).sort((a, b) => a.check_in.localeCompare(b.check_in))
       return { ...guest, reservations, stays: completed.length, totalSpend: reservations.reduce((sum, reservation) => sum + Number(reservation.total_amount ?? 0), 0), lastStay: completed[0] ?? null, nextStay: upcoming[0] ?? null }
     })
   }, [guests])
