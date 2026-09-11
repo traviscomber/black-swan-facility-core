@@ -10,6 +10,7 @@ import "./booking-workspace.css"
 import "./booking-section-polish.css"
 import "./booking-subsections-v2.css"
 import "./calendar/bedbooking-density.css"
+import "./calendar/calendar-clean.css"
 
 const ROUTE_LOCALES = new Set(["en", "es", "de"])
 
