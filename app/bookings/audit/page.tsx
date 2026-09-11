@@ -2,12 +2,11 @@
 
 import { useEffect, useMemo, useState } from "react"
 import { createClient } from "@/lib/supabase/client"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Activity, RefreshCw, Search, ShieldCheck } from "lucide-react"
+import { RefreshCw, Search } from "lucide-react"
 import { useLanguage } from "@/lib/hooks/use-language"
 import { auditCopy, auditLocale } from "@/lib/translations/audit"
 
@@ -40,15 +39,30 @@ export default function BookingsAuditPage() {
     return () => { void supabase.removeChannel(channel) }
   }, [])
 
-  const filteredRows = rows.filter((row) => { const text = `${row.guest_name ?? ""} ${row.action} ${row.actor ?? ""} ${row.notes ?? ""} ${row.reservation_id ?? ""}`.toLowerCase(); return (source === "all" || row.source === source) && text.includes(query.toLowerCase()) })
-  const last24Hours = rows.filter((row) => Date.now() - new Date(row.created_at).getTime() <= 24 * 60 * 60 * 1000).length
-  const reservationsTracked = new Set(rows.map((row) => row.reservation_id).filter(Boolean)).size
+  const filteredRows = useMemo(() => rows.filter((row) => {
+    const text = `${row.guest_name ?? ""} ${row.action} ${row.actor ?? ""} ${row.notes ?? ""} ${row.reservation_id ?? ""}`.toLowerCase()
+    return (source === "all" || row.source === source) && text.includes(query.toLowerCase())
+  }), [query, rows, source])
 
-  return <div className="space-y-6 p-4 md:p-6">
-    <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between"><div><h1 className="text-2xl font-semibold tracking-tight">{copy.title}</h1><p className="text-sm text-muted-foreground">{copy.subtitle}</p></div><Button variant="outline" onClick={() => void loadAudit()} disabled={loading}><RefreshCw className={`mr-2 h-4 w-4 ${loading ? "animate-spin" : ""}`} />{copy.refresh}</Button></div>
-    <div className="grid gap-4 md:grid-cols-3"><Card><CardHeader className="pb-2"><CardTitle className="text-sm font-medium">{copy.events}</CardTitle></CardHeader><CardContent className="text-2xl font-semibold">{rows.length}</CardContent></Card><Card><CardHeader className="pb-2"><CardTitle className="text-sm font-medium">{copy.last24}</CardTitle></CardHeader><CardContent className="text-2xl font-semibold">{last24Hours}</CardContent></Card><Card><CardHeader className="pb-2"><CardTitle className="text-sm font-medium">{copy.tracked}</CardTitle></CardHeader><CardContent className="text-2xl font-semibold">{reservationsTracked}</CardContent></Card></div>
-    <Card><CardContent className="space-y-4 pt-6"><div className="flex flex-col gap-3 md:flex-row"><div className="relative flex-1"><Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" /><Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={copy.search} className="pl-9" /></div><Select value={source} onValueChange={setSource}><SelectTrigger className="w-full md:w-52"><SelectValue placeholder={copy.source} /></SelectTrigger><SelectContent><SelectItem value="all">{copy.allSources}</SelectItem><SelectItem value="history">{copy.history}</SelectItem><SelectItem value="audit">{copy.audit}</SelectItem></SelectContent></Select></div>
-      <div className="space-y-3">{loading ? <div className="py-12 text-center text-sm text-muted-foreground">{copy.loading}</div> : filteredRows.length === 0 ? <div className="py-12 text-center text-sm text-muted-foreground">{copy.noEvents}</div> : filteredRows.map((row) => <div key={`${row.source}-${row.id}`} className="flex gap-3 rounded-lg border p-4"><div className="mt-0.5 rounded-full bg-muted p-2">{row.source === "history" ? <Activity className="h-4 w-4" /> : <ShieldCheck className="h-4 w-4" />}</div><div className="min-w-0 flex-1 space-y-1"><div className="flex flex-wrap items-center gap-2"><span className="font-medium">{row.guest_name ?? copy.noGuest}</span><Badge variant={row.source === "history" ? "secondary" : "outline"}>{row.action}</Badge></div><p className="text-sm text-muted-foreground">{row.actor ? `${copy.actor}: ${row.actor}` : copy.noActor}{row.reservation_id ? ` · ${copy.reservation} ${row.reservation_id.slice(0, 8)}` : ""}</p>{row.notes && <p className="break-words text-sm">{row.notes}</p>}<p className="text-xs text-muted-foreground">{new Date(row.created_at).toLocaleString(auditLocale[language])}</p></div></div>)}</div>
-    </CardContent></Card>
+  return <div className="min-h-screen bg-[#111213] text-foreground">
+    <header className="flex min-h-[58px] flex-col gap-3 border-b border-white/10 px-4 py-3 md:flex-row md:items-center md:justify-between md:px-5">
+      <div><h1 className="text-xl font-semibold tracking-tight">{copy.title}</h1><p className="text-xs text-muted-foreground">{copy.subtitle}</p></div>
+      <Button variant="outline" className="h-8 rounded-[4px] border-white/10 bg-[#111314] px-3 text-xs" onClick={() => void loadAudit()} disabled={loading}><RefreshCw className={`mr-1.5 h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />{copy.refresh}</Button>
+    </header>
+
+    <div className="flex min-h-[40px] flex-col gap-2 border-b border-white/10 bg-[#151718] px-4 py-1.5 md:flex-row md:items-center md:px-5">
+      <div className="relative w-full md:max-w-md"><Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" /><Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={copy.search} className="h-8 rounded-[4px] border-white/10 bg-[#111314] pl-8 text-xs" /></div>
+      <Select value={source} onValueChange={setSource}><SelectTrigger className="h-8 rounded-[4px] border-white/10 bg-[#111314] text-xs md:w-48"><SelectValue placeholder={copy.source} /></SelectTrigger><SelectContent><SelectItem value="all">{copy.allSources}</SelectItem><SelectItem value="history">{copy.history}</SelectItem><SelectItem value="audit">{copy.audit}</SelectItem></SelectContent></Select>
+      <span className="ml-auto text-xs text-muted-foreground">{filteredRows.length} {copy.events.toLowerCase()}</span>
+    </div>
+
+    <div className="overflow-x-auto">
+      <table className="w-full min-w-[1050px] text-xs">
+        <thead className="bg-[#17191a] text-left text-[11px] uppercase tracking-[0.08em] text-muted-foreground"><tr><th className="px-4 py-2.5">Time</th><th className="px-4 py-2.5">{copy.source}</th><th className="px-4 py-2.5">Guest</th><th className="px-4 py-2.5">Action</th><th className="px-4 py-2.5">{copy.actor}</th><th className="px-4 py-2.5">{copy.reservation}</th><th className="px-4 py-2.5">Detail</th></tr></thead>
+        <tbody className="divide-y divide-white/[0.06]">
+          {loading ? <tr><td colSpan={7} className="px-4 py-12 text-center text-muted-foreground">{copy.loading}</td></tr> : filteredRows.length === 0 ? <tr><td colSpan={7} className="px-4 py-12 text-center text-muted-foreground">{copy.noEvents}</td></tr> : filteredRows.map((row) => <tr key={`${row.source}-${row.id}`} className="bg-[#111213] align-top hover:bg-white/[0.025]"><td className="whitespace-nowrap px-4 py-2.5 text-muted-foreground">{new Date(row.created_at).toLocaleString(auditLocale[language])}</td><td className="px-4 py-2.5"><Badge variant={row.source === "history" ? "secondary" : "outline"} className="h-5 rounded-[3px] px-1.5 text-[10px]">{row.source === "history" ? copy.history : copy.audit}</Badge></td><td className="px-4 py-2.5 font-medium">{row.guest_name ?? copy.noGuest}</td><td className="px-4 py-2.5">{row.action}</td><td className="px-4 py-2.5 text-muted-foreground">{row.actor ?? copy.noActor}</td><td className="px-4 py-2.5 font-mono text-[11px] text-muted-foreground">{row.reservation_id ? row.reservation_id.slice(0, 8) : "—"}</td><td className="max-w-xl px-4 py-2.5 text-muted-foreground"><span className="line-clamp-2 break-words">{row.notes || "—"}</span></td></tr>)}
+        </tbody>
+      </table>
+    </div>
   </div>
 }
