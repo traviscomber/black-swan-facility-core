@@ -16,6 +16,7 @@ import {
   Share2,
   UserRound,
   Users,
+  Wrench,
 } from "lucide-react"
 import { useLanguage } from "@/lib/hooks/use-language"
 
@@ -24,31 +25,34 @@ const SIDEBAR_GROUPS_KEY = "black-swan.booking.sidebar.groups"
 const copy = {
   en: {
     calendar: "Calendar", premium: "Premium", bookings: "Bookings", reservationList: "Reservation list", clients: "Clients", messageTemplates: "Message templates",
+    operations: "Operations", dailyOperations: "Daily operations", stayCockpit: "Stay cockpit", charges: "Charges", roomBlocks: "Room blocks", handovers: "Shift handovers",
     priceList: "Price list", setPrices: "Set prices", configuration: "Configuration", prepayment: "Prepayment", additionalServices: "Additional services",
     reports: "Reports and finances", statistics: "Statistics", financialReport: "Financial Report", roomReport: "Room report", occupancyReport: "Occupancy report", localTaxReport: "Local Tax Report", paymentList: "Payment list", registrationBook: "Registration book", exportBookings: "Export bookings",
     invoices: "Invoices", open: "Open", taxes: "Taxes", taxRates: "Tax rates",
     reservationSystem: "Reservation system", paymentMethods: "Payment methods", amenities: "Amenities", notifications: "Notifications", licenseNumber: "License number",
-    salesChannels: "Sales channels", airbnb: "Airbnb", booking: "Booking", iCalendar: "iCalendar", employees: "Employees", profile: "Profile", hide: "Hide", show: "Show", notConfigured: "Not configured yet",
+    salesChannels: "Sales channels", airbnb: "Airbnb", booking: "Booking", iCalendar: "iCalendar", employees: "Employees", profile: "Profile", hide: "Hide", show: "Show", notConfigured: "Not configured yet", backToOs: "Back to Black Swan OS",
   },
   es: {
     calendar: "Calendario", premium: "Premium", bookings: "Reservas", reservationList: "Lista de reservas", clients: "Huéspedes", messageTemplates: "Plantillas de mensajes",
+    operations: "Operación", dailyOperations: "Operación diaria", stayCockpit: "Stay cockpit", charges: "Cargos", roomBlocks: "Bloqueos", handovers: "Entregas de turno",
     priceList: "Tarifas", setPrices: "Definir precios", configuration: "Configuración", prepayment: "Prepago", additionalServices: "Servicios adicionales",
     reports: "Reportes y finanzas", statistics: "Estadísticas", financialReport: "Reporte financiero", roomReport: "Reporte por habitación", occupancyReport: "Reporte de ocupación", localTaxReport: "Reporte de impuesto local", paymentList: "Lista de pagos", registrationBook: "Libro de registro", exportBookings: "Exportar reservas",
     invoices: "Facturas", open: "Abiertas", taxes: "Impuestos", taxRates: "Tasas de impuesto",
     reservationSystem: "Sistema de reservas", paymentMethods: "Métodos de pago", amenities: "Amenities", notifications: "Notificaciones", licenseNumber: "Número de licencia",
-    salesChannels: "Canales de venta", airbnb: "Airbnb", booking: "Booking", iCalendar: "iCalendar", employees: "Equipo", profile: "Perfil", hide: "Ocultar", show: "Mostrar", notConfigured: "Aún no configurado",
+    salesChannels: "Canales de venta", airbnb: "Airbnb", booking: "Booking", iCalendar: "iCalendar", employees: "Equipo", profile: "Perfil", hide: "Ocultar", show: "Mostrar", notConfigured: "Aún no configurado", backToOs: "Volver a Black Swan OS",
   },
   de: {
     calendar: "Kalender", premium: "Premium", bookings: "Buchungen", reservationList: "Reservierungsliste", clients: "Gäste", messageTemplates: "Nachrichtenvorlagen",
+    operations: "Betrieb", dailyOperations: "Tagesbetrieb", stayCockpit: "Stay cockpit", charges: "Gebühren", roomBlocks: "Zimmerblöcke", handovers: "Schichtübergaben",
     priceList: "Preisliste", setPrices: "Preise festlegen", configuration: "Konfiguration", prepayment: "Vorauszahlung", additionalServices: "Zusatzleistungen",
     reports: "Berichte und Finanzen", statistics: "Statistiken", financialReport: "Finanzbericht", roomReport: "Zimmerbericht", occupancyReport: "Belegungsbericht", localTaxReport: "Lokaler Steuerbericht", paymentList: "Zahlungsliste", registrationBook: "Melderegister", exportBookings: "Buchungen exportieren",
     invoices: "Rechnungen", open: "Offen", taxes: "Steuern", taxRates: "Steuersätze",
     reservationSystem: "Reservierungssystem", paymentMethods: "Zahlungsmethoden", amenities: "Ausstattung", notifications: "Benachrichtigungen", licenseNumber: "Lizenznummer",
-    salesChannels: "Vertriebskanäle", airbnb: "Airbnb", booking: "Booking", iCalendar: "iCalendar", employees: "Mitarbeiter", profile: "Profil", hide: "Ausblenden", show: "Einblenden", notConfigured: "Noch nicht konfiguriert",
+    salesChannels: "Vertriebskanäle", airbnb: "Airbnb", booking: "Booking", iCalendar: "iCalendar", employees: "Mitarbeiter", profile: "Profil", hide: "Ausblenden", show: "Einblenden", notConfigured: "Noch nicht konfiguriert", backToOs: "Zurück zu Black Swan OS",
   },
 } as const
 
-type GroupKey = "bookings" | "prices" | "reports" | "invoices" | "reservation" | "channels"
+type GroupKey = "bookings" | "operations" | "prices" | "reports" | "invoices" | "reservation" | "channels"
 type NavLinkProps = { href?: string; active?: boolean; icon?: React.ComponentType<{ className?: string }>; children: React.ReactNode; inset?: boolean; title?: string; dot?: "airbnb" | "booking" | "ical" }
 
 function NavLink({ href, active = false, icon: Icon, children, inset = false, title, dot }: NavLinkProps) {
@@ -64,10 +68,12 @@ function NavGroup({ label, icon: Icon, open, onToggle, children }: { label: stri
 
 function groupForPath(pathname: string): GroupKey | null {
   if (/\/bookings\/(guests)?\/?$/.test(pathname) || /\/bookings\/?$/.test(pathname)) return "bookings"
+  if (/\/bookings\/(activities|operations|charges|blocks|handovers)(\/|$)/.test(pathname)) return "operations"
   if (/\/bookings\/(rates|extras)(\/|$)/.test(pathname)) return "prices"
   if (/\/bookings\/(reports|revenue|rooms|audit)(\/|$)/.test(pathname)) return "reports"
   if (/\/bookings\/invoices(\/|$)/.test(pathname)) return "invoices"
   if (/\/bookings\/(facilities|payments|requests)(\/|$)/.test(pathname)) return "reservation"
+  if (/\/bookings\/channels(\/|$)/.test(pathname)) return "channels"
   return null
 }
 
@@ -103,8 +109,14 @@ export function BookingReferenceSidebar() {
 
   function toggleGroup(key: GroupKey) { setOpenGroups((current) => { const next = new Set(current); if (next.has(key)) next.delete(key); else next.add(key); return next }) }
 
-  return <aside className={`booking-reference-sidebar ${collapsed ? "is-collapsed" : ""}`} aria-label="Booking navigation">
-    <div className="booking-reference-brand"><img src="/blackswan-logo.png" alt="Black Swan" className="booking-reference-logo h-5 w-5 object-contain" /><span className="booking-reference-brand-name">BlackSwan</span><span className="booking-reference-brand-pill">Booking</span></div>
+  return <aside className={`booking-reference-sidebar ${collapsed ? "is-collapsed" : ""}`} aria-label="Booking navigation" data-booking-reference-sidebar>
+    <div className="booking-reference-brand">
+      <Link href={href("/os")} className="booking-reference-brand-home" aria-label={c.backToOs} title={c.backToOs}>
+        <img src="/blackswan-logo.png" alt="Black Swan" className="booking-reference-logo h-5 w-5 object-contain" />
+        <span className="booking-reference-brand-name">BlackSwan</span>
+      </Link>
+      <span className="booking-reference-brand-pill"><Crown className="h-3 w-3" />{c.premium}</span>
+    </div>
     <nav className="booking-reference-nav">
       <NavLink href={href("/bookings/calendar")} active={active("/bookings/calendar")} icon={CalendarDays}>{c.calendar}</NavLink>
       <NavLink icon={Crown} title={c.notConfigured}>{c.premium}</NavLink>
@@ -112,6 +124,13 @@ export function BookingReferenceSidebar() {
         <NavLink href={href("/bookings")} active={pathname === href("/bookings")} inset>{c.reservationList}</NavLink>
         <NavLink href={href("/bookings/guests")} active={active("/bookings/guests")} inset>{c.clients}</NavLink>
         <NavLink inset title={c.notConfigured}>{c.messageTemplates}</NavLink>
+      </NavGroup>
+      <NavGroup label={c.operations} icon={Wrench} open={openGroups.has("operations")} onToggle={() => toggleGroup("operations")}>
+        <NavLink href={href("/bookings/activities")} active={active("/bookings/activities")} inset>{c.dailyOperations}</NavLink>
+        <NavLink href={href("/bookings/operations")} active={active("/bookings/operations")} inset>{c.stayCockpit}</NavLink>
+        <NavLink href={href("/bookings/charges")} active={active("/bookings/charges")} inset>{c.charges}</NavLink>
+        <NavLink href={href("/bookings/blocks")} active={active("/bookings/blocks")} inset>{c.roomBlocks}</NavLink>
+        <NavLink href={href("/bookings/handovers")} active={active("/bookings/handovers")} inset>{c.handovers}</NavLink>
       </NavGroup>
       <NavGroup label={c.priceList} icon={BadgeDollarSign} open={openGroups.has("prices")} onToggle={() => toggleGroup("prices")}>
         <NavLink href={href("/bookings/rates")} active={active("/bookings/rates")} inset>{c.setPrices}</NavLink>
@@ -142,12 +161,12 @@ export function BookingReferenceSidebar() {
         <NavLink inset title={c.notConfigured}>{c.licenseNumber}</NavLink>
       </NavGroup>
       <NavGroup label={c.salesChannels} icon={Share2} open={openGroups.has("channels")} onToggle={() => toggleGroup("channels")}>
-        <NavLink inset dot="airbnb" title={c.notConfigured}>{c.airbnb}</NavLink>
-        <NavLink inset dot="booking" title={c.notConfigured}>{c.booking}</NavLink>
-        <NavLink inset dot="ical" title={c.notConfigured}>{c.iCalendar}</NavLink>
+        <NavLink href={`${href("/bookings/channels")}?channel=airbnb`} active={active("/bookings/channels") && pathname.includes("channel=airbnb")} inset dot="airbnb">{c.airbnb}</NavLink>
+        <NavLink href={`${href("/bookings/channels")}?channel=booking`} inset dot="booking">{c.booking}</NavLink>
+        <NavLink href={`${href("/bookings/channels")}?channel=ical`} inset dot="ical">{c.iCalendar}</NavLink>
       </NavGroup>
       <NavLink href={href("/employees")} active={active("/employees")} icon={Users}>{c.employees}</NavLink>
-      <NavLink icon={UserRound} title={c.notConfigured}>{c.profile}</NavLink>
+      <NavLink href={href("/bookings/profile")} active={active("/bookings/profile")} icon={UserRound}>{c.profile}</NavLink>
     </nav>
     <div className="booking-reference-sidebar-footer"><button type="button" className="booking-reference-hide" onClick={() => setCollapsed((value) => !value)} aria-label={collapsed ? c.show : c.hide} title={collapsed ? c.show : c.hide}><ChevronLeft className="booking-reference-hide-icon h-4 w-4" /><span className="booking-reference-nav-label">{collapsed ? c.show : c.hide}</span></button></div>
   </aside>

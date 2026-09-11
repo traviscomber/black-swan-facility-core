@@ -1,0 +1,176 @@
+/* Final Booking workspace polish for operation-heavy sections. Presentation only. */
+
+.booking-workspace[data-booking-section="handovers"] .booking-calendar-bedbooking-shell,
+.booking-workspace[data-booking-section="operations"] .booking-calendar-bedbooking-shell,
+.booking-workspace[data-booking-section="activities"] .booking-calendar-bedbooking-shell,
+.booking-workspace[data-booking-section="charges"] .booking-calendar-bedbooking-shell,
+.booking-workspace[data-booking-section="blocks"] .booking-calendar-bedbooking-shell {
+  background: #111213;
+}
+
+.booking-workspace[data-booking-section="handovers"] [data-slot="page-header"],
+.booking-workspace[data-booking-section="operations"] [data-slot="page-header"] {
+  min-height: 58px !important;
+  padding: 10px 16px !important;
+  border-bottom: 1px solid rgba(255,255,255,.08) !important;
+  background: #17191a !important;
+}
+
+.booking-workspace[data-booking-section="handovers"] [data-slot="page-header"] h1,
+.booking-workspace[data-booking-section="operations"] [data-slot="page-header"] h1 {
+  font-size: 15px !important;
+  line-height: 20px !important;
+  font-weight: 550 !important;
+  letter-spacing: -.01em !important;
+}
+
+.booking-workspace[data-booking-section="handovers"] [data-slot="page-header"] p,
+.booking-workspace[data-booking-section="operations"] [data-slot="page-header"] p {
+  margin-top: 2px !important;
+  max-width: 860px !important;
+  font-size: 11px !important;
+  line-height: 16px !important;
+  color: rgba(255,255,255,.46) !important;
+}
+
+.booking-workspace[data-booking-section="handovers"] [data-slot="page-header"] button,
+.booking-workspace[data-booking-section="operations"] [data-slot="page-header"] button {
+  min-height: 32px !important;
+  height: 32px !important;
+  border-radius: 4px !important;
+  font-size: 11px !important;
+}
+
+.booking-workspace[data-booking-section="handovers"] .booking-calendar-bedbooking-shell > div > .grid,
+.booking-workspace[data-booking-section="operations"] .booking-calendar-bedbooking-shell > div > .grid {
+  gap: 8px !important;
+  padding: 8px !important;
+}
+
+.booking-workspace[data-booking-section="handovers"] [data-slot="card"],
+.booking-workspace[data-booking-section="operations"] [data-slot="card"] {
+  border-color: rgba(255,255,255,.08) !important;
+  border-radius: 3px !important;
+  background: #151718 !important;
+  box-shadow: none !important;
+}
+
+.booking-workspace[data-booking-section="handovers"] [data-slot="card-header"],
+.booking-workspace[data-booking-section="operations"] [data-slot="card-header"] {
+  padding: 10px 12px 6px !important;
+}
+
+.booking-workspace[data-booking-section="handovers"] [data-slot="card-title"],
+.booking-workspace[data-booking-section="operations"] [data-slot="card-title"] {
+  font-size: 12px !important;
+  line-height: 16px !important;
+  font-weight: 550 !important;
+}
+
+.booking-workspace[data-booking-section="handovers"] [data-slot="card-content"],
+.booking-workspace[data-booking-section="operations"] [data-slot="card-content"] {
+  padding: 8px 12px 12px !important;
+}
+
+.booking-workspace[data-booking-section="handovers"] input,
+.booking-workspace[data-booking-section="handovers"] select,
+.booking-workspace[data-booking-section="operations"] input,
+.booking-workspace[data-booking-section="operations"] select {
+  min-height: 32px !important;
+  height: 32px !important;
+  border-radius: 3px !important;
+  border-color: rgba(255,255,255,.10) !important;
+  background: #111314 !important;
+  font-size: 11px !important;
+}
+
+.booking-workspace[data-booking-section="handovers"] textarea,
+.booking-workspace[data-booking-section="operations"] textarea {
+  border-radius: 3px !important;
+  border-color: rgba(255,255,255,.10) !important;
+  background: #111314 !important;
+  font-size: 11px !important;
+}
+
+.booking-workspace[data-booking-section="handovers"] button,
+.booking-workspace[data-booking-section="operations"] button {
+  border-radius: 3px !important;
+}
+
+.booking-workspace[data-booking-section="handovers"] .space-y-4 > :not([hidden]) ~ :not([hidden]),
+.booking-workspace[data-booking-section="operations"] .space-y-4 > :not([hidden]) ~ :not([hidden]) {
+  margin-top: 8px !important;
+}
+
+.booking-workspace[data-booking-section="handovers"] .space-y-3 > :not([hidden]) ~ :not([hidden]),
+.booking-workspace[data-booking-section="operations"] .space-y-3 > :not([hidden]) ~ :not([hidden]) {
+  margin-top: 6px !important;
+}
+
+/* Turn handover: preserve two-column operator flow, but remove dashboard-like bulk. */
+@media (min-width: 1280px) {
+  .booking-workspace[data-booking-section="handovers"] .booking-calendar-bedbooking-shell > div > .grid {
+    grid-template-columns: 300px minmax(0, 1fr) !important;
+  }
+}
+
+.booking-workspace[data-booking-section="handovers"] [data-slot="badge"] {
+  min-height: 20px !important;
+  border-radius: 3px !important;
+  padding: 2px 6px !important;
+  font-size: 10px !important;
+}
+
+/* Stay cockpit: keep the booking detail persistent on wide screens and modal on smaller devices. */
+.booking-workspace[data-booking-section="operations"] .fixed.inset-0.z-50.flex.justify-end > aside {
+  width: min(440px, 100vw) !important;
+  max-width: 440px !important;
+  border-left: 1px solid rgba(255,255,255,.10) !important;
+  background: #151718 !important;
+  box-shadow: -14px 0 34px rgba(0,0,0,.28) !important;
+}
+
+.booking-workspace[data-booking-section="operations"] .fixed.inset-0.z-50.flex.justify-end > aside > div:first-child {
+  padding: 12px 14px !important;
+  border-bottom-color: rgba(255,255,255,.08) !important;
+}
+
+.booking-workspace[data-booking-section="operations"] .fixed.inset-0.z-50.flex.justify-end > aside > .flex-1 {
+  gap: 12px !important;
+  padding: 12px 14px !important;
+}
+
+.booking-workspace[data-booking-section="operations"] .fixed.inset-0.z-50.flex.justify-end > aside section {
+  border-color: rgba(255,255,255,.08) !important;
+}
+
+.booking-workspace[data-booking-section="operations"] .fixed.inset-0.z-50.flex.justify-end > aside [data-slot="badge"] {
+  border-radius: 3px !important;
+  font-size: 10px !important;
+}
+
+/* Mobile/tablet: cards become full-width work surfaces; no clipped controls. */
+@media (max-width: 1023px) {
+  .booking-workspace[data-booking-section="handovers"] .booking-calendar-bedbooking-shell > div > .grid,
+  .booking-workspace[data-booking-section="operations"] .booking-calendar-bedbooking-shell > div > .grid {
+    grid-template-columns: minmax(0, 1fr) !important;
+    padding: 6px !important;
+  }
+
+  .booking-workspace[data-booking-section="handovers"] [data-slot="page-header"],
+  .booking-workspace[data-booking-section="operations"] [data-slot="page-header"] {
+    padding: 10px 12px !important;
+  }
+}
+
+@media (max-width: 640px) {
+  .booking-workspace[data-booking-section="handovers"] [data-slot="page-header"],
+  .booking-workspace[data-booking-section="operations"] [data-slot="page-header"] {
+    min-height: auto !important;
+  }
+
+  .booking-workspace[data-booking-section="operations"] .fixed.inset-0.z-50.flex.justify-end > aside {
+    width: 100vw !important;
+    max-width: 100vw !important;
+  }
+}

@@ -62,10 +62,13 @@ test("Santiago profile is CEO plus Hospitality and starts in the reservation cal
   assert.match(personaHook, /os_primary_domain, os_start_path/)
 })
 
-test("Hospitality keeps the reservation calendar primary and mounts its pulse inside the common shell", () => {
+test("Hospitality keeps reservations primary and calendar one click away inside the common shell", () => {
   assert.match(appLayout, /bookingsRoot && <HospitalityCommandStrip/)
   assert.doesNotMatch(bookingsPage, /HospitalityCommandStrip/)
-  assert.match(bookingsPage, /BookingOperationsTimelinePage/)
+  assert.match(bookingsPage, /Reservation list/)
+  assert.match(bookingsPage, /href=\{`\/\$\{language\}\/bookings\/calendar`\}/)
+  assert.match(bookingsPage, /href=\{`\/\$\{language\}\/bookings\/reservations\/\$\{row\.id\}`\}/)
+  assert.doesNotMatch(bookingsPage, /BookingOperationsTimelinePage/)
   assert.doesNotMatch(bookingsPage, /DailyOperationsPanel/)
   assert.doesNotMatch(bookingsPage, /CompactBookingQuickActions/)
 })
@@ -196,9 +199,10 @@ test("field desktop puts invoice decisions before Asana-first tasks, operations,
   assert.ok(workspacesIndex > attentionIndex)
 })
 
-test("root navigation respects profile start path but still validates route capability", () => {
+test("root navigation respects profile start path while using one profile read and validating route capability", () => {
   assert.match(proxySource, /effectivePathname === "\/"/)
-  assert.match(proxySource, /select\("os_start_path"\)/)
+  assert.match(proxySource, /select\("os_start_path,os_persona_key,os_primary_domain"\)/)
+  assert.equal((proxySource.match(/from\("user_access_profiles"\)/g) ?? []).length, 1)
   assert.match(proxySource, /getRouteRequirement\(preferredStartPath\)/)
   assert.match(proxySource, /startAllowed \? preferredStartPath : "\/os"/)
 })

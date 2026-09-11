@@ -1,0 +1,1 @@
+The global BSFC shell remains the system-level navigator. The Booking workspace intentionally uses a BedBooking-parity sidebar for hospitality tasks. The BlackSwan brand returns to the global OS; cross-workspace links may transition back to the global shell rather than duplicating global navigation inside Booking.

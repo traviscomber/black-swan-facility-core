@@ -1,0 +1,1 @@
+This contract protects the explicit Booking -> Black Swan OS boundary and the focused Vercel build policy. The full release quality gate remains in GitHub Actions.

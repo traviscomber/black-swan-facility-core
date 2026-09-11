@@ -14,9 +14,6 @@
   --booking-today: rgba(147, 201, 170, 0.12);
 }
 
-/* Put the calendar first. The operational summary already exists inside the
-   timeline, so the duplicated KPI blocks above it are hidden from the default
-   booking workspace. This is the largest UX gain relative to BedBooking. */
 .booking-workspace > div.min-h-screen > div.mx-auto > :nth-child(2),
 .booking-workspace > div.min-h-screen > div.mx-auto > :nth-child(3) {
   display: none !important;
@@ -65,7 +62,6 @@
   border-radius: 3px !important;
 }
 
-/* Search and filters become a compact command bar instead of a large card. */
 .booking-workspace > div.min-h-screen > div.mx-auto > :nth-child(4) {
   margin-bottom: 8px !important;
   border-color: var(--booking-line) !important;
@@ -88,7 +84,6 @@
   background: var(--booking-panel-2) !important;
 }
 
-/* Main range/navigation card and timeline should read as one continuous tool. */
 .booking-workspace [data-slot="card"] {
   box-shadow: none !important;
 }
@@ -110,7 +105,6 @@
   background: var(--booking-panel) !important;
 }
 
-/* BedBooking strength: extremely clear, dense day header and today column. */
 .booking-workspace [data-today="true"],
 .booking-workspace .bg-primary\/5,
 .booking-workspace .bg-primary\/10 {
@@ -126,7 +120,6 @@
   transition-duration: 100ms !important;
 }
 
-/* Keep high-value operational layers available, but make them secondary. */
 .booking-workspace button:has(svg.lucide-layers-3),
 .booking-workspace button:has(svg.lucide-rows-3),
 .booking-workspace button:has(svg.lucide-keyboard) {
@@ -134,16 +127,12 @@
   border-radius: 2px !important;
 }
 
-/* Reservation bars: flatter and denser like a dedicated PMS calendar. */
 .booking-workspace button[data-reservation-id],
 .booking-workspace [data-event-type="reservation"] {
   border-radius: 2px !important;
   box-shadow: none !important;
 }
 
-/* Santiago / stay cockpit: make the booking itself the operational center.
-   Existing operational sections stay in the same booking surface; widening the
-   detail surface avoids forcing navigation to separate modules. */
 .booking-workspace .fixed.inset-0.z-50.flex.justify-end > aside {
   width: min(520px, 100vw) !important;
   max-width: 520px !important;
@@ -162,8 +151,6 @@
   border-radius: 3px !important;
 }
 
-/* The legacy reservation dialog remains the fast fallback for lifecycle
-   actions. Give it enough room for stay data without turning it into a page. */
 [data-slot="dialog-content"]:has([data-slot="dialog-title"]) {
   border-radius: 4px;
 }
@@ -181,5 +168,111 @@
 
   .booking-workspace > div.min-h-screen > div.mx-auto > :first-child {
     min-height: auto;
+  }
+}
+
+/* Shared density for the remaining operation-heavy sections. */
+.booking-calendar-bedbooking-shell {
+  min-width: 0;
+  background: #111213;
+  color: var(--foreground);
+}
+
+.booking-calendar-bedbooking-shell [data-slot="page-header"] {
+  min-height: 58px;
+  border-bottom: 1px solid rgba(255,255,255,.08);
+  background: #111213;
+  padding: 12px 20px;
+}
+
+.booking-calendar-bedbooking-shell [data-slot="page-header"] h1 {
+  font-size: 1.25rem;
+  line-height: 1.5rem;
+  font-weight: 600;
+  letter-spacing: -.015em;
+}
+
+.booking-calendar-bedbooking-shell [data-slot="page-header"] p {
+  margin-top: 2px;
+  font-size: .75rem;
+  line-height: 1rem;
+  color: var(--muted-foreground);
+}
+
+.booking-calendar-bedbooking-shell [data-slot="card"] {
+  border-color: rgba(255,255,255,.08);
+  border-radius: 4px;
+  box-shadow: none;
+}
+
+.booking-calendar-bedbooking-shell button,
+.booking-calendar-bedbooking-shell input,
+.booking-calendar-bedbooking-shell [role="combobox"] {
+  border-radius: 4px;
+}
+
+.booking-calendar-bedbooking-shell table thead {
+  background: #17191a;
+}
+
+.booking-calendar-bedbooking-shell table tbody tr {
+  border-color: rgba(255,255,255,.06);
+}
+
+.booking-calendar-bedbooking-shell table tbody tr:hover {
+  background: rgba(255,255,255,.025);
+}
+
+.booking-workspace[data-booking-section="operations"] .booking-calendar-bedbooking-shell > div,
+.booking-workspace[data-booking-section="handovers"] .booking-calendar-bedbooking-shell > div {
+  max-width: none !important;
+}
+
+.booking-workspace[data-booking-section="operations"] .booking-calendar-bedbooking-shell .grid.gap-3,
+.booking-workspace[data-booking-section="activities"] .booking-calendar-bedbooking-shell .grid.gap-3,
+.booking-workspace[data-booking-section="handovers"] .booking-calendar-bedbooking-shell .grid.gap-3 {
+  gap: .5rem !important;
+}
+
+.booking-workspace[data-booking-section="operations"] .booking-calendar-bedbooking-shell [data-slot="card-content"],
+.booking-workspace[data-booking-section="handovers"] .booking-calendar-bedbooking-shell [data-slot="card-content"] {
+  padding: .75rem !important;
+}
+
+.booking-workspace[data-booking-section="operations"] .booking-calendar-bedbooking-shell [data-slot="card-header"],
+.booking-workspace[data-booking-section="handovers"] .booking-calendar-bedbooking-shell [data-slot="card-header"] {
+  padding: .75rem !important;
+  padding-bottom: .5rem !important;
+}
+
+.booking-workspace[data-booking-section="operations"] .booking-calendar-bedbooking-shell .text-3xl,
+.booking-workspace[data-booking-section="handovers"] .booking-calendar-bedbooking-shell .text-3xl {
+  font-size: 1.35rem !important;
+  line-height: 1.6rem !important;
+}
+
+.booking-workspace[data-booking-section="operations"] .booking-calendar-bedbooking-shell .space-y-6 > :not([hidden]) ~ :not([hidden]),
+.booking-workspace[data-booking-section="handovers"] .booking-calendar-bedbooking-shell .space-y-6 > :not([hidden]) ~ :not([hidden]) {
+  margin-top: .75rem !important;
+}
+
+.booking-workspace[data-booking-section="operations"] .fixed.inset-0.z-50.flex.justify-end > aside {
+  width: min(430px,100vw) !important;
+  max-width: 430px !important;
+}
+
+@media (max-width: 1023px) {
+  .booking-calendar-bedbooking-shell [data-slot="page-header"] {
+    padding: 12px 16px;
+  }
+}
+
+@media (max-width: 640px) {
+  .booking-calendar-bedbooking-shell {
+    min-height: 100dvh;
+  }
+
+  .booking-calendar-bedbooking-shell table {
+    font-size: .75rem;
   }
 }

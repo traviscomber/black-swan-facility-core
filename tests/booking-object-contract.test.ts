@@ -10,16 +10,15 @@ const roomObjectView = readFileSync(new URL("../components/booking-room-object-v
 const reservationObject = readFileSync(new URL("../app/bookings/reservations/[id]/page.tsx", import.meta.url), "utf8")
 const reservationObjectView = readFileSync(new URL("../components/booking-reservation-object-view.tsx", import.meta.url), "utf8")
 
-test("calendar selection exposes the canonical reservation object in one click", () => {
-  assert.match(bookingsPage, /<BookingObjectShortcut \/>/)
+test("reservation list exposes the canonical reservation object in one click", () => {
+  assert.match(bookingsPage, /href={`\/\$\{language\}\/bookings\/reservations\/\$\{row\.id\}`}/)
   assert.match(bookingShortcut, /BOOKING_COMMAND_SELECTION_EVENT/)
   assert.match(bookingShortcut, /href={`\/bookings\/reservations\/\$\{reservationId\}`}/)
   assert.match(bookingShortcut, /Abrir objeto completo/)
 })
 
-test("room catalog opens a canonical room object", () => {
-  assert.match(roomIndex, /href={`\/bookings\/rooms\/\$\{room\.id\}`}/)
-  assert.match(roomIndex, /Abrir objeto habitación/)
+test("room catalog opens a canonical room object in one click", () => {
+  assert.match(roomIndex, /href={`\/\$\{language\}\/bookings\/rooms\/\$\{room\.id\}`}/)
 })
 
 test("room object reads the canonical hospitality and work graph without writes", () => {
