@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { format, parseISO } from "date-fns"
-import { BedDouble, CalendarDays, CircleDollarSign, ConciergeBell, LogIn, LogOut, Sparkles, TriangleAlert, Wrench } from "lucide-react"
+import { BedDouble, CalendarDays, ChevronUp, CircleDollarSign, ConciergeBell, LogIn, LogOut, Sparkles, TriangleAlert, Wrench } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import type { CalendarEvent } from "@/components/calendar/timeline-row"
 import { useLanguage, type Language } from "@/lib/hooks/use-language"
@@ -16,22 +16,22 @@ type ActivityBookingRow = { id: string; status: string | null; transport_require
 const copy = {
   en: {
     milestones: "Milestones", services: "Services", activities: "Activities", payments: "Payments", maintenance: "Maintenance", issues: "Issues",
-    service: "Service", activity: "Activity", transport: "transport", issue: "Issue", loading: "Loading related operations…", enableLayer: "Enable at least one operational layer.", noEvents: "No events",
+    service: "Service", activity: "Activity", transport: "transport", issue: "Issue", loading: "Loading related operations…", enableLayer: "Enable at least one operational layer.", noEvents: "No events", collapse: "Hide operation",
     statuses: { pending: "Pending", confirmed: "Confirmed", assigned: "Assigned", in_progress: "In progress", completed: "Completed", closed: "Closed", paid: "Paid", verified: "Verified", approved: "Approved", cancelled: "Cancelled", no_show: "No-show" },
   },
   es: {
     milestones: "Hitos", services: "Servicios", activities: "Actividades", payments: "Pagos", maintenance: "Mantenimiento", issues: "Incidencias",
-    service: "Servicio", activity: "Actividad", transport: "transporte", issue: "Incidencia", loading: "Cargando operación relacionada…", enableLayer: "Activa al menos una capa operacional.", noEvents: "Sin eventos",
+    service: "Servicio", activity: "Actividad", transport: "transporte", issue: "Incidencia", loading: "Cargando operación relacionada…", enableLayer: "Activa al menos una capa operacional.", noEvents: "Sin eventos", collapse: "Ocultar operación",
     statuses: { pending: "Pendiente", confirmed: "Confirmada", assigned: "Asignada", in_progress: "En curso", completed: "Completada", closed: "Cerrada", paid: "Pagado", verified: "Verificado", approved: "Aprobado", cancelled: "Cancelada", no_show: "No presentado" },
   },
   de: {
     milestones: "Meilensteine", services: "Services", activities: "Aktivitäten", payments: "Zahlungen", maintenance: "Wartung", issues: "Vorfälle",
-    service: "Service", activity: "Aktivität", transport: "Transport", issue: "Vorfall", loading: "Verknüpfte Vorgänge werden geladen…", enableLayer: "Aktiviere mindestens eine betriebliche Ebene.", noEvents: "Keine Ereignisse",
+    service: "Service", activity: "Aktivität", transport: "Transport", issue: "Vorfall", loading: "Verknüpfte Vorgänge werden geladen…", enableLayer: "Aktiviere mindestens eine betriebliche Ebene.", noEvents: "Keine Ereignisse", collapse: "Betrieb ausblenden",
     statuses: { pending: "Ausstehend", confirmed: "Bestätigt", assigned: "Zugewiesen", in_progress: "In Bearbeitung", completed: "Abgeschlossen", closed: "Geschlossen", paid: "Bezahlt", verified: "Verifiziert", approved: "Freigegeben", cancelled: "Storniert", no_show: "Nicht erschienen" },
   },
 } satisfies Record<Language, {
   milestones: string; services: string; activities: string; payments: string; maintenance: string; issues: string
-  service: string; activity: string; transport: string; issue: string; loading: string; enableLayer: string; noEvents: string
+  service: string; activity: string; transport: string; issue: string; loading: string; enableLayer: string; noEvents: string; collapse: string
   statuses: Record<string, string>
 }>
 
@@ -50,11 +50,12 @@ function openStatus(status: string | null | undefined) {
   return !["completed", "complete", "closed", "cancelled", "canceled", "rejected", "paid", "verified", "approved"].includes((status ?? "").toLowerCase())
 }
 
-export function ReservationOperationalLanes({ reservation, timelineWidth, geometryForDates, activeLayers }: {
+export function ReservationOperationalLanes({ reservation, timelineWidth, geometryForDates, activeLayers, onCollapse }: {
   reservation: CalendarEvent
   timelineWidth: number
   geometryForDates: (startsOn: string, endsOn: string) => { left: number; width: number }
   activeLayers: Set<CalendarLayerKey>
+  onCollapse?: () => void
 }) {
   const supabase = useMemo(() => createClient(), [])
   const { language } = useLanguage()
@@ -133,6 +134,17 @@ export function ReservationOperationalLanes({ reservation, timelineWidth, geomet
 
   return (
     <div className="border-t bg-muted/10">
+      {onCollapse && (
+        <div className="flex min-h-8 border-b bg-background/95">
+          <button type="button" onClick={onCollapse} className="sticky left-0 z-30 flex w-[272px] shrink-0 items-center gap-2 border-r px-4 text-[11px] font-medium text-foreground/80 transition hover:bg-muted/40 hover:text-foreground" aria-label={c.collapse}>
+            <ChevronUp className="h-3.5 w-3.5" />
+            <span>{c.collapse}</span>
+          </button>
+          <button type="button" onClick={onCollapse} className="min-h-8 flex-1 truncate px-3 text-left text-[10px] text-muted-foreground transition hover:bg-muted/20 hover:text-foreground" style={{ width: timelineWidth }}>
+            {reservation.guest_name ?? reservation.label}
+          </button>
+        </div>
+      )}
       {loading ? <div className="px-3 py-3 text-xs text-muted-foreground">{c.loading}</div> : visibleLanes.length === 0 ? <div className="px-3 py-3 text-xs text-muted-foreground">{c.enableLayer}</div> : visibleLanes.map(({ key, label, Icon, className, items }) => (
         <div key={key} className="flex min-h-8 border-b last:border-b-0">
           <div className="sticky left-0 z-20 flex w-[272px] shrink-0 items-center gap-2 border-r bg-background px-4 text-[11px] font-medium text-muted-foreground"><Icon className="h-3.5 w-3.5" /><span>{label}</span><span className="ml-auto rounded bg-muted px-1.5 py-0.5 text-[10px]">{items.length}</span></div>
