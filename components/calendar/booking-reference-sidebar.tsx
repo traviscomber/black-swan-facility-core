@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { usePathname } from "next/navigation"
+import { usePathname, useSearchParams } from "next/navigation"
 import { useEffect, useState } from "react"
 import {
   BadgeDollarSign,
@@ -70,22 +70,23 @@ function groupForPath(pathname: string): GroupKey | null {
   if (/\/bookings\/(guests)?\/?$/.test(pathname) || /\/bookings\/?$/.test(pathname)) return "bookings"
   if (/\/bookings\/(activities|operations|charges|blocks|handovers)(\/|$)/.test(pathname)) return "operations"
   if (/\/bookings\/(rates|extras)(\/|$)/.test(pathname)) return "prices"
-  if (/\/bookings\/(reports|revenue|rooms|audit)(\/|$)/.test(pathname)) return "reports"
+  if (/\/bookings\/(reports|revenue|rooms|audit|payments)(\/|$)/.test(pathname)) return "reports"
   if (/\/bookings\/invoices(\/|$)/.test(pathname)) return "invoices"
-  if (/\/bookings\/(facilities|payments|requests)(\/|$)/.test(pathname)) return "reservation"
   if (/\/bookings\/channels(\/|$)/.test(pathname)) return "channels"
   return null
 }
 
 export function BookingReferenceSidebar() {
   const pathname = usePathname() || "/"
+  const searchParams = useSearchParams()
   const { language } = useLanguage()
   const c = copy[language]
   const base = `/${language}`
   const href = (path: string) => `${base}${path}`
   const active = (path: string) => pathname === href(path) || pathname.startsWith(`${href(path)}/`)
+  const selectedChannel = searchParams.get("channel")
   const [collapsed, setCollapsed] = useState(false)
-  const [openGroups, setOpenGroups] = useState<Set<GroupKey>>(() => new Set([groupForPath(pathname) ?? "reservation"]))
+  const [openGroups, setOpenGroups] = useState<Set<GroupKey>>(() => new Set([groupForPath(pathname) ?? "bookings"]))
 
   useEffect(() => {
     try {
@@ -107,7 +108,14 @@ export function BookingReferenceSidebar() {
     try { window.localStorage.setItem(SIDEBAR_GROUPS_KEY, JSON.stringify([...openGroups])) } catch {}
   }, [openGroups])
 
-  function toggleGroup(key: GroupKey) { setOpenGroups((current) => { const next = new Set(current); if (next.has(key)) next.delete(key); else next.add(key); return next }) }
+  function toggleGroup(key: GroupKey) {
+    setOpenGroups((current) => {
+      const next = new Set(current)
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
+      return next
+    })
+  }
 
   return <aside className={`booking-reference-sidebar ${collapsed ? "is-collapsed" : ""}`} aria-label="Booking navigation" data-booking-reference-sidebar>
     <div className="booking-reference-brand">
@@ -117,14 +125,17 @@ export function BookingReferenceSidebar() {
       </Link>
       <span className="booking-reference-brand-pill"><Crown className="h-3 w-3" />{c.premium}</span>
     </div>
+
     <nav className="booking-reference-nav">
       <NavLink href={href("/bookings/calendar")} active={active("/bookings/calendar")} icon={CalendarDays}>{c.calendar}</NavLink>
       <NavLink icon={Crown} title={c.notConfigured}>{c.premium}</NavLink>
+
       <NavGroup label={c.bookings} icon={LayoutList} open={openGroups.has("bookings")} onToggle={() => toggleGroup("bookings")}>
         <NavLink href={href("/bookings")} active={pathname === href("/bookings")} inset>{c.reservationList}</NavLink>
         <NavLink href={href("/bookings/guests")} active={active("/bookings/guests")} inset>{c.clients}</NavLink>
         <NavLink inset title={c.notConfigured}>{c.messageTemplates}</NavLink>
       </NavGroup>
+
       <NavGroup label={c.operations} icon={Wrench} open={openGroups.has("operations")} onToggle={() => toggleGroup("operations")}>
         <NavLink href={href("/bookings/activities")} active={active("/bookings/activities")} inset>{c.dailyOperations}</NavLink>
         <NavLink href={href("/bookings/operations")} active={active("/bookings/operations")} inset>{c.stayCockpit}</NavLink>
@@ -132,42 +143,54 @@ export function BookingReferenceSidebar() {
         <NavLink href={href("/bookings/blocks")} active={active("/bookings/blocks")} inset>{c.roomBlocks}</NavLink>
         <NavLink href={href("/bookings/handovers")} active={active("/bookings/handovers")} inset>{c.handovers}</NavLink>
       </NavGroup>
+
       <NavGroup label={c.priceList} icon={BadgeDollarSign} open={openGroups.has("prices")} onToggle={() => toggleGroup("prices")}>
         <NavLink href={href("/bookings/rates")} active={active("/bookings/rates")} inset>{c.setPrices}</NavLink>
-        <NavLink href={`${href("/bookings/rates")}?view=configuration`} inset>{c.configuration}</NavLink>
-        <NavLink href={`${href("/bookings/payments")}?view=prepayment`} inset>{c.prepayment}</NavLink>
+        <NavLink inset title={c.notConfigured}>{c.configuration}</NavLink>
+        <NavLink inset title={c.notConfigured}>{c.prepayment}</NavLink>
         <NavLink href={href("/bookings/extras")} active={active("/bookings/extras")} inset>{c.additionalServices}</NavLink>
       </NavGroup>
+
       <NavGroup label={c.reports} icon={LineChart} open={openGroups.has("reports")} onToggle={() => toggleGroup("reports")}>
         <NavLink href={href("/bookings/reports")} active={active("/bookings/reports")} inset>{c.statistics}</NavLink>
         <NavLink href={href("/bookings/revenue")} active={active("/bookings/revenue")} inset>{c.financialReport}</NavLink>
         <NavLink href={href("/bookings/rooms")} active={active("/bookings/rooms")} inset>{c.roomReport}</NavLink>
-        <NavLink href={`${href("/bookings/reports")}?view=occupancy`} inset>{c.occupancyReport}</NavLink>
-        <NavLink href={`${href("/bookings/invoices")}?view=local-tax`} inset>{c.localTaxReport}</NavLink>
+        <NavLink inset title={c.notConfigured}>{c.occupancyReport}</NavLink>
+        <NavLink inset title={c.notConfigured}>{c.localTaxReport}</NavLink>
         <NavLink href={href("/bookings/payments")} active={active("/bookings/payments")} inset>{c.paymentList}</NavLink>
         <NavLink href={href("/bookings/audit")} active={active("/bookings/audit")} inset>{c.registrationBook}</NavLink>
         <NavLink inset title={c.notConfigured}>{c.exportBookings}</NavLink>
       </NavGroup>
+
       <NavGroup label={c.invoices} icon={ReceiptText} open={openGroups.has("invoices")} onToggle={() => toggleGroup("invoices")}>
         <NavLink href={href("/bookings/invoices")} active={active("/bookings/invoices")} inset>{c.open}</NavLink>
-        <NavLink href={`${href("/bookings/invoices")}?view=taxes`} inset>{c.taxes}</NavLink>
-        <NavLink href={`${href("/bookings/invoices")}?view=tax-rates`} inset>{c.taxRates}</NavLink>
+        <NavLink inset title={c.notConfigured}>{c.taxes}</NavLink>
+        <NavLink inset title={c.notConfigured}>{c.taxRates}</NavLink>
       </NavGroup>
+
       <NavGroup label={c.reservationSystem} icon={Settings2} open={openGroups.has("reservation")} onToggle={() => toggleGroup("reservation")}>
-        <NavLink href={href("/bookings/facilities")} active={active("/bookings/facilities")} inset>{c.configuration}</NavLink>
-        <NavLink href={href("/bookings/payments")} active={active("/bookings/payments")} inset>{c.paymentMethods}</NavLink>
-        <NavLink href={href("/bookings/extras")} active={active("/bookings/extras")} inset>{c.amenities}</NavLink>
-        <NavLink href={href("/bookings/requests")} active={active("/bookings/requests")} inset>{c.notifications}</NavLink>
+        <NavLink inset title={c.notConfigured}>{c.configuration}</NavLink>
+        <NavLink inset title={c.notConfigured}>{c.paymentMethods}</NavLink>
+        <NavLink inset title={c.notConfigured}>{c.amenities}</NavLink>
+        <NavLink inset title={c.notConfigured}>{c.notifications}</NavLink>
         <NavLink inset title={c.notConfigured}>{c.licenseNumber}</NavLink>
       </NavGroup>
+
       <NavGroup label={c.salesChannels} icon={Share2} open={openGroups.has("channels")} onToggle={() => toggleGroup("channels")}>
-        <NavLink href={`${href("/bookings/channels")}?channel=airbnb`} active={active("/bookings/channels") && pathname.includes("channel=airbnb")} inset dot="airbnb">{c.airbnb}</NavLink>
-        <NavLink href={`${href("/bookings/channels")}?channel=booking`} inset dot="booking">{c.booking}</NavLink>
-        <NavLink href={`${href("/bookings/channels")}?channel=ical`} inset dot="ical">{c.iCalendar}</NavLink>
+        <NavLink href={`${href("/bookings/channels")}?channel=airbnb`} active={active("/bookings/channels") && selectedChannel === "airbnb"} inset dot="airbnb">{c.airbnb}</NavLink>
+        <NavLink href={`${href("/bookings/channels")}?channel=booking`} active={active("/bookings/channels") && selectedChannel === "booking"} inset dot="booking">{c.booking}</NavLink>
+        <NavLink href={`${href("/bookings/channels")}?channel=ical`} active={active("/bookings/channels") && selectedChannel === "ical"} inset dot="ical">{c.iCalendar}</NavLink>
       </NavGroup>
+
       <NavLink href={href("/employees")} active={active("/employees")} icon={Users}>{c.employees}</NavLink>
       <NavLink href={href("/bookings/profile")} active={active("/bookings/profile")} icon={UserRound}>{c.profile}</NavLink>
     </nav>
-    <div className="booking-reference-sidebar-footer"><button type="button" className="booking-reference-hide" onClick={() => setCollapsed((value) => !value)} aria-label={collapsed ? c.show : c.hide} title={collapsed ? c.show : c.hide}><ChevronLeft className="booking-reference-hide-icon h-4 w-4" /><span className="booking-reference-nav-label">{collapsed ? c.show : c.hide}</span></button></div>
+
+    <div className="booking-reference-sidebar-footer">
+      <button type="button" className="booking-reference-hide" onClick={() => setCollapsed((value) => !value)} aria-label={collapsed ? c.show : c.hide} title={collapsed ? c.show : c.hide}>
+        <ChevronLeft className="booking-reference-hide-icon h-4 w-4" />
+        <span className="booking-reference-nav-label">{collapsed ? c.show : c.hide}</span>
+      </button>
+    </div>
   </aside>
 }
