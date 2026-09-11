@@ -5,6 +5,7 @@ import Link from "next/link"
 import { CalendarDays, Download, Search } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import { useLanguage } from "@/lib/hooks/use-language"
+import { bookingDateKey } from "@/lib/booking/timezone"
 
 type RegistrationRow = {
   id: string
@@ -113,7 +114,7 @@ export default function RegistrationBookPage() {
     const url = URL.createObjectURL(blob)
     const anchor = document.createElement("a")
     anchor.href = url
-    anchor.download = `booking-registration-${new Date().toISOString().slice(0, 10)}.csv`
+    anchor.download = `booking-registration-${bookingDateKey()}.csv`
     anchor.click()
     URL.revokeObjectURL(url)
   }
