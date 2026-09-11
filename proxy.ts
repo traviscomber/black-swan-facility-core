@@ -223,24 +223,18 @@ export async function proxy(request: NextRequest) {
 
   const [
     { data: routeAccessData, error: routeAccessError },
-    { data: startPathData },
-    { data: personaData },
+    { data: profileData },
   ] = await Promise.all([
     supabase.rpc("get_current_route_access"),
     supabase
       .from("user_access_profiles")
-      .select("os_start_path")
-      .eq("user_id", user.id)
-      .maybeSingle(),
-    supabase
-      .from("user_access_profiles")
-      .select("os_persona_key,os_primary_domain")
+      .select("os_start_path,os_persona_key,os_primary_domain")
       .eq("user_id", user.id)
       .maybeSingle(),
   ])
 
   const routeAccess = (routeAccessData ?? {}) as RouteAccess
-  const osProfile: OsProfile = { ...(startPathData ?? {}), ...(personaData ?? {}) }
+  const osProfile: OsProfile = (profileData ?? {}) as OsProfile
   const externalOrchard = isExternalOrchardProfile(osProfile)
   const capabilitySnapshot = routeAccessError
     ? normalizeCapabilitySnapshot(null)
