@@ -3,7 +3,6 @@
 import Link from "next/link"
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { AlertTriangle, ArrowLeft, Banknote, BedDouble, ClipboardCheck, FileText, History, Loader2, MessageSquareText, UserRound, Wrench } from "lucide-react"
-import { Badge } from "@/components/ui/badge"
 import { createClient } from "@/lib/supabase/client"
 import { useLanguage } from "@/lib/hooks/use-language"
 
@@ -34,11 +33,11 @@ function statusClass(value: string | null | undefined) {
 }
 
 function Row({ title, detail, status }: { title: string; detail?: string | null; status?: string | null }) {
-  return <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-3 py-2.5"><div className="min-w-0"><p className="truncate text-xs font-medium text-[#e7e1d8]">{title}</p>{detail && <p className="mt-0.5 line-clamp-2 text-[11px] text-[#8f867b]">{detail}</p>}</div>{status && <span className={`text-[10px] uppercase tracking-[.08em] ${statusClass(status)}`}>{status.replaceAll("_"," ")}</span>}</div>
+  return <div data-stay-row className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-4 border-b border-white/[.045] py-2.5 last:border-b-0"><div className="min-w-0"><p className="truncate text-xs font-medium text-[#e7e1d8]">{title}</p>{detail && <p className="mt-1 line-clamp-2 text-[11px] leading-4 text-[#8f867b]">{detail}</p>}</div>{status && <span className={`pt-0.5 text-[9px] font-medium uppercase tracking-[.07em] ${statusClass(status)}`}>{status.replaceAll("_"," ")}</span>}</div>
 }
 
 function Panel({ title, icon, children }: { title: string; icon: React.ReactNode; children: React.ReactNode }) {
-  return <section className="bg-[#211e1a] p-3"><div className="mb-2 flex items-center gap-2 text-xs font-medium text-[#e7e1d8]">{icon}{title}</div>{children}</section>
+  return <section data-stay-panel className="min-w-0 bg-[#211e1a] px-4 py-3.5"><div data-stay-panel-title className="mb-2.5 flex items-center gap-2 text-[10px] font-medium uppercase tracking-[.08em] text-[#9f968b]">{icon}{title}</div>{children}</section>
 }
 
 export function BookingReservationStayCockpit({ reservation }: { reservation: Reservation }) {
@@ -75,14 +74,14 @@ export function BookingReservationStayCockpit({ reservation }: { reservation: Re
   const paid = useMemo(() => (related?.payments ?? []).filter((p:any)=>["paid","completed","succeeded"].includes(String(p.payment_status??"").toLowerCase())).reduce((sum:number,p:any)=>sum+Number(p.amount??0),0), [related])
   const guest = related?.guest; const room = related?.room
 
-  return <div className="min-h-screen bg-[#171512] text-[#e7e1d8]">
-    <header className="flex min-h-[58px] flex-wrap items-center justify-between gap-3 bg-[#211e1a] px-4 py-3"><div><Link href={`/${language}/bookings`} className="mb-1 inline-flex items-center gap-1.5 text-[11px] text-[#8f867b] hover:text-[#e7e1d8]"><ArrowLeft className="h-3.5 w-3.5"/>{c.back}</Link><h1 className="text-base font-medium">{reservation.guest_name || guest?.name || c.noGuest}</h1><p className="text-[11px] text-[#8f867b]">{reservation.check_in} → {reservation.check_out} · {reservation.num_guests ?? 1} {c.guests}{reservation.source ? ` · ${c.source}: ${reservation.source}` : ""}</p></div><div className="text-right"><div className={`text-[11px] uppercase tracking-[.08em] ${statusClass(reservation.arrival_status || reservation.status)}`}>{reservation.arrival_status || reservation.status || "—"}</div><div className="mt-1 text-sm font-medium">{money(reservation.total_amount)}</div></div></header>
+  return <div data-stay-cockpit className="min-h-screen bg-[#171512] text-[#e7e1d8]">
+    <header className="sticky top-0 z-20 flex min-h-[64px] flex-wrap items-center justify-between gap-4 border-b border-white/[.055] bg-[#211e1a]/95 px-5 py-3 backdrop-blur-sm"><div className="min-w-0"><div className="mb-1.5 flex items-center gap-3"><Link href={`/${language}/bookings`} className="inline-flex items-center gap-1.5 text-[10px] uppercase tracking-[.07em] text-[#8f867b] hover:text-[#e7e1d8]"><ArrowLeft className="h-3.5 w-3.5"/>{c.back}</Link><span className="text-[9px] uppercase tracking-[.1em] text-[#6f675f]">{c.object}</span></div><h1 className="truncate text-[18px] font-medium leading-6 tracking-[-.015em]">{reservation.guest_name || guest?.name || c.noGuest}</h1><p className="mt-0.5 text-[11px] text-[#8f867b]">{reservation.check_in} → {reservation.check_out} · {reservation.num_guests ?? 1} {c.guests}{reservation.source ? ` · ${c.source}: ${reservation.source}` : ""}</p></div><div className="shrink-0 text-right"><div className={`text-[9px] font-medium uppercase tracking-[.09em] ${statusClass(reservation.arrival_status || reservation.status)}`}>{reservation.arrival_status || reservation.status || "—"}</div><div className="mt-1 text-lg font-medium tracking-[-.02em] text-[#e7e1d8]">{money(reservation.total_amount)}</div></div></header>
 
-    {loading && <div className="flex items-center gap-2 px-4 py-3 text-xs text-[#8f867b]"><Loader2 className="h-3.5 w-3.5 animate-spin"/>{c.loading}</div>}
-    {partial && <div className="mx-4 mt-3 flex gap-2 bg-[#2b2722] px-3 py-2 text-xs text-[#d3ad61]"><AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0"/>{c.partial}</div>}
+    {loading && <div className="flex items-center gap-2 px-5 py-3 text-[11px] text-[#8f867b]"><Loader2 className="h-3.5 w-3.5 animate-spin"/>{c.loading}</div>}
+    {partial && <div className="mx-3 mt-3 flex gap-2 border-l-2 border-[#d3ad61]/70 bg-[#2b2722] px-3 py-2 text-[11px] leading-4 text-[#d3ad61]"><AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0"/>{c.partial}</div>}
 
-    <div className="grid gap-2 p-3 xl:grid-cols-2">
-      {(related?.exceptions?.length ?? 0) > 0 && <section className="bg-[#2b2722] p-3 xl:col-span-2"><div className="mb-2 flex items-center gap-2 text-xs font-medium text-[#d3ad61]"><AlertTriangle className="h-3.5 w-3.5"/>{c.attention}</div>{related!.exceptions.map((x:any)=><Row key={`${x.domain}-${x.source_id}`} title={x.title} detail={`${x.domain}${x.detail ? ` · ${x.detail}` : ""}${x.blocks_check_in ? ` · ${c.blocksIn}` : ""}${x.blocks_check_out ? ` · ${c.blocksOut}` : ""}`} status={x.exception_state}/>)}</section>}
+    <div className="grid gap-2 p-3 xl:grid-cols-2 2xl:grid-cols-3">
+      {(related?.exceptions?.length ?? 0) > 0 && <section className="border-l-2 border-[#d3ad61]/70 bg-[#2b2722] px-4 py-3.5 xl:col-span-2 2xl:col-span-3"><div className="mb-2.5 flex items-center gap-2 text-[10px] font-medium uppercase tracking-[.08em] text-[#d3ad61]"><AlertTriangle className="h-3.5 w-3.5"/>{c.attention}</div>{related!.exceptions.map((x:any)=><Row key={`${x.domain}-${x.source_id}`} title={x.title} detail={`${x.domain}${x.detail ? ` · ${x.detail}` : ""}${x.blocks_check_in ? ` · ${c.blocksIn}` : ""}${x.blocks_check_out ? ` · ${c.blocksOut}` : ""}`} status={x.exception_state}/>)}</section>}
 
       <Panel title={c.guest} icon={<UserRound className="h-3.5 w-3.5"/>}>{guest ? <><Row title={`${guest.name || reservation.guest_name || c.noGuest}${guest.vip_status ? " · VIP" : ""}`} detail={`${guest.email || reservation.guest_email || "—"} · ${guest.phone || reservation.guest_phone || "—"}`}/>{guest.allergies && <Row title="Allergies" detail={guest.allergies}/>} {guest.mobility_requirements && <Row title="Mobility" detail={guest.mobility_requirements}/>} {guest.housekeeping_preferences && <Row title="Housekeeping" detail={guest.housekeeping_preferences}/>}</> : <Row title={c.noGuest} detail={`${reservation.guest_email || "—"} · ${reservation.guest_phone || "—"}`}/>}</Panel>
       <Panel title={c.room} icon={<BedDouble className="h-3.5 w-3.5"/>}>{room ? <><Row title={`${room.room_number}`} detail={room.location_ref?.name || room.location || "—"} status={room.operational_status || room.status}/>{reservation.estimated_arrival_time && <Row title="Arrival" detail={reservation.estimated_arrival_time}/>} {reservation.estimated_departure_time && <Row title="Departure" detail={reservation.estimated_departure_time}/>}</> : <Row title={c.noRoom}/>}</Panel>
