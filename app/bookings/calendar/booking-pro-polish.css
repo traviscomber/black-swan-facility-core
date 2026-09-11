@@ -42,16 +42,13 @@
   background: #2b2722 !important;
 }
 
-/* Keep operational expansion controls subordinate to the booking itself. */
 .booking-calendar-bedbooking-shell [data-calendar-row] button.absolute [role="button"] {
   border-radius: 0 !important;
   background: rgba(0,0,0,.16) !important;
 }
 
-/* Quick inspector: make the sheet feel like a native operational surface. */
-[data-slot="sheet-content"] {
-  border-radius: 0 !important;
-}
+/* Quick inspector */
+[data-slot="sheet-content"] { border-radius: 0 !important; }
 
 .booking-calendar-reference-frame ~ [data-slot="sheet-content"],
 body:has(.booking-calendar-reference-frame) [data-slot="sheet-content"] {
@@ -107,31 +104,160 @@ body:has(.booking-calendar-reference-frame) [data-slot="sheet-content"] section 
   border-color: rgba(231,225,216,.06) !important;
 }
 
-/* Stay Cockpit: dense, calm and readable at executive/operator widths. */
-[data-stay-cockpit] {
+/* Stay Cockpit */
+[data-stay-cockpit] { background: #171512 !important; }
+[data-stay-cockpit] > header { backdrop-filter: blur(10px); }
+[data-stay-panel] { min-height: 118px; box-shadow: inset 0 1px rgba(231,225,216,.035); }
+[data-stay-panel-title] svg { color: #8fb79f; stroke-width: 1.65; }
+[data-stay-row] { min-height: 42px; }
+[data-stay-row] > span { white-space: nowrap; }
+
+/* Shared product language for reservation list, guests, rates, payments and invoices. */
+.booking-workspace:is([data-booking-section="reservations"],[data-booking-section="guests"],[data-booking-section="rates"],[data-booking-section="payments"],[data-booking-section="invoices"]) .booking-calendar-bedbooking-shell > section,
+.booking-workspace:is([data-booking-section="payments"],[data-booking-section="invoices"]) .booking-calendar-bedbooking-shell > div {
   background: #171512 !important;
+  color: #e7e1d8 !important;
 }
 
-[data-stay-cockpit] > header {
-  backdrop-filter: blur(10px);
+.booking-workspace:is([data-booking-section="reservations"],[data-booking-section="guests"],[data-booking-section="rates"],[data-booking-section="payments"],[data-booking-section="invoices"]) header {
+  min-height: 56px !important;
+  border-bottom: 1px solid rgba(231,225,216,.055) !important;
+  background: #1d1a17 !important;
+  padding-top: 8px !important;
+  padding-bottom: 8px !important;
 }
 
-[data-stay-panel] {
-  min-height: 118px;
-  box-shadow: inset 0 1px rgba(231,225,216,.035);
+.booking-workspace:is([data-booking-section="reservations"],[data-booking-section="guests"],[data-booking-section="rates"],[data-booking-section="payments"],[data-booking-section="invoices"]) header h1 {
+  font-size: 14px !important;
+  line-height: 18px !important;
+  font-weight: 520 !important;
+  letter-spacing: -.012em !important;
 }
 
-[data-stay-panel-title] svg {
-  color: #8fb79f;
-  stroke-width: 1.65;
+.booking-workspace:is([data-booking-section="reservations"],[data-booking-section="guests"],[data-booking-section="rates"],[data-booking-section="payments"],[data-booking-section="invoices"]) header p {
+  color: #8f867b !important;
+  font-size: 10px !important;
+  line-height: 14px !important;
 }
 
-[data-stay-row] {
-  min-height: 42px;
+.booking-workspace:is([data-booking-section="reservations"],[data-booking-section="guests"],[data-booking-section="rates"],[data-booking-section="payments"],[data-booking-section="invoices"]) input,
+.booking-workspace:is([data-booking-section="reservations"],[data-booking-section="guests"],[data-booking-section="rates"],[data-booking-section="payments"],[data-booking-section="invoices"]) select,
+.booking-workspace:is([data-booking-section="reservations"],[data-booking-section="guests"],[data-booking-section="rates"],[data-booking-section="payments"],[data-booking-section="invoices"]) [role="combobox"] {
+  min-height: 32px !important;
+  height: 32px !important;
+  border-radius: 0 !important;
+  border-color: rgba(231,225,216,.07) !important;
+  background: #151310 !important;
+  color: #e7e1d8 !important;
+  box-shadow: none !important;
+  font-size: 11px !important;
 }
 
-[data-stay-row] > span {
-  white-space: nowrap;
+.booking-workspace:is([data-booking-section="reservations"],[data-booking-section="guests"],[data-booking-section="rates"],[data-booking-section="payments"],[data-booking-section="invoices"]) button,
+.booking-workspace:is([data-booking-section="reservations"],[data-booking-section="guests"],[data-booking-section="rates"],[data-booking-section="payments"],[data-booking-section="invoices"]) a {
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}
+
+.booking-workspace:is([data-booking-section="reservations"],[data-booking-section="guests"],[data-booking-section="rates"],[data-booking-section="payments"],[data-booking-section="invoices"]) table {
+  font-size: 11px !important;
+}
+
+.booking-workspace:is([data-booking-section="reservations"],[data-booking-section="guests"],[data-booking-section="rates"],[data-booking-section="payments"],[data-booking-section="invoices"]) table thead {
+  background: #1d1a17 !important;
+  color: #8f867b !important;
+  font-size: 9px !important;
+  letter-spacing: .085em !important;
+  text-transform: uppercase;
+}
+
+.booking-workspace:is([data-booking-section="reservations"],[data-booking-section="guests"],[data-booking-section="rates"],[data-booking-section="payments"],[data-booking-section="invoices"]) table th {
+  height: 34px !important;
+  padding-top: 6px !important;
+  padding-bottom: 6px !important;
+  border-color: rgba(231,225,216,.05) !important;
+  font-weight: 520 !important;
+}
+
+.booking-workspace:is([data-booking-section="reservations"],[data-booking-section="guests"],[data-booking-section="rates"],[data-booking-section="payments"],[data-booking-section="invoices"]) table td {
+  padding-top: 8px !important;
+  padding-bottom: 8px !important;
+  border-color: rgba(231,225,216,.04) !important;
+}
+
+.booking-workspace:is([data-booking-section="reservations"],[data-booking-section="guests"],[data-booking-section="rates"],[data-booking-section="payments"],[data-booking-section="invoices"]) table tbody tr {
+  border-color: rgba(231,225,216,.04) !important;
+  background: transparent !important;
+}
+
+.booking-workspace:is([data-booking-section="reservations"],[data-booking-section="guests"],[data-booking-section="rates"],[data-booking-section="payments"],[data-booking-section="invoices"]) table tbody tr:hover {
+  background: #1f1c19 !important;
+}
+
+.booking-workspace:is([data-booking-section="reservations"],[data-booking-section="guests"],[data-booking-section="rates"],[data-booking-section="payments"],[data-booking-section="invoices"]) [data-slot="badge"] {
+  min-height: 18px !important;
+  height: 18px !important;
+  border-radius: 0 !important;
+  border: 0 !important;
+  padding: 1px 6px !important;
+  font-size: 9px !important;
+  font-weight: 520 !important;
+  letter-spacing: .045em !important;
+}
+
+/* Primary actions should be obvious but not fluorescent. */
+.booking-workspace:is([data-booking-section="reservations"],[data-booking-section="guests"],[data-booking-section="rates"],[data-booking-section="payments"],[data-booking-section="invoices"]) button[class*="bg-[#04b958]"],
+.booking-workspace:is([data-booking-section="reservations"],[data-booking-section="guests"],[data-booking-section="rates"],[data-booking-section="payments"],[data-booking-section="invoices"]) a[class*="bg-[#04b958]"],
+.booking-workspace:is([data-booking-section="reservations"],[data-booking-section="guests"],[data-booking-section="rates"],[data-booking-section="payments"],[data-booking-section="invoices"]) button[class*="bg-[#6f8373]"],
+.booking-workspace:is([data-booking-section="reservations"],[data-booking-section="guests"],[data-booking-section="rates"],[data-booking-section="payments"],[data-booking-section="invoices"]) a[class*="bg-[#6f8373]"] {
+  background: #8fb79f !important;
+  color: #121511 !important;
+}
+
+/* Keep destructive and financial statuses semantic but quiet. */
+.booking-workspace:is([data-booking-section="payments"],[data-booking-section="invoices"]) .text-emerald-300 { color: #9db69f !important; }
+.booking-workspace:is([data-booking-section="payments"],[data-booking-section="invoices"]) .text-amber-300 { color: #d3ad61 !important; }
+.booking-workspace:is([data-booking-section="payments"],[data-booking-section="invoices"]) .text-sky-300 { color: #9daeba !important; }
+.booking-workspace:is([data-booking-section="payments"],[data-booking-section="invoices"]) .text-red-300 { color: #d79a8f !important; }
+
+/* Rates/configuration: reduce visual fragmentation. */
+.booking-workspace[data-booking-section="rates"] .grid.gap-px {
+  gap: 0 !important;
+  background: transparent !important;
+}
+
+.booking-workspace[data-booking-section="rates"] .divide-y > * {
+  border-color: rgba(231,225,216,.045) !important;
+}
+
+.booking-workspace[data-booking-section="rates"] .bg-\[\#2b2722\] {
+  background: #1f1c19 !important;
+}
+
+/* Dialogs opened from these booking surfaces inherit the same product language. */
+body:has(.booking-workspace[data-booking-section="guests"]) [data-slot="dialog-content"],
+body:has(.booking-workspace[data-booking-section="rates"]) [data-slot="dialog-content"],
+body:has(.booking-workspace[data-booking-section="payments"]) [data-slot="dialog-content"],
+body:has(.booking-workspace[data-booking-section="invoices"]) [data-slot="dialog-content"] {
+  border-radius: 0 !important;
+  border-color: rgba(231,225,216,.08) !important;
+  background: #1b1916 !important;
+  color: #e7e1d8 !important;
+  box-shadow: 0 24px 64px rgba(0,0,0,.38) !important;
+}
+
+body:has(.booking-workspace[data-booking-section="guests"]) [data-slot="dialog-content"] input,
+body:has(.booking-workspace[data-booking-section="rates"]) [data-slot="dialog-content"] input,
+body:has(.booking-workspace[data-booking-section="payments"]) [data-slot="dialog-content"] input,
+body:has(.booking-workspace[data-booking-section="invoices"]) [data-slot="dialog-content"] input,
+body:has(.booking-workspace[data-booking-section="guests"]) [data-slot="dialog-content"] [role="combobox"],
+body:has(.booking-workspace[data-booking-section="rates"]) [data-slot="dialog-content"] [role="combobox"],
+body:has(.booking-workspace[data-booking-section="payments"]) [data-slot="dialog-content"] [role="combobox"],
+body:has(.booking-workspace[data-booking-section="invoices"]) [data-slot="dialog-content"] [role="combobox"] {
+  border-radius: 0 !important;
+  border-color: rgba(231,225,216,.09) !important;
+  background: #151310 !important;
+  box-shadow: none !important;
 }
 
 @media (max-width: 640px) {
@@ -140,7 +266,9 @@ body:has(.booking-calendar-reference-frame) [data-slot="sheet-content"] section 
     max-width: 100vw !important;
   }
 
-  [data-stay-panel] {
-    min-height: 0;
+  [data-stay-panel] { min-height: 0; }
+
+  .booking-workspace:is([data-booking-section="reservations"],[data-booking-section="guests"],[data-booking-section="rates"],[data-booking-section="payments"],[data-booking-section="invoices"]) header {
+    min-height: 52px !important;
   }
 }
