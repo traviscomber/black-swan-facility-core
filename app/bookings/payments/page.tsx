@@ -1,9 +1,10 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useState } from "react"
+import { useSearchParams } from "next/navigation"
 import { format } from "date-fns"
 import { enUS, es, de } from "date-fns/locale"
-import { Plus, Search } from "lucide-react"
+import { CheckCircle2, CreditCard, Landmark, Plus, Search } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import { useEffectiveAccess } from "@/lib/hooks/use-effective-access"
 import { useLanguage } from "@/lib/hooks/use-language"
@@ -22,15 +23,24 @@ interface Reservation { id: string; guest_name: string; guest_email?: string | n
 
 const DATE_LOCALES = { en: enUS, es, de } as const
 const NUMBER_LOCALES = { en: "en-US", es: "es-CL", de: "de-DE" } as const
+const METHOD_COPY = {
+  en: { title: "Payment methods", subtitle: "Methods available to Booking. Provider credentials are never stored in the client.", transfer: "Bank transfer", transferStatus: "Active", transferDetail: "Manual payment registration with amount and bank reference.", tuu: "TUU", tuuStatus: "Pending credentials", tuuDetail: "Remote POS integration is implemented and will be enabled when TUU_API_KEY and TUU_DEVICE_SERIAL are configured.", available: "Available now", pending: "Integration ready" },
+  es: { title: "Métodos de pago", subtitle: "Métodos disponibles para Booking. Las credenciales del proveedor nunca se guardan en el cliente.", transfer: "Transferencia bancaria", transferStatus: "Activo", transferDetail: "Registro manual del pago con monto y referencia bancaria.", tuu: "TUU", tuuStatus: "Pendiente de credenciales", tuuDetail: "La integración Remote POS ya está implementada y se habilitará cuando estén configurados TUU_API_KEY y TUU_DEVICE_SERIAL.", available: "Disponible ahora", pending: "Integración preparada" },
+  de: { title: "Zahlungsmethoden", subtitle: "Für Booking verfügbare Methoden. Anbieter-Zugangsdaten werden nie im Client gespeichert.", transfer: "Banküberweisung", transferStatus: "Aktiv", transferDetail: "Manuelle Zahlungserfassung mit Betrag und Bankreferenz.", tuu: "TUU", tuuStatus: "Zugangsdaten ausstehend", tuuDetail: "Die Remote-POS-Integration ist implementiert und wird aktiviert, sobald TUU_API_KEY und TUU_DEVICE_SERIAL konfiguriert sind.", available: "Jetzt verfügbar", pending: "Integration vorbereitet" },
+} as const
+
 function paymentStatus(total: number, paid: number) { if (total <= 0 || paid <= 0) return "pending"; if (paid >= total) return "paid"; return "partial" }
 
 export default function BookingPaymentsPage() {
   const supabase = useMemo(() => createClient(), [])
+  const searchParams = useSearchParams()
   const { can, canAccessDepartment } = useEffectiveAccess()
   const { language } = useLanguage()
   const copy = paymentsCopy[language]
+  const methodCopy = METHOD_COPY[language]
   const dateLocale = DATE_LOCALES[language]
   const numberLocale = NUMBER_LOCALES[language]
+  const methodsView = searchParams.get("view") === "methods"
   const canRecordPayment = can("payments.record") && canAccessDepartment("finance")
   const [reservations, setReservations] = useState<Reservation[]>([])
   const [search, setSearch] = useState("")
@@ -39,7 +49,6 @@ export default function BookingPaymentsPage() {
   const [error, setError] = useState<string | null>(null)
   const [selected, setSelected] = useState<Reservation | null>(null)
   const [amount, setAmount] = useState("")
-  const [method, setMethod] = useState("transfer")
   const [transactionId, setTransactionId] = useState("")
   const [saving, setSaving] = useState(false)
   const money = useCallback((value: number) => formatClp(value, numberLocale), [numberLocale])
@@ -52,11 +61,12 @@ export default function BookingPaymentsPage() {
     if (showLoading) setLoading(false)
   }, [copy, supabase])
 
-  useEffect(() => { void loadData() }, [loadData])
+  useEffect(() => { if (!methodsView) void loadData() }, [loadData, methodsView])
   useEffect(() => {
+    if (methodsView) return
     const channel = supabase.channel("bookings-payments").on("postgres_changes", { event: "*", schema: "public", table: "payments" }, () => void loadData(false)).on("postgres_changes", { event: "*", schema: "public", table: "reservations" }, () => void loadData(false)).subscribe()
     return () => { void supabase.removeChannel(channel) }
-  }, [loadData, supabase])
+  }, [loadData, methodsView, supabase])
 
   const rows = useMemo(() => reservations.map((reservation) => {
     const total = Number(reservation.total_amount ?? 0)
@@ -83,9 +93,34 @@ export default function BookingPaymentsPage() {
     const numericAmount = Number(amount)
     if (!Number.isFinite(numericAmount) || numericAmount <= 0) { setError(copy.invalidAmount); return }
     setSaving(true); setError(null)
-    const { error: paymentError } = await supabase.rpc("record_reservation_payment", { p_reservation_id: selected.id, p_amount: numericAmount, p_payment_method: method, p_transaction_id: transactionId || null, p_notes: null })
+    const { error: paymentError } = await supabase.rpc("record_reservation_payment", { p_reservation_id: selected.id, p_amount: numericAmount, p_payment_method: "transfer", p_transaction_id: transactionId || null, p_notes: null })
     if (paymentError) { setError(copy.saveFailed ?? copy.error ?? "Unable to record payment"); setSaving(false); return }
     setSaving(false); setSelected(null); setAmount(""); setTransactionId(""); await loadData(false)
+  }
+
+  if (methodsView) {
+    return <section className="min-h-screen bg-[#171512] text-[#e7e1d8]">
+      <header className="min-h-[58px] border-b border-white/[0.06] bg-[#211e1a] px-4 py-3">
+        <h1 className="text-base font-medium">{methodCopy.title}</h1>
+        <p className="mt-0.5 text-[11px] text-[#8f867b]">{methodCopy.subtitle}</p>
+      </header>
+      <div className="grid gap-px bg-white/[0.055] lg:grid-cols-2">
+        <article className="bg-[#1b1916] p-5">
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex min-w-0 items-start gap-3"><Landmark className="mt-0.5 h-4 w-4 text-[#8fb79f]"/><div><h2 className="text-sm font-medium">{methodCopy.transfer}</h2><p className="mt-1 max-w-xl text-xs leading-5 text-[#9f968b]">{methodCopy.transferDetail}</p></div></div>
+            <span className="shrink-0 text-[9px] font-medium uppercase tracking-[.08em] text-[#9db69f]">{methodCopy.transferStatus}</span>
+          </div>
+          <div className="mt-5 flex items-center gap-2 text-[10px] uppercase tracking-[.08em] text-[#8f867b]"><CheckCircle2 className="h-3.5 w-3.5 text-[#9db69f]"/>{methodCopy.available}</div>
+        </article>
+        <article className="bg-[#1b1916] p-5">
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex min-w-0 items-start gap-3"><CreditCard className="mt-0.5 h-4 w-4 text-[#d3ad61]"/><div><h2 className="text-sm font-medium">{methodCopy.tuu}</h2><p className="mt-1 max-w-xl text-xs leading-5 text-[#9f968b]">{methodCopy.tuuDetail}</p></div></div>
+            <span className="shrink-0 text-[9px] font-medium uppercase tracking-[.08em] text-[#d3ad61]">{methodCopy.tuuStatus}</span>
+          </div>
+          <div className="mt-5 text-[10px] uppercase tracking-[.08em] text-[#8f867b]">{methodCopy.pending}</div>
+        </article>
+      </div>
+    </section>
   }
 
   return <div className="min-h-screen bg-[#171512] text-[#e7e1d8]">
@@ -94,7 +129,7 @@ export default function BookingPaymentsPage() {
     {error && <div className="border-b border-red-500/20 bg-red-500/10 px-4 py-2 text-xs text-red-300">{error}</div>}
     <div className="overflow-x-auto"><table className="w-full min-w-[900px] text-xs"><thead className="bg-[#211e1a] text-left text-[#b9b0a4]"><tr className="border-b border-white/[0.07]"><th className="px-3 py-2 font-medium">{copy.guest}</th><th className="px-3 py-2 font-medium">{copy.stay}</th><th className="px-3 py-2 text-right font-medium">{copy.total}</th><th className="px-3 py-2 text-right font-medium">{copy.paid}</th><th className="px-3 py-2 text-right font-medium">{copy.balance}</th><th className="px-3 py-2 font-medium">{copy.status}</th><th className="px-3 py-2 text-right font-medium">{copy.action}</th></tr></thead><tbody>{loading ? <tr><td colSpan={7} className="p-10 text-center text-[#b9b0a4]">{copy.loading}</td></tr> : visibleRows.length === 0 ? <tr><td colSpan={7} className="p-10 text-center text-[#b9b0a4]">{copy.noRows}</td></tr> : visibleRows.map((row) => <tr key={row.reservation.id} className="border-b border-white/[0.05] hover:bg-white/[0.025]"><td className="px-3 py-2"><div className="font-medium">{row.reservation.guest_name}</div><div className="text-[11px] text-[#b9b0a4]">{row.reservation.guest_email || "—"}</div></td><td className="px-3 py-2">{format(new Date(`${row.reservation.check_in}T00:00:00`), "dd MMM", { locale: dateLocale })} — {format(new Date(`${row.reservation.check_out}T00:00:00`), "dd MMM yyyy", { locale: dateLocale })}</td><td className="px-3 py-2 text-right">{money(row.total)}</td><td className="px-3 py-2 text-right text-emerald-300">{money(row.paid)}</td><td className="px-3 py-2 text-right font-medium">{money(row.balance)}</td><td className="px-3 py-2"><PaymentBadge status={row.status} copy={copy} /></td><td className="px-3 py-2 text-right"><PermissionGate action="payments.record" department="finance"><Button size="sm" className="h-7 rounded-none px-2 text-[11px]" onClick={() => openPayment(row.reservation, row.balance)} disabled={row.balance <= 0}><Plus className="mr-1.5 h-3 w-3" />{copy.recordPayment}</Button></PermissionGate></td></tr>)}</tbody></table></div>
 
-    <Dialog open={!!selected && canRecordPayment} onOpenChange={(open) => !open && setSelected(null)}><DialogContent className="rounded-none"><DialogHeader><DialogTitle>{copy.recordPayment}</DialogTitle></DialogHeader>{selected && <div className="space-y-4"><div><p className="text-xs text-muted-foreground">{copy.reservation}</p><p className="font-medium">{selected.guest_name}</p></div><div className="space-y-2"><Label>{copy.amount}</Label><Input className="rounded-none" type="number" min="1" value={amount} onChange={(event) => setAmount(event.target.value)} /></div><div className="space-y-2"><Label>{copy.method}</Label><Select value={method} onValueChange={setMethod}><SelectTrigger className="rounded-none"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="transfer">{copy.transfer}</SelectItem><SelectItem value="cash">{copy.cash}</SelectItem><SelectItem value="card">{copy.card}</SelectItem><SelectItem value="other">{copy.other}</SelectItem></SelectContent></Select></div><div className="space-y-2"><Label>{copy.reference}</Label><Input className="rounded-none" value={transactionId} onChange={(event) => setTransactionId(event.target.value)} placeholder={copy.referencePlaceholder} /></div></div>}<DialogFooter><Button variant="outline" className="rounded-none" onClick={() => setSelected(null)}>{copy.cancel}</Button><Button className="rounded-none" onClick={registerPayment} disabled={saving || !canRecordPayment}>{saving ? copy.saving : copy.recordPayment}</Button></DialogFooter></DialogContent></Dialog>
+    <Dialog open={!!selected && canRecordPayment} onOpenChange={(open) => !open && setSelected(null)}><DialogContent className="rounded-none"><DialogHeader><DialogTitle>{copy.recordPayment}</DialogTitle></DialogHeader>{selected && <div className="space-y-4"><div><p className="text-xs text-muted-foreground">{copy.reservation}</p><p className="font-medium">{selected.guest_name}</p></div><div className="space-y-2"><Label>{copy.amount}</Label><Input className="rounded-none" type="number" min="1" value={amount} onChange={(event) => setAmount(event.target.value)} /></div><div className="space-y-2"><Label>{copy.method}</Label><div className="flex h-10 items-center gap-2 border border-white/10 bg-[#171512] px-3 text-sm"><Landmark className="h-4 w-4 text-[#8fb79f]"/>{methodCopy.transfer}</div></div><div className="space-y-2"><Label>{copy.reference}</Label><Input className="rounded-none" value={transactionId} onChange={(event) => setTransactionId(event.target.value)} placeholder={copy.referencePlaceholder} /></div></div>}<DialogFooter><Button variant="outline" className="rounded-none" onClick={() => setSelected(null)}>{copy.cancel}</Button><Button className="rounded-none" onClick={registerPayment} disabled={saving || !canRecordPayment}>{saving ? copy.saving : copy.recordPayment}</Button></DialogFooter></DialogContent></Dialog>
   </div>
 }
 
