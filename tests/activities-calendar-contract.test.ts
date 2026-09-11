@@ -52,13 +52,18 @@ test("checklist detail keeps canonical completion mutation and dark object hiera
   assert.match(checklistLoading, /bg-muted\/60/)
 })
 
-test("guest request inbox is trilingual while preserving canonical mutations", () => {
+test("guest request inbox is trilingual, compact and preserves canonical mutations", () => {
   assert.match(guestRequests, /useLanguage/)
   for (const label of ["Guest requests", "Solicitudes de huéspedes", "Gästeanfragen"]) assert.match(guestRequests, new RegExp(label))
   assert.match(guestRequests, /const LOCALES = \{ en: "en-US", es: "es-CL", de: "de-DE" \}/)
   assert.match(guestRequests, /from\("hospitality_requests"\)\.update\(\{ assigned_to: employeeId \|\| null, status:/)
   assert.match(guestRequests, /if \(status === "completed"\) updates\.completed_at = new Date\(\)\.toISOString\(\)/)
-  assert.match(guestRequests, /grid grid-cols-2 gap-x-6 gap-y-4 border-y py-4 sm:grid-cols-3/)
+  assert.match(guestRequests, /flex min-h-\[40px\] flex-col gap-2 border-b/)
+  assert.match(guestRequests, /min-w-\[1120px\] text-xs/)
+  assert.match(guestRequests, /openCount/)
+  assert.match(guestRequests, /unassignedCount/)
+  assert.match(guestRequests, /inProgressCount/)
+  assert.doesNotMatch(guestRequests, /grid grid-cols-2 gap-x-6 gap-y-4 border-y py-4 sm:grid-cols-3/)
   assert.doesNotMatch(guestRequests, /const STATUS_LABELS|const PRIORITY_LABELS|const CATEGORY_LABELS|Intl\.DateTimeFormat\("es-CL"/)
 })
 
