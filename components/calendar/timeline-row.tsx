@@ -204,7 +204,7 @@ export function TimelineRow(props: TimelineRowProps) {
           {dropTargetBedId === bed.id && draggingEvent && <ReservationPreview left={eventGeometry(draggingEvent).left} width={eventGeometry(draggingEvent).width} intent="move" conflict={moveConflict ? "reservation" : "none"} label={moveConflict ? c.unavailable : `${c.moveTo}: ${draggingEvent.starts_on} → ${draggingEvent.ends_on}`} />}
         </div>
       </div>
-      {expandedReservation && <ReservationOperationalLanes reservation={expandedReservation} timelineWidth={timelineWidth} geometryForDates={geometryForDates} activeLayers={activeLayers} />}
+      {expandedReservation && <ReservationOperationalLanes reservation={expandedReservation} timelineWidth={timelineWidth} geometryForDates={geometryForDates} activeLayers={activeLayers} onCollapse={() => setExpandedReservationId(null)} />}
       <ReservationQuickInspector reservation={inspectedReservation} open={Boolean(inspectedReservation)} onOpenChange={(open) => { if (!open) setInspectedReservation(null) }} onOpenFull={(reservation) => { setInspectedReservation(null); onOpenReservation(reservation) }} />
     </div>
   )
