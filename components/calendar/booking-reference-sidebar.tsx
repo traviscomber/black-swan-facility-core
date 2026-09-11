@@ -25,7 +25,7 @@ const SIDEBAR_GROUPS_KEY = "black-swan.booking.sidebar.groups"
 const copy = {
   en: {
     calendar: "Calendar", premium: "Premium", bookings: "Bookings", reservationList: "Reservation list", clients: "Clients", messageTemplates: "Message templates",
-    operations: "Operations", dailyOperations: "Daily operations", stayCockpit: "Stay cockpit", charges: "Charges", roomBlocks: "Room blocks", handovers: "Shift handovers",
+    operations: "Operations", dailyOperations: "Daily operations", stayCockpit: "Stay cockpit", charges: "Charges", roomBlocks: "Room blocks", handovers: "Shift handovers", auditLog: "Audit log",
     priceList: "Price list", setPrices: "Set prices", configuration: "Configuration", prepayment: "Prepayment", additionalServices: "Additional services",
     reports: "Reports and finances", statistics: "Statistics", financialReport: "Financial Report", roomReport: "Room report", occupancyReport: "Occupancy report", localTaxReport: "Local Tax Report", paymentList: "Payment list", registrationBook: "Registration book", exportBookings: "Export bookings",
     invoices: "Invoices", open: "Open", taxes: "Taxes", taxRates: "Tax rates",
@@ -34,7 +34,7 @@ const copy = {
   },
   es: {
     calendar: "Calendario", premium: "Premium", bookings: "Reservas", reservationList: "Lista de reservas", clients: "Huéspedes", messageTemplates: "Plantillas de mensajes",
-    operations: "Operación", dailyOperations: "Operación diaria", stayCockpit: "Stay cockpit", charges: "Cargos", roomBlocks: "Bloqueos", handovers: "Entregas de turno",
+    operations: "Operación", dailyOperations: "Operación diaria", stayCockpit: "Stay cockpit", charges: "Cargos", roomBlocks: "Bloqueos", handovers: "Entregas de turno", auditLog: "Auditoría",
     priceList: "Tarifas", setPrices: "Definir precios", configuration: "Configuración", prepayment: "Prepago", additionalServices: "Servicios adicionales",
     reports: "Reportes y finanzas", statistics: "Estadísticas", financialReport: "Reporte financiero", roomReport: "Reporte por habitación", occupancyReport: "Reporte de ocupación", localTaxReport: "Reporte de impuesto local", paymentList: "Lista de pagos", registrationBook: "Libro de registro", exportBookings: "Exportar reservas",
     invoices: "Facturas", open: "Abiertas", taxes: "Impuestos", taxRates: "Tasas de impuesto",
@@ -43,7 +43,7 @@ const copy = {
   },
   de: {
     calendar: "Kalender", premium: "Premium", bookings: "Buchungen", reservationList: "Reservierungsliste", clients: "Gäste", messageTemplates: "Nachrichtenvorlagen",
-    operations: "Betrieb", dailyOperations: "Tagesbetrieb", stayCockpit: "Stay cockpit", charges: "Gebühren", roomBlocks: "Zimmerblöcke", handovers: "Schichtübergaben",
+    operations: "Betrieb", dailyOperations: "Tagesbetrieb", stayCockpit: "Stay cockpit", charges: "Gebühren", roomBlocks: "Zimmerblöcke", handovers: "Schichtübergaben", auditLog: "Prüfprotokoll",
     priceList: "Preisliste", setPrices: "Preise festlegen", configuration: "Konfiguration", prepayment: "Vorauszahlung", additionalServices: "Zusatzleistungen",
     reports: "Berichte und Finanzen", statistics: "Statistiken", financialReport: "Finanzbericht", roomReport: "Zimmerbericht", occupancyReport: "Belegungsbericht", localTaxReport: "Lokaler Steuerbericht", paymentList: "Zahlungsliste", registrationBook: "Melderegister", exportBookings: "Buchungen exportieren",
     invoices: "Rechnungen", open: "Offen", taxes: "Steuern", taxRates: "Steuersätze",
@@ -68,9 +68,9 @@ function NavGroup({ label, icon: Icon, open, onToggle, children }: { label: stri
 
 function groupForPath(pathname: string): GroupKey | null {
   if (/\/bookings\/(guests)?\/?$/.test(pathname) || /\/bookings\/?$/.test(pathname)) return "bookings"
-  if (/\/bookings\/(activities|operations|charges|blocks|handovers)(\/|$)/.test(pathname)) return "operations"
+  if (/\/bookings\/(activities|operations|charges|blocks|handovers|audit)(\/|$)/.test(pathname)) return "operations"
   if (/\/bookings\/(rates|extras)(\/|$)/.test(pathname)) return "prices"
-  if (/\/bookings\/(reports|revenue|rooms|audit|payments)(\/|$)/.test(pathname)) return "reports"
+  if (/\/bookings\/(revenue|rooms|payments)(\/|$)/.test(pathname)) return "reports"
   if (/\/bookings\/invoices(\/|$)/.test(pathname)) return "invoices"
   if (/\/bookings\/channels(\/|$)/.test(pathname)) return "channels"
   return null
@@ -144,6 +144,7 @@ export function BookingReferenceSidebar() {
         <NavLink href={href("/bookings/charges")} active={active("/bookings/charges")} inset>{c.charges}</NavLink>
         <NavLink href={href("/bookings/blocks")} active={active("/bookings/blocks")} inset>{c.roomBlocks}</NavLink>
         <NavLink href={href("/bookings/handovers")} active={active("/bookings/handovers")} inset>{c.handovers}</NavLink>
+        <NavLink href={href("/bookings/audit")} active={active("/bookings/audit")} inset>{c.auditLog}</NavLink>
       </NavGroup>
 
       <NavGroup label={c.priceList} icon={BadgeDollarSign} open={openGroups.has("prices")} onToggle={() => toggleGroup("prices")}>
@@ -154,13 +155,13 @@ export function BookingReferenceSidebar() {
       </NavGroup>
 
       <NavGroup label={c.reports} icon={LineChart} open={openGroups.has("reports")} onToggle={() => toggleGroup("reports")}>
-        <NavLink href={href("/bookings/reports")} active={active("/bookings/reports")} inset>{c.statistics}</NavLink>
+        <NavLink inset title={c.notConfigured}>{c.statistics}</NavLink>
         <NavLink href={href("/bookings/revenue")} active={active("/bookings/revenue")} inset>{c.financialReport}</NavLink>
         <NavLink href={href("/bookings/rooms")} active={active("/bookings/rooms")} inset>{c.roomReport}</NavLink>
         <NavLink inset title={c.notConfigured}>{c.occupancyReport}</NavLink>
         <NavLink inset title={c.notConfigured}>{c.localTaxReport}</NavLink>
         <NavLink href={href("/bookings/payments")} active={active("/bookings/payments")} inset>{c.paymentList}</NavLink>
-        <NavLink href={href("/bookings/audit")} active={active("/bookings/audit")} inset>{c.registrationBook}</NavLink>
+        <NavLink inset title={c.notConfigured}>{c.registrationBook}</NavLink>
         <NavLink inset title={c.notConfigured}>{c.exportBookings}</NavLink>
       </NavGroup>
 
