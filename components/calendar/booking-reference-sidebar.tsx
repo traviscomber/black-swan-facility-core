@@ -71,6 +71,7 @@ function groupForPath(pathname: string): GroupKey | null {
   if (/\/bookings\/(guests)?\/?$/.test(pathname) || /\/bookings\/?$/.test(pathname)) return "bookings"
   if (/\/bookings\/(activities|operations|charges|blocks|rooms|handovers|audit)(\/|$)/.test(pathname)) return "operations"
   if (/\/bookings\/(rates|extras)(\/|$)/.test(pathname)) return "prices"
+  if (/\/bookings\/payment-methods(\/|$)/.test(pathname)) return "reservation"
   if (/\/bookings\/(revenue|payments)(\/|$)/.test(pathname)) return "reports"
   if (/\/bookings\/invoices(\/|$)/.test(pathname)) return "invoices"
   if (/\/bookings\/channels(\/|$)/.test(pathname)) return "channels"
@@ -88,7 +89,6 @@ export function BookingReferenceSidebar() {
   const selectedChannel = searchParams.get("channel")
   const selectedView = searchParams.get("view")
   const ratesActive = active("/bookings/rates")
-  const paymentsActive = active("/bookings/payments")
   const [collapsed, setCollapsed] = useState(false)
   const [openGroups, setOpenGroups] = useState<Set<GroupKey>>(() => new Set([groupForPath(pathname) ?? "bookings"]))
 
@@ -103,10 +103,10 @@ export function BookingReferenceSidebar() {
   }, [])
 
   useEffect(() => {
-    const current = selectedView === "methods" && paymentsActive ? "reservation" : groupForPath(pathname)
+    const current = groupForPath(pathname)
     if (!current) return
     setOpenGroups((groups) => groups.has(current) ? groups : new Set([...groups, current]))
-  }, [pathname, paymentsActive, selectedView])
+  }, [pathname])
 
   useEffect(() => {
     try { window.localStorage.setItem(SIDEBAR_GROUPS_KEY, JSON.stringify([...openGroups])) } catch {}
@@ -163,7 +163,7 @@ export function BookingReferenceSidebar() {
         <NavLink inset title={c.notConfigured}>{c.roomReport}</NavLink>
         <NavLink inset title={c.notConfigured}>{c.occupancyReport}</NavLink>
         <NavLink inset title={c.notConfigured}>{c.localTaxReport}</NavLink>
-        <NavLink href={href("/bookings/payments")} active={paymentsActive && selectedView !== "methods"} inset>{c.paymentList}</NavLink>
+        <NavLink href={href("/bookings/payments")} active={active("/bookings/payments")} inset>{c.paymentList}</NavLink>
         <NavLink inset title={c.notConfigured}>{c.registrationBook}</NavLink>
         <NavLink inset title={c.notConfigured}>{c.exportBookings}</NavLink>
       </NavGroup>
@@ -176,7 +176,7 @@ export function BookingReferenceSidebar() {
 
       <NavGroup label={c.reservationSystem} icon={Settings2} open={openGroups.has("reservation")} onToggle={() => toggleGroup("reservation")}>
         <NavLink inset title={c.notConfigured}>{c.configuration}</NavLink>
-        <NavLink href={`${href("/bookings/payments")}?view=methods`} active={paymentsActive && selectedView === "methods"} inset>{c.paymentMethods}</NavLink>
+        <NavLink href={href("/bookings/payment-methods")} active={active("/bookings/payment-methods")} inset>{c.paymentMethods}</NavLink>
         <NavLink inset title={c.notConfigured}>{c.amenities}</NavLink>
         <NavLink inset title={c.notConfigured}>{c.notifications}</NavLink>
         <NavLink inset title={c.notConfigured}>{c.licenseNumber}</NavLink>
