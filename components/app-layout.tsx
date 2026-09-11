@@ -86,6 +86,8 @@ export function AppLayout({ children }: AppLayoutProps) {
     return () => { cancelled = true }
   }, [supabase])
 
+  if (bookingsShell) return <>{children}</>
+
   const handleLogout = async () => {
     await supabase.auth.signOut()
     router.push(`/${language}/auth/login`)
