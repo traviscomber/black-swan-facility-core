@@ -77,6 +77,212 @@
 .booking-calendar-bedbooking-shell [data-booking-calendar] [class*="rounded-xl"],.booking-calendar-bedbooking-shell [data-booking-calendar] [class*="rounded-lg"] { border-radius: 4px !important; }
 .booking-calendar-bedbooking-shell [data-booking-calendar] [class*="shadow-"] { box-shadow: none !important; }
 
+/* Professional visual pass: neutral chrome, restrained accent, status-only color. */
+.booking-calendar-reference-frame,
+.booking-calendar-bedbooking-shell,
+.booking-calendar-bedbooking-shell > div {
+  background: #171512 !important;
+}
+
+.booking-reference-sidebar,
+.booking-reference-sidebar-footer {
+  background: #171512 !important;
+  border-color: rgba(231,225,216,.075) !important;
+}
+
+.booking-reference-brand {
+  height: 56px;
+  flex-basis: 56px;
+  padding: 0 14px;
+  border-bottom-color: rgba(231,225,216,.06);
+}
+
+.booking-reference-brand-name {
+  color: #e7e1d8;
+  font-size: 14px;
+  font-weight: 560;
+  letter-spacing: -.02em;
+}
+
+.booking-reference-brand-pill {
+  min-width: auto;
+  min-height: 22px;
+  border: 1px solid rgba(143,183,159,.34);
+  border-radius: 0;
+  background: transparent;
+  padding: 4px 7px;
+  color: #9fc6ad;
+  font-size: 9px;
+  font-weight: 560;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+
+.booking-reference-nav {
+  padding: 8px 7px 14px;
+  scrollbar-width: thin;
+  scrollbar-color: #3b3731 transparent;
+}
+.booking-reference-nav::-webkit-scrollbar { width: 5px; }
+.booking-reference-nav::-webkit-scrollbar-track { background: transparent; border-radius: 0; }
+.booking-reference-nav::-webkit-scrollbar-thumb { background: #3b3731; border-radius: 0; }
+
+.booking-reference-nav-link,
+.booking-reference-nav-parent,
+.booking-reference-nav-link.is-inset,
+.booking-reference-hide {
+  border-radius: 0 !important;
+}
+
+.booking-reference-nav-link,
+.booking-reference-nav-parent {
+  min-height: 33px;
+  color: #c7beb3;
+  font-size: 11.5px;
+  font-weight: 440;
+}
+
+.booking-reference-nav-link:hover,
+.booking-reference-nav-parent:hover {
+  background: #211e1a;
+  color: #e7e1d8;
+}
+
+.booking-reference-nav-link.is-active:not(.is-inset) {
+  background: #211e1a;
+  color: #a9cdb5;
+  box-shadow: inset 2px 0 #8fb79f;
+}
+
+.booking-reference-nav-link.is-inset {
+  min-height: 27px;
+  color: #9f968b;
+  font-size: 11px;
+}
+
+.booking-reference-nav-link.is-inset.is-active {
+  background: #211e1a;
+  color: #e7e1d8;
+  box-shadow: inset 2px 0 rgba(143,183,159,.65);
+}
+
+.booking-reference-nav-link.is-unavailable {
+  color: #6f675f;
+}
+
+.booking-reference-hide {
+  color: #9fc6ad;
+}
+
+.booking-calendar-bedbooking-shell > div > .sticky.top-0 {
+  background: #211e1a !important;
+  border-bottom-color: rgba(231,225,216,.075) !important;
+}
+
+.booking-calendar-bedbooking-shell > div > .sticky.top-0 > div:first-child {
+  min-height: 52px !important;
+  padding: 6px 10px !important;
+}
+
+.booking-calendar-bedbooking-shell > div > .sticky.top-0 > div:nth-child(2) {
+  min-height: 34px !important;
+  height: 34px;
+  background: #1b1916 !important;
+  border-top-color: rgba(231,225,216,.055) !important;
+}
+
+.booking-calendar-bedbooking-shell > div > .sticky.top-0 input,
+.booking-calendar-bedbooking-shell > div > .sticky.top-0 button,
+.booking-calendar-bedbooking-shell > div > .sticky.top-0 [role="combobox"] {
+  border-radius: 0 !important;
+  border-color: rgba(231,225,216,.10) !important;
+  box-shadow: none !important;
+}
+
+.booking-calendar-bedbooking-shell > div > .sticky.top-0 input,
+.booking-calendar-bedbooking-shell > div > .sticky.top-0 button:not([class*="bg-emerald"]),
+.booking-calendar-bedbooking-shell > div > .sticky.top-0 [role="combobox"] {
+  background: #171512 !important;
+  color: #cfc6bb !important;
+}
+
+.booking-calendar-bedbooking-shell > div > .sticky.top-0 button[class*="bg-emerald"] {
+  border-radius: 0 !important;
+  border-color: #8fb79f !important;
+  background: #8fb79f !important;
+  color: #141713 !important;
+  font-weight: 580 !important;
+}
+
+.booking-calendar-bedbooking-shell > div > .sticky.top-0 button[class*="text-emerald"] {
+  border-color: rgba(143,183,159,.42) !important;
+  background: transparent !important;
+  color: #9fc6ad !important;
+}
+
+.booking-calendar-bedbooking-shell [data-booking-calendar],
+.booking-calendar-bedbooking-shell .overflow-auto.bg-\[\#122526\] {
+  background: #171512 !important;
+}
+
+.booking-calendar-bedbooking-shell [data-booking-calendar] {
+  min-height: calc(100dvh - 86px);
+  max-height: calc(100dvh - 86px);
+}
+
+/* Remove decorative property-band colors; operational state owns the color. */
+.booking-calendar-bedbooking-shell [class*="bg-emerald-950/25"],
+.booking-calendar-bedbooking-shell [class*="bg-amber-950/25"],
+.booking-calendar-bedbooking-shell [class*="bg-violet-950/25"],
+.booking-calendar-bedbooking-shell [class*="bg-cyan-950/25"],
+.booking-calendar-bedbooking-shell [class*="bg-rose-950/25"],
+.booking-calendar-bedbooking-shell [class*="bg-slate-950/25"] {
+  background: #1b1916 !important;
+  border-top: 1px solid rgba(231,225,216,.06);
+}
+
+.booking-calendar-bedbooking-shell [data-calendar-row] {
+  border-bottom-color: rgba(231,225,216,.045) !important;
+}
+
+.booking-calendar-bedbooking-shell [data-calendar-row] > div > .sticky.left-0 {
+  background: #211e1a !important;
+  border-right-color: rgba(231,225,216,.075) !important;
+}
+
+.booking-calendar-bedbooking-shell [data-calendar-row] > div > .sticky.left-0 .text-white\/90 {
+  color: #ded7ce !important;
+  font-weight: 500 !important;
+}
+
+.booking-calendar-bedbooking-shell [data-calendar-row] > div > .sticky.left-0 .text-white\/65 {
+  color: #8f867b !important;
+}
+
+.booking-calendar-bedbooking-shell [class*="bg-emerald-600/20"] {
+  background: rgba(143,183,159,.10) !important;
+}
+
+.booking-calendar-bedbooking-shell .sticky.top-0.z-30.flex {
+  background: #211e1a !important;
+  border-bottom-color: rgba(231,225,216,.075) !important;
+  box-shadow: none !important;
+}
+
+.booking-calendar-bedbooking-shell .sticky.top-0.z-30.flex > .sticky.left-0 {
+  background: #211e1a !important;
+  border-right-color: rgba(231,225,216,.075) !important;
+  color: #9f968b !important;
+}
+
+.booking-calendar-bedbooking-shell button:focus-visible,
+.booking-reference-sidebar a:focus-visible,
+.booking-reference-sidebar button:focus-visible {
+  outline: 1px solid #8fb79f !important;
+  outline-offset: -1px !important;
+  box-shadow: none !important;
+}
+
 @media (prefers-reduced-motion: reduce) { .booking-reference-sidebar, .booking-reference-chevron { transition: none; } }
 @media (max-width: 1023px) {
   .booking-calendar-reference-frame { max-width: 100vw; }
