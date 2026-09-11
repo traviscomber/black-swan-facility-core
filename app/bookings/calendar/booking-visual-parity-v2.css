@@ -149,13 +149,13 @@
   font-size: 9px !important;
 }
 
-/* Reservation bars: make the stay the primary object, closer to BedBooking geometry. */
+/* Reservation bars: use the full stay width for the guest name, like BedBooking. */
 .booking-workspace[data-booking-section="calendar"] [data-calendar-row] button.absolute {
   top: 4px !important;
   height: 37px !important;
   border-width: 1px !important;
   border-left-width: 3px !important;
-  padding: 0 24px 0 10px !important;
+  padding: 0 6px 0 7px !important;
   background: #292621 !important;
   color: #eee8df !important;
   font-size: 10.5px !important;
@@ -165,15 +165,44 @@
 
 .booking-workspace[data-booking-section="calendar"] [data-calendar-row] button.absolute > div:first-of-type {
   display: flex;
+  width: 100%;
+  min-width: 0;
   height: 100%;
   align-items: center;
-  padding-right: 2px !important;
+  padding-right: 0 !important;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-weight: 520 !important;
   line-height: 1.1 !important;
 }
 
 .booking-workspace[data-booking-section="calendar"] [data-calendar-row] button.absolute > div:nth-of-type(2) {
   display: none;
+}
+
+/* Keep the operations chevron as an overlay; it must not permanently consume label width. */
+.booking-workspace[data-booking-section="calendar"] [data-calendar-row] button.absolute [role="button"] {
+  top: 50% !important;
+  right: 3px !important;
+  width: 16px !important;
+  height: 16px !important;
+  transform: translateY(-50%);
+  background: rgba(0,0,0,.28) !important;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 100ms ease;
+}
+
+.booking-workspace[data-booking-section="calendar"] [data-calendar-row] button.absolute:hover [role="button"],
+.booking-workspace[data-booking-section="calendar"] [data-calendar-row] button.absolute:focus-within [role="button"] {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.booking-workspace[data-booking-section="calendar"] [data-calendar-row] button.absolute:hover > div:first-of-type,
+.booking-workspace[data-booking-section="calendar"] [data-calendar-row] button.absolute:focus-within > div:first-of-type {
+  padding-right: 17px !important;
 }
 
 .booking-workspace[data-booking-section="calendar"] [data-calendar-row] button.absolute[class*="border-amber-400"] {
@@ -206,13 +235,6 @@
 .booking-workspace[data-booking-section="calendar"] [data-calendar-row] button.absolute:hover {
   filter: brightness(1.10);
   z-index: 35;
-}
-
-.booking-workspace[data-booking-section="calendar"] [data-calendar-row] button.absolute [role="button"] {
-  top: 50% !important;
-  right: 5px !important;
-  transform: translateY(-50%);
-  background: rgba(0,0,0,.14) !important;
 }
 
 /* Keep the grid visible inside property bands without overpowering them. */
