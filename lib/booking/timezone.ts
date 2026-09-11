@@ -17,8 +17,17 @@ export function bookingDateKey(value: Date | number | string = new Date()): stri
   return `${year}-${month}-${day}`
 }
 
+export function bookingDateFromKey(dateKey: string): Date {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dateKey)) throw new Error("Invalid booking date key")
+  return new Date(`${dateKey}T12:00:00`)
+}
+
 export function bookingTodayDate(): Date {
-  return new Date(`${bookingDateKey()}T12:00:00`)
+  return bookingDateFromKey(bookingDateKey())
+}
+
+export function isBookingToday(value: Date | number | string): boolean {
+  return bookingDateKey(value) === bookingDateKey()
 }
 
 export function formatBookingTimestamp(value: Date | number | string, locale = "es-CL", options: Intl.DateTimeFormatOptions = {}): string {
