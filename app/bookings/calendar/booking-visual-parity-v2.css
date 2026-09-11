@@ -149,7 +149,7 @@
   font-size: 9px !important;
 }
 
-/* Reservation bars: use the full stay width for the guest name, like BedBooking. */
+/* Reservation bars keep canonical date geometry; the guest label can extend for readability. */
 .booking-workspace[data-booking-section="calendar"] [data-calendar-row] button.absolute {
   top: 4px !important;
   height: 37px !important;
@@ -161,6 +161,10 @@
   font-size: 10.5px !important;
   line-height: 1.1 !important;
   clip-path: none !important;
+}
+
+.booking-workspace[data-booking-section="calendar"] [data-calendar-row] button.absolute:not([class*="border-zinc"]) {
+  overflow: visible !important;
 }
 
 .booking-workspace[data-booking-section="calendar"] [data-calendar-row] button.absolute > div:first-of-type {
@@ -175,6 +179,17 @@
   white-space: nowrap;
   font-weight: 520 !important;
   line-height: 1.1 !important;
+}
+
+.booking-workspace[data-booking-section="calendar"] [data-calendar-row] button.absolute:not([class*="border-zinc"]) > div:first-of-type {
+  width: max-content !important;
+  min-width: 100% !important;
+  max-width: 260px;
+  padding: 0 22px 0 0 !important;
+  overflow: visible !important;
+  text-overflow: clip !important;
+  background: inherit;
+  box-shadow: 10px 0 14px rgba(23,21,18,.22);
 }
 
 .booking-workspace[data-booking-section="calendar"] [data-calendar-row] button.absolute > div:nth-of-type(2) {
