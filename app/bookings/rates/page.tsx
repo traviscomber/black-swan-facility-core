@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useLanguage } from "@/lib/hooks/use-language"
 import { ratesCopy } from "@/lib/translations/rates"
+import { bookingDateKey } from "@/lib/booking/timezone"
 
 interface Room { id: string; room_number: string; location: string | null; rate_per_night: number | null }
 interface Rule { id: string; room_id: string | null; season_name: string | null; start_date: string; end_date: string; rate_multiplier: number | null; min_stay: number | null; room?: Room | null }
@@ -145,7 +146,7 @@ export default function RatesPage() {
     })
   }, [copy.all, rules, roomFilter, search])
 
-  const today = new Date().toISOString().slice(0, 10)
+  const today = bookingDateKey()
   const activeNow = rules.filter((rule) => rule.start_date <= today && rule.end_date > today).length
   const avgMultiplier = rules.length ? rules.reduce((sum, rule) => sum + Number(rule.rate_multiplier ?? 1), 0) / rules.length : 1
 
