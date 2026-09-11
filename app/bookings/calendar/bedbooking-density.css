@@ -1,15 +1,14 @@
 /* BedBooking parity shell shared by the booking workspace. */
 .booking-calendar-reference-frame {
-  display: grid;
-  grid-template-columns: 254px minmax(0, 1fr);
+  display: flex;
+  align-items: stretch;
   width: 100%;
   max-width: 100vw;
   min-height: 100dvh;
   overflow: hidden;
   background: #101112;
 }
-.booking-calendar-reference-frame:has(.booking-reference-sidebar.is-collapsed) { grid-template-columns: 56px minmax(0, 1fr); }
-.booking-calendar-bedbooking-shell { min-width: 0; width: 100%; max-width: 100%; min-height: 100dvh; overflow: hidden; background: #111213; }
+.booking-calendar-bedbooking-shell { min-width: 0; width: auto; max-width: 100%; min-height: 100dvh; flex: 1 1 auto; overflow: hidden; background: #111213; }
 .booking-calendar-bedbooking-shell > div { min-width: 0; width: 100%; max-width: 100%; min-height: 100dvh; overflow: hidden; }
 .booking-calendar-bedbooking-shell > div > div { min-width: 0; max-width: none !important; }
 .booking-calendar-bedbooking-shell .overflow-hidden { border-radius: 0 !important; box-shadow: none !important; }
@@ -80,7 +79,7 @@
 
 @media (prefers-reduced-motion: reduce) { .booking-reference-sidebar, .booking-reference-chevron { transition: none; } }
 @media (max-width: 1023px) {
-  .booking-calendar-reference-frame,.booking-calendar-reference-frame:has(.booking-reference-sidebar.is-collapsed) { grid-template-columns: minmax(0, 1fr); max-width: 100vw; }
+  .booking-calendar-reference-frame { max-width: 100vw; }
   .booking-reference-sidebar { display: none; }
   .booking-calendar-bedbooking-shell > div > .sticky.top-0 > div:nth-child(2) { height: auto; min-height: 40px !important; }
   .booking-calendar-bedbooking-shell [data-booking-calendar] { min-height: calc(100dvh - 140px); max-height: calc(100dvh - 140px); }
