@@ -1,9 +1,9 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import type { CalendarLayerKey } from "@/components/calendar/reservation-operational-lanes"
 
-const STORAGE_KEY = "black-swan.booking-calendar.preferences.v1"
+const STORAGE_KEY = "black-swan.booking-calendar.preferences.v2"
 
 export interface CalendarViewPreferences {
   activeLayers: CalendarLayerKey[]
@@ -14,9 +14,10 @@ export interface CalendarViewPreferences {
 }
 
 export function useCalendarViewPreferences(defaultLayers: CalendarLayerKey[]) {
+  const quietDefaults = useMemo<CalendarLayerKey[]>(() => defaultLayers.includes("milestones") ? ["milestones"] : defaultLayers.slice(0, 1), [defaultLayers])
   const [hydrated, setHydrated] = useState(false)
   const [preferences, setPreferences] = useState<CalendarViewPreferences>({
-    activeLayers: defaultLayers,
+    activeLayers: quietDefaults,
     collapsedLocations: [],
     collapsedRooms: [],
     showSummary: false,
@@ -37,7 +38,7 @@ export function useCalendarViewPreferences(defaultLayers: CalendarLayerKey[]) {
         }))
       }
     } catch {
-      // Ignore malformed local preferences and preserve safe defaults.
+      // Ignore malformed local preferences and preserve quiet defaults.
     } finally {
       setHydrated(true)
     }
