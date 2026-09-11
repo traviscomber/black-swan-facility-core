@@ -70,5 +70,5 @@ test("object pages degrade partial related-data failures without fabricating sta
   assert.match(roomObjectView, /Parte del contexto relacionado no pudo cargarse/)
   assert.match(reservationStayCockpit, /Parte del contexto relacionado no pudo cargarse/)
   assert.match(roomObjectView, /sin señal/)
-  assert.match(reservationStayCockpit, /sin señal/)
+  assert.match(reservationStayCockpit, /Sin registros vinculados/)
 })
