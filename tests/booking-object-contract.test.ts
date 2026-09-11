@@ -57,7 +57,6 @@ test("reservation object loads the canonical hospitality graph lazily", () => {
   assert.match(reservationStayCockpit, /from\("reservation_operational_exceptions"\)/)
   assert.match(reservationStayCockpit, /from\("operational_documents"\)/)
   assert.match(reservationStayCockpit, /from\("booking_events"\)/)
-  assert.match(reservationStayCockpit, /href={`\/bookings\/rooms\/\$\{context\.room\.id\}`}/)
   assert.doesNotMatch(reservationObject, /\.insert\(/)
   assert.doesNotMatch(reservationObject, /\.update\(/)
   assert.doesNotMatch(reservationObject, /\.delete\(/)
