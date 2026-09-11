@@ -10,6 +10,7 @@ import { useLanguage } from "@/lib/hooks/use-language"
 import "./booking-bedbooking.css"
 import "./booking-workspace.css"
 import "./booking-section-polish.css"
+import "./booking-subsections-v2.css"
 import "./calendar/bedbooking-density.css"
 
 const ROUTE_LOCALES = new Set(["en", "es", "de"])
