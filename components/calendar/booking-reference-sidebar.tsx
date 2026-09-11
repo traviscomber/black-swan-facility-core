@@ -16,6 +16,7 @@ import {
   Share2,
   UserRound,
   Users,
+  Wrench,
 } from "lucide-react"
 import { useLanguage } from "@/lib/hooks/use-language"
 
@@ -24,6 +25,7 @@ const SIDEBAR_GROUPS_KEY = "black-swan.booking.sidebar.groups"
 const copy = {
   en: {
     calendar: "Calendar", premium: "Premium", bookings: "Bookings", reservationList: "Reservation list", clients: "Clients", messageTemplates: "Message templates",
+    operations: "Operations", dailyOperations: "Daily operations", stayCockpit: "Stay cockpit", charges: "Charges", roomBlocks: "Room blocks", handovers: "Shift handovers",
     priceList: "Price list", setPrices: "Set prices", configuration: "Configuration", prepayment: "Prepayment", additionalServices: "Additional services",
     reports: "Reports and finances", statistics: "Statistics", financialReport: "Financial Report", roomReport: "Room report", occupancyReport: "Occupancy report", localTaxReport: "Local Tax Report", paymentList: "Payment list", registrationBook: "Registration book", exportBookings: "Export bookings",
     invoices: "Invoices", open: "Open", taxes: "Taxes", taxRates: "Tax rates",
@@ -32,6 +34,7 @@ const copy = {
   },
   es: {
     calendar: "Calendario", premium: "Premium", bookings: "Reservas", reservationList: "Lista de reservas", clients: "Huéspedes", messageTemplates: "Plantillas de mensajes",
+    operations: "Operación", dailyOperations: "Operación diaria", stayCockpit: "Stay cockpit", charges: "Cargos", roomBlocks: "Bloqueos", handovers: "Entregas de turno",
     priceList: "Tarifas", setPrices: "Definir precios", configuration: "Configuración", prepayment: "Prepago", additionalServices: "Servicios adicionales",
     reports: "Reportes y finanzas", statistics: "Estadísticas", financialReport: "Reporte financiero", roomReport: "Reporte por habitación", occupancyReport: "Reporte de ocupación", localTaxReport: "Reporte de impuesto local", paymentList: "Lista de pagos", registrationBook: "Libro de registro", exportBookings: "Exportar reservas",
     invoices: "Facturas", open: "Abiertas", taxes: "Impuestos", taxRates: "Tasas de impuesto",
@@ -40,6 +43,7 @@ const copy = {
   },
   de: {
     calendar: "Kalender", premium: "Premium", bookings: "Buchungen", reservationList: "Reservierungsliste", clients: "Gäste", messageTemplates: "Nachrichtenvorlagen",
+    operations: "Betrieb", dailyOperations: "Tagesbetrieb", stayCockpit: "Stay cockpit", charges: "Gebühren", roomBlocks: "Zimmerblöcke", handovers: "Schichtübergaben",
     priceList: "Preisliste", setPrices: "Preise festlegen", configuration: "Konfiguration", prepayment: "Vorauszahlung", additionalServices: "Zusatzleistungen",
     reports: "Berichte und Finanzen", statistics: "Statistiken", financialReport: "Finanzbericht", roomReport: "Zimmerbericht", occupancyReport: "Belegungsbericht", localTaxReport: "Lokaler Steuerbericht", paymentList: "Zahlungsliste", registrationBook: "Melderegister", exportBookings: "Buchungen exportieren",
     invoices: "Rechnungen", open: "Offen", taxes: "Steuern", taxRates: "Steuersätze",
@@ -48,7 +52,7 @@ const copy = {
   },
 } as const
 
-type GroupKey = "bookings" | "prices" | "reports" | "invoices" | "reservation" | "channels"
+type GroupKey = "bookings" | "operations" | "prices" | "reports" | "invoices" | "reservation" | "channels"
 type NavLinkProps = { href?: string; active?: boolean; icon?: React.ComponentType<{ className?: string }>; children: React.ReactNode; inset?: boolean; title?: string; dot?: "airbnb" | "booking" | "ical" }
 
 function NavLink({ href, active = false, icon: Icon, children, inset = false, title, dot }: NavLinkProps) {
@@ -64,6 +68,7 @@ function NavGroup({ label, icon: Icon, open, onToggle, children }: { label: stri
 
 function groupForPath(pathname: string): GroupKey | null {
   if (/\/bookings\/(guests)?\/?$/.test(pathname) || /\/bookings\/?$/.test(pathname)) return "bookings"
+  if (/\/bookings\/(activities|operations|charges|blocks|handovers)(\/|$)/.test(pathname)) return "operations"
   if (/\/bookings\/(rates|extras)(\/|$)/.test(pathname)) return "prices"
   if (/\/bookings\/(reports|revenue|rooms|audit)(\/|$)/.test(pathname)) return "reports"
   if (/\/bookings\/invoices(\/|$)/.test(pathname)) return "invoices"
@@ -119,6 +124,13 @@ export function BookingReferenceSidebar() {
         <NavLink href={href("/bookings")} active={pathname === href("/bookings")} inset>{c.reservationList}</NavLink>
         <NavLink href={href("/bookings/guests")} active={active("/bookings/guests")} inset>{c.clients}</NavLink>
         <NavLink inset title={c.notConfigured}>{c.messageTemplates}</NavLink>
+      </NavGroup>
+      <NavGroup label={c.operations} icon={Wrench} open={openGroups.has("operations")} onToggle={() => toggleGroup("operations")}>
+        <NavLink href={href("/bookings/activities")} active={active("/bookings/activities")} inset>{c.dailyOperations}</NavLink>
+        <NavLink href={href("/bookings/operations")} active={active("/bookings/operations")} inset>{c.stayCockpit}</NavLink>
+        <NavLink href={href("/bookings/charges")} active={active("/bookings/charges")} inset>{c.charges}</NavLink>
+        <NavLink href={href("/bookings/blocks")} active={active("/bookings/blocks")} inset>{c.roomBlocks}</NavLink>
+        <NavLink href={href("/bookings/handovers")} active={active("/bookings/handovers")} inset>{c.handovers}</NavLink>
       </NavGroup>
       <NavGroup label={c.priceList} icon={BadgeDollarSign} open={openGroups.has("prices")} onToggle={() => toggleGroup("prices")}>
         <NavLink href={href("/bookings/rates")} active={active("/bookings/rates")} inset>{c.setPrices}</NavLink>
