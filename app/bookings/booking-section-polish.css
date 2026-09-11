@@ -4,8 +4,11 @@
 .booking-workspace[data-booking-section="operations"] .booking-calendar-bedbooking-shell,
 .booking-workspace[data-booking-section="activities"] .booking-calendar-bedbooking-shell,
 .booking-workspace[data-booking-section="charges"] .booking-calendar-bedbooking-shell,
-.booking-workspace[data-booking-section="blocks"] .booking-calendar-bedbooking-shell {
-  background: #111213;
+.booking-workspace[data-booking-section="blocks"] .booking-calendar-bedbooking-shell,
+.booking-workspace[data-booking-section="rooms"] .booking-calendar-bedbooking-shell,
+.booking-workspace[data-booking-section="guests"] .booking-calendar-bedbooking-shell,
+.booking-workspace[data-booking-section="reservations"] .booking-calendar-bedbooking-shell {
+  background: #171512;
 }
 
 .booking-workspace[data-booking-section="handovers"] [data-slot="page-header"],
@@ -13,7 +16,7 @@
   min-height: 58px !important;
   padding: 10px 16px !important;
   border-bottom: 1px solid rgba(255,255,255,.08) !important;
-  background: #17191a !important;
+  background: #211e1a !important;
 }
 
 .booking-workspace[data-booking-section="handovers"] [data-slot="page-header"] h1,
@@ -30,14 +33,14 @@
   max-width: 860px !important;
   font-size: 11px !important;
   line-height: 16px !important;
-  color: rgba(255,255,255,.46) !important;
+  color: #8f867b !important;
 }
 
 .booking-workspace[data-booking-section="handovers"] [data-slot="page-header"] button,
 .booking-workspace[data-booking-section="operations"] [data-slot="page-header"] button {
   min-height: 32px !important;
   height: 32px !important;
-  border-radius: 4px !important;
+  border-radius: 0 !important;
   font-size: 11px !important;
 }
 
@@ -49,9 +52,9 @@
 
 .booking-workspace[data-booking-section="handovers"] [data-slot="card"],
 .booking-workspace[data-booking-section="operations"] [data-slot="card"] {
-  border-color: rgba(255,255,255,.08) !important;
-  border-radius: 3px !important;
-  background: #151718 !important;
+  border-color: transparent !important;
+  border-radius: 0 !important;
+  background: #211e1a !important;
   box-shadow: none !important;
 }
 
@@ -75,26 +78,62 @@
 .booking-workspace[data-booking-section="handovers"] input,
 .booking-workspace[data-booking-section="handovers"] select,
 .booking-workspace[data-booking-section="operations"] input,
-.booking-workspace[data-booking-section="operations"] select {
+.booking-workspace[data-booking-section="operations"] select,
+.booking-workspace[data-booking-section="rooms"] input,
+.booking-workspace[data-booking-section="rooms"] select,
+.booking-workspace[data-booking-section="guests"] input,
+.booking-workspace[data-booking-section="guests"] select {
   min-height: 32px !important;
   height: 32px !important;
-  border-radius: 3px !important;
-  border-color: rgba(255,255,255,.10) !important;
-  background: #111314 !important;
+  border-radius: 0 !important;
+  border-color: transparent !important;
+  background: #171512 !important;
   font-size: 11px !important;
 }
 
 .booking-workspace[data-booking-section="handovers"] textarea,
-.booking-workspace[data-booking-section="operations"] textarea {
-  border-radius: 3px !important;
-  border-color: rgba(255,255,255,.10) !important;
-  background: #111314 !important;
+.booking-workspace[data-booking-section="operations"] textarea,
+.booking-workspace[data-booking-section="rooms"] textarea,
+.booking-workspace[data-booking-section="guests"] textarea {
+  border-radius: 0 !important;
+  border-color: transparent !important;
+  background: #171512 !important;
   font-size: 11px !important;
 }
 
 .booking-workspace[data-booking-section="handovers"] button,
-.booking-workspace[data-booking-section="operations"] button {
-  border-radius: 3px !important;
+.booking-workspace[data-booking-section="operations"] button,
+.booking-workspace[data-booking-section="rooms"] button,
+.booking-workspace[data-booking-section="guests"] button {
+  border-radius: 0 !important;
+}
+
+.booking-workspace[data-booking-section="rooms"] header,
+.booking-workspace[data-booking-section="guests"] header {
+  background: #211e1a !important;
+  border-color: transparent !important;
+}
+
+.booking-workspace[data-booking-section="rooms"] table thead,
+.booking-workspace[data-booking-section="guests"] table thead {
+  background: #211e1a !important;
+  color: #8f867b !important;
+}
+
+.booking-workspace[data-booking-section="rooms"] table tbody tr,
+.booking-workspace[data-booking-section="guests"] table tbody tr {
+  border-color: transparent !important;
+}
+
+.booking-workspace[data-booking-section="rooms"] table tbody tr:hover,
+.booking-workspace[data-booking-section="guests"] table tbody tr:hover {
+  background: #211e1a !important;
+}
+
+.booking-workspace[data-booking-section="rooms"] [data-slot="badge"],
+.booking-workspace[data-booking-section="guests"] [data-slot="badge"] {
+  border-radius: 0 !important;
+  border-color: transparent !important;
 }
 
 .booking-workspace[data-booking-section="handovers"] .space-y-4 > :not([hidden]) ~ :not([hidden]),
@@ -107,7 +146,6 @@
   margin-top: 6px !important;
 }
 
-/* Turn handover: preserve two-column operator flow, but remove dashboard-like bulk. */
 @media (min-width: 1280px) {
   .booking-workspace[data-booking-section="handovers"] .booking-calendar-bedbooking-shell > div > .grid {
     grid-template-columns: 300px minmax(0, 1fr) !important;
@@ -116,23 +154,22 @@
 
 .booking-workspace[data-booking-section="handovers"] [data-slot="badge"] {
   min-height: 20px !important;
-  border-radius: 3px !important;
+  border-radius: 0 !important;
   padding: 2px 6px !important;
   font-size: 10px !important;
 }
 
-/* Stay cockpit: keep the booking detail persistent on wide screens and modal on smaller devices. */
 .booking-workspace[data-booking-section="operations"] .fixed.inset-0.z-50.flex.justify-end > aside {
   width: min(440px, 100vw) !important;
   max-width: 440px !important;
-  border-left: 1px solid rgba(255,255,255,.10) !important;
-  background: #151718 !important;
-  box-shadow: -14px 0 34px rgba(0,0,0,.28) !important;
+  border-left: 1px solid rgba(255,255,255,.08) !important;
+  background: #211e1a !important;
+  box-shadow: none !important;
 }
 
 .booking-workspace[data-booking-section="operations"] .fixed.inset-0.z-50.flex.justify-end > aside > div:first-child {
   padding: 12px 14px !important;
-  border-bottom-color: rgba(255,255,255,.08) !important;
+  border-bottom-color: transparent !important;
 }
 
 .booking-workspace[data-booking-section="operations"] .fixed.inset-0.z-50.flex.justify-end > aside > .flex-1 {
@@ -141,15 +178,14 @@
 }
 
 .booking-workspace[data-booking-section="operations"] .fixed.inset-0.z-50.flex.justify-end > aside section {
-  border-color: rgba(255,255,255,.08) !important;
+  border-color: transparent !important;
 }
 
 .booking-workspace[data-booking-section="operations"] .fixed.inset-0.z-50.flex.justify-end > aside [data-slot="badge"] {
-  border-radius: 3px !important;
+  border-radius: 0 !important;
   font-size: 10px !important;
 }
 
-/* Mobile/tablet: cards become full-width work surfaces; no clipped controls. */
 @media (max-width: 1023px) {
   .booking-workspace[data-booking-section="handovers"] .booking-calendar-bedbooking-shell > div > .grid,
   .booking-workspace[data-booking-section="operations"] .booking-calendar-bedbooking-shell > div > .grid {
