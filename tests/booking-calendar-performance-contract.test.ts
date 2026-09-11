@@ -4,6 +4,8 @@ import { readFileSync } from "node:fs"
 
 const calendarPage = readFileSync(new URL("../app/bookings/calendar/page.tsx", import.meta.url), "utf8")
 const calendarLayout = readFileSync(new URL("../app/bookings/calendar/layout.tsx", import.meta.url), "utf8")
+const bookingLayout = readFileSync(new URL("../app/bookings/layout.tsx", import.meta.url), "utf8")
+const subsectionCss = readFileSync(new URL("../app/bookings/booking-subsections-v2.css", import.meta.url), "utf8")
 const timelineRow = readFileSync(new URL("../components/calendar/timeline-row.tsx", import.meta.url), "utf8")
 const inspector = readFileSync(new URL("../components/calendar/reservation-quick-inspector.tsx", import.meta.url), "utf8")
 const vercelConfig = readFileSync(new URL("../vercel.json", import.meta.url), "utf8")
@@ -35,9 +37,21 @@ test("stay cockpit remains lazy and bypasses Vercel serverless reads", () => {
   assert.doesNotMatch(inspector, /fetch\("\/api\//)
 })
 
-test("calendar route avoids forced dynamic rendering and development branch avoids automatic Vercel previews", () => {
+test("all booking subsections are constrained to the shared main workspace", () => {
+  assert.match(bookingLayout, /booking-subsections-v2\.css/)
+  assert.match(bookingLayout, /booking-calendar-reference-frame/)
+  assert.match(bookingLayout, /booking-calendar-bedbooking-shell min-w-0/)
+  assert.match(subsectionCss, /\.booking-calendar-bedbooking-shell\s*\{[\s\S]*?min-width:\s*0;/)
+  assert.match(subsectionCss, /flex:\s*1 1 auto;/)
+  assert.match(subsectionCss, /overflow:\s*hidden;/)
+  assert.match(subsectionCss, /section > \.overflow-auto/)
+  assert.match(subsectionCss, /data-booking-section="operations"/)
+})
+
+test("calendar route avoids forced dynamic rendering and development branches avoid automatic Vercel previews", () => {
   assert.doesNotMatch(calendarLayout, /force-dynamic/)
   assert.doesNotMatch(calendarLayout, /revalidate\s*=\s*0/)
   const config = JSON.parse(vercelConfig) as { git?: { deploymentEnabled?: Record<string, boolean> } }
   assert.equal(config.git?.deploymentEnabled?.["feat/booking-calendar-low-cpu-bedbooking"], false)
+  assert.equal(config.git?.deploymentEnabled?.["work/booking-all-subsections-v2"], false)
 })
