@@ -199,9 +199,10 @@ test("field desktop puts invoice decisions before Asana-first tasks, operations,
   assert.ok(workspacesIndex > attentionIndex)
 })
 
-test("root navigation respects profile start path but still validates route capability", () => {
+test("root navigation respects profile start path while using one profile read and validating route capability", () => {
   assert.match(proxySource, /effectivePathname === "\/"/)
-  assert.match(proxySource, /select\("os_start_path"\)/)
+  assert.match(proxySource, /select\("os_start_path,os_persona_key,os_primary_domain"\)/)
+  assert.equal((proxySource.match(/from\("user_access_profiles"\)/g) ?? []).length, 1)
   assert.match(proxySource, /getRouteRequirement\(preferredStartPath\)/)
   assert.match(proxySource, /startAllowed \? preferredStartPath : "\/os"/)
 })
