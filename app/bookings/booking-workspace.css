@@ -17,23 +17,16 @@
   box-shadow: -18px 0 48px rgba(0, 0, 0, 0.2) !important;
 }
 
-/* Keep the operational command trigger away from page-header actions.
-   The daily operations bar occupies the bottom edge, so the trigger floats
-   immediately above it instead of competing with "Nueva reserva". */
 .booking-workspace button.fixed.right-4.top-24 {
   top: auto !important;
   right: 1rem !important;
   bottom: 4.5rem !important;
 }
 
-/* Radix dialogs render in a body portal, outside .booking-workspace. While a
-   booking dialog is active, the modal owns the interaction surface. */
 body:has([data-slot="dialog-content"][data-state="open"]) .booking-workspace button.fixed.right-4.top-24 {
   display: none !important;
 }
 
-/* Nueva reserva: guest_name is a real DOM id in this dialog and is therefore
-   the stable anchor for all responsive reservation-dialog rules. */
 [data-slot="dialog-content"]:has(#guest_name) {
   display: flex !important;
   height: min(760px, calc(100dvh - 1.5rem)) !important;
@@ -85,7 +78,6 @@ body:has([data-slot="dialog-content"][data-state="open"]) .booking-workspace but
   padding: 0.8rem 1.25rem;
 }
 
-/* Compact the availability picker inside Nueva reserva. */
 [data-slot="dialog-content"]:has(#guest_name) form .max-w-md {
   max-width: none !important;
   padding: 0.7rem !important;
@@ -109,8 +101,6 @@ body:has([data-slot="dialog-content"][data-state="open"]) .booking-workspace but
   white-space: nowrap;
 }
 
-/* Desktop/laptop: use horizontal space instead of forcing a long vertical form.
-   The first two columns hold guest/booking data and the third holds dates. */
 @media (min-width: 900px) {
   [data-slot="dialog-content"]:has(#guest_name) {
     width: min(1120px, calc(100vw - 2rem)) !important;
@@ -133,91 +123,27 @@ body:has([data-slot="dialog-content"][data-state="open"]) .booking-workspace but
     align-items: start;
   }
 
-  [data-slot="dialog-content"]:has(#guest_name) > form > div.grid:has(#guest_name) > div:nth-child(1) {
-    grid-column: 1 / 3 !important;
-    grid-row: 1 !important;
-  }
+  [data-slot="dialog-content"]:has(#guest_name) > form > div.grid:has(#guest_name) > div:nth-child(1) { grid-column: 1 / 3 !important; grid-row: 1 !important; }
+  [data-slot="dialog-content"]:has(#guest_name) > form > div.grid:has(#guest_name) > div:nth-child(2) { grid-column: 1 / 3 !important; grid-row: 2 !important; }
+  [data-slot="dialog-content"]:has(#guest_name) > form > div.grid:has(#guest_name) > div:nth-child(3) { grid-column: 1 / 3 !important; grid-row: 3 !important; }
+  [data-slot="dialog-content"]:has(#guest_name) > form > div.grid:has(#guest_name) > div:has(#guest_name) { grid-column: 1 !important; grid-row: 4 !important; }
+  [data-slot="dialog-content"]:has(#guest_name) > form > div.grid:has(#guest_name) > div:has(#guest_email) { grid-column: 2 !important; grid-row: 4 !important; }
+  [data-slot="dialog-content"]:has(#guest_name) > form > div.grid:has(#guest_name) > div:has(#guest_phone) { grid-column: 1 !important; grid-row: 5 !important; }
+  [data-slot="dialog-content"]:has(#guest_name) > form > div.grid:has(#guest_name) > div:has(#num_guests) { grid-column: 2 !important; grid-row: 5 !important; }
+  [data-slot="dialog-content"]:has(#guest_name) > form > div.grid:has(#guest_name) > div:has(.max-w-md) { grid-column: 3 !important; grid-row: 1 / 7 !important; min-width: 0; }
+  [data-slot="dialog-content"]:has(#guest_name) > form > div.grid:has(#guest_name) > div:nth-last-child(2) { grid-column: 1 !important; grid-row: 6 !important; }
+  [data-slot="dialog-content"]:has(#guest_name) > form > div.grid:has(#guest_name) > div:last-child { grid-column: 2 !important; grid-row: 6 !important; }
+  [data-slot="dialog-content"]:has(#guest_name) > form > div.grid:has(#guest_name) > div.text-sm.italic { grid-column: 3 !important; grid-row: 1 / 4 !important; align-self: center; }
 
-  [data-slot="dialog-content"]:has(#guest_name) > form > div.grid:has(#guest_name) > div:nth-child(2) {
-    grid-column: 1 / 3 !important;
-    grid-row: 2 !important;
-  }
-
-  [data-slot="dialog-content"]:has(#guest_name) > form > div.grid:has(#guest_name) > div:nth-child(3) {
-    grid-column: 1 / 3 !important;
-    grid-row: 3 !important;
-  }
-
-  [data-slot="dialog-content"]:has(#guest_name) > form > div.grid:has(#guest_name) > div:has(#guest_name) {
-    grid-column: 1 !important;
-    grid-row: 4 !important;
-  }
-
-  [data-slot="dialog-content"]:has(#guest_name) > form > div.grid:has(#guest_name) > div:has(#guest_email) {
-    grid-column: 2 !important;
-    grid-row: 4 !important;
-  }
-
-  [data-slot="dialog-content"]:has(#guest_name) > form > div.grid:has(#guest_name) > div:has(#guest_phone) {
-    grid-column: 1 !important;
-    grid-row: 5 !important;
-  }
-
-  [data-slot="dialog-content"]:has(#guest_name) > form > div.grid:has(#guest_name) > div:has(#num_guests) {
-    grid-column: 2 !important;
-    grid-row: 5 !important;
-  }
-
-  [data-slot="dialog-content"]:has(#guest_name) > form > div.grid:has(#guest_name) > div:has(.max-w-md) {
-    grid-column: 3 !important;
-    grid-row: 1 / 7 !important;
-    min-width: 0;
-  }
-
-  [data-slot="dialog-content"]:has(#guest_name) > form > div.grid:has(#guest_name) > div:nth-last-child(2) {
-    grid-column: 1 !important;
-    grid-row: 6 !important;
-  }
-
-  [data-slot="dialog-content"]:has(#guest_name) > form > div.grid:has(#guest_name) > div:last-child {
-    grid-column: 2 !important;
-    grid-row: 6 !important;
-  }
-
-  [data-slot="dialog-content"]:has(#guest_name) > form > div.grid:has(#guest_name) > div.text-sm.italic {
-    grid-column: 3 !important;
-    grid-row: 1 / 4 !important;
-    align-self: center;
-  }
-
-  [data-slot="dialog-content"]:has(#guest_name) > form > .space-y-2:has(#special_requests) {
-    margin-top: 0.75rem !important;
-  }
-
-  [data-slot="dialog-content"]:has(#guest_name) textarea#special_requests {
-    min-height: 3.75rem !important;
-    height: 3.75rem !important;
-  }
-
-  [data-slot="dialog-content"]:has(#guest_name) [data-slot="dialog-footer"] {
-    margin-top: 0.75rem;
-  }
+  [data-slot="dialog-content"]:has(#guest_name) > form > .space-y-2:has(#special_requests) { margin-top: 0.75rem !important; }
+  [data-slot="dialog-content"]:has(#guest_name) textarea#special_requests { min-height: 3.75rem !important; height: 3.75rem !important; }
+  [data-slot="dialog-content"]:has(#guest_name) [data-slot="dialog-footer"] { margin-top: 0.75rem; }
 }
 
 @media (max-height: 760px) and (max-width: 899px) {
-  [data-slot="dialog-content"]:has(#guest_name) {
-    height: calc(100dvh - 0.75rem) !important;
-    max-height: calc(100dvh - 0.75rem) !important;
-  }
-
-  [data-slot="dialog-content"]:has(#guest_name) > [data-slot="dialog-header"] {
-    padding-top: 0.75rem;
-    padding-bottom: 0.75rem;
-  }
-
-  [data-slot="dialog-content"]:has(#guest_name) > form {
-    padding-top: 0.75rem;
-  }
+  [data-slot="dialog-content"]:has(#guest_name) { height: calc(100dvh - 0.75rem) !important; max-height: calc(100dvh - 0.75rem) !important; }
+  [data-slot="dialog-content"]:has(#guest_name) > [data-slot="dialog-header"] { padding-top: 0.75rem; padding-bottom: 0.75rem; }
+  [data-slot="dialog-content"]:has(#guest_name) > form { padding-top: 0.75rem; }
 }
 
 @media (max-width: 640px) {
@@ -231,13 +157,8 @@ body:has([data-slot="dialog-content"][data-state="open"]) .booking-workspace but
 
 @media (min-width: 1200px) {
   .booking-workspace:has(.fixed.inset-0.z-50.flex.justify-end > aside) [data-slot="page-header"],
-  .booking-workspace:has(.fixed.inset-0.z-50.flex.justify-end > aside) [data-slot="page-header"] + div {
-    margin-right: 430px;
-  }
-
-  .booking-workspace:has(.fixed.inset-0.z-50.flex.justify-end > aside) [data-slot="page-header"] + div {
-    transition: margin-right 160ms ease;
-  }
+  .booking-workspace:has(.fixed.inset-0.z-50.flex.justify-end > aside) [data-slot="page-header"] + div { margin-right: 430px; }
+  .booking-workspace:has(.fixed.inset-0.z-50.flex.justify-end > aside) [data-slot="page-header"] + div { transition: margin-right 160ms ease; }
 }
 
 @media (max-width: 1199px) {
@@ -252,7 +173,6 @@ body:has([data-slot="dialog-content"][data-state="open"]) .booking-workspace but
   }
 }
 
-/* Nueva reserva: improve dark-theme contrast without changing business logic. */
 [data-slot="dialog-content"]:has(#guest_name) {
   background: #171411 !important;
   border-color: #4a423a !important;
@@ -266,19 +186,10 @@ body:has([data-slot="dialog-content"][data-state="open"]) .booking-workspace but
   border-color: #3b342e !important;
 }
 
-[data-slot="dialog-content"]:has(#guest_name) [data-slot="dialog-title"] {
-  color: #fffaf4 !important;
-}
-
-[data-slot="dialog-content"]:has(#guest_name) label {
-  color: #d8cec2 !important;
-  font-weight: 500;
-}
-
+[data-slot="dialog-content"]:has(#guest_name) [data-slot="dialog-title"] { color: #fffaf4 !important; }
+[data-slot="dialog-content"]:has(#guest_name) label { color: #d8cec2 !important; font-weight: 500; }
 [data-slot="dialog-content"]:has(#guest_name) .text-muted-foreground,
-[data-slot="dialog-content"]:has(#guest_name) p.text-xs {
-  color: #b8ada1 !important;
-}
+[data-slot="dialog-content"]:has(#guest_name) p.text-xs { color: #b8ada1 !important; }
 
 [data-slot="dialog-content"]:has(#guest_name) input,
 [data-slot="dialog-content"]:has(#guest_name) textarea,
@@ -289,9 +200,7 @@ body:has([data-slot="dialog-content"][data-state="open"]) .booking-workspace but
 }
 
 [data-slot="dialog-content"]:has(#guest_name) input::placeholder,
-[data-slot="dialog-content"]:has(#guest_name) textarea::placeholder {
-  color: #9f9488 !important;
-}
+[data-slot="dialog-content"]:has(#guest_name) textarea::placeholder { color: #9f9488 !important; }
 
 [data-slot="dialog-content"]:has(#guest_name) input:focus-visible,
 [data-slot="dialog-content"]:has(#guest_name) textarea:focus-visible,
@@ -301,90 +210,30 @@ body:has([data-slot="dialog-content"][data-state="open"]) .booking-workspace but
   outline: none !important;
 }
 
-[data-slot="dialog-content"]:has(#guest_name) textarea#special_requests {
-  background: #241f1b !important;
-  color: #f6f0e8 !important;
-}
+[data-slot="dialog-content"]:has(#guest_name) textarea#special_requests { background: #241f1b !important; color: #f6f0e8 !important; }
+[data-slot="dialog-content"]:has(#guest_name) > [data-slot="dialog-close"] { background: #352e28 !important; border: 1px solid #5a5047 !important; color: #f5eee6 !important; }
+[data-slot="dialog-content"]:has(#guest_name) > [data-slot="dialog-close"]:hover { background: #463c34 !important; }
+[data-slot="dialog-content"]:has(#guest_name) [data-slot="dialog-footer"] button[type="button"] { background: #3a322c !important; border-color: #62574d !important; color: #f3ece4 !important; }
+[data-slot="dialog-content"]:has(#guest_name) [data-slot="dialog-footer"] button[type="button"]:hover { background: #4a4038 !important; }
+[data-slot="dialog-content"]:has(#guest_name) [data-slot="dialog-footer"] button[type="submit"] { background: #9fd5b8 !important; border-color: #9fd5b8 !important; color: #121511 !important; font-weight: 600; }
+[data-slot="dialog-content"]:has(#guest_name) [data-slot="dialog-footer"] button[type="submit"]:hover { background: #b0dfc6 !important; border-color: #b0dfc6 !important; }
 
-[data-slot="dialog-content"]:has(#guest_name) > [data-slot="dialog-close"] {
-  background: #352e28 !important;
-  border: 1px solid #5a5047 !important;
-  color: #f5eee6 !important;
-}
-
-[data-slot="dialog-content"]:has(#guest_name) > [data-slot="dialog-close"]:hover {
-  background: #463c34 !important;
-}
-
-[data-slot="dialog-content"]:has(#guest_name) [data-slot="dialog-footer"] button[type="button"] {
-  background: #3a322c !important;
-  border-color: #62574d !important;
-  color: #f3ece4 !important;
-}
-
-[data-slot="dialog-content"]:has(#guest_name) [data-slot="dialog-footer"] button[type="button"]:hover {
-  background: #4a4038 !important;
-}
-
-[data-slot="dialog-content"]:has(#guest_name) [data-slot="dialog-footer"] button[type="submit"] {
-  background: #9fd5b8 !important;
-  border-color: #9fd5b8 !important;
-  color: #121511 !important;
-  font-weight: 600;
-}
-
-[data-slot="dialog-content"]:has(#guest_name) [data-slot="dialog-footer"] button[type="submit"]:hover {
-  background: #b0dfc6 !important;
-  border-color: #b0dfc6 !important;
-}
-
-/* Santiago: present the stay detail in operational chronology. The underlying
-   actions remain unchanged; this layer only establishes a stable visual order.
-   Housekeeping execution and post-stay cleanup are deliberately last. */
 .booking-workspace .fixed.inset-0.z-50.flex.justify-end > aside > .flex-1.space-y-6 {
   display: flex !important;
   flex-direction: column !important;
-  gap: 1.25rem !important;
+  gap: .9rem !important;
+  padding: .9rem 1rem !important;
 }
 
-/* 1. Before arrival: physical room readiness. */
-.booking-workspace .fixed.inset-0.z-50.flex.justify-end > aside > .flex-1.space-y-6 > section:nth-of-type(1) {
-  order: 10;
+.booking-workspace .fixed.inset-0.z-50.flex.justify-end > aside > .flex-1.space-y-6 > section {
+  border-top: 1px solid rgba(255,255,255,.08);
+  padding-top: .75rem;
 }
 
-/* 2. Reservation state and the next lifecycle action (confirm/check-in/check-out). */
-.booking-workspace .fixed.inset-0.z-50.flex.justify-end > aside > .flex-1.space-y-6 > section:nth-of-type(7) {
-  order: 20;
-}
-
-/* 3. During the stay: active guest attention first, then tools to create it. */
-.booking-workspace .fixed.inset-0.z-50.flex.justify-end > aside > .flex-1.space-y-6 > section:nth-of-type(6) {
-  order: 30;
-}
-.booking-workspace .fixed.inset-0.z-50.flex.justify-end > aside > .flex-1.space-y-6 > section:nth-of-type(9) {
-  order: 31;
-}
-.booking-workspace .fixed.inset-0.z-50.flex.justify-end > aside > .flex-1.space-y-6 > section:nth-of-type(2) {
-  order: 32;
-}
-.booking-workspace .fixed.inset-0.z-50.flex.justify-end > aside > .flex-1.space-y-6 > section:nth-of-type(3) {
-  order: 33;
-}
-.booking-workspace .fixed.inset-0.z-50.flex.justify-end > aside > .flex-1.space-y-6 > section:nth-of-type(4) {
-  order: 34;
-}
-
-/* 4/5. Housekeeping execution and post-checkout work always sit at the end. */
-.booking-workspace .fixed.inset-0.z-50.flex.justify-end > aside > .flex-1.space-y-6 > section:nth-of-type(5) {
-  order: 50;
-  border-top: 1px solid var(--bs-divider-subtle);
-  padding-top: 1.25rem;
-}
-.booking-workspace .fixed.inset-0.z-50.flex.justify-end > aside > .flex-1.space-y-6 > section:nth-of-type(8) {
-  order: 51;
-}
-
-/* Summary blocks remain first regardless of optional content such as special requests. */
-.booking-workspace .fixed.inset-0.z-50.flex.justify-end > aside > .flex-1.space-y-6 > :not(section) {
-  order: 0;
-}
+.booking-workspace .fixed.inset-0.z-50.flex.justify-end > aside > .flex-1.space-y-6 > section:nth-of-type(1) { order: 10; }
+.booking-workspace .fixed.inset-0.z-50.flex.justify-end > aside > .flex-1.space-y-6 > section:nth-of-type(7) { order: 20; }
+.booking-workspace .fixed.inset-0.z-50.flex.justify-end > aside > .flex-1.space-y-6 > section:nth-of-type(2) { order: 30; }
+.booking-workspace .fixed.inset-0.z-50.flex.justify-end > aside > .flex-1.space-y-6 > section:nth-of-type(3) { order: 40; }
+.booking-workspace .fixed.inset-0.z-50.flex.justify-end > aside > .flex-1.space-y-6 > section:nth-of-type(4) { order: 50; }
+.booking-workspace .fixed.inset-0.z-50.flex.justify-end > aside > .flex-1.space-y-6 > section:nth-of-type(5) { order: 60; }
+.booking-workspace .fixed.inset-0.z-50.flex.justify-end > aside > .flex-1.space-y-6 > section:nth-of-type(6) { order: 70; }
