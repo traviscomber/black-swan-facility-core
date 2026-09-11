@@ -38,8 +38,8 @@ export default function BookingsPage() {
   const [query, setQuery] = useState("")
   const [status, setStatus] = useState("all")
 
-  const load = useCallback(async () => {
-    setLoading(true)
+  const load = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true)
     setError(null)
     const { data, error: loadError } = await supabase
       .from("reservations")
@@ -49,10 +49,17 @@ export default function BookingsPage() {
 
     if (loadError) setError(loadError.message)
     else setRows((data ?? []) as unknown as ReservationRow[])
-    setLoading(false)
+    if (!silent) setLoading(false)
   }, [supabase])
 
-  useEffect(() => { void load() }, [load])
+  useEffect(() => {
+    void load()
+    const channel = supabase
+      .channel("booking-reservation-list")
+      .on("postgres_changes", { event: "*", schema: "public", table: "reservations" }, () => void load(true))
+      .subscribe()
+    return () => { void supabase.removeChannel(channel) }
+  }, [load, supabase])
 
   const statuses = useMemo(() => Array.from(new Set(rows.map((row) => row.status))).sort(), [rows])
   const filtered = useMemo(() => {
@@ -66,59 +73,59 @@ export default function BookingsPage() {
   }, [query, rows, status])
 
   return (
-    <section className="min-h-screen bg-[#111213] text-white">
-      <header className="flex min-h-[58px] items-center justify-between gap-3 border-b border-white/10 bg-[#17191a] px-3">
+    <section className="min-h-screen bg-[#171512] text-[#e7e1d8]">
+      <header className="flex min-h-[58px] items-center justify-between gap-3 bg-[#211e1a] px-3">
         <div className="min-w-0">
           <h1 className="truncate text-[15px] font-medium">{c.title}</h1>
-          <p className="text-[11px] text-white/45">{filtered.length} / {rows.length}</p>
+          <p className="text-[11px] text-[#8f867b]">{filtered.length} / {rows.length}</p>
         </div>
         <div className="flex items-center gap-2">
-          <Link href={`/${language}/bookings/calendar`} className="inline-flex h-9 items-center gap-2 rounded-[4px] border border-white/10 bg-[#111314] px-3 text-xs hover:bg-white/5"><CalendarDays className="h-4 w-4" />{c.calendar}</Link>
-          <button type="button" onClick={() => void load()} className="inline-flex h-9 w-9 items-center justify-center rounded-[4px] border border-white/10 bg-[#111314]" aria-label={c.refresh}><RefreshCw className="h-4 w-4" /></button>
-          <Link href={`/${language}/bookings/calendar?new=1`} className="inline-flex h-9 items-center gap-2 rounded-[5px] bg-[#04b958] px-4 text-xs font-medium text-white"><Plus className="h-4 w-4" />{c.add}</Link>
+          <Link href={`/${language}/bookings/calendar`} className="inline-flex h-9 items-center gap-2 bg-[#2b2722] px-3 text-xs hover:bg-[#332e28]"><CalendarDays className="h-4 w-4" />{c.calendar}</Link>
+          <button type="button" onClick={() => void load()} className="inline-flex h-9 w-9 items-center justify-center bg-[#2b2722]" aria-label={c.refresh}><RefreshCw className="h-4 w-4" /></button>
+          <Link href={`/${language}/bookings/calendar?new=1`} className="inline-flex h-9 items-center gap-2 bg-[#6f8373] px-4 text-xs font-medium text-[#171512]"><Plus className="h-4 w-4" />{c.add}</Link>
         </div>
       </header>
 
-      <div className="flex min-h-[44px] items-center gap-2 border-b border-white/10 bg-[#151718] px-3 py-1.5">
+      <div className="flex min-h-[44px] items-center gap-2 bg-[#211e1a] px-3 py-1.5">
         <div className="relative min-w-0 flex-1">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/35" />
-          <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={c.search} className="h-8 w-full rounded-[3px] border border-white/10 bg-[#111314] pl-9 pr-3 text-xs outline-none placeholder:text-white/30 focus:border-[#04b958]/70" />
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#8f867b]" />
+          <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={c.search} className="h-8 w-full bg-[#171512] pl-9 pr-3 text-xs outline-none placeholder:text-[#8f867b] focus:ring-1 focus:ring-[#6f8373]" />
         </div>
-        <select value={status} onChange={(event) => setStatus(event.target.value)} className="h-8 min-w-44 rounded-[3px] border border-white/10 bg-[#111314] px-2 text-xs">
+        <select value={status} onChange={(event) => setStatus(event.target.value)} className="h-8 min-w-44 bg-[#171512] px-2 text-xs outline-none focus:ring-1 focus:ring-[#6f8373]">
           <option value="all">{c.all}</option>
           {statuses.map((item) => <option key={item} value={item}>{statusLabel(item)}</option>)}
         </select>
       </div>
 
-      {error ? <div className="m-3 border border-red-500/30 bg-red-500/10 p-3 text-xs text-red-200">{error}</div> : null}
+      {error ? <div className="m-3 bg-[#3a2522] p-3 text-xs text-[#e1a79c]">{error}</div> : null}
 
       <div className="overflow-auto">
         <table className="w-full min-w-[900px] border-collapse text-left text-xs">
-          <thead className="sticky top-0 z-10 bg-[#17191a] text-[10px] uppercase tracking-[.08em] text-white/45">
+          <thead className="sticky top-0 z-10 bg-[#211e1a] text-[10px] uppercase tracking-[.08em] text-[#8f867b]">
             <tr>
-              <th className="border-b border-white/10 px-4 py-3 font-medium">{c.guest}</th>
-              <th className="border-b border-white/10 px-3 py-3 font-medium">{c.stay}</th>
-              <th className="border-b border-white/10 px-3 py-3 font-medium">{c.room}</th>
-              <th className="border-b border-white/10 px-3 py-3 font-medium">{c.guests}</th>
-              <th className="border-b border-white/10 px-3 py-3 font-medium">{c.status}</th>
-              <th className="border-b border-white/10 px-4 py-3 text-right font-medium">{c.amount}</th>
+              <th className="px-4 py-3 font-medium">{c.guest}</th>
+              <th className="px-3 py-3 font-medium">{c.stay}</th>
+              <th className="px-3 py-3 font-medium">{c.room}</th>
+              <th className="px-3 py-3 font-medium">{c.guests}</th>
+              <th className="px-3 py-3 font-medium">{c.status}</th>
+              <th className="px-4 py-3 text-right font-medium">{c.amount}</th>
             </tr>
           </thead>
           <tbody>
-            {loading ? Array.from({ length: 8 }).map((_, index) => <tr key={index} className="animate-pulse"><td colSpan={6} className="border-b border-white/5 px-4 py-5"><div className="h-3 w-2/3 bg-white/5" /></td></tr>) : null}
+            {loading ? Array.from({ length: 8 }).map((_, index) => <tr key={index} className="animate-pulse"><td colSpan={6} className="px-4 py-5"><div className="h-3 w-2/3 bg-[#2b2722]" /></td></tr>) : null}
             {!loading && filtered.map((row) => (
-              <tr key={row.id} className="border-b border-white/[.06] hover:bg-white/[.025]">
-                <td className="px-4 py-3"><Link href={`/${language}/bookings/reservations/${row.id}`} className="block rounded-[2px] outline-none focus-visible:ring-1 focus-visible:ring-[#04b958]"><div className="font-medium text-white/92 hover:text-[#04b958]">{row.guest_name}</div><div className="mt-1 text-[10px] text-white/35">{row.guest_email ?? "—"}</div></Link></td>
-                <td className="px-3 py-3 text-white/70">{row.check_in} → {row.check_out}</td>
-                <td className="px-3 py-3"><div className="flex items-center gap-2 text-white/75"><BedDouble className="h-3.5 w-3.5 text-white/35" />{row.room?.room_number ?? "—"}</div><div className="mt-1 text-[10px] text-white/30">{row.room?.location?.name ?? ""}</div></td>
-                <td className="px-3 py-3"><span className="inline-flex items-center gap-1.5 text-white/65"><Users className="h-3.5 w-3.5" />{row.num_guests ?? 1}</span></td>
-                <td className="px-3 py-3"><span className="rounded-[3px] border border-white/10 bg-white/[.035] px-2 py-1 capitalize text-white/70">{statusLabel(row.status)}</span></td>
-                <td className="px-4 py-3 text-right tabular-nums text-white/75">{new Intl.NumberFormat(language === "de" ? "de-DE" : language === "es" ? "es-CL" : "en-US", { style: "currency", currency: "CLP", maximumFractionDigits: 0 }).format(Number(row.total_amount ?? 0))}</td>
+              <tr key={row.id} className="hover:bg-[#211e1a]">
+                <td className="px-4 py-3"><Link href={`/${language}/bookings/reservations/${row.id}`} className="block outline-none focus-visible:ring-1 focus-visible:ring-[#6f8373]"><div className="font-medium text-[#e7e1d8] hover:text-[#a9b7aa]">{row.guest_name}</div><div className="mt-1 text-[10px] text-[#8f867b]">{row.guest_email ?? "—"}</div></Link></td>
+                <td className="px-3 py-3 text-[#b9b0a4]">{row.check_in} → {row.check_out}</td>
+                <td className="px-3 py-3"><div className="flex items-center gap-2 text-[#b9b0a4]"><BedDouble className="h-3.5 w-3.5 text-[#8f867b]" />{row.room?.room_number ?? "—"}</div><div className="mt-1 text-[10px] text-[#8f867b]">{row.room?.location?.name ?? ""}</div></td>
+                <td className="px-3 py-3"><span className="inline-flex items-center gap-1.5 text-[#b9b0a4]"><Users className="h-3.5 w-3.5" />{row.num_guests ?? 1}</span></td>
+                <td className="px-3 py-3"><span className="bg-[#2b2722] px-2 py-1 capitalize text-[#b9b0a4]">{statusLabel(row.status)}</span></td>
+                <td className="px-4 py-3 text-right tabular-nums text-[#b9b0a4]">{new Intl.NumberFormat(language === "de" ? "de-DE" : language === "es" ? "es-CL" : "en-US", { style: "currency", currency: "CLP", maximumFractionDigits: 0 }).format(Number(row.total_amount ?? 0))}</td>
               </tr>
             ))}
           </tbody>
         </table>
-        {!loading && filtered.length === 0 ? <div className="flex min-h-56 flex-col items-center justify-center gap-2 text-white/35"><CalendarDays className="h-6 w-6" /><p className="text-xs">{c.empty}</p></div> : null}
+        {!loading && filtered.length === 0 ? <div className="flex min-h-56 flex-col items-center justify-center gap-2 text-[#8f867b]"><CalendarDays className="h-6 w-6" /><p className="text-xs">{c.empty}</p></div> : null}
       </div>
     </section>
   )
