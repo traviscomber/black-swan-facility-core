@@ -1,185 +1,108 @@
-/* BedBooking-inspired operational density for Black Swan reservations.
-   This stylesheet intentionally changes presentation only. Business logic,
-   inventory calculations and booking mutations remain untouched. */
-
-.booking-workspace {
-  --booking-shell: #151412;
-  --booking-panel: #1c1a17;
-  --booking-panel-2: #23201c;
-  --booking-line: rgba(255, 255, 255, 0.08);
-  --booking-line-strong: rgba(255, 255, 255, 0.14);
-  --booking-text: #f4efe8;
-  --booking-muted: #aaa197;
-  --booking-accent: #93c9aa;
-  --booking-today: rgba(147, 201, 170, 0.12);
+/* BedBooking-density shell overrides for legacy booking routes. */
+.booking-calendar-bedbooking-shell {
+  min-width: 0;
+  background: #111213;
+  color: var(--foreground);
 }
 
-/* Put the calendar first. The operational summary already exists inside the
-   timeline, so the duplicated KPI blocks above it are hidden from the default
-   booking workspace. This is the largest UX gain relative to BedBooking. */
-.booking-workspace > div.min-h-screen > div.mx-auto > :nth-child(2),
-.booking-workspace > div.min-h-screen > div.mx-auto > :nth-child(3) {
-  display: none !important;
+.booking-calendar-bedbooking-shell [data-slot="page-header"] {
+  min-height: 58px;
+  border-bottom: 1px solid rgba(255,255,255,.08);
+  background: #111213;
+  padding: 12px 20px;
 }
 
-.booking-workspace > div.min-h-screen {
-  min-height: 100dvh !important;
-  padding: 10px !important;
-  background: var(--booking-shell) !important;
+.booking-calendar-bedbooking-shell [data-slot="page-header"] h1 {
+  font-size: 1.25rem;
+  line-height: 1.5rem;
+  font-weight: 600;
+  letter-spacing: -.015em;
 }
 
-.booking-workspace > div.min-h-screen > div.mx-auto {
-  max-width: none !important;
-  gap: 0 !important;
+.booking-calendar-bedbooking-shell [data-slot="page-header"] p {
+  margin-top: 2px;
+  font-size: .75rem;
+  line-height: 1rem;
+  color: var(--muted-foreground);
 }
 
-.booking-workspace > div.min-h-screen > div.mx-auto > :first-child {
-  min-height: 54px;
-  margin-bottom: 8px;
-  padding: 0 4px;
-  align-items: center;
+.booking-calendar-bedbooking-shell [data-slot="card"] {
+  border-color: rgba(255,255,255,.08);
+  border-radius: 4px;
+  box-shadow: none;
 }
 
-.booking-workspace > div.min-h-screen > div.mx-auto > :first-child h1 {
-  font-size: 20px !important;
-  line-height: 1.15 !important;
-  font-weight: 560 !important;
-  letter-spacing: -0.015em !important;
-}
-
-.booking-workspace > div.min-h-screen > div.mx-auto > :first-child p:first-child {
-  margin-bottom: 2px !important;
-  font-size: 9px !important;
-  letter-spacing: 0.15em !important;
-}
-
-@media (min-width: 900px) {
-  .booking-workspace > div.min-h-screen > div.mx-auto > :first-child p:last-child {
-    display: none;
-  }
-}
-
-.booking-workspace > div.min-h-screen > div.mx-auto > :first-child button,
-.booking-workspace > div.min-h-screen > div.mx-auto > :first-child a {
-  min-height: 34px !important;
-  border-radius: 3px !important;
-}
-
-/* Search and filters become a compact command bar instead of a large card. */
-.booking-workspace > div.min-h-screen > div.mx-auto > :nth-child(4) {
-  margin-bottom: 8px !important;
-  border-color: var(--booking-line) !important;
-  border-radius: 3px !important;
-  background: var(--booking-panel) !important;
-  box-shadow: none !important;
-}
-
-.booking-workspace > div.min-h-screen > div.mx-auto > :nth-child(4) > div {
-  gap: 6px !important;
-  padding: 7px !important;
-}
-
-.booking-workspace > div.min-h-screen > div.mx-auto > :nth-child(4) input,
-.booking-workspace > div.min-h-screen > div.mx-auto > :nth-child(4) button[role="combobox"] {
-  height: 34px !important;
-  min-height: 34px !important;
-  border-radius: 2px !important;
-  border-color: var(--booking-line-strong) !important;
-  background: var(--booking-panel-2) !important;
-}
-
-/* Main range/navigation card and timeline should read as one continuous tool. */
-.booking-workspace [data-slot="card"] {
-  box-shadow: none !important;
-}
-
-.booking-workspace [data-slot="card"]:has(.overflow-auto),
-.booking-workspace [data-slot="card"]:has([class*="overflow-x"]) {
-  border-color: var(--booking-line) !important;
-  border-radius: 3px !important;
-}
-
-.booking-workspace .border-b.bg-background,
-.booking-workspace .border-b.bg-card,
-.booking-workspace .sticky {
-  border-color: var(--booking-line) !important;
-}
-
-.booking-workspace .booking-calendar-grid,
-.booking-workspace [data-booking-calendar] {
-  background: var(--booking-panel) !important;
-}
-
-/* BedBooking strength: extremely clear, dense day header and today column. */
-.booking-workspace [data-today="true"],
-.booking-workspace .bg-primary\/5,
-.booking-workspace .bg-primary\/10 {
-  background: var(--booking-today) !important;
-}
-
-.booking-workspace .booking-calendar-row,
-.booking-workspace [data-calendar-row] {
-  min-height: 40px !important;
-}
-
-.booking-workspace button {
-  transition-duration: 100ms !important;
-}
-
-/* Keep high-value operational layers available, but make them secondary. */
-.booking-workspace button:has(svg.lucide-layers-3),
-.booking-workspace button:has(svg.lucide-rows-3),
-.booking-workspace button:has(svg.lucide-keyboard) {
-  min-height: 28px !important;
-  border-radius: 2px !important;
-}
-
-/* Reservation bars: flatter and denser like a dedicated PMS calendar. */
-.booking-workspace button[data-reservation-id],
-.booking-workspace [data-event-type="reservation"] {
-  border-radius: 2px !important;
-  box-shadow: none !important;
-}
-
-/* Santiago / stay cockpit: make the booking itself the operational center.
-   Existing operational sections stay in the same booking surface; widening the
-   detail surface avoids forcing navigation to separate modules. */
-.booking-workspace .fixed.inset-0.z-50.flex.justify-end > aside {
-  width: min(520px, 100vw) !important;
-  max-width: 520px !important;
-  background: var(--booking-panel) !important;
-}
-
-.booking-workspace .fixed.inset-0.z-50.flex.justify-end > aside section {
-  border-color: var(--booking-line) !important;
-}
-
-.booking-workspace .fixed.inset-0.z-50.flex.justify-end > aside .grid.grid-cols-2 {
-  gap: 7px !important;
-}
-
-.booking-workspace .fixed.inset-0.z-50.flex.justify-end > aside .grid.grid-cols-2 > * {
-  border-radius: 3px !important;
-}
-
-/* The legacy reservation dialog remains the fast fallback for lifecycle
-   actions. Give it enough room for stay data without turning it into a page. */
-[data-slot="dialog-content"]:has([data-slot="dialog-title"]) {
+.booking-calendar-bedbooking-shell button,
+.booking-calendar-bedbooking-shell input,
+.booking-calendar-bedbooking-shell [role="combobox"] {
   border-radius: 4px;
 }
 
-@media (min-width: 900px) {
-  [data-slot="dialog-content"]:has([data-slot="dialog-title"]) {
-    max-width: 680px;
+.booking-calendar-bedbooking-shell table thead {
+  background: #17191a;
+}
+
+.booking-calendar-bedbooking-shell table tbody tr {
+  border-color: rgba(255,255,255,.06);
+}
+
+.booking-calendar-bedbooking-shell table tbody tr:hover {
+  background: rgba(255,255,255,.025);
+}
+
+/* Legacy operations routes still contain larger card-based composition.
+   Keep their business logic intact while flattening them into the same dense workspace. */
+.booking-workspace[data-booking-section="operations"] .booking-calendar-bedbooking-shell > div,
+.booking-workspace[data-booking-section="handovers"] .booking-calendar-bedbooking-shell > div {
+  max-width: none !important;
+}
+
+.booking-workspace[data-booking-section="operations"] .booking-calendar-bedbooking-shell .grid.gap-3,
+.booking-workspace[data-booking-section="activities"] .booking-calendar-bedbooking-shell .grid.gap-3,
+.booking-workspace[data-booking-section="handovers"] .booking-calendar-bedbooking-shell .grid.gap-3 {
+  gap: .5rem !important;
+}
+
+.booking-workspace[data-booking-section="operations"] .booking-calendar-bedbooking-shell [data-slot="card-content"],
+.booking-workspace[data-booking-section="handovers"] .booking-calendar-bedbooking-shell [data-slot="card-content"] {
+  padding: .75rem !important;
+}
+
+.booking-workspace[data-booking-section="operations"] .booking-calendar-bedbooking-shell [data-slot="card-header"],
+.booking-workspace[data-booking-section="handovers"] .booking-calendar-bedbooking-shell [data-slot="card-header"] {
+  padding: .75rem !important;
+  padding-bottom: .5rem !important;
+}
+
+.booking-workspace[data-booking-section="operations"] .booking-calendar-bedbooking-shell .text-3xl,
+.booking-workspace[data-booking-section="handovers"] .booking-calendar-bedbooking-shell .text-3xl {
+  font-size: 1.35rem !important;
+  line-height: 1.6rem !important;
+}
+
+.booking-workspace[data-booking-section="operations"] .booking-calendar-bedbooking-shell .space-y-6 > :not([hidden]) ~ :not([hidden]),
+.booking-workspace[data-booking-section="handovers"] .booking-calendar-bedbooking-shell .space-y-6 > :not([hidden]) ~ :not([hidden]) {
+  margin-top: .75rem !important;
+}
+
+/* Keep the Stay Cockpit narrow enough to preserve timeline context. */
+.booking-workspace[data-booking-section="operations"] .fixed.inset-0.z-50.flex.justify-end > aside {
+  width: min(430px,100vw) !important;
+  max-width: 430px !important;
+}
+
+@media (max-width: 1023px) {
+  .booking-calendar-bedbooking-shell [data-slot="page-header"] {
+    padding: 12px 16px;
   }
 }
 
-@media (max-width: 899px) {
-  .booking-workspace > div.min-h-screen {
-    padding: 6px !important;
+@media (max-width: 640px) {
+  .booking-calendar-bedbooking-shell {
+    min-height: 100dvh;
   }
 
-  .booking-workspace > div.min-h-screen > div.mx-auto > :first-child {
-    min-height: auto;
+  .booking-calendar-bedbooking-shell table {
+    font-size: .75rem;
   }
 }
