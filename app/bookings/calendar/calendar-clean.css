@@ -1,0 +1,56 @@
+/* Quiet calendar mode: reservations and availability are primary; operational depth is progressive disclosure. */
+.booking-workspace[data-booking-section="calendar"] [data-workspace-context-nav] + main {
+  min-width: 0;
+}
+
+.booking-workspace[data-booking-section="calendar"] .sticky.top-0.z-50 > .flex.min-h-14 {
+  min-height: 48px;
+  padding-block: 5px;
+}
+
+.booking-workspace[data-booking-section="calendar"] .sticky.top-0.z-50 > .flex.min-h-11 {
+  min-height: 38px;
+  padding-block: 4px;
+}
+
+/* The calendar already exposes date range through month + arrows; the range preset is secondary. */
+.booking-workspace[data-booking-section="calendar"] .sticky.top-0.z-50 > .flex.min-h-11 > div:last-child,
+.booking-workspace[data-booking-section="calendar"] .sticky.top-0.z-50 > .flex.min-h-11 > button[title="Refresh"] {
+  flex: 0 0 auto;
+}
+
+/* Keep only progressive-disclosure controls above the grid. Hide legend and instructional copy until requested. */
+.booking-workspace[data-booking-section="calendar"] [data-slot="card-content"] > .border-b.bg-background > .flex.min-h-9 > .hidden.items-center,
+.booking-workspace[data-booking-section="calendar"] [data-slot="card-content"] > .border-b.bg-background > .flex.min-h-9 > span.ml-auto {
+  display: none !important;
+}
+
+.booking-workspace[data-booking-section="calendar"] [data-slot="card-content"] > .border-b.bg-background > .flex.min-h-9 {
+  min-height: 32px;
+  justify-content: flex-end;
+  border-color: rgba(255,255,255,.06);
+}
+
+.booking-workspace[data-booking-section="calendar"] [data-slot="card-content"] > .border-b.bg-background > .flex.min-h-9 > button:nth-of-type(3) {
+  display: none;
+}
+
+/* Flat hierarchy: property/room/date/reservation bars dominate the viewport. */
+.booking-workspace[data-booking-section="calendar"] [data-slot="card-content"] {
+  background: #101314;
+}
+
+.booking-workspace[data-booking-section="calendar"] [data-slot="card-content"] .bg-emerald-950\/25,
+.booking-workspace[data-booking-section="calendar"] [data-slot="card-content"] .bg-amber-950\/25,
+.booking-workspace[data-booking-section="calendar"] [data-slot="card-content"] .bg-violet-950\/25,
+.booking-workspace[data-booking-section="calendar"] [data-slot="card-content"] .bg-cyan-950\/25,
+.booking-workspace[data-booking-section="calendar"] [data-slot="card-content"] .bg-rose-950\/25,
+.booking-workspace[data-booking-section="calendar"] [data-slot="card-content"] .bg-slate-950\/25 {
+  background: transparent !important;
+}
+
+@media (min-width: 1100px) {
+  .booking-workspace[data-booking-section="calendar"] .sticky.top-0.z-50 {
+    position: sticky;
+  }
+}
