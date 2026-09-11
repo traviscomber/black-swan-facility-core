@@ -2,38 +2,22 @@
 
 import type React from "react"
 import { useToast } from "@/components/ui/use-toast"
-import { useState, useEffect } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { createBrowserClient } from "@/lib/supabase/client"
-import { Plus, Pencil, Trash2, MapPin, Eye } from "lucide-react"
+import { Eye, Pencil, Plus, Search, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import Link from "next/link"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { AppLayout } from "@/components/app-layout"
 import { useLanguage } from "@/lib/hooks/use-language"
 import { facilitiesTranslations } from "@/lib/translations/facilities"
 
-interface Location {
-  id: string
-  name: string
-  description: string | null
-  latitude: number | null
-  longitude: number | null
-  is_active: boolean
-  created_at: string
-}
+interface Location { id: string; name: string; description: string | null; latitude: number | null; longitude: number | null; is_active: boolean; created_at: string }
 
 export default function LocationsPage() {
+  const supabase = useMemo(() => createBrowserClient(), [])
   const [locations, setLocations] = useState<Location[]>([])
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
@@ -44,225 +28,66 @@ export default function LocationsPage() {
   const copy = facilitiesTranslations[language]
   const localize = (href: string) => `/${language}${href}`
 
-  const supabase = createBrowserClient()
-
-  useEffect(() => {
-    loadLocations()
-  }, [])
+  useEffect(() => { void loadLocations() }, [])
 
   async function loadLocations() {
     const { data, error } = await supabase.from("locations").select("*").order("name")
-
-    if (error) {
-      console.error("Error loading locations:", error)
-      toast({ variant: "destructive", title: copy.error, description: copy.loadError })
-    } else {
-      setLocations(data || [])
-    }
+    if (error) toast({ variant: "destructive", title: copy.error, description: copy.loadError })
+    else setLocations(data || [])
   }
 
   async function handleAddLocation(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault()
-    const formData = new FormData(e.currentTarget)
-
-    const { error } = await supabase.from("locations").insert({
-      name: formData.get("name") as string,
-      description: formData.get("description") as string,
-      latitude: formData.get("latitude") ? Number(formData.get("latitude")) : null,
-      longitude: formData.get("longitude") ? Number(formData.get("longitude")) : null,
-      is_active: true,
-    })
-
-    if (error) {
-      toast({ variant: "destructive", title: copy.error, description: copy.addError })
-    } else {
-      toast({ title: copy.success, description: copy.addSuccess })
-      setIsAddDialogOpen(false)
-      loadLocations()
-    }
+    e.preventDefault(); const formData = new FormData(e.currentTarget)
+    const { error } = await supabase.from("locations").insert({ name: formData.get("name") as string, description: formData.get("description") as string, latitude: formData.get("latitude") ? Number(formData.get("latitude")) : null, longitude: formData.get("longitude") ? Number(formData.get("longitude")) : null, is_active: true })
+    if (error) toast({ variant: "destructive", title: copy.error, description: copy.addError })
+    else { toast({ title: copy.success, description: copy.addSuccess }); setIsAddDialogOpen(false); void loadLocations() }
   }
 
   async function handleEditLocation(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault()
-    if (!editingLocation) return
-
+    e.preventDefault(); if (!editingLocation) return
     const formData = new FormData(e.currentTarget)
-    const { error } = await supabase
-      .from("locations")
-      .update({
-        name: formData.get("name") as string,
-        description: formData.get("description") as string,
-        latitude: formData.get("latitude") ? Number(formData.get("latitude")) : null,
-        longitude: formData.get("longitude") ? Number(formData.get("longitude")) : null,
-      })
-      .eq("id", editingLocation.id)
-
-    if (error) {
-      toast({ variant: "destructive", title: copy.error, description: copy.updateError })
-    } else {
-      toast({ title: copy.success, description: copy.updateSuccess })
-      setIsEditDialogOpen(false)
-      setEditingLocation(null)
-      loadLocations()
-    }
+    const { error } = await supabase.from("locations").update({ name: formData.get("name") as string, description: formData.get("description") as string, latitude: formData.get("latitude") ? Number(formData.get("latitude")) : null, longitude: formData.get("longitude") ? Number(formData.get("longitude")) : null }).eq("id", editingLocation.id)
+    if (error) toast({ variant: "destructive", title: copy.error, description: copy.updateError })
+    else { toast({ title: copy.success, description: copy.updateSuccess }); setIsEditDialogOpen(false); setEditingLocation(null); void loadLocations() }
   }
 
   async function handleDeleteLocation(id: string) {
     if (!confirm(copy.deleteConfirm)) return
     const { error } = await supabase.from("locations").delete().eq("id", id)
-    if (error) {
-      toast({ variant: "destructive", title: copy.error, description: copy.deleteError })
-    } else {
-      toast({ title: copy.success, description: copy.deleteSuccess })
-      loadLocations()
-    }
+    if (error) toast({ variant: "destructive", title: copy.error, description: copy.deleteError })
+    else { toast({ title: copy.success, description: copy.deleteSuccess }); void loadLocations() }
   }
 
   async function toggleActive(location: Location) {
     const { error } = await supabase.from("locations").update({ is_active: !location.is_active }).eq("id", location.id)
     if (error) toast({ variant: "destructive", title: copy.error, description: copy.statusError })
-    else loadLocations()
+    else void loadLocations()
   }
 
-  const filteredLocations = locations.filter(
-    (loc) => loc.name.toLowerCase().includes(searchQuery.toLowerCase()) || loc.description?.toLowerCase().includes(searchQuery.toLowerCase()),
-  )
+  const filteredLocations = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase()
+    return locations.filter((loc) => !q || loc.name.toLowerCase().includes(q) || loc.description?.toLowerCase().includes(q))
+  }, [locations, searchQuery])
 
-  return (
-    <AppLayout>
-      <div className="flex-1 overflow-auto p-6">
-        <div className="space-y-6">
-          <div className="flex flex-col gap-4 border-b border-white/10 pb-5 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-              <p className="mb-1 text-xs font-medium uppercase tracking-[0.18em] text-primary">BFCS · Hospitality</p>
-              <h1 className="text-3xl font-semibold text-foreground">{copy.title}</h1>
-              <p className="mt-1 text-sm text-muted-foreground">{copy.description}</p>
-            </div>
-            <Button onClick={() => setIsAddDialogOpen(true)} className="bg-primary text-primary-foreground hover:bg-primary/90">
-              <Plus className="mr-2 h-4 w-4" />{copy.addLocation}
-            </Button>
-          </div>
+  return <div className="min-h-screen bg-[#111213] text-foreground">
+    <header className="flex min-h-[58px] flex-wrap items-center justify-between gap-3 border-b border-white/10 bg-[#17191a] px-4 py-2">
+      <div><h1 className="text-base font-medium">{copy.title}</h1><p className="text-xs text-muted-foreground">{copy.description}</p></div>
+      <Button size="sm" onClick={() => setIsAddDialogOpen(true)}><Plus className="mr-2 h-3.5 w-3.5" />{copy.addLocation}</Button>
+    </header>
 
-          <div className="flex gap-4">
-            <Input
-              placeholder={copy.searchPlaceholder}
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="max-w-md border border-white/15 bg-secondary text-foreground placeholder:text-muted-foreground"
-            />
-          </div>
+    <div className="border-b border-white/10 bg-[#151718] p-2"><div className="relative max-w-xl"><Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" /><Input placeholder={copy.searchPlaceholder} value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="h-8 pl-9" /></div></div>
 
-          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-            {filteredLocations.map((location) => (
-              <Card key={location.id} className="border border-white/10 bg-card transition-colors hover:border-primary/35 hover:bg-card/95">
-                <CardHeader className="pb-3">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex min-w-0 items-center gap-2">
-                      <span className="flex h-8 w-8 shrink-0 items-center justify-center border border-primary/25 bg-primary/10 text-primary">
-                        <MapPin className="h-4 w-4" />
-                      </span>
-                      <CardTitle className="truncate text-base font-medium text-foreground">{location.name}</CardTitle>
-                    </div>
-                    <div className="flex shrink-0 gap-1">
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        onClick={() => { setEditingLocation(location); setIsEditDialogOpen(true) }}
-                        className="text-muted-foreground hover:bg-white/5 hover:text-foreground"
-                        aria-label={copy.editLocation}
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        onClick={() => handleDeleteLocation(location.id)}
-                        className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-                        aria-label={copy.deleteConfirm}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                  <CardDescription className="min-h-5 text-sm text-muted-foreground">
-                    {location.description || copy.noDescription}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="pt-0">
-                  <div className="space-y-3 text-sm">
-                    {location.latitude && location.longitude && (
-                      <div className="text-xs text-muted-foreground">
-                        {copy.coordinates}: {location.latitude.toFixed(6)}, {location.longitude.toFixed(6)}
-                      </div>
-                    )}
-                    <div className="flex flex-col gap-3 border-t border-white/10 pt-3 sm:flex-row sm:items-center sm:justify-between">
-                      <span className={location.is_active ? "inline-flex w-fit items-center gap-2 text-primary" : "inline-flex w-fit items-center gap-2 text-muted-foreground"}>
-                        <span className={location.is_active ? "h-1.5 w-1.5 bg-primary" : "h-1.5 w-1.5 bg-muted-foreground"} />
-                        {location.is_active ? copy.active : copy.inactive}
-                      </span>
-                      <div className="flex flex-wrap gap-2">
-                        <Link href={localize(`/bookings/locations/${location.id}`)}>
-                          <Button size="sm" variant="secondary" className="border border-white/10 bg-secondary text-foreground hover:bg-accent">
-                            <Eye className="mr-2 h-4 w-4" />{copy.manageRoomsBeds}
-                          </Button>
-                        </Link>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => toggleActive(location)}
-                          className="border-white/15 text-foreground hover:bg-white/5"
-                        >
-                          {location.is_active ? copy.deactivate : copy.activate}
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+    <div className="overflow-x-auto">
+      <table className="w-full min-w-[920px] text-xs">
+        <thead className="border-b border-white/10 bg-[#151718] text-left text-muted-foreground"><tr><th className="px-3 py-2 font-medium">{copy.locationName}</th><th className="px-3 py-2 font-medium">{copy.descriptionLabel}</th><th className="px-3 py-2 font-medium">{copy.coordinates}</th><th className="px-3 py-2 font-medium">Status</th><th className="px-3 py-2 text-right font-medium">Actions</th></tr></thead>
+        <tbody>{filteredLocations.map((location) => <tr key={location.id} className="border-b border-white/5 hover:bg-white/[.025]"><td className="px-3 py-2 font-medium">{location.name}</td><td className="max-w-md truncate px-3 py-2 text-muted-foreground">{location.description || copy.noDescription}</td><td className="px-3 py-2 text-muted-foreground">{location.latitude != null && location.longitude != null ? `${location.latitude.toFixed(6)}, ${location.longitude.toFixed(6)}` : "—"}</td><td className="px-3 py-2"><button type="button" onClick={() => void toggleActive(location)} className={location.is_active ? "inline-flex items-center gap-2 text-emerald-300" : "inline-flex items-center gap-2 text-muted-foreground"}><span className={location.is_active ? "h-1.5 w-1.5 bg-emerald-400" : "h-1.5 w-1.5 bg-muted-foreground"} />{location.is_active ? copy.active : copy.inactive}</button></td><td className="px-3 py-2"><div className="flex justify-end gap-1"><Button asChild size="icon" variant="ghost" className="h-7 w-7"><Link href={localize(`/bookings/locations/${location.id}`)} aria-label={copy.manageRoomsBeds}><Eye className="h-3.5 w-3.5" /></Link></Button><Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => { setEditingLocation(location); setIsEditDialogOpen(true) }} aria-label={copy.editLocation}><Pencil className="h-3.5 w-3.5" /></Button><Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => void handleDeleteLocation(location.id)} aria-label={copy.deleteConfirm}><Trash2 className="h-3.5 w-3.5" /></Button></div></td></tr>)}{filteredLocations.length === 0 && <tr><td colSpan={5} className="px-4 py-12 text-center text-muted-foreground">{copy.noDescription}</td></tr>}</tbody>
+      </table>
+    </div>
 
-          <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-            <DialogContent>
-              <form onSubmit={handleAddLocation}>
-                <DialogHeader>
-                  <DialogTitle>{copy.addNewLocation}</DialogTitle>
-                  <DialogDescription>{copy.addNewLocationDesc}</DialogDescription>
-                </DialogHeader>
-                <div className="space-y-4 py-4">
-                  <div className="space-y-2"><Label htmlFor="name">{copy.locationName} *</Label><Input id="name" name="name" placeholder={copy.locationNamePlaceholder} required /></div>
-                  <div className="space-y-2"><Label htmlFor="description">{copy.descriptionLabel}</Label><Textarea id="description" name="description" placeholder={copy.descriptionPlaceholder} rows={3} /></div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2"><Label htmlFor="latitude">{copy.latitudeLabel}</Label><Input id="latitude" name="latitude" type="number" step="0.00001" placeholder={copy.latitudePlaceholder} /></div>
-                    <div className="space-y-2"><Label htmlFor="longitude">{copy.longitudeLabel}</Label><Input id="longitude" name="longitude" type="number" step="0.00001" placeholder={copy.longitudePlaceholder} /></div>
-                  </div>
-                </div>
-                <DialogFooter><Button type="button" variant="outline" onClick={() => setIsAddDialogOpen(false)}>{copy.cancel}</Button><Button type="submit">{copy.addLocationBtn}</Button></DialogFooter>
-              </form>
-            </DialogContent>
-          </Dialog>
+    <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}><DialogContent><form onSubmit={handleAddLocation}><DialogHeader><DialogTitle>{copy.addNewLocation}</DialogTitle><DialogDescription>{copy.addNewLocationDesc}</DialogDescription></DialogHeader><div className="space-y-4 py-4"><Field label={`${copy.locationName} *`}><Input name="name" required /></Field><Field label={copy.descriptionLabel}><Textarea name="description" rows={3} /></Field><div className="grid grid-cols-2 gap-4"><Field label={copy.latitudeLabel}><Input name="latitude" type="number" step="0.00001" /></Field><Field label={copy.longitudeLabel}><Input name="longitude" type="number" step="0.00001" /></Field></div></div><DialogFooter><Button type="button" variant="outline" onClick={() => setIsAddDialogOpen(false)}>{copy.cancel}</Button><Button type="submit">{copy.addLocationBtn}</Button></DialogFooter></form></DialogContent></Dialog>
 
-          <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-            <DialogContent>
-              <form onSubmit={handleEditLocation}>
-                <DialogHeader>
-                  <DialogTitle>{copy.editLocation}</DialogTitle>
-                  <DialogDescription>{copy.editLocationDesc}</DialogDescription>
-                </DialogHeader>
-                <div className="space-y-4 py-4">
-                  <div className="space-y-2"><Label htmlFor="edit-name">{copy.locationName} *</Label><Input id="edit-name" name="name" defaultValue={editingLocation?.name} required /></div>
-                  <div className="space-y-2"><Label htmlFor="edit-description">{copy.descriptionLabel}</Label><Textarea id="edit-description" name="description" defaultValue={editingLocation?.description || ""} rows={3} /></div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2"><Label htmlFor="edit-latitude">{copy.latitudeLabel}</Label><Input id="edit-latitude" name="latitude" type="number" step="0.00001" defaultValue={editingLocation?.latitude || ""} /></div>
-                    <div className="space-y-2"><Label htmlFor="edit-longitude">{copy.longitudeLabel}</Label><Input id="edit-longitude" name="longitude" type="number" step="0.00001" defaultValue={editingLocation?.longitude || ""} /></div>
-                  </div>
-                </div>
-                <DialogFooter><Button type="button" variant="outline" onClick={() => setIsEditDialogOpen(false)}>{copy.cancel}</Button><Button type="submit">{copy.saveChanges}</Button></DialogFooter>
-              </form>
-            </DialogContent>
-          </Dialog>
-        </div>
-      </div>
-    </AppLayout>
-  )
+    <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}><DialogContent><form onSubmit={handleEditLocation}><DialogHeader><DialogTitle>{copy.editLocation}</DialogTitle><DialogDescription>{copy.editLocationDesc}</DialogDescription></DialogHeader><div className="space-y-4 py-4"><Field label={`${copy.locationName} *`}><Input name="name" defaultValue={editingLocation?.name} required /></Field><Field label={copy.descriptionLabel}><Textarea name="description" defaultValue={editingLocation?.description || ""} rows={3} /></Field><div className="grid grid-cols-2 gap-4"><Field label={copy.latitudeLabel}><Input name="latitude" type="number" step="0.00001" defaultValue={editingLocation?.latitude ?? ""} /></Field><Field label={copy.longitudeLabel}><Input name="longitude" type="number" step="0.00001" defaultValue={editingLocation?.longitude ?? ""} /></Field></div></div><DialogFooter><Button type="button" variant="outline" onClick={() => setIsEditDialogOpen(false)}>{copy.cancel}</Button><Button type="submit">{copy.saveChanges}</Button></DialogFooter></form></DialogContent></Dialog>
+  </div>
 }
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) { return <div className="space-y-2"><Label>{label}</Label>{children}</div> }
