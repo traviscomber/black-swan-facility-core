@@ -1,23 +1,41 @@
-/* Black Swan Booking calendar parity pass v2.
-   Presentation only: preserve canonical data, interactions and operational layers. */
+/* Black Swan Booking calendar parity pass v3.
+   Presentation only: preserve canonical data, interactions and operational layers.
+   Direction: BedBooking density with a quieter, more contemporary Black Swan visual system. */
 
+/* Workspace + sidebar: flatter, quieter, less ERP-like. */
 .booking-workspace[data-booking-section="calendar"] .booking-reference-sidebar {
-  width: 236px;
-  max-width: 236px;
-  flex-basis: 236px;
-  background: #171512 !important;
+  width: 224px;
+  max-width: 224px;
+  flex-basis: 224px;
+  background: #151412 !important;
+  border-right-color: rgba(231,225,216,.055) !important;
 }
 
-/* Calendar is the active product surface: keep the navigation readable but quiet. */
+.booking-workspace[data-booking-section="calendar"] .booking-reference-brand {
+  height: 48px;
+  flex-basis: 48px;
+  border-bottom-color: rgba(231,225,216,.05) !important;
+}
+
 .booking-workspace[data-booking-section="calendar"] .booking-reference-nav {
-  padding-top: 6px;
+  padding-top: 8px;
 }
 
 .booking-workspace[data-booking-section="calendar"] .booking-reference-nav-link,
 .booking-workspace[data-booking-section="calendar"] .booking-reference-nav-parent {
-  min-height: 31px;
-  padding-inline: 9px;
-  font-size: 11px;
+  min-height: 32px;
+  padding-inline: 10px;
+  font-size: 11.5px;
+  font-weight: 450;
+  letter-spacing: -.005em;
+  border-radius: 2px !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+
+.booking-workspace[data-booking-section="calendar"] .booking-reference-nav-link:hover,
+.booking-workspace[data-booking-section="calendar"] .booking-reference-nav-parent:hover {
+  background: rgba(231,225,216,.035) !important;
 }
 
 .booking-workspace[data-booking-section="calendar"] .booking-reference-nav-children {
@@ -28,28 +46,34 @@
   transform: none;
 }
 
-.booking-workspace[data-booking-section="calendar"] .booking-reference-brand {
-  height: 50px;
-  flex-basis: 50px;
-}
-
 .booking-workspace[data-booking-section="calendar"] .booking-reference-sidebar-footer {
-  flex-basis: 45px;
+  flex-basis: 44px;
   padding-block: 5px;
+  border-top-color: rgba(231,225,216,.05) !important;
 }
 
-/* Compress both calendar toolbar rows so the timeline starts earlier. */
+/* Calendar toolbar: one calm control surface, not a row of boxed widgets. */
+.booking-workspace[data-booking-section="calendar"] .booking-calendar-bedbooking-shell > div > .sticky.top-0 {
+  background: #171614 !important;
+  border-bottom-color: rgba(231,225,216,.055) !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+}
+
 .booking-workspace[data-booking-section="calendar"] .booking-calendar-bedbooking-shell > div > .sticky.top-0 > div:first-child {
   min-height: 46px !important;
   height: 46px;
-  padding: 5px 8px !important;
+  padding: 6px 9px !important;
   gap: 6px !important;
+  background: #171614 !important;
 }
 
 .booking-workspace[data-booking-section="calendar"] .booking-calendar-bedbooking-shell > div > .sticky.top-0 > div:nth-child(2) {
   min-height: 32px !important;
   height: 32px !important;
-  padding: 2px 8px !important;
+  padding: 2px 9px !important;
+  background: #191816 !important;
+  border-top-color: rgba(231,225,216,.035) !important;
 }
 
 .booking-workspace[data-booking-section="calendar"] .booking-calendar-bedbooking-shell > div > .sticky.top-0 input,
@@ -57,118 +81,141 @@
 .booking-workspace[data-booking-section="calendar"] .booking-calendar-bedbooking-shell > div > .sticky.top-0 [role="combobox"] {
   min-height: 30px !important;
   height: 30px !important;
-  font-size: 10.5px !important;
+  font-size: 11px !important;
+  border-radius: 2px !important;
+  border-color: rgba(231,225,216,.075) !important;
+  box-shadow: none !important;
+}
+
+.booking-workspace[data-booking-section="calendar"] .booking-calendar-bedbooking-shell > div > .sticky.top-0 input,
+.booking-workspace[data-booking-section="calendar"] .booking-calendar-bedbooking-shell > div > .sticky.top-0 [role="combobox"] {
+  background: #1b1a18 !important;
 }
 
 .booking-workspace[data-booking-section="calendar"] .booking-calendar-bedbooking-shell > div > .sticky.top-0 button[class*="bg-emerald"] {
-  padding-inline: 12px !important;
+  padding-inline: 13px !important;
+  background: #315e45 !important;
+  border-color: #315e45 !important;
+  color: #f2eee8 !important;
 }
 
-/* Optional operating controls stay available but no longer dominate the default view. */
+/* Layers / summary / shortcuts remain available but recede until requested. */
 .booking-workspace[data-booking-section="calendar"] [data-slot="card-content"] > .border-b.bg-background {
-  min-height: 30px;
-  background: #181613 !important;
-  border-color: rgba(231,225,216,.055) !important;
+  min-height: 29px;
+  background: #181714 !important;
+  border-color: rgba(231,225,216,.045) !important;
 }
 
 .booking-workspace[data-booking-section="calendar"] [data-slot="card-content"] > .border-b.bg-background > div:first-child {
-  min-height: 30px !important;
-  padding: 3px 8px !important;
+  min-height: 29px !important;
+  padding: 3px 9px !important;
   gap: 5px !important;
 }
 
 .booking-workspace[data-booking-section="calendar"] [data-slot="card-content"] > .border-b.bg-background button {
-  min-height: 24px !important;
-  height: 24px !important;
-  border-color: rgba(231,225,216,.07) !important;
+  min-height: 23px !important;
+  height: 23px !important;
+  border-color: transparent !important;
   background: transparent !important;
-  color: #9f968b !important;
+  color: #8f887f !important;
   padding-inline: 7px !important;
   font-size: 9.5px !important;
+  border-radius: 2px !important;
+  box-shadow: none !important;
+}
+
+.booking-workspace[data-booking-section="calendar"] [data-slot="card-content"] > .border-b.bg-background button:hover {
+  background: rgba(231,225,216,.035) !important;
+  color: #c8c1b8 !important;
 }
 
 .booking-workspace[data-booking-section="calendar"] [data-slot="card-content"] > .border-b.bg-background button[class*="bg-primary"] {
-  background: #263229 !important;
-  color: #b7cfbd !important;
+  background: #232a25 !important;
+  color: #b9c9bd !important;
 }
 
 .booking-workspace[data-booking-section="calendar"] [data-slot="card-content"] > .border-b.bg-background .hidden.items-center {
-  opacity: .72;
+  opacity: .62;
 }
 
 .booking-workspace[data-booking-section="calendar"] [data-slot="card-content"] > .border-b.bg-background .ml-auto.text-\[10px\] {
-  color: #6f675f !important;
+  color: #665f58 !important;
 }
 
-/* Timeline header: denser and clearer, with one strong Santiago-today column. */
+/* Timeline header: crisp, compact and neutral. */
 .booking-workspace[data-booking-section="calendar"] .overflow-auto.bg-\[\#122526\] > div > .sticky.top-0 {
-  background: #1b1916 !important;
-  border-bottom-color: rgba(231,225,216,.09) !important;
+  background: #191816 !important;
+  border-bottom-color: rgba(231,225,216,.07) !important;
   box-shadow: none !important;
 }
 
 .booking-workspace[data-booking-section="calendar"] .overflow-auto.bg-\[\#122526\] > div > .sticky.top-0 > div:first-child {
-  background: #1b1916 !important;
-  color: #aaa196 !important;
+  background: #191816 !important;
+  color: #a69f96 !important;
 }
 
 .booking-workspace[data-booking-section="calendar"] .overflow-auto.bg-\[\#122526\] > div > .sticky.top-0 .bg-emerald-600 {
-  background: #315e45 !important;
+  background: #2c533d !important;
 }
 
-/* Property bands: BedBooking-style spatial grouping with Black Swan's desaturated palette. */
-.booking-workspace[data-booking-section="calendar"] .bg-emerald-950\/25 { background: #26382e !important; }
-.booking-workspace[data-booking-section="calendar"] .bg-amber-950\/25 { background: #3b361d !important; }
-.booking-workspace[data-booking-section="calendar"] .bg-violet-950\/25 { background: #38233a !important; }
-.booking-workspace[data-booking-section="calendar"] .bg-cyan-950\/25 { background: #1d4143 !important; }
-.booking-workspace[data-booking-section="calendar"] .bg-rose-950\/25 { background: #3a2728 !important; }
-.booking-workspace[data-booking-section="calendar"] .bg-slate-950\/25 { background: #303445 !important; }
+/* Property bands: keep orientation, remove the retro saturation. */
+.booking-workspace[data-booking-section="calendar"] .bg-emerald-950\/25 { background: #202a24 !important; }
+.booking-workspace[data-booking-section="calendar"] .bg-amber-950\/25 { background: #29271b !important; }
+.booking-workspace[data-booking-section="calendar"] .bg-violet-950\/25 { background: #28222b !important; }
+.booking-workspace[data-booking-section="calendar"] .bg-cyan-950\/25 { background: #1f2b2c !important; }
+.booking-workspace[data-booking-section="calendar"] .bg-rose-950\/25 { background: #2a2323 !important; }
+.booking-workspace[data-booking-section="calendar"] .bg-slate-950\/25 { background: #25272d !important; }
 
-/* Carry each property color into the sticky room rail, as BedBooking does. */
-.booking-workspace[data-booking-section="calendar"] .bg-emerald-950\/25 [data-calendar-row] > .flex > .sticky.left-0 { background: #26382e !important; }
-.booking-workspace[data-booking-section="calendar"] .bg-amber-950\/25 [data-calendar-row] > .flex > .sticky.left-0 { background: #3b361d !important; }
-.booking-workspace[data-booking-section="calendar"] .bg-violet-950\/25 [data-calendar-row] > .flex > .sticky.left-0 { background: #38233a !important; }
-.booking-workspace[data-booking-section="calendar"] .bg-cyan-950\/25 [data-calendar-row] > .flex > .sticky.left-0 { background: #1d4143 !important; }
-.booking-workspace[data-booking-section="calendar"] .bg-rose-950\/25 [data-calendar-row] > .flex > .sticky.left-0 { background: #3a2728 !important; }
-.booking-workspace[data-booking-section="calendar"] .bg-slate-950\/25 [data-calendar-row] > .flex > .sticky.left-0 { background: #303445 !important; }
+.booking-workspace[data-booking-section="calendar"] .bg-emerald-950\/25 [data-calendar-row] > .flex > .sticky.left-0 { background: #202a24 !important; }
+.booking-workspace[data-booking-section="calendar"] .bg-amber-950\/25 [data-calendar-row] > .flex > .sticky.left-0 { background: #29271b !important; }
+.booking-workspace[data-booking-section="calendar"] .bg-violet-950\/25 [data-calendar-row] > .flex > .sticky.left-0 { background: #28222b !important; }
+.booking-workspace[data-booking-section="calendar"] .bg-cyan-950\/25 [data-calendar-row] > .flex > .sticky.left-0 { background: #1f2b2c !important; }
+.booking-workspace[data-booking-section="calendar"] .bg-rose-950\/25 [data-calendar-row] > .flex > .sticky.left-0 { background: #2a2323 !important; }
+.booking-workspace[data-booking-section="calendar"] .bg-slate-950\/25 [data-calendar-row] > .flex > .sticky.left-0 { background: #25272d !important; }
 
-/* Room labels should read as a compact inventory rail, not separate cards. */
+/* Room rail: stronger typography, fewer visual separators. */
 .booking-workspace[data-booking-section="calendar"] [data-calendar-row] > .flex > .sticky.left-0 {
-  border-right-color: rgba(231,225,216,.10) !important;
-  padding-inline: 8px !important;
+  border-right-color: rgba(231,225,216,.065) !important;
+  padding-inline: 9px !important;
 }
 
 .booking-workspace[data-booking-section="calendar"] [data-calendar-row] > .flex > .sticky.left-0 .text-\[12px\] {
-  font-size: 11px !important;
-  font-weight: 500 !important;
-  letter-spacing: -.01em;
+  font-size: 11.5px !important;
+  font-weight: 520 !important;
+  letter-spacing: -.008em;
+  color: #e5dfd6 !important;
 }
 
 .booking-workspace[data-booking-section="calendar"] [data-calendar-row] > .flex > .sticky.left-0 .text-\[10px\] {
-  color: rgba(231,225,216,.65) !important;
-  font-size: 9px !important;
+  color: rgba(231,225,216,.52) !important;
+  font-size: 9.5px !important;
 }
 
-/* Reservation bars: BedBooking geometry. Preserve the exact stay dates; only the visual shell changes. */
+.booking-workspace[data-booking-section="calendar"] [data-calendar-row] > .flex > .sticky.left-0 .text-\[10px\] svg {
+  opacity: .55;
+}
+
+/* Reservation bars: BedBooking geometry, contemporary Black Swan finish. */
 .booking-workspace[data-booking-section="calendar"] [data-calendar-row] button.absolute {
   top: 4px !important;
   height: 37px !important;
-  border: 1px solid rgba(205,205,205,.72) !important;
-  padding: 0 15px 0 16px !important;
-  background: #2b2b2b !important;
+  border: 1px solid rgba(205,205,205,.62) !important;
+  padding: 0 14px 0 16px !important;
+  background: #292a29 !important;
   color: #f0ede8 !important;
-  font-size: 11px !important;
+  font-size: 11.5px !important;
   line-height: 1 !important;
-  clip-path: polygon(12px 0, 100% 0, calc(100% - 12px) 100%, 0 100%) !important;
+  clip-path: polygon(11px 0, 100% 0, calc(100% - 11px) 100%, 0 100%) !important;
   overflow: hidden !important;
-  box-shadow: inset 0 0 0 1px rgba(255,255,255,.05) !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
 }
 
-/* Blocks/unavailable periods remain rectangular so they cannot be confused with a guest stay. */
+/* Blocks remain rectangular and visually distinct from guest stays. */
 .booking-workspace[data-booking-section="calendar"] [data-calendar-row] button.absolute[class*="border-zinc"] {
   clip-path: none !important;
-  border-color: rgba(120,120,120,.65) !important;
-  background: #232323 !important;
+  border-color: rgba(130,130,130,.48) !important;
+  background: #222321 !important;
 }
 
 .booking-workspace[data-booking-section="calendar"] [data-calendar-row] button.absolute > div:first-of-type {
@@ -181,7 +228,8 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-weight: 500 !important;
+  font-weight: 520 !important;
+  letter-spacing: -.005em;
   line-height: 1 !important;
 }
 
@@ -189,54 +237,54 @@
   display: none;
 }
 
-/* BedBooking-style reservation surface: same neutral graphite for same lifecycle state. */
+/* Same lifecycle state = same neutral reservation surface. */
 .booking-workspace[data-booking-section="calendar"] [data-calendar-row] button.absolute[class*="border-amber-400"],
 .booking-workspace[data-booking-section="calendar"] [data-calendar-row] button.absolute[class*="border-white"],
 .booking-workspace[data-booking-section="calendar"] [data-calendar-row] button.absolute[class*="border-emerald-500"],
 .booking-workspace[data-booking-section="calendar"] [data-calendar-row] button.absolute[class*="border-slate-500"] {
-  border-color: rgba(205,205,205,.72) !important;
-  background: #2b2b2b !important;
+  border-color: rgba(205,205,205,.62) !important;
+  background: #292a29 !important;
   color: #f0ede8 !important;
 }
 
 .booking-workspace[data-booking-section="calendar"] [data-calendar-row] button.absolute[class*="border-red-500"] {
-  border-color: rgba(179,104,93,.80) !important;
-  background: #2a2423 !important;
-  color: #d7c3be !important;
+  border-color: rgba(170,99,90,.72) !important;
+  background: #292322 !important;
+  color: #d4c1bc !important;
 }
 
-/* Selection, resize handles and operations remain available without consuming default label width. */
+/* Selection, resize and operational affordances stay out of the default visual hierarchy. */
 .booking-workspace[data-booking-section="calendar"] [data-calendar-row] button.absolute [role="button"] {
   top: 50% !important;
-  right: 11px !important;
-  width: 16px !important;
-  height: 16px !important;
+  right: 10px !important;
+  width: 15px !important;
+  height: 15px !important;
   transform: translateY(-50%);
-  background: rgba(0,0,0,.28) !important;
+  background: rgba(0,0,0,.24) !important;
   opacity: 0;
   pointer-events: none;
-  transition: opacity 100ms ease;
+  transition: opacity 90ms ease;
 }
 
 .booking-workspace[data-booking-section="calendar"] [data-calendar-row] button.absolute:hover [role="button"],
 .booking-workspace[data-booking-section="calendar"] [data-calendar-row] button.absolute:focus-within [role="button"] {
-  opacity: 1;
+  opacity: .9;
   pointer-events: auto;
 }
 
 .booking-workspace[data-booking-section="calendar"] [data-calendar-row] button.absolute:hover > div:first-of-type,
 .booking-workspace[data-booking-section="calendar"] [data-calendar-row] button.absolute:focus-within > div:first-of-type {
-  padding-right: 16px !important;
+  padding-right: 15px !important;
 }
 
 .booking-workspace[data-booking-section="calendar"] [data-calendar-row] button.absolute:hover {
-  filter: brightness(1.06);
+  filter: brightness(1.045);
   z-index: 35;
 }
 
-/* Keep the grid visible inside property bands without overpowering them. */
+/* Grid: enough structure to scan dates, no spreadsheet-heavy look. */
 .booking-workspace[data-booking-section="calendar"] [data-calendar-row] {
-  border-color: rgba(231,225,216,.055) !important;
+  border-color: rgba(231,225,216,.035) !important;
 }
 
 .booking-workspace[data-booking-section="calendar"] [data-calendar-row] > .flex > .relative {
@@ -244,9 +292,18 @@
   background-blend-mode: normal;
 }
 
-/* Today remains a transversal signal independent from property identity. */
+/* Today is a subtle transversal cue, not a saturated stripe. */
 .booking-workspace[data-booking-section="calendar"] [data-calendar-row] > .flex > .relative > .bg-emerald-600\/20 {
-  background: rgba(50, 112, 75, .34) !important;
+  background: rgba(63, 105, 79, .18) !important;
+}
+
+/* Keep focus modern and accessible without neon/glow. */
+.booking-workspace[data-booking-section="calendar"] button:focus-visible,
+.booking-workspace[data-booking-section="calendar"] input:focus-visible,
+.booking-workspace[data-booking-section="calendar"] [role="combobox"]:focus-visible {
+  outline: 1px solid rgba(160,190,169,.72) !important;
+  outline-offset: 1px;
+  box-shadow: none !important;
 }
 
 @media (min-width: 1500px) {
@@ -257,8 +314,16 @@
 
 @media (max-width: 1100px) {
   .booking-workspace[data-booking-section="calendar"] .booking-reference-sidebar {
-    width: 210px;
-    max-width: 210px;
-    flex-basis: 210px;
+    width: 204px;
+    max-width: 204px;
+    flex-basis: 204px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .booking-workspace[data-booking-section="calendar"] *,
+  .booking-workspace[data-booking-section="calendar"] *::before,
+  .booking-workspace[data-booking-section="calendar"] *::after {
+    transition-duration: .01ms !important;
   }
 }
