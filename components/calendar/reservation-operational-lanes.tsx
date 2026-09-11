@@ -136,7 +136,7 @@ export function ReservationOperationalLanes({ reservation, timelineWidth, geomet
     <div className="border-t bg-muted/10">
       {onCollapse && (
         <div className="flex min-h-8 border-b bg-background/95">
-          <button type="button" onClick={onCollapse} className="sticky left-0 z-30 flex w-[272px] shrink-0 items-center gap-2 border-r px-4 text-[11px] font-medium text-foreground/80 transition hover:bg-muted/40 hover:text-foreground" aria-label={c.collapse}>
+          <button type="button" onClick={onCollapse} className="sticky left-0 z-30 flex w-[176px] shrink-0 items-center gap-2 border-r px-3 text-[11px] font-medium text-foreground/80 transition hover:bg-muted/40 hover:text-foreground" aria-label={c.collapse}>
             <ChevronUp className="h-3.5 w-3.5" />
             <span>{c.collapse}</span>
           </button>
@@ -147,7 +147,7 @@ export function ReservationOperationalLanes({ reservation, timelineWidth, geomet
       )}
       {loading ? <div className="px-3 py-3 text-xs text-muted-foreground">{c.loading}</div> : visibleLanes.length === 0 ? <div className="px-3 py-3 text-xs text-muted-foreground">{c.enableLayer}</div> : visibleLanes.map(({ key, label, Icon, className, items }) => (
         <div key={key} className="flex min-h-8 border-b last:border-b-0">
-          <div className="sticky left-0 z-20 flex w-[272px] shrink-0 items-center gap-2 border-r bg-background px-4 text-[11px] font-medium text-muted-foreground"><Icon className="h-3.5 w-3.5" /><span>{label}</span><span className="ml-auto rounded bg-muted px-1.5 py-0.5 text-[10px]">{items.length}</span></div>
+          <div className="sticky left-0 z-20 flex w-[176px] shrink-0 items-center gap-2 border-r bg-background px-3 text-[11px] font-medium text-muted-foreground"><Icon className="h-3.5 w-3.5" /><span>{label}</span><span className="ml-auto rounded bg-muted px-1.5 py-0.5 text-[10px]">{items.length}</span></div>
           <div className="relative min-h-8" style={{ width: timelineWidth }}>
             {items.length === 0 ? <span className="absolute left-3 top-2 text-[10px] text-muted-foreground">{c.noEvents}</span> : items.map((item, index) => {
               const geometry = geometryForDates(item.startsOn, item.endsOn)
