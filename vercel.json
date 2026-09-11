@@ -8,7 +8,8 @@
       "fix/booking-bedbooking-visual-parity": false,
       "preview/bedbooking-parity-final": false,
       "work/booking-bedbooking-low-cpu": false,
-      "fix/booking-workspace-overlap": false
+      "fix/booking-workspace-overlap": false,
+      "work/booking-all-subsections-v2": false
     }
   }
 }
