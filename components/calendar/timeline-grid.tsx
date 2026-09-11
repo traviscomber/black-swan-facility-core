@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react"
 import { addDays, format } from "date-fns"
 import { de, enUS, es } from "date-fns/locale"
-import { BedDouble, CheckSquare, CircleDollarSign, ConciergeBell, Flag, Keyboard, Layers3, Rows3, Sparkles, Square, TriangleAlert, Wrench } from "lucide-react"
+import { BedDouble, CheckSquare, ChevronRight, CircleDollarSign, ConciergeBell, Flag, Keyboard, Layers3, Rows3, Sparkles, Square, TriangleAlert, Wrench } from "lucide-react"
 import { CardContent } from "@/components/ui/card"
 import { TimelineRow, DAY_WIDTH, LABEL_WIDTH, type Bed, type CalendarEvent, type ResizeState, type TimelineRowProps } from "./timeline-row"
 import { ReservationQuickInspector } from "./reservation-quick-inspector"
@@ -81,27 +81,29 @@ const propertyBandClasses = [
   "bg-slate-950/25",
 ]
 
+const COLLAPSED_GROUPS_KEY = "black-swan-booking-calendar-collapsed-properties"
+
 const copy = {
   en: {
     layers: { milestones: "Milestones", housekeeping: "Housekeeping", hospitality: "Hospitality", services: "Services", activities: "Activities", payments: "Payments", issues: "Issues", maintenance: "Maintenance" },
     legend: { pending: "Pending", confirmed: "Confirmed", checkedIn: "Checked in", completed: "Completed", block: "Block" },
     layersButton: "Layers", summary: "Summary", shortcuts: "Shortcuts", interactionHint: "Click: inspect · double-click: edit · drag: move · edges: dates",
     navigate: "navigate", select: "select", help: "help", all: "All", deselectAll: "Deselect all", selectAll: "Select all", rooms: "ROOMS",
-    loading: "Loading availability…", empty: "No rooms match the selected filters.",
+    loading: "Loading availability…", empty: "No rooms match the selected filters.", collapseGroups: "Collapse groups", expandGroups: "Expand groups", roomCount: "rooms", reservationCount: "bookings", selectedCount: "selected", conflictCount: "conflicts",
   },
   es: {
     layers: { milestones: "Hitos", housekeeping: "Limpieza", hospitality: "Hospitalidad", services: "Servicios", activities: "Actividades", payments: "Pagos", issues: "Incidencias", maintenance: "Mantenimiento" },
     legend: { pending: "Pendiente", confirmed: "Confirmada", checkedIn: "Hospedado", completed: "Finalizada", block: "Bloqueo" },
     layersButton: "Capas", summary: "Resumen", shortcuts: "Atajos", interactionHint: "Clic: revisar · doble clic: editar · arrastra: mover · extremos: fechas",
     navigate: "navegar", select: "seleccionar", help: "ayuda", all: "Todo", deselectAll: "Deseleccionar todo", selectAll: "Seleccionar todo", rooms: "HABITACIONES",
-    loading: "Cargando disponibilidad…", empty: "No hay habitaciones para los filtros seleccionados.",
+    loading: "Cargando disponibilidad…", empty: "No hay habitaciones para los filtros seleccionados.", collapseGroups: "Colapsar grupos", expandGroups: "Expandir grupos", roomCount: "habitaciones", reservationCount: "reservas", selectedCount: "seleccionadas", conflictCount: "conflictos",
   },
   de: {
     layers: { milestones: "Meilensteine", housekeeping: "Zimmerreinigung", hospitality: "Gästeservice", services: "Leistungen", activities: "Aktivitäten", payments: "Zahlungen", issues: "Vorfälle", maintenance: "Wartung" },
     legend: { pending: "Ausstehend", confirmed: "Bestätigt", checkedIn: "Eingecheckt", completed: "Abgeschlossen", block: "Sperre" },
     layersButton: "Ebenen", summary: "Übersicht", shortcuts: "Tastenkürzel", interactionHint: "Klick: prüfen · Doppelklick: bearbeiten · ziehen: verschieben · Ränder: Daten",
     navigate: "navigieren", select: "auswählen", help: "Hilfe", all: "Alle", deselectAll: "Auswahl aufheben", selectAll: "Alle auswählen", rooms: "ZIMMER",
-    loading: "Verfügbarkeit wird geladen…", empty: "Keine Zimmer entsprechen den gewählten Filtern.",
+    loading: "Verfügbarkeit wird geladen…", empty: "Keine Zimmer entsprechen den gewählten Filtern.", collapseGroups: "Gruppen einklappen", expandGroups: "Gruppen ausklappen", roomCount: "Zimmer", reservationCount: "Buchungen", selectedCount: "ausgewählt", conflictCount: "Konflikte",
   },
 } satisfies Record<Language, any>
 
@@ -118,6 +120,16 @@ function uniqueRoomEvents(roomBeds: Bed[], eventsByBed: Map<string, CalendarEven
     for (const event of eventsByBed.get(bed.id) ?? []) events.set(`${event.event_type}:${event.event_id}`, event)
   }
   return Array.from(events.values())
+}
+
+function uniqueGroupReservationEvents(group: InventoryGroup, eventsByBed: Map<string, CalendarEvent[]>) {
+  const reservations = new Map<string, CalendarEvent>()
+  for (const room of group.rooms) {
+    for (const event of uniqueRoomEvents(room.beds, eventsByBed)) {
+      if (event.event_type === "reservation") reservations.set(event.event_id, event)
+    }
+  }
+  return Array.from(reservations.values())
 }
 
 function freeBedForRange(roomBeds: Bed[], eventsByBed: Map<string, CalendarEvent[]>, startsOn: string, endsOn: string, ignoreEventId?: string | null) {
@@ -152,6 +164,7 @@ export function TimelineGrid(props: TimelineGridProps) {
   const activeLayers = useMemo(() => new Set(preferences.activeLayers), [preferences.activeLayers])
   const [showKeyboardHelp, setShowKeyboardHelp] = useState(false)
   const [inspectedReservation, setInspectedReservation] = useState<CalendarEvent | null>(null)
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set())
 
   const inventoryGroups = useMemo<InventoryGroup[]>(() => {
     const locations = new Map<string, InventoryGroup>()
@@ -185,6 +198,18 @@ export function TimelineGrid(props: TimelineGridProps) {
   }, [visibleBeds])
 
   const roomCount = useMemo(() => inventoryGroups.reduce((sum, location) => sum + location.rooms.length, 0), [inventoryGroups])
+  const allGroupsCollapsed = inventoryGroups.length > 0 && inventoryGroups.every((group) => collapsedGroups.has(group.locationId))
+
+  useEffect(() => {
+    try {
+      const stored = window.sessionStorage.getItem(COLLAPSED_GROUPS_KEY)
+      if (!stored) return
+      const parsed = JSON.parse(stored)
+      if (Array.isArray(parsed)) setCollapsedGroups(new Set(parsed.filter((value): value is string => typeof value === "string")))
+    } catch {
+      // Session preferences are best-effort only.
+    }
+  }, [])
 
   useEffect(() => {
     if (!scrollRef.current || dates.length === 0) return
@@ -206,6 +231,21 @@ export function TimelineGrid(props: TimelineGridProps) {
     window.addEventListener("keydown", onKeyDown)
     return () => window.removeEventListener("keydown", onKeyDown)
   }, [isBulkMode, onClearSelection, onSelectAll, scrollRef, setPreferences])
+
+  function updateCollapsedGroups(next: Set<string>) {
+    setCollapsedGroups(next)
+    try { window.sessionStorage.setItem(COLLAPSED_GROUPS_KEY, JSON.stringify(Array.from(next))) } catch { /* no-op */ }
+  }
+
+  function toggleGroup(locationId: string) {
+    const next = new Set(collapsedGroups)
+    if (next.has(locationId)) next.delete(locationId); else next.add(locationId)
+    updateCollapsedGroups(next)
+  }
+
+  function toggleAllGroups() {
+    updateCollapsedGroups(allGroupsCollapsed ? new Set() : new Set(inventoryGroups.map((group) => group.locationId)))
+  }
 
   function toggleLayer(key: CalendarLayerKey) {
     setPreferences((current) => {
@@ -233,6 +273,7 @@ export function TimelineGrid(props: TimelineGridProps) {
           <button type="button" onClick={() => setPreferences((current) => ({ ...current, showLayerToolbar: !current.showLayerToolbar }))} className={`inline-flex items-center gap-1 border px-2 py-1 text-[11px] font-medium transition ${preferences.showLayerToolbar ? "border-primary bg-primary text-primary-foreground" : "bg-background hover:bg-muted"}`}><Layers3 className="h-3.5 w-3.5" />{c.layersButton}</button>
           <button type="button" onClick={() => setPreferences((current) => ({ ...current, showSummary: !current.showSummary }))} className={`inline-flex items-center gap-1 border px-2 py-1 text-[11px] transition ${preferences.showSummary ? "border-primary/40 bg-primary/10 text-primary" : "bg-background text-muted-foreground hover:bg-muted"}`}><Rows3 className="h-3.5 w-3.5" />{c.summary}</button>
           <button type="button" onClick={() => setShowKeyboardHelp((current) => !current)} className="inline-flex items-center gap-1 border bg-background px-2 py-1 text-[11px] text-muted-foreground hover:bg-muted"><Keyboard className="h-3.5 w-3.5" />{c.shortcuts}</button>
+          {inventoryGroups.length > 0 && <button type="button" onClick={toggleAllGroups} className="inline-flex items-center gap-1 border bg-background px-2 py-1 text-[11px] text-muted-foreground hover:bg-muted"><Rows3 className="h-3.5 w-3.5" />{allGroupsCollapsed ? c.expandGroups : c.collapseGroups}</button>}
           <div className="hidden items-center gap-3 border-l pl-3 xl:flex">{statusLegend.map((item) => <span key={item.label} className="inline-flex items-center gap-1 text-[10px] text-muted-foreground"><span className={`h-2.5 w-2.5 ${item.className}`} />{item.label}</span>)}</div>
           <span className="ml-auto text-[10px] text-muted-foreground">{c.interactionHint}</span>
         </div>
@@ -265,8 +306,25 @@ export function TimelineGrid(props: TimelineGridProps) {
 
           {loading ? <div className="p-12 text-center text-white/60">{c.loading}</div> : roomCount === 0 ? <div className="p-12 text-center text-white/60">{c.empty}</div> : inventoryGroups.map((location, locationIndex) => {
             const propertyBand = propertyBandClasses[locationIndex % propertyBandClasses.length]
-            return <div key={location.locationId} className={`[content-visibility:auto] [contain-intrinsic-size:180px] ${propertyBand}`} title={location.locationName}>
-              {location.rooms.map((room) => {
+            const isCollapsed = collapsedGroups.has(location.locationId)
+            const groupReservations = uniqueGroupReservationEvents(location, eventsByBed)
+            const selectedCount = groupReservations.filter((event) => selectedIds.has(event.event_id)).length
+            const conflictCount = groupReservations.filter((event) => conflictIds.has(event.event_id)).length
+            return <section key={location.locationId} className={`[content-visibility:auto] [contain-intrinsic-size:180px] ${propertyBand}`} title={location.locationName} data-property-group data-collapsed={isCollapsed ? "true" : "false"}>
+              <button type="button" onClick={() => toggleGroup(location.locationId)} className="flex h-8 w-full items-center border-b border-white/5 text-left text-white/75 transition hover:brightness-110 focus-visible:outline-none" aria-expanded={!isCollapsed} aria-label={`${isCollapsed ? c.expandGroups : c.collapseGroups}: ${location.locationName}`}>
+                <span className="sticky left-0 z-20 flex h-full shrink-0 items-center gap-2 border-r border-white/5 px-3" style={{ width: LABEL_WIDTH }}>
+                  <ChevronRight className={`h-3.5 w-3.5 shrink-0 transition-transform ${isCollapsed ? "" : "rotate-90"}`} />
+                  <span className="min-w-0 flex-1 truncate text-[11px] font-semibold tracking-[0.02em] text-white/90">{location.locationName || "—"}</span>
+                  <span className="shrink-0 text-[9px] text-white/45">{location.rooms.length}</span>
+                </span>
+                <span className="flex h-full items-center gap-3 px-3 text-[9px] text-white/48" style={{ width: timelineWidth }}>
+                  <span>{location.rooms.length} {c.roomCount}</span>
+                  <span>{groupReservations.length} {c.reservationCount}</span>
+                  {selectedCount > 0 && <span className="text-white/75">{selectedCount} {c.selectedCount}</span>}
+                  {conflictCount > 0 && <span className="text-amber-300/90">{conflictCount} {c.conflictCount}</span>}
+                </span>
+              </button>
+              {!isCollapsed && location.rooms.map((room) => {
                 const identity = getBedBookingDisplayIdentity({ propertyName: location.locationName, roomNumber: room.roomNumber })
                 const roomEvents = uniqueRoomEvents(room.beds, eventsByBed)
                 const targetBed = draggingEvent
@@ -295,7 +353,7 @@ export function TimelineGrid(props: TimelineGridProps) {
                   }}
                 />
               })}
-            </div>
+            </section>
           })}
           {preferences.showSummary && <CalendarDailyOperationsSummary dates={dates} reservations={visibleReservationEvents} timelineWidth={timelineWidth} />}
         </div>
