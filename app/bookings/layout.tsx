@@ -11,6 +11,7 @@ import "./booking-bedbooking.css"
 import "./booking-workspace.css"
 import "./booking-section-polish.css"
 import "./calendar/bedbooking-density.css"
+import "./calendar/booking-pro-polish.css"
 
 const ROUTE_LOCALES = new Set(["en", "es", "de"])
 const BOOKING_LAYOUT_LOCALE = { en: "en", es: "es", de: "de" } as const
