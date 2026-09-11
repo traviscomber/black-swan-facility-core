@@ -68,6 +68,7 @@ function groupForPath(pathname: string): GroupKey | null {
   if (/\/bookings\/(reports|revenue|rooms|audit)(\/|$)/.test(pathname)) return "reports"
   if (/\/bookings\/invoices(\/|$)/.test(pathname)) return "invoices"
   if (/\/bookings\/(facilities|payments|requests)(\/|$)/.test(pathname)) return "reservation"
+  if (/\/bookings\/channels(\/|$)/.test(pathname)) return "channels"
   return null
 }
 
@@ -148,12 +149,12 @@ export function BookingReferenceSidebar() {
         <NavLink inset title={c.notConfigured}>{c.licenseNumber}</NavLink>
       </NavGroup>
       <NavGroup label={c.salesChannels} icon={Share2} open={openGroups.has("channels")} onToggle={() => toggleGroup("channels")}>
-        <NavLink inset dot="airbnb" title={c.notConfigured}>{c.airbnb}</NavLink>
-        <NavLink inset dot="booking" title={c.notConfigured}>{c.booking}</NavLink>
-        <NavLink inset dot="ical" title={c.notConfigured}>{c.iCalendar}</NavLink>
+        <NavLink href={`${href("/bookings/channels")}?channel=airbnb`} active={active("/bookings/channels") && pathname.includes("channel=airbnb")} inset dot="airbnb">{c.airbnb}</NavLink>
+        <NavLink href={`${href("/bookings/channels")}?channel=booking`} inset dot="booking">{c.booking}</NavLink>
+        <NavLink href={`${href("/bookings/channels")}?channel=ical`} inset dot="ical">{c.iCalendar}</NavLink>
       </NavGroup>
       <NavLink href={href("/employees")} active={active("/employees")} icon={Users}>{c.employees}</NavLink>
-      <NavLink icon={UserRound} title={c.notConfigured}>{c.profile}</NavLink>
+      <NavLink href={href("/bookings/profile")} active={active("/bookings/profile")} icon={UserRound}>{c.profile}</NavLink>
     </nav>
     <div className="booking-reference-sidebar-footer"><button type="button" className="booking-reference-hide" onClick={() => setCollapsed((value) => !value)} aria-label={collapsed ? c.show : c.hide} title={collapsed ? c.show : c.hide}><ChevronLeft className="booking-reference-hide-icon h-4 w-4" /><span className="booking-reference-nav-label">{collapsed ? c.show : c.hide}</span></button></div>
   </aside>
