@@ -19,10 +19,10 @@ const DATE_LOCALES = { en: enUS, es, de } as const
 const NUMBER_LOCALES = { en: "en-US", es: "es-CL", de: "de-DE" } as const
 
 function occupancyTone(value: number) {
-  if (value >= 85) return "bg-red-500/10 text-red-200"
-  if (value >= 65) return "bg-amber-500/10 text-amber-200"
-  if (value >= 40) return "bg-sky-500/10 text-sky-200"
-  return "text-muted-foreground"
+  if (value >= 85) return "bg-[#4a2420] text-[#f0c7bd]"
+  if (value >= 65) return "bg-[#4b3c23] text-[#e8cf9c]"
+  if (value >= 40) return "bg-[#263844] text-[#bfd2dd]"
+  return "text-[#8f867b]"
 }
 function interpolate(value: string, vars: Record<string, string | number>) { return Object.entries(vars).reduce((result, [key, replacement]) => result.replaceAll(`{${key}}`, String(replacement)), value) }
 
@@ -76,24 +76,24 @@ export default function RevenueIntelligencePage() {
   }, [rows])
   const money = useCallback((value: number) => formatClp(value, numberLocale), [numberLocale])
 
-  return <div className="min-h-screen bg-[#111213] text-foreground">
-    <header className="flex min-h-[58px] flex-wrap items-center justify-between gap-3 border-b border-white/10 bg-[#17191a] px-4 py-2">
-      <div><h1 className="text-base font-medium">{copy.title}</h1><p className="text-xs text-muted-foreground">{copy.subtitle}</p></div>
-      <Button size="sm" variant="outline" onClick={() => void loadData()} disabled={loading}>{loading ? <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="mr-2 h-3.5 w-3.5" />}{copy.refresh}</Button>
+  return <div className="min-h-screen bg-[#171512] text-[#e7e1d8]">
+    <header className="flex min-h-[58px] flex-wrap items-center justify-between gap-3 bg-[#211e1a] px-4 py-2">
+      <div><h1 className="text-base font-normal">{copy.title}</h1><p className="text-xs text-[#b9b0a4]">{copy.subtitle}</p></div>
+      <Button size="sm" variant="outline" className="h-8 rounded-none border-0 bg-[#2b2722] text-[#e7e1d8] hover:bg-[#39342d]" onClick={() => void loadData()} disabled={loading}>{loading ? <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="mr-2 h-3.5 w-3.5" />}{copy.refresh}</Button>
     </header>
 
-    <div className="border-b border-white/10 bg-[#151718] px-3 py-2">
+    <div className="bg-[#211e1a] px-3 py-2">
       <div className="grid gap-2 md:grid-cols-[150px_150px_220px_auto]">
-        <Input type="date" value={startDate} onChange={(event) => setStartDate(event.target.value)} className="h-8" aria-label={copy.from} />
-        <Input type="date" value={endDate} onChange={(event) => setEndDate(event.target.value)} className="h-8" aria-label={copy.to} />
-        <Select value={locationId} onValueChange={setLocationId}><SelectTrigger className="h-8"><SelectValue placeholder={copy.allLocations} /></SelectTrigger><SelectContent><SelectItem value="all">{copy.allLocations}</SelectItem>{locations.map((location) => <SelectItem key={location.id} value={location.id}>{location.name}</SelectItem>)}</SelectContent></Select>
-        <div className="flex justify-end"><Button size="sm" onClick={() => void loadData()} disabled={loading}>{copy.apply}</Button></div>
+        <Input type="date" value={startDate} onChange={(event) => setStartDate(event.target.value)} className="h-8 rounded-none border-0 bg-[#2b2722] text-[#e7e1d8]" aria-label={copy.from} />
+        <Input type="date" value={endDate} onChange={(event) => setEndDate(event.target.value)} className="h-8 rounded-none border-0 bg-[#2b2722] text-[#e7e1d8]" aria-label={copy.to} />
+        <Select value={locationId} onValueChange={setLocationId}><SelectTrigger className="h-8 rounded-none border-0 bg-[#2b2722] text-[#e7e1d8]"><SelectValue placeholder={copy.allLocations} /></SelectTrigger><SelectContent><SelectItem value="all">{copy.allLocations}</SelectItem>{locations.map((location) => <SelectItem key={location.id} value={location.id}>{location.name}</SelectItem>)}</SelectContent></Select>
+        <div className="flex justify-end"><Button size="sm" className="h-8 rounded-none bg-[#d7ccb9] text-[#171512] hover:bg-[#e7e1d8]" onClick={() => void loadData()} disabled={loading}>{copy.apply}</Button></div>
       </div>
     </div>
 
-    {error && <div className="border-b border-red-500/30 bg-red-500/10 px-4 py-2 text-xs text-red-300">{error}</div>}
+    {error && <div className="bg-[#4a2420] px-4 py-2 text-xs text-[#f0c7bd]">{error}</div>}
 
-    <div className="grid border-b border-white/10 sm:grid-cols-2 lg:grid-cols-5">
+    <div className="grid bg-[#211e1a] sm:grid-cols-2 lg:grid-cols-5">
       <Metric label={copy.occupancy} value={`${new Intl.NumberFormat(numberLocale, { maximumFractionDigits: 1 }).format(summary.occupancy)}%`} detail={interpolate(copy.occupancyDetail, { occupied: summary.occupiedNights, total: summary.bedNights })} />
       <Metric label={copy.revenue} value={money(summary.revenue)} detail={copy.revenueDetail} />
       <Metric label={copy.availability} value={String(summary.availableNights)} detail={copy.availabilityDetail} />
@@ -102,14 +102,14 @@ export default function RevenueIntelligencePage() {
     </div>
 
     <div className="p-3">
-      {loading ? <div className="flex min-h-64 items-center justify-center"><Loader2 className="h-5 w-5 animate-spin text-primary" /></div> : groupedRows.length === 0 ? <div className="border border-white/10 px-4 py-12 text-center text-sm text-muted-foreground">{copy.empty}</div> : <div className="space-y-3">{groupedRows.map(([locationName, locationRows]) => <section key={locationName} className="border border-white/10 bg-[#151718]">
-        <div className="flex items-center justify-between border-b border-white/10 px-3 py-2"><h2 className="text-sm font-medium">{locationName}</h2><span className="text-[11px] text-muted-foreground">{interpolate(copy.activeBeds, { count: locationRows[0]?.total_beds ?? 0 })}</span></div>
-        <div className="overflow-x-auto"><table className="w-full min-w-[860px] text-xs"><thead className="bg-black/10 text-left text-muted-foreground"><tr><th className="px-3 py-2 font-medium">Date</th><th className="px-3 py-2 font-medium">{copy.occupancy}</th><th className="px-3 py-2 font-medium">Occupied</th><th className="px-3 py-2 font-medium">Available</th><th className="px-3 py-2 font-medium">{copy.blocks}</th><th className="px-3 py-2 font-medium">{copy.revenue}</th><th className="px-3 py-2 font-medium">{copy.avgRate}</th></tr></thead><tbody>{locationRows.map((row) => <tr key={`${row.location_id}-${row.day}`} className="border-t border-white/5 hover:bg-white/[.025]"><td className="px-3 py-2">{format(parseISO(row.day), "dd MMM yyyy", { locale: dateLocale })}</td><td className={`px-3 py-2 font-medium ${occupancyTone(Number(row.occupancy_pct))}`}>{Number(row.occupancy_pct).toFixed(0)}%</td><td className="px-3 py-2">{row.occupied_beds}/{row.total_beds}</td><td className="px-3 py-2">{row.available_beds}</td><td className="px-3 py-2">{row.blocked_beds}</td><td className="px-3 py-2">{money(Number(row.revenue || 0))}</td><td className="px-3 py-2">{money(Number(row.avg_rate || 0))}</td></tr>)}</tbody></table></div>
+      {loading ? <div className="flex min-h-64 items-center justify-center"><Loader2 className="h-5 w-5 animate-spin text-[#b9b0a4]" /></div> : groupedRows.length === 0 ? <div className="bg-[#211e1a] px-4 py-12 text-center text-sm text-[#8f867b]">{copy.empty}</div> : <div className="space-y-3">{groupedRows.map(([locationName, locationRows]) => <section key={locationName} className="bg-[#211e1a]">
+        <div className="flex items-center justify-between px-3 py-2"><h2 className="text-sm font-normal">{locationName}</h2><span className="text-[11px] text-[#8f867b]">{interpolate(copy.activeBeds, { count: locationRows[0]?.total_beds ?? 0 })}</span></div>
+        <div className="overflow-x-auto"><table className="w-full min-w-[860px] text-xs"><thead className="bg-[#2b2722] text-left text-[#8f867b]"><tr><th className="px-3 py-2 font-medium">Date</th><th className="px-3 py-2 font-medium">{copy.occupancy}</th><th className="px-3 py-2 font-medium">Occupied</th><th className="px-3 py-2 font-medium">Available</th><th className="px-3 py-2 font-medium">{copy.blocks}</th><th className="px-3 py-2 font-medium">{copy.revenue}</th><th className="px-3 py-2 font-medium">{copy.avgRate}</th></tr></thead><tbody>{locationRows.map((row) => <tr key={`${row.location_id}-${row.day}`} className="bg-[#171512] hover:bg-[#211e1a]"><td className="px-3 py-2">{format(parseISO(row.day), "dd MMM yyyy", { locale: dateLocale })}</td><td className={`px-3 py-2 font-medium ${occupancyTone(Number(row.occupancy_pct))}`}>{Number(row.occupancy_pct).toFixed(0)}%</td><td className="px-3 py-2">{row.occupied_beds}/{row.total_beds}</td><td className="px-3 py-2">{row.available_beds}</td><td className="px-3 py-2">{row.blocked_beds}</td><td className="px-3 py-2">{money(Number(row.revenue || 0))}</td><td className="px-3 py-2">{money(Number(row.avg_rate || 0))}</td></tr>)}</tbody></table></div>
       </section>)}</div>}
     </div>
   </div>
 }
 
 function Metric({ label, value, detail }: { label: string; value: string; detail: string }) {
-  return <div className="min-h-[76px] border-r border-white/10 px-3 py-2 last:border-r-0"><div className="text-[11px] uppercase tracking-wide text-muted-foreground">{label}</div><div className="mt-1 text-lg font-medium">{value}</div><div className="mt-0.5 truncate text-[10px] text-muted-foreground">{detail}</div></div>
+  return <div className="min-h-[76px] px-3 py-2"><div className="text-[11px] uppercase tracking-wide text-[#8f867b]">{label}</div><div className="mt-1 text-lg font-normal">{value}</div><div className="mt-0.5 truncate text-[10px] text-[#8f867b]">{detail}</div></div>
 }
