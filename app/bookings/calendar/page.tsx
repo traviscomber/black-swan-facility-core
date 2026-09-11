@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
-import { addDays, differenceInCalendarDays, format, parseISO, startOfDay } from "date-fns"
+import { addDays, differenceInCalendarDays, format, parseISO } from "date-fns"
 import { Ban, CalendarDays, CheckSquare, ChevronLeft, ChevronRight, Loader2, Plus, RefreshCw, RotateCcw, Search, Trash2, X } from "lucide-react"
 import { toast } from "sonner"
 import { createClient } from "@/lib/supabase/client"
@@ -15,6 +15,7 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useLanguage } from "@/lib/hooks/use-language"
 import { bookingsCalendarPageCopy } from "@/lib/translations/bookings-calendar-page"
+import { bookingDateFromKey, bookingTodayDate } from "@/lib/booking/timezone"
 import { type ReservationResizeEdge, useReservationResizeState } from "./use-reservation-resize-state"
 import { useFlipAnimation } from "./use-flip-animation"
 import { useCalendarInteraction } from "./use-calendar-interaction"
@@ -45,7 +46,7 @@ export default function BookingsCalendarPage() {
   const [status, setStatus] = useState("all")
   const [search, setSearch] = useState("")
   const [rangeDays, setRangeDays] = useState(19)
-  const [startDate, setStartDate] = useState(startOfDay(new Date()))
+  const [startDate, setStartDate] = useState(bookingTodayDate)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [newReservationOpen, setNewReservationOpen] = useState(false)
@@ -336,8 +337,8 @@ export default function BookingsCalendarPage() {
   return <div className="min-h-screen bg-[#101314]">
     <div className="sticky top-0 z-50 border-b border-white/10 bg-[#17191a]">
       <div className="flex min-h-14 items-center gap-2 overflow-x-auto px-2 py-2">
-        <Input type="month" value={monthValue} onChange={(event) => { if (event.target.value) setStartDate(startOfDay(new Date(`${event.target.value}-01T12:00:00`))) }} className="h-9 w-[160px] shrink-0 border-white/10 bg-[#111314] text-xs" aria-label="Month" />
-        <Button variant="outline" size="sm" className="h-9 shrink-0 border-emerald-600 text-emerald-400 hover:bg-emerald-950" onClick={() => setStartDate(startOfDay(new Date()))}><CalendarDays className="mr-1.5 h-3.5 w-3.5" />{pageCopy.today}</Button>
+        <Input type="month" value={monthValue} onChange={(event) => { if (event.target.value) setStartDate(bookingDateFromKey(`${event.target.value}-01`)) }} className="h-9 w-[160px] shrink-0 border-white/10 bg-[#111314] text-xs" aria-label="Month" />
+        <Button variant="outline" size="sm" className="h-9 shrink-0 border-emerald-600 text-emerald-400 hover:bg-emerald-950" onClick={() => setStartDate(bookingTodayDate())}><CalendarDays className="mr-1.5 h-3.5 w-3.5" />{pageCopy.today}</Button>
         <Button variant="outline" size="icon" className="h-9 w-9 shrink-0" onClick={() => setStartDate(addDays(startDate, -rangeDays))}><ChevronLeft className="h-4 w-4" /></Button>
         <div className="min-w-[118px] shrink-0 text-center text-xs font-medium text-white/80">{rangeLabel}</div>
         <Button variant="outline" size="icon" className="h-9 w-9 shrink-0" onClick={() => setStartDate(addDays(startDate, rangeDays))}><ChevronRight className="h-4 w-4" /></Button>
