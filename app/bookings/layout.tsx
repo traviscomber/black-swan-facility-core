@@ -6,6 +6,8 @@ import { AccessGate } from "@/components/access/access-gate"
 import { BookingsLegacyLocalizationBridge } from "@/components/bookings-legacy-localization-bridge"
 import { BookingReferenceSidebar } from "@/components/calendar/booking-reference-sidebar"
 import { useLanguage } from "@/lib/hooks/use-language"
+import "./booking-bedbooking.css"
+import "./booking-workspace.css"
 import "./calendar/bedbooking-density.css"
 
 const ROUTE_LOCALES = new Set(["en", "es", "de"])
