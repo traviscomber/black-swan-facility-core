@@ -116,18 +116,25 @@
   background: #315e45 !important;
 }
 
-/* Restrained property bands: enough hierarchy to scan, no rainbow effect. */
-.booking-workspace[data-booking-section="calendar"] .bg-emerald-950\/25 { background: #1d241f !important; }
-.booking-workspace[data-booking-section="calendar"] .bg-amber-950\/25 { background: #242119 !important; }
-.booking-workspace[data-booking-section="calendar"] .bg-violet-950\/25 { background: #211e23 !important; }
-.booking-workspace[data-booking-section="calendar"] .bg-cyan-950\/25 { background: #1b2323 !important; }
-.booking-workspace[data-booking-section="calendar"] .bg-rose-950\/25 { background: #241d1d !important; }
-.booking-workspace[data-booking-section="calendar"] .bg-slate-950\/25 { background: #202120 !important; }
+/* Property bands: BedBooking-style spatial grouping with Black Swan's desaturated palette. */
+.booking-workspace[data-booking-section="calendar"] .bg-emerald-950\/25 { background: #26382e !important; }
+.booking-workspace[data-booking-section="calendar"] .bg-amber-950\/25 { background: #3b361d !important; }
+.booking-workspace[data-booking-section="calendar"] .bg-violet-950\/25 { background: #38233a !important; }
+.booking-workspace[data-booking-section="calendar"] .bg-cyan-950\/25 { background: #1d4143 !important; }
+.booking-workspace[data-booking-section="calendar"] .bg-rose-950\/25 { background: #3a2728 !important; }
+.booking-workspace[data-booking-section="calendar"] .bg-slate-950\/25 { background: #303445 !important; }
+
+/* Carry each property color into the sticky room rail, as BedBooking does. */
+.booking-workspace[data-booking-section="calendar"] .bg-emerald-950\/25 [data-calendar-row] > .flex > .sticky.left-0 { background: #26382e !important; }
+.booking-workspace[data-booking-section="calendar"] .bg-amber-950\/25 [data-calendar-row] > .flex > .sticky.left-0 { background: #3b361d !important; }
+.booking-workspace[data-booking-section="calendar"] .bg-violet-950\/25 [data-calendar-row] > .flex > .sticky.left-0 { background: #38233a !important; }
+.booking-workspace[data-booking-section="calendar"] .bg-cyan-950\/25 [data-calendar-row] > .flex > .sticky.left-0 { background: #1d4143 !important; }
+.booking-workspace[data-booking-section="calendar"] .bg-rose-950\/25 [data-calendar-row] > .flex > .sticky.left-0 { background: #3a2728 !important; }
+.booking-workspace[data-booking-section="calendar"] .bg-slate-950\/25 [data-calendar-row] > .flex > .sticky.left-0 { background: #303445 !important; }
 
 /* Room labels should read as a compact inventory rail, not separate cards. */
 .booking-workspace[data-booking-section="calendar"] [data-calendar-row] > .flex > .sticky.left-0 {
-  background: rgba(23,21,18,.90) !important;
-  border-right-color: rgba(231,225,216,.075) !important;
+  border-right-color: rgba(231,225,216,.10) !important;
   padding-inline: 8px !important;
 }
 
@@ -138,7 +145,7 @@
 }
 
 .booking-workspace[data-booking-section="calendar"] [data-calendar-row] > .flex > .sticky.left-0 .text-\[10px\] {
-  color: #81786f !important;
+  color: rgba(231,225,216,.65) !important;
   font-size: 9px !important;
 }
 
@@ -208,13 +215,19 @@
   background: rgba(0,0,0,.14) !important;
 }
 
-/* Keep the grid subtle so reservation bars and property bands win the hierarchy. */
+/* Keep the grid visible inside property bands without overpowering them. */
 .booking-workspace[data-booking-section="calendar"] [data-calendar-row] {
-  border-color: rgba(231,225,216,.045) !important;
+  border-color: rgba(231,225,216,.055) !important;
 }
 
 .booking-workspace[data-booking-section="calendar"] [data-calendar-row] > .flex > .relative {
   background-color: transparent !important;
+  background-blend-mode: normal;
+}
+
+/* Today remains a transversal signal independent from property identity. */
+.booking-workspace[data-booking-section="calendar"] [data-calendar-row] > .flex > .relative > .bg-emerald-600\/20 {
+  background: rgba(50, 112, 75, .34) !important;
 }
 
 @media (min-width: 1500px) {
