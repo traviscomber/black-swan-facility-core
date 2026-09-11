@@ -1,0 +1,146 @@
+/* Booking professional polish. Presentation only; no booking behavior or data semantics. */
+
+/* Calendar canvas and reservation geometry */
+.booking-calendar-bedbooking-shell [data-calendar-row] button.absolute {
+  border-radius: 0 !important;
+  clip-path: none !important;
+  box-shadow: none !important;
+  letter-spacing: -.01em;
+}
+
+.booking-calendar-bedbooking-shell [data-calendar-row] button.absolute:hover {
+  filter: brightness(1.06);
+}
+
+.booking-calendar-bedbooking-shell [data-calendar-row] button.absolute[class*="border-amber-400"] {
+  border-color: rgba(190,153,89,.72) !important;
+  border-left-width: 2px !important;
+  background: #2b2722 !important;
+}
+
+.booking-calendar-bedbooking-shell [data-calendar-row] button.absolute[class*="border-emerald-500"] {
+  border-color: rgba(143,183,159,.78) !important;
+  border-left-width: 2px !important;
+  background: #2b2722 !important;
+}
+
+.booking-calendar-bedbooking-shell [data-calendar-row] button.absolute[class*="border-slate-500"] {
+  border-color: rgba(139,151,157,.58) !important;
+  border-left-width: 2px !important;
+  background: #272522 !important;
+}
+
+.booking-calendar-bedbooking-shell [data-calendar-row] button.absolute[class*="border-red-500"] {
+  border-color: rgba(205,112,99,.68) !important;
+  border-left-width: 2px !important;
+  background: #2b2722 !important;
+}
+
+.booking-calendar-bedbooking-shell [data-calendar-row] button.absolute[class*="border-white"] {
+  border-color: rgba(143,158,178,.68) !important;
+  border-left-width: 2px !important;
+  background: #2b2722 !important;
+}
+
+/* Keep operational expansion controls subordinate to the booking itself. */
+.booking-calendar-bedbooking-shell [data-calendar-row] button.absolute [role="button"] {
+  border-radius: 0 !important;
+  background: rgba(0,0,0,.16) !important;
+}
+
+/* Quick inspector: make the sheet feel like a native operational surface. */
+[data-slot="sheet-content"] {
+  border-radius: 0 !important;
+}
+
+.booking-calendar-reference-frame ~ [data-slot="sheet-content"],
+body:has(.booking-calendar-reference-frame) [data-slot="sheet-content"] {
+  border-left: 1px solid rgba(231,225,216,.08) !important;
+  background: #1b1916 !important;
+  color: #e7e1d8 !important;
+  box-shadow: -24px 0 52px rgba(0,0,0,.26) !important;
+}
+
+body:has(.booking-calendar-reference-frame) [data-slot="sheet-content"] [data-slot="sheet-header"] {
+  border-bottom-color: rgba(231,225,216,.07) !important;
+  background: #211e1a !important;
+}
+
+body:has(.booking-calendar-reference-frame) [data-slot="sheet-content"] [data-slot="sheet-title"] {
+  color: #e7e1d8 !important;
+  font-size: 17px !important;
+  font-weight: 520 !important;
+  letter-spacing: -.015em !important;
+}
+
+body:has(.booking-calendar-reference-frame) [data-slot="sheet-content"] [data-slot="sheet-description"],
+body:has(.booking-calendar-reference-frame) [data-slot="sheet-content"] .text-muted-foreground {
+  color: #8f867b !important;
+}
+
+body:has(.booking-calendar-reference-frame) [data-slot="sheet-content"] [data-slot="badge"] {
+  border-radius: 0 !important;
+  border-color: transparent !important;
+  font-size: 9px !important;
+  font-weight: 550 !important;
+  letter-spacing: .06em !important;
+  text-transform: uppercase;
+}
+
+body:has(.booking-calendar-reference-frame) [data-slot="sheet-content"] [data-slot="card"] {
+  border-color: transparent !important;
+  border-radius: 0 !important;
+  background: #211e1a !important;
+  box-shadow: none !important;
+}
+
+body:has(.booking-calendar-reference-frame) [data-slot="sheet-content"] button,
+body:has(.booking-calendar-reference-frame) [data-slot="sheet-content"] a {
+  border-radius: 0 !important;
+}
+
+body:has(.booking-calendar-reference-frame) [data-slot="sheet-content"] button:not([data-slot="sheet-close"]) {
+  box-shadow: none !important;
+}
+
+body:has(.booking-calendar-reference-frame) [data-slot="sheet-content"] section {
+  border-color: rgba(231,225,216,.06) !important;
+}
+
+/* Stay Cockpit: dense, calm and readable at executive/operator widths. */
+[data-stay-cockpit] {
+  background: #171512 !important;
+}
+
+[data-stay-cockpit] > header {
+  backdrop-filter: blur(10px);
+}
+
+[data-stay-panel] {
+  min-height: 118px;
+  box-shadow: inset 0 1px rgba(231,225,216,.035);
+}
+
+[data-stay-panel-title] svg {
+  color: #8fb79f;
+  stroke-width: 1.65;
+}
+
+[data-stay-row] {
+  min-height: 42px;
+}
+
+[data-stay-row] > span {
+  white-space: nowrap;
+}
+
+@media (max-width: 640px) {
+  body:has(.booking-calendar-reference-frame) [data-slot="sheet-content"] {
+    width: 100vw !important;
+    max-width: 100vw !important;
+  }
+
+  [data-stay-panel] {
+    min-height: 0;
+  }
+}
