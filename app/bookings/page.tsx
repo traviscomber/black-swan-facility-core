@@ -108,7 +108,7 @@ export default function BookingsPage() {
             {loading ? Array.from({ length: 8 }).map((_, index) => <tr key={index} className="animate-pulse"><td colSpan={6} className="border-b border-white/5 px-4 py-5"><div className="h-3 w-2/3 bg-white/5" /></td></tr>) : null}
             {!loading && filtered.map((row) => (
               <tr key={row.id} className="border-b border-white/[.06] hover:bg-white/[.025]">
-                <td className="px-4 py-3"><div className="font-medium text-white/92">{row.guest_name}</div><div className="mt-1 text-[10px] text-white/35">{row.guest_email ?? "—"}</div></td>
+                <td className="px-4 py-3"><Link href={`/${language}/bookings/reservations/${row.id}`} className="block rounded-[2px] outline-none focus-visible:ring-1 focus-visible:ring-[#04b958]"><div className="font-medium text-white/92 hover:text-[#04b958]">{row.guest_name}</div><div className="mt-1 text-[10px] text-white/35">{row.guest_email ?? "—"}</div></Link></td>
                 <td className="px-3 py-3 text-white/70">{row.check_in} → {row.check_out}</td>
                 <td className="px-3 py-3"><div className="flex items-center gap-2 text-white/75"><BedDouble className="h-3.5 w-3.5 text-white/35" />{row.room?.room_number ?? "—"}</div><div className="mt-1 text-[10px] text-white/30">{row.room?.location?.name ?? ""}</div></td>
                 <td className="px-3 py-3"><span className="inline-flex items-center gap-1.5 text-white/65"><Users className="h-3.5 w-3.5" />{row.num_guests ?? 1}</span></td>
