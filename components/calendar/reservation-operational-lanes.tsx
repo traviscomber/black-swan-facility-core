@@ -9,7 +9,17 @@ import { useLanguage, type Language } from "@/lib/hooks/use-language"
 
 export type CalendarLayerKey = "milestones" | "housekeeping" | "hospitality" | "services" | "activities" | "payments" | "maintenance" | "issues"
 
-type LaneItem = { id: string; label: string; status: string; startsOn: string; endsOn: string; critical?: boolean; marker?: "checkin" | "checkout" }
+type LaneItem = {
+  id: string
+  label: string
+  status: string
+  startsOn: string
+  endsOn: string
+  critical?: boolean
+  marker?: "checkin" | "checkout"
+  minuteOfDay?: number
+  phase?: "pre" | "post"
+}
 type Lane = { key: CalendarLayerKey; label: string; Icon: typeof BedDouble; className: string; items: LaneItem[] }
 type ActivityBookingRow = { id: string; status: string | null; transport_required: boolean | null; activity: { title?: string | null; start_date?: string | null; end_date?: string | null } | Array<{ title?: string | null; start_date?: string | null; end_date?: string | null }> | null }
 
@@ -56,6 +66,29 @@ function isCriticalPriority(value: string | null | undefined) {
   return ["critical", "urgent"].includes((value ?? "").toLowerCase())
 }
 
+function clockMinutes(value: string | null | undefined, fallback = 0) {
+  if (!value) return fallback
+  const match = value.match(/(?:T|\s)(\d{2}):(\d{2})/) ?? value.match(/^(\d{2}):(\d{2})/)
+  if (!match) return fallback
+  const hours = Number(match[1])
+  const minutes = Number(match[2])
+  if (!Number.isFinite(hours) || !Number.isFinite(minutes)) return fallback
+  return Math.max(0, Math.min(1439, hours * 60 + minutes))
+}
+
+function housekeepingLabel(taskType: string | null | undefined) {
+  const labels: Record<string, string> = {
+    pre_arrival_preparation: "Room prep",
+    pre_arrival_inspection: "Pre-arrival check",
+    post_checkout_cleaning: "Cleaning",
+    post_checkout_laundry: "Laundry",
+    post_checkout_damage_review: "Damage check",
+    post_checkout_restock: "Restock",
+    room_release: "Room release",
+  }
+  return labels[taskType ?? ""] ?? taskType ?? "Housekeeping"
+}
+
 export function ReservationOperationalLanes({ reservation, timelineWidth, geometryForDates, activeLayers, onCollapse }: {
   reservation: CalendarEvent
   timelineWidth: number
@@ -71,7 +104,7 @@ export function ReservationOperationalLanes({ reservation, timelineWidth, geomet
 
   const load = useCallback(async () => {
     setLoading(true)
-    const [housekeepingResult, hospitalityResult, extrasResult, activitiesResult, paymentsResult, maintenanceResult, issuesResult] = await Promise.all([
+    const [housekeepingResult, hospitalityResult, extrasResult, activitiesResult, paymentsResult, maintenanceResult, issuesResult, settingsResult] = await Promise.all([
       supabase.from("housekeeping_tasks").select("id, task_type, status, priority, scheduled_for, due_at, service_date, created_at").eq("reservation_id", reservation.event_id),
       supabase.from("hospitality_requests").select("id, request_type, description, status, priority, promised_at, due_at, created_at").eq("reservation_id", reservation.event_id),
       supabase.from("reservation_extras").select("id, name, service_status, scheduled_start, scheduled_end, created_at").eq("reservation_id", reservation.event_id),
@@ -79,11 +112,27 @@ export function ReservationOperationalLanes({ reservation, timelineWidth, geomet
       supabase.from("payments").select("id, amount, payment_status, paid_at, created_at").eq("reservation_id", reservation.event_id).is("reversed_at", null),
       supabase.from("maintenance_tasks").select("id, title, status, prioridad, bloqueado, scheduled_start, scheduled_end, fecha_objetivo, created_at").eq("reservation_id", reservation.event_id),
       supabase.from("issues").select("id, title, description, status, priority, severity, created_at, resolved_at").eq("related_item_type", "reservation").eq("related_item_id", reservation.event_id),
+      supabase.from("booking_settings").select("check_in_time, check_out_time").eq("id", "default").maybeSingle(),
     ])
 
+    const checkInMinute = clockMinutes(settingsResult.data?.check_in_time, 14 * 60)
+    const checkOutMinute = clockMinutes(settingsResult.data?.check_out_time, 10 * 60)
+
     const housekeeping: LaneItem[] = (housekeepingResult.data ?? []).map((item) => {
-      const start = dateOnly(item.scheduled_for ?? item.service_date ?? item.created_at, reservation.starts_on)
-      return { id: item.id, label: item.task_type || "Housekeeping", status: item.status, startsOn: start, endsOn: nextDay(start), critical: openStatus(item.status) && isCriticalPriority(item.priority) }
+      const source = item.scheduled_for ?? item.service_date ?? item.created_at
+      const start = dateOnly(source, reservation.starts_on)
+      const taskType = item.task_type ?? ""
+      const phase = taskType.startsWith("pre_arrival_") ? "pre" : (taskType.startsWith("post_checkout_") || taskType === "room_release" ? "post" : undefined)
+      return {
+        id: item.id,
+        label: housekeepingLabel(item.task_type),
+        status: item.status,
+        startsOn: start,
+        endsOn: nextDay(start),
+        minuteOfDay: clockMinutes(item.scheduled_for, phase === "pre" ? checkInMinute : checkOutMinute),
+        phase,
+        critical: openStatus(item.status) && isCriticalPriority(item.priority),
+      }
     })
     const hospitality: LaneItem[] = (hospitalityResult.data ?? []).map((item) => {
       const start = dateOnly(item.promised_at ?? item.created_at, reservation.starts_on)
@@ -117,8 +166,8 @@ export function ReservationOperationalLanes({ reservation, timelineWidth, geomet
     })
 
     const milestones: LaneItem[] = [
-      { id: `${reservation.event_id}-arrival`, label: "Check-in", status: reservation.status, startsOn: reservation.starts_on, endsOn: nextDay(reservation.starts_on), marker: "checkin" },
-      { id: `${reservation.event_id}-departure`, label: "Check-out", status: reservation.status, startsOn: reservation.ends_on, endsOn: nextDay(reservation.ends_on), marker: "checkout" },
+      { id: `${reservation.event_id}-arrival`, label: "Check-in", status: reservation.status, startsOn: reservation.starts_on, endsOn: nextDay(reservation.starts_on), marker: "checkin", minuteOfDay: checkInMinute },
+      { id: `${reservation.event_id}-departure`, label: "Check-out", status: reservation.status, startsOn: reservation.ends_on, endsOn: nextDay(reservation.ends_on), marker: "checkout", minuteOfDay: checkOutMinute },
     ]
 
     setLanes([
@@ -158,14 +207,22 @@ export function ReservationOperationalLanes({ reservation, timelineWidth, geomet
             {items.length === 0 ? <span className="absolute left-3 top-2 text-[10px] text-muted-foreground">{c.noEvents}</span> : items.map((item, index) => {
               const geometry = geometryForDates(item.startsOn, item.endsOn)
               const status = statusLabels[item.status?.replaceAll("-", "_")] ?? item.status
+              const timedLeft = geometry.left + ((item.minuteOfDay ?? 0) / 1440) * TIMELINE_DAY_WIDTH
               if (key === "milestones" && item.marker) {
                 const isCheckIn = item.marker === "checkin"
-                return <div key={item.id} title={`${item.label} · ${item.startsOn}`} className="absolute inset-y-0 z-10" style={{ left: Math.max(0, geometry.left - 2), width: 58 }}>
+                return <div key={item.id} title={`${item.label} · ${item.startsOn}`} className="absolute inset-y-0 z-10" style={{ left: Math.max(0, timedLeft - 1), width: 58 }}>
                   <span className={`absolute left-0 top-1 bottom-1 w-px ${isCheckIn ? "bg-emerald-300/90" : "bg-amber-300/90"}`} />
                   <span className={`absolute left-1.5 top-1 whitespace-nowrap text-[9px] font-semibold tracking-[.01em] ${isCheckIn ? "text-emerald-200" : "text-amber-200"}`}>{item.label}</span>
                 </div>
               }
-              return <div key={item.id} title={`${item.label} · ${status} · ${item.startsOn}`} className={`absolute h-5 overflow-hidden border px-1.5 text-[10px] font-medium leading-5 ${item.critical ? "border-red-500/60 bg-red-800/90 text-red-50" : `border-white/10 ${className}`}`} style={{ left: geometry.left, width: Math.max(22, geometry.width), top: 5 + (index % 2) * 2 }}><span className="truncate">{item.label}</span></div>
+              const isTimedHousekeeping = key === "housekeeping" && typeof item.minuteOfDay === "number" && item.phase
+              const eventWidth = isTimedHousekeeping ? 34 : Math.max(22, geometry.width)
+              const eventLeft = isTimedHousekeeping
+                ? item.phase === "pre"
+                  ? Math.max(geometry.left, timedLeft - eventWidth)
+                  : timedLeft
+                : geometry.left
+              return <div key={item.id} title={`${item.label} · ${status} · ${item.startsOn}`} className={`absolute h-5 overflow-hidden border px-1.5 text-[10px] font-medium leading-5 ${item.critical ? "border-red-500/60 bg-red-800/90 text-red-50" : `border-white/10 ${className}`}`} style={{ left: eventLeft, width: eventWidth, top: 5 + (index % 2) * 2 }}><span className="truncate">{item.label}</span></div>
             })}
             {key === "milestones" && <LogOut className="sr-only" />}
           </div>
