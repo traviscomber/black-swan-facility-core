@@ -25,41 +25,37 @@ const SIDEBAR_GROUPS_KEY = "black-swan.booking.sidebar.groups"
 
 const copy = {
   en: {
-    calendar: "Calendar", premium: "Premium", bookings: "Bookings", reservationList: "Reservation list", clients: "Clients", messageTemplates: "Message templates",
+    calendar: "Calendar", premium: "Premium", bookings: "Bookings", reservationList: "Reservation list", clients: "Clients",
     operations: "Operations", dailyOperations: "Daily operations", stayCockpit: "Stay cockpit", charges: "Charges", roomBlocks: "Room blocks", rooms: "Rooms & beds", handovers: "Shift handovers", auditLog: "Audit log",
-    priceList: "Price list", setPrices: "Set prices", configuration: "Configuration", prepayment: "Prepayment", additionalServices: "Additional services",
-    reports: "Reports and finances", statistics: "Statistics", financialReport: "Financial Report", roomReport: "Room report", occupancyReport: "Occupancy report", localTaxReport: "Local Tax Report", paymentList: "Payment list", registrationBook: "Registration book", exportBookings: "Export bookings",
-    invoices: "Invoices", open: "Open", taxes: "Taxes", taxRates: "Tax rates",
-    reservationSystem: "Reservation system", paymentMethods: "Payment methods", amenities: "Amenities", notifications: "Notifications", licenseNumber: "License number",
-    salesChannels: "Sales channels", airbnb: "Airbnb", booking: "Booking", iCalendar: "iCalendar", employees: "Employees", profile: "Profile", hide: "Hide", show: "Show", notConfigured: "Not configured yet", backToOs: "Back to Black Swan OS",
+    priceList: "Price list", setPrices: "Set prices", configuration: "Configuration", additionalServices: "Additional services",
+    reports: "Reports and finances", financialReport: "Financial report", paymentList: "Payment list", registrationBook: "Registration book",
+    invoices: "Invoices", paymentMethods: "Payment methods",
+    salesChannels: "Sales channels", airbnb: "Airbnb", booking: "Booking", iCalendar: "iCalendar", employees: "Employees", profile: "Profile", hide: "Hide", show: "Show", backToOs: "Back to Black Swan OS",
   },
   es: {
-    calendar: "Calendario", premium: "Premium", bookings: "Reservas", reservationList: "Lista de reservas", clients: "Huéspedes", messageTemplates: "Plantillas de mensajes",
+    calendar: "Calendario", premium: "Premium", bookings: "Reservas", reservationList: "Lista de reservas", clients: "Huéspedes",
     operations: "Operación", dailyOperations: "Operación diaria", stayCockpit: "Stay cockpit", charges: "Cargos", roomBlocks: "Bloqueos", rooms: "Habitaciones y camas", handovers: "Entregas de turno", auditLog: "Auditoría",
-    priceList: "Tarifas", setPrices: "Definir precios", configuration: "Configuración", prepayment: "Prepago", additionalServices: "Servicios adicionales",
-    reports: "Reportes y finanzas", statistics: "Estadísticas", financialReport: "Reporte financiero", roomReport: "Reporte por habitación", occupancyReport: "Reporte de ocupación", localTaxReport: "Reporte de impuesto local", paymentList: "Lista de pagos", registrationBook: "Libro de registro", exportBookings: "Exportar reservas",
-    invoices: "Facturas", open: "Abiertas", taxes: "Impuestos", taxRates: "Tasas de impuesto",
-    reservationSystem: "Sistema de reservas", paymentMethods: "Métodos de pago", amenities: "Amenities", notifications: "Notificaciones", licenseNumber: "Número de licencia",
-    salesChannels: "Canales de venta", airbnb: "Airbnb", booking: "Booking", iCalendar: "iCalendar", employees: "Equipo", profile: "Perfil", hide: "Ocultar", show: "Mostrar", notConfigured: "Aún no configurado", backToOs: "Volver a Black Swan OS",
+    priceList: "Tarifas", setPrices: "Definir precios", configuration: "Configuración", additionalServices: "Servicios adicionales",
+    reports: "Reportes y finanzas", financialReport: "Reporte financiero", paymentList: "Lista de pagos", registrationBook: "Libro de registro",
+    invoices: "Facturas", paymentMethods: "Métodos de pago",
+    salesChannels: "Canales de venta", airbnb: "Airbnb", booking: "Booking", iCalendar: "iCalendar", employees: "Equipo", profile: "Perfil", hide: "Ocultar", show: "Mostrar", backToOs: "Volver a Black Swan OS",
   },
   de: {
-    calendar: "Kalender", premium: "Premium", bookings: "Buchungen", reservationList: "Reservierungsliste", clients: "Gäste", messageTemplates: "Nachrichtenvorlagen",
+    calendar: "Kalender", premium: "Premium", bookings: "Buchungen", reservationList: "Reservierungsliste", clients: "Gäste",
     operations: "Betrieb", dailyOperations: "Tagesbetrieb", stayCockpit: "Stay cockpit", charges: "Gebühren", roomBlocks: "Zimmerblöcke", rooms: "Zimmer & Betten", handovers: "Schichtübergaben", auditLog: "Prüfprotokoll",
-    priceList: "Preisliste", setPrices: "Preise festlegen", configuration: "Konfiguration", prepayment: "Vorauszahlung", additionalServices: "Zusatzleistungen",
-    reports: "Berichte und Finanzen", statistics: "Statistiken", financialReport: "Finanzbericht", roomReport: "Zimmerbericht", occupancyReport: "Belegungsbericht", localTaxReport: "Lokaler Steuerbericht", paymentList: "Zahlungsliste", registrationBook: "Melderegister", exportBookings: "Buchungen exportieren",
-    invoices: "Rechnungen", open: "Offen", taxes: "Steuern", taxRates: "Steuersätze",
-    reservationSystem: "Reservierungssystem", paymentMethods: "Zahlungsmethoden", amenities: "Ausstattung", notifications: "Benachrichtigungen", licenseNumber: "Lizenznummer",
-    salesChannels: "Vertriebskanäle", airbnb: "Airbnb", booking: "Booking", iCalendar: "iCalendar", employees: "Mitarbeiter", profile: "Profil", hide: "Ausblenden", show: "Einblenden", notConfigured: "Noch nicht konfiguriert", backToOs: "Zurück zu Black Swan OS",
+    priceList: "Preisliste", setPrices: "Preise festlegen", configuration: "Konfiguration", additionalServices: "Zusatzleistungen",
+    reports: "Berichte und Finanzen", financialReport: "Finanzbericht", paymentList: "Zahlungsliste", registrationBook: "Melderegister",
+    invoices: "Rechnungen", paymentMethods: "Zahlungsmethoden",
+    salesChannels: "Vertriebskanäle", airbnb: "Airbnb", booking: "Booking", iCalendar: "iCalendar", employees: "Mitarbeiter", profile: "Profil", hide: "Ausblenden", show: "Einblenden", backToOs: "Zurück zu Black Swan OS",
   },
 } as const
 
-type GroupKey = "bookings" | "operations" | "prices" | "reports" | "invoices" | "reservation" | "channels"
-type NavLinkProps = { href?: string; active?: boolean; icon?: React.ComponentType<{ className?: string }>; children: React.ReactNode; inset?: boolean; title?: string; dot?: "airbnb" | "booking" | "ical" }
+type GroupKey = "bookings" | "operations" | "prices" | "reports" | "channels"
+type NavLinkProps = { href: string; active?: boolean; icon?: React.ComponentType<{ className?: string }>; children: React.ReactNode; inset?: boolean; dot?: "airbnb" | "booking" | "ical" }
 
-function NavLink({ href, active = false, icon: Icon, children, inset = false, title, dot }: NavLinkProps) {
+function NavLink({ href, active = false, icon: Icon, children, inset = false, dot }: NavLinkProps) {
   const body = <>{Icon ? <Icon className="booking-reference-nav-icon h-4 w-4 shrink-0" /> : dot ? <span className={`booking-channel-dot is-${dot}`} /> : <span className="booking-reference-nav-spacer" />}<span className="booking-reference-nav-label truncate">{children}</span></>
-  const className = `booking-reference-nav-link ${active ? "is-active" : ""} ${inset ? "is-inset" : ""} ${href ? "" : "is-unavailable"}`
-  if (!href) return <span className={className} aria-disabled="true" title={title}>{body}</span>
+  const className = `booking-reference-nav-link ${active ? "is-active" : ""} ${inset ? "is-inset" : ""}`
   return <Link href={href} className={className}>{body}</Link>
 }
 
@@ -71,9 +67,7 @@ function groupForPath(pathname: string): GroupKey | null {
   if (/\/bookings\/(guests)?\/?$/.test(pathname) || /\/bookings\/?$/.test(pathname)) return "bookings"
   if (/\/bookings\/(activities|operations|charges|blocks|rooms|handovers|audit)(\/|$)/.test(pathname)) return "operations"
   if (/\/bookings\/(rates|extras)(\/|$)/.test(pathname)) return "prices"
-  if (/\/bookings\/payment-methods(\/|$)/.test(pathname)) return "reservation"
   if (/\/bookings\/(revenue|payments|registration-book)(\/|$)/.test(pathname)) return "reports"
-  if (/\/bookings\/invoices(\/|$)/.test(pathname)) return "invoices"
   if (/\/bookings\/channels(\/|$)/.test(pathname)) return "channels"
   return null
 }
@@ -97,7 +91,7 @@ export function BookingReferenceSidebar() {
       const saved = window.localStorage.getItem(SIDEBAR_GROUPS_KEY)
       if (saved) {
         const parsed = JSON.parse(saved) as GroupKey[]
-        if (Array.isArray(parsed)) setOpenGroups(new Set(parsed))
+        if (Array.isArray(parsed)) setOpenGroups(new Set(parsed.filter((key): key is GroupKey => ["bookings", "operations", "prices", "reports", "channels"].includes(key))))
       }
     } catch {}
   }, [])
@@ -132,12 +126,10 @@ export function BookingReferenceSidebar() {
 
     <nav className="booking-reference-nav">
       <NavLink href={href("/bookings/calendar")} active={active("/bookings/calendar")} icon={CalendarDays}>{c.calendar}</NavLink>
-      <NavLink icon={Crown} title={c.notConfigured}>{c.premium}</NavLink>
 
       <NavGroup label={c.bookings} icon={LayoutList} open={openGroups.has("bookings")} onToggle={() => toggleGroup("bookings")}>
         <NavLink href={href("/bookings")} active={pathname === href("/bookings")} inset>{c.reservationList}</NavLink>
         <NavLink href={href("/bookings/guests")} active={active("/bookings/guests")} inset>{c.clients}</NavLink>
-        <NavLink inset title={c.notConfigured}>{c.messageTemplates}</NavLink>
       </NavGroup>
 
       <NavGroup label={c.operations} icon={Wrench} open={openGroups.has("operations")} onToggle={() => toggleGroup("operations")}>
@@ -153,34 +145,17 @@ export function BookingReferenceSidebar() {
       <NavGroup label={c.priceList} icon={BadgeDollarSign} open={openGroups.has("prices")} onToggle={() => toggleGroup("prices")}>
         <NavLink href={href("/bookings/rates")} active={ratesActive && selectedView !== "configuration"} inset>{c.setPrices}</NavLink>
         <NavLink href={`${href("/bookings/rates")}?view=configuration`} active={ratesActive && selectedView === "configuration"} inset>{c.configuration}</NavLink>
-        <NavLink inset title={c.notConfigured}>{c.prepayment}</NavLink>
         <NavLink href={href("/bookings/extras")} active={active("/bookings/extras")} inset>{c.additionalServices}</NavLink>
       </NavGroup>
 
       <NavGroup label={c.reports} icon={LineChart} open={openGroups.has("reports")} onToggle={() => toggleGroup("reports")}>
-        <NavLink inset title={c.notConfigured}>{c.statistics}</NavLink>
         <NavLink href={href("/bookings/revenue")} active={active("/bookings/revenue")} inset>{c.financialReport}</NavLink>
-        <NavLink inset title={c.notConfigured}>{c.roomReport}</NavLink>
-        <NavLink inset title={c.notConfigured}>{c.occupancyReport}</NavLink>
-        <NavLink inset title={c.notConfigured}>{c.localTaxReport}</NavLink>
         <NavLink href={href("/bookings/payments")} active={active("/bookings/payments")} inset>{c.paymentList}</NavLink>
         <NavLink href={href("/bookings/registration-book")} active={active("/bookings/registration-book")} inset>{c.registrationBook}</NavLink>
-        <NavLink inset title={c.notConfigured}>{c.exportBookings}</NavLink>
       </NavGroup>
 
-      <NavGroup label={c.invoices} icon={ReceiptText} open={openGroups.has("invoices")} onToggle={() => toggleGroup("invoices")}>
-        <NavLink href={href("/bookings/invoices")} active={active("/bookings/invoices")} inset>{c.open}</NavLink>
-        <NavLink inset title={c.notConfigured}>{c.taxes}</NavLink>
-        <NavLink inset title={c.notConfigured}>{c.taxRates}</NavLink>
-      </NavGroup>
-
-      <NavGroup label={c.reservationSystem} icon={Settings2} open={openGroups.has("reservation")} onToggle={() => toggleGroup("reservation")}>
-        <NavLink inset title={c.notConfigured}>{c.configuration}</NavLink>
-        <NavLink href={href("/bookings/payment-methods")} active={active("/bookings/payment-methods")} inset>{c.paymentMethods}</NavLink>
-        <NavLink inset title={c.notConfigured}>{c.amenities}</NavLink>
-        <NavLink inset title={c.notConfigured}>{c.notifications}</NavLink>
-        <NavLink inset title={c.notConfigured}>{c.licenseNumber}</NavLink>
-      </NavGroup>
+      <NavLink href={href("/bookings/invoices")} active={active("/bookings/invoices")} icon={ReceiptText}>{c.invoices}</NavLink>
+      <NavLink href={href("/bookings/payment-methods")} active={active("/bookings/payment-methods")} icon={Settings2}>{c.paymentMethods}</NavLink>
 
       <NavGroup label={c.salesChannels} icon={Share2} open={openGroups.has("channels")} onToggle={() => toggleGroup("channels")}>
         <NavLink href={`${href("/bookings/channels")}?channel=airbnb`} active={active("/bookings/channels") && selectedChannel === "airbnb"} inset dot="airbnb">{c.airbnb}</NavLink>
