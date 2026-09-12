@@ -210,3 +210,156 @@
     max-width: 100vw !important;
   }
 }
+
+/* Booking 9.7 consistency contract.
+   Applies to every workspace section except the calendar, whose density and
+   geometry have their own parity contract. This is presentation only. */
+.booking-workspace:not([data-booking-section="calendar"]) .booking-calendar-bedbooking-shell {
+  min-height: 100dvh;
+  background: #171512 !important;
+  color: #e7e1d8;
+}
+
+.booking-workspace:not([data-booking-section="calendar"]) .booking-calendar-bedbooking-shell > section,
+.booking-workspace:not([data-booking-section="calendar"]) .booking-calendar-bedbooking-shell > div {
+  max-width: none;
+}
+
+.booking-workspace:not([data-booking-section="calendar"]) .booking-calendar-bedbooking-shell header,
+.booking-workspace:not([data-booking-section="calendar"]) .booking-calendar-bedbooking-shell [data-slot="page-header"] {
+  min-height: 58px !important;
+  border-bottom: 1px solid rgba(231,225,216,.07) !important;
+  background: #211e1a !important;
+}
+
+.booking-workspace:not([data-booking-section="calendar"]) .booking-calendar-bedbooking-shell header h1,
+.booking-workspace:not([data-booking-section="calendar"]) .booking-calendar-bedbooking-shell [data-slot="page-header"] h1 {
+  font-size: 15px !important;
+  line-height: 20px !important;
+  font-weight: 500 !important;
+  letter-spacing: -.01em !important;
+  color: #e7e1d8 !important;
+}
+
+.booking-workspace:not([data-booking-section="calendar"]) .booking-calendar-bedbooking-shell header p,
+.booking-workspace:not([data-booking-section="calendar"]) .booking-calendar-bedbooking-shell [data-slot="page-header"] p {
+  font-size: 11px !important;
+  line-height: 16px !important;
+  color: #8f867b !important;
+}
+
+.booking-workspace:not([data-booking-section="calendar"]) .booking-calendar-bedbooking-shell button,
+.booking-workspace:not([data-booking-section="calendar"]) .booking-calendar-bedbooking-shell a,
+.booking-workspace:not([data-booking-section="calendar"]) .booking-calendar-bedbooking-shell input,
+.booking-workspace:not([data-booking-section="calendar"]) .booking-calendar-bedbooking-shell select,
+.booking-workspace:not([data-booking-section="calendar"]) .booking-calendar-bedbooking-shell textarea,
+.booking-workspace:not([data-booking-section="calendar"]) .booking-calendar-bedbooking-shell [role="combobox"] {
+  border-radius: 0 !important;
+}
+
+.booking-workspace:not([data-booking-section="calendar"]) .booking-calendar-bedbooking-shell button,
+.booking-workspace:not([data-booking-section="calendar"]) .booking-calendar-bedbooking-shell a[role="button"],
+.booking-workspace:not([data-booking-section="calendar"]) .booking-calendar-bedbooking-shell input,
+.booking-workspace:not([data-booking-section="calendar"]) .booking-calendar-bedbooking-shell select,
+.booking-workspace:not([data-booking-section="calendar"]) .booking-calendar-bedbooking-shell [role="combobox"] {
+  min-height: 36px;
+}
+
+.booking-workspace:not([data-booking-section="calendar"]) .booking-calendar-bedbooking-shell button:focus-visible,
+.booking-workspace:not([data-booking-section="calendar"]) .booking-calendar-bedbooking-shell a:focus-visible,
+.booking-workspace:not([data-booking-section="calendar"]) .booking-calendar-bedbooking-shell input:focus-visible,
+.booking-workspace:not([data-booking-section="calendar"]) .booking-calendar-bedbooking-shell select:focus-visible,
+.booking-workspace:not([data-booking-section="calendar"]) .booking-calendar-bedbooking-shell textarea:focus-visible,
+.booking-workspace:not([data-booking-section="calendar"]) .booking-calendar-bedbooking-shell [role="combobox"]:focus-visible {
+  outline: 2px solid #8fb79f !important;
+  outline-offset: 1px !important;
+  box-shadow: none !important;
+}
+
+.booking-workspace:not([data-booking-section="calendar"]) .booking-calendar-bedbooking-shell table {
+  border-collapse: collapse;
+}
+
+.booking-workspace:not([data-booking-section="calendar"]) .booking-calendar-bedbooking-shell table thead {
+  background: #211e1a !important;
+  color: #8f867b !important;
+}
+
+.booking-workspace:not([data-booking-section="calendar"]) .booking-calendar-bedbooking-shell table th {
+  min-height: 34px;
+  font-size: 10px !important;
+  font-weight: 500 !important;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+
+.booking-workspace:not([data-booking-section="calendar"]) .booking-calendar-bedbooking-shell table tbody tr {
+  border-bottom: 1px solid rgba(231,225,216,.045) !important;
+}
+
+.booking-workspace:not([data-booking-section="calendar"]) .booking-calendar-bedbooking-shell table tbody tr:hover {
+  background: #211e1a !important;
+}
+
+.booking-workspace:not([data-booking-section="calendar"]) .booking-calendar-bedbooking-shell table td {
+  vertical-align: middle;
+}
+
+.booking-workspace:not([data-booking-section="calendar"]) .booking-calendar-bedbooking-shell [data-slot="card"] {
+  border-radius: 0 !important;
+  border-color: rgba(231,225,216,.06) !important;
+  background: #211e1a !important;
+  box-shadow: none !important;
+}
+
+.booking-workspace:not([data-booking-section="calendar"]) .booking-calendar-bedbooking-shell [data-slot="badge"] {
+  border-radius: 0 !important;
+}
+
+.booking-workspace:not([data-booking-section="calendar"]) .booking-calendar-bedbooking-shell [aria-busy="true"],
+.booking-workspace:not([data-booking-section="calendar"]) .booking-calendar-bedbooking-shell .animate-pulse {
+  cursor: progress;
+}
+
+.booking-workspace:not([data-booking-section="calendar"]) .booking-calendar-bedbooking-shell :disabled {
+  cursor: not-allowed;
+  opacity: .46;
+}
+
+.booking-workspace:not([data-booking-section="calendar"]) .booking-calendar-bedbooking-shell .overflow-auto,
+.booking-workspace:not([data-booking-section="calendar"]) .booking-calendar-bedbooking-shell .overflow-x-auto {
+  scrollbar-color: #4a433b #171512;
+  scrollbar-width: thin;
+}
+
+@media (max-width: 640px) {
+  .booking-workspace:not([data-booking-section="calendar"]) .booking-calendar-bedbooking-shell header,
+  .booking-workspace:not([data-booking-section="calendar"]) .booking-calendar-bedbooking-shell [data-slot="page-header"] {
+    min-height: auto !important;
+    align-items: flex-start !important;
+    padding: 10px 12px !important;
+  }
+
+  .booking-workspace:not([data-booking-section="calendar"]) .booking-calendar-bedbooking-shell button,
+  .booking-workspace:not([data-booking-section="calendar"]) .booking-calendar-bedbooking-shell a[role="button"],
+  .booking-workspace:not([data-booking-section="calendar"]) .booking-calendar-bedbooking-shell input,
+  .booking-workspace:not([data-booking-section="calendar"]) .booking-calendar-bedbooking-shell select,
+  .booking-workspace:not([data-booking-section="calendar"]) .booking-calendar-bedbooking-shell [role="combobox"] {
+    min-height: 44px;
+  }
+
+  .booking-workspace:not([data-booking-section="calendar"]) .booking-calendar-bedbooking-shell table {
+    font-size: 11px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .booking-workspace:not([data-booking-section="calendar"]) .booking-calendar-bedbooking-shell *,
+  .booking-workspace:not([data-booking-section="calendar"]) .booking-calendar-bedbooking-shell *::before,
+  .booking-workspace:not([data-booking-section="calendar"]) .booking-calendar-bedbooking-shell *::after {
+    scroll-behavior: auto !important;
+    transition-duration: .01ms !important;
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}
