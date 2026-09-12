@@ -109,7 +109,7 @@ function NavLink({ href, active = false, icon: Icon, children, inset = false }: 
     <span className="booking-reference-nav-label truncate">{children}</span>
   </>
   const className = `booking-reference-nav-link ${active ? "is-active" : ""} ${inset ? "is-inset" : ""}`
-  return <Link href={href} className={className}>{body}</Link>
+  return <Link href={href} prefetch={false} className={className}>{body}</Link>
 }
 
 function NavGroup({ label, icon: Icon, open, onToggle, children }: { label: string; icon: React.ComponentType<{ className?: string }>; open: boolean; onToggle: () => void; children: React.ReactNode }) {
@@ -172,7 +172,7 @@ export function BookingReferenceSidebar() {
 
   return <aside className={`booking-reference-sidebar ${collapsed ? "is-collapsed" : ""}`} aria-label="Booking navigation" data-booking-reference-sidebar>
     <div className="booking-reference-brand">
-      <Link href={href("/os")} className="booking-reference-brand-home" aria-label={c.backToOs} title={c.backToOs}>
+      <Link href={href("/os")} prefetch={false} className="booking-reference-brand-home" aria-label={c.backToOs} title={c.backToOs}>
         <img src="/blackswan-logo.png" alt="Black Swan" className="booking-reference-logo h-5 w-5 object-contain" />
         <span className="booking-reference-brand-name">BlackSwan</span>
       </Link>
