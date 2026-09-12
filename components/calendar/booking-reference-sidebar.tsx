@@ -14,7 +14,6 @@ import {
   LineChart,
   ReceiptText,
   Settings2,
-  Share2,
   UserRound,
   Users,
   Wrench,
@@ -29,32 +28,29 @@ const copy = {
     operations: "Operations", dailyOperations: "Daily operations", stayCockpit: "Stay cockpit", charges: "Charges", roomBlocks: "Room blocks", rooms: "Rooms & beds", handovers: "Shift handovers", auditLog: "Audit log",
     priceList: "Price list", setPrices: "Set prices", configuration: "Configuration", additionalServices: "Additional services",
     reports: "Reports and finances", financialReport: "Financial report", paymentList: "Payment list", registrationBook: "Registration book",
-    invoices: "Invoices", paymentMethods: "Payment methods",
-    salesChannels: "Sales channels", airbnb: "Airbnb", booking: "Booking", iCalendar: "iCalendar", employees: "Employees", profile: "Profile", hide: "Hide", show: "Show", backToOs: "Back to Black Swan OS",
+    invoices: "Invoices", paymentMethods: "Payment methods", employees: "Employees", profile: "Profile", hide: "Hide", show: "Show", backToOs: "Back to Black Swan OS",
   },
   es: {
     calendar: "Calendario", premium: "Premium", bookings: "Reservas", reservationList: "Lista de reservas", clients: "Huéspedes",
     operations: "Operación", dailyOperations: "Operación diaria", stayCockpit: "Stay cockpit", charges: "Cargos", roomBlocks: "Bloqueos", rooms: "Habitaciones y camas", handovers: "Entregas de turno", auditLog: "Auditoría",
     priceList: "Tarifas", setPrices: "Definir precios", configuration: "Configuración", additionalServices: "Servicios adicionales",
     reports: "Reportes y finanzas", financialReport: "Reporte financiero", paymentList: "Lista de pagos", registrationBook: "Libro de registro",
-    invoices: "Facturas", paymentMethods: "Métodos de pago",
-    salesChannels: "Canales de venta", airbnb: "Airbnb", booking: "Booking", iCalendar: "iCalendar", employees: "Equipo", profile: "Perfil", hide: "Ocultar", show: "Mostrar", backToOs: "Volver a Black Swan OS",
+    invoices: "Facturas", paymentMethods: "Métodos de pago", employees: "Equipo", profile: "Perfil", hide: "Ocultar", show: "Mostrar", backToOs: "Volver a Black Swan OS",
   },
   de: {
     calendar: "Kalender", premium: "Premium", bookings: "Buchungen", reservationList: "Reservierungsliste", clients: "Gäste",
     operations: "Betrieb", dailyOperations: "Tagesbetrieb", stayCockpit: "Stay cockpit", charges: "Gebühren", roomBlocks: "Zimmerblöcke", rooms: "Zimmer & Betten", handovers: "Schichtübergaben", auditLog: "Prüfprotokoll",
     priceList: "Preisliste", setPrices: "Preise festlegen", configuration: "Konfiguration", additionalServices: "Zusatzleistungen",
     reports: "Berichte und Finanzen", financialReport: "Finanzbericht", paymentList: "Zahlungsliste", registrationBook: "Melderegister",
-    invoices: "Rechnungen", paymentMethods: "Zahlungsmethoden",
-    salesChannels: "Vertriebskanäle", airbnb: "Airbnb", booking: "Booking", iCalendar: "iCalendar", employees: "Mitarbeiter", profile: "Profil", hide: "Ausblenden", show: "Einblenden", backToOs: "Zurück zu Black Swan OS",
+    invoices: "Rechnungen", paymentMethods: "Zahlungsmethoden", employees: "Mitarbeiter", profile: "Profil", hide: "Ausblenden", show: "Einblenden", backToOs: "Zurück zu Black Swan OS",
   },
 } as const
 
-type GroupKey = "bookings" | "operations" | "prices" | "reports" | "channels"
-type NavLinkProps = { href: string; active?: boolean; icon?: React.ComponentType<{ className?: string }>; children: React.ReactNode; inset?: boolean; dot?: "airbnb" | "booking" | "ical" }
+type GroupKey = "bookings" | "operations" | "prices" | "reports"
+type NavLinkProps = { href: string; active?: boolean; icon?: React.ComponentType<{ className?: string }>; children: React.ReactNode; inset?: boolean }
 
-function NavLink({ href, active = false, icon: Icon, children, inset = false, dot }: NavLinkProps) {
-  const body = <>{Icon ? <Icon className="booking-reference-nav-icon h-4 w-4 shrink-0" /> : dot ? <span className={`booking-channel-dot is-${dot}`} /> : <span className="booking-reference-nav-spacer" />}<span className="booking-reference-nav-label truncate">{children}</span></>
+function NavLink({ href, active = false, icon: Icon, children, inset = false }: NavLinkProps) {
+  const body = <>{Icon ? <Icon className="booking-reference-nav-icon h-4 w-4 shrink-0" /> : <span className="booking-reference-nav-spacer" />}<span className="booking-reference-nav-label truncate">{children}</span></>
   const className = `booking-reference-nav-link ${active ? "is-active" : ""} ${inset ? "is-inset" : ""}`
   return <Link href={href} className={className}>{body}</Link>
 }
@@ -68,7 +64,6 @@ function groupForPath(pathname: string): GroupKey | null {
   if (/\/bookings\/(activities|operations|charges|blocks|rooms|handovers|audit)(\/|$)/.test(pathname)) return "operations"
   if (/\/bookings\/(rates|extras)(\/|$)/.test(pathname)) return "prices"
   if (/\/bookings\/(revenue|payments|registration-book)(\/|$)/.test(pathname)) return "reports"
-  if (/\/bookings\/channels(\/|$)/.test(pathname)) return "channels"
   return null
 }
 
@@ -80,7 +75,6 @@ export function BookingReferenceSidebar() {
   const base = `/${language}`
   const href = (path: string) => `${base}${path}`
   const active = (path: string) => pathname === href(path) || pathname.startsWith(`${href(path)}/`)
-  const selectedChannel = searchParams.get("channel")
   const selectedView = searchParams.get("view")
   const ratesActive = active("/bookings/rates")
   const [collapsed, setCollapsed] = useState(false)
@@ -91,7 +85,7 @@ export function BookingReferenceSidebar() {
       const saved = window.localStorage.getItem(SIDEBAR_GROUPS_KEY)
       if (saved) {
         const parsed = JSON.parse(saved) as GroupKey[]
-        if (Array.isArray(parsed)) setOpenGroups(new Set(parsed.filter((key): key is GroupKey => ["bookings", "operations", "prices", "reports", "channels"].includes(key))))
+        if (Array.isArray(parsed)) setOpenGroups(new Set(parsed.filter((key): key is GroupKey => ["bookings", "operations", "prices", "reports"].includes(key))))
       }
     } catch {}
   }, [])
@@ -156,13 +150,6 @@ export function BookingReferenceSidebar() {
 
       <NavLink href={href("/bookings/invoices")} active={active("/bookings/invoices")} icon={ReceiptText}>{c.invoices}</NavLink>
       <NavLink href={href("/bookings/payment-methods")} active={active("/bookings/payment-methods")} icon={Settings2}>{c.paymentMethods}</NavLink>
-
-      <NavGroup label={c.salesChannels} icon={Share2} open={openGroups.has("channels")} onToggle={() => toggleGroup("channels")}>
-        <NavLink href={`${href("/bookings/channels")}?channel=airbnb`} active={active("/bookings/channels") && selectedChannel === "airbnb"} inset dot="airbnb">{c.airbnb}</NavLink>
-        <NavLink href={`${href("/bookings/channels")}?channel=booking`} active={active("/bookings/channels") && selectedChannel === "booking"} inset dot="booking">{c.booking}</NavLink>
-        <NavLink href={`${href("/bookings/channels")}?channel=ical`} active={active("/bookings/channels") && selectedChannel === "ical"} inset dot="ical">{c.iCalendar}</NavLink>
-      </NavGroup>
-
       <NavLink href={href("/bookings/employees")} active={active("/bookings/employees")} icon={Users}>{c.employees}</NavLink>
       <NavLink href={href("/bookings/profile")} active={active("/bookings/profile")} icon={UserRound}>{c.profile}</NavLink>
     </nav>
