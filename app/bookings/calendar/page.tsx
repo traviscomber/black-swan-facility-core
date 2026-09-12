@@ -182,18 +182,33 @@ export default function BookingsCalendarPage() {
     return () => clearInterval(interval)
   }, [undoExpiry])
 
-  const visibleBeds = useMemo(() => {
-    const term = search.trim().toLowerCase()
-    return beds.filter((bed) => {
+  const searchTerm = search.trim().toLowerCase()
+  const roomMatchedBedIds = useMemo(() => {
+    const matched = new Set<string>()
+    if (!searchTerm) return matched
+    for (const bed of beds) {
       const propertyName = bed.room.location_ref?.name?.toLowerCase() ?? ""
-      return (locationId === "all" || bed.room.location_id === locationId) && (!term || propertyName.includes(term) || bed.room.room_number.toLowerCase().includes(term) || bed.bed_number.toLowerCase().includes(term) || bed.bed_type.toLowerCase().includes(term))
-    })
-  }, [beds, locationId, search])
+      if (propertyName.includes(searchTerm) || bed.room.room_number.toLowerCase().includes(searchTerm) || bed.bed_number.toLowerCase().includes(searchTerm) || bed.bed_type.toLowerCase().includes(searchTerm)) matched.add(bed.id)
+    }
+    return matched
+  }, [beds, searchTerm])
+  const guestMatchedBedIds = useMemo(() => {
+    const matched = new Set<string>()
+    if (!searchTerm) return matched
+    for (const event of events) {
+      const searchableLabel = `${event.guest_name ?? ""} ${event.label ?? ""}`.toLowerCase()
+      if (searchableLabel.includes(searchTerm)) matched.add(event.bed_id)
+    }
+    return matched
+  }, [events, searchTerm])
+  const visibleBeds = useMemo(() => beds.filter((bed) => (locationId === "all" || bed.room.location_id === locationId) && (!searchTerm || roomMatchedBedIds.has(bed.id) || guestMatchedBedIds.has(bed.id))), [beds, guestMatchedBedIds, locationId, roomMatchedBedIds, searchTerm])
   const visibleBedIds = useMemo(() => new Set(visibleBeds.map((bed) => bed.id)), [visibleBeds])
-  const visibleEvents = useMemo(() => {
-    const term = search.trim().toLowerCase()
-    return events.filter((event) => visibleBedIds.has(event.bed_id) && (event.event_type === "block" || status === "all" || normalizedStatus(event.status) === status) && (!term || event.event_type === "block" || (event.guest_name ?? event.label).toLowerCase().includes(term)))
-  }, [events, search, status, visibleBedIds])
+  const visibleEvents = useMemo(() => events.filter((event) => {
+    if (!visibleBedIds.has(event.bed_id)) return false
+    if (event.event_type !== "block" && status !== "all" && normalizedStatus(event.status) !== status) return false
+    if (!searchTerm || roomMatchedBedIds.has(event.bed_id)) return true
+    return `${event.guest_name ?? ""} ${event.label ?? ""}`.toLowerCase().includes(searchTerm)
+  }), [events, roomMatchedBedIds, searchTerm, status, visibleBedIds])
   const visibleReservationEvents = useMemo(() => visibleEvents.filter((event) => event.event_type === "reservation"), [visibleEvents])
   const eventsByBed = useMemo(() => {
     const map = new Map<string, CalendarEvent[]>()
