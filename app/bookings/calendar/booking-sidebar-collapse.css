@@ -1,11 +1,55 @@
 /* Booking sidebar collapse contract.
-   Keep the icon rail physically narrow so the calendar reclaims the released width. */
+   Collapsed mode is an icon rail only: no labels or subsections, maximum calendar width. */
 .booking-workspace .booking-reference-sidebar.is-collapsed {
-  width: 56px !important;
-  min-width: 56px !important;
-  max-width: 56px !important;
-  flex: 0 0 56px !important;
-  flex-basis: 56px !important;
+  width: 48px !important;
+  min-width: 48px !important;
+  max-width: 48px !important;
+  flex: 0 0 48px !important;
+  flex-basis: 48px !important;
+}
+
+.booking-workspace .booking-reference-sidebar.is-collapsed .booking-reference-brand {
+  padding-inline: 0 !important;
+  justify-content: center !important;
+}
+
+.booking-workspace .booking-reference-sidebar.is-collapsed .booking-reference-logo {
+  width: 26px !important;
+  height: 26px !important;
+  flex-basis: 26px !important;
+}
+
+.booking-workspace .booking-reference-sidebar.is-collapsed .booking-reference-brand-name,
+.booking-workspace .booking-reference-sidebar.is-collapsed .booking-reference-brand-pill,
+.booking-workspace .booking-reference-sidebar.is-collapsed .booking-reference-nav-label,
+.booking-workspace .booking-reference-sidebar.is-collapsed .booking-reference-chevron,
+.booking-workspace .booking-reference-sidebar.is-collapsed .booking-reference-nav-spacer,
+.booking-workspace .booking-reference-sidebar.is-collapsed .booking-reference-nav-children {
+  display: none !important;
+}
+
+.booking-workspace .booking-reference-sidebar.is-collapsed .booking-reference-nav {
+  padding-inline: 6px !important;
+  overflow-x: hidden !important;
+}
+
+.booking-workspace .booking-reference-sidebar.is-collapsed .booking-reference-nav-link,
+.booking-workspace .booking-reference-sidebar.is-collapsed .booking-reference-nav-parent,
+.booking-workspace .booking-reference-sidebar.is-collapsed .booking-reference-hide {
+  width: 36px !important;
+  min-width: 36px !important;
+  margin-inline: 0 !important;
+  padding-inline: 0 !important;
+  justify-content: center !important;
+  gap: 0 !important;
+}
+
+.booking-workspace .booking-reference-sidebar.is-collapsed .booking-reference-nav-link.is-inset {
+  display: none !important;
+}
+
+.booking-workspace .booking-reference-sidebar.is-collapsed .booking-reference-sidebar-footer {
+  padding-inline: 6px !important;
 }
 
 .booking-workspace .booking-calendar-reference-frame > .booking-calendar-bedbooking-shell {
