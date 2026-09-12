@@ -80,9 +80,9 @@ export default function BookingsPage() {
           <p className="text-[11px] text-[#8f867b]">{filtered.length} / {rows.length}</p>
         </div>
         <div className="flex items-center gap-2">
-          <Link href={`/${language}/bookings/calendar`} className="inline-flex h-9 items-center gap-2 bg-[#2b2722] px-3 text-xs hover:bg-[#332e28]"><CalendarDays className="h-4 w-4" />{c.calendar}</Link>
+          <Link href={`/${language}/bookings/calendar`} prefetch={false} className="inline-flex h-9 items-center gap-2 bg-[#2b2722] px-3 text-xs hover:bg-[#332e28]"><CalendarDays className="h-4 w-4" />{c.calendar}</Link>
           <button type="button" onClick={() => void load()} className="inline-flex h-9 w-9 items-center justify-center bg-[#2b2722]" aria-label={c.refresh}><RefreshCw className="h-4 w-4" /></button>
-          <Link href={`/${language}/bookings/calendar?new=1`} className="inline-flex h-9 items-center gap-2 bg-[#6f8373] px-4 text-xs font-medium text-[#171512]"><Plus className="h-4 w-4" />{c.add}</Link>
+          <Link href={`/${language}/bookings/calendar?new=1`} prefetch={false} className="inline-flex h-9 items-center gap-2 bg-[#6f8373] px-4 text-xs font-medium text-[#171512]"><Plus className="h-4 w-4" />{c.add}</Link>
         </div>
       </header>
 
@@ -115,7 +115,7 @@ export default function BookingsPage() {
             {loading ? Array.from({ length: 8 }).map((_, index) => <tr key={index} className="animate-pulse"><td colSpan={6} className="px-4 py-5"><div className="h-3 w-2/3 bg-[#2b2722]" /></td></tr>) : null}
             {!loading && filtered.map((row) => (
               <tr key={row.id} className="hover:bg-[#211e1a]">
-                <td className="px-4 py-3"><Link href={`/${language}/bookings/reservations/${row.id}`} className="block outline-none focus-visible:ring-1 focus-visible:ring-[#6f8373]"><div className="font-medium text-[#e7e1d8] hover:text-[#a9b7aa]">{row.guest_name}</div><div className="mt-1 text-[10px] text-[#8f867b]">{row.guest_email ?? "—"}</div></Link></td>
+                <td className="px-4 py-3"><Link href={`/${language}/bookings/reservations/${row.id}`} prefetch={false} className="block outline-none focus-visible:ring-1 focus-visible:ring-[#6f8373]"><div className="font-medium text-[#e7e1d8] hover:text-[#a9b7aa]">{row.guest_name}</div><div className="mt-1 text-[10px] text-[#8f867b]">{row.guest_email ?? "—"}</div></Link></td>
                 <td className="px-3 py-3 text-[#b9b0a4]">{row.check_in} → {row.check_out}</td>
                 <td className="px-3 py-3"><div className="flex items-center gap-2 text-[#b9b0a4]"><BedDouble className="h-3.5 w-3.5 text-[#8f867b]" />{row.room?.room_number ?? "—"}</div><div className="mt-1 text-[10px] text-[#8f867b]">{row.room?.location?.name ?? ""}</div></td>
                 <td className="px-3 py-3"><span className="inline-flex items-center gap-1.5 text-[#b9b0a4]"><Users className="h-3.5 w-3.5" />{row.num_guests ?? 1}</span></td>
