@@ -1,0 +1,20 @@
+/* Booking sidebar collapse contract.
+   Keep the icon rail physically narrow so the calendar reclaims the released width. */
+.booking-workspace .booking-reference-sidebar.is-collapsed {
+  width: 56px !important;
+  min-width: 56px !important;
+  max-width: 56px !important;
+  flex: 0 0 56px !important;
+  flex-basis: 56px !important;
+}
+
+.booking-workspace .booking-calendar-reference-frame > .booking-calendar-bedbooking-shell {
+  min-width: 0;
+  flex: 1 1 0%;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .booking-workspace .booking-reference-sidebar {
+    transition: none !important;
+  }
+}
