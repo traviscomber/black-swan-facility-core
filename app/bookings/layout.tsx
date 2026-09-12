@@ -15,6 +15,7 @@ import "./calendar/bedbooking-density.css"
 import "./calendar/booking-pro-polish.css"
 import "./calendar/booking-visual-parity-v2.css"
 import "./calendar/booking-premium-final.css"
+import "./calendar/booking-sidebar-collapse.css"
 
 const ROUTE_LOCALES = new Set(["en", "es", "de"])
 const BOOKING_LAYOUT_LOCALE = { en: "en", es: "es", de: "de" } as const
