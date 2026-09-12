@@ -4,7 +4,6 @@ import type React from "react"
 import { usePathname } from "next/navigation"
 import { AccessGate } from "@/components/access/access-gate"
 import { BookingsLegacyLocalizationBridge } from "@/components/bookings-legacy-localization-bridge"
-import { BookingMobileNav } from "@/components/calendar/booking-mobile-nav"
 import { BookingReferenceSidebar } from "@/components/calendar/booking-reference-sidebar"
 import { BOOKING_TIME_ZONE } from "@/lib/booking/timezone"
 import { useLanguage } from "@/lib/hooks/use-language"
@@ -44,7 +43,7 @@ export default function BookingsLayout({ children }: { children: React.ReactNode
         <BookingsLegacyLocalizationBridge />
         <div className="booking-calendar-reference-frame">
           <BookingReferenceSidebar />
-          <main className="booking-calendar-bedbooking-shell min-w-0"><BookingMobileNav />{children}</main>
+          <main className="booking-calendar-bedbooking-shell min-w-0">{children}</main>
         </div>
       </div>
     </AccessGate>
