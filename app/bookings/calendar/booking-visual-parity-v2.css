@@ -195,27 +195,63 @@
   opacity: .55;
 }
 
-/* Reservation bars: BedBooking geometry, contemporary Black Swan finish. */
+/* Reservation bars: closed trapezoid silhouette with a dedicated shape layer.
+   The outer polygon is the stroke and the inset polygon is the fill, so diagonal
+   edges stay complete instead of inheriting a rectangular CSS border. */
 .booking-workspace[data-booking-section="calendar"] [data-calendar-row] button.absolute {
   top: 4px !important;
   height: 37px !important;
-  border: 1px solid rgba(205,205,205,.62) !important;
   padding: 0 14px 0 16px !important;
-  background: #292a29 !important;
   color: #f0ede8 !important;
   font-size: 11.5px !important;
   line-height: 1 !important;
-  clip-path: polygon(11px 0, 100% 0, calc(100% - 11px) 100%, 0 100%) !important;
-  overflow: hidden !important;
   box-shadow: none !important;
   border-radius: 0 !important;
+}
+
+.booking-workspace[data-booking-section="calendar"] [data-calendar-row] button.absolute:not([class*="border-zinc"]) {
+  --booking-shape-fill: #292a29;
+  --booking-shape-stroke: rgba(205,205,205,.62);
+  border: 0 !important;
+  background: transparent !important;
+  clip-path: none !important;
+  overflow: visible !important;
+  isolation: isolate;
+}
+
+.booking-workspace[data-booking-section="calendar"] [data-calendar-row] button.absolute:not([class*="border-zinc"])::before,
+.booking-workspace[data-booking-section="calendar"] [data-calendar-row] button.absolute:not([class*="border-zinc"])::after {
+  content: "";
+  position: absolute;
+  pointer-events: none;
+  transition: background-color 90ms ease, opacity 90ms ease;
+}
+
+.booking-workspace[data-booking-section="calendar"] [data-calendar-row] button.absolute:not([class*="border-zinc"])::before {
+  inset: 0;
+  z-index: 0;
+  background: var(--booking-shape-stroke);
+  clip-path: polygon(11px 0, 100% 0, calc(100% - 11px) 100%, 0 100%);
+}
+
+.booking-workspace[data-booking-section="calendar"] [data-calendar-row] button.absolute:not([class*="border-zinc"])::after {
+  inset: 1px;
+  z-index: 1;
+  background: var(--booking-shape-fill);
+  clip-path: polygon(10px 0, 100% 0, calc(100% - 10px) 100%, 0 100%);
+}
+
+.booking-workspace[data-booking-section="calendar"] [data-calendar-row] button.absolute:not([class*="border-zinc"]) > span,
+.booking-workspace[data-booking-section="calendar"] [data-calendar-row] button.absolute:not([class*="border-zinc"]) > div {
+  z-index: 2;
 }
 
 /* Blocks remain rectangular and visually distinct from guest stays. */
 .booking-workspace[data-booking-section="calendar"] [data-calendar-row] button.absolute[class*="border-zinc"] {
   clip-path: none !important;
-  border-color: rgba(130,130,130,.48) !important;
+  border: 1px solid rgba(130,130,130,.48) !important;
   background: #222321 !important;
+  overflow: hidden !important;
 }
 
 .booking-workspace[data-booking-section="calendar"] [data-calendar-row] button.absolute > div:first-of-type {
@@ -237,20 +273,42 @@
   display: none;
 }
 
-/* Same lifecycle state = same neutral reservation surface. */
+/* Same lifecycle state keeps the neutral BedBooking surface; only exceptions tint it. */
 .booking-workspace[data-booking-section="calendar"] [data-calendar-row] button.absolute[class*="border-amber-400"],
 .booking-workspace[data-booking-section="calendar"] [data-calendar-row] button.absolute[class*="border-white"],
 .booking-workspace[data-booking-section="calendar"] [data-calendar-row] button.absolute[class*="border-emerald-500"],
 .booking-workspace[data-booking-section="calendar"] [data-calendar-row] button.absolute[class*="border-slate-500"] {
-  border-color: rgba(205,205,205,.62) !important;
-  background: #292a29 !important;
+  --booking-shape-fill: #292a29;
+  --booking-shape-stroke: rgba(205,205,205,.62);
+  border-color: transparent !important;
+  background: transparent !important;
   color: #f0ede8 !important;
 }
 
 .booking-workspace[data-booking-section="calendar"] [data-calendar-row] button.absolute[class*="border-red-500"] {
-  border-color: rgba(170,99,90,.72) !important;
-  background: #292322 !important;
+  --booking-shape-fill: #292322;
+  --booking-shape-stroke: rgba(170,99,90,.72);
+  border-color: transparent !important;
+  background: transparent !important;
   color: #d4c1bc !important;
+}
+
+/* Today edge indicators sit inside the silhouette instead of looking glued on. */
+.booking-workspace[data-booking-section="calendar"] [data-calendar-row] button.absolute:not([class*="border-zinc"]) > .bg-emerald-400,
+.booking-workspace[data-booking-section="calendar"] [data-calendar-row] button.absolute:not([class*="border-zinc"]) > .bg-amber-300 {
+  top: 7px !important;
+  bottom: 7px !important;
+  height: auto !important;
+  width: 2px !important;
+  border-radius: 999px;
+}
+
+.booking-workspace[data-booking-section="calendar"] [data-calendar-row] button.absolute:not([class*="border-zinc"]) > .bg-emerald-400 {
+  left: 8px !important;
+}
+
+.booking-workspace[data-booking-section="calendar"] [data-calendar-row] button.absolute:not([class*="border-zinc"]) > .bg-amber-300 {
+  right: 8px !important;
 }
 
 /* Selection, resize and operational affordances stay out of the default visual hierarchy. */
