@@ -1,5 +1,27 @@
 /* Booking sidebar collapse contract.
    Collapsed mode is an icon rail only: no labels or subsections, maximum calendar width. */
+.booking-workspace .booking-reference-sidebar {
+  position: relative !important;
+  z-index: 60 !important;
+  pointer-events: auto !important;
+  isolation: isolate;
+}
+
+.booking-workspace .booking-reference-sidebar .booking-reference-nav,
+.booking-workspace .booking-reference-sidebar .booking-reference-nav-link,
+.booking-workspace .booking-reference-sidebar .booking-reference-nav-parent,
+.booking-workspace .booking-reference-sidebar .booking-reference-brand-home,
+.booking-workspace .booking-reference-sidebar .booking-reference-hide {
+  pointer-events: auto !important;
+}
+
+.booking-workspace .booking-calendar-reference-frame > .booking-calendar-bedbooking-shell {
+  position: relative;
+  z-index: 1;
+  min-width: 0;
+  flex: 1 1 0%;
+}
+
 .booking-workspace .booking-reference-sidebar.is-collapsed {
   width: 48px !important;
   min-width: 48px !important;
@@ -50,11 +72,6 @@
 
 .booking-workspace .booking-reference-sidebar.is-collapsed .booking-reference-sidebar-footer {
   padding-inline: 6px !important;
-}
-
-.booking-workspace .booking-calendar-reference-frame > .booking-calendar-bedbooking-shell {
-  min-width: 0;
-  flex: 1 1 0%;
 }
 
 @media (prefers-reduced-motion: reduce) {
