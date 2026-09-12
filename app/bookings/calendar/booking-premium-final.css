@@ -75,17 +75,27 @@
   clip-path: polygon(7px 0, 100% 0, calc(100% - 7px) 100%, 0 100%) !important;
 }
 
-/* Critical fix: booking text and controls must sit above the shape layers. */
-.booking-workspace[data-booking-section="calendar"] [data-calendar-row] button.absolute:not([class*="border-zinc"]) > div,
+/* Keep interactive controls absolutely positioned. Only the label enters the stacking context. */
 .booking-workspace[data-booking-section="calendar"] [data-calendar-row] button.absolute:not([class*="border-zinc"]) > span {
-  position: relative;
-  z-index: 3 !important;
+  z-index: 4 !important;
+}
+
+.booking-workspace[data-booking-section="calendar"] [data-calendar-row] button.absolute:not([class*="border-zinc"]) > span.absolute,
+.booking-workspace[data-booking-section="calendar"] [data-calendar-row] button.absolute:not([class*="border-zinc"]) > div.absolute {
+  position: absolute !important;
 }
 
 .booking-workspace[data-booking-section="calendar"] [data-calendar-row] button.absolute:not([class*="border-zinc"]) > div:first-of-type {
+  position: relative !important;
+  z-index: 3 !important;
   color: #f2eee8 !important;
   opacity: 1 !important;
   text-shadow: none !important;
+}
+
+.booking-workspace[data-booking-section="calendar"] [data-calendar-row] button.absolute:not([class*="border-zinc"]) > div:nth-of-type(2) {
+  position: relative !important;
+  z-index: 3 !important;
 }
 
 .booking-workspace[data-booking-section="calendar"] [data-calendar-row] button.absolute:not([class*="border-zinc"]):hover,
@@ -102,6 +112,13 @@
 
 .booking-workspace[data-booking-section="calendar"] [data-calendar-row] button.absolute[class*="ring-amber"] {
   box-shadow: 0 0 0 1px rgba(208,162,90,.68) !important;
+}
+
+/* Today's edge markers remain subtle and never compete with the stay label. */
+.booking-workspace[data-booking-section="calendar"] [data-calendar-row] button.absolute:not([class*="border-zinc"]) > .bg-emerald-400,
+.booking-workspace[data-booking-section="calendar"] [data-calendar-row] button.absolute:not([class*="border-zinc"]) > .bg-amber-300 {
+  width: 1px !important;
+  opacity: .72 !important;
 }
 
 /* Operational detail is subordinate to the stay and shares the same temporal grid. */
