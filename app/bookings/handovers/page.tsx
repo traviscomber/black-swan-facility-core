@@ -77,7 +77,7 @@ const copy = {
     noDraft: "Select a draft handover first.",
     noHandovers: "No handovers yet.",
     noItems: "No items in this handover.",
-    refresh: "Refresh", all:"All", drafts:"Drafts", open:"Open", closed:"Closed", reception:"Reception", housekeeping:"Housekeeping", hospitality:"Hospitality", maintenance:"Maintenance", management:"Management", morning:"Morning", afternoon:"Afternoon", night:"Night", custom:"Custom", incoming:"Incoming employee (optional)", low:"Low", normal:"Normal", high:"High", critical:"Critical", noOpenLogistics:"{t.noOpenLogistics}",
+    refresh: "Refresh", all:"All", drafts:"Drafts", open:"Open", closed:"Closed", reception:"Reception", housekeeping:"Housekeeping", hospitality:"Hospitality", maintenance:"Maintenance", management:"Management", morning:"Morning", afternoon:"Afternoon", night:"Night", custom:"Custom", incoming:"Incoming employee (optional)", low:"Low", normal:"Normal", high:"High", critical:"Critical", noOpenLogistics:"No open logistics.",
   },
   es: {
     title: "Entregas de turno",
