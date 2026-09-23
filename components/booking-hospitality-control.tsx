@@ -1,7 +1,8 @@
 "use client"
 
+import Link from "next/link"
 import { useCallback, useEffect, useMemo, useState } from "react"
-import { AlertTriangle, CheckCircle2, Clock3, RefreshCw, UsersRound } from "lucide-react"
+import { AlertTriangle, CheckCircle2, Clock3, RefreshCw, ShoppingCart, UsersRound } from "lucide-react"
 import { toast } from "sonner"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -29,6 +30,7 @@ type Request = {
   completion_notes: string | null
   satisfaction_score: number | null
   reservation_id: string | null
+  location_id: string | null
   rooms: { room_number: string | null } | null
   locations: { name: string | null } | null
 }
@@ -104,7 +106,7 @@ export function BookingHospitalityControl() {
     const [requestsResult, employeesResult] = await Promise.all([
       supabase
         .from("hospitality_requests")
-        .select("id,guest_name,request_type,category,description,priority,status,assigned_to,department,due_at,promised_at,sla_minutes,blocked_reason,escalation_reason,completion_notes,satisfaction_score,reservation_id,rooms(room_number),locations(name)")
+        .select("id,guest_name,request_type,category,description,priority,status,assigned_to,department,due_at,promised_at,sla_minutes,blocked_reason,escalation_reason,completion_notes,satisfaction_score,reservation_id,location_id,rooms(room_number),locations(name)")
         .order("created_at", { ascending: false }),
       supabase.from("employees").select("id,name,role").eq("is_active", true).order("name"),
     ])
@@ -167,7 +169,7 @@ export function BookingHospitalityControl() {
       <CardHeader className="pb-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <CardTitle className="flex items-center gap-2 text-base"><UsersRound className="h-4 w-4" /> Hospitalidad operativa</CardTitle>
-          <Button variant="outline" size="sm" onClick={() => void load()}><RefreshCw className="mr-2 h-4 w-4" />Actualizar</Button>
+          <div className="flex gap-2"><Button asChild variant="outline" size="sm"><Link href="/es/bookings/shopping-list"><ShoppingCart className="mr-2 h-4 w-4" />Lista de compras</Link></Button><Button variant="outline" size="sm" onClick={() => void load()}><RefreshCw className="mr-2 h-4 w-4" />Actualizar</Button></div>
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -208,6 +210,7 @@ export function BookingHospitalityControl() {
                 <div className="space-y-1.5"><Label>Satisfacción</Label><select className="h-10 w-full rounded-md border bg-background px-3 text-sm" value={satisfaction} onChange={(event) => setSatisfaction(event.target.value)}><option value="">Sin evaluar</option>{[1,2,3,4,5].map((score) => <option key={score} value={score}>{score} / 5</option>)}</select></div>
               </div>
               <div className="flex flex-wrap gap-2">
+                <Button asChild variant="outline"><Link href={`/es/bookings/shopping-list?request_id=${selected.id}&reservation_id=${selected.reservation_id ?? ""}&location_id=${selected.location_id ?? ""}&item=${encodeURIComponent(selected.description || requestTypeLabel(selected.request_type))}`}><ShoppingCart className="mr-2 h-4 w-4" />Agregar a compras</Link></Button>
                 <Button variant="outline" onClick={() => void update("assigned")} disabled={saving || !assignedTo}><UsersRound className="mr-2 h-4 w-4" />Asignar</Button>
                 <Button variant="outline" onClick={() => void update("in_progress")} disabled={saving || !assignedTo}><Clock3 className="mr-2 h-4 w-4" />Iniciar</Button>
                 <Button variant="outline" onClick={() => void update("blocked")} disabled={saving || !blockedReason.trim()}><AlertTriangle className="mr-2 h-4 w-4" />Bloquear</Button>
