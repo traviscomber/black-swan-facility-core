@@ -363,3 +363,76 @@
     animation-iteration-count: 1 !important;
   }
 }
+
+
+/* Section-by-section parity pass: keep secondary booking modules as dense as BedBooking. */
+.booking-workspace[data-booking-section="reports"] .booking-calendar-bedbooking-shell > section > .p-4 {
+  padding: 10px !important;
+}
+
+.booking-workspace[data-booking-section="reports"] [data-slot="card"] [data-slot="card-content"] {
+  padding: 10px !important;
+}
+
+.booking-workspace[data-booking-section="reports"] [data-slot="card"] p.text-2xl {
+  font-size: 18px !important;
+  line-height: 22px !important;
+  font-weight: 600 !important;
+}
+
+.booking-workspace[data-booking-section="reports"] .grid.grid-cols-2.gap-3 {
+  gap: 6px !important;
+}
+
+.booking-workspace[data-booking-section="reports"] [class*="rounded"] {
+  border-radius: 0 !important;
+}
+
+.booking-workspace[data-booking-section="rates"] .booking-calendar-bedbooking-shell > section > header,
+.booking-workspace[data-booking-section="reservation-settings"] .booking-calendar-bedbooking-shell > section > header,
+.booking-workspace[data-booking-section="profile"] .booking-calendar-bedbooking-shell > section > header,
+.booking-workspace[data-booking-section="channels"] .booking-calendar-bedbooking-shell > div > header,
+.booking-workspace[data-booking-section="invoices"] .booking-calendar-bedbooking-shell > div > header,
+.booking-workspace[data-booking-section="employees"] .booking-calendar-bedbooking-shell > div > header {
+  padding-top: 8px !important;
+  padding-bottom: 8px !important;
+}
+
+.booking-workspace[data-booking-section="profile"] .booking-calendar-bedbooking-shell dl > div {
+  min-height: 42px;
+  padding-top: 9px !important;
+  padding-bottom: 9px !important;
+}
+
+.booking-workspace[data-booking-section="profile"] .booking-calendar-bedbooking-shell dl dt {
+  font-size: 11px !important;
+}
+
+.booking-workspace[data-booking-section="profile"] .booking-calendar-bedbooking-shell dl dd {
+  font-size: 12px !important;
+}
+
+.booking-workspace[data-booking-section="channels"] .booking-calendar-bedbooking-shell table td,
+.booking-workspace[data-booking-section="employees"] .booking-calendar-bedbooking-shell table td,
+.booking-workspace[data-booking-section="invoices"] .booking-calendar-bedbooking-shell table td,
+.booking-workspace[data-booking-section="reservations"] .booking-calendar-bedbooking-shell table td {
+  padding-top: 8px !important;
+  padding-bottom: 8px !important;
+}
+
+.booking-workspace[data-booking-section="channels"] .booking-calendar-bedbooking-shell table tr,
+.booking-workspace[data-booking-section="employees"] .booking-calendar-bedbooking-shell table tr {
+  min-height: 36px;
+}
+
+.booking-workspace[data-booking-section="reservation-settings"] .booking-calendar-bedbooking-shell h2 {
+  font-size: 10px !important;
+  letter-spacing: .08em !important;
+  color: #8f867b !important;
+}
+
+.booking-workspace[data-booking-section="reservation-settings"] .booking-calendar-bedbooking-shell .grid > label,
+.booking-workspace[data-booking-section="reservation-settings"] .booking-calendar-bedbooking-shell .grid > div {
+  padding-top: 10px !important;
+  padding-bottom: 10px !important;
+}
