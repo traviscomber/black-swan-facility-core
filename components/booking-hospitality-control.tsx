@@ -10,6 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { createClient } from "@/lib/supabase/client"
+import { useLanguage } from "@/lib/hooks/use-language"
 
 type Employee = { id: string; name: string; role: string | null }
 type Request = {
@@ -85,6 +86,8 @@ function categoryLabel(value: string) {
 
 export function BookingHospitalityControl() {
   const supabase = useMemo(() => createClient(), [])
+  const { language } = useLanguage()
+  const localize = (path: string) => `/${language}${path}`
   const [requests, setRequests] = useState<Request[]>([])
   const [employees, setEmployees] = useState<Employee[]>([])
   const [selectedId, setSelectedId] = useState("")
@@ -169,7 +172,7 @@ export function BookingHospitalityControl() {
       <CardHeader className="pb-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <CardTitle className="flex items-center gap-2 text-base"><UsersRound className="h-4 w-4" /> Hospitalidad operativa</CardTitle>
-          <div className="flex gap-2"><Button asChild variant="outline" size="sm"><Link href="/es/bookings/shopping-list"><ShoppingCart className="mr-2 h-4 w-4" />Lista de compras</Link></Button><Button variant="outline" size="sm" onClick={() => void load()}><RefreshCw className="mr-2 h-4 w-4" />Actualizar</Button></div>
+          <div className="flex gap-2"><Button asChild variant="outline" size="sm"><Link href={localize("/bookings/shopping-list")}><ShoppingCart className="mr-2 h-4 w-4" />Lista de compras</Link></Button><Button variant="outline" size="sm" onClick={() => void load()}><RefreshCw className="mr-2 h-4 w-4" />Actualizar</Button></div>
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -210,7 +213,7 @@ export function BookingHospitalityControl() {
                 <div className="space-y-1.5"><Label>Satisfacción</Label><select className="h-10 w-full rounded-md border bg-background px-3 text-sm" value={satisfaction} onChange={(event) => setSatisfaction(event.target.value)}><option value="">Sin evaluar</option>{[1,2,3,4,5].map((score) => <option key={score} value={score}>{score} / 5</option>)}</select></div>
               </div>
               <div className="flex flex-wrap gap-2">
-                <Button asChild variant="outline"><Link href={`/es/bookings/shopping-list?request_id=${selected.id}&reservation_id=${selected.reservation_id ?? ""}&location_id=${selected.location_id ?? ""}&item=${encodeURIComponent(selected.description || requestTypeLabel(selected.request_type))}`}><ShoppingCart className="mr-2 h-4 w-4" />Agregar a compras</Link></Button>
+                <Button asChild variant="outline"><Link href={`${localize("/bookings/shopping-list")}?request_id=${selected.id}&reservation_id=${selected.reservation_id ?? ""}&location_id=${selected.location_id ?? ""}&item=${encodeURIComponent(selected.description || requestTypeLabel(selected.request_type))}`}><ShoppingCart className="mr-2 h-4 w-4" />Agregar a compras</Link></Button>
                 <Button variant="outline" onClick={() => void update("assigned")} disabled={saving || !assignedTo}><UsersRound className="mr-2 h-4 w-4" />Asignar</Button>
                 <Button variant="outline" onClick={() => void update("in_progress")} disabled={saving || !assignedTo}><Clock3 className="mr-2 h-4 w-4" />Iniciar</Button>
                 <Button variant="outline" onClick={() => void update("blocked")} disabled={saving || !blockedReason.trim()}><AlertTriangle className="mr-2 h-4 w-4" />Bloquear</Button>
