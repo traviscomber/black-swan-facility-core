@@ -1,9 +1,10 @@
 "use client"
 
 import type React from "react"
+import Link from "next/link"
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { useSearchParams } from "next/navigation"
-import { Percent, Plus, Search, Trash2 } from "lucide-react"
+import { Percent, Plus, Search, Settings2, Trash2 } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
@@ -220,6 +221,7 @@ export default function RatesPage() {
   const today = bookingDateKey()
   const activeNow = rules.filter((rule) => rule.start_date <= today && rule.end_date > today).length
   const avgMultiplier = rules.length ? rules.reduce((sum, rule) => sum + Number(rule.rate_multiplier ?? 1), 0) / rules.length : 1
+  const roomsWithRate = rooms.filter((room) => Number(room.rate_per_night ?? 0) > 0).length
 
   async function createRule() {
     if (!form.season_name || !form.start_date || !form.end_date || form.end_date <= form.start_date) { setError(copy.invalidRange); return }
@@ -365,7 +367,7 @@ export default function RatesPage() {
   }
 
   return <section className="min-h-screen bg-[#171512] text-[#e7e1d8]">
-    <header className="flex min-h-[58px] items-center justify-between gap-3 bg-[#211e1a] px-3"><div><h1 className="text-[15px] font-normal">{copy.title}</h1><p className="text-[11px] text-[#8f867b]">{rules.length} {copy.rules.toLowerCase()} · {activeNow} {copy.activeToday.toLowerCase()} · {avgMultiplier.toFixed(2)}×</p></div><button onClick={() => setOpen(true)} className="inline-flex h-9 items-center gap-2 bg-[#39342d] px-4 text-xs font-medium"><Plus className="h-4 w-4" />{copy.newRule}</button></header>
+    <header className="flex min-h-[58px] items-center justify-between gap-3 bg-[#211e1a] px-3"><div><h1 className="text-[15px] font-normal">{copy.title}</h1><p className="text-[11px] text-[#8f867b]">{roomsWithRate}/{rooms.length} {configCopy.roomBaseRates.toLowerCase()} · {rules.length} {copy.rules.toLowerCase()} · {activeNow} {copy.activeToday.toLowerCase()} · {avgMultiplier.toFixed(2)}×</p></div><div className="flex items-center gap-1.5"><Link href={`/${language}/bookings/rates?view=configuration`} prefetch={false} className="inline-flex h-8 items-center gap-1.5 bg-[#2b2722] px-3 text-[11px] text-[#d7d0c6] hover:bg-[#332e28]"><Settings2 className="h-3.5 w-3.5" />{configCopy.title}</Link><button onClick={() => setOpen(true)} className="inline-flex h-8 items-center gap-1.5 bg-[#6f8373] px-3 text-[11px] font-medium text-[#171512]"><Plus className="h-3.5 w-3.5" />{copy.newRule}</button></div></header>
     <div className="flex min-h-[44px] gap-2 bg-[#211e1a] p-2"><div className="relative min-w-0 flex-1"><Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#8f867b]" /><input className="h-8 w-full bg-[#171512] pl-9 pr-3 text-xs outline-none placeholder:text-[#8f867b]" value={search} onChange={(e) => setSearch(e.target.value)} placeholder={copy.search} /></div><select value={roomFilter} onChange={(e) => setRoomFilter(e.target.value)} className="h-8 min-w-52 bg-[#171512] px-2 text-xs"><option value="all">{copy.allRooms}</option>{rooms.map((room) => <option key={room.id} value={room.id}>{copy.roomShort} {room.room_number}</option>)}</select></div>
     {error && <div className="bg-[#3a211d] px-4 py-2 text-xs text-[#e7a393]">{error}</div>}
     <div className="overflow-auto"><table className="w-full min-w-[960px] border-collapse text-xs"><thead className="sticky top-0 z-10 bg-[#211e1a] text-left text-[10px] uppercase tracking-[.08em] text-[#8f867b]"><tr><th className="px-4 py-3 font-medium">{copy.season}</th><th className="px-3 py-3 font-medium">{copy.room}</th><th className="px-3 py-3 font-medium">{copy.dates}</th><th className="px-3 py-3 font-medium">{copy.base}</th><th className="px-3 py-3 font-medium">{copy.multiplier}</th><th className="px-3 py-3 font-medium">{copy.effectivePrice}</th><th className="px-3 py-3 font-medium">{copy.minimum}</th><th className="px-4 py-3"></th></tr></thead><tbody>{visible.map((rule) => { const base = Number(rule.room?.rate_per_night ?? 0); return <tr key={rule.id} className="border-b border-[#39342d] hover:bg-[#211e1a]"><td className="px-4 py-3 font-medium">{rule.season_name || copy.unnamed}</td><td className="px-3 py-3 text-[#b9b0a4]">{rule.room ? `${copy.roomShort} ${rule.room.room_number}` : copy.all}</td><td className="px-3 py-3 tabular-nums text-[#8f867b]">{rule.start_date} → {rule.end_date}</td><td className="px-3 py-3 tabular-nums text-[#b9b0a4]">{rule.room ? money(base, settings?.currency || "CLP") : copy.byRoom}</td><td className="px-3 py-3"><span className="inline-flex items-center gap-1 text-[#b9b0a4]"><Percent className="h-3 w-3 text-[#8f867b]" />{Number(rule.rate_multiplier ?? 1).toFixed(2)}×</span></td><td className="px-3 py-3 tabular-nums">{rule.room ? money(base * Number(rule.rate_multiplier ?? 1), settings?.currency || "CLP") : copy.variable}</td><td className="px-3 py-3 text-[#b9b0a4]">{rule.min_stay ?? 1} {copy.nights}</td><td className="px-4 py-3 text-right"><button className="grid h-8 w-8 place-items-center text-[#c9897d] hover:bg-[#3a211d]" onClick={() => void removeRule(rule.id)} aria-label="Delete"><Trash2 className="h-3.5 w-3.5" /></button></td></tr> })}{visible.length === 0 && <tr><td colSpan={8} className="p-12 text-center text-[#8f867b]">{copy.noRules}</td></tr>}</tbody></table></div>
