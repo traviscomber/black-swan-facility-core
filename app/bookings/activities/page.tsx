@@ -192,8 +192,16 @@ export default function BookingActivitiesPage() {
       await loadReservations()
       return
     }
-    const { error: updateError } = await supabase.from("reservations").update({ status }).eq("id", id)
-    if (updateError) setActionError(classifyActionError(updateError.message))
+    const action = status === "confirmed" ? "confirm" : status === "checked_out" ? "checkout" : null
+    if (!action) {
+      setActionError(classifyActionError("unsupported_reservation_transition"))
+      return
+    }
+    const { error: transitionError } = await supabase.rpc("transition_reservation_status", {
+      p_reservation_id: id,
+      p_action: action,
+    })
+    if (transitionError) setActionError(classifyActionError(transitionError.message))
     else await loadReservations()
   }
 

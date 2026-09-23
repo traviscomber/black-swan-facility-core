@@ -66,7 +66,7 @@ const copy = {
     related: "Live operations", services: "Services", activities: "Activities", issues: "Issues", maintenance: "Maintenance", exceptions: "Attention required", noExceptions: "No open operational exceptions.",
     blocksCheckin: "blocks check-in", overdue: "overdue", status: "Status", due: "Due", contact: "Guest contact", confirm: "Confirm reservation", checkin: "Register check-in", checkout: "Register check-out", openFull: "Open full record",
     logistics: "Arrival / departure logistics", noLogistics: "No active logistics for this stay.", handover: "Shift handover", noHandover: "No handover items linked to this stay.", specialRequests: "Special requests", lifecycle: "Stay lifecycle",
-    dataNote: "Loaded only when the booking is opened; no Vercel server function is used.", confirmedToast: "Reservation confirmed", checkinToast: "Check-in registered", checkoutToast: "Check-out registered",
+    dataNote: "Loaded only when the booking is opened; no Vercel server function is used.", confirmedToast: "Reservation confirmed", checkinToast: "Check-in registered", queuedToast: "Room is not ready. Arrival was queued.", checkoutToast: "Check-out registered",
     statuses: { checked_in: "Checked in", checked_out: "Completed", confirmed: "Confirmed", cancelled: "Cancelled", pending: "Pending" },
     domains: { housekeeping: "Housekeeping", hospitality: "Hospitality", maintenance: "Maintenance", issue: "Issue" },
     stages: ["Booked", "Ready", "In stay", "Closed"],
@@ -76,7 +76,7 @@ const copy = {
     related: "Operación en vivo", services: "Servicios", activities: "Actividades", issues: "Incidencias", maintenance: "Mantenimiento", exceptions: "Requiere atención", noExceptions: "Sin excepciones operacionales abiertas.",
     blocksCheckin: "bloquea check-in", overdue: "vencida", status: "Estado", due: "Objetivo", contact: "Contacto huésped", confirm: "Confirmar reserva", checkin: "Registrar check-in", checkout: "Registrar check-out", openFull: "Abrir ficha completa",
     logistics: "Logística llegada / salida", noLogistics: "Sin logística activa para esta estadía.", handover: "Entrega de turno", noHandover: "Sin pendientes de turno ligados a esta estadía.", specialRequests: "Solicitudes especiales", lifecycle: "Ciclo de estadía",
-    dataNote: "Se carga sólo al abrir el booking; no utiliza funciones serverless de Vercel.", confirmedToast: "Reserva confirmada", checkinToast: "Check-in registrado", checkoutToast: "Check-out registrado",
+    dataNote: "Se carga sólo al abrir el booking; no utiliza funciones serverless de Vercel.", confirmedToast: "Reserva confirmada", checkinToast: "Check-in registrado", queuedToast: "La habitación no está lista. La llegada quedó en cola.", checkoutToast: "Check-out registrado",
     statuses: { checked_in: "Hospedado", checked_out: "Finalizada", confirmed: "Confirmada", cancelled: "Cancelada", pending: "Pendiente" },
     domains: { housekeeping: "Housekeeping", hospitality: "Hospitality", maintenance: "Mantenimiento", issue: "Incidencia" },
     stages: ["Reserva", "Preparación", "Estadía", "Cierre"],
@@ -86,7 +86,7 @@ const copy = {
     related: "Laufender Betrieb", services: "Services", activities: "Aktivitäten", issues: "Vorfälle", maintenance: "Wartung", exceptions: "Aufmerksamkeit erforderlich", noExceptions: "Keine offenen betrieblichen Ausnahmen.",
     blocksCheckin: "blockiert Check-in", overdue: "überfällig", status: "Status", due: "Fällig", contact: "Gastkontakt", confirm: "Reservierung bestätigen", checkin: "Check-in erfassen", checkout: "Check-out erfassen", openFull: "Vollständigen Datensatz öffnen",
     logistics: "An-/Abreise-Logistik", noLogistics: "Keine aktive Logistik für diesen Aufenthalt.", handover: "Schichtübergabe", noHandover: "Keine Übergabepunkte für diesen Aufenthalt.", specialRequests: "Besondere Wünsche", lifecycle: "Aufenthaltszyklus",
-    dataNote: "Wird nur beim Öffnen der Buchung geladen; keine Vercel-Serverfunktion.", confirmedToast: "Reservierung bestätigt", checkinToast: "Check-in erfasst", checkoutToast: "Check-out erfasst",
+    dataNote: "Wird nur beim Öffnen der Buchung geladen; keine Vercel-Serverfunktion.", confirmedToast: "Reservierung bestätigt", checkinToast: "Check-in erfasst", queuedToast: "Das Zimmer ist noch nicht bereit. Die Anreise wurde eingereiht.", checkoutToast: "Check-out erfasst",
     statuses: { checked_in: "Eingecheckt", checked_out: "Abgeschlossen", confirmed: "Bestätigt", cancelled: "Storniert", pending: "Ausstehend" },
     domains: { housekeeping: "Housekeeping", hospitality: "Hospitality", maintenance: "Wartung", issue: "Vorfall" },
     stages: ["Gebucht", "Bereit", "Aufenthalt", "Abschluss"],
@@ -187,14 +187,35 @@ export function ReservationQuickInspector({ reservation, open, onOpenChange, onO
   async function updateStatus(nextStatus: "confirmed" | "checked_in" | "checked_out") {
     if (!reservation || updating) return
     setUpdating(true)
-    const { error } = await supabase.from("reservations").update({ status: nextStatus }).eq("id", reservation.event_id)
-    if (error) toast.error(error.message)
-    else {
-      setCurrentStatus(nextStatus)
-      toast.success(nextStatus === "confirmed" ? c.confirmedToast : nextStatus === "checked_in" ? c.checkinToast : c.checkoutToast)
+    try {
+      if (nextStatus === "checked_in") {
+        const { data: result, error } = await supabase.rpc("check_in_or_queue", { p_reservation_id: reservation.event_id })
+        if (error) throw error
+        const outcome = (result as { result?: string } | null)?.result
+        if (outcome === "checked_in") {
+          setCurrentStatus("checked_in")
+          toast.success(c.checkinToast)
+        } else {
+          setCurrentStatus("waiting_for_room")
+          toast.warning(c.queuedToast)
+        }
+      } else {
+        const action = nextStatus === "confirmed" ? "confirm" : "checkout"
+        const { data: result, error } = await supabase.rpc("transition_reservation_status", {
+          p_reservation_id: reservation.event_id,
+          p_action: action,
+        })
+        if (error) throw error
+        const canonical = result as { status?: string } | null
+        setCurrentStatus(normalizedStatus(canonical?.status ?? nextStatus))
+        toast.success(nextStatus === "confirmed" ? c.confirmedToast : c.checkoutToast)
+      }
       await load()
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : String(error))
+    } finally {
+      setUpdating(false)
     }
-    setUpdating(false)
   }
 
   const counters = [
