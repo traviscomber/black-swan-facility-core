@@ -707,8 +707,8 @@ export default function BookingOperationsTimelinePage() {
         )}
       />
 
-      <div className="space-y-4 p-4 md:p-6">
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
+      <div className="space-y-2 p-2 md:p-3">
+        <div className="grid grid-cols-2 border border-white/[0.06] bg-[#211e1a] md:grid-cols-3 xl:grid-cols-6">
           <Metric icon={<LogIn />} label={tr("Llegadas hoy")} value={formatCount(metrics.arrivals)} />
           <Metric icon={<LogOut />} label={tr("Salidas hoy")} value={formatCount(metrics.departures)} />
           <Metric icon={<BedDouble />} label={tr("Ocupadas hoy")} value={formatCount(metrics.occupied)} />
@@ -717,8 +717,8 @@ export default function BookingOperationsTimelinePage() {
           <Metric icon={<ConciergeBell />} label={tr("Solicitudes abiertas")} value={formatCount(metrics.pendingHospitality)} />
         </div>
 
-        <Card>
-          <CardContent className="flex flex-col gap-3 p-4 xl:flex-row xl:items-center xl:justify-between">
+        <Card className="rounded-none border-white/[0.06] shadow-none">
+          <CardContent className="flex flex-col gap-2 p-2 xl:flex-row xl:items-center xl:justify-between">
             <div className="flex flex-wrap items-center gap-2">
               <Button
                 variant="outline"
@@ -740,7 +740,7 @@ export default function BookingOperationsTimelinePage() {
               <span className="ml-1 text-sm font-medium">
                 {format(startDate, "dd MMM", { locale: dateLocale })} – {format(addDays(endDate, -1), "dd MMM yyyy", { locale: dateLocale })}
               </span>
-              <div className="ml-2 flex rounded-md border p-1">
+              <div className="ml-2 flex border p-0.5">
                 {ZOOM_OPTIONS.map((days) => (
                   <Button
                     key={days}
@@ -758,7 +758,7 @@ export default function BookingOperationsTimelinePage() {
               <select
                 value={locationId}
                 onChange={(event: React.ChangeEvent<HTMLSelectElement>) => setLocationId(event.target.value)}
-                className="h-10 rounded-md border bg-background px-3 text-sm"
+                className="h-8 rounded-none border bg-background px-2 text-xs"
                 aria-label={tr("Filtrar por propiedad")}
               >
                 <option value="all">{tr("Todas las propiedades")}</option>
@@ -1194,15 +1194,13 @@ function Metric({
   value: string | number
 }) {
   return (
-    <Card>
-      <CardContent className="flex items-center gap-3 p-4">
-        <div className="text-primary [&>svg]:h-5 [&>svg]:w-5">{icon}</div>
-        <div>
-          <p className="text-xs text-muted-foreground">{label}</p>
-          <p className="text-lg font-semibold">{value}</p>
-        </div>
-      </CardContent>
-    </Card>
+    <div className="flex min-h-[52px] items-center gap-2 border-r border-white/[0.06] px-3 py-2 last:border-r-0">
+      <div className="text-primary [&>svg]:h-4 [&>svg]:w-4">{icon}</div>
+      <div className="min-w-0">
+        <p className="truncate text-[10px] uppercase tracking-[0.06em] text-muted-foreground">{label}</p>
+        <p className="text-[16px] font-medium tabular-nums">{value}</p>
+      </div>
+    </div>
   )
 }
 
