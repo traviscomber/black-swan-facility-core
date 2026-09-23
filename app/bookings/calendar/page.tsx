@@ -1,6 +1,7 @@
 "use client"
 
 import Link from "next/link"
+import { useSearchParams } from "next/navigation"
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
 import { addDays, differenceInCalendarDays, format, parseISO } from "date-fns"
 import { Ban, Bell, BedDouble, CalendarDays, CheckSquare, ChevronLeft, ChevronRight, Loader2, Plus, Printer, RefreshCw, RotateCcw, Search, Trash2, UserCircle, X } from "lucide-react"
@@ -36,6 +37,7 @@ function intervalsOverlap(startA: string, endA: string, startB: string, endB: st
 
 export default function BookingsCalendarPage() {
   const { language } = useLanguage()
+  const searchParams = useSearchParams()
   const pageCopy = bookingsCalendarPageCopy[language]
   const blocksHref = `/${language}/bookings/blocks`
   const supabase = useMemo(() => createClient(), [])
@@ -83,6 +85,7 @@ export default function BookingsCalendarPage() {
   const [isTouchDevice, setIsTouchDevice] = useState(false)
 
   useEffect(() => { setIsTouchDevice(() => window.matchMedia("(hover: none)").matches || "ontouchstart" in window) }, [])
+  useEffect(() => { if (searchParams.get("new") === "1") { setPreselectedBed(null); setPreselectedDate(null); setPreselectedCheckOutDate(null); setNewReservationOpen(true) } }, [searchParams])
 
   const endDate = useMemo(() => addDays(startDate, rangeDays), [startDate, rangeDays])
   const dates = useMemo(() => Array.from({ length: rangeDays }, (_, index) => addDays(startDate, index)), [rangeDays, startDate])
