@@ -58,31 +58,17 @@ declare
   v_new_code text;
   v_slug text;
   v_delta integer;
+  v_participants_copied integer := 0;
 begin
-  if auth.uid() is null then
-    raise exception 'Authentication required';
-  end if;
-
+  if auth.uid() is null then raise exception 'Authentication required'; end if;
   if not (can_app_action('finance.adjust') or can_app_action('procurement.operate')) then
     raise exception 'Not authorized to replicate events';
   end if;
+  if p_name is null or btrim(p_name) = '' then raise exception 'Event name is required'; end if;
+  if p_start_date is null then raise exception 'Start date is required'; end if;
 
-  if p_name is null or btrim(p_name) = '' then
-    raise exception 'Event name is required';
-  end if;
-
-  if p_start_date is null then
-    raise exception 'Start date is required';
-  end if;
-
-  select *
-  into v_source
-  from public.operational_events
-  where id = p_source_event_id;
-
-  if not found then
-    raise exception 'Source event not found or not accessible';
-  end if;
+  select * into v_source from public.operational_events where id = p_source_event_id;
+  if not found then raise exception 'Source event not found or not accessible'; end if;
 
   if p_include_participants and not can_app_action('guest.sensitive_data') then
     raise exception 'Not authorized to replicate participant data';
@@ -90,12 +76,8 @@ begin
 
   v_delta := p_start_date - v_source.start_date;
   v_slug := upper(trim(both '-' from regexp_replace(p_name, '[^a-zA-Z0-9]+', '-', 'g')));
-  if v_slug = '' then
-    v_slug := 'EVENT';
-  end if;
-
+  if v_slug = '' then v_slug := 'EVENT'; end if;
   v_new_code := 'BSFC-EVENT-' || to_char(p_start_date, 'YYYY-MM-DD') || '-' || left(v_slug, 48);
-
   if exists(select 1 from public.operational_events where event_code = v_new_code) then
     v_new_code := v_new_code || '-' || left(replace(gen_random_uuid()::text, '-', ''), 8);
   end if;
@@ -112,11 +94,7 @@ begin
     case when p_include_participants then v_source.person_days else 0 end,
     case when p_include_budget then v_source.estimated_total_clp else 0 end,
     null,null,null,'replicated','replicated_baseline',
-    concat(
-      'Replicated from ', v_source.name, ' (', v_source.event_code, '). ',
-      'Estimated quantities and unit prices are baseline values; actuals reset. ',
-      coalesce(v_source.notes, '')
-    ),
+    concat('Replicated from ',v_source.name,' (',v_source.event_code,'). Estimated quantities and unit prices are baseline values; actuals reset. ',coalesce(v_source.notes,'')),
     v_source.id
   )
   returning id into v_new_id;
@@ -133,10 +111,15 @@ begin
       p.arrival_date + v_delta,p.arrival_time,p.arrival_transport,
       p.departure_date + v_delta,p.departure_time,p.departure_transport,
       p.planned_stay_days,p.estimated_person_total_clp,'pending_confirmation',
-      concat('Replicated baseline — reconfirm attendance and lodging. ', coalesce(p.notes, '')),
+      concat('Replicated baseline — reconfirm attendance and lodging. ',coalesce(p.notes,'')),
       'replicated:' || p.id::text
     from public.operational_event_participants p
     where p.event_id = v_source.id;
+
+    get diagnostics v_participants_copied = row_count;
+    if v_participants_copied <> v_source.participant_count then
+      raise exception 'Participant replication incomplete: expected %, copied %', v_source.participant_count, v_participants_copied;
+    end if;
   end if;
 
   if p_include_budget then
@@ -154,11 +137,8 @@ begin
   end if;
 
   return jsonb_build_object(
-    'id', v_new_id,
-    'event_code', v_new_code,
-    'source_event_id', v_source.id,
-    'participants_copied', p_include_participants,
-    'budget_copied', p_include_budget
+    'id',v_new_id,'event_code',v_new_code,'source_event_id',v_source.id,
+    'participants_copied',v_participants_copied,'budget_copied',p_include_budget
   );
 end;
 $$;
