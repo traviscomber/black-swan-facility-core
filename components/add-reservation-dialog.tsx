@@ -380,6 +380,7 @@ export function AddReservationDialog({
                     <Label>{copy.selectDates} *</Label>
                     <AvailabilityCalendarPicker
                       bedId={formData.bed_id}
+                      roomId={beds.find((bed) => bed.id === formData.bed_id)?.room_id}
                       onDateRangeSelect={(checkIn, checkOut) => setFormData({ ...formData, check_in: checkIn, check_out: checkOut })}
                       currentCheckIn={formData.check_in}
                       currentCheckOut={formData.check_out}

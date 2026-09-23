@@ -7,6 +7,7 @@ const calendarLayout = readFileSync(new URL("../app/bookings/calendar/layout.tsx
 const timelineRow = readFileSync(new URL("../components/calendar/timeline-row.tsx", import.meta.url), "utf8")
 const timelineGrid = readFileSync(new URL("../components/calendar/timeline-grid.tsx", import.meta.url), "utf8")
 const activitiesPage = readFileSync(new URL("../app/bookings/activities/page.tsx", import.meta.url), "utf8")
+const availabilityPicker = readFileSync(new URL("../components/availability-calendar-picker.tsx", import.meta.url), "utf8")
 const inspector = readFileSync(new URL("../components/calendar/reservation-quick-inspector.tsx", import.meta.url), "utf8")
 const vercelConfig = readFileSync(new URL("../vercel.json", import.meta.url), "utf8")
 
@@ -68,4 +69,12 @@ test("inventory availability is independent from search and status presentation 
   assert.match(calendarPage, /availabilityEventsByBed=\{availabilityEventsByBed\}/)
   assert.match(timelineGrid, /availabilityEventsByBed/)
   assert.match(timelineGrid, /freeBedForRange\(room\.beds, availabilityEventsByBed/)
+})
+
+
+test("new reservation availability includes room blocks and rejects ranges crossing conflicts", () => {
+  assert.match(availabilityPicker, /from\("room_blocks"\)/)
+  assert.match(availabilityPicker, /item\.isBooked \|\| item\.isBlocked/)
+  assert.match(availabilityPicker, /rangeConflict/)
+  assert.match(availabilityPicker, /bookingTodayDate/)
 })
