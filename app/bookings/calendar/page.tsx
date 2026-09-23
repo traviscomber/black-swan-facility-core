@@ -348,15 +348,19 @@ export default function BookingsCalendarPage() {
 
   const rangeLabel = `${format(startDate, "dd MMM")} - ${format(addDays(endDate, -1), "dd MMM")}`
   const monthValue = format(startDate, "yyyy-MM")
+  const dateValue = format(startDate, "yyyy-MM-dd")
 
   return <div className="min-h-screen bg-[#101314]">
     <div className="sticky top-0 z-50 border-b border-white/10 bg-[#17191a]">
-      <div className="flex min-h-14 items-center gap-2 overflow-x-auto px-2 py-2">
-        <Input type="month" value={monthValue} onChange={(event) => { if (event.target.value) setStartDate(bookingDateFromKey(`${event.target.value}-01`)) }} className="h-9 w-[160px] shrink-0 border-white/10 bg-[#111314] text-xs" aria-label="Month" />
-        <Button variant="outline" size="sm" className="h-9 shrink-0 border-emerald-600 text-emerald-400 hover:bg-emerald-950" onClick={() => setStartDate(bookingTodayDate())}><CalendarDays className="mr-1.5 h-3.5 w-3.5" />{pageCopy.today}</Button>
-        <Button variant="outline" size="icon" className="h-9 w-9 shrink-0" onClick={() => setStartDate(addDays(startDate, -rangeDays))}><ChevronLeft className="h-4 w-4" /></Button>
-        <div className="min-w-[118px] shrink-0 text-center text-xs font-medium text-white/80">{rangeLabel}</div>
-        <Button variant="outline" size="icon" className="h-9 w-9 shrink-0" onClick={() => setStartDate(addDays(startDate, rangeDays))}><ChevronRight className="h-4 w-4" /></Button>
+      <div className="flex min-h-14 items-center gap-1.5 overflow-x-auto px-2 py-2">
+        <div className="flex shrink-0 items-center border border-white/10 bg-[#111314]">
+          <Button variant="ghost" size="icon" className="h-9 w-9 rounded-none border-r border-white/10" onClick={() => setStartDate(addDays(startDate, -1))} title="Previous day" aria-label="Previous day"><ChevronLeft className="h-4 w-4" /></Button>
+          <Input type="date" value={dateValue} onChange={(event) => { if (event.target.value) setStartDate(bookingDateFromKey(event.target.value)) }} className="h-9 w-[138px] rounded-none border-0 bg-transparent text-xs focus-visible:ring-0" aria-label="Start date" />
+          <Button variant="ghost" size="icon" className="h-9 w-9 rounded-none border-l border-white/10" onClick={() => setStartDate(addDays(startDate, 1))} title="Next day" aria-label="Next day"><ChevronRight className="h-4 w-4" /></Button>
+        </div>
+        <Input type="month" value={monthValue} onChange={(event) => { if (event.target.value) setStartDate(bookingDateFromKey(`${event.target.value}-01`)) }} className="h-9 w-[132px] shrink-0 border-white/10 bg-[#111314] text-xs" aria-label="Month" />
+        <Button variant="outline" size="sm" className="h-9 shrink-0 border-emerald-600 px-3 text-emerald-400 hover:bg-emerald-950" onClick={() => setStartDate(bookingTodayDate())}><CalendarDays className="mr-1.5 h-3.5 w-3.5" />{pageCopy.today}</Button>
+        <div className="min-w-[118px] shrink-0 px-1 text-center text-[11px] font-medium text-white/65">{rangeLabel}</div>
         <div className="ml-auto flex items-center gap-2">
           <Button asChild variant="outline" size="icon" className="h-9 w-9 shrink-0" title={pageCopy.manageBlocks}><Link href={blocksHref}><Ban className="h-4 w-4" /></Link></Button>
           <Button variant="outline" size="icon" className="h-9 w-9 shrink-0" onClick={() => void refreshEvents()} title="Refresh"><RefreshCw className="h-4 w-4" /></Button>
