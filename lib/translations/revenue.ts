@@ -26,6 +26,7 @@ export const revenueTranslations: Record<Language, Record<string, string>> = {
     activeBeds: "{count} active beds",
     cellTitle: "{occupied} occupied · {blocked} blocked · {available} available",
     occupiedShort: "{occupied}/{total} occupied",
+    date: "Date", occupied: "Occupied", available: "Available", property: "Property", totalBeds: "Total beds", export: "Export CSV",
   },
   es: {
     eyebrow: "Hospitalidad · Fundo Corcovado",
@@ -52,6 +53,7 @@ export const revenueTranslations: Record<Language, Record<string, string>> = {
     activeBeds: "{count} camas activas",
     cellTitle: "{occupied} ocupadas · {blocked} bloqueadas · {available} disponibles",
     occupiedShort: "{occupied}/{total} ocupadas",
+    date: "Fecha", occupied: "Ocupadas", available: "Disponibles", property: "Propiedad", totalBeds: "Camas totales", export: "Exportar CSV",
   },
   de: {
     eyebrow: "Hospitality · Fundo Corcovado",
@@ -78,5 +80,6 @@ export const revenueTranslations: Record<Language, Record<string, string>> = {
     activeBeds: "{count} aktive Betten",
     cellTitle: "{occupied} belegt · {blocked} gesperrt · {available} verfügbar",
     occupiedShort: "{occupied}/{total} belegt",
+    date: "Datum", occupied: "Belegt", available: "Verfügbar", property: "Unterkunft", totalBeds: "Betten gesamt", export: "CSV exportieren",
   },
 }
