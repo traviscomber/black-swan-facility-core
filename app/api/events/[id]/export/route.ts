@@ -43,15 +43,13 @@ export async function GET(_request: Request, context: RouteContext) {
     if (!sourceResult.error) sourceEvent = sourceResult.data
   }
 
-  const workbook = buildOperationalEventWorkbook(
+  const workbook = await buildOperationalEventWorkbook(
     eventResult.data,
     participantsResult.data ?? [],
     budgetResult.data ?? [],
     sourceEvent,
   )
-  const body = workbook instanceof Uint8Array ? workbook : new Uint8Array(workbook)
-
-  return new Response(body,{
+  return new Response(workbook,{
     status:200,
     headers:{
       "content-type":"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
