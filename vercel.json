@@ -1,6 +1,6 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "buildCommand": "NODE_OPTIONS=--import=./scripts/suppress-known-build-warning.mjs next build",
+  "buildCommand": "NODE_OPTIONS=--import=./scripts/suppress-known-build-warning.mjs pnpm exec next build",
   "crons": [],
   "git": {
     "deploymentEnabled": {
