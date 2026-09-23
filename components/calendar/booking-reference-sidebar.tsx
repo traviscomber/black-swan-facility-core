@@ -24,7 +24,7 @@ const copy = {
   en: {
     calendar:"Calendar", bookings:"Bookings", reservationList:"Reservation list", cancelled:"Cancelled", clients:"Clients", messageTemplates:"Message templates",
     operations:"Operations", stayCockpit:"Stay cockpit", charges:"Charges", roomBlocks:"Room blocks", rooms:"Rooms & beds", handovers:"Shift handovers", auditLog:"Audit log",
-    priceList:"Price list", setPrices:"Set prices", configuration:"Configuration", prepayment:"Prepayment", additionalServices:"Additional services",
+    priceList:"Price list", setPrices:"Set prices", configuration:"Configuration", quoteEngine:"Quote engine", prepayment:"Prepayment", additionalServices:"Additional services",
     reports:"Reports and finances", financialReport:"Financial report", roomReport:"Room report", occupancyReport:"Occupancy report", localTaxReport:"Local Tax Report", paymentList:"Payment list", registrationBook:"Registration book",
     invoices:"Invoices", taxRates:"Tax rates", employees:"Employees", settings:"Settings", reservationSystem:"Reservation system", paymentMethods:"Payment methods", salesChannels:"Sales channels", profile:"Profile",
     hide:"Hide", show:"Show", backToOs:"Back to Black Swan OS",
@@ -32,7 +32,7 @@ const copy = {
   es: {
     calendar:"Calendario", bookings:"Reservas", reservationList:"Lista de reservas", cancelled:"Canceladas", clients:"Huéspedes", messageTemplates:"Plantillas de mensajes",
     operations:"Operación", stayCockpit:"Stay cockpit", charges:"Cargos", roomBlocks:"Bloqueos", rooms:"Habitaciones y camas", handovers:"Entregas de turno", auditLog:"Auditoría",
-    priceList:"Tarifas", setPrices:"Definir precios", configuration:"Configuración", prepayment:"Prepago", additionalServices:"Servicios adicionales",
+    priceList:"Tarifas", setPrices:"Definir precios", configuration:"Configuración", quoteEngine:"Cotizador", prepayment:"Prepago", additionalServices:"Servicios adicionales",
     reports:"Reportes y finanzas", financialReport:"Reporte financiero", roomReport:"Reporte por habitación", occupancyReport:"Ocupación", localTaxReport:"Impuesto local", paymentList:"Lista de pagos", registrationBook:"Libro de registro",
     invoices:"Facturas", taxRates:"Tasas de impuesto", employees:"Equipo", settings:"Configuración", reservationSystem:"Sistema de reservas", paymentMethods:"Métodos de pago", salesChannels:"Canales de venta", profile:"Perfil",
     hide:"Ocultar", show:"Mostrar", backToOs:"Volver a Black Swan OS",
@@ -40,7 +40,7 @@ const copy = {
   de: {
     calendar:"Kalender", bookings:"Buchungen", reservationList:"Reservierungsliste", cancelled:"Storniert", clients:"Gäste", messageTemplates:"Nachrichtenvorlagen",
     operations:"Betrieb", stayCockpit:"Stay cockpit", charges:"Gebühren", roomBlocks:"Zimmerblöcke", rooms:"Zimmer & Betten", handovers:"Schichtübergaben", auditLog:"Prüfprotokoll",
-    priceList:"Preisliste", setPrices:"Preise festlegen", configuration:"Konfiguration", prepayment:"Vorauszahlung", additionalServices:"Zusatzleistungen",
+    priceList:"Preisliste", setPrices:"Preise festlegen", configuration:"Konfiguration", quoteEngine:"Angebotsrechner", prepayment:"Vorauszahlung", additionalServices:"Zusatzleistungen",
     reports:"Berichte und Finanzen", financialReport:"Finanzbericht", roomReport:"Zimmerbericht", occupancyReport:"Belegung", localTaxReport:"Lokale Steuer", paymentList:"Zahlungsliste", registrationBook:"Melderegister",
     invoices:"Rechnungen", taxRates:"Steuersätze", employees:"Mitarbeiter", settings:"Einstellungen", reservationSystem:"Reservierungssystem", paymentMethods:"Zahlungsmethoden", salesChannels:"Vertriebskanäle", profile:"Profil",
     hide:"Ausblenden", show:"Einblenden", backToOs:"Zurück zu Black Swan OS",
@@ -67,7 +67,7 @@ function NavGroup({label,icon:Icon,open,onToggle,children}:{label:string;icon:Re
 function groupForPath(pathname:string):GroupKey|null{
   if(/\/bookings\/(guests|cancelled|message-templates)?\/?$/.test(pathname)||/\/bookings\/?$/.test(pathname))return "bookings"
   if(/\/bookings\/(operations|charges|blocks|rooms|handovers|audit)(\/|$)/.test(pathname))return "operations"
-  if(/\/bookings\/(rates|prepayment|extras)(\/|$)/.test(pathname))return "prices"
+  if(/\/bookings\/(rates|quotes|prepayment|extras)(\/|$)/.test(pathname))return "prices"
   if(/\/bookings\/(revenue|reports|room-report|local-tax|payments|registration-book)(\/|$)/.test(pathname))return "reports"
   if(/\/bookings\/(reservation-settings|payment-methods|channels|profile)(\/|$)/.test(pathname))return "settings"
   return null
@@ -109,6 +109,7 @@ export function BookingReferenceSidebar(){
       <NavGroup label={c.priceList} icon={BadgeDollarSign} open={openGroups.has("prices")} onToggle={()=>toggleGroup("prices")}>
         <NavLink href={href("/bookings/rates")} active={active("/bookings/rates")} inset>{c.setPrices}</NavLink>
         <NavLink href={href("/bookings/rates?view=configuration")} active={false} inset>{c.configuration}</NavLink>
+        <NavLink href={href("/bookings/quotes")} active={active("/bookings/quotes")} inset>{c.quoteEngine}</NavLink>
         <NavLink href={href("/bookings/prepayment")} active={active("/bookings/prepayment")} inset>{c.prepayment}</NavLink>
         <NavLink href={href("/bookings/extras")} active={active("/bookings/extras")} inset>{c.additionalServices}</NavLink>
       </NavGroup>
