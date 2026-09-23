@@ -1,23 +1,26 @@
 "use client"
 
-import { Mail, Phone, Users } from "lucide-react"
+import Link from "next/link"
+import { KeyRound, Mail, Phone, Users } from "lucide-react"
 import { useLanguage } from "@/lib/hooks/use-language"
+import { useEffectiveAccess } from "@/lib/hooks/use-effective-access"
 import type { Employee } from "@/lib/types"
 
 const COPY = {
-  en: { title: "Employees", subtitle: "Canonical Black Swan team directory available to the Booking workspace.", name: "Name", role: "Role", contact: "Contact", status: "Status", active: "Active", inactive: "Inactive", empty: "No employees registered.", loadFailed: "The employee directory could not be loaded." },
-  es: { title: "Equipo", subtitle: "Directorio canónico de Black Swan disponible para el workspace de Reservas.", name: "Nombre", role: "Función", contact: "Contacto", status: "Estado", active: "Activo", inactive: "Inactivo", empty: "No hay personas registradas.", loadFailed: "No fue posible cargar el directorio del equipo." },
-  de: { title: "Mitarbeiter", subtitle: "Kanonisches Black-Swan-Teamverzeichnis für den Buchungsbereich.", name: "Name", role: "Rolle", contact: "Kontakt", status: "Status", active: "Aktiv", inactive: "Inaktiv", empty: "Keine Mitarbeiter erfasst.", loadFailed: "Das Mitarbeiterverzeichnis konnte nicht geladen werden." },
+  en: { title: "Employees", subtitle: "Canonical Black Swan team directory available to the Booking workspace.", name: "Name", role: "Role", contact: "Contact", status: "Status", active: "Active", inactive: "Inactive", empty: "No employees registered.", loadFailed: "The employee directory could not be loaded.", manage: "Access & permissions" },
+  es: { title: "Equipo", subtitle: "Directorio canónico de Black Swan disponible para el workspace de Reservas.", name: "Nombre", role: "Función", contact: "Contacto", status: "Estado", active: "Activo", inactive: "Inactivo", empty: "No hay personas registradas.", loadFailed: "No fue posible cargar el directorio del equipo.", manage: "Accesos y permisos" },
+  de: { title: "Mitarbeiter", subtitle: "Kanonisches Black-Swan-Teamverzeichnis für den Buchungsbereich.", name: "Name", role: "Rolle", contact: "Kontakt", status: "Status", active: "Aktiv", inactive: "Inaktiv", empty: "Keine Mitarbeiter erfasst.", loadFailed: "Das Mitarbeiterverzeichnis konnte nicht geladen werden.", manage: "Zugriff & Berechtigungen" },
 } as const
 
 export function BookingEmployeesDirectory({ employees, loadFailed }: { employees: Employee[]; loadFailed: boolean }) {
   const { language } = useLanguage()
+  const { access } = useEffectiveAccess()
   const copy = COPY[language]
 
   return <div className="min-h-screen bg-[#171512] text-[#e7e1d8]">
     <header className="flex min-h-[58px] items-center justify-between gap-3 border-b border-white/[0.07] bg-[#211e1a] px-4 py-2">
       <div className="min-w-0"><h1 className="truncate text-lg font-medium">{copy.title}</h1><p className="truncate text-xs text-[#b9b0a4]">{copy.subtitle}</p></div>
-      <div className="flex items-center gap-2 text-xs text-[#b9b0a4]"><Users className="h-4 w-4" /><span>{employees.length}</span></div>
+      <div className="flex items-center gap-2">{access.is_admin ? <Link href="/admin/access" className="inline-flex h-8 items-center gap-2 bg-[#2b2722] px-3 text-xs text-[#e7e1d8] hover:bg-[#332e28]"><KeyRound className="h-3.5 w-3.5" />{copy.manage}</Link> : null}<div className="flex items-center gap-2 text-xs text-[#b9b0a4]"><Users className="h-4 w-4" /><span>{employees.length}</span></div></div>
     </header>
 
     {loadFailed && <div className="border-b border-red-500/20 bg-red-500/10 px-4 py-2 text-xs text-red-300">{copy.loadFailed}</div>}
