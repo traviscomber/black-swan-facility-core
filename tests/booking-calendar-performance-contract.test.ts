@@ -5,6 +5,8 @@ import { readFileSync } from "node:fs"
 const calendarPage = readFileSync(new URL("../app/bookings/calendar/page.tsx", import.meta.url), "utf8")
 const calendarLayout = readFileSync(new URL("../app/bookings/calendar/layout.tsx", import.meta.url), "utf8")
 const timelineRow = readFileSync(new URL("../components/calendar/timeline-row.tsx", import.meta.url), "utf8")
+const timelineGrid = readFileSync(new URL("../components/calendar/timeline-grid.tsx", import.meta.url), "utf8")
+const activitiesPage = readFileSync(new URL("../app/bookings/activities/page.tsx", import.meta.url), "utf8")
 const inspector = readFileSync(new URL("../components/calendar/reservation-quick-inspector.tsx", import.meta.url), "utf8")
 const vercelConfig = readFileSync(new URL("../vercel.json", import.meta.url), "utf8")
 
@@ -40,4 +42,21 @@ test("calendar route avoids forced dynamic rendering and development branch avoi
   assert.doesNotMatch(calendarLayout, /revalidate\s*=\s*0/)
   const config = JSON.parse(vercelConfig) as { git?: { deploymentEnabled?: Record<string, boolean> } }
   assert.equal(config.git?.deploymentEnabled?.["feat/booking-calendar-low-cpu-bedbooking"], false)
+})
+
+
+test("calendar never fabricates room availability when every bed conflicts", () => {
+  assert.match(timelineGrid, /freeBedForRange/)
+  assert.match(timelineGrid, /\?\? null/)
+  assert.doesNotMatch(timelineGrid, /freeBedForRange[\s\S]{0,500}\?\? roomBeds\[0\]/)
+  assert.match(timelineGrid, /toast\.error\(c\.noAvailability\)/)
+})
+
+test("booking quick actions use canonical lifecycle RPCs instead of direct status writes", () => {
+  assert.match(inspector, /rpc\("check_in_or_queue"/)
+  assert.match(inspector, /rpc\("transition_reservation_status"/)
+  assert.doesNotMatch(inspector, /from\("reservations"\)\.update/)
+  assert.match(activitiesPage, /rpc\("check_in_or_queue"/)
+  assert.match(activitiesPage, /rpc\("transition_reservation_status"/)
+  assert.doesNotMatch(activitiesPage, /from\("reservations"\)\.update/)
 })
