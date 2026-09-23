@@ -37,6 +37,15 @@ function label(value: string | null | undefined) {
   return value ? value.replaceAll("_", " ").replaceAll("-", " ") : "—"
 }
 
+function statusClass(value: string | null | undefined) {
+  const normalized = String(value ?? "").toLowerCase().replaceAll("-", "_")
+  if (normalized === "confirmed") return "bg-blue-500/10 text-blue-300"
+  if (normalized === "checked_in") return "bg-emerald-500/10 text-emerald-300"
+  if (normalized === "checked_out" || normalized === "completed") return "bg-slate-500/10 text-slate-300"
+  if (normalized === "cancelled" || normalized === "canceled") return "bg-red-500/10 text-red-300"
+  return "bg-amber-500/10 text-amber-300"
+}
+
 function csvCell(value: unknown) {
   const text = String(value ?? "")
   return `"${text.replaceAll('"', '""')}"`
@@ -150,7 +159,7 @@ export default function RegistrationBookPage() {
               <td className="px-3 py-3 text-[#b9b0a4]"><div>{row.room?.location?.name || "—"}</div><div className="mt-1 text-[10px] text-[#8f867b]">{row.room?.room_number || "—"}</div></td>
               <td className="px-3 py-3 tabular-nums text-[#b9b0a4]">{row.check_in} → {row.check_out}</td>
               <td className="px-3 py-3 tabular-nums text-[#b9b0a4]">{row.num_guests ?? 1}</td>
-              <td className="px-3 py-3"><span className="bg-[#2b2722] px-2 py-1 capitalize text-[#b9b0a4]">{label(row.status)}</span></td>
+              <td className="px-3 py-3"><span className={`px-2 py-1 capitalize ${statusClass(row.status)}`}>{label(row.status)}</span></td>
               <td className="px-4 py-3 capitalize text-[#8f867b]">{label(row.source)}</td>
             </tr>
           })}
