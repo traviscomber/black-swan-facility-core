@@ -124,6 +124,8 @@ export function AddReservationDialog({
             room_number,
             room_type,
             rate_per_night,
+            capacity,
+            max_guests,
             location,
             location_id,
             location_ref:locations!rooms_location_id_fkey(id, name)
@@ -216,7 +218,7 @@ export function AddReservationDialog({
       checkOut: formData.check_out,
       nights,
       totalAmount: formData.total_amount,
-      locationName: selectedLocationFilter === "all" ? copy.multiple : selectedLocationFilter,
+      locationName: selectedBed?.room?.location_ref?.name || selectedBed?.room?.location || (selectedLocationFilter === "all" ? copy.multiple : selectedLocationFilter),
     })
     setShowConfirmation(true)
   }
