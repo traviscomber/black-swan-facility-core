@@ -16,7 +16,14 @@ import { bookingDateKey } from "@/lib/booking/timezone"
 
 interface Room { id: string; room_number: string; location: string | null; rate_per_night: number | null }
 interface Rule { id: string; room_id: string | null; season_name: string | null; start_date: string; end_date: string; rate_multiplier: number | null; min_stay: number | null; room?: Room | null }
-interface BookingSettings { id: string; currency: string; lodging_tax_rate: number; service_fee: number }
+interface PricingPolicy {
+  weekend?: { enabled?: boolean; days?: number[]; multiplier?: number }
+  occupancy?: { enabled?: boolean; threshold_pct?: number; multiplier?: number }
+  short_stay?: { enabled?: boolean; max_nights?: number; multiplier?: number }
+  long_stay?: { enabled?: boolean; min_nights?: number; multiplier?: number }
+  children?: { enabled?: boolean; bands?: Array<{ min_age?: number; max_age?: number; price_per_night?: number }> }
+}
+interface BookingSettings { id: string; currency: string; lodging_tax_rate: number; service_fee: number; pricing_policy?: PricingPolicy | null }
 
 const configurationCopy = {
   en: {
@@ -34,7 +41,20 @@ const configurationCopy = {
     invalid: "Use a non-negative tax, service fee and room rate.",
     noRooms: "No rooms configured.",
     currentModel: "Quote model",
-    currentModelDetail: "Base room rate × seasonal multiplier, subject to minimum stay, plus configured tax, extras and service fee.",
+    currentModelDetail: "Base room rate × seasonal multiplier × optional weekend / occupancy / stay-length rules, plus child supplements, tax, extras and service fee.",
+    advanced: "Advanced pricing",
+    weekend: "Weekend pricing",
+    occupancy: "Occupancy pricing",
+    shortStay: "Short-stay pricing",
+    longStay: "Long-stay pricing",
+    children: "Children pricing",
+    enabled: "Enabled",
+    multiplier: "Multiplier",
+    threshold: "Occupancy threshold %",
+    maxNights: "Max nights",
+    minNights: "Min nights",
+    child03: "Child 0–3 / night",
+    child410: "Child 4–10 / night",
   },
   es: {
     title: "Configuración de precios",
@@ -51,7 +71,20 @@ const configurationCopy = {
     invalid: "Usa impuesto, cargo de servicio y tarifa de habitación no negativos.",
     noRooms: "No hay habitaciones configuradas.",
     currentModel: "Modelo de cotización",
-    currentModelDetail: "Tarifa base de habitación × multiplicador de temporada, sujeto a estadía mínima, más impuesto configurado, extras y cargo de servicio.",
+    currentModelDetail: "Tarifa base × temporada × reglas opcionales de fin de semana / ocupación / duración, más suplementos infantiles, impuesto, extras y cargo de servicio.",
+    advanced: "Pricing avanzado",
+    weekend: "Precio fin de semana",
+    occupancy: "Precio por ocupación",
+    shortStay: "Precio estadía corta",
+    longStay: "Precio estadía larga",
+    children: "Precio infantil",
+    enabled: "Activo",
+    multiplier: "Multiplicador",
+    threshold: "Umbral ocupación %",
+    maxNights: "Máx. noches",
+    minNights: "Mín. noches",
+    child03: "Niño 0–3 / noche",
+    child410: "Niño 4–10 / noche",
   },
   de: {
     title: "Preiskonfiguration",
@@ -68,7 +101,20 @@ const configurationCopy = {
     invalid: "Steuer, Servicegebühr und Zimmerpreis müssen nicht negativ sein.",
     noRooms: "Keine Zimmer konfiguriert.",
     currentModel: "Preismodell",
-    currentModelDetail: "Zimmerbasispreis × saisonaler Multiplikator, unter Berücksichtigung des Mindestaufenthalts, plus Steuer, Extras und Servicegebühr.",
+    currentModelDetail: "Basispreis × Saison × optionale Wochenend-, Belegungs- und Aufenthaltsregeln plus Kinderzuschläge, Steuer, Extras und Servicegebühr.",
+    advanced: "Erweiterte Preisregeln",
+    weekend: "Wochenendpreis",
+    occupancy: "Belegungspreis",
+    shortStay: "Kurzaufenthalt",
+    longStay: "Langaufenthalt",
+    children: "Kinderpreis",
+    enabled: "Aktiv",
+    multiplier: "Multiplikator",
+    threshold: "Belegungsschwelle %",
+    maxNights: "Max. Nächte",
+    minNights: "Min. Nächte",
+    child03: "Kind 0–3 / Nacht",
+    child410: "Kind 4–10 / Nacht",
   },
 } as const
 
@@ -88,6 +134,13 @@ export default function RatesPage() {
   const [rules, setRules] = useState<Rule[]>([])
   const [settings, setSettings] = useState<BookingSettings | null>(null)
   const [settingsForm, setSettingsForm] = useState({ currency: "CLP", lodging_tax_rate: "0", service_fee: "0" })
+  const [policyForm, setPolicyForm] = useState({
+    weekend_enabled: false, weekend_multiplier: "1",
+    occupancy_enabled: false, occupancy_threshold: "80", occupancy_multiplier: "1",
+    short_enabled: false, short_max_nights: "2", short_multiplier: "1",
+    long_enabled: false, long_min_nights: "7", long_multiplier: "1",
+    children_enabled: false, child_0_3_price: "0", child_4_10_price: "0",
+  })
   const [roomRates, setRoomRates] = useState<Record<string, string>>({})
   const [search, setSearch] = useState("")
   const [roomFilter, setRoomFilter] = useState("all")
@@ -102,7 +155,7 @@ export default function RatesPage() {
     const [roomsResult, rulesResult, settingsResult] = await Promise.all([
       supabase.from("rooms").select("id, room_number, location, rate_per_night").order("room_number"),
       supabase.from("pricing_rules").select("id, room_id, season_name, start_date, end_date, rate_multiplier, min_stay, room:rooms(id, room_number, location, rate_per_night)").order("start_date"),
-      supabase.from("booking_settings").select("id, currency, lodging_tax_rate, service_fee").eq("id", "default").maybeSingle(),
+      supabase.from("booking_settings").select("id, currency, lodging_tax_rate, service_fee, pricing_policy").eq("id", "default").maybeSingle(),
     ])
     const firstError = roomsResult.error || rulesResult.error || settingsResult.error
     if (firstError) {
@@ -122,6 +175,24 @@ export default function RatesPage() {
         currency: loadedSettings.currency || "CLP",
         lodging_tax_rate: String(Number(loadedSettings.lodging_tax_rate ?? 0)),
         service_fee: String(Number(loadedSettings.service_fee ?? 0)),
+      })
+      const policy = loadedSettings.pricing_policy ?? {}
+      const bands = policy.children?.bands ?? []
+      setPolicyForm({
+        weekend_enabled: Boolean(policy.weekend?.enabled),
+        weekend_multiplier: String(Number(policy.weekend?.multiplier ?? 1)),
+        occupancy_enabled: Boolean(policy.occupancy?.enabled),
+        occupancy_threshold: String(Number(policy.occupancy?.threshold_pct ?? 80)),
+        occupancy_multiplier: String(Number(policy.occupancy?.multiplier ?? 1)),
+        short_enabled: Boolean(policy.short_stay?.enabled),
+        short_max_nights: String(Number(policy.short_stay?.max_nights ?? 2)),
+        short_multiplier: String(Number(policy.short_stay?.multiplier ?? 1)),
+        long_enabled: Boolean(policy.long_stay?.enabled),
+        long_min_nights: String(Number(policy.long_stay?.min_nights ?? 7)),
+        long_multiplier: String(Number(policy.long_stay?.multiplier ?? 1)),
+        children_enabled: Boolean(policy.children?.enabled),
+        child_0_3_price: String(Number(bands[0]?.price_per_night ?? 0)),
+        child_4_10_price: String(Number(bands[1]?.price_per_night ?? 0)),
       })
     }
   }, [supabase])
@@ -168,12 +239,32 @@ export default function RatesPage() {
   async function saveSettings() {
     const lodgingTax = Number(settingsForm.lodging_tax_rate)
     const serviceFee = Number(settingsForm.service_fee)
-    if (!settingsForm.currency.trim() || !Number.isFinite(lodgingTax) || lodgingTax < 0 || lodgingTax > 100 || !Number.isFinite(serviceFee) || serviceFee < 0) {
+    const weekendMultiplier = Number(policyForm.weekend_multiplier)
+    const occupancyThreshold = Number(policyForm.occupancy_threshold)
+    const occupancyMultiplier = Number(policyForm.occupancy_multiplier)
+    const shortMax = Number(policyForm.short_max_nights)
+    const shortMultiplier = Number(policyForm.short_multiplier)
+    const longMin = Number(policyForm.long_min_nights)
+    const longMultiplier = Number(policyForm.long_multiplier)
+    const child03 = Number(policyForm.child_0_3_price)
+    const child410 = Number(policyForm.child_4_10_price)
+    const numericValues = [lodgingTax, serviceFee, weekendMultiplier, occupancyThreshold, occupancyMultiplier, shortMax, shortMultiplier, longMin, longMultiplier, child03, child410]
+    if (!settingsForm.currency.trim() || numericValues.some((value) => !Number.isFinite(value) || value < 0) || lodgingTax > 100 || occupancyThreshold > 100 || !Number.isInteger(shortMax) || !Number.isInteger(longMin)) {
       setError(configCopy.invalid)
       return
     }
     setSaving(true); setError(null); setNotice(null)
-    const payload = { id: "default", currency: settingsForm.currency.trim().toUpperCase(), lodging_tax_rate: lodgingTax, service_fee: serviceFee, updated_at: new Date().toISOString() }
+    const pricing_policy: PricingPolicy = {
+      weekend: { enabled: policyForm.weekend_enabled, days: [6, 7], multiplier: weekendMultiplier },
+      occupancy: { enabled: policyForm.occupancy_enabled, threshold_pct: occupancyThreshold, multiplier: occupancyMultiplier },
+      short_stay: { enabled: policyForm.short_enabled, max_nights: shortMax, multiplier: shortMultiplier },
+      long_stay: { enabled: policyForm.long_enabled, min_nights: longMin, multiplier: longMultiplier },
+      children: { enabled: policyForm.children_enabled, bands: [
+        { min_age: 0, max_age: 3, price_per_night: child03 },
+        { min_age: 4, max_age: 10, price_per_night: child410 },
+      ] },
+    }
+    const payload = { id: "default", currency: settingsForm.currency.trim().toUpperCase(), lodging_tax_rate: lodgingTax, service_fee: serviceFee, pricing_policy, updated_at: new Date().toISOString() }
     const { error: updateError } = settings
       ? await supabase.from("booking_settings").update(payload).eq("id", "default")
       : await supabase.from("booking_settings").insert(payload)
@@ -216,6 +307,31 @@ export default function RatesPage() {
                 <Input type="number" min="0" step="1" value={settingsForm.service_fee} onChange={(event) => setSettingsForm({ ...settingsForm, service_fee: event.target.value })} className="rounded-none" />
               </Field>
             </div>
+            <div className="mt-6">
+              <div className="mb-2 text-[11px] uppercase tracking-[0.08em] text-[#8f867b]">{configCopy.advanced}</div>
+              <div className="divide-y divide-[#39342d] bg-[#171512]">
+                <PolicyRow label={configCopy.weekend} enabled={policyForm.weekend_enabled} onToggle={() => setPolicyForm((p) => ({ ...p, weekend_enabled: !p.weekend_enabled }))}>
+                  <MiniNumber label={configCopy.multiplier} value={policyForm.weekend_multiplier} onChange={(value) => setPolicyForm((p) => ({ ...p, weekend_multiplier: value }))} step="0.01" />
+                </PolicyRow>
+                <PolicyRow label={configCopy.occupancy} enabled={policyForm.occupancy_enabled} onToggle={() => setPolicyForm((p) => ({ ...p, occupancy_enabled: !p.occupancy_enabled }))}>
+                  <MiniNumber label={configCopy.threshold} value={policyForm.occupancy_threshold} onChange={(value) => setPolicyForm((p) => ({ ...p, occupancy_threshold: value }))} />
+                  <MiniNumber label={configCopy.multiplier} value={policyForm.occupancy_multiplier} onChange={(value) => setPolicyForm((p) => ({ ...p, occupancy_multiplier: value }))} step="0.01" />
+                </PolicyRow>
+                <PolicyRow label={configCopy.shortStay} enabled={policyForm.short_enabled} onToggle={() => setPolicyForm((p) => ({ ...p, short_enabled: !p.short_enabled }))}>
+                  <MiniNumber label={configCopy.maxNights} value={policyForm.short_max_nights} onChange={(value) => setPolicyForm((p) => ({ ...p, short_max_nights: value }))} />
+                  <MiniNumber label={configCopy.multiplier} value={policyForm.short_multiplier} onChange={(value) => setPolicyForm((p) => ({ ...p, short_multiplier: value }))} step="0.01" />
+                </PolicyRow>
+                <PolicyRow label={configCopy.longStay} enabled={policyForm.long_enabled} onToggle={() => setPolicyForm((p) => ({ ...p, long_enabled: !p.long_enabled }))}>
+                  <MiniNumber label={configCopy.minNights} value={policyForm.long_min_nights} onChange={(value) => setPolicyForm((p) => ({ ...p, long_min_nights: value }))} />
+                  <MiniNumber label={configCopy.multiplier} value={policyForm.long_multiplier} onChange={(value) => setPolicyForm((p) => ({ ...p, long_multiplier: value }))} step="0.01" />
+                </PolicyRow>
+                <PolicyRow label={configCopy.children} enabled={policyForm.children_enabled} onToggle={() => setPolicyForm((p) => ({ ...p, children_enabled: !p.children_enabled }))}>
+                  <MiniNumber label={configCopy.child03} value={policyForm.child_0_3_price} onChange={(value) => setPolicyForm((p) => ({ ...p, child_0_3_price: value }))} />
+                  <MiniNumber label={configCopy.child410} value={policyForm.child_4_10_price} onChange={(value) => setPolicyForm((p) => ({ ...p, child_4_10_price: value }))} />
+                </PolicyRow>
+              </div>
+            </div>
+
             <Button onClick={() => void saveSettings()} disabled={saving} className="mt-5 rounded-none">{configCopy.saveDefaults}</Button>
 
             <div className="mt-8 bg-[#2b2722] p-4">
@@ -259,3 +375,11 @@ export default function RatesPage() {
 }
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) { return <div className="space-y-2"><Label>{label}</Label>{children}</div> }
+
+function PolicyRow({ label, enabled, onToggle, children }: { label: string; enabled: boolean; onToggle: () => void; children: React.ReactNode }) {
+  return <div className="p-3"><div className="mb-2 flex items-center justify-between gap-3"><span className="text-xs font-medium">{label}</span><button type="button" onClick={onToggle} className={`h-7 min-w-16 px-2 text-[11px] ${enabled ? "bg-[#6f8373] text-[#171512]" : "bg-[#2b2722] text-[#8f867b]"}`}>{enabled ? "ON" : "OFF"}</button></div><div className="grid gap-2 sm:grid-cols-2">{children}</div></div>
+}
+
+function MiniNumber({ label, value, onChange, step = "1" }: { label: string; value: string; onChange: (value: string) => void; step?: string }) {
+  return <label className="text-[11px] text-[#8f867b]"><span className="mb-1 block">{label}</span><input type="number" min="0" step={step} value={value} onChange={(event) => onChange(event.target.value)} className="h-8 w-full bg-[#211e1a] px-2 text-xs text-[#e7e1d8] outline-none focus:ring-1 focus:ring-[#6f8373]" /></label>
+}
