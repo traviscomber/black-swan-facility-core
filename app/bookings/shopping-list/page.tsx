@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { useSearchParams } from "next/navigation"
 import { useCallback, useEffect, useMemo, useState } from "react"
-import { CheckCircle2, ChefHat, ExternalLink, Plus, RefreshCw, Send, ShoppingCart, Sprout } from "lucide-react"
+import { CheckCircle2, ChefHat, ExternalLink, Plus, RefreshCw, Search, Send, ShoppingCart, Sprout } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
@@ -39,21 +39,21 @@ const COPY = {
   en: {
     title: "Hospitality shopping list",
     subtitle: "Kitchen and guest-service needs connected to Orchard first, procurement second.",
-    add: "Add item", refresh: "Refresh", item: "Item", qty: "Qty", unit: "Unit", required: "Required", source: "Source", owner: "Owner", status: "Status", actions: "Actions",
+    add: "Add item", refresh: "Refresh", item: "Item", qty: "Qty", unit: "Unit", required: "Required", source: "Source", owner: "Owner", status: "Status", actions: "Actions", search:"Search item, note or property", allStatuses:"All statuses",
     orchard: "Orchard", purchase: "Purchase", either: "Orchard or purchase", needed: "Needed", sourcing: "Sourcing", orchardRequested: "Orchard requested", purchaseRequested: "Purchase requested", ready: "Ready", completed: "Completed", cancelled: "Cancelled",
     sendProcurement: "Send to procurement", markOrchard: "Source from Orchard", complete: "Complete", newItem: "New shopping item", notes: "Notes", crop: "Orchard crop", location: "Property", assignee: "Responsible", save: "Add to list", noCrop: "No crop selected", noItems: "No shopping items.", procurement: "Procurement", orchardDesk: "Orchard harvest", carlos: "Carlos Bustamante · Chef / Orchard"
   },
   es: {
     title: "Lista de compras de Hospitality",
     subtitle: "Necesidades de cocina y huéspedes conectadas primero a Orchard y luego a Compras.",
-    add: "Agregar ítem", refresh: "Actualizar", item: "Ítem", qty: "Cant.", unit: "Unidad", required: "Requerido", source: "Origen", owner: "Responsable", status: "Estado", actions: "Acciones",
+    add: "Agregar ítem", refresh: "Actualizar", item: "Ítem", qty: "Cant.", unit: "Unidad", required: "Requerido", source: "Origen", owner: "Responsable", status: "Estado", actions: "Acciones", search:"Buscar ítem, nota o propiedad", allStatuses:"Todos los estados",
     orchard: "Huerta", purchase: "Comprar", either: "Huerta o compra", needed: "Necesario", sourcing: "Buscando", orchardRequested: "Solicitado a huerta", purchaseRequested: "Compra solicitada", ready: "Listo", completed: "Completado", cancelled: "Cancelado",
     sendProcurement: "Enviar a Compras", markOrchard: "Solicitar a Orchard", complete: "Completar", newItem: "Nuevo ítem de compra", notes: "Notas", crop: "Cultivo de Orchard", location: "Propiedad", assignee: "Responsable", save: "Agregar a lista", noCrop: "Sin cultivo asociado", noItems: "No hay ítems en la lista.", procurement: "Compras", orchardDesk: "Cosecha Orchard", carlos: "Carlos Bustamante · Chef / Huerta"
   },
   de: {
     title: "Hospitality-Einkaufsliste",
     subtitle: "Küchen- und Gästebedarf zuerst mit Orchard, danach mit Einkauf verbunden.",
-    add: "Eintrag hinzufügen", refresh: "Aktualisieren", item: "Artikel", qty: "Menge", unit: "Einheit", required: "Benötigt", source: "Quelle", owner: "Verantwortlich", status: "Status", actions: "Aktionen",
+    add: "Eintrag hinzufügen", refresh: "Aktualisieren", item: "Artikel", qty: "Menge", unit: "Einheit", required: "Benötigt", source: "Quelle", owner: "Verantwortlich", status: "Status", actions: "Aktionen", search:"Artikel, Notiz oder Unterkunft suchen", allStatuses:"Alle Status",
     orchard: "Orchard", purchase: "Einkauf", either: "Orchard oder Einkauf", needed: "Benötigt", sourcing: "Beschaffung", orchardRequested: "Orchard angefragt", purchaseRequested: "Einkauf angefragt", ready: "Bereit", completed: "Abgeschlossen", cancelled: "Storniert",
     sendProcurement: "An Einkauf senden", markOrchard: "Bei Orchard anfragen", complete: "Abschließen", newItem: "Neuer Einkaufsartikel", notes: "Notizen", crop: "Orchard-Kultur", location: "Objekt", assignee: "Verantwortlich", save: "Zur Liste hinzufügen", noCrop: "Keine Kultur gewählt", noItems: "Keine Einträge.", procurement: "Einkauf", orchardDesk: "Orchard-Ernte", carlos: "Carlos Bustamante · Chef / Orchard"
   },
@@ -72,6 +72,8 @@ export default function HospitalityShoppingListPage() {
   const [crops,setCrops] = useState<Crop[]>([])
   const [open,setOpen] = useState(false)
   const [saving,setSaving] = useState(false)
+  const [query,setQuery] = useState("")
+  const [statusFilter,setStatusFilter] = useState("active")
   const [form,setForm] = useState({
     item_name: params.get("item") || "",
     quantity: "1",
@@ -116,6 +118,14 @@ export default function HospitalityShoppingListPage() {
   const employeeMap=useMemo(()=>new Map(employees.map(row=>[row.id,row])),[employees])
   const locationMap=useMemo(()=>new Map(locations.map(row=>[row.id,row])),[locations])
   const cropMap=useMemo(()=>new Map(crops.map(row=>[row.id,row])),[crops])
+  const visibleItems=useMemo(()=>{
+    const term=query.trim().toLowerCase()
+    return items.filter(item=>{
+      const activeMatch=statusFilter==="all" || (statusFilter==="active" ? !["completed","cancelled"].includes(item.status) : item.status===statusFilter)
+      const text=`${item.item_name} ${item.notes??""} ${item.location_id?locationMap.get(item.location_id)?.name??"":""}`.toLowerCase()
+      return activeMatch && (!term || text.includes(term))
+    })
+  },[items,locationMap,query,statusFilter])
 
   async function addItem(){
     if(!form.item_name.trim() || !form.location_id || Number(form.quantity)<=0) return
@@ -183,7 +193,7 @@ export default function HospitalityShoppingListPage() {
 
   return <section className="min-h-screen bg-[#171512] text-[#e7e1d8]">
     <header className="flex min-h-[58px] flex-wrap items-center justify-between gap-3 bg-[#211e1a] px-4 py-3">
-      <div><h1 className="text-base font-medium">{c.title}</h1><p className="text-xs text-[#b9b0a4]">{c.subtitle}</p></div>
+      <div><h1 className="text-[15px] font-medium">{c.title}</h1><p className="text-[11px] text-[#b9b0a4]">{c.subtitle} · {visibleItems.length}/{items.length}</p></div>
       <div className="flex flex-wrap gap-2">
         <Button asChild variant="outline" size="sm" className="rounded-none"><Link href={"/" + language + "/orchard/harvest"}><Sprout className="mr-2 h-4 w-4"/>{c.orchardDesk}</Link></Button>
         <Button asChild variant="outline" size="sm" className="rounded-none"><Link href={"/" + language + "/procurement/requests"}><ShoppingCart className="mr-2 h-4 w-4"/>{c.procurement}</Link></Button>
@@ -192,19 +202,21 @@ export default function HospitalityShoppingListPage() {
       </div>
     </header>
 
-    <div className="border-b border-white/[.06] bg-[#1d1a17] px-4 py-2 text-xs text-[#b9b0a4]">
-      <ChefHat className="mr-2 inline h-4 w-4"/>{c.carlos}
+    <div className="flex min-h-10 flex-wrap items-center gap-2 border-b border-white/[.06] bg-[#1d1a17] px-3 py-1">
+      <div className="relative min-w-[240px] flex-1"><Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#8f867b]"/><input value={query} onChange={event=>setQuery(event.target.value)} placeholder={c.search} className="h-8 w-full bg-[#171512] pl-9 pr-3 text-xs outline-none"/></div>
+      <select value={statusFilter} onChange={event=>setStatusFilter(event.target.value)} className="h-8 min-w-40 bg-[#171512] px-2 text-xs"><option value="active">{c.needed} +</option><option value="all">{c.allStatuses}</option>{STATUS_ORDER.map(value=><option key={value} value={value}>{statusLabel(value)}</option>)}</select>
+      <span className="text-[11px] text-[#8f867b]"><ChefHat className="mr-1 inline h-3.5 w-3.5"/>{c.carlos}</span>
     </div>
 
     <div className="overflow-x-auto">
       <table className="w-full min-w-[1180px] text-xs">
         <thead className="bg-[#211e1a] text-left text-[#8f867b]"><tr><th className="px-3 py-2">{c.item}</th><th className="px-3 py-2">{c.qty}</th><th className="px-3 py-2">{c.required}</th><th className="px-3 py-2">{c.source}</th><th className="px-3 py-2">{c.owner}</th><th className="px-3 py-2">{c.status}</th><th className="px-3 py-2 text-right">{c.actions}</th></tr></thead>
         <tbody>
-          {items.length===0?<tr><td colSpan={7} className="p-10 text-center text-[#8f867b]">{c.noItems}</td></tr>:items.map(item=>{
+          {visibleItems.length===0?<tr><td colSpan={7} className="p-10 text-center text-[#8f867b]">{c.noItems}</td></tr>:visibleItems.map(item=>{
             const employee=item.assigned_to?employeeMap.get(item.assigned_to):null
             const crop=item.orchard_crop_id?cropMap.get(item.orchard_crop_id):null
             return <tr key={item.id} className="border-t border-white/[.05] align-top hover:bg-[#211e1a]">
-              <td className="px-3 py-3"><div className="font-medium">{item.item_name}</div><div className="mt-1 text-[11px] text-[#8f867b]">{item.notes||"—"}{item.location_id?<span> · {locationMap.get(item.location_id)?.name||""}</span>:null}</div></td>
+              <td className="px-3 py-2"><div className="font-medium">{item.item_name}</div><div className="mt-1 text-[11px] text-[#8f867b]">{item.notes||"—"}{item.location_id?<span> · {locationMap.get(item.location_id)?.name||""}</span>:null}</div></td>
               <td className="px-3 py-3 tabular-nums">{Number(item.quantity)} {item.unit}</td>
               <td className="px-3 py-3">{item.required_date||"—"}</td>
               <td className="px-3 py-3"><div>{sourceLabel(item.source_strategy)}</div><div className="mt-1 text-[11px] text-[#8f867b]">{crop ? crop.crop_name + (crop.variety ? " · " + crop.variety : "") : c.noCrop}</div></td>

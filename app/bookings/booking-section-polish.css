@@ -458,3 +458,29 @@
 .booking-workspace[data-booking-section="charges"] [data-slot="button"] {
   border-radius: 0 !important;
 }
+
+
+.booking-workspace[data-booking-section="shopping-list"] .booking-calendar-bedbooking-shell > section > header,
+.booking-workspace[data-booking-section="audit"] .booking-calendar-bedbooking-shell > div > header {
+  min-height: 52px !important;
+  padding-top: 7px !important;
+  padding-bottom: 7px !important;
+}
+
+.booking-workspace[data-booking-section="handovers"] [data-slot="card"] {
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}
+
+.booking-workspace[data-booking-section="handovers"] [data-slot="card-header"] {
+  padding: 10px 12px !important;
+}
+
+.booking-workspace[data-booking-section="handovers"] [data-slot="card-content"] {
+  padding: 0 12px 12px !important;
+}
+
+.booking-workspace[data-booking-section="handovers"] .grid.gap-4.p-4 {
+  gap: 8px !important;
+  padding: 8px !important;
+}

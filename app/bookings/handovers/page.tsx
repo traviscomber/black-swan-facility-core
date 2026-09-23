@@ -77,7 +77,7 @@ const copy = {
     noDraft: "Select a draft handover first.",
     noHandovers: "No handovers yet.",
     noItems: "No items in this handover.",
-    refresh: "Refresh",
+    refresh: "Refresh", all:"All", drafts:"Drafts", open:"Open", closed:"Closed", reception:"Reception", housekeeping:"Housekeeping", hospitality:"Hospitality", maintenance:"Maintenance", management:"Management", morning:"Morning", afternoon:"Afternoon", night:"Night", custom:"Custom", incoming:"Incoming employee (optional)", low:"Low", normal:"Normal", high:"High", critical:"Critical", noOpenLogistics:"{t.noOpenLogistics}",
   },
   es: {
     title: "Entregas de turno",
@@ -104,7 +104,7 @@ const copy = {
     noDraft: "Selecciona primero una entrega en borrador.",
     noHandovers: "Aún no hay entregas de turno.",
     noItems: "Esta entrega no tiene pendientes.",
-    refresh: "Actualizar",
+    refresh: "Actualizar", all:"Todos", drafts:"Borradores", open:"Abiertas", closed:"Cerradas", reception:"Recepción", housekeeping:"Housekeeping", hospitality:"Hospitality", maintenance:"Mantenimiento", management:"Administración", morning:"Mañana", afternoon:"Tarde", night:"Noche", custom:"Personalizado", incoming:"Persona entrante (opcional)", low:"Baja", normal:"Normal", high:"Alta", critical:"Crítica", noOpenLogistics:"No hay logística abierta.",
   },
   de: {
     title: "Schichtübergaben",
@@ -131,7 +131,7 @@ const copy = {
     noDraft: "Zuerst einen Entwurf auswählen.",
     noHandovers: "Noch keine Übergaben vorhanden.",
     noItems: "Diese Übergabe enthält keine offenen Punkte.",
-    refresh: "Aktualisieren",
+    refresh: "Aktualisieren", all:"Alle", drafts:"Entwürfe", open:"Offen", closed:"Geschlossen", reception:"Rezeption", housekeeping:"Housekeeping", hospitality:"Hospitality", maintenance:"Wartung", management:"Management", morning:"Morgen", afternoon:"Nachmittag", night:"Nacht", custom:"Benutzerdefiniert", incoming:"Eingehender Mitarbeiter (optional)", low:"Niedrig", normal:"Normal", high:"Hoch", critical:"Kritisch", noOpenLogistics:"Keine offene Logistik.",
   },
 } as const
 
@@ -158,6 +158,7 @@ export default function BookingHandoversPage() {
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [handoverFilter,setHandoverFilter] = useState("open")
 
   const [locationId, setLocationId] = useState("")
   const [area, setArea] = useState("reception")
@@ -169,6 +170,12 @@ export default function BookingHandoversPage() {
   const [itemDetail, setItemDetail] = useState("")
   const [itemPriority, setItemPriority] = useState("normal")
 
+  const visibleHandovers = useMemo(() => handovers.filter((handover) => {
+    if (handoverFilter === "all") return true
+    if (handoverFilter === "draft") return handover.status === "draft"
+    if (handoverFilter === "closed") return handover.status === "closed"
+    return handover.status !== "closed"
+  }), [handoverFilter, handovers])
   const selected = handovers.find((item) => item.id === selectedId) ?? null
   const selectedItems = items.filter((item) => item.handover_id === selectedId)
   const locationName = useCallback((id: string) => locations.find((item) => item.id === id)?.name ?? t.property, [locations, t.property])
@@ -343,15 +350,15 @@ export default function BookingHandoversPage() {
               </select>
               <div className="grid grid-cols-2 gap-2">
                 <select value={area} onChange={(e) => setArea(e.target.value)} className="h-10 rounded-md border bg-background px-3 text-sm">
-                  <option value="reception">Reception</option><option value="housekeeping">Housekeeping</option><option value="hospitality">Hospitality</option><option value="maintenance">Maintenance</option><option value="management">Management</option>
+                  <option value="reception">{t.reception}</option><option value="housekeeping">{t.housekeeping}</option><option value="hospitality">{t.hospitality}</option><option value="maintenance">{t.maintenance}</option><option value="management">{t.management}</option>
                 </select>
                 <select value={shiftName} onChange={(e) => setShiftName(e.target.value)} className="h-10 rounded-md border bg-background px-3 text-sm">
-                  <option value="morning">Morning</option><option value="afternoon">Afternoon</option><option value="night">Night</option><option value="custom">Custom</option>
+                  <option value="morning">{t.morning}</option><option value="afternoon">{t.afternoon}</option><option value="night">{t.night}</option><option value="custom">{t.custom}</option>
                 </select>
               </div>
               <Input type="date" value={shiftDate} onChange={(e) => setShiftDate(e.target.value)} />
               <select value={incomingEmployeeId} onChange={(e) => setIncomingEmployeeId(e.target.value)} className="h-10 w-full rounded-md border bg-background px-3 text-sm">
-                <option value="">Incoming employee (optional)</option>
+                <option value="">{t.incoming}</option>
                 {staff.map((person) => <option key={person.id} value={person.id}>{person.name}</option>)}
               </select>
               <textarea value={summary} onChange={(e) => setSummary(e.target.value)} placeholder={t.summary} className="min-h-24 w-full rounded-md border bg-background p-3 text-sm" />
@@ -360,11 +367,11 @@ export default function BookingHandoversPage() {
           </Card>
 
           <Card>
-            <CardHeader><CardTitle className="text-base">{t.title}</CardTitle></CardHeader>
-            <CardContent className="space-y-2">
-              {handovers.length === 0 && <p className="text-sm text-muted-foreground">{t.noHandovers}</p>}
-              {handovers.map((handover) => (
-                <button key={handover.id} type="button" onClick={() => setSelectedId(handover.id)} className={`w-full rounded-lg border p-3 text-left ${selectedId === handover.id ? "border-primary bg-primary/5" : ""}`}>
+            <CardHeader className="flex-row items-center justify-between gap-2"><CardTitle className="text-sm">{t.title}</CardTitle><select value={handoverFilter} onChange={(e)=>setHandoverFilter(e.target.value)} className="h-8 bg-background px-2 text-xs"><option value="open">{t.open}</option><option value="draft">{t.drafts}</option><option value="closed">{t.closed}</option><option value="all">{t.all}</option></select></CardHeader>
+            <CardContent className="space-y-1.5">
+              {visibleHandovers.length === 0 && <p className="text-sm text-muted-foreground">{t.noHandovers}</p>}
+              {visibleHandovers.map((handover) => (
+                <button key={handover.id} type="button" onClick={() => setSelectedId(handover.id)} className={`w-full border px-3 py-2 text-left ${selectedId === handover.id ? "border-primary bg-primary/5" : ""}`}>
                   <div className="flex items-center justify-between gap-2"><span className="font-medium capitalize">{handover.area} · {handover.shift_name}</span><Badge variant={statusVariant(handover.status)}>{handover.status}</Badge></div>
                   <p className="mt-1 text-xs text-muted-foreground">{locationName(handover.location_id)} · {handover.shift_date}</p>
                   {handover.summary && <p className="mt-2 line-clamp-2 text-sm">{handover.summary}</p>}
@@ -384,17 +391,17 @@ export default function BookingHandoversPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               {!selected ? <p className="text-sm text-muted-foreground">{t.noHandovers}</p> : <>
-                {selected.summary && <div className="rounded-lg border p-3 text-sm">{selected.summary}</div>}
+                {selected.summary && <div className="border p-2.5 text-sm">{selected.summary}</div>}
                 <div className="flex flex-wrap gap-2">
                   {selected.status === "draft" && <Button onClick={() => void handoverAction("submit")} disabled={saving}><Send className="mr-2 h-4 w-4" />{t.submit}</Button>}
                   {selected.status === "submitted" && <Button onClick={() => void handoverAction("accept")} disabled={saving}><UserCheck className="mr-2 h-4 w-4" />{t.accept}</Button>}
                   {selected.status === "accepted" && <Button onClick={() => void handoverAction("close")} disabled={saving}><CheckCircle2 className="mr-2 h-4 w-4" />{t.close}</Button>}
                 </div>
 
-                {selected.status === "draft" && <div className="rounded-lg border p-4">
+                {selected.status === "draft" && <div className="border p-3">
                   <div className="mb-3 font-medium">{t.addItem}</div>
                   <div className="grid gap-2 md:grid-cols-[160px_minmax(0,1fr)]">
-                    <select value={itemPriority} onChange={(e) => setItemPriority(e.target.value)} className="h-10 rounded-md border bg-background px-3 text-sm"><option value="low">Low</option><option value="normal">Normal</option><option value="high">High</option><option value="critical">Critical</option></select>
+                    <select value={itemPriority} onChange={(e) => setItemPriority(e.target.value)} className="h-10 rounded-md border bg-background px-3 text-sm"><option value="low">{t.low}</option><option value="normal">{t.normal}</option><option value="high">{t.high}</option><option value="critical">{t.critical}</option></select>
                     <Input value={itemTitle} onChange={(e) => setItemTitle(e.target.value)} placeholder={t.itemTitle} />
                   </div>
                   <textarea value={itemDetail} onChange={(e) => setItemDetail(e.target.value)} placeholder={t.detail} className="mt-2 min-h-20 w-full rounded-md border bg-background p-3 text-sm" />
@@ -402,7 +409,7 @@ export default function BookingHandoversPage() {
                 </div>}
 
                 <div className="space-y-2">
-                  {selectedItems.length === 0 && <p className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">{t.noItems}</p>}
+                  {selectedItems.length === 0 && <p className="border border-dashed p-3 text-sm text-muted-foreground">{t.noItems}</p>}
                   {selectedItems.map((item) => <div key={item.id} className="rounded-lg border p-4">
                     <div className="flex flex-wrap items-start justify-between gap-2"><div><p className="font-medium">{item.title}</p><p className="mt-1 text-xs text-muted-foreground">{item.source_type} · {item.priority}</p></div><Badge variant={statusVariant(item.status)}>{item.status}</Badge></div>
                     {item.detail && <p className="mt-3 text-sm">{item.detail}</p>}
@@ -421,7 +428,7 @@ export default function BookingHandoversPage() {
             <CardHeader><CardTitle className="flex items-center gap-2 text-base"><Truck className="h-4 w-4" />{t.logistics}</CardTitle></CardHeader>
             <CardContent className="space-y-2">
               {logistics.length === 0 && <p className="text-sm text-muted-foreground">No open logistics.</p>}
-              {logistics.map((entry) => <div key={entry.id} className="flex flex-col gap-3 rounded-lg border p-4 md:flex-row md:items-center md:justify-between">
+              {logistics.map((entry) => <div key={entry.id} className="flex flex-col gap-2 border p-3 md:flex-row md:items-center md:justify-between">
                 <div><p className="font-medium capitalize">{entry.direction} · {entry.reservation?.guest_name ?? "Guest"}</p><p className="mt-1 text-xs text-muted-foreground">{entry.hub} · {entry.status}{entry.anchor_at ? ` · ${new Date(entry.anchor_at).toLocaleString()}` : ""}</p>{entry.notes && <p className="mt-2 text-sm">{entry.notes}</p>}</div>
                 <div className="flex flex-wrap gap-2">
                   {entry.status === "draft" && <Button size="sm" onClick={() => void updateLogisticsStatus(entry.id, "planned")} disabled={saving}>{t.plan}</Button>}
