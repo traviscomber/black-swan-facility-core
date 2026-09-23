@@ -1,6 +1,7 @@
 "use client"
 
-import Link from "next/link"\nimport { useCallback, useEffect, useMemo, useState } from "react"
+import Link from "next/link"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import { Archive, Edit, Eye, FileText, Search, Trash2 } from "lucide-react"
 import { toast } from "sonner"
 import { InvoiceEditorModal } from "@/components/invoice-editor-modal"
