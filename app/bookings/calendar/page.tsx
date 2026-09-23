@@ -367,7 +367,7 @@ export default function BookingsCalendarPage() {
           <Button size="sm" className="h-9 shrink-0 bg-emerald-600 px-4 text-white hover:bg-emerald-500" onClick={() => { setPreselectedBed(null); setPreselectedDate(null); setPreselectedCheckOutDate(null); setNewReservationOpen(true) }}><Plus className="mr-1.5 h-4 w-4" />{pageCopy.newReservation}</Button>
           <Button variant="outline" size="icon" className="h-9 w-9 shrink-0" title="Search" aria-label="Search" onClick={() => searchInputRef.current?.focus()}><Search className="h-4 w-4" /></Button>
           <Button variant="outline" size="icon" className="h-9 w-9 shrink-0" onClick={() => void refreshEvents()} title="Refresh" aria-label="Refresh"><RefreshCw className="h-4 w-4" /></Button>
-          <Button asChild variant="outline" size="icon" className="h-9 w-9 shrink-0" title="Activities" aria-label="Activities"><Link href={`/${language}/bookings/operations`}><Bell className="h-4 w-4" /></Link></Button>
+          <Button asChild variant="outline" size="icon" className="h-9 w-9 shrink-0" title="Operational alerts" aria-label="Operational alerts"><Link href={`/${language}/bookings/exceptions`}><Bell className="h-4 w-4" /></Link></Button>
           <Button asChild variant="outline" size="icon" className="h-9 w-9 shrink-0" title="Profile" aria-label="Profile"><Link href={`/${language}/bookings/profile`}><UserCircle className="h-4 w-4" /></Link></Button>
         </div>
       </div>
