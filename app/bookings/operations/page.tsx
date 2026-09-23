@@ -352,21 +352,81 @@ export default function BookingOperationsTimelinePage() {
     setOperationsLoading(true)
     setOperationsError(null)
     try {
-      const response = await fetch(`/api/bookings/${reservationId}/operations`, { cache: "no-store" })
-      const payload = await response.json()
-      if (!response.ok) {
-        console.error("[booking-operations] reservation operations load failed", payload.error)
-        throw new Error(tr("No fue posible cargar las operaciones de la reserva"))
-      }
-      setOperations(payload as BookingOperations)
+      const [extrasResult, guestRequestsResult, issuesResult, catalogResult, housekeepingResult, hospitalityResult] = await Promise.all([
+        supabase
+          .from("reservation_extras")
+          .select("id, extra_id, name, unit, quantity, unit_price, tax_rate, total_amount, notes, created_at")
+          .eq("reservation_id", reservationId)
+          .order("created_at", { ascending: false }),
+        supabase
+          .from("guest_requests")
+          .select("id, request_type, description, status, assigned_to, created_at, resolved_at")
+          .eq("reservation_id", reservationId)
+          .order("created_at", { ascending: false }),
+        supabase
+          .from("issues")
+          .select("id, title, description, category, priority, severity, status, photo_url, created_at, resolved_at")
+          .eq("related_item_type", "reservation")
+          .eq("related_item_id", reservationId)
+          .order("created_at", { ascending: false }),
+        supabase
+          .from("booking_extras")
+          .select("id, name, description, unit, price, tax_rate")
+          .eq("is_active", true)
+          .order("name"),
+        supabase
+          .from("housekeeping_tasks")
+          .select("id, status")
+          .eq("reservation_id", reservationId),
+        supabase
+          .from("hospitality_requests")
+          .select("id, status")
+          .eq("reservation_id", reservationId),
+      ])
+
+      const firstError = extrasResult.error
+        || guestRequestsResult.error
+        || issuesResult.error
+        || catalogResult.error
+        || housekeepingResult.error
+        || hospitalityResult.error
+
+      if (firstError) throw firstError
+
+      const extras = (extrasResult.data ?? []) as ReservationExtra[]
+      const guestRequests = (guestRequestsResult.data ?? []) as GuestRequest[]
+      const issues = (issuesResult.data ?? []) as BookingIssue[]
+      const catalog = (catalogResult.data ?? []) as BookingExtra[]
+      const openStatuses = new Set(["pending", "assigned", "in_progress", "open"])
+      const openHospitality = (hospitalityResult.data ?? []).filter((item) => openStatuses.has(item.status ?? "pending")).length
+      const openHousekeeping = (housekeepingResult.data ?? []).filter((item) => openStatuses.has(item.status ?? "pending")).length
+      const openGuestRequests = guestRequests.filter((item) => openStatuses.has(item.status ?? "pending")).length
+      const openIssues = issues.filter((item) => openStatuses.has(item.status ?? "open")).length
+      const extrasAmount = extras.reduce((sum, item) => sum + Number(item.total_amount ?? 0), 0)
+
+      setOperations({
+        summary: {
+          openHospitality,
+          openHousekeeping,
+          openGuestRequests,
+          openIssues,
+          extrasCount: extras.length,
+          extrasAmount,
+          totalOperations: openHospitality + openHousekeeping + guestRequests.length + issues.length + extras.length,
+        },
+        extras,
+        guestRequests,
+        issues,
+        catalog,
+      })
     } catch (loadError) {
-      console.error("[booking-operations] reservation operations request failed", loadError)
+      console.error("[booking-operations] reservation operations load failed", loadError)
       setOperations(null)
       setOperationsError(tr("No fue posible cargar las operaciones"))
     } finally {
       setOperationsLoading(false)
     }
-  }, [tr])
+  }, [supabase, tr])
 
   useEffect(() => { void loadData() }, [loadData])
   useEffect(() => {
@@ -460,6 +520,29 @@ export default function BookingOperationsTimelinePage() {
   const selectedRoomStatus = selectedRoom?.operational_status ?? null
   const selectedIsCheckedIn = Boolean(selected && ["checked_in", "checked-in"].includes(selected.status))
   const selectedIsClosed = Boolean(selected && ["checked_out", "checked-out", "cancelled", "canceled"].includes(selected.status))
+  const selectedExceptions = useMemo(() => {
+    if (!selected) return [] as string[]
+    const exceptions: string[] = []
+    if (!selectedIsCheckedIn && !selectedIsClosed && !roomReady(selectedRoomStatus)) {
+      exceptions.push(tr("Habitación aún no lista para check-in"))
+    }
+    if (!["paid", "settled", "completed"].includes((selected.payment_status ?? "").toLowerCase())) {
+      exceptions.push(tr("Pago pendiente o incompleto"))
+    }
+    if (selectedHousekeeping.some((task) => !["completed", "cancelled"].includes(task.status))) {
+      exceptions.push(tr("Housekeeping pendiente"))
+    }
+    if (selectedHospitality.some((request) => !["completed", "resolved", "cancelled"].includes(request.status))) {
+      exceptions.push(tr("Solicitud de Hospitality abierta"))
+    }
+    if ((operations?.summary.openGuestRequests ?? 0) > 0) {
+      exceptions.push(tr("Solicitud del huésped pendiente"))
+    }
+    if ((operations?.summary.openIssues ?? 0) > 0) {
+      exceptions.push(tr("Incidente abierto"))
+    }
+    return exceptions
+  }, [operations?.summary.openGuestRequests, operations?.summary.openIssues, selected, selectedHospitality, selectedHousekeeping, selectedIsCheckedIn, selectedIsClosed, selectedRoomStatus, tr])
 
   const metrics = useMemo(() => {
     const today = iso(new Date())
@@ -833,8 +916,8 @@ export default function BookingOperationsTimelinePage() {
             onClick={() => setSelected(null)}
             aria-label={tr("Cerrar panel")}
           />
-          <aside className="relative z-10 flex h-full w-full max-w-xl flex-col border-l bg-background shadow-2xl">
-            <div className="flex items-start justify-between border-b p-5">
+          <aside className="relative z-10 flex h-full w-full max-w-2xl flex-col border-l bg-background shadow-2xl">
+            <div className="flex items-start justify-between border-b px-4 py-3">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">{tr("Operación de estadía")}</p>
                 <h2 className="mt-1 text-xl font-semibold">{selected.guest_name}</h2>
@@ -847,7 +930,7 @@ export default function BookingOperationsTimelinePage() {
               </Button>
             </div>
 
-            <div className="flex-1 space-y-6 overflow-y-auto p-5">
+            <div className="flex-1 space-y-4 overflow-y-auto p-4">
               <div className="flex flex-wrap gap-2">
                 <Badge>
                   {tr(RESERVATION_LABELS[selected.arrival_status ?? selected.status]
@@ -878,11 +961,35 @@ export default function BookingOperationsTimelinePage() {
                 )}
               </div>
 
-              <div className="grid gap-3 sm:grid-cols-2">
+              <section className="border border-white/[0.08] bg-white/[0.025]">
+                <div className="flex items-center justify-between border-b border-white/[0.06] px-3 py-2">
+                  <div className="flex items-center gap-2">
+                    <AlertTriangle className={`h-4 w-4 ${selectedExceptions.length ? "text-amber-400" : "text-emerald-400"}`} />
+                    <span className="text-[11px] font-medium uppercase tracking-[0.08em]">{tr("Necesita atención")}</span>
+                  </div>
+                  <span className="text-xs tabular-nums text-muted-foreground">{formatCount(selectedExceptions.length)}</span>
+                </div>
+                {selectedExceptions.length > 0 ? (
+                  <div className="divide-y divide-white/[0.05]">
+                    {selectedExceptions.map((item) => (
+                      <div key={item} className="flex items-center gap-2 px-3 py-2 text-xs">
+                        <span className="h-1.5 w-1.5 shrink-0 bg-amber-400" />
+                        <span>{item}</span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="px-3 py-2 text-xs text-emerald-300">{tr("Sin excepciones operativas abiertas")}</div>
+                )}
+              </section>
+
+              <div className="grid gap-px bg-white/[0.08] sm:grid-cols-2">
                 <Info label="Check-in" value={formatStayDate(selected.check_in)} />
                 <Info label="Check-out" value={formatStayDate(selected.check_out)} />
                 <Info label={tr("Huéspedes")} value={formatCount(selected.num_guests ?? 1)} />
                 <Info label={tr("Monto")} value={formatClp(Number(selected.total_amount ?? 0))} />
+                <Info label={tr("Email")} value={selected.guest_email ?? tr("Sin registrar")} />
+                <Info label={tr("Teléfono")} value={selected.guest_phone ?? tr("Sin registrar")} />
               </div>
               {selected.special_requests && (
                 <Info label={tr("Solicitudes especiales")} value={selected.special_requests} />
@@ -1206,9 +1313,9 @@ function Metric({
 
 function Info({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-lg border p-3">
-      <p className="text-xs text-muted-foreground">{label}</p>
-      <p className="mt-1 text-sm font-medium">{value}</p>
+    <div className="min-h-[54px] bg-background px-3 py-2.5">
+      <p className="text-[10px] uppercase tracking-[0.06em] text-muted-foreground">{label}</p>
+      <p className="mt-0.5 break-words text-xs font-medium">{value}</p>
     </div>
   )
 }
