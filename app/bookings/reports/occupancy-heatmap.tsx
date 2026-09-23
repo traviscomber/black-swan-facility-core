@@ -13,10 +13,9 @@ import {
 } from "date-fns"
 import { de, enUS, es } from "date-fns/locale"
 import { useLanguage, type Language } from "@/lib/hooks/use-language"
-import { ChevronLeft, ChevronRight, Download, RefreshCw, BedDouble, TrendingUp, DollarSign, BarChart3 } from "lucide-react"
+import { ChevronLeft, ChevronRight, Download, RefreshCw } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Card, CardContent } from "@/components/ui/card"
 import type { HeatmapRow } from "@/app/api/bookings/revenue/occupancy/route"
 import { downloadCsv } from "@/lib/client-csv"
 
@@ -85,67 +84,34 @@ function KpiCards({ rows, totalBeds, labels, dateLocale }: { rows: HeatmapRow[];
     const totalOccupied = rows.reduce((s, r) => s + r.occupied_beds, 0)
     const totalSlots = rows.reduce((s, r) => s + r.total_beds, 0)
     const occupancy = totalSlots > 0 ? (totalOccupied / totalSlots) * 100 : 0
-
-    // avg rate: revenue / occupied-bed-days
     const avgRate = totalOccupied > 0 ? totalRevenue / totalOccupied : 0
 
-    // find peak day (highest total occupancy across locations)
     const byDay: Record<string, number> = {}
     rows.forEach((r) => {
       byDay[r.day] = (byDay[r.day] ?? 0) + r.occupied_beds
     })
     const peakDay = Object.entries(byDay).sort((a, b) => b[1] - a[1])[0]?.[0] ?? ""
-
     return { occupancy, revenue: totalRevenue, avgRate, peakDay }
   }, [rows])
 
+  const metrics = [
+    { label: labels.avgOccupancy, value: `${kpis.occupancy.toFixed(1)}%`, detail: occupancyLabel(kpis.occupancy, labels) },
+    { label: labels.periodRevenue, value: formatCLP(kpis.revenue), detail: "CLP" },
+    { label: labels.avgRate, value: formatCLP(kpis.avgRate), detail: labels.occupiedBed },
+    { label: labels.totalBeds, value: String(totalBeds), detail: kpis.peakDay ? `${labels.peak}: ${format(parseISO(kpis.peakDay), "d MMM", { locale: dateLocale })}` : labels.available },
+  ]
+
   return (
-    <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-      <Card className="border-border/50 bg-card">
-        <CardContent className="flex items-start justify-between p-4">
-          <div>
-            <p className="text-xs font-medium text-muted-foreground">{labels.avgOccupancy}</p>
-            <p className="mt-1 text-2xl font-bold tabular-nums">{kpis.occupancy.toFixed(1)}%</p>
-            <p className="mt-0.5 text-xs text-muted-foreground">{occupancyLabel(kpis.occupancy, labels)}</p>
+    <div className="grid grid-cols-2 border-y border-white/[0.06] bg-[#211e1a] md:grid-cols-4">
+      {metrics.map((metric) => (
+        <div key={metric.label} className="min-h-[62px] border-white/[0.06] px-3 py-2 md:border-r md:last:border-r-0">
+          <p className="text-[10px] uppercase tracking-[0.06em] text-[#8f867b]">{metric.label}</p>
+          <div className="mt-0.5 flex items-baseline gap-2">
+            <span className="text-[17px] font-medium tabular-nums text-[#e7e1d8]">{metric.value}</span>
+            <span className="truncate text-[10px] text-[#8f867b]">{metric.detail}</span>
           </div>
-          <BarChart3 className="mt-0.5 h-5 w-5 shrink-0 text-muted-foreground" />
-        </CardContent>
-      </Card>
-
-      <Card className="border-border/50 bg-card">
-        <CardContent className="flex items-start justify-between p-4">
-          <div>
-            <p className="text-xs font-medium text-muted-foreground">{labels.periodRevenue}</p>
-            <p className="mt-1 text-2xl font-bold tabular-nums">{formatCLP(kpis.revenue)}</p>
-            <p className="mt-0.5 text-xs text-muted-foreground">CLP</p>
-          </div>
-          <DollarSign className="mt-0.5 h-5 w-5 shrink-0 text-muted-foreground" />
-        </CardContent>
-      </Card>
-
-      <Card className="border-border/50 bg-card">
-        <CardContent className="flex items-start justify-between p-4">
-          <div>
-            <p className="text-xs font-medium text-muted-foreground">{labels.avgRate}</p>
-            <p className="mt-1 text-2xl font-bold tabular-nums">{formatCLP(kpis.avgRate)}</p>
-            <p className="mt-0.5 text-xs text-muted-foreground">{labels.occupiedBed}</p>
-          </div>
-          <TrendingUp className="mt-0.5 h-5 w-5 shrink-0 text-muted-foreground" />
-        </CardContent>
-      </Card>
-
-      <Card className="border-border/50 bg-card">
-        <CardContent className="flex items-start justify-between p-4">
-          <div>
-            <p className="text-xs font-medium text-muted-foreground">{labels.totalBeds}</p>
-            <p className="mt-1 text-2xl font-bold tabular-nums">{totalBeds}</p>
-            <p className="mt-0.5 text-xs text-muted-foreground">
-              {kpis.peakDay ? `${labels.peak}: ${format(parseISO(kpis.peakDay), "d MMM", { locale: dateLocale })}` : labels.available}
-            </p>
-          </div>
-          <BedDouble className="mt-0.5 h-5 w-5 shrink-0 text-muted-foreground" />
-        </CardContent>
-      </Card>
+        </div>
+      ))}
     </div>
   )
 }
