@@ -27,7 +27,7 @@ export default function OperationalEventPage(){
  const params=useParams<{id:string}>();const id=params.id
  const {language}=useLanguage();const c=COPY[language]
  const supabase=useMemo(()=>createClient(),[])
- const locale=language==="es"?"es-CL":language==="de"?"de-DE":"en-US"
+ const locale=LOCALE[language]
  const money=useMemo(()=>new Intl.NumberFormat(locale,{style:"currency",currency:"CLP",maximumFractionDigits:0}),[locale])
  const [event,setEvent]=useState<EventRow|null>(null);const [participants,setParticipants]=useState<Participant[]>([]);const [items,setItems]=useState<BudgetItem[]>([]);const [source,setSource]=useState<SourceEvent>(null);const [error,setError]=useState<string|null>(null)
 
