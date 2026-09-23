@@ -220,6 +220,15 @@ export default function BookingsCalendarPage() {
     })
     return map
   }, [visibleEvents])
+  const availabilityEventsByBed = useMemo(() => {
+    const map = new Map<string, CalendarEvent[]>()
+    events.forEach((event) => {
+      const list = map.get(event.bed_id)
+      if (list) list.push(event)
+      else map.set(event.bed_id, [event])
+    })
+    return map
+  }, [events])
   const resizeConflict = useMemo(() => {
     if (!resizeState) return null
     return events.find((event) => event.bed_id === resizeState.bedId && event.event_id !== resizeState.reservationId && intervalsOverlap(resizeState.previewStart, resizeState.previewEnd, event.starts_on, event.ends_on)) ?? null
@@ -390,6 +399,7 @@ export default function BookingsCalendarPage() {
         visibleBeds={visibleBeds}
         loading={loading}
         eventsByBed={eventsByBed}
+        availabilityEventsByBed={availabilityEventsByBed}
         selectedIds={selectedIds}
         conflictIds={conflictIds}
         isBulkMode={isBulkMode}

@@ -60,3 +60,12 @@ test("booking quick actions use canonical lifecycle RPCs instead of direct statu
   assert.match(activitiesPage, /rpc\("transition_reservation_status"/)
   assert.doesNotMatch(activitiesPage, /from\("reservations"\)\.update/)
 })
+
+
+test("inventory availability is independent from search and status presentation filters", () => {
+  assert.match(calendarPage, /const availabilityEventsByBed = useMemo/)
+  assert.match(calendarPage, /events\.forEach\(\(event\) =>/)
+  assert.match(calendarPage, /availabilityEventsByBed=\{availabilityEventsByBed\}/)
+  assert.match(timelineGrid, /availabilityEventsByBed/)
+  assert.match(timelineGrid, /freeBedForRange\(room\.beds, availabilityEventsByBed/)
+})

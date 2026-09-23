@@ -24,6 +24,7 @@ export interface TimelineGridProps {
   visibleBeds: Bed[]
   loading: boolean
   eventsByBed: Map<string, CalendarEvent[]>
+  availabilityEventsByBed: Map<string, CalendarEvent[]>
   selectedIds: Set<string>
   conflictIds: Set<string>
   isBulkMode: boolean
@@ -138,7 +139,7 @@ function freeBedForRange(roomBeds: Bed[], eventsByBed: Map<string, CalendarEvent
 
 export function TimelineGrid(props: TimelineGridProps) {
   const {
-    dates, rangeDays, timelineWidth, isTouchDevice, visibleBeds, loading, eventsByBed, selectedIds, conflictIds, isBulkMode,
+    dates, rangeDays, timelineWidth, isTouchDevice, visibleBeds, loading, eventsByBed, availabilityEventsByBed, selectedIds, conflictIds, isBulkMode,
     visibleReservationEvents, onToggleSelect, onSelectAll, onClearSelection, draggingEventId, dropTargetBedId,
     movingReservationId, moveConflict, draggingEvent, onEventPointerDown, onEventPointerMove, onEventPointerUp,
     onEventPointerCancel, resizeState, resizingReservationId, confirmingReservationId, isResizing, resizeConflict,
@@ -326,7 +327,7 @@ export function TimelineGrid(props: TimelineGridProps) {
                 const identity = getBedBookingDisplayIdentity({ propertyName: location.locationName, roomNumber: room.roomNumber })
                 const roomEvents = uniqueRoomEvents(room.beds, eventsByBed)
                 const targetBed = draggingEvent
-                  ? freeBedForRange(room.beds, eventsByBed, draggingEvent.starts_on, draggingEvent.ends_on, draggingEvent.event_id) ?? room.beds[0]
+                  ? freeBedForRange(room.beds, availabilityEventsByBed, draggingEvent.starts_on, draggingEvent.ends_on, draggingEvent.event_id) ?? room.beds[0]
                   : room.beds[0]
                 if (!targetBed) return null
                 const displayBed: Bed = { ...targetBed, display_name: identity.displayName, guest_capacity: identity.guestCapacity }
@@ -342,12 +343,12 @@ export function TimelineGrid(props: TimelineGridProps) {
                     if (!day) return
                     const startsOn = format(day, "yyyy-MM-dd")
                     const endsOn = format(addDays(day, 1), "yyyy-MM-dd")
-                    const availableBed = freeBedForRange(room.beds, eventsByBed, startsOn, endsOn)
+                    const availableBed = freeBedForRange(room.beds, availabilityEventsByBed, startsOn, endsOn)
                     if (!availableBed) { toast.error(c.noAvailability); return }
                     onRowClick(availableBed, clientX, currentTarget)
                   }}
                   onCreationCommit={(range) => {
-                    const availableBed = freeBedForRange(room.beds, eventsByBed, range.startDate, range.endDate)
+                    const availableBed = freeBedForRange(room.beds, availabilityEventsByBed, range.startDate, range.endDate)
                     if (!availableBed) { toast.error(c.noAvailability); onCreationAbort(); return }
                     onCreationCommit({ ...range, bedId: availableBed.id })
                   }}
