@@ -20,6 +20,7 @@ const COPY={
  es:{back:"Eventos",export:"Exportar XLSX completo",shopping:"Compras Hospitality",dates:"Fechas",participants:"Participantes",location:"Ubicación",budget:"Presupuesto estimado",people:"Participantes y alojamiento",budgetBy:"Presupuesto por categoría",load:"Carga Cocina",confirmed:"Confirmado",pending:"Pendiente",source:"Baseline",noSource:"Evento original",actual:"Real",item:"Ítem",qty:"Cant.",price:"Precio unitario",subtotal:"Subtotal"},
  de:{back:"Events",export:"Vollständiges XLSX exportieren",shopping:"Hospitality-Einkauf",dates:"Daten",participants:"Teilnehmende",location:"Standort",budget:"Geschätztes Budget",people:"Teilnehmende & Unterkunft",budgetBy:"Budget nach Kategorie",load:"Küchenlast",confirmed:"Bestätigt",pending:"Ausstehend",source:"Baseline",noSource:"Original-Event",actual:"Ist",item:"Artikel",qty:"Menge",price:"Einzelpreis",subtotal:"Zwischensumme"},
 } as const
+const LOCALE={en:"en-US",es:"es-CL",de:"de-DE"} as const
 
 function category(notes:string|null){return notes?.match(/Category:\\s*([^|]+)/i)?.[1]?.trim()||"Adulto"}
 
