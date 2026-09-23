@@ -6,7 +6,6 @@ import { de, enUS, es } from "date-fns/locale"
 import { BedDouble, CheckSquare, ChevronRight, CircleDollarSign, ConciergeBell, Flag, Keyboard, Layers3, Rows3, Sparkles, Square, TriangleAlert, Wrench } from "lucide-react"
 import { CardContent } from "@/components/ui/card"
 import { TimelineRow, DAY_WIDTH, LABEL_WIDTH, type Bed, type CalendarEvent, type ResizeState, type TimelineRowProps } from "./timeline-row"
-import { ReservationQuickInspector } from "./reservation-quick-inspector"
 import type { ReservationResizeEdge } from "@/app/bookings/calendar/use-reservation-resize-state"
 import { useCalendarAutoscroll } from "@/app/bookings/calendar/use-calendar-autoscroll"
 import { CalendarDailyOperationsSummary } from "@/components/calendar/calendar-daily-operations-summary"
@@ -163,7 +162,6 @@ export function TimelineGrid(props: TimelineGridProps) {
   const { preferences, setPreferences } = useCalendarViewPreferences(defaultLayers)
   const activeLayers = useMemo(() => new Set(preferences.activeLayers), [preferences.activeLayers])
   const [showKeyboardHelp, setShowKeyboardHelp] = useState(false)
-  const [inspectedReservation, setInspectedReservation] = useState<CalendarEvent | null>(null)
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set())
 
   const inventoryGroups = useMemo<InventoryGroup[]>(() => {
@@ -255,7 +253,7 @@ export function TimelineGrid(props: TimelineGridProps) {
     })
   }
   function toggleAllLayers() { setPreferences((current) => ({ ...current, activeLayers: current.activeLayers.length === layers.length ? [] : defaultLayers })) }
-  function inspectReservation(event: CalendarEvent) { if (event.event_type === "reservation") setInspectedReservation(event) }
+  function openFullReservation(event: CalendarEvent) { if (event.event_type === "reservation") window.location.assign(`/${language}/bookings/reservations/${event.event_id}`) }
 
   const sharedRowProps: Omit<TimelineRowProps, "bed" | "bedEvents" | "onRowClick" | "onCreationCommit"> = {
     dates, timelineWidth, isTouchDevice, activeLayers, selectedIds, conflictIds, isBulkMode, onToggleSelect,
@@ -263,7 +261,7 @@ export function TimelineGrid(props: TimelineGridProps) {
     onEventPointerMove, onEventPointerUp, onEventPointerCancel, resizeState, resizingReservationId,
     confirmingReservationId, isResizing, resizeConflict, onBeginResize, onMoveResize, onFinishResize, onClearResize,
     blockRefCallback, eventGeometry, geometryForDates, creatingRange, onCreationStart, onCreationAbort,
-    onOpenReservation: inspectReservation, onOpenBlock,
+    onOpenReservation: openFullReservation, onOpenBlock,
   }
 
   return (
@@ -288,7 +286,7 @@ export function TimelineGrid(props: TimelineGridProps) {
       <div ref={scrollRef} className="overflow-auto bg-[#122526]">
         <div style={{ minWidth: totalWidth }}>
           <div className="sticky top-0 z-30 flex border-b border-white/10 bg-[#17191a] shadow-sm">
-            <div className="sticky left-0 z-40 flex shrink-0 items-center gap-2 border-r border-white/10 bg-[#17191a] px-3 text-[11px] font-medium tracking-wide text-white/65" style={{ width: LABEL_WIDTH, height: 44 }}>
+            <div className="sticky left-0 z-40 flex shrink-0 items-center gap-2 border-r border-white/10 bg-[#17191a] px-3 text-[11px] font-medium tracking-wide text-white/65" style={{ width: LABEL_WIDTH, height: 40 }}>
               {visibleReservationEvents.length > 0 && <button type="button" onClick={isBulkMode ? onClearSelection : onSelectAll} className="shrink-0 text-white/50 transition hover:text-white" aria-label={isBulkMode ? c.deselectAll : c.selectAll}>{isBulkMode ? <CheckSquare className="h-4 w-4 text-primary" /> : <Square className="h-4 w-4" />}</button>}
               <span>{c.rooms} ({roomCount})</span>
             </div>
@@ -297,7 +295,7 @@ export function TimelineGrid(props: TimelineGridProps) {
                 const weekend = date.getDay() === 0 || date.getDay() === 6
                 const monthBoundary = index === 0 || date.getDate() === 1
                 const today = isBookingToday(date)
-                return <div key={date.toISOString()} className={`relative flex flex-col items-center justify-center border-r border-white/10 text-center text-white ${weekend ? "bg-black/10" : ""} ${today ? "bg-emerald-600" : ""} ${monthBoundary ? "border-l border-l-white/20" : ""}`} style={{ height: 44 }}>
+                return <div key={date.toISOString()} className={`relative flex flex-col items-center justify-center border-r border-white/10 text-center text-white ${weekend ? "bg-black/10" : ""} ${today ? "bg-emerald-500/20 text-emerald-100" : ""} ${monthBoundary ? "border-l border-l-white/20" : ""}` } style={{ height: 40 }}>
                   {monthBoundary && <span className="absolute left-1 top-0 text-[8px] font-medium uppercase tracking-wide text-white/45">{format(date, "MMM", { locale: dateLocale })}</span>}
                   <div className={`text-[9px] ${today ? "text-white" : "text-white/65"}`}>{format(date, "EEE", { locale: dateLocale })}</div><div className="text-sm font-medium leading-none">{format(date, "dd")}</div>
                 </div>
@@ -312,7 +310,7 @@ export function TimelineGrid(props: TimelineGridProps) {
             const selectedCount = groupReservations.filter((event) => selectedIds.has(event.event_id)).length
             const conflictCount = groupReservations.filter((event) => conflictIds.has(event.event_id)).length
             return <section key={location.locationId} className={`[content-visibility:auto] [contain-intrinsic-size:180px] ${propertyBand}`} title={location.locationName} data-property-group data-collapsed={isCollapsed ? "true" : "false"}>
-              <button type="button" onClick={() => toggleGroup(location.locationId)} className="flex h-8 w-full items-center border-b border-white/5 text-left text-white/75 transition hover:brightness-110 focus-visible:outline-none" aria-expanded={!isCollapsed} aria-label={`${isCollapsed ? c.expandGroups : c.collapseGroups}: ${location.locationName}`}>
+              <button type="button" onClick={() => toggleGroup(location.locationId)} className="flex h-7 w-full items-center border-b border-white/5 text-left text-white/75 transition hover:brightness-110 focus-visible:outline-none" aria-expanded={!isCollapsed} aria-label={`${isCollapsed ? c.expandGroups : c.collapseGroups}: ${location.locationName}`}>
                 <span className="sticky left-0 z-20 flex h-full shrink-0 items-center gap-2 border-r border-white/5 px-3" style={{ width: LABEL_WIDTH }}>
                   <ChevronRight className={`h-3.5 w-3.5 shrink-0 transition-transform ${isCollapsed ? "" : "rotate-90"}`} />
                   <span className="min-w-0 flex-1 truncate text-[11px] font-semibold tracking-[0.02em] text-white/90">{location.locationName || "—"}</span>
@@ -360,7 +358,6 @@ export function TimelineGrid(props: TimelineGridProps) {
         </div>
       </div>
 
-      <ReservationQuickInspector reservation={inspectedReservation} open={Boolean(inspectedReservation)} onOpenChange={(open) => { if (!open) setInspectedReservation(null) }} onOpenFull={(event) => { setInspectedReservation(null); window.location.assign(`/${language}/bookings/reservations/${event.event_id}`) }} />
     </CardContent>
   )
 }
