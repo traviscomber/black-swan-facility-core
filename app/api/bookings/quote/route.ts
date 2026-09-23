@@ -10,6 +10,9 @@ type QuoteRequest = {
   check_in?: string
   check_out?: string
   guests?: number
+  adults?: number
+  children_0_3?: number
+  children_4_10?: number
   room_id?: string | null
   extras?: QuoteExtra[]
 }
@@ -30,14 +33,17 @@ export async function POST(request: Request) {
     const body = (await request.json()) as QuoteRequest
     const checkIn = body.check_in?.trim()
     const checkOut = body.check_out?.trim()
-    const guests = Number(body.guests ?? 1)
+    const adults = Number(body.adults ?? body.guests ?? 1)
+    const children03 = Number(body.children_0_3 ?? 0)
+    const children410 = Number(body.children_4_10 ?? 0)
+    const guests = adults + children03 + children410
 
     if (!checkIn || !checkOut) {
       return NextResponse.json({ error: "check_in and check_out are required" }, { status: 400 })
     }
 
-    if (!Number.isInteger(guests) || guests < 1) {
-      return NextResponse.json({ error: "guests must be a positive integer" }, { status: 400 })
+    if (![adults, children03, children410].every(Number.isInteger) || adults < 1 || children03 < 0 || children410 < 0) {
+      return NextResponse.json({ error: "guest counts must be non-negative integers and adults must be at least 1" }, { status: 400 })
     }
 
     const extras = Array.isArray(body.extras)
@@ -49,10 +55,12 @@ export async function POST(request: Request) {
           }))
       : []
 
-    const { data, error } = await supabase.rpc("calculate_booking_quote", {
+    const { data, error } = await supabase.rpc("calculate_booking_quote_v2", {
       p_check_in: checkIn,
       p_check_out: checkOut,
-      p_guests: guests,
+      p_adults: adults,
+      p_children_0_3: children03,
+      p_children_4_10: children410,
       p_room_id: body.room_id || null,
       p_extras: extras,
     })
