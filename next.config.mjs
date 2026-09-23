@@ -1,5 +1,11 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  productionBrowserSourceMaps: false,
+  serverExternalPackages: ["xlsx"],
+  experimental: {
+    serverSourceMaps: false,
+    webpackBuildWorker: true,
+  },
   images: {
     unoptimized: true,
   },
