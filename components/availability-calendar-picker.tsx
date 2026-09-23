@@ -108,7 +108,7 @@ export function AvailabilityCalendarPicker({
     }
   }
 
-  function handleDayClick(date: Date) {
+  async function handleDayClick(date: Date) {
     if (isBefore(date, effectiveMinDate)) return
     setRangeError(null)
     if (!checkIn) {
@@ -116,10 +116,38 @@ export function AvailabilityCalendarPicker({
       setCheckOut(null)
     } else if (!checkOut) {
       if (isAfter(date, checkIn)) {
-        const crossesConflict = availability.some((item) => item.date >= checkIn && item.date < date && (item.isBooked || item.isBlocked))
-        if (crossesConflict) { setRangeError(copy.rangeConflict); return }
+        const rangeStart = format(checkIn, "yyyy-MM-dd")
+        const rangeEnd = format(date, "yyyy-MM-dd")
+        const localConflict = availability.some((item) => item.date >= checkIn && item.date < date && (item.isBooked || item.isBlocked))
+        if (localConflict) { setRangeError(copy.rangeConflict); return }
+        const [reservationConflict, blockConflict] = await Promise.all([
+          supabase
+            .from("reservations")
+            .select("id", { head: true, count: "exact" })
+            .eq("bed_id", bedId)
+            .lt("check_in", rangeEnd)
+            .gt("check_out", rangeStart)
+            .not("status", "in", "(cancelled, canceled, void, voided)"),
+          roomId
+            ? supabase
+                .from("room_blocks")
+                .select("id", { head: true, count: "exact" })
+                .eq("room_id", roomId)
+                .eq("status", "active")
+                .lt("start_date", rangeEnd)
+                .gt("end_date", rangeStart)
+            : Promise.resolve({ count: 0, error: null }),
+        ])
+        if (reservationConflict.error || blockConflict.error) {
+          setRangeError(copy.availabilityError)
+          return
+        }
+        if ((reservationConflict.count ?? 0) > 0 || (blockConflict.count ?? 0) > 0) {
+          setRangeError(copy.rangeConflict)
+          return
+        }
         setCheckOut(date)
-        onDateRangeSelect(format(checkIn, "yyyy-MM-dd"), format(date, "yyyy-MM-dd"))
+        onDateRangeSelect(rangeStart, rangeEnd)
       } else {
         setCheckIn(date)
         setCheckOut(null)
@@ -171,9 +199,9 @@ export function AvailabilityCalendarPicker({
               <button
                 key={date.toISOString()}
                 type="button"
-                onClick={() => handleDayClick(date)}
+                onClick={() => void handleDayClick(date)}
                 disabled={isDisabled}
-                title={dayAvail?.conflictsWith ? fillReservationCopy(copy.bookedBy, { guest: dayAvail.conflictsWith }) : ""}
+                title={dayAvail?.conflictsWith ? (dayAvail.isBlocked ? fillReservationCopy(copy.blockedBy, { reason: dayAvail.conflictsWith }) : fillReservationCopy(copy.bookedBy, { guest: dayAvail.conflictsWith })) : ""}
                 className={`relative rounded border p-2 text-xs font-medium transition-colors ${status === "booked" ? "cursor-not-allowed border-red-300 bg-red-100 text-red-900 dark:border-red-700 dark:bg-red-900/20" : ""} ${status === "blocked" ? "cursor-not-allowed border-amber-300 bg-amber-100 text-amber-900 dark:border-amber-700 dark:bg-amber-900/20" : ""} ${status === "available" ? "border-green-200 bg-green-50 hover:bg-green-100 dark:border-green-700 dark:bg-green-900/10" : ""} ${status === "selected" ? "border-blue-400 bg-blue-100 text-blue-900 dark:border-blue-600 dark:bg-blue-900/20" : ""} ${status === "in-range" ? "border-blue-200 bg-blue-50 dark:border-blue-700 dark:bg-blue-900/10" : ""} ${isBefore(date, effectiveMinDate) ? "cursor-not-allowed text-slate-400 opacity-30" : ""} ${!isSameMonth(date, currentMonth) ? "text-slate-300 dark:text-slate-600" : ""}`}
               >
                 {format(date, "d")}

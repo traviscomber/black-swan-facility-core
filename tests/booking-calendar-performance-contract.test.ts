@@ -78,3 +78,12 @@ test("new reservation availability includes room blocks and rejects ranges cross
   assert.match(availabilityPicker, /rangeConflict/)
   assert.match(availabilityPicker, /bookingTodayDate/)
 })
+
+
+test("reservation range selection revalidates canonical availability across month boundaries", () => {
+  assert.match(availabilityPicker, /\.lt\("check_in", rangeEnd\)/)
+  assert.match(availabilityPicker, /\.gt\("check_out", rangeStart\)/)
+  assert.match(availabilityPicker, /\.lt\("start_date", rangeEnd\)/)
+  assert.match(availabilityPicker, /\.gt\("end_date", rangeStart\)/)
+  assert.match(availabilityPicker, /availabilityError/)
+})
