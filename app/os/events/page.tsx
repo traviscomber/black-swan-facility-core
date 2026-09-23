@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { EventPortalAdmin } from '@/components/event-portal-admin'
 import { EventRegistrationManagement } from '@/components/event-registration-management'
+import { OperationalEventWorkbooks } from '@/components/operational-event-workbooks'
 import { OsWorkspace } from '@/components/os-workspace'
 import { Button } from '@/components/ui/button'
 import { useLanguage } from '@/lib/hooks/use-language'
@@ -19,6 +20,7 @@ export default function Page() {
 
   return <div className="space-y-6">
     <div className="flex justify-end"><Button asChild variant="outline"><Link href="/os/events/tuu-payments">{text.payments}</Link></Button></div>
+    <OperationalEventWorkbooks />
     <OsWorkspace workspace="events" />
     <EventPortalAdmin />
     <EventRegistrationManagement />
