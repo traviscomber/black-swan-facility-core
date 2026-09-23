@@ -1,4 +1,4 @@
-import * as XLSX from "xlsx"
+import JSZip from "jszip"
 
 type OperationalEvent = {
   id: string
@@ -52,6 +52,8 @@ type BudgetItem = {
 }
 
 type SourceEvent = Pick<OperationalEvent, "id" | "event_code" | "name" | "start_date" | "end_date"> | null
+type Cell = string | number
+type SheetSpec = { name: string; rows: Cell[][] }
 
 const SHOPPING_SHEETS = ["Bebestibles", "Carnes", "Vegetales", "Abarrotes", "Aseo"] as const
 
@@ -94,43 +96,27 @@ function isConfirmed(status: string) {
 function participantWeights(participant: Participant) {
   const category = parseCategory(participant.notes)
   const days = inclusiveDays(participant.arrival_date, participant.departure_date, participant.planned_stay_days)
-  if (!isConfirmed(participant.confirmation_status)) {
-    return { category, days, food: 0, alcohol: 0, cleaning: 0, kitchen: 0 }
-  }
-  if (category.toLowerCase() === "fiesta") {
-    return { category, days: 0, food: 0, alcohol: 1, cleaning: 1, kitchen: 0 }
-  }
-  if (category.toLowerCase().startsWith("ni")) {
-    return { category, days, food: days * 0.5, alcohol: 0, cleaning: days, kitchen: days }
-  }
+  if (!isConfirmed(participant.confirmation_status)) return { category, days, food: 0, alcohol: 0, cleaning: 0, kitchen: 0 }
+  if (category.toLowerCase() === "fiesta") return { category, days: 0, food: 0, alcohol: 1, cleaning: 1, kitchen: 0 }
+  if (category.toLowerCase().startsWith("ni")) return { category, days, food: days * 0.5, alcohol: 0, cleaning: days, kitchen: days }
   return { category, days, food: days, alcohol: days, cleaning: days, kitchen: days }
 }
 
-function applySheetDefaults(sheet: XLSX.WorkSheet, widths: number[]) {
-  sheet["!cols"] = widths.map((wch) => ({ wch }))
-}
-
-function asDateLabel(value: string | null) {
-  return value || ""
-}
-
-function buildGuestSheet(event: OperationalEvent, participants: Participant[]) {
-  const rows: (string | number)[][] = [
+function guestRows(event: OperationalEvent, participants: Participant[]): Cell[][] {
+  const rows: Cell[][] = [
     [event.name + " — " + event.start_date + " al " + event.end_date],
     [],
     ["Nombre","Llegada","Hora Llegada","Salida","Hora Salida","Se hospeda en","Días estadía","Categoría","Días pond. Comida","Días pond. Alcohol","Días pond. Aseo/Bencina/Leña","Días pond. Cocina/Gas/Lavandería","Monto a pagar (CLP)","Notas","Deposito"],
   ]
-
   for (const participant of participants) {
     const w = participantWeights(participant)
     const lodging = [participant.accommodation_name, participant.room_name].filter(Boolean).join(" / ")
     const statusNote = isConfirmed(participant.confirmation_status) ? "" : "Pendiente de confirmación"
-    const notes = [cleanNotes(participant.notes), statusNote].filter(Boolean).join(" · ")
     rows.push([
       participant.participant_name,
-      asDateLabel(participant.arrival_date),
+      participant.arrival_date || "",
       participant.arrival_time?.slice(0,5) || "",
-      asDateLabel(participant.departure_date),
+      participant.departure_date || "",
       participant.departure_time?.slice(0,5) || "",
       lodging,
       w.days,
@@ -140,11 +126,10 @@ function buildGuestSheet(event: OperationalEvent, participants: Participant[]) {
       w.cleaning,
       w.kitchen,
       number(participant.estimated_person_total_clp),
-      notes,
+      [cleanNotes(participant.notes), statusNote].filter(Boolean).join(" · "),
       parseDeposit(participant.notes),
     ])
   }
-
   const weights = participants.map(participantWeights)
   const confirmed = participants.filter((participant) => isConfirmed(participant.confirmation_status))
   rows.push([])
@@ -159,14 +144,11 @@ function buildGuestSheet(event: OperationalEvent, participants: Participant[]) {
   rows.push(["Total días-persona — ASEO/BENCINA/LEÑA", weights.reduce((sum,w)=>sum+w.cleaning,0)])
   rows.push(["Total días-persona — COCINA/GAS/LAVANDERÍA", weights.reduce((sum,w)=>sum+w.kitchen,0)])
   rows.push(["Suma montos por persona", participants.reduce((sum,p)=>sum+number(p.estimated_person_total_clp),0)])
-
-  const sheet = XLSX.utils.aoa_to_sheet(rows)
-  applySheetDefaults(sheet,[28,13,12,13,12,28,12,13,18,18,24,26,20,48,16])
-  return sheet
+  return rows
 }
 
-function buildKitchenLoadSheet(event: OperationalEvent, participants: Participant[]) {
-  const rows: (string | number)[][] = [
+function kitchenRows(event: OperationalEvent, participants: Participant[]): Cell[][] {
+  const rows: Cell[][] = [
     ["Carga de comensales por día — Hospitality / Carlos Bustamante"],
     [],
     ["Solo participantes confirmados. Excluye categoría Fiesta."],
@@ -187,30 +169,23 @@ function buildKitchenLoadSheet(event: OperationalEvent, participants: Participan
       if (category.startsWith("ni")) children += 1
       else adults += 1
     }
-    rows.push([day,adults,children,adults+children])
+    rows.push([day, adults, children, adults + children])
   }
-  const sheet = XLSX.utils.aoa_to_sheet(rows)
-  applySheetDefaults(sheet,[16,12,12,18])
-  return sheet
+  return rows
 }
 
-function buildCategorySheet(event: OperationalEvent, sourceSheet: string, items: BudgetItem[]) {
-  const filtered = items
-    .filter((item) => item.source_sheet === sourceSheet)
-    .sort((a,b)=>(a.source_row ?? 9999)-(b.source_row ?? 9999))
-
-  const rows: (string | number)[][] = [
+function categoryRows(event: OperationalEvent, sourceSheet: string, items: BudgetItem[]): Cell[][] {
+  const filtered = items.filter((item) => item.source_sheet === sourceSheet).sort((a,b)=>(a.source_row ?? 9999)-(b.source_row ?? 9999))
+  const rows: Cell[][] = [
     [sourceSheet + " — " + event.name],
     [],
     ["Producto","Unidad","Cantidad baseline","Cantidad estimada","Precio unit. baseline/currente","Subtotal estimado","Precio Real","Subtotal Real"],
   ]
-
   for (const item of filtered) {
     const quantity = number(item.quantity)
     const estimatedUnit = number(item.estimated_unit_price_clp)
     const estimatedSubtotal = number(item.estimated_subtotal_clp)
     const actualSubtotal = item.actual_subtotal_clp == null ? "" : number(item.actual_subtotal_clp)
-    const actualUnit = actualSubtotal === "" || quantity === 0 ? "" : number(actualSubtotal) / quantity
     rows.push([
       item.item_name,
       item.unit || "",
@@ -218,23 +193,18 @@ function buildCategorySheet(event: OperationalEvent, sourceSheet: string, items:
       quantity,
       estimatedUnit,
       estimatedSubtotal,
-      actualUnit,
+      actualSubtotal === "" || quantity === 0 ? "" : number(actualSubtotal) / quantity,
       actualSubtotal,
     ])
   }
-
   const estimatedTotal = filtered.reduce((sum,item)=>sum+number(item.estimated_subtotal_clp),0)
   const actualValues = filtered.filter((item)=>item.actual_subtotal_clp != null)
-  const actualTotal = actualValues.length ? actualValues.reduce((sum,item)=>sum+number(item.actual_subtotal_clp),0) : ""
   rows.push([])
-  rows.push(["TOTAL","","","","",estimatedTotal,"",actualTotal])
-
-  const sheet = XLSX.utils.aoa_to_sheet(rows)
-  applySheetDefaults(sheet,[42,15,18,18,26,20,18,20])
-  return sheet
+  rows.push(["TOTAL","","","","",estimatedTotal,"",actualValues.length ? actualValues.reduce((sum,item)=>sum+number(item.actual_subtotal_clp),0) : ""])
+  return rows
 }
 
-function buildSummarySheet(event: OperationalEvent, participants: Participant[], items: BudgetItem[], sourceEvent: SourceEvent) {
+function summaryRows(event: OperationalEvent, participants: Participant[], items: BudgetItem[], sourceEvent: SourceEvent): Cell[][] {
   const weights = participants.map(participantWeights)
   const categoryTotals = new Map<string,number>()
   for (const item of items) categoryTotals.set(item.category,(categoryTotals.get(item.category) || 0)+number(item.estimated_subtotal_clp))
@@ -243,7 +213,7 @@ function buildSummarySheet(event: OperationalEvent, participants: Participant[],
   const staffTotal = staff.reduce((sum,item)=>sum+number(item.estimated_subtotal_clp),0)
   const estimatedTotal = number(event.estimated_total_clp) || shoppingTotal + staffTotal
   const foodDays = weights.reduce((sum,w)=>sum+w.food,0)
-  const rows: (string | number)[][] = [
+  const rows: Cell[][] = [
     ["Presupuesto — " + event.name],
     [],
     ["Parámetros del evento"],
@@ -271,16 +241,7 @@ function buildSummarySheet(event: OperationalEvent, participants: Participant[],
     [],
     ["Concepto","Precio unitario (CLP)","Unidad","Cantidad","Subtotal (CLP)","Responsable / estado"],
   ]
-  for (const item of staff) {
-    rows.push([
-      item.item_name,
-      number(item.estimated_unit_price_clp),
-      item.unit || "",
-      number(item.quantity),
-      number(item.estimated_subtotal_clp),
-      item.procurement_status || "",
-    ])
-  }
+  for (const item of staff) rows.push([item.item_name,number(item.estimated_unit_price_clp),item.unit || "",number(item.quantity),number(item.estimated_subtotal_clp),item.procurement_status || ""])
   rows.push(["Subtotal personal y otros gastos","","","",staffTotal])
   rows.push([])
   rows.push(["TOTAL GENERAL ESTIMADO",estimatedTotal])
@@ -292,31 +253,75 @@ function buildSummarySheet(event: OperationalEvent, participants: Participant[],
   rows.push(["SHA-256 fuente",event.source_sha256 || ""])
   rows.push(["Estado fuente",event.source_status || ""])
   rows.push(["Notas",event.notes || ""])
-
-  const sheet = XLSX.utils.aoa_to_sheet(rows)
-  applySheetDefaults(sheet,[58,26,18,18,22,36])
-  return sheet
+  return rows
 }
 
-export function buildOperationalEventWorkbook(
+function xml(value: string) {
+  return value.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&apos;")
+}
+
+function colName(index: number) {
+  let n = index + 1
+  let out = ""
+  while (n > 0) {
+    const mod = (n - 1) % 26
+    out = String.fromCharCode(65 + mod) + out
+    n = Math.floor((n - 1) / 26)
+  }
+  return out
+}
+
+function worksheetXml(rows: Cell[][]) {
+  const body = rows.map((row,rowIndex) => {
+    const cells = row.map((value,colIndex) => {
+      const ref = colName(colIndex) + String(rowIndex + 1)
+      if (typeof value === "number" && Number.isFinite(value)) return `<c r="${ref}"><v>${value}</v></c>`
+      const text = xml(String(value ?? ""))
+      return `<c r="${ref}" t="inlineStr"><is><t xml:space="preserve">${text}</t></is></c>`
+    }).join("")
+    return `<row r="${rowIndex + 1}">${cells}</row>`
+  }).join("")
+  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData>${body}</sheetData></worksheet>`
+}
+
+function workbookXml(sheets: SheetSpec[]) {
+  const body = sheets.map((sheet,index) => `<sheet name="${xml(sheet.name)}" sheetId="${index+1}" r:id="rId${index+1}"/>`).join("")
+  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets>${body}</sheets></workbook>`
+}
+
+function workbookRelsXml(sheets: SheetSpec[]) {
+  const rels = sheets.map((_,index) => `<Relationship Id="rId${index+1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet${index+1}.xml"/>`).join("")
+  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">${rels}</Relationships>`
+}
+
+function contentTypesXml(sheets: SheetSpec[]) {
+  const sheetOverrides = sheets.map((_,index) => `<Override PartName="/xl/worksheets/sheet${index+1}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>`).join("")
+  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>${sheetOverrides}</Types>`
+}
+
+export async function buildOperationalEventWorkbook(
   event: OperationalEvent,
   participants: Participant[],
   items: BudgetItem[],
   sourceEvent: SourceEvent,
 ) {
-  const workbook = XLSX.utils.book_new()
-  XLSX.utils.book_append_sheet(workbook, buildGuestSheet(event,participants), "Invitados")
-  XLSX.utils.book_append_sheet(workbook, buildSummarySheet(event,participants,items,sourceEvent), "Resumen")
-  XLSX.utils.book_append_sheet(workbook, buildKitchenLoadSheet(event,participants), "Carga Cocina")
-  for (const sheetName of SHOPPING_SHEETS) {
-    XLSX.utils.book_append_sheet(workbook, buildCategorySheet(event,sheetName,items), sheetName)
-  }
-  workbook.Props = {
-    Title: event.name,
-    Subject: "Black Swan canonical event export",
-    Author: "Black Swan Facility Core",
-    Company: "Black Swan",
-    Comments: "Generated from canonical application data. Excel is an export snapshot, not the source of truth.",
-  }
-  return XLSX.write(workbook,{bookType:"xlsx",type:"buffer",compression:true})
+  const sheets: SheetSpec[] = [
+    { name:"Invitados", rows:guestRows(event,participants) },
+    { name:"Resumen", rows:summaryRows(event,participants,items,sourceEvent) },
+    { name:"Carga Cocina", rows:kitchenRows(event,participants) },
+    ...SHOPPING_SHEETS.map((name)=>({name,rows:categoryRows(event,name,items)})),
+  ]
+
+  const zip = new JSZip()
+  zip.file("[Content_Types].xml", contentTypesXml(sheets))
+  zip.folder("_rels")?.file(".rels", `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>`)
+  zip.folder("xl")?.file("workbook.xml", workbookXml(sheets))
+  zip.folder("xl")?.folder("_rels")?.file("workbook.xml.rels", workbookRelsXml(sheets))
+  const worksheetFolder = zip.folder("xl")?.folder("worksheets")
+  sheets.forEach((sheet,index)=>worksheetFolder?.file(`sheet${index+1}.xml`, worksheetXml(sheet.rows)))
+  return zip.generateAsync({type:"uint8array",compression:"DEFLATE",compressionOptions:{level:6}})
 }
