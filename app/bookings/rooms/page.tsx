@@ -6,6 +6,7 @@ import { createBrowserClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Plus, Pencil, Trash2, BedDouble, Search } from "lucide-react"
 import { AddRoomDialog } from "@/components/add-room-dialog"
 import { EditRoomDialog } from "@/components/edit-room-dialog"
@@ -51,6 +52,8 @@ export default function RoomsPage() {
   const [, setLocations] = useState<Location[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState("")
+  const [propertyFilter, setPropertyFilter] = useState("all")
+  const [statusFilter, setStatusFilter] = useState("all")
   const [isAddRoomOpen, setIsAddRoomOpen] = useState(false)
   const [isEditRoomOpen, setIsEditRoomOpen] = useState(false)
   const [isAddBedOpen, setIsAddBedOpen] = useState(false)
@@ -75,11 +78,16 @@ export default function RoomsPage() {
     setLoading(false)
   }
 
+  const properties = useMemo(() => Array.from(new Set(rooms.map((room) => room.locationName).filter(Boolean) as string[])).sort(), [rooms])
   const visibleRooms = useMemo(() => {
     const term = search.trim().toLowerCase()
-    if (!term) return rooms
-    return rooms.filter((room) => `${room.room_number} ${room.locationName ?? ""} ${room.room_type ?? ""} ${room.status ?? ""}`.toLowerCase().includes(term))
-  }, [rooms, search])
+    return rooms.filter((room) => {
+      if (propertyFilter !== "all" && room.locationName !== propertyFilter) return false
+      if (statusFilter !== "all" && room.status !== statusFilter) return false
+      return !term || `${room.room_number} ${room.locationName ?? ""} ${room.room_type ?? ""} ${room.status ?? ""}`.toLowerCase().includes(term)
+    })
+  }, [propertyFilter, rooms, search, statusFilter])
+  const activeBeds = useMemo(() => beds.filter((bed) => bed.is_available).length, [beds])
 
   function statusLabel(status: string) {
     if (status === "available") return copy.available
@@ -117,26 +125,28 @@ export default function RoomsPage() {
 
   return <div className="min-h-screen bg-[#111213] text-foreground">
     <header className="flex min-h-[58px] flex-col gap-3 border-b border-white/10 px-4 py-3 md:flex-row md:items-center md:justify-between md:px-5">
-      <div><h1 className="text-xl font-semibold tracking-tight">{copy.title}</h1><p className="text-xs text-muted-foreground">{copy.description}</p></div>
+      <div><h1 className="text-[15px] font-medium tracking-tight">{copy.title}</h1><p className="text-[11px] text-muted-foreground">{copy.description} · {rooms.length} {copy.title.toLowerCase()} · {activeBeds} {copy.activeBeds}</p></div>
       <Button className="h-8 rounded-[5px] bg-emerald-600 px-3 text-xs hover:bg-emerald-500" onClick={() => setIsAddRoomOpen(true)}><Plus className="mr-1.5 h-3.5 w-3.5" />{copy.addRoom}</Button>
     </header>
 
-    <div className="flex min-h-[40px] items-center gap-2 border-b border-white/10 bg-[#151718] px-4 py-1.5 md:px-5">
-      <div className="relative w-full max-w-md"><Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" /><Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={copy.searchPlaceholder ?? copy.title} className="h-8 rounded-[4px] border-white/10 bg-[#111314] pl-8 text-xs" /></div>
-      <span className="ml-auto text-xs text-muted-foreground">{visibleRooms.length} {copy.title.toLowerCase()}</span>
+    <div className="flex min-h-[40px] flex-wrap items-center gap-2 border-b border-white/10 bg-[#151718] px-4 py-1 md:px-5">
+      <div className="relative min-w-[240px] flex-1"><Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" /><Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={copy.searchPlaceholder} className="h-8 rounded-none border-white/10 bg-[#111314] pl-8 text-xs" /></div>
+      <Select value={propertyFilter} onValueChange={setPropertyFilter}><SelectTrigger className="h-8 w-48 rounded-none border-white/10 bg-[#111314] text-xs"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">{copy.allProperties}</SelectItem>{properties.map((property) => <SelectItem key={property} value={property}>{property}</SelectItem>)}</SelectContent></Select>
+      <Select value={statusFilter} onValueChange={setStatusFilter}><SelectTrigger className="h-8 w-40 rounded-none border-white/10 bg-[#111314] text-xs"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">{copy.allStatuses}</SelectItem><SelectItem value="available">{copy.available}</SelectItem><SelectItem value="occupied">{copy.occupied}</SelectItem><SelectItem value="maintenance">{copy.maintenance}</SelectItem><SelectItem value="unavailable">{copy.unavailable}</SelectItem></SelectContent></Select>
+      <span className="text-xs tabular-nums text-muted-foreground">{visibleRooms.length}/{rooms.length}</span>
     </div>
 
     <div className="overflow-x-auto">
       <table className="w-full min-w-[980px] text-xs">
         <thead className="bg-[#17191a] text-left text-[11px] uppercase tracking-[0.08em] text-muted-foreground"><tr>
-          <th className="px-4 py-2.5">{copy.title}</th><th className="px-4 py-2.5">{copy.unknownLocation}</th><th className="px-4 py-2.5">Type</th><th className="px-4 py-2.5">{copy.guestsUpTo.replace("{count}", "")}</th><th className="px-4 py-2.5">{copy.beds}</th><th className="px-4 py-2.5">{copy.perNight}</th><th className="px-4 py-2.5">Status</th><th className="px-4 py-2.5 text-right">Actions</th>
+          <th className="px-3 py-2">{copy.title}</th><th className="px-3 py-2">{copy.property}</th><th className="px-3 py-2">{copy.type}</th><th className="px-3 py-2">{copy.capacity}</th><th className="px-3 py-2">{copy.beds}</th><th className="px-3 py-2">{copy.rate}</th><th className="px-3 py-2">{copy.status}</th><th className="px-3 py-2 text-right">{copy.actions}</th>
         </tr></thead>
         <tbody className="divide-y divide-white/[0.06]">
-          {loading ? <tr><td colSpan={8} className="px-4 py-12 text-center text-muted-foreground">{copy.loading}</td></tr> : visibleRooms.length === 0 ? <tr><td colSpan={8} className="px-4 py-12 text-center text-muted-foreground">No rooms</td></tr> : visibleRooms.map((room) => {
+          {loading ? <tr><td colSpan={8} className="px-4 py-12 text-center text-muted-foreground">{copy.loading}</td></tr> : visibleRooms.length === 0 ? <tr><td colSpan={8} className="px-4 py-12 text-center text-muted-foreground">{copy.noRooms}</td></tr> : visibleRooms.map((room) => {
             const roomBeds = beds.filter((bed) => bed.room_id === room.id)
             const capacity = room.capacity || room.max_guests || 2
             return <tr key={room.id} className="bg-[#111213] hover:bg-white/[0.025]">
-              <td className="px-4 py-2.5"><Link href={`/${language}/bookings/rooms/${room.id}`} aria-label={`${copy.title} ${room.room_number}`} className="inline-flex items-center gap-2 rounded-[2px] font-medium outline-none hover:text-emerald-300 focus-visible:ring-1 focus-visible:ring-emerald-400"><BedDouble className="h-3.5 w-3.5 text-muted-foreground" />{room.room_number}</Link></td>
+              <td className="px-3 py-2"><Link href={`/${language}/bookings/rooms/${room.id}`} aria-label={`${copy.title} ${room.room_number}`} className="inline-flex items-center gap-2 rounded-[2px] font-medium outline-none hover:text-emerald-300 focus-visible:ring-1 focus-visible:ring-emerald-400"><BedDouble className="h-3.5 w-3.5 text-muted-foreground" />{room.room_number}</Link></td>
               <td className="px-4 py-2.5 text-muted-foreground">{room.locationName ?? "—"}</td>
               <td className="px-4 py-2.5 text-muted-foreground">{roomTypeLabel(room.room_type)}</td>
               <td className="px-4 py-2.5">{capacity}</td>

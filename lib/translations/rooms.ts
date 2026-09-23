@@ -27,7 +27,7 @@ export const roomsTranslations: Record<Language, Record<string, string>> = {
     deleteRoom: "This action cannot be undone. This will permanently delete the room.",
     deleteBed: "This action cannot be undone. This will permanently delete the bed.",
     cancel: "Cancel",
-    delete: "Delete",
+    delete: "Delete", searchPlaceholder:"Search room, property, type or status", property:"Property", type:"Type", capacity:"Capacity", rate:"Rate", status:"Status", actions:"Actions", allProperties:"All properties", allStatuses:"All statuses", noRooms:"No rooms match the selected filters", activeBeds:"active beds",
   },
   es: {
     title: "Habitaciones",
@@ -55,7 +55,7 @@ export const roomsTranslations: Record<Language, Record<string, string>> = {
     deleteRoom: "Esta acción no se puede deshacer. La habitación se eliminará permanentemente.",
     deleteBed: "Esta acción no se puede deshacer. La cama se eliminará permanentemente.",
     cancel: "Cancelar",
-    delete: "Eliminar",
+    delete: "Eliminar", searchPlaceholder:"Buscar habitación, propiedad, tipo o estado", property:"Propiedad", type:"Tipo", capacity:"Capacidad", rate:"Tarifa", status:"Estado", actions:"Acciones", allProperties:"Todas las propiedades", allStatuses:"Todos los estados", noRooms:"No hay habitaciones para los filtros seleccionados", activeBeds:"camas activas",
   },
   de: {
     title: "Zimmer",
@@ -83,6 +83,6 @@ export const roomsTranslations: Record<Language, Record<string, string>> = {
     deleteRoom: "Diese Aktion kann nicht rückgängig gemacht werden. Das Zimmer wird dauerhaft gelöscht.",
     deleteBed: "Diese Aktion kann nicht rückgängig gemacht werden. Das Bett wird dauerhaft gelöscht.",
     cancel: "Abbrechen",
-    delete: "Löschen",
+    delete: "Löschen", searchPlaceholder:"Zimmer, Unterkunft, Typ oder Status suchen", property:"Unterkunft", type:"Typ", capacity:"Kapazität", rate:"Preis", status:"Status", actions:"Aktionen", allProperties:"Alle Unterkünfte", allStatuses:"Alle Status", noRooms:"Keine Zimmer für die gewählten Filter", activeBeds:"aktive Betten",
   },
 }
