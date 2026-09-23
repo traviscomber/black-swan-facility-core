@@ -352,30 +352,31 @@ export default function BookingsCalendarPage() {
 
   const rangeLabel = `${format(startDate, "dd MMM")} - ${format(addDays(endDate, -1), "dd MMM")}`
   const monthValue = format(startDate, "yyyy-MM")
+  const addLabel = language === "es" ? "Agregar" : language === "de" ? "Hinzufügen" : "Add"
 
   return <div className="min-h-screen bg-[#101314]">
     <div className="sticky top-0 z-50 border-b border-white/10 bg-[#17191a]">
-      <div className="flex min-h-14 items-center gap-2 overflow-x-auto px-2 py-2">
-        <Input type="month" value={monthValue} onChange={(event) => { if (event.target.value) setStartDate(bookingDateFromKey(`${event.target.value}-01`)) }} className="h-9 w-[160px] shrink-0 border-white/10 bg-[#111314] text-xs" aria-label="Month" />
-        <Button variant="outline" size="sm" className="h-9 shrink-0 border-emerald-600 text-emerald-400 hover:bg-emerald-950" onClick={() => setStartDate(bookingTodayDate())}><CalendarDays className="mr-1.5 h-3.5 w-3.5" />{pageCopy.today}</Button>
-        <Button variant="outline" size="icon" className="h-9 w-9 shrink-0" onClick={() => setStartDate(addDays(startDate, -rangeDays))}><ChevronLeft className="h-4 w-4" /></Button>
-        <div className="min-w-[118px] shrink-0 text-center text-xs font-medium text-white/80">{rangeLabel}</div>
-        <Button variant="outline" size="icon" className="h-9 w-9 shrink-0" onClick={() => setStartDate(addDays(startDate, rangeDays))}><ChevronRight className="h-4 w-4" /></Button>
-        <div className="ml-auto flex items-center gap-2" aria-label="Calendar actions">
-          <Button variant="outline" size="icon" className="h-9 w-9 shrink-0" title="Print calendar" aria-label="Print calendar" onClick={() => window.print()}><Printer className="h-4 w-4" /></Button>
-          <Button asChild variant="outline" size="icon" className="h-9 w-9 shrink-0" title="Rooms & beds" aria-label="Rooms & beds"><Link href={`/${language}/bookings/rooms`}><BedDouble className="h-4 w-4" /></Link></Button>
-          <Button size="sm" className="h-9 shrink-0 bg-emerald-600 px-4 text-white hover:bg-emerald-500" onClick={() => { setPreselectedBed(null); setPreselectedDate(null); setPreselectedCheckOutDate(null); setNewReservationOpen(true) }}><Plus className="mr-1.5 h-4 w-4" />{pageCopy.newReservation}</Button>
-          <Button variant="outline" size="icon" className="h-9 w-9 shrink-0" title="Search" aria-label="Search" onClick={() => searchInputRef.current?.focus()}><Search className="h-4 w-4" /></Button>
-          <Button variant="outline" size="icon" className="h-9 w-9 shrink-0" onClick={() => void refreshEvents()} title="Refresh" aria-label="Refresh"><RefreshCw className="h-4 w-4" /></Button>
-          <Button asChild variant="outline" size="icon" className="h-9 w-9 shrink-0" title="Tasks & alerts" aria-label="Tasks & alerts"><Link href={`/${language}/bookings/operations`}><Bell className="h-4 w-4" /></Link></Button>
-          <Button asChild variant="outline" size="icon" className="h-9 w-9 shrink-0" title="Profile" aria-label="Profile"><Link href={`/${language}/bookings/profile`}><UserCircle className="h-4 w-4" /></Link></Button>
+      <div className="flex min-h-12 items-center gap-1.5 overflow-x-auto px-2 py-1.5">
+        <Input type="month" value={monthValue} onChange={(event) => { if (event.target.value) setStartDate(bookingDateFromKey(`${event.target.value}-01`)) }} className="h-8 w-[160px] shrink-0 border-white/10 bg-[#111314] text-xs" aria-label="Month" />
+        <Button variant="outline" size="sm" className="h-8 shrink-0 border-emerald-600 px-3 text-emerald-400 hover:bg-emerald-950" onClick={() => setStartDate(bookingTodayDate())}><CalendarDays className="mr-1.5 h-3.5 w-3.5" />{pageCopy.today}</Button>
+        <Button variant="outline" size="icon" className="h-8 w-8 shrink-0" onClick={() => setStartDate(addDays(startDate, -rangeDays))}><ChevronLeft className="h-4 w-4" /></Button>
+        <div className="min-w-[108px] shrink-0 text-center text-[11px] font-medium text-white/75">{rangeLabel}</div>
+        <Button variant="outline" size="icon" className="h-8 w-8 shrink-0" onClick={() => setStartDate(addDays(startDate, rangeDays))}><ChevronRight className="h-4 w-4" /></Button>
+        <div className="ml-auto flex items-center gap-1.5" aria-label="Calendar actions">
+          <Button variant="outline" size="icon" className="h-8 w-8 shrink-0" title="Print calendar" aria-label="Print calendar" onClick={() => window.print()}><Printer className="h-4 w-4" /></Button>
+          <Button asChild variant="outline" size="icon" className="h-8 w-8 shrink-0" title="Rooms & beds" aria-label="Rooms & beds"><Link href={`/${language}/bookings/rooms`}><BedDouble className="h-4 w-4" /></Link></Button>
+          <Button size="sm" className="h-8 shrink-0 bg-emerald-600 px-3 text-xs text-white hover:bg-emerald-500" onClick={() => { setPreselectedBed(null); setPreselectedDate(null); setPreselectedCheckOutDate(null); setNewReservationOpen(true) }}><Plus className="mr-1 h-3.5 w-3.5" />{addLabel}</Button>
+          <Button variant="outline" size="icon" className="h-8 w-8 shrink-0" title="Search" aria-label="Search" onClick={() => searchInputRef.current?.focus()}><Search className="h-4 w-4" /></Button>
+          <Button variant="outline" size="icon" className="h-8 w-8 shrink-0" onClick={() => void refreshEvents()} title="Refresh" aria-label="Refresh"><RefreshCw className="h-4 w-4" /></Button>
+          <Button asChild variant="outline" size="icon" className="h-8 w-8 shrink-0" title="Tasks & alerts" aria-label="Tasks & alerts"><Link href={`/${language}/bookings/operations`}><Bell className="h-4 w-4" /></Link></Button>
+          <Button asChild variant="outline" size="icon" className="h-8 w-8 shrink-0" title="Profile" aria-label="Profile"><Link href={`/${language}/bookings/profile`}><UserCircle className="h-4 w-4" /></Link></Button>
         </div>
       </div>
-      <div className="flex min-h-11 items-center gap-2 overflow-x-auto border-t border-white/5 px-2 py-1.5">
-        <div className="relative min-w-[240px] flex-1"><Search className="absolute left-3 top-2.5 h-4 w-4 text-white/35" /><Input ref={searchInputRef} className="h-9 border-white/10 bg-[#111314] pl-9 text-xs" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search guest or room" /></div>
-        <Select value={locationId} onValueChange={setLocationId}><SelectTrigger className="h-9 w-48 shrink-0 border-white/10 bg-[#111314] text-xs"><SelectValue placeholder="Property" /></SelectTrigger><SelectContent><SelectItem value="all">All properties</SelectItem>{locations.map((item) => <SelectItem key={item.id} value={item.id}>{item.name}</SelectItem>)}</SelectContent></Select>
-        <Select value={status} onValueChange={setStatus}><SelectTrigger className="h-9 w-40 shrink-0 border-white/10 bg-[#111314] text-xs"><SelectValue placeholder="Status" /></SelectTrigger><SelectContent><SelectItem value="all">All statuses</SelectItem><SelectItem value="pending">Pending</SelectItem><SelectItem value="confirmed">Confirmed</SelectItem><SelectItem value="checked_in">Checked in</SelectItem><SelectItem value="checked_out">Completed</SelectItem></SelectContent></Select>
-        <Select value={String(rangeDays)} onValueChange={(value) => setRangeDays(Number(value))}><SelectTrigger className="h-9 w-28 shrink-0 border-white/10 bg-[#111314] text-xs"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="7">7 days</SelectItem><SelectItem value="14">14 days</SelectItem><SelectItem value="19">19 days</SelectItem><SelectItem value="30">30 days</SelectItem></SelectContent></Select>
+      <div className="flex min-h-10 items-center gap-1.5 overflow-x-auto border-t border-white/5 px-2 py-1">
+        <div className="relative min-w-[240px] flex-1"><Search className="absolute left-3 top-2 h-4 w-4 text-white/35" /><Input ref={searchInputRef} className="h-8 border-white/10 bg-[#111314] pl-9 text-xs" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search guest or room" /></div>
+        <Select value={locationId} onValueChange={setLocationId}><SelectTrigger className="h-8 w-44 shrink-0 border-white/10 bg-[#111314] text-xs"><SelectValue placeholder="Property" /></SelectTrigger><SelectContent><SelectItem value="all">All properties</SelectItem>{locations.map((item) => <SelectItem key={item.id} value={item.id}>{item.name}</SelectItem>)}</SelectContent></Select>
+        <Select value={status} onValueChange={setStatus}><SelectTrigger className="h-8 w-36 shrink-0 border-white/10 bg-[#111314] text-xs"><SelectValue placeholder="Status" /></SelectTrigger><SelectContent><SelectItem value="all">All statuses</SelectItem><SelectItem value="pending">Pending</SelectItem><SelectItem value="confirmed">Confirmed</SelectItem><SelectItem value="checked_in">Checked in</SelectItem><SelectItem value="checked_out">Completed</SelectItem></SelectContent></Select>
+        <Select value={String(rangeDays)} onValueChange={(value) => setRangeDays(Number(value))}><SelectTrigger className="h-8 w-24 shrink-0 border-white/10 bg-[#111314] text-xs"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="7">7 days</SelectItem><SelectItem value="14">14 days</SelectItem><SelectItem value="19">19 days</SelectItem><SelectItem value="30">30 days</SelectItem></SelectContent></Select>
       </div>
     </div>
 
