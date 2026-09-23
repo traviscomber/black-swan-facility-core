@@ -22,7 +22,7 @@ import { downloadCsv } from "@/lib/client-csv"
 
 const COPY = {
   en: { occupancy:"Occupancy", avgOccupancy:"Average occupancy", periodRevenue:"Period revenue", avgRate:"Average rate/night", occupiedBed:"per occupied bed", totalBeds:"Total beds", peak:"Peak", available:"available", low:"Low", mediumLow:"Medium-low", medium:"Medium", high:"High", full:"Full", free:"Free", beds:"Beds", blocked:"Blocked", revenue:"Revenue", avg:"Avg rate", allLocations:"All properties", location:"Property", revenueDay:"Revenue/day", noBeds:"No beds configured for this period", loadError:"Error loading data", previous:"Previous month", next:"Next month", export:"Export CSV", refresh:"Refresh" },
-  es: { occupancy:"Ocupación", avgOccupancy:"Ocupación promedio", periodRevenue:"{labels.periodRevenue}", avgRate:"{labels.avgRate}", occupiedBed:"{labels.occupiedBed}", totalBeds:"{labels.totalBeds}", peak:"Pico", available:labels.available, low:"Baja", mediumLow:"Media-baja", medium:"Media", high:"Alta", full:"Llena", free:"Libre", beds:"Camas", blocked:"Bloqueadas", revenue:"Revenue", avg:"Tarifa avg", allLocations:"Todas las propiedades", location:"Propiedad", revenueDay:"Revenue/día", noBeds:"{labels.noBeds}", loadError:"Error cargando datos", previous:"Mes anterior", next:"Mes siguiente", export:"Exportar CSV", refresh:"Actualizar" },
+  es: { occupancy:"Ocupación", avgOccupancy:"Ocupación promedio", periodRevenue:"Revenue del periodo", avgRate:"Tarifa promedio/noche", occupiedBed:"por cama ocupada", totalBeds:"Camas totales", peak:"Pico", available:"disponibles", low:"Baja", mediumLow:"Media-baja", medium:"Media", high:"Alta", full:"Llena", free:"Libre", beds:"Camas", blocked:"Bloqueadas", revenue:"Revenue", avg:"Tarifa avg", allLocations:"Todas las propiedades", location:"Propiedad", revenueDay:"Revenue/día", noBeds:"No hay camas configuradas para este periodo", loadError:"Error cargando datos", previous:"Mes anterior", next:"Mes siguiente", export:"Exportar CSV", refresh:"Actualizar" },
   de: { occupancy:"Belegung", avgOccupancy:"Durchschnittliche Belegung", periodRevenue:"Umsatz im Zeitraum", avgRate:"Durchschnitt/Nacht", occupiedBed:"pro belegtem Bett", totalBeds:"Betten gesamt", peak:"Spitze", available:"verfügbar", low:"Niedrig", mediumLow:"Mittel-niedrig", medium:"Mittel", high:"Hoch", full:"Voll", free:"Frei", beds:"Betten", blocked:"Gesperrt", revenue:"Umsatz", avg:"Ø-Rate", allLocations:"Alle Unterkünfte", location:"Unterkunft", revenueDay:"Umsatz/Tag", noBeds:"Keine Betten für diesen Zeitraum konfiguriert", loadError:"Fehler beim Laden", previous:"Vorheriger Monat", next:"Nächster Monat", export:"CSV exportieren", refresh:"Aktualisieren" },
 } as const
 const DATE_LOCALES = { en: enUS, es, de } satisfies Record<Language, typeof enUS>
@@ -114,7 +114,7 @@ function KpiCards({ rows, totalBeds, labels, dateLocale }: { rows: HeatmapRow[];
       <Card className="border-border/50 bg-card">
         <CardContent className="flex items-start justify-between p-4">
           <div>
-            <p className="text-xs font-medium text-muted-foreground">Revenue del periodo</p>
+            <p className="text-xs font-medium text-muted-foreground">{labels.periodRevenue}</p>
             <p className="mt-1 text-2xl font-bold tabular-nums">{formatCLP(kpis.revenue)}</p>
             <p className="mt-0.5 text-xs text-muted-foreground">CLP</p>
           </div>
@@ -125,9 +125,9 @@ function KpiCards({ rows, totalBeds, labels, dateLocale }: { rows: HeatmapRow[];
       <Card className="border-border/50 bg-card">
         <CardContent className="flex items-start justify-between p-4">
           <div>
-            <p className="text-xs font-medium text-muted-foreground">Tarifa promedio/noche</p>
+            <p className="text-xs font-medium text-muted-foreground">{labels.avgRate}</p>
             <p className="mt-1 text-2xl font-bold tabular-nums">{formatCLP(kpis.avgRate)}</p>
-            <p className="mt-0.5 text-xs text-muted-foreground">por cama ocupada</p>
+            <p className="mt-0.5 text-xs text-muted-foreground">{labels.occupiedBed}</p>
           </div>
           <TrendingUp className="mt-0.5 h-5 w-5 shrink-0 text-muted-foreground" />
         </CardContent>
@@ -136,10 +136,10 @@ function KpiCards({ rows, totalBeds, labels, dateLocale }: { rows: HeatmapRow[];
       <Card className="border-border/50 bg-card">
         <CardContent className="flex items-start justify-between p-4">
           <div>
-            <p className="text-xs font-medium text-muted-foreground">Camas totales</p>
+            <p className="text-xs font-medium text-muted-foreground">{labels.totalBeds}</p>
             <p className="mt-1 text-2xl font-bold tabular-nums">{totalBeds}</p>
             <p className="mt-0.5 text-xs text-muted-foreground">
-              {kpis.peakDay ? `${labels.peak}: ${format(parseISO(kpis.peakDay), "d MMM", { locale: dateLocale })}` : "disponibles"}
+              {kpis.peakDay ? `${labels.peak}: ${format(parseISO(kpis.peakDay), "d MMM", { locale: dateLocale })}` : labels.available}
             </p>
           </div>
           <BedDouble className="mt-0.5 h-5 w-5 shrink-0 text-muted-foreground" />
@@ -184,7 +184,7 @@ function HeatmapCell({
       style={{ backgroundColor: bg, minHeight: 28 }}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={onLeave}
-      aria-label={`${row.location_name} ${row.day}: ${row.occupancy_pct}% ocupacion`}
+      aria-label={`${row.location_name} ${row.day}: ${row.occupancy_pct}%`}
     >
       {row.occupancy_pct > 0 ? `${Math.round(row.occupancy_pct)}%` : ""}
     </div>
