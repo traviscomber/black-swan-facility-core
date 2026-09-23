@@ -21,9 +21,9 @@ type PropertyProfile={
 }
 
 const copy={
-  en:{title:"Profile",subtitle:"Black Swan property identity plus the current authenticated Booking account.",property:"Property",account:"Authenticated account",name:"Name",type:"Facility type",street:"Street",city:"City",country:"Country",phone:"Phone",email:"Email",website:"Website",facebook:"Facebook",role:"Role",department:"Department",loading:"Loading profile…",unavailable:"Not provided",edit:"Edit property",save:"Save",cancel:"Cancel",saved:"Property profile saved."},
-  es:{title:"Perfil",subtitle:"Identidad del alojamiento Black Swan y cuenta autenticada actual de Reservas.",property:"Alojamiento",account:"Cuenta autenticada",name:"Nombre",type:"Tipo",street:"Dirección",city:"Ciudad",country:"País",phone:"Teléfono",email:"Correo",website:"Sitio web",facebook:"Facebook",role:"Rol",department:"Departamento",loading:"Cargando perfil…",unavailable:"No informado",edit:"Editar alojamiento",save:"Guardar",cancel:"Cancelar",saved:"Perfil del alojamiento guardado."},
-  de:{title:"Profil",subtitle:"Black-Swan-Unterkunft und aktuell authentifiziertes Booking-Konto.",property:"Unterkunft",account:"Authentifiziertes Konto",name:"Name",type:"Typ",street:"Straße",city:"Stadt",country:"Land",phone:"Telefon",email:"E-Mail",website:"Website",facebook:"Facebook",role:"Rolle",department:"Abteilung",loading:"Profil wird geladen…",unavailable:"Nicht angegeben",edit:"Unterkunft bearbeiten",save:"Speichern",cancel:"Abbrechen",saved:"Unterkunftsprofil gespeichert."},
+  en:{title:"Profile",subtitle:"Black Swan property identity plus the current authenticated Booking account.",property:"Property",account:"Authenticated account",name:"Name",type:"Facility type",street:"Street",city:"City",country:"Country",phone:"Phone",email:"Email",website:"Website",facebook:"Facebook",role:"Role",department:"Department",loading:"Loading profile…",unavailable:"Not provided",edit:"Edit property",save:"Save",cancel:"Cancel",saved:"Property profile saved.",complete:"profile fields complete"},
+  es:{title:"Perfil",subtitle:"Identidad del alojamiento Black Swan y cuenta autenticada actual de Reservas.",property:"Alojamiento",account:"Cuenta autenticada",name:"Nombre",type:"Tipo",street:"Dirección",city:"Ciudad",country:"País",phone:"Teléfono",email:"Correo",website:"Sitio web",facebook:"Facebook",role:"Rol",department:"Departamento",loading:"Cargando perfil…",unavailable:"No informado",edit:"Editar alojamiento",save:"Guardar",cancel:"Cancelar",saved:"Perfil del alojamiento guardado.",complete:"campos de perfil completos"},
+  de:{title:"Profil",subtitle:"Black-Swan-Unterkunft und aktuell authentifiziertes Booking-Konto.",property:"Unterkunft",account:"Authentifiziertes Konto",name:"Name",type:"Typ",street:"Straße",city:"Stadt",country:"Land",phone:"Telefon",email:"E-Mail",website:"Website",facebook:"Facebook",role:"Rolle",department:"Abteilung",loading:"Profil wird geladen…",unavailable:"Nicht angegeben",edit:"Unterkunft bearbeiten",save:"Speichern",cancel:"Abbrechen",saved:"Unterkunftsprofil gespeichert.",complete:"Profilfelder vollständig"},
 } as const
 
 const emptyProperty:PropertyProfile={object_name:"",country_region:"",street:"",city:"",facility_type:"",phone:"",email:"",website:"",facebook:"",logo_present:false}
@@ -77,9 +77,12 @@ export default function BookingProfilePage(){
 
   function cancel(){setDraft({...emptyProperty,...(property??{})});setEditing(false);setError(null)}
 
+  const propertyFieldValues=[property?.object_name,property?.facility_type,property?.street,property?.city,property?.country_region,property?.phone,property?.email,property?.website,property?.facebook]
+  const completedFields=propertyFieldValues.filter((value)=>typeof value==="string"&&value.trim().length>0).length
+
   return <section className="min-h-screen bg-[#171512] text-[#e7e1d8]">
     <header className="flex min-h-[58px] items-center justify-between gap-3 bg-[#211e1a] px-4 py-3 md:px-5">
-      <div><h1 className="text-base font-normal tracking-tight">{c.title}</h1><p className="text-xs text-[#b9b0a4]">{c.subtitle}</p></div>
+      <div><h1 className="text-base font-normal tracking-tight">{c.title}</h1><p className="text-xs text-[#b9b0a4]">{c.subtitle}</p><p className="mt-1 text-[10px] text-[#8f867b]">{completedFields}/9 {c.complete}</p></div>
       {access.is_admin&&!editing?<button type="button" onClick={()=>setEditing(true)} className="inline-flex h-8 items-center gap-2 bg-[#2b2722] px-3 text-xs hover:bg-[#332e28]"><Edit className="h-3.5 w-3.5"/>{c.edit}</button>:null}
     </header>
     {error?<div className="bg-[#3a211d] px-5 py-2 text-xs text-[#e7a393]">{error}</div>:null}
