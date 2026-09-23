@@ -23,6 +23,7 @@ import {
   Sparkles,
   Users,
   Wrench,
+  FileText,
   X,
 } from "lucide-react"
 import { toast } from "sonner"
@@ -154,12 +155,41 @@ type BookingExtra = {
   price: number
   tax_rate: number
 }
+type ReservationLogistics = {
+  id: string
+  direction: string
+  hub: string
+  anchor_at: string | null
+  status: string
+  notes: string | null
+}
+type HandoverItem = {
+  id: string
+  handover_id: string
+  title: string
+  detail: string | null
+  priority: string
+  status: string
+  due_at: string | null
+}
+type ReservationInvoice = {
+  id: string
+  invoice_number: string
+  status: string
+  payment_status: string
+  total_amount: number
+  amount_paid: number | null
+  due_date: string
+}
 type BookingOperations = {
   summary: {
     openHospitality: number
     openHousekeeping: number
     openGuestRequests: number
     openIssues: number
+    openLogistics: number
+    openHandovers: number
+    openBalance: number
     extrasCount: number
     extrasAmount: number
     totalOperations: number
@@ -167,6 +197,9 @@ type BookingOperations = {
   extras: ReservationExtra[]
   guestRequests: GuestRequest[]
   issues: BookingIssue[]
+  logistics: ReservationLogistics[]
+  handoverItems: HandoverItem[]
+  invoices: ReservationInvoice[]
   catalog: BookingExtra[]
 }
 type SelectedReservation = Reservation & { bed?: Bed }
@@ -352,7 +385,7 @@ export default function BookingOperationsTimelinePage() {
     setOperationsLoading(true)
     setOperationsError(null)
     try {
-      const [extrasResult, guestRequestsResult, issuesResult, catalogResult, housekeepingResult, hospitalityResult] = await Promise.all([
+      const [extrasResult, guestRequestsResult, issuesResult, catalogResult, housekeepingResult, hospitalityResult, logisticsResult, handoverResult, invoicesResult] = await Promise.all([
         supabase
           .from("reservation_extras")
           .select("id, extra_id, name, unit, quantity, unit_price, tax_rate, total_amount, notes, created_at")
@@ -382,6 +415,21 @@ export default function BookingOperationsTimelinePage() {
           .from("hospitality_requests")
           .select("id, status")
           .eq("reservation_id", reservationId),
+        supabase
+          .from("reservation_logistics")
+          .select("id, direction, hub, anchor_at, status, notes")
+          .eq("reservation_id", reservationId)
+          .order("anchor_at", { ascending: true, nullsFirst: false }),
+        supabase
+          .from("booking_handover_items")
+          .select("id, handover_id, title, detail, priority, status, due_at")
+          .eq("reservation_id", reservationId)
+          .order("due_at", { ascending: true, nullsFirst: false }),
+        supabase
+          .from("invoices")
+          .select("id, invoice_number, status, payment_status, total_amount, amount_paid, due_date")
+          .eq("reservation_id", reservationId)
+          .order("invoice_date", { ascending: false }),
       ])
 
       const firstError = extrasResult.error
@@ -390,6 +438,9 @@ export default function BookingOperationsTimelinePage() {
         || catalogResult.error
         || housekeepingResult.error
         || hospitalityResult.error
+        || logisticsResult.error
+        || handoverResult.error
+        || invoicesResult.error
 
       if (firstError) throw firstError
 
@@ -397,11 +448,17 @@ export default function BookingOperationsTimelinePage() {
       const guestRequests = (guestRequestsResult.data ?? []) as GuestRequest[]
       const issues = (issuesResult.data ?? []) as BookingIssue[]
       const catalog = (catalogResult.data ?? []) as BookingExtra[]
+      const logistics = (logisticsResult.data ?? []) as ReservationLogistics[]
+      const handoverItems = (handoverResult.data ?? []) as HandoverItem[]
+      const invoices = (invoicesResult.data ?? []) as ReservationInvoice[]
       const openStatuses = new Set(["pending", "assigned", "in_progress", "open"])
       const openHospitality = (hospitalityResult.data ?? []).filter((item) => openStatuses.has(item.status ?? "pending")).length
       const openHousekeeping = (housekeepingResult.data ?? []).filter((item) => openStatuses.has(item.status ?? "pending")).length
       const openGuestRequests = guestRequests.filter((item) => openStatuses.has(item.status ?? "pending")).length
       const openIssues = issues.filter((item) => openStatuses.has(item.status ?? "open")).length
+      const openLogistics = logistics.filter((item) => !["completed", "cancelled"].includes(item.status)).length
+      const openHandovers = handoverItems.filter((item) => !["resolved", "completed", "cancelled"].includes(item.status)).length
+      const openBalance = invoices.reduce((sum, item) => sum + Math.max(0, Number(item.total_amount ?? 0) - Number(item.amount_paid ?? 0)), 0)
       const extrasAmount = extras.reduce((sum, item) => sum + Number(item.total_amount ?? 0), 0)
 
       setOperations({
@@ -410,13 +467,19 @@ export default function BookingOperationsTimelinePage() {
           openHousekeeping,
           openGuestRequests,
           openIssues,
+          openLogistics,
+          openHandovers,
+          openBalance,
           extrasCount: extras.length,
           extrasAmount,
-          totalOperations: openHospitality + openHousekeeping + guestRequests.length + issues.length + extras.length,
+          totalOperations: openHospitality + openHousekeeping + guestRequests.length + issues.length + logistics.length + handoverItems.length + extras.length,
         },
         extras,
         guestRequests,
         issues,
+        logistics,
+        handoverItems,
+        invoices,
         catalog,
       })
     } catch (loadError) {
@@ -541,8 +604,17 @@ export default function BookingOperationsTimelinePage() {
     if ((operations?.summary.openIssues ?? 0) > 0) {
       exceptions.push(tr("Incidente abierto"))
     }
+    if ((operations?.summary.openLogistics ?? 0) > 0) {
+      exceptions.push(tr("Logística de llegada o salida pendiente"))
+    }
+    if ((operations?.summary.openHandovers ?? 0) > 0) {
+      exceptions.push(tr("Pendiente incluido en entrega de turno"))
+    }
+    if ((operations?.summary.openBalance ?? 0) > 0) {
+      exceptions.push(tr("Saldo de factura pendiente"))
+    }
     return exceptions
-  }, [operations?.summary.openGuestRequests, operations?.summary.openIssues, selected, selectedHospitality, selectedHousekeeping, selectedIsCheckedIn, selectedIsClosed, selectedRoomStatus, tr])
+  }, [operations?.summary.openBalance, operations?.summary.openGuestRequests, operations?.summary.openHandovers, operations?.summary.openIssues, operations?.summary.openLogistics, selected, selectedHospitality, selectedHousekeeping, selectedIsCheckedIn, selectedIsClosed, selectedRoomStatus, tr])
 
   const metrics = useMemo(() => {
     const today = iso(new Date())
@@ -1062,11 +1134,56 @@ export default function BookingOperationsTimelinePage() {
                 </div>
               )}
               {operations && (
-                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                <div className="grid gap-px bg-white/[0.08] sm:grid-cols-4">
                   <Info label={tr("Operaciones")} value={formatCount(operations.summary.totalOperations)} />
                   <Info label={tr("Servicios / cargos")} value={formatCount(operations.summary.extrasCount)} />
                   <Info label={tr("Monto extras")} value={formatClp(operations.summary.extrasAmount)} />
+                  <Info label={tr("Saldo facturado")} value={formatClp(operations.summary.openBalance)} />
                 </div>
+              )}
+
+              <ActionSection title={tr("Llegada, salida y traspaso")} icon={<Users className="h-4 w-4" />}>
+                {!operations || (operations.logistics.length === 0 && operations.handoverItems.length === 0)
+                  ? <Empty text={tr("No hay logística ni pendientes de turno vinculados a esta estadía.")} />
+                  : (
+                    <>
+                      {operations.logistics.map((item) => (
+                        <OperationCard
+                          key={item.id}
+                          title={tr(item.direction === "arrival" ? "Llegada" : "Salida")}
+                          subtitle={[item.hub, item.anchor_at ? formatDateTime(item.anchor_at) : null].filter(Boolean).join(" · ")}
+                          status={tr(item.status)}
+                          description={item.notes}
+                          actions={null}
+                        />
+                      ))}
+                      {operations.handoverItems.map((item) => (
+                        <OperationCard
+                          key={item.id}
+                          title={item.title}
+                          subtitle={`${tr("Entrega de turno")} · ${tr(item.priority)}${item.due_at ? ` · ${formatDateTime(item.due_at)}` : ""}`}
+                          status={tr(item.status)}
+                          description={item.detail}
+                          actions={null}
+                        />
+                      ))}
+                    </>
+                  )}
+              </ActionSection>
+
+              {operations && operations.invoices.length > 0 && (
+                <ActionSection title={tr("Facturación")} icon={<FileText className="h-4 w-4" />}>
+                  {operations.invoices.map((invoice) => (
+                    <OperationCard
+                      key={invoice.id}
+                      title={invoice.invoice_number}
+                      subtitle={`${tr("Vence")} ${formatStayDate(invoice.due_date)} · ${formatClp(Number(invoice.total_amount ?? 0))}`}
+                      status={tr(invoice.payment_status ?? invoice.status)}
+                      description={Number(invoice.amount_paid ?? 0) > 0 ? `${tr("Pagado")}: ${formatClp(Number(invoice.amount_paid ?? 0))}` : null}
+                      actions={null}
+                    />
+                  ))}
+                </ActionSection>
               )}
 
               <ActionSection title={tr("Servicios y cargos")} icon={<PackagePlus className="h-4 w-4" />}>
