@@ -2,7 +2,7 @@
 
 import type React from "react"
 import { useCallback, useEffect, useMemo, useState } from "react"
-import { addDays, format, parseISO, startOfDay } from "date-fns"
+import { addDays, format, parseISO } from "date-fns"
 import { de, enUS, es } from "date-fns/locale"
 import {
   AlertTriangle,

@@ -8,6 +8,7 @@ export const bookingsCalendarPageCopy: Record<Language, Record<string, string>> 
     manageBlocks: "Manage blocks",
     today: "Today",
     newReservation: "New reservation",
+    allStatuses: "All statuses", pending: "Pending", confirmed: "Confirmed", checkedIn: "Checked in", completed: "Completed", days: "days", selected: "selected", all: "All", extend: "Extend", reduce: "Reduce", cancel: "Cancel", delete: "Delete", clear: "Clear", conflicts: "conflicts detected", operationComplete: "Operation completed", undoWindow: "to undo", undo: "Undo", blockTitle: "Room block", reason: "Reason", from: "From", to: "To", notes: "Notes",
   },
   es: {
     eyebrow: "Hospitalidad · Fundo Corcovado",
@@ -16,6 +17,7 @@ export const bookingsCalendarPageCopy: Record<Language, Record<string, string>> 
     manageBlocks: "Gestionar bloqueos",
     today: "Hoy",
     newReservation: "Nueva reserva",
+    allStatuses: "Todos los estados", pending: "Pendiente", confirmed: "Confirmada", checkedIn: "Hospedado", completed: "Finalizada", days: "días", selected: "seleccionadas", all: "Todas", extend: "Extender", reduce: "Reducir", cancel: "Cancelar", delete: "Eliminar", clear: "Limpiar", conflicts: "conflictos detectados", operationComplete: "Operación completada", undoWindow: "para deshacer", undo: "Deshacer", blockTitle: "Bloqueo de habitación", reason: "Motivo", from: "Desde", to: "Hasta", notes: "Notas",
   },
   de: {
     eyebrow: "Gastbetrieb · Fundo Corcovado",
@@ -24,5 +26,6 @@ export const bookingsCalendarPageCopy: Record<Language, Record<string, string>> 
     manageBlocks: "Sperren verwalten",
     today: "Heute",
     newReservation: "Neue Reservierung",
+    allStatuses: "Alle Status", pending: "Ausstehend", confirmed: "Bestätigt", checkedIn: "Eingecheckt", completed: "Abgeschlossen", days: "Tage", selected: "ausgewählt", all: "Alle", extend: "Verlängern", reduce: "Verkürzen", cancel: "Stornieren", delete: "Löschen", clear: "Leeren", conflicts: "Konflikte erkannt", operationComplete: "Vorgang abgeschlossen", undoWindow: "zum Rückgängigmachen", undo: "Rückgängig", blockTitle: "Zimmersperre", reason: "Grund", from: "Von", to: "Bis", notes: "Notizen",
   },
 }
