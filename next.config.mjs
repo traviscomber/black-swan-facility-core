@@ -4,7 +4,8 @@ const nextConfig = {
   serverExternalPackages: ["xlsx"],
   experimental: {
     serverSourceMaps: false,
-    webpackBuildWorker: true,
+    staticGenerationMaxConcurrency: 1,
+    staticGenerationMinPagesPerWorker: 100,
   },
   images: {
     unoptimized: true,
