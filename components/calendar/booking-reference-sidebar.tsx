@@ -13,6 +13,9 @@ import {
   LineChart,
   ReceiptText,
   Settings,
+  CreditCard,
+  RadioTower,
+  UserRound,
   Users,
   Wrench,
 } from "lucide-react"
@@ -47,7 +50,7 @@ const copy = {
   },
 } as const
 
-type GroupKey = "bookings" | "operations" | "prices" | "reports" | "settings"
+type GroupKey = "bookings" | "operations" | "prices" | "reports"
 type NavLinkProps = { href:string; active?:boolean; icon?:React.ComponentType<{className?:string}>; children:React.ReactNode; inset?:boolean }
 
 function NavLink({ href, active=false, icon:Icon, children, inset=false }:NavLinkProps){
@@ -69,7 +72,6 @@ function groupForPath(pathname:string):GroupKey|null{
   if(/\/bookings\/(operations|shopping-list|charges|blocks|rooms|handovers|audit)(\/|$)/.test(pathname))return "operations"
   if(/\/bookings\/(rates|quotes|prepayment|extras)(\/|$)/.test(pathname))return "prices"
   if(/\/bookings\/(revenue|reports|room-report|local-tax|payments|registration-book)(\/|$)/.test(pathname))return "reports"
-  if(/\/bookings\/(reservation-settings|payment-methods|channels|profile)(\/|$)/.test(pathname))return "settings"
   return null
 }
 
@@ -83,7 +85,7 @@ export function BookingReferenceSidebar(){
   const [collapsed,setCollapsed]=useState(false)
   const [openGroups,setOpenGroups]=useState<Set<GroupKey>>(()=>new Set([groupForPath(pathname)??"bookings"]))
 
-  useEffect(()=>{try{const saved=window.localStorage.getItem(SIDEBAR_GROUPS_KEY);if(saved){const parsed=JSON.parse(saved) as GroupKey[];if(Array.isArray(parsed))setOpenGroups(new Set(parsed.filter((key):key is GroupKey=>["bookings","operations","prices","reports","settings"].includes(key))))}}catch{}},[])
+  useEffect(()=>{try{const saved=window.localStorage.getItem(SIDEBAR_GROUPS_KEY);if(saved){const parsed=JSON.parse(saved) as GroupKey[];if(Array.isArray(parsed))setOpenGroups(new Set(parsed.filter((key):key is GroupKey=>["bookings","operations","prices","reports"].includes(key))))}}catch{}},[])
   useEffect(()=>{const current=groupForPath(pathname);if(!current)return;setOpenGroups(groups=>groups.has(current)?groups:new Set([...groups,current]))},[pathname])
   useEffect(()=>{try{window.localStorage.setItem(SIDEBAR_GROUPS_KEY,JSON.stringify([...openGroups]))}catch{}},[openGroups])
   function toggleGroup(key:GroupKey){setOpenGroups(current=>{const next=new Set(current);if(next.has(key))next.delete(key);else next.add(key);return next})}
@@ -124,13 +126,11 @@ export function BookingReferenceSidebar(){
       </NavGroup>
       <NavLink href={href("/bookings/invoices")} active={active("/bookings/invoices")} icon={ReceiptText}>{c.invoices}</NavLink>
       <NavLink href={href("/bookings/tax-rates")} active={active("/bookings/tax-rates")} icon={ReceiptText}>{c.taxRates}</NavLink>
+      <NavLink href={href("/bookings/reservation-settings")} active={active("/bookings/reservation-settings")} icon={Settings}>{c.reservationSystem}</NavLink>
+      <NavLink href={href("/bookings/payment-methods")} active={active("/bookings/payment-methods")} icon={CreditCard}>{c.paymentMethods}</NavLink>
+      <NavLink href={href("/bookings/channels")} active={active("/bookings/channels")} icon={RadioTower}>{c.salesChannels}</NavLink>
       <NavLink href={href("/bookings/employees")} active={active("/bookings/employees")} icon={Users}>{c.employees}</NavLink>
-      <NavGroup label={c.settings} icon={Settings} open={openGroups.has("settings")} onToggle={()=>toggleGroup("settings")}>
-        <NavLink href={href("/bookings/reservation-settings")} active={active("/bookings/reservation-settings")} inset>{c.reservationSystem}</NavLink>
-        <NavLink href={href("/bookings/payment-methods")} active={active("/bookings/payment-methods")} inset>{c.paymentMethods}</NavLink>
-        <NavLink href={href("/bookings/channels")} active={active("/bookings/channels")} inset>{c.salesChannels}</NavLink>
-        <NavLink href={href("/bookings/profile")} active={active("/bookings/profile")} inset>{c.profile}</NavLink>
-      </NavGroup>
+      <NavLink href={href("/bookings/profile")} active={active("/bookings/profile")} icon={UserRound}>{c.profile}</NavLink>
     </nav>
     <div className="booking-reference-sidebar-footer"><button type="button" className="booking-reference-hide" onClick={()=>setCollapsed(value=>!value)} aria-label={collapsed?c.show:c.hide} title={collapsed?c.show:c.hide}><ChevronLeft className="booking-reference-hide-icon h-4 w-4"/><span className="booking-reference-nav-label">{collapsed?c.show:c.hide}</span></button></div>
   </aside>
