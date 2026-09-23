@@ -1,7 +1,7 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useState } from "react"
-import { Edit, Eye, FileText, Search, Trash2 } from "lucide-react"
+import Link from "next/link"\nimport { useCallback, useEffect, useMemo, useState } from "react"
+import { Archive, Edit, Eye, FileText, Search, Trash2 } from "lucide-react"
 import { toast } from "sonner"
 import { InvoiceEditorModal } from "@/components/invoice-editor-modal"
 import { Badge } from "@/components/ui/badge"
@@ -87,7 +87,7 @@ export default function InvoicesPage() {
 
   return <div className="min-h-screen bg-[#171512] text-[#e7e1d8]">
     <header className="flex min-h-[58px] flex-wrap items-center justify-between gap-3 border-b border-white/[0.07] bg-[#211e1a] px-4 py-2">
-      <div><h1 className="text-base font-medium">{copy.title}</h1><p className="text-xs text-[#b9b0a4]">{copy.subtitle}</p></div>
+      <div><h1 className="text-base font-medium">{copy.title}</h1><p className="text-xs text-[#b9b0a4]">{copy.subtitle}</p></div><Link href={`/${language}/bookings/invoices/external`} className="inline-flex h-8 items-center gap-2 bg-[#2b2722] px-3 text-xs text-[#e7e1d8] hover:bg-[#332e28]"><Archive className="h-3.5 w-3.5" />InvoiceOcean archive</Link>
       <div className="text-right"><div className="text-[10px] uppercase tracking-wide text-[#b9b0a4]">{copy.registered}</div><div className="text-sm font-medium">{filteredInvoices.length} · {formatClp(openBalance, locale)}</div></div>
     </header>
 
