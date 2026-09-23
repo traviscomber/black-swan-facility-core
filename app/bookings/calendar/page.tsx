@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { useSearchParams } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
 import { addDays, differenceInCalendarDays, format, parseISO } from "date-fns"
 import { Ban, Bell, BedDouble, CalendarDays, CheckSquare, ChevronLeft, ChevronRight, Loader2, Plus, Printer, RefreshCw, RotateCcw, Search, Trash2, UserCircle, X } from "lucide-react"
@@ -26,18 +26,17 @@ import { normalizedStatus, STATUS_LABELS, BLOCK_LABELS } from "@/components/cale
 interface Location { id: string; name: string }
 interface Bed { id: string; bed_number: string; bed_type: string; room: { id: string; room_number: string; room_type?: string; location_id: string; location_ref?: { id: string; name: string } } }
 interface CalendarEvent { event_id: string; event_type: "reservation" | "block"; bed_id: string; room_id: string; location_id: string; starts_on: string; ends_on: string; status: string; label: string; guest_name: string | null; block_type: string | null; source: string | null; total_amount: number | null }
-interface Reservation { id: string; bed_id: string | null; guest_name: string; guest_email?: string | null; guest_phone?: string | null; check_in: string; check_out: string; status: string; num_guests?: number | null; total_amount?: number | null; special_requests?: string | null }
 interface RoomBlock { id: string; room_id: string; start_date: string; end_date: string; block_type: string; reason: string; notes?: string | null; status: string }
 interface ResizeRpcResult { success: boolean; message: string; check_in: string; check_out: string }
 interface BulkConflict { reservation_id: string; reason: string }
 
 const DAY_WIDTH = 46
-function formatClp(value: number) { return new Intl.NumberFormat("es-CL", { style: "currency", currency: "CLP", maximumFractionDigits: 0 }).format(value) }
 function intervalsOverlap(startA: string, endA: string, startB: string, endB: string) { return parseISO(startA) < parseISO(endB) && parseISO(endA) > parseISO(startB) }
 
 export default function BookingsCalendarPage() {
   const { language } = useLanguage()
   const searchParams = useSearchParams()
+  const router = useRouter()
   const pageCopy = bookingsCalendarPageCopy[language]
   const blocksHref = `/${language}/bookings/blocks`
   const supabase = useMemo(() => createClient(), [])
@@ -55,9 +54,7 @@ export default function BookingsCalendarPage() {
   const [preselectedBed, setPreselectedBed] = useState<Bed | null>(null)
   const [preselectedDate, setPreselectedDate] = useState<Date | null>(null)
   const [preselectedCheckOutDate, setPreselectedCheckOutDate] = useState<Date | null>(null)
-  const [selectedReservation, setSelectedReservation] = useState<Reservation | null>(null)
   const [selectedBlock, setSelectedBlock] = useState<RoomBlock | null>(null)
-  const [updatingStatus, setUpdatingStatus] = useState<string | null>(null)
   const { resizeState, resizingReservationId, confirmingReservationId, isResizing, beginResize, updatePreview, markConfirming, clearResize } = useReservationResizeState()
   const { captureRect, flipTo } = useFlipAnimation()
   const blockRefs = useRef<Map<string, HTMLButtonElement>>(new Map())
@@ -278,9 +275,7 @@ export default function BookingsCalendarPage() {
     setEvents((current) => current.map((event) => event.event_type === "reservation" && event.event_id === pendingResize.reservationId ? { ...event, starts_on: result.check_in, ends_on: result.check_out } : event))
     toast.success(`Reserva actualizada: ${result.check_in} → ${result.check_out}`); clearResize(); await refreshEvents()
   }
-  async function openReservation(event: CalendarEvent) { setError(null); const { data, error: detailError } = await supabase.from("reservations").select("id, bed_id, guest_name, guest_email, guest_phone, check_in, check_out, status, num_guests, total_amount, special_requests").eq("id", event.event_id).single(); if (detailError) { setError(detailError.message); return }; setSelectedReservation(data as Reservation) }
   async function openBlock(event: CalendarEvent) { setError(null); const { data, error: detailError } = await supabase.from("room_blocks").select("id, room_id, start_date, end_date, block_type, reason, notes, status").eq("id", event.event_id).single(); if (detailError) { setError(detailError.message); return }; setSelectedBlock(data as RoomBlock) }
-  async function updateReservationStatus(reservation: Reservation, nextStatus: string) { setUpdatingStatus(reservation.id); setError(null); const { error: updateError } = await supabase.from("reservations").update({ status: nextStatus }).eq("id", reservation.id); if (updateError) setError(updateError.message); else { setSelectedReservation({ ...reservation, status: nextStatus }); await refreshEvents() }; setUpdatingStatus(null) }
 
   function armUndoTimer(operationId: string) {
     if (undoTimerRef.current) clearTimeout(undoTimerRef.current)
@@ -432,16 +427,14 @@ export default function BookingsCalendarPage() {
         eventGeometry={eventGeometry}
         geometryForDates={geometryForDates}
         onRowClick={openReservationFromTimeline}
-        onOpenReservation={(event) => void openReservation(event)}
+        onOpenReservation={(event) => router.push(`/${language}/bookings/reservations/${event.event_id}`)}
         onOpenBlock={(event) => void openBlock(event)}
       />
     </Card>
 
     <AddReservationDialog open={newReservationOpen} onOpenChange={setNewReservationOpen} onSuccess={refreshEvents} preselectedBed={preselectedBed?.id} preselectedDate={preselectedDate ?? undefined} preselectedCheckOut={preselectedCheckOutDate ?? undefined} preselectedLocation={preselectedBed?.room.location_ref?.name} />
     <Dialog open={!!selectedBlock} onOpenChange={(open) => !open && setSelectedBlock(null)}><DialogContent><DialogHeader><DialogTitle>Bloqueo de habitación</DialogTitle></DialogHeader>{selectedBlock && <div className="space-y-4"><Badge variant="secondary">{BLOCK_LABELS[selectedBlock.block_type] ?? selectedBlock.block_type}</Badge><Detail label="Motivo" value={selectedBlock.reason} /><div className="grid grid-cols-2 gap-4"><Detail label="Desde" value={selectedBlock.start_date} /><Detail label="Hasta" value={selectedBlock.end_date} /></div>{selectedBlock.notes && <Detail label="Notas" value={selectedBlock.notes} />}<Button asChild className="w-full"><Link href={blocksHref}>Administrar bloqueos</Link></Button></div>}</DialogContent></Dialog>
-    <Dialog open={!!selectedReservation} onOpenChange={(open) => !open && setSelectedReservation(null)}><DialogContent className="max-w-lg"><DialogHeader><DialogTitle>Detalle de reserva</DialogTitle></DialogHeader>{selectedReservation && <div className="space-y-5"><div className="flex items-start justify-between gap-4"><div><p className="text-xs text-muted-foreground">Huésped</p><p className="text-xl font-semibold">{selectedReservation.guest_name}</p></div><Badge>{STATUS_LABELS[selectedReservation.status] ?? selectedReservation.status}</Badge></div><div className="grid grid-cols-2 gap-4 text-sm"><Detail label="Check-in" value={selectedReservation.check_in} /><Detail label="Check-out" value={selectedReservation.check_out} /><Detail label="Huéspedes" value={String(selectedReservation.num_guests ?? 1)} /><Detail label="Monto registrado" value={formatClp(Number(selectedReservation.total_amount ?? 0))} /></div>{selectedReservation.special_requests && <Detail label="Solicitudes especiales" value={selectedReservation.special_requests} />}<div className="flex flex-wrap justify-end gap-2 border-t pt-4"><Button asChild variant="outline"><Link href={`/${language}/bookings/reservations/${selectedReservation.id}`}>Stay Cockpit</Link></Button>{normalizedStatus(selectedReservation.status) === "pending" && <StatusButton loading={updatingStatus === selectedReservation.id} label="Confirmar reserva" onClick={() => updateReservationStatus(selectedReservation, "confirmed")} />}{normalizedStatus(selectedReservation.status) === "confirmed" && <StatusButton loading={updatingStatus === selectedReservation.id} label="Registrar check-in" onClick={() => updateReservationStatus(selectedReservation, "checked_in")} />}{normalizedStatus(selectedReservation.status) === "checked_in" && <StatusButton loading={updatingStatus === selectedReservation.id} label="Registrar check-out" onClick={() => updateReservationStatus(selectedReservation, "checked_out")} />}</div></div>}</DialogContent></Dialog>
   </div>
 }
 
 function Detail({ label, value }: { label: string; value: string }) { return <div><p className="text-xs text-muted-foreground">{label}</p><p className="font-medium">{value}</p></div> }
-function StatusButton({ loading, label, onClick }: { loading: boolean; label: string; onClick: () => void }) { return <Button onClick={onClick} disabled={loading}>{loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}{label}</Button> }

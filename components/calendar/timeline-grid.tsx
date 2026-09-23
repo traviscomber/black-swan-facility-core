@@ -253,15 +253,13 @@ export function TimelineGrid(props: TimelineGridProps) {
     })
   }
   function toggleAllLayers() { setPreferences((current) => ({ ...current, activeLayers: current.activeLayers.length === layers.length ? [] : defaultLayers })) }
-  function openFullReservation(event: CalendarEvent) { if (event.event_type === "reservation") window.location.assign(`/${language}/bookings/reservations/${event.event_id}`) }
-
   const sharedRowProps: Omit<TimelineRowProps, "bed" | "bedEvents" | "onRowClick" | "onCreationCommit"> = {
     dates, timelineWidth, isTouchDevice, activeLayers, selectedIds, conflictIds, isBulkMode, onToggleSelect,
     draggingEventId, dropTargetBedId, movingReservationId, moveConflict, draggingEvent, onEventPointerDown,
     onEventPointerMove, onEventPointerUp, onEventPointerCancel, resizeState, resizingReservationId,
     confirmingReservationId, isResizing, resizeConflict, onBeginResize, onMoveResize, onFinishResize, onClearResize,
     blockRefCallback, eventGeometry, geometryForDates, creatingRange, onCreationStart, onCreationAbort,
-    onOpenReservation: openFullReservation, onOpenBlock,
+    onOpenReservation, onOpenBlock,
   }
 
   return (
