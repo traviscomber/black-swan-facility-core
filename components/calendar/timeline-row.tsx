@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { isSameDay, parseISO } from "date-fns"
+import { parseISO } from "date-fns"
 import { CheckSquare, ChevronDown, ChevronRight, Square, Users } from "lucide-react"
 import type { ReservationResizeEdge } from "@/app/bookings/calendar/use-reservation-resize-state"
 import { ReservationPreview, type PreviewConflict } from "@/components/calendar/reservation-preview"
@@ -9,6 +9,7 @@ import { CreationSelection, type CreationRange } from "@/components/calendar/cre
 import { ReservationOperationalLanes, type CalendarLayerKey } from "@/components/calendar/reservation-operational-lanes"
 import { ReservationQuickInspector } from "@/components/calendar/reservation-quick-inspector"
 import { useLanguage, type Language } from "@/lib/hooks/use-language"
+import { isBookingToday } from "@/lib/booking/timezone"
 
 export const DAY_WIDTH = 46
 export const LABEL_WIDTH = 168
@@ -166,7 +167,7 @@ export function TimelineRow(props: TimelineRowProps) {
         </div>
         <div className="relative cursor-crosshair" style={{ width: timelineWidth, height: ROW_HEIGHT, backgroundImage: `repeating-linear-gradient(to right, transparent 0, transparent ${DAY_WIDTH - 1}px, rgba(255,255,255,.06) ${DAY_WIDTH - 1}px, rgba(255,255,255,.06) ${DAY_WIDTH}px)` }} onClick={(event) => onRowClick(bed, event.clientX, event.currentTarget)}>
           <CreationSelection bedId={bed.id} dates={dates} timelineWidth={timelineWidth} isActive={!draggingEventId && !isResizing && !isBulkMode} onCreationStart={onCreationStart} onCreationAbort={onCreationAbort} onCreationCommit={onCreationCommit} />
-          {dates.map((date, index) => isSameDay(date, new Date()) ? <div key={`today-${bed.id}-${index}`} className="pointer-events-none absolute inset-y-0 bg-emerald-600/20" style={{ left: index * DAY_WIDTH, width: DAY_WIDTH }} /> : null)}
+          {dates.map((date, index) => isBookingToday(date) ? <div key={`today-${bed.id}-${index}`} className="pointer-events-none absolute inset-y-0 bg-emerald-600/20" style={{ left: index * DAY_WIDTH, width: DAY_WIDTH }} /> : null)}
           {bedEvents.map((event) => {
             const geometry = eventGeometry(event)
             const isBlock = event.event_type === "block"
@@ -196,8 +197,8 @@ export function TimelineRow(props: TimelineRowProps) {
                 {!isBlock && <span role="button" tabIndex={0} aria-label={isExpanded ? c.hideOperations : c.showOperations} className="absolute right-2 top-1 z-30 inline-flex h-4 w-4 items-center justify-center bg-black/20 hover:bg-black/35" onPointerDown={(pointerEvent) => { pointerEvent.preventDefault(); pointerEvent.stopPropagation() }} onClick={(clickEvent) => { clickEvent.preventDefault(); clickEvent.stopPropagation(); setExpandedReservationId((current) => current === event.event_id ? null : event.event_id) }} onKeyDown={(keyEvent) => { if (keyEvent.key === "Enter" || keyEvent.key === " ") { keyEvent.preventDefault(); keyEvent.stopPropagation(); setExpandedReservationId((current) => current === event.event_id ? null : event.event_id) } }}>{isExpanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}</span>}
                 <div className="truncate pr-5 font-medium leading-[14px]">{isMoving ? c.validating : isConfirmingResize ? c.confirming : isEventResizing ? c.resizing : isBlock ? blockLabels[blockKey] ?? blockLabels.other : event.guest_name ?? event.label}</div>
                 <div className="truncate pr-5 text-[8px] leading-3 opacity-60">{isBlock ? event.label : statusLabels[statusKey] ?? event.status}</div>
-                {!isBlock && isSameDay(parseISO(event.starts_on), new Date()) && <div className="absolute left-0 top-0 h-full w-0.5 bg-emerald-400" title={c.checkinToday} />}
-                {!isBlock && isSameDay(parseISO(event.ends_on), new Date()) && <div className="absolute right-0 top-0 h-full w-0.5 bg-amber-300" title={c.checkoutToday} />}
+                {!isBlock && isBookingToday(parseISO(event.starts_on)) && <div className="absolute left-0 top-0 h-full w-0.5 bg-emerald-400" title={c.checkinToday} />}
+                {!isBlock && isBookingToday(parseISO(event.ends_on)) && <div className="absolute right-0 top-0 h-full w-0.5 bg-amber-300" title={c.checkoutToday} />}
               </button>
             </div>
           })}

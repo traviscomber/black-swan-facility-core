@@ -40,6 +40,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { useLanguage } from "@/lib/hooks/use-language"
+import { bookingDateKey, bookingTodayDate } from "@/lib/booking/timezone"
 import { createClient } from "@/lib/supabase/client"
 import { translateBookingOperationsValue } from "@/lib/translations/booking-operations"
 
@@ -314,7 +315,7 @@ export default function BookingOperationsTimelinePage() {
 
   const [rangeDays, setRangeDays] = useState<(typeof ZOOM_OPTIONS)[number]>(21)
   const dayWidth = rangeDays <= 7 ? 128 : rangeDays <= 14 ? 104 : rangeDays <= 21 ? 92 : 72
-  const [startDate, setStartDate] = useState(startOfDay(new Date()))
+  const [startDate, setStartDate] = useState(bookingTodayDate)
   const endDate = useMemo(() => addDays(startDate, rangeDays), [rangeDays, startDate])
   const dates = useMemo(
     () => Array.from({ length: rangeDays }, (_, index) => addDays(startDate, index)),
@@ -645,7 +646,7 @@ export default function BookingOperationsTimelinePage() {
   }, [operations?.summary.openBalance, operations?.summary.openGuestRequests, operations?.summary.openHandovers, operations?.summary.openIssues, operations?.summary.openLogistics, operations?.summary.openMaintenance, selected, selectedHospitality, selectedHousekeeping, selectedIsCheckedIn, selectedIsClosed, selectedRoomStatus, tr])
 
   const metrics = useMemo(() => {
-    const today = iso(new Date())
+    const today = bookingDateKey()
     const uniqueRooms = Array.from(new Map(beds.map((bed) => [bed.room.id, bed.room])).values())
     return {
       arrivals: reservations.filter((item) => item.check_in === today).length,
