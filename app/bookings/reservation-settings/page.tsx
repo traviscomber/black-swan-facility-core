@@ -75,7 +75,7 @@ export default function BookingReservationSettingsPage(){
 
   async function save(){
     const freeDays=Number(form.free_cancellation_days_before),paidDays=Number(form.paid_cancellation_days_before),towelDays=Number(form.towels_every_days),beddingDays=Number(form.bedding_every_days)
-    if(![freeDays,paidDays,towelDays,beddingDays].every(v=>Number.isInteger(v)&&v>=0)||!/^d{2}:d{2}$/.test(form.check_in_time)||!/^d{2}:d{2}$/.test(form.check_out_time)||!/^#[0-9a-fA-F]{6}$/.test(publicForm.accent_color)){setError(c.invalid);return}
+    if(![freeDays,paidDays,towelDays,beddingDays].every(v=>Number.isInteger(v)&&v>=0)||!/^\d{2}:\d{2}$/.test(form.check_in_time)||!/^\d{2}:\d{2}$/.test(form.check_out_time)||!/^#[0-9a-fA-F]{6}$/.test(publicForm.accent_color)){setError(c.invalid);return}
     setSaving(true);setError(null);setNotice(null)
     const operational={timezone:BOOKING_TIME_ZONE,check_in_time:form.check_in_time,check_out_time:form.check_out_time,free_cancellation_days_before:freeDays,paid_cancellation_days_before:paidDays,towels_enabled:form.towels_enabled,towels_every_days:towelDays,towels_after_checkout:form.towels_after_checkout,bedding_enabled:form.bedding_enabled,bedding_every_days:beddingDays,bedding_after_checkout:form.bedding_after_checkout,cleaning_enabled:form.cleaning_enabled,updated_at:new Date().toISOString()}
     const publicPayload={...publicForm,updated_at:new Date().toISOString()}

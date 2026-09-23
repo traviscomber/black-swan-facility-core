@@ -1,6 +1,7 @@
 "use client"
 
 import Link from "next/link"
+import { useSearchParams } from "next/navigation"
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { Archive, Edit, Eye, FileText, Search, Trash2 } from "lucide-react"
 import { toast } from "sonner"
@@ -29,6 +30,7 @@ function getStatusClass(status: string) {
 
 export default function InvoicesPage() {
   const supabase = useMemo(() => createClient(), [])
+  const searchParams = useSearchParams()
   const { language } = useLanguage()
   const copy = invoiceCopy[language]
   const locale = LOCALES[language]
@@ -36,7 +38,7 @@ export default function InvoicesPage() {
   const [invoices, setInvoices] = useState<Invoice[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [searchTerm, setSearchTerm] = useState("")
+  const [searchTerm, setSearchTerm] = useState(() => searchParams.get("customer") || searchParams.get("email") || "")
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null)
   const [editorOpen, setEditorOpen] = useState(false)
   const [role, setRole] = useState<AppRole>(null)

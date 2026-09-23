@@ -2,14 +2,15 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react"
 import Link from "next/link"
-import { CalendarDays, Search, Plus, RefreshCw, Users, BedDouble } from "lucide-react"
+import { CalendarDays, Download, Search, Plus, RefreshCw, Users, BedDouble } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import { useLanguage } from "@/lib/hooks/use-language"
+import { downloadCsv } from "@/lib/client-csv"
 
 const copy = {
-  en: { title: "Reservation list", search: "Search guest, room or property", all: "All statuses", guest: "Guest", stay: "Stay", room: "Room", guests: "Guests", status: "Status", amount: "Amount", empty: "No reservations found", refresh: "Refresh", add: "Add", calendar: "Calendar" },
-  es: { title: "Lista de reservas", search: "Buscar huésped, habitación o propiedad", all: "Todos los estados", guest: "Huésped", stay: "Estadía", room: "Habitación", guests: "Huéspedes", status: "Estado", amount: "Monto", empty: "No se encontraron reservas", refresh: "Actualizar", add: "Agregar", calendar: "Calendario" },
-  de: { title: "Reservierungsliste", search: "Gast, Zimmer oder Unterkunft suchen", all: "Alle Status", guest: "Gast", stay: "Aufenthalt", room: "Zimmer", guests: "Gäste", status: "Status", amount: "Betrag", empty: "Keine Reservierungen gefunden", refresh: "Aktualisieren", add: "Hinzufügen", calendar: "Kalender" },
+  en: { title: "Reservation list", search: "Search guest, room or property", all: "All statuses", guest: "Guest", stay: "Stay", room: "Room", guests: "Guests", status: "Status", amount: "Amount", empty: "No reservations found", refresh: "Refresh", add: "Add", calendar: "Calendar", export: "Export CSV" },
+  es: { title: "Lista de reservas", search: "Buscar huésped, habitación o propiedad", all: "Todos los estados", guest: "Huésped", stay: "Estadía", room: "Habitación", guests: "Huéspedes", status: "Estado", amount: "Monto", empty: "No se encontraron reservas", refresh: "Actualizar", add: "Agregar", calendar: "Calendario", export: "Exportar CSV" },
+  de: { title: "Reservierungsliste", search: "Gast, Zimmer oder Unterkunft suchen", all: "Alle Status", guest: "Gast", stay: "Aufenthalt", room: "Zimmer", guests: "Gäste", status: "Status", amount: "Betrag", empty: "Keine Reservierungen gefunden", refresh: "Aktualisieren", add: "Hinzufügen", calendar: "Kalender", export: "CSV exportieren" },
 } as const
 
 type ReservationRow = {
@@ -81,6 +82,7 @@ export default function BookingsPage() {
         </div>
         <div className="flex items-center gap-2">
           <Link href={`/${language}/bookings/calendar`} prefetch={false} className="inline-flex h-9 items-center gap-2 bg-[#2b2722] px-3 text-xs hover:bg-[#332e28]"><CalendarDays className="h-4 w-4" />{c.calendar}</Link>
+          <button type="button" onClick={() => downloadCsv(`reservations-${new Date().toISOString().slice(0,10)}.csv`, [c.guest,c.stay,c.room,c.guests,c.status,c.amount], filtered.map((row)=>[row.guest_name,`${row.check_in} → ${row.check_out}`,`${row.room?.location?.name ?? ""} / ${row.room?.room_number ?? ""}`,row.num_guests ?? 1,statusLabel(row.status),Number(row.total_amount ?? 0)]))} className="inline-flex h-9 items-center gap-2 bg-[#2b2722] px-3 text-xs"><Download className="h-4 w-4" />{c.export}</button>
           <button type="button" onClick={() => void load()} className="inline-flex h-9 w-9 items-center justify-center bg-[#2b2722]" aria-label={c.refresh}><RefreshCw className="h-4 w-4" /></button>
           <Link href={`/${language}/bookings/calendar?new=1`} prefetch={false} className="inline-flex h-9 items-center gap-2 bg-[#6f8373] px-4 text-xs font-medium text-[#171512]"><Plus className="h-4 w-4" />{c.add}</Link>
         </div>

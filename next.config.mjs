@@ -1,5 +1,12 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  productionBrowserSourceMaps: false,
+  serverExternalPackages: ["xlsx"],
+  experimental: {
+    serverSourceMaps: false,
+    staticGenerationMaxConcurrency: 1,
+    staticGenerationMinPagesPerWorker: 100,
+  },
   images: {
     unoptimized: true,
   },

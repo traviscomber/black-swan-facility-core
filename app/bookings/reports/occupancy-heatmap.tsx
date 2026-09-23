@@ -12,11 +12,12 @@ import {
   parseISO,
 } from "date-fns"
 import { es } from "date-fns/locale"
-import { ChevronLeft, ChevronRight, RefreshCw, BedDouble, TrendingUp, DollarSign, BarChart3 } from "lucide-react"
+import { ChevronLeft, ChevronRight, Download, RefreshCw, BedDouble, TrendingUp, DollarSign, BarChart3 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Card, CardContent } from "@/components/ui/card"
 import type { HeatmapRow } from "@/app/api/bookings/revenue/occupancy/route"
+import { downloadCsv } from "@/lib/client-csv"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -367,6 +368,20 @@ export function OccupancyHeatmap({ locations }: OccupancyHeatmapProps) {
             aria-label="Mes siguiente"
           >
             <ChevronRight className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8"
+            onClick={() => downloadCsv(
+              `occupancy-${format(startDate, "yyyy-MM-dd")}-${format(endDate, "yyyy-MM-dd")}.csv`,
+              ["Date","Property","Total beds","Occupied beds","Blocked beds","Available beds","Occupancy %","Revenue","Average rate"],
+              rows.map((row) => [row.day,row.location_name,row.total_beds,row.occupied_beds,row.blocked_beds,row.available_beds,row.occupancy_pct,row.revenue,row.avg_rate]),
+            )}
+            aria-label="Exportar CSV"
+            title="Exportar CSV"
+          >
+            <Download className="h-3.5 w-3.5" />
           </Button>
           <Button
             variant="ghost"

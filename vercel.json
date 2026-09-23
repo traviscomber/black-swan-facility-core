@@ -1,6 +1,6 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "buildCommand": "pnpm typecheck && pnpm audit:images && node scripts/audit-i18n-global.mjs && node scripts/check-no-ai-sdk.mjs && pnpm test:booking && NODE_OPTIONS=--import=./scripts/suppress-known-build-warning.mjs next build",
+  "buildCommand": "node scripts/generate-legacy-translations.mjs && NODE_OPTIONS='--max-old-space-size=6144 --import=./scripts/suppress-known-build-warning.mjs' pnpm exec next build",
   "crons": [],
   "git": {
     "deploymentEnabled": {

@@ -1,9 +1,10 @@
 "use client"
 
 import Link from "next/link"
+import { useSearchParams } from "next/navigation"
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
 import { addDays, differenceInCalendarDays, format, parseISO } from "date-fns"
-import { Ban, CalendarDays, CheckSquare, ChevronLeft, ChevronRight, Loader2, Plus, RefreshCw, RotateCcw, Search, Trash2, X } from "lucide-react"
+import { Ban, Bell, BedDouble, CalendarDays, CheckSquare, ChevronLeft, ChevronRight, Loader2, Plus, Printer, RefreshCw, RotateCcw, Search, Trash2, UserCircle, X } from "lucide-react"
 import { toast } from "sonner"
 import { createClient } from "@/lib/supabase/client"
 import { AddReservationDialog } from "@/components/add-reservation-dialog"
@@ -36,6 +37,7 @@ function intervalsOverlap(startA: string, endA: string, startB: string, endB: st
 
 export default function BookingsCalendarPage() {
   const { language } = useLanguage()
+  const searchParams = useSearchParams()
   const pageCopy = bookingsCalendarPageCopy[language]
   const blocksHref = `/${language}/bookings/blocks`
   const supabase = useMemo(() => createClient(), [])
@@ -64,6 +66,7 @@ export default function BookingsCalendarPage() {
   const loadEventsRef = useRef<() => Promise<void>>(async () => {})
   const realtimeEventsTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const realtimeInventoryTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const searchInputRef = useRef<HTMLInputElement | null>(null)
 
   useLayoutEffect(() => {
     if (pendingFlipIds.current.length === 0) return
@@ -82,6 +85,7 @@ export default function BookingsCalendarPage() {
   const [isTouchDevice, setIsTouchDevice] = useState(false)
 
   useEffect(() => { setIsTouchDevice(() => window.matchMedia("(hover: none)").matches || "ontouchstart" in window) }, [])
+  useEffect(() => { if (searchParams.get("new") === "1") { setPreselectedBed(null); setPreselectedDate(null); setPreselectedCheckOutDate(null); setNewReservationOpen(true) } }, [searchParams])
 
   const endDate = useMemo(() => addDays(startDate, rangeDays), [startDate, rangeDays])
   const dates = useMemo(() => Array.from({ length: rangeDays }, (_, index) => addDays(startDate, index)), [rangeDays, startDate])
@@ -357,14 +361,18 @@ export default function BookingsCalendarPage() {
         <Button variant="outline" size="icon" className="h-9 w-9 shrink-0" onClick={() => setStartDate(addDays(startDate, -rangeDays))}><ChevronLeft className="h-4 w-4" /></Button>
         <div className="min-w-[118px] shrink-0 text-center text-xs font-medium text-white/80">{rangeLabel}</div>
         <Button variant="outline" size="icon" className="h-9 w-9 shrink-0" onClick={() => setStartDate(addDays(startDate, rangeDays))}><ChevronRight className="h-4 w-4" /></Button>
-        <div className="ml-auto flex items-center gap-2">
-          <Button asChild variant="outline" size="icon" className="h-9 w-9 shrink-0" title={pageCopy.manageBlocks}><Link href={blocksHref}><Ban className="h-4 w-4" /></Link></Button>
-          <Button variant="outline" size="icon" className="h-9 w-9 shrink-0" onClick={() => void refreshEvents()} title="Refresh"><RefreshCw className="h-4 w-4" /></Button>
+        <div className="ml-auto flex items-center gap-2" aria-label="Calendar actions">
+          <Button variant="outline" size="icon" className="h-9 w-9 shrink-0" title="Print calendar" aria-label="Print calendar" onClick={() => window.print()}><Printer className="h-4 w-4" /></Button>
+          <Button asChild variant="outline" size="icon" className="h-9 w-9 shrink-0" title="Rooms & beds" aria-label="Rooms & beds"><Link href={`/${language}/bookings/rooms`}><BedDouble className="h-4 w-4" /></Link></Button>
           <Button size="sm" className="h-9 shrink-0 bg-emerald-600 px-4 text-white hover:bg-emerald-500" onClick={() => { setPreselectedBed(null); setPreselectedDate(null); setPreselectedCheckOutDate(null); setNewReservationOpen(true) }}><Plus className="mr-1.5 h-4 w-4" />{pageCopy.newReservation}</Button>
+          <Button variant="outline" size="icon" className="h-9 w-9 shrink-0" title="Search" aria-label="Search" onClick={() => searchInputRef.current?.focus()}><Search className="h-4 w-4" /></Button>
+          <Button variant="outline" size="icon" className="h-9 w-9 shrink-0" onClick={() => void refreshEvents()} title="Refresh" aria-label="Refresh"><RefreshCw className="h-4 w-4" /></Button>
+          <Button asChild variant="outline" size="icon" className="h-9 w-9 shrink-0" title="Tasks & alerts" aria-label="Tasks & alerts"><Link href={`/${language}/bookings/operations`}><Bell className="h-4 w-4" /></Link></Button>
+          <Button asChild variant="outline" size="icon" className="h-9 w-9 shrink-0" title="Profile" aria-label="Profile"><Link href={`/${language}/bookings/profile`}><UserCircle className="h-4 w-4" /></Link></Button>
         </div>
       </div>
       <div className="flex min-h-11 items-center gap-2 overflow-x-auto border-t border-white/5 px-2 py-1.5">
-        <div className="relative min-w-[240px] flex-1"><Search className="absolute left-3 top-2.5 h-4 w-4 text-white/35" /><Input className="h-9 border-white/10 bg-[#111314] pl-9 text-xs" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search guest or room" /></div>
+        <div className="relative min-w-[240px] flex-1"><Search className="absolute left-3 top-2.5 h-4 w-4 text-white/35" /><Input ref={searchInputRef} className="h-9 border-white/10 bg-[#111314] pl-9 text-xs" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search guest or room" /></div>
         <Select value={locationId} onValueChange={setLocationId}><SelectTrigger className="h-9 w-48 shrink-0 border-white/10 bg-[#111314] text-xs"><SelectValue placeholder="Property" /></SelectTrigger><SelectContent><SelectItem value="all">All properties</SelectItem>{locations.map((item) => <SelectItem key={item.id} value={item.id}>{item.name}</SelectItem>)}</SelectContent></Select>
         <Select value={status} onValueChange={setStatus}><SelectTrigger className="h-9 w-40 shrink-0 border-white/10 bg-[#111314] text-xs"><SelectValue placeholder="Status" /></SelectTrigger><SelectContent><SelectItem value="all">All statuses</SelectItem><SelectItem value="pending">Pending</SelectItem><SelectItem value="confirmed">Confirmed</SelectItem><SelectItem value="checked_in">Checked in</SelectItem><SelectItem value="checked_out">Completed</SelectItem></SelectContent></Select>
         <Select value={String(rangeDays)} onValueChange={(value) => setRangeDays(Number(value))}><SelectTrigger className="h-9 w-28 shrink-0 border-white/10 bg-[#111314] text-xs"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="7">7 days</SelectItem><SelectItem value="14">14 days</SelectItem><SelectItem value="19">19 days</SelectItem><SelectItem value="30">30 days</SelectItem></SelectContent></Select>
@@ -430,7 +438,7 @@ export default function BookingsCalendarPage() {
 
     <AddReservationDialog open={newReservationOpen} onOpenChange={setNewReservationOpen} onSuccess={refreshEvents} preselectedBed={preselectedBed?.id} preselectedDate={preselectedDate ?? undefined} preselectedCheckOut={preselectedCheckOutDate ?? undefined} preselectedLocation={preselectedBed?.room.location_ref?.name} />
     <Dialog open={!!selectedBlock} onOpenChange={(open) => !open && setSelectedBlock(null)}><DialogContent><DialogHeader><DialogTitle>Bloqueo de habitación</DialogTitle></DialogHeader>{selectedBlock && <div className="space-y-4"><Badge variant="secondary">{BLOCK_LABELS[selectedBlock.block_type] ?? selectedBlock.block_type}</Badge><Detail label="Motivo" value={selectedBlock.reason} /><div className="grid grid-cols-2 gap-4"><Detail label="Desde" value={selectedBlock.start_date} /><Detail label="Hasta" value={selectedBlock.end_date} /></div>{selectedBlock.notes && <Detail label="Notas" value={selectedBlock.notes} />}<Button asChild className="w-full"><Link href={blocksHref}>Administrar bloqueos</Link></Button></div>}</DialogContent></Dialog>
-    <Dialog open={!!selectedReservation} onOpenChange={(open) => !open && setSelectedReservation(null)}><DialogContent className="max-w-lg"><DialogHeader><DialogTitle>Detalle de reserva</DialogTitle></DialogHeader>{selectedReservation && <div className="space-y-5"><div className="flex items-start justify-between gap-4"><div><p className="text-xs text-muted-foreground">Huésped</p><p className="text-xl font-semibold">{selectedReservation.guest_name}</p></div><Badge>{STATUS_LABELS[selectedReservation.status] ?? selectedReservation.status}</Badge></div><div className="grid grid-cols-2 gap-4 text-sm"><Detail label="Check-in" value={selectedReservation.check_in} /><Detail label="Check-out" value={selectedReservation.check_out} /><Detail label="Huéspedes" value={String(selectedReservation.num_guests ?? 1)} /><Detail label="Monto registrado" value={formatClp(Number(selectedReservation.total_amount ?? 0))} /></div>{selectedReservation.special_requests && <Detail label="Solicitudes especiales" value={selectedReservation.special_requests} />}<div className="flex flex-wrap justify-end gap-2 border-t pt-4">{normalizedStatus(selectedReservation.status) === "pending" && <StatusButton loading={updatingStatus === selectedReservation.id} label="Confirmar reserva" onClick={() => updateReservationStatus(selectedReservation, "confirmed")} />}{normalizedStatus(selectedReservation.status) === "confirmed" && <StatusButton loading={updatingStatus === selectedReservation.id} label="Registrar check-in" onClick={() => updateReservationStatus(selectedReservation, "checked_in")} />}{normalizedStatus(selectedReservation.status) === "checked_in" && <StatusButton loading={updatingStatus === selectedReservation.id} label="Registrar check-out" onClick={() => updateReservationStatus(selectedReservation, "checked_out")} />}</div></div>}</DialogContent></Dialog>
+    <Dialog open={!!selectedReservation} onOpenChange={(open) => !open && setSelectedReservation(null)}><DialogContent className="max-w-lg"><DialogHeader><DialogTitle>Detalle de reserva</DialogTitle></DialogHeader>{selectedReservation && <div className="space-y-5"><div className="flex items-start justify-between gap-4"><div><p className="text-xs text-muted-foreground">Huésped</p><p className="text-xl font-semibold">{selectedReservation.guest_name}</p></div><Badge>{STATUS_LABELS[selectedReservation.status] ?? selectedReservation.status}</Badge></div><div className="grid grid-cols-2 gap-4 text-sm"><Detail label="Check-in" value={selectedReservation.check_in} /><Detail label="Check-out" value={selectedReservation.check_out} /><Detail label="Huéspedes" value={String(selectedReservation.num_guests ?? 1)} /><Detail label="Monto registrado" value={formatClp(Number(selectedReservation.total_amount ?? 0))} /></div>{selectedReservation.special_requests && <Detail label="Solicitudes especiales" value={selectedReservation.special_requests} />}<div className="flex flex-wrap justify-end gap-2 border-t pt-4"><Button asChild variant="outline"><Link href={`/${language}/bookings/reservations/${selectedReservation.id}`}>Stay Cockpit</Link></Button>{normalizedStatus(selectedReservation.status) === "pending" && <StatusButton loading={updatingStatus === selectedReservation.id} label="Confirmar reserva" onClick={() => updateReservationStatus(selectedReservation, "confirmed")} />}{normalizedStatus(selectedReservation.status) === "confirmed" && <StatusButton loading={updatingStatus === selectedReservation.id} label="Registrar check-in" onClick={() => updateReservationStatus(selectedReservation, "checked_in")} />}{normalizedStatus(selectedReservation.status) === "checked_in" && <StatusButton loading={updatingStatus === selectedReservation.id} label="Registrar check-out" onClick={() => updateReservationStatus(selectedReservation, "checked_out")} />}</div></div>}</DialogContent></Dialog>
   </div>
 }
 

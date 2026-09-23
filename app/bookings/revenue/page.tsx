@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { addDays, format, parseISO } from "date-fns"
 import { de, enUS, es } from "date-fns/locale"
-import { Loader2, RefreshCw } from "lucide-react"
+import { Download, Loader2, RefreshCw } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useLanguage } from "@/lib/hooks/use-language"
 import { revenueTranslations } from "@/lib/translations/revenue"
 import { formatClp } from "@/lib/money"
+import { downloadCsv } from "@/lib/client-csv"
 
 interface LocationOption { id: string; name: string }
 interface OccupancyDay { day: string; location_id: string; location_name: string; total_beds: number; occupied_beds: number; blocked_beds: number; available_beds: number; occupancy_pct: number; revenue: number; avg_rate: number }
@@ -79,7 +80,7 @@ export default function RevenueIntelligencePage() {
   return <div className="min-h-screen bg-[#171512] text-[#e7e1d8]">
     <header className="flex min-h-[58px] flex-wrap items-center justify-between gap-3 bg-[#211e1a] px-4 py-2">
       <div><h1 className="text-base font-normal">{copy.title}</h1><p className="text-xs text-[#b9b0a4]">{copy.subtitle}</p></div>
-      <Button size="sm" variant="outline" className="h-8 rounded-none border-0 bg-[#2b2722] text-[#e7e1d8] hover:bg-[#39342d]" onClick={() => void loadData()} disabled={loading}>{loading ? <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="mr-2 h-3.5 w-3.5" />}{copy.refresh}</Button>
+      <div className="flex items-center gap-2"><Button size="sm" variant="outline" className="h-8 rounded-none border-0 bg-[#2b2722] text-[#e7e1d8] hover:bg-[#39342d]" onClick={() => downloadCsv(`financial-report-${startDate}-${endDate}.csv`,["Date","Property","Total beds","Occupied","Blocked","Available","Occupancy %","Revenue","Avg rate"],rows.map(row=>[row.day,row.location_name,row.total_beds,row.occupied_beds,row.blocked_beds,row.available_beds,row.occupancy_pct,row.revenue,row.avg_rate]))}><Download className="mr-2 h-3.5 w-3.5"/>CSV</Button><Button size="sm" variant="outline" className="h-8 rounded-none border-0 bg-[#2b2722] text-[#e7e1d8] hover:bg-[#39342d]" onClick={() => void loadData()} disabled={loading}>{loading ? <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="mr-2 h-3.5 w-3.5" />}{copy.refresh}</Button></div>
     </header>
 
     <div className="bg-[#211e1a] px-3 py-2">
