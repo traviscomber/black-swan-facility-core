@@ -25,6 +25,7 @@ const COPY = {
   es: { occupancy:"Ocupación", avgOccupancy:"Ocupación promedio", periodRevenue:"Revenue del periodo", avgRate:"Tarifa promedio/noche", occupiedBed:"por cama ocupada", totalBeds:"Camas totales", peak:"Pico", available:"disponibles", low:"Baja", mediumLow:"Media-baja", medium:"Media", high:"Alta", full:"Llena", free:"Libre", beds:"Camas", blocked:"Bloqueadas", revenue:"Revenue", avg:"Tarifa avg", allLocations:"Todas las propiedades", location:"Propiedad", revenueDay:"Revenue/día", noBeds:"No hay camas configuradas para este periodo", loadError:"Error cargando datos", previous:"Mes anterior", next:"Mes siguiente", export:"Exportar CSV", refresh:"Actualizar" },
   de: { occupancy:"Belegung", avgOccupancy:"Durchschnittliche Belegung", periodRevenue:"Umsatz im Zeitraum", avgRate:"Durchschnitt/Nacht", occupiedBed:"pro belegtem Bett", totalBeds:"Betten gesamt", peak:"Spitze", available:"verfügbar", low:"Niedrig", mediumLow:"Mittel-niedrig", medium:"Mittel", high:"Hoch", full:"Voll", free:"Frei", beds:"Betten", blocked:"Gesperrt", revenue:"Umsatz", avg:"Ø-Rate", allLocations:"Alle Unterkünfte", location:"Unterkunft", revenueDay:"Umsatz/Tag", noBeds:"Keine Betten für diesen Zeitraum konfiguriert", loadError:"Fehler beim Laden", previous:"Vorheriger Monat", next:"Nächster Monat", export:"CSV exportieren", refresh:"Aktualisieren" },
 } as const
+type HeatmapCopy = (typeof COPY)[Language]
 const DATE_LOCALES = { en: enUS, es, de } satisfies Record<Language, typeof enUS>
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -59,7 +60,7 @@ function occupancyColor(pct: number): string {
   return "hsl(0 75% 45%)"                       // full — red
 }
 
-function occupancyLabel(pct: number, labels: typeof COPY.en): string {
+function occupancyLabel(pct: number, labels: HeatmapCopy): string {
   if (pct === 0) return labels.free
   if (pct <= 20) return labels.low
   if (pct <= 40) return labels.mediumLow
@@ -76,7 +77,7 @@ function formatCLP(n: number): string {
 
 // ─── KPI Cards ────────────────────────────────────────────────────────────────
 
-function KpiCards({ rows, totalBeds, labels, dateLocale }: { rows: HeatmapRow[]; totalBeds: number; labels: typeof COPY.en; dateLocale: typeof enUS }) {
+function KpiCards({ rows, totalBeds, labels, dateLocale }: { rows: HeatmapRow[]; totalBeds: number; labels: HeatmapCopy; dateLocale: typeof enUS }) {
   const kpis = useMemo(() => {
     if (!rows.length) return { occupancy: 0, revenue: 0, avgRate: 0, peakDay: "" }
 
@@ -193,7 +194,7 @@ function HeatmapCell({
 
 // ─── Tooltip ──────────────────────────────────────────────────────────────────
 
-function HeatmapTooltip({ tip, labels, dateLocale }: { tip: TooltipState; labels: typeof COPY.en; dateLocale: typeof enUS }) {
+function HeatmapTooltip({ tip, labels, dateLocale }: { tip: TooltipState; labels: HeatmapCopy; dateLocale: typeof enUS }) {
   return (
     <div
       className="pointer-events-none fixed z-50 w-52 rounded-lg border border-border bg-popover p-3 text-xs shadow-xl"
@@ -235,7 +236,7 @@ function HeatmapTooltip({ tip, labels, dateLocale }: { tip: TooltipState; labels
 
 // ─── Legend ───────────────────────────────────────────────────────────────────
 
-function HeatmapLegend({ labels }: { labels: typeof COPY.en }) {
+function HeatmapLegend({ labels }: { labels: HeatmapCopy }) {
   const steps = [
     { pct: 0, label: "0%" },
     { pct: 20, label: "20%" },
