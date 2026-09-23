@@ -27,16 +27,16 @@ type EventRow = {
 }
 
 const COPY = {
-  en:{title:"Canonical event workbooks",subtitle:"Replicate a proven event baseline and export the complete eight-tab XLSX at any time.",event:"Event",dates:"Dates",people:"People",budget:"Estimated budget",status:"Status",actions:"Actions",view:"Open",export:"Export XLSX",replicate:"Replicate",refresh:"Refresh",dialogTitle:"Replicate event",dialogHelp:"Budget lines retain the current baseline quantities and prices. Copied participants are reset to pending confirmation.",name:"New event name",start:"New start date",participants:"Copy participants as pending confirmation",budgetLines:"Copy budget, staffing and current prices",create:"Create replicated event",cancel:"Cancel",source:"Baseline"},
-  es:{title:"Workbooks canónicos de eventos",subtitle:"Replica un evento probado y exporta en cualquier momento el XLSX completo de 8 tabs.",event:"Evento",dates:"Fechas",people:"Personas",budget:"Presupuesto estimado",status:"Estado",actions:"Acciones",view:"Abrir",export:"Exportar XLSX",replicate:"Replicar",refresh:"Actualizar",dialogTitle:"Replicar evento",dialogHelp:"El presupuesto conserva cantidades y precios actuales como baseline. Los participantes copiados vuelven a estado pendiente de confirmación.",name:"Nombre del nuevo evento",start:"Nueva fecha de inicio",participants:"Copiar participantes como pendientes",budgetLines:"Copiar presupuesto, personal y precios actuales",create:"Crear evento replicado",cancel:"Cancelar",source:"Baseline"},
-  de:{title:"Kanonische Event-Workbooks",subtitle:"Bewährte Event-Baselines replizieren und jederzeit das vollständige XLSX mit 8 Tabs exportieren.",event:"Event",dates:"Daten",people:"Personen",budget:"Budget",status:"Status",actions:"Aktionen",view:"Öffnen",export:"XLSX exportieren",replicate:"Replizieren",refresh:"Aktualisieren",dialogTitle:"Event replizieren",dialogHelp:"Budgetpositionen behalten aktuelle Baseline-Mengen und Preise. Kopierte Teilnehmende werden auf ausstehende Bestätigung gesetzt.",name:"Name des neuen Events",start:"Neues Startdatum",participants:"Teilnehmende als ausstehend kopieren",budgetLines:"Budget, Personal und aktuelle Preise kopieren",create:"Repliziertes Event erstellen",cancel:"Abbrechen",source:"Baseline"},
+  en:{title:"Canonical event workbooks",subtitle:"Replicate a proven event baseline and export the complete eight-tab XLSX at any time.",event:"Event",dates:"Dates",people:"People",budget:"Estimated budget",status:"Status",actions:"Actions",view:"Open",export:"Export XLSX",replicate:"Replicate",refresh:"Refresh",dialogTitle:"Replicate event",dialogHelp:"Budget lines retain the current baseline quantities and prices. Copied participants are reset to pending confirmation.",name:"New event name",start:"New start date",participants:"Copy participants as pending confirmation",budgetLines:"Copy budget, staffing and current prices",create:"Create replicated event",cancel:"Cancel",source:"Baseline",success:"Event replicated"},
+  es:{title:"Workbooks canónicos de eventos",subtitle:"Replica un evento probado y exporta en cualquier momento el XLSX completo de 8 tabs.",event:"Evento",dates:"Fechas",people:"Personas",budget:"Presupuesto estimado",status:"Estado",actions:"Acciones",view:"Abrir",export:"Exportar XLSX",replicate:"Replicar",refresh:"Actualizar",dialogTitle:"Replicar evento",dialogHelp:"El presupuesto conserva cantidades y precios actuales como baseline. Los participantes copiados vuelven a estado pendiente de confirmación.",name:"Nombre del nuevo evento",start:"Nueva fecha de inicio",participants:"Copiar participantes como pendientes",budgetLines:"Copiar presupuesto, personal y precios actuales",create:"Crear evento replicado",cancel:"Cancelar",source:"Baseline",success:"Evento replicado"},
+  de:{title:"Kanonische Event-Workbooks",subtitle:"Bewährte Event-Baselines replizieren und jederzeit das vollständige XLSX mit 8 Tabs exportieren.",event:"Event",dates:"Daten",people:"Personen",budget:"Budget",status:"Status",actions:"Aktionen",view:"Öffnen",export:"XLSX exportieren",replicate:"Replizieren",refresh:"Aktualisieren",dialogTitle:"Event replizieren",dialogHelp:"Budgetpositionen behalten aktuelle Baseline-Mengen und Preise. Kopierte Teilnehmende werden auf ausstehende Bestätigung gesetzt.",name:"Name des neuen Events",start:"Neues Startdatum",participants:"Teilnehmende als ausstehend kopieren",budgetLines:"Budget, Personal und aktuelle Preise kopieren",create:"Repliziertes Event erstellen",cancel:"Abbrechen",source:"Baseline",success:"Event repliziert"},
 } as const
 
 export function OperationalEventWorkbooks() {
   const {language}=useLanguage()
   const c=COPY[language]
   const supabase=useMemo(()=>createClient(),[])
-  const money=useMemo(()=>new Intl.NumberFormat(language==="es"?"es-CL":language==="de"?"de-DE":"en-US",{style:"currency",currency:"CLP",maximumFractionDigits:0}),[language])
+  const money=useMemo(()=>new Intl.NumberFormat(LOCALE[language],{style:"currency",currency:"CLP",maximumFractionDigits:0}),[language])
   const [events,setEvents]=useState<EventRow[]>([])
   const [source,setSource]=useState<EventRow|null>(null)
   const [loading,setLoading]=useState(true)
@@ -78,7 +78,7 @@ export function OperationalEventWorkbooks() {
     setSaving(false)
     if(error){toast.error(error.message);return}
     const payload=data as {id?:string}|null
-    toast.success(language==="es"?"Evento replicado":"Event replicated")
+    toast.success(c.success)
     setSource(null)
     await load()
     if(payload?.id) window.location.href=`/${language}/events/${payload.id}`
