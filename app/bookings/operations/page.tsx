@@ -871,7 +871,7 @@ export default function BookingOperationsTimelinePage() {
         </Card>
 
         {error && (
-          <div className="rounded-lg border border-destructive/40 bg-destructive/5 p-4 text-sm text-destructive">
+          <div className="border border-destructive/40 bg-destructive/5 p-3 text-xs text-destructive">
             {error}
           </div>
         )}
@@ -996,7 +996,7 @@ export default function BookingOperationsTimelinePage() {
               )}
 
               <ActionSection title={tr("Preparación de habitación")} icon={<DoorOpen className="h-4 w-4" />}>
-                <div className="col-span-full rounded-lg border p-4">
+                <div className="col-span-full border border-white/[0.08] p-3">
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
                       <p className="font-medium">{tr("Estado operativo actual")}</p>
@@ -1322,7 +1322,7 @@ function Info({ label, value }: { label: string; value: string }) {
 
 function Empty({ text }: { text: string }) {
   return (
-    <p className="col-span-full rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
+    <p className="col-span-full border border-dashed p-3 text-xs text-muted-foreground">
       {text}
     </p>
   )
@@ -1339,9 +1339,9 @@ function ActionSection({
 }) {
   return (
     <section>
-      <div className="mb-3 flex items-center gap-2">
+      <div className="mb-2 flex items-center gap-2">
         <span className="text-primary">{icon}</span>
-        <h3 className="text-sm font-semibold">{title}</h3>
+        <h3 className="text-[11px] font-medium uppercase tracking-[0.08em]">{title}</h3>
       </div>
       <div className="grid gap-2 sm:grid-cols-2">{children}</div>
     </section>
@@ -1363,7 +1363,7 @@ function ActionButton({
     <Button
       type="button"
       variant="outline"
-      className="h-auto min-h-12 justify-start whitespace-normal py-3 text-left"
+      className="h-auto min-h-9 justify-start rounded-none whitespace-normal px-3 py-2 text-left text-xs"
       onClick={onClick}
       disabled={disabled}
     >
@@ -1386,7 +1386,7 @@ function OperationCard({
   actions: React.ReactNode | null
 }) {
   return (
-    <div className="col-span-full rounded-lg border p-4">
+    <div className="col-span-full border border-white/[0.08] p-3">
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="font-medium">{title}</p>
