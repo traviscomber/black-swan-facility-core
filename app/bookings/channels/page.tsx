@@ -1,5 +1,6 @@
 "use client"
 
+import Link from "next/link"
 import { useMemo } from "react"
 import { useSearchParams } from "next/navigation"
 import { useLanguage } from "@/lib/hooks/use-language"
@@ -16,7 +17,7 @@ const copy = {
     notConfigured: "Not configured",
     direct: "No production connection is configured in Black Swan yet.",
     noCredentials: "No credentials, listing mapping or synchronization job is stored for this channel.",
-    safeState: "This view is informational only until a canonical integration is configured.",
+    safeState: "This view is informational only until a canonical integration is configured.", open: "Open details",
     airbnb: "Airbnb",
     booking: "Booking.com",
     ical: "iCalendar",
@@ -34,7 +35,7 @@ const copy = {
     notConfigured: "No configurado",
     direct: "Black Swan todavía no tiene una conexión productiva configurada para este canal.",
     noCredentials: "No existen credenciales, mapeo de anuncios ni trabajo de sincronización almacenado para este canal.",
-    safeState: "Esta vista es sólo informativa hasta que exista una integración canónica configurada.",
+    safeState: "Esta vista es sólo informativa hasta que exista una integración canónica configurada.", open: "Ver detalle",
     airbnb: "Airbnb",
     booking: "Booking.com",
     ical: "iCalendar",
@@ -52,7 +53,7 @@ const copy = {
     notConfigured: "Nicht konfiguriert",
     direct: "Für diesen Kanal ist in Black Swan noch keine produktive Verbindung konfiguriert.",
     noCredentials: "Für diesen Kanal sind keine Zugangsdaten, Listing-Zuordnung oder Synchronisierungsjobs gespeichert.",
-    safeState: "Diese Ansicht ist nur informativ, bis eine kanonische Integration konfiguriert ist.",
+    safeState: "Diese Ansicht ist nur informativ, bis eine kanonische Integration konfiguriert ist.", open: "Details öffnen",
     airbnb: "Airbnb",
     booking: "Booking.com",
     ical: "iCalendar",
@@ -116,7 +117,7 @@ export default function BookingChannelsPage() {
                   <td className="px-4 py-3 font-medium text-[#e7e1d8]">{row.name}</td>
                   <td className="px-4 py-3 text-[#b9b0a4]">{row.scope}</td>
                   <td className="px-4 py-3"><span className="text-[11px] text-[#d3ad61]">{c.notConfigured}</span></td>
-                  <td className="px-4 py-3 text-[#8f867b]">{c.direct}</td>
+                  <td className="px-4 py-3 text-[#8f867b]"><Link href={`/${language}/bookings/channels?channel=${row.key}`} prefetch={false} className="inline-flex h-7 items-center bg-[#2b2722] px-2.5 text-[11px] text-[#d7d0c6] hover:bg-[#332e28]">{c.open}</Link></td>
                 </tr>
               )
             })}
