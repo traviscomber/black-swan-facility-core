@@ -1,6 +1,6 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "buildCommand": "node scripts/generate-legacy-translations.mjs && NODE_OPTIONS=--import=./scripts/suppress-known-build-warning.mjs pnpm exec next build",
+  "buildCommand": "node scripts/generate-legacy-translations.mjs && NODE_OPTIONS=--import=./scripts/suppress-known-build-warning.mjs pnpm exec next build --webpack",
   "crons": [],
   "git": {
     "deploymentEnabled": {
