@@ -48,8 +48,9 @@ export default function BookingsCalendarPage() {
   const [locationId, setLocationId] = useState("all")
   const [status, setStatus] = useState("all")
   const [search, setSearch] = useState("")
+  const [showFilters, setShowFilters] = useState(false)
   const [rangeDays, setRangeDays] = useState(33)
-  const [startDate, setStartDate] = useState(bookingTodayDate)
+  const [startDate, setStartDate] = useState(() => { const requested = searchParams.get("date"); return requested && /^\\d{4}-\\d{2}-\\d{2}$/.test(requested) ? bookingDateFromKey(requested) : bookingTodayDate() })
   const [inventoryReady, setInventoryReady] = useState(false)
   const [eventsReady, setEventsReady] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -376,21 +377,26 @@ export default function BookingsCalendarPage() {
         <div className="min-w-[108px] shrink-0 text-center text-[11px] font-medium text-white/75">{rangeLabel}</div>
         <Button variant="outline" size="icon" className="h-8 w-8 shrink-0" onClick={() => setStartDate(addDays(startDate, rangeDays))}><ChevronRight className="h-4 w-4" /></Button>
         <div className="ml-auto flex items-center gap-1.5" aria-label="Calendar actions">
-          <Button variant="outline" size="icon" className="h-8 w-8 shrink-0" title={pageCopy.print} aria-label={pageCopy.print} onClick={() => window.print()}><Printer className="h-4 w-4" /></Button>
-          <Button asChild variant="outline" size="icon" className="h-8 w-8 shrink-0" title={pageCopy.roomsBeds} aria-label={pageCopy.roomsBeds}><Link href={`/${language}/bookings/rooms`}><BedDouble className="h-4 w-4" /></Link></Button>
           <Button size="sm" className="h-8 shrink-0 bg-emerald-600 px-3 text-xs text-white hover:bg-emerald-500" onClick={() => { setPreselectedBed(null); setPreselectedDate(null); setPreselectedCheckOutDate(null); setNewReservationOpen(true) }}><Plus className="mr-1 h-3.5 w-3.5" />{addLabel}</Button>
-          <Button variant="outline" size="icon" className="h-8 w-8 shrink-0" title={pageCopy.search} aria-label={pageCopy.search} onClick={() => searchInputRef.current?.focus()}><Search className="h-4 w-4" /></Button>
-          <Button variant="outline" size="icon" className="h-8 w-8 shrink-0" onClick={() => void refreshEvents()} title={pageCopy.refresh} aria-label={pageCopy.refresh}><RefreshCw className="h-4 w-4" /></Button>
-          <Button asChild variant="outline" size="icon" className="h-8 w-8 shrink-0" title={pageCopy.tasksAlerts} aria-label={pageCopy.tasksAlerts}><Link href={`/${language}/bookings/operations`}><Bell className="h-4 w-4" /></Link></Button>
-          <Button asChild variant="outline" size="icon" className="h-8 w-8 shrink-0" title={pageCopy.profile} aria-label={pageCopy.profile}><Link href={`/${language}/bookings/profile`}><UserCircle className="h-4 w-4" /></Link></Button>
+          <Button variant="outline" size="icon" className={`h-8 w-8 shrink-0 ${showFilters ? "border-emerald-600 text-emerald-400" : ""}`} title={pageCopy.search} aria-label={pageCopy.search} aria-expanded={showFilters} onClick={() => { setShowFilters((current) => !current); window.setTimeout(() => searchInputRef.current?.focus(), 0) }}><Search className="h-4 w-4" /></Button>
+          <Button asChild variant="outline" size="icon" className="relative h-8 w-8 shrink-0" title={pageCopy.tasksAlerts} aria-label={pageCopy.tasksAlerts}><Link href={`/${language}/bookings/operations`}><Bell className="h-4 w-4" /></Link></Button>
+          <details className="group relative">
+            <summary aria-label={language === "es" ? "Más acciones" : language === "de" ? "Weitere Aktionen" : "More actions"} className="flex h-8 w-8 cursor-pointer list-none items-center justify-center border border-white/10 bg-[#111314] text-lg leading-none text-white/65 hover:bg-white/5 hover:text-white marker:hidden">⋯</summary>
+            <div className="absolute right-0 top-9 z-[70] w-48 border border-white/10 bg-[#17191a] p-1 shadow-xl">
+              <button type="button" onClick={() => window.print()} className="flex h-8 w-full items-center gap-2 px-2 text-left text-xs text-white/70 hover:bg-white/5 hover:text-white"><Printer className="h-3.5 w-3.5" />{pageCopy.print}</button>
+              <Link href={`/${language}/bookings/rooms`} className="flex h-8 items-center gap-2 px-2 text-xs text-white/70 hover:bg-white/5 hover:text-white"><BedDouble className="h-3.5 w-3.5" />{pageCopy.roomsBeds}</Link>
+              <button type="button" onClick={() => void refreshEvents()} className="flex h-8 w-full items-center gap-2 px-2 text-left text-xs text-white/70 hover:bg-white/5 hover:text-white"><RefreshCw className="h-3.5 w-3.5" />{pageCopy.refresh}</button>
+              <Link href={`/${language}/bookings/profile`} className="flex h-8 items-center gap-2 px-2 text-xs text-white/70 hover:bg-white/5 hover:text-white"><UserCircle className="h-3.5 w-3.5" />{pageCopy.profile}</Link>
+            </div>
+          </details>
         </div>
       </div>
-      <div className="flex min-h-10 items-center gap-1.5 overflow-x-auto border-t border-white/5 px-2 py-1">
-        <div className="relative min-w-[240px] flex-1"><Search className="absolute left-3 top-2 h-4 w-4 text-white/35" /><Input ref={searchInputRef} className="h-8 border-white/10 bg-[#111314] pl-9 text-xs" value={search} onChange={(event) => setSearch(event.target.value)} placeholder={pageCopy.searchPlaceholder} /></div>
-        <Select value={locationId} onValueChange={setLocationId}><SelectTrigger className="h-8 w-44 shrink-0 border-white/10 bg-[#111314] text-xs"><SelectValue placeholder={pageCopy.property} /></SelectTrigger><SelectContent><SelectItem value="all">{pageCopy.allProperties}</SelectItem>{locations.map((item) => <SelectItem key={item.id} value={item.id}>{item.name}</SelectItem>)}</SelectContent></Select>
-        <Select value={status} onValueChange={setStatus}><SelectTrigger className="h-8 w-36 shrink-0 border-white/10 bg-[#111314] text-xs"><SelectValue placeholder={pageCopy.allStatuses} /></SelectTrigger><SelectContent><SelectItem value="all">{pageCopy.allStatuses}</SelectItem><SelectItem value="pending">{pageCopy.pending}</SelectItem><SelectItem value="confirmed">{pageCopy.confirmed}</SelectItem><SelectItem value="checked_in">{pageCopy.checkedIn}</SelectItem><SelectItem value="checked_out">{pageCopy.completed}</SelectItem></SelectContent></Select>
-        <Select value={String(rangeDays)} onValueChange={(value) => setRangeDays(Number(value))}><SelectTrigger className="h-8 w-24 shrink-0 border-white/10 bg-[#111314] text-xs"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="7">7 {pageCopy.days}</SelectItem><SelectItem value="14">14 {pageCopy.days}</SelectItem><SelectItem value="19">19 {pageCopy.days}</SelectItem><SelectItem value="30">30 {pageCopy.days}</SelectItem><SelectItem value="33">33 {pageCopy.days}</SelectItem></SelectContent></Select>
-      </div>
+{showFilters && <div className="flex min-h-9 items-center gap-1.5 overflow-x-auto border-t border-white/5 px-2 py-1">
+        <div className="relative min-w-[240px] flex-1"><Search className="absolute left-3 top-1.5 h-4 w-4 text-white/35" /><Input ref={searchInputRef} className="h-7 border-white/10 bg-[#111314] pl-9 text-xs" value={search} onChange={(event) => setSearch(event.target.value)} placeholder={pageCopy.searchPlaceholder} /></div>
+        <Select value={locationId} onValueChange={setLocationId}><SelectTrigger className="h-7 w-44 shrink-0 border-white/10 bg-[#111314] text-xs"><SelectValue placeholder={pageCopy.property} /></SelectTrigger><SelectContent><SelectItem value="all">{pageCopy.allProperties}</SelectItem>{locations.map((item) => <SelectItem key={item.id} value={item.id}>{item.name}</SelectItem>)}</SelectContent></Select>
+        <Select value={status} onValueChange={setStatus}><SelectTrigger className="h-7 w-36 shrink-0 border-white/10 bg-[#111314] text-xs"><SelectValue placeholder={pageCopy.allStatuses} /></SelectTrigger><SelectContent><SelectItem value="all">{pageCopy.allStatuses}</SelectItem><SelectItem value="pending">{pageCopy.pending}</SelectItem><SelectItem value="confirmed">{pageCopy.confirmed}</SelectItem><SelectItem value="checked_in">{pageCopy.checkedIn}</SelectItem><SelectItem value="checked_out">{pageCopy.completed}</SelectItem></SelectContent></Select>
+        <Select value={String(rangeDays)} onValueChange={(value) => setRangeDays(Number(value))}><SelectTrigger className="h-7 w-24 shrink-0 border-white/10 bg-[#111314] text-xs"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="7">7 {pageCopy.days}</SelectItem><SelectItem value="14">14 {pageCopy.days}</SelectItem><SelectItem value="19">19 {pageCopy.days}</SelectItem><SelectItem value="30">30 {pageCopy.days}</SelectItem><SelectItem value="33">33 {pageCopy.days}</SelectItem></SelectContent></Select>
+      </div>}
     </div>
 
     {error && <div className="border-b border-red-500/30 bg-red-500/10 px-4 py-2 text-xs text-red-300">{error}</div>}

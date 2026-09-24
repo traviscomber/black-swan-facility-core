@@ -19,6 +19,8 @@ type LaneItem = {
   marker?: "checkin" | "checkout"
   minuteOfDay?: number
   phase?: "pre" | "post"
+  laneKey?: CalendarLayerKey
+  laneLabel?: string
 }
 type Lane = { key: CalendarLayerKey; label: string; Icon: typeof BedDouble; className: string; items: LaneItem[] }
 type ActivityBookingRow = { id: string; status: string | null; transport_required: boolean | null; activity: { title?: string | null; start_date?: string | null; end_date?: string | null } | Array<{ title?: string | null; start_date?: string | null; end_date?: string | null }> | null }
@@ -27,22 +29,22 @@ const TIMELINE_DAY_WIDTH = 46
 
 const copy = {
   en: {
-    milestones: "Milestones", services: "Services", activities: "Activities", payments: "Payments", maintenance: "Maintenance", issues: "Issues",
+    milestones: "Milestones", operations: "Operations", services: "Services", activities: "Activities", payments: "Payments", maintenance: "Maintenance", issues: "Issues",
     service: "Service", activity: "Activity", transport: "transport", issue: "Issue", loading: "Loading related operations…", enableLayer: "Enable at least one operational layer.", noEvents: "No events", collapse: "Hide operation",
     statuses: { pending: "Pending", confirmed: "Confirmed", assigned: "Assigned", in_progress: "In progress", completed: "Completed", closed: "Closed", paid: "Paid", verified: "Verified", approved: "Approved", cancelled: "Cancelled", no_show: "No-show" },
   },
   es: {
-    milestones: "Hitos", services: "Servicios", activities: "Actividades", payments: "Pagos", maintenance: "Mantenimiento", issues: "Incidencias",
+    milestones: "Hitos", operations: "Operación", services: "Servicios", activities: "Actividades", payments: "Pagos", maintenance: "Mantenimiento", issues: "Incidencias",
     service: "Servicio", activity: "Actividad", transport: "transporte", issue: "Incidencia", loading: "Cargando operación relacionada…", enableLayer: "Activa al menos una capa operacional.", noEvents: "Sin eventos", collapse: "Ocultar operación",
     statuses: { pending: "Pendiente", confirmed: "Confirmada", assigned: "Asignada", in_progress: "En curso", completed: "Completada", closed: "Cerrada", paid: "Pagado", verified: "Verificado", approved: "Aprobado", cancelled: "Cancelada", no_show: "No presentado" },
   },
   de: {
-    milestones: "Meilensteine", services: "Services", activities: "Aktivitäten", payments: "Zahlungen", maintenance: "Wartung", issues: "Vorfälle",
+    milestones: "Meilensteine", operations: "Betrieb", services: "Services", activities: "Aktivitäten", payments: "Zahlungen", maintenance: "Wartung", issues: "Vorfälle",
     service: "Service", activity: "Aktivität", transport: "Transport", issue: "Vorfall", loading: "Verknüpfte Vorgänge werden geladen…", enableLayer: "Aktiviere mindestens eine betriebliche Ebene.", noEvents: "Keine Ereignisse", collapse: "Betrieb ausblenden",
     statuses: { pending: "Ausstehend", confirmed: "Bestätigt", assigned: "Zugewiesen", in_progress: "In Bearbeitung", completed: "Abgeschlossen", closed: "Geschlossen", paid: "Bezahlt", verified: "Verifiziert", approved: "Freigegeben", cancelled: "Storniert", no_show: "Nicht erschienen" },
   },
 } satisfies Record<Language, {
-  milestones: string; services: string; activities: string; payments: string; maintenance: string; issues: string
+  milestones: string; operations: string; services: string; activities: string; payments: string; maintenance: string; issues: string
   service: string; activity: string; transport: string; issue: string; loading: string; enableLayer: string; noEvents: string; collapse: string
   statuses: Record<string, string>
 }>
@@ -76,17 +78,13 @@ function clockMinutes(value: string | null | undefined, fallback = 0) {
   return Math.max(0, Math.min(1439, hours * 60 + minutes))
 }
 
-function housekeepingLabel(taskType: string | null | undefined) {
-  const labels: Record<string, string> = {
-    pre_arrival_preparation: "Room prep",
-    pre_arrival_inspection: "Pre-arrival check",
-    post_checkout_cleaning: "Cleaning",
-    post_checkout_laundry: "Laundry",
-    post_checkout_damage_review: "Damage check",
-    post_checkout_restock: "Restock",
-    room_release: "Room release",
+function housekeepingLabel(taskType: string | null | undefined, language: Language) {
+  const labels: Record<Language, Record<string, string>> = {
+    en: { pre_arrival_preparation:"Room prep", pre_arrival_inspection:"Pre-arrival check", post_checkout_cleaning:"Post-checkout cleaning", post_checkout_laundry:"Laundry", post_checkout_damage_review:"Damage check", post_checkout_restock:"Restock", room_release:"Room release" },
+    es: { pre_arrival_preparation:"Preparar habitación", pre_arrival_inspection:"Inspección pre-llegada", post_checkout_cleaning:"Limpieza post check-out", post_checkout_laundry:"Lavandería", post_checkout_damage_review:"Revisión de daños", post_checkout_restock:"Reposición", room_release:"Liberar habitación" },
+    de: { pre_arrival_preparation:"Zimmer vorbereiten", pre_arrival_inspection:"Anreiseprüfung", post_checkout_cleaning:"Reinigung nach Check-out", post_checkout_laundry:"Wäsche", post_checkout_damage_review:"Schadensprüfung", post_checkout_restock:"Auffüllen", room_release:"Zimmer freigeben" },
   }
-  return labels[taskType ?? ""] ?? taskType ?? "Housekeeping"
+  return labels[language][taskType ?? ""] ?? taskType?.replaceAll("_", " ") ?? "Housekeeping"
 }
 
 export function ReservationOperationalLanes({ reservation, timelineWidth, geometryForDates, activeLayers, onCollapse }: {
@@ -125,7 +123,7 @@ export function ReservationOperationalLanes({ reservation, timelineWidth, geomet
       const phase = taskType.startsWith("pre_arrival_") ? "pre" : (taskType.startsWith("post_checkout_") || taskType === "room_release" ? "post" : undefined)
       return {
         id: item.id,
-        label: housekeepingLabel(item.task_type),
+        label: housekeepingLabel(item.task_type, language),
         status: item.status,
         startsOn: start,
         endsOn: nextDay(start),
@@ -181,53 +179,61 @@ export function ReservationOperationalLanes({ reservation, timelineWidth, geomet
       { key: "issues", label: c.issues, Icon: TriangleAlert, className: "bg-red-700/85 text-red-50", items: issues },
     ])
     setLoading(false)
-  }, [c, reservation, supabase])
+  }, [c, language, reservation, supabase])
 
   useEffect(() => { void load() }, [load])
-  const visibleLanes = lanes.filter((lane) => activeLayers.has(lane.key))
+  const visibleLanes = lanes.filter((lane) => activeLayers.has(lane.key) && (lane.key === "milestones" || lane.items.length > 0))
+  const milestoneLane = visibleLanes.find((lane) => lane.key === "milestones") ?? null
+  const operationItems = visibleLanes
+    .filter((lane) => lane.key !== "milestones")
+    .flatMap((lane) => lane.items.map((item) => ({ ...item, laneKey: lane.key, laneLabel: lane.label })))
+    .sort((a, b) => a.startsOn.localeCompare(b.startsOn) || (a.minuteOfDay ?? 0) - (b.minuteOfDay ?? 0))
   const statusLabels: Record<string, string> = c.statuses
 
   return (
     <div className="border-t bg-muted/10">
       {onCollapse && (
-        <div className="flex min-h-8 border-b bg-background/95">
+        <div className="flex min-h-6 border-b bg-background/95">
           <button type="button" onClick={onCollapse} className="sticky left-0 z-30 flex w-[176px] shrink-0 items-center gap-2 border-r px-3 text-[11px] font-medium text-foreground/80 transition hover:bg-muted/40 hover:text-foreground" aria-label={c.collapse}>
             <ChevronUp className="h-3.5 w-3.5" />
             <span>{c.collapse}</span>
           </button>
-          <button type="button" onClick={onCollapse} className="min-h-8 flex-1 truncate px-3 text-left text-[10px] text-muted-foreground transition hover:bg-muted/20 hover:text-foreground" style={{ width: timelineWidth }}>
+          <button type="button" onClick={onCollapse} className="min-h-6 flex-1 truncate px-3 text-left text-[9px] text-muted-foreground transition hover:bg-muted/20 hover:text-foreground" style={{ width: timelineWidth }}>
             {reservation.guest_name ?? reservation.label}
           </button>
         </div>
       )}
-      {loading ? <div className="px-3 py-3 text-xs text-muted-foreground">{c.loading}</div> : visibleLanes.length === 0 ? <div className="px-3 py-3 text-xs text-muted-foreground">{c.enableLayer}</div> : visibleLanes.map(({ key, label, Icon, className, items }) => (
-        <div key={key} className="flex min-h-8 border-b last:border-b-0">
-          <div className="sticky left-0 z-20 flex w-[176px] shrink-0 items-center gap-2 border-r bg-background px-3 text-[11px] font-medium text-muted-foreground"><Icon className="h-3.5 w-3.5" /><span>{label}</span><span className="ml-auto rounded bg-muted px-1.5 py-0.5 text-[10px]">{items.length}</span></div>
-          <div className="relative min-h-8" style={{ width: timelineWidth, backgroundImage: `repeating-linear-gradient(to right, transparent 0, transparent ${TIMELINE_DAY_WIDTH - 1}px, rgba(255,255,255,.045) ${TIMELINE_DAY_WIDTH - 1}px, rgba(255,255,255,.045) ${TIMELINE_DAY_WIDTH}px)` }}>
-            {items.length === 0 ? <span className="absolute left-3 top-2 text-[10px] text-muted-foreground">{c.noEvents}</span> : items.map((item, index) => {
+      {loading ? <div className="px-3 py-3 text-xs text-muted-foreground">{c.loading}</div> : visibleLanes.length === 0 ? <div className="px-3 py-3 text-xs text-muted-foreground">{c.enableLayer}</div> : <>
+        {milestoneLane && <div className="flex min-h-6 border-b">
+          <div className="sticky left-0 z-20 flex w-[176px] shrink-0 items-center gap-2 border-r bg-background px-3 text-[11px] font-medium text-muted-foreground"><LogIn className="h-3.5 w-3.5" /><span>{milestoneLane.label}</span></div>
+          <div className="relative min-h-6" style={{ width: timelineWidth, backgroundImage: `repeating-linear-gradient(to right, transparent 0, transparent ${TIMELINE_DAY_WIDTH - 1}px, rgba(255,255,255,.045) ${TIMELINE_DAY_WIDTH - 1}px, rgba(255,255,255,.045) ${TIMELINE_DAY_WIDTH}px)` }}>
+            {milestoneLane.items.map((item) => {
+              const geometry = geometryForDates(item.startsOn, item.endsOn)
+              const timedLeft = geometry.left + ((item.minuteOfDay ?? 0) / 1440) * TIMELINE_DAY_WIDTH
+              const isCheckIn = item.marker === "checkin"
+              return <div key={item.id} title={`${item.label} · ${item.startsOn}`} className="absolute inset-y-0 z-10" style={{ left: Math.max(0, timedLeft - 1), width: 58 }}>
+                <span className={`absolute left-0 top-1 bottom-1 w-px ${isCheckIn ? "bg-emerald-300/90" : "bg-amber-300/90"}`} />
+                <span className={`absolute left-1.5 top-1 whitespace-nowrap text-[9px] font-semibold tracking-[.01em] ${isCheckIn ? "text-emerald-200" : "text-amber-200"}`}>{item.label}</span>
+              </div>
+            })}
+          </div>
+        </div>}
+        {operationItems.length > 0 && <div className="flex min-h-[42px] border-b last:border-b-0" data-combined-operations-lane>
+          <div className="sticky left-0 z-20 flex w-[176px] shrink-0 items-center gap-2 border-r bg-background px-3 text-[11px] font-medium text-muted-foreground"><Sparkles className="h-3.5 w-3.5" /><span>{c.operations}</span><span className="ml-auto bg-muted px-1.5 py-0.5 text-[10px]">{operationItems.length}</span></div>
+          <div className="relative min-h-[42px]" style={{ width: timelineWidth, backgroundImage: `repeating-linear-gradient(to right, transparent 0, transparent ${TIMELINE_DAY_WIDTH - 1}px, rgba(255,255,255,.045) ${TIMELINE_DAY_WIDTH - 1}px, rgba(255,255,255,.045) ${TIMELINE_DAY_WIDTH}px)` }}>
+            {operationItems.map((item, index) => {
               const geometry = geometryForDates(item.startsOn, item.endsOn)
               const status = statusLabels[item.status?.replaceAll("-", "_")] ?? item.status
               const timedLeft = geometry.left + ((item.minuteOfDay ?? 0) / 1440) * TIMELINE_DAY_WIDTH
-              if (key === "milestones" && item.marker) {
-                const isCheckIn = item.marker === "checkin"
-                return <div key={item.id} title={`${item.label} · ${item.startsOn}`} className="absolute inset-y-0 z-10" style={{ left: Math.max(0, timedLeft - 1), width: 58 }}>
-                  <span className={`absolute left-0 top-1 bottom-1 w-px ${isCheckIn ? "bg-emerald-300/90" : "bg-amber-300/90"}`} />
-                  <span className={`absolute left-1.5 top-1 whitespace-nowrap text-[9px] font-semibold tracking-[.01em] ${isCheckIn ? "text-emerald-200" : "text-amber-200"}`}>{item.label}</span>
-                </div>
-              }
-              const isTimedHousekeeping = key === "housekeeping" && typeof item.minuteOfDay === "number" && item.phase
-              const eventWidth = isTimedHousekeeping ? 34 : Math.max(22, geometry.width)
-              const eventLeft = isTimedHousekeeping
-                ? item.phase === "pre"
-                  ? Math.max(geometry.left, timedLeft - eventWidth)
-                  : timedLeft
-                : geometry.left
-              return <div key={item.id} title={`${item.label} · ${status} · ${item.startsOn}`} className={`absolute h-5 overflow-hidden border px-1.5 text-[10px] font-medium leading-5 ${item.critical ? "border-red-500/60 bg-red-800/90 text-red-50" : `border-white/10 ${className}`}`} style={{ left: eventLeft, width: eventWidth, top: 5 + (index % 2) * 2 }}><span className="truncate">{item.label}</span></div>
+              const isTimedHousekeeping = item.laneKey === "housekeeping" && typeof item.minuteOfDay === "number" && item.phase
+              const eventWidth = isTimedHousekeeping ? 38 : Math.max(30, Math.min(geometry.width, 118))
+              const eventLeft = isTimedHousekeeping ? (item.phase === "pre" ? Math.max(geometry.left, timedLeft - eventWidth) : timedLeft) : geometry.left
+              return <div key={`${item.laneKey}-${item.id}`} title={`${item.laneLabel}: ${item.label} · ${status} · ${item.startsOn}`} className={`absolute h-4 overflow-hidden border px-1.5 text-[9px] font-medium leading-4 ${item.critical ? "border-red-500/60 bg-red-800/85 text-red-50" : "border-white/10 bg-[#2b2926] text-white/80"}`} style={{ left: eventLeft, width: eventWidth, top: index % 2 === 0 ? 4 : 22 }}>
+                <span className="truncate">{item.label}</span>
+              </div>
             })}
-            {key === "milestones" && <LogOut className="sr-only" />}
           </div>
-        </div>
-      ))}
-    </div>
+        </div>}
+      </>}    </div>
   )
 }

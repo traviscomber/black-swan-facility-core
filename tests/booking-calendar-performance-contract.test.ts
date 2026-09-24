@@ -10,6 +10,8 @@ const timelineGrid = readFileSync(new URL("../components/calendar/timeline-grid.
 const activitiesPage = readFileSync(new URL("../app/bookings/activities/page.tsx", import.meta.url), "utf8")
 const availabilityPicker = readFileSync(new URL("../components/availability-calendar-picker.tsx", import.meta.url), "utf8")
 const inspector = readFileSync(new URL("../components/calendar/reservation-quick-inspector.tsx", import.meta.url), "utf8")
+const addReservationDialog = readFileSync(new URL("../components/add-reservation-dialog.tsx", import.meta.url), "utf8")
+const operationalLanes = readFileSync(new URL("../components/calendar/reservation-operational-lanes.tsx", import.meta.url), "utf8")
 const vercelConfig = readFileSync(new URL("../vercel.json", import.meta.url), "utf8")
 
 test("calendar separates stable inventory reads from date-range event reads", () => {
@@ -126,4 +128,79 @@ test("calendar does not reload stable room inventory on every date-window event 
   assert.doesNotMatch(calendarPage, /loadInitialData/)
   assert.match(calendarPage, /void loadInventory\(\)\.finally/)
   assert.match(calendarPage, /void loadEvents\(\)/)
+})
+
+
+test("new reservation keeps a compact BedBooking-like primary hierarchy", () => {
+  assert.match(addReservationDialog, /max-w-xl overflow-hidden rounded-none p-0/)
+  assert.match(addReservationDialog, /stayNights/)
+  assert.match(addReservationDialog, /selectedLocationName/)
+  assert.match(addReservationDialog, /More details|copy\.moreDetails/)
+  assert.match(addReservationDialog, /DialogFooter className="[^"]*border-t/)
+})
+
+test("expanded calendar operations stay compact and hide empty optional lanes", () => {
+  assert.match(operationalLanes, /lane\.key === "milestones" \|\| lane\.items\.length > 0/)
+  assert.match(operationalLanes, /min-h-6/)
+  assert.match(operationalLanes, /housekeepingLabel\(item\.task_type, language\)/)
+  assert.match(operationalLanes, /Preparar habitación/)
+  assert.match(operationalLanes, /Limpieza post check-out/)
+  assert.match(operationalLanes, /Liberar habitación/)
+})
+
+
+test("calendar keeps BedBooking-like filters collapsed behind the familiar search action", () => {
+  assert.match(calendarPage, /const \[showFilters, setShowFilters\] = useState\(false\)/)
+  assert.match(calendarPage, /aria-expanded=\{showFilters\}/)
+  assert.match(calendarPage, /\{showFilters && <div className="flex min-h-9/)
+})
+
+
+test("expanded reservation combines operational activities into one compact infinite-calendar lane", () => {
+  const lanes = readFileSync(new URL("../components/calendar/reservation-operational-lanes.tsx", import.meta.url), "utf8")
+  assert.match(lanes, /data-combined-operations-lane/)
+  assert.match(lanes, /const operationItems = visibleLanes/)
+  assert.match(lanes, /filter\(\(lane\) => lane\.key !== "milestones"\)/)
+  assert.match(lanes, /min-h-\[42px\]/)
+  assert.doesNotMatch(lanes, /visibleLanes\.map\(\(\{ key, label, Icon, className, items \}\)/)
+})
+
+test("calendar supports an explicit date deep-link for operational QA and handoff", () => {
+  const calendarPage = readFileSync(new URL("../app/bookings/calendar/page.tsx", import.meta.url), "utf8")
+  assert.match(calendarPage, /searchParams\.get\("date"\)/)
+  assert.match(calendarPage, /bookingDateFromKey\(requested\)/)
+})
+
+
+test("calendar summary hides zero-noise and uses compact operational views", () => {
+  const summary = readFileSync(new URL("../components/calendar/calendar-daily-operations-summary.tsx", import.meta.url), "utf8")
+  assert.match(summary, /data-calendar-summary/)
+  assert.match(summary, /max-h-\[32vh\]/)
+  assert.match(summary, /activeDays = counts/)
+  assert.match(summary, /filter\(\(\{ count \}\) => Object\.values\(count\)\.some/)
+  assert.match(summary, /view === "agenda"/)
+  assert.match(summary, /view === "daily"/)
+  assert.match(summary, /view === "alerts"/)
+  assert.doesNotMatch(summary, /gridTemplateColumns: `repeat\(\$\{dates\.length\}/)
+})
+
+
+test("calendar primary toolbar keeps only high-frequency actions visible", () => {
+  assert.match(calendarPage, /aria-label="Calendar actions"/)
+  assert.match(calendarPage, /More actions/)
+  assert.match(calendarPage, /<summary[^>]*className="[^"]*h-8 w-8/)
+  const actions = calendarPage.slice(calendarPage.indexOf('aria-label="Calendar actions"'), calendarPage.indexOf('{showFilters &&'))
+  assert.match(actions, /<Plus/)
+  assert.match(actions, /<Search/)
+  assert.match(actions, /<Bell/)
+  assert.match(actions, /<details/)
+})
+
+
+test("calendar view controls are consolidated and inactive properties collapse by default", () => {
+  assert.match(timelineGrid, /Expand active/)
+  assert.match(timelineGrid, /function expandActiveGroups/)
+  assert.match(timelineGrid, /uniqueGroupReservationEvents\(group, eventsByBed\)\.length === 0/)
+  assert.match(timelineGrid, /<details className="group relative">/)
+  assert.doesNotMatch(timelineGrid, /inline-flex h-5 w-5 items-center justify-center border/)
 })

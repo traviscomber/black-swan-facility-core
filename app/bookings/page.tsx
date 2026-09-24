@@ -8,9 +8,9 @@ import { useLanguage } from "@/lib/hooks/use-language"
 import { downloadCsv } from "@/lib/client-csv"
 
 const copy = {
-  en: { title: "Reservation list", search: "Search guest, room or property", all: "All statuses", guest: "Guest", stay: "Stay", room: "Room", guests: "Guests", status: "Status", amount: "Amount", empty: "No reservations found", refresh: "Refresh", add: "Add", calendar: "Calendar", export: "Export CSV" },
-  es: { title: "Lista de reservas", search: "Buscar huésped, habitación o propiedad", all: "Todos los estados", guest: "Huésped", stay: "Estadía", room: "Habitación", guests: "Huéspedes", status: "Estado", amount: "Monto", empty: "No se encontraron reservas", refresh: "Actualizar", add: "Agregar", calendar: "Calendario", export: "Exportar CSV" },
-  de: { title: "Reservierungsliste", search: "Gast, Zimmer oder Unterkunft suchen", all: "Alle Status", guest: "Gast", stay: "Aufenthalt", room: "Zimmer", guests: "Gäste", status: "Status", amount: "Betrag", empty: "Keine Reservierungen gefunden", refresh: "Aktualisieren", add: "Hinzufügen", calendar: "Kalender", export: "CSV exportieren" },
+  en: { title: "Reservation list", search: "Search guest, room or property", all: "All statuses", operational: "Operational", history: "History", guest: "Guest", stay: "Stay", room: "Room", guests: "Guests", status: "Status", amount: "Amount", sourceAmount:"Source amount", empty: "No reservations found", refresh: "Refresh", add: "Add", calendar: "Calendar", export: "Export CSV" },
+  es: { title: "Lista de reservas", search: "Buscar huésped, habitación o propiedad", all: "Todos los estados", operational: "Operación", history: "Histórico", guest: "Huésped", stay: "Estadía", room: "Habitación", guests: "Huéspedes", status: "Estado", amount: "Monto", sourceAmount:"Monto origen", empty: "No se encontraron reservas", refresh: "Actualizar", add: "Agregar", calendar: "Calendario", export: "Exportar CSV" },
+  de: { title: "Reservierungsliste", search: "Gast, Zimmer oder Unterkunft suchen", all: "Alle Status", operational: "Betrieb", history: "Historie", guest: "Gast", stay: "Aufenthalt", room: "Zimmer", guests: "Gäste", status: "Status", amount: "Betrag", sourceAmount:"Quellbetrag", empty: "Keine Reservierungen gefunden", refresh: "Aktualisieren", add: "Hinzufügen", calendar: "Kalender", export: "CSV exportieren" },
 } as const
 
 type ReservationRow = {
@@ -22,6 +22,7 @@ type ReservationRow = {
   status: string
   num_guests: number | null
   total_amount: number | null
+  source: string | null
   room: { room_number: string | null; location: { name: string | null } | null } | null
 }
 
@@ -47,13 +48,15 @@ export default function BookingsPage() {
   const [error, setError] = useState<string | null>(null)
   const [query, setQuery] = useState("")
   const [status, setStatus] = useState("all")
+  const [scope, setScope] = useState<"operational" | "history">("operational")
+  const todayChile = useMemo(() => new Intl.DateTimeFormat("en-CA", { timeZone: "America/Santiago", year:"numeric", month:"2-digit", day:"2-digit" }).format(new Date()), [])
 
   const load = useCallback(async (silent = false) => {
     if (!silent) setLoading(true)
     setError(null)
     const { data, error: loadError } = await supabase
       .from("reservations")
-      .select("id, guest_name, guest_email, check_in, check_out, status, num_guests, total_amount, room:rooms(room_number, location:locations(name))")
+      .select("id, guest_name, guest_email, check_in, check_out, status, num_guests, total_amount, source, room:rooms(room_number, location:locations(name))")
       .order("check_in", { ascending: false })
       .limit(500)
 
@@ -71,24 +74,28 @@ export default function BookingsPage() {
     return () => { void supabase.removeChannel(channel) }
   }, [load, supabase])
 
-  const statuses = useMemo(() => Array.from(new Set(rows.map((row) => row.status))).sort(), [rows])
-  const statusCounts = useMemo(() => rows.reduce<Record<string, number>>((acc, row) => { acc[row.status] = (acc[row.status] ?? 0) + 1; return acc }, {}), [rows])
+  const scopedRows = useMemo(() => rows.filter((row) => {
+    const historicalImported = row.source === "canonical_event_xls" && row.check_out < todayChile
+    return scope === "history" ? historicalImported : !historicalImported
+  }), [rows, scope, todayChile])
+  const statuses = useMemo(() => Array.from(new Set(scopedRows.map((row) => row.status))).sort(), [scopedRows])
+  const statusCounts = useMemo(() => scopedRows.reduce<Record<string, number>>((acc, row) => { acc[row.status] = (acc[row.status] ?? 0) + 1; return acc }, {}), [scopedRows])
   const filtered = useMemo(() => {
     const term = query.trim().toLowerCase()
-    return rows.filter((row) => {
+    return scopedRows.filter((row) => {
       if (status !== "all" && row.status !== status) return false
       if (!term) return true
       const haystack = [row.guest_name, row.guest_email, row.room?.room_number, row.room?.location?.name].filter(Boolean).join(" ").toLowerCase()
       return haystack.includes(term)
     })
-  }, [query, rows, status])
+  }, [query, scopedRows, status])
 
   return (
     <section className="min-h-screen bg-[#171512] text-[#e7e1d8]">
       <header className="flex min-h-[58px] items-center justify-between gap-3 bg-[#211e1a] px-3">
         <div className="min-w-0">
           <h1 className="truncate text-[15px] font-medium">{c.title}</h1>
-          <p className="text-[11px] text-[#8f867b]">{filtered.length} / {rows.length}</p>
+          <p className="text-[11px] text-[#8f867b]">{filtered.length} / {scopedRows.length}</p>
         </div>
         <div className="flex items-center gap-2">
           <Link href={`/${language}/bookings/calendar`} prefetch={false} className="inline-flex h-9 items-center gap-2 bg-[#2b2722] px-3 text-xs hover:bg-[#332e28]"><CalendarDays className="h-4 w-4" />{c.calendar}</Link>
@@ -99,6 +106,10 @@ export default function BookingsPage() {
       </header>
 
       <div className="flex min-h-[44px] items-center gap-2 bg-[#211e1a] px-3 py-1.5">
+        <div className="inline-flex shrink-0 border border-white/10 bg-[#171512] p-0.5 text-[10px] uppercase tracking-[.06em]">
+          <button type="button" onClick={() => { setScope("operational"); setStatus("all") }} className={`h-7 px-2.5 ${scope === "operational" ? "bg-[#6f8373] text-[#171512]" : "text-[#8f867b] hover:text-[#e7e1d8]"}`}>{c.operational}</button>
+          <button type="button" onClick={() => { setScope("history"); setStatus("all") }} className={`h-7 px-2.5 ${scope === "history" ? "bg-[#2b2722] text-[#e7e1d8]" : "text-[#8f867b] hover:text-[#e7e1d8]"}`}>{c.history}</button>
+        </div>
         <div className="relative min-w-0 flex-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#8f867b]" />
           <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={c.search} className="h-8 w-full bg-[#171512] pl-9 pr-3 text-xs outline-none placeholder:text-[#8f867b] focus:ring-1 focus:ring-[#6f8373]" />
@@ -120,7 +131,7 @@ export default function BookingsPage() {
               <th className="px-3 py-3 font-medium">{c.room}</th>
               <th className="px-3 py-3 font-medium">{c.guests}</th>
               <th className="px-3 py-3 font-medium">{c.status}</th>
-              <th className="px-4 py-3 text-right font-medium">{c.amount}</th>
+              <th className="px-4 py-3 text-right font-medium">{scope === "history" ? c.sourceAmount : c.amount}</th>
             </tr>
           </thead>
           <tbody>

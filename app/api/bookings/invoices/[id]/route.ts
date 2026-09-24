@@ -50,6 +50,17 @@ export async function PATCH(request: Request, context: RouteContext) {
   }
 
   try {
+    const { data: currentInvoice, error: currentInvoiceError } = await supabase
+      .from("invoices")
+      .select("id,reservation_id,status,finalized_at,voided_at")
+      .eq("id", invoiceId)
+      .maybeSingle()
+    if (currentInvoiceError) throw currentInvoiceError
+    if (!currentInvoice) return NextResponse.json({ error: "Factura no encontrada" }, { status: 404 })
+    if (currentInvoice.finalized_at || currentInvoice.voided_at || currentInvoice.status === "finalized") {
+      return NextResponse.json({ error: "Una factura finalizada es inmutable; registra pagos o anúlala mediante el flujo auditado" }, { status: 409 })
+    }
+
     const body = (await request.json()) as Record<string, unknown>
     const customerName = String(body.customer_name ?? "").trim()
     if (!customerName || customerName.length > 200) throw new Error("El nombre o razón social es obligatorio y no puede superar 200 caracteres")
@@ -134,14 +145,27 @@ export async function DELETE(_request: Request, context: RouteContext) {
   }
 
   try {
-    const { count, error: paymentError } = await supabase
-      .from("invoice_payments")
-      .select("id", { count: "exact", head: true })
-      .eq("invoice_id", invoiceId)
+    const { data: currentInvoice, error: currentInvoiceError } = await supabase
+      .from("invoices")
+      .select("id,reservation_id,status,finalized_at,voided_at")
+      .eq("id", invoiceId)
+      .maybeSingle()
+    if (currentInvoiceError) throw currentInvoiceError
+    if (!currentInvoice) return NextResponse.json({ error: "Factura no encontrada" }, { status: 404 })
+    if (currentInvoice.finalized_at || currentInvoice.voided_at || currentInvoice.status === "finalized") {
+      return NextResponse.json({ error: "Una factura finalizada no se elimina; debe conservarse o anularse mediante el flujo auditado" }, { status: 409 })
+    }
 
-    if (paymentError) throw paymentError
-    if ((count ?? 0) > 0) {
-      return NextResponse.json({ error: "No se puede eliminar una factura con pagos registrados; anúlala en su lugar" }, { status: 409 })
+    if (currentInvoice.reservation_id) {
+      const { count, error: paymentError } = await supabase
+        .from("payments")
+        .select("id", { count: "exact", head: true })
+        .eq("reservation_id", currentInvoice.reservation_id)
+        .is("reversed_at", null)
+      if (paymentError) throw paymentError
+      if ((count ?? 0) > 0) {
+        return NextResponse.json({ error: "No se puede eliminar una factura vinculada a una reserva con pagos activos" }, { status: 409 })
+      }
     }
 
     const { data, error } = await supabase.from("invoices").delete().eq("id", invoiceId).select("id").maybeSingle()

@@ -150,13 +150,6 @@ export function TimelineGrid(props: TimelineGridProps) {
   const c = copy[language]
   const dateLocale = dateLocales[language]
   const layers = useMemo(() => layerIcons.map((item) => ({ ...item, label: c.layers[item.key] })), [c.layers])
-  const statusLegend = useMemo(() => [
-    { label: c.legend.pending, className: "bg-amber-400" },
-    { label: c.legend.confirmed, className: "bg-blue-600" },
-    { label: c.legend.checkedIn, className: "bg-emerald-600" },
-    { label: c.legend.completed, className: "bg-slate-500" },
-    { label: c.legend.block, className: "bg-zinc-800" },
-  ], [c.legend])
   const totalWidth = LABEL_WIDTH + timelineWidth
   const isInteracting = Boolean(draggingEventId) || isResizing
   const scrollRef = useCalendarAutoscroll({ active: isInteracting })
@@ -165,6 +158,7 @@ export function TimelineGrid(props: TimelineGridProps) {
   const activeLayers = useMemo(() => new Set(preferences.activeLayers), [preferences.activeLayers])
   const [showKeyboardHelp, setShowKeyboardHelp] = useState(false)
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set())
+  const [groupsInitialized, setGroupsInitialized] = useState(false)
 
   const inventoryGroups = useMemo<InventoryGroup[]>(() => {
     const locations = new Map<string, InventoryGroup>()
@@ -201,15 +195,21 @@ export function TimelineGrid(props: TimelineGridProps) {
   const allGroupsCollapsed = inventoryGroups.length > 0 && inventoryGroups.every((group) => collapsedGroups.has(group.locationId))
 
   useEffect(() => {
+    if (groupsInitialized || inventoryGroups.length === 0) return
     try {
       const stored = window.sessionStorage.getItem(COLLAPSED_GROUPS_KEY)
-      if (!stored) return
-      const parsed = JSON.parse(stored)
-      if (Array.isArray(parsed)) setCollapsedGroups(new Set(parsed.filter((value): value is string => typeof value === "string")))
+      if (stored) {
+        const parsed = JSON.parse(stored)
+        if (Array.isArray(parsed)) setCollapsedGroups(new Set(parsed.filter((value): value is string => typeof value === "string")))
+      } else {
+        setCollapsedGroups(new Set(inventoryGroups.filter((group) => uniqueGroupReservationEvents(group, eventsByBed).length === 0).map((group) => group.locationId)))
+      }
     } catch {
-      // Session preferences are best-effort only.
+      setCollapsedGroups(new Set(inventoryGroups.filter((group) => uniqueGroupReservationEvents(group, eventsByBed).length === 0).map((group) => group.locationId)))
+    } finally {
+      setGroupsInitialized(true)
     }
-  }, [])
+  }, [eventsByBed, groupsInitialized, inventoryGroups])
 
   useEffect(() => {
     if (!scrollRef.current || dates.length === 0) return
@@ -247,6 +247,10 @@ export function TimelineGrid(props: TimelineGridProps) {
     updateCollapsedGroups(allGroupsCollapsed ? new Set() : new Set(inventoryGroups.map((group) => group.locationId)))
   }
 
+  function expandActiveGroups() {
+    updateCollapsedGroups(new Set(inventoryGroups.filter((group) => uniqueGroupReservationEvents(group, eventsByBed).length === 0).map((group) => group.locationId)))
+  }
+
   function toggleLayer(key: CalendarLayerKey) {
     setPreferences((current) => {
       const next = new Set(current.activeLayers)
@@ -266,20 +270,25 @@ export function TimelineGrid(props: TimelineGridProps) {
 
   return (
     <CardContent className="p-0">
-      <div className="border-b bg-background">
-        <div className="flex min-h-8 items-center gap-1 px-2 py-1" aria-label={c.viewControls}>
-          <button type="button" title={c.layersButton} aria-label={c.layersButton} onClick={() => setPreferences((current) => ({ ...current, showLayerToolbar: !current.showLayerToolbar }))} className={`inline-flex h-7 w-7 items-center justify-center border text-muted-foreground transition hover:bg-muted ${preferences.showLayerToolbar ? "border-primary bg-primary text-primary-foreground" : "bg-background"}`}><Layers3 className="h-3.5 w-3.5" /></button>
-          <button type="button" title={c.summary} aria-label={c.summary} onClick={() => setPreferences((current) => ({ ...current, showSummary: !current.showSummary }))} className={`inline-flex h-7 w-7 items-center justify-center border transition hover:bg-muted ${preferences.showSummary ? "border-primary/40 bg-primary/10 text-primary" : "bg-background text-muted-foreground"}`}><Rows3 className="h-3.5 w-3.5" /></button>
-          <button type="button" title={`${c.shortcuts} · ${c.interactionHint}`} aria-label={c.shortcuts} onClick={() => setShowKeyboardHelp((current) => !current)} className={`inline-flex h-7 w-7 items-center justify-center border transition hover:bg-muted ${showKeyboardHelp ? "border-primary/40 bg-primary/10 text-primary" : "bg-background text-muted-foreground"}`}><Keyboard className="h-3.5 w-3.5" /></button>
-          {inventoryGroups.length > 0 && <button type="button" title={allGroupsCollapsed ? c.expandGroups : c.collapseGroups} aria-label={allGroupsCollapsed ? c.expandGroups : c.collapseGroups} onClick={toggleAllGroups} className="inline-flex h-7 w-7 items-center justify-center border bg-background text-muted-foreground transition hover:bg-muted"><ChevronRight className={`h-3.5 w-3.5 transition-transform ${allGroupsCollapsed ? "" : "rotate-90"}`} /></button>}
-          <div className="ml-1 flex items-center gap-1.5 border-l pl-2" aria-label={c.statusLegend}>
-            {statusLegend.map((item) => <span key={item.label} title={item.label} aria-label={item.label} className={`h-2 w-2 ${item.className}`} />)}
-          </div>
+      <div className="border-b border-white/5 bg-[#17191a]">
+        <div className="flex min-h-7 items-center justify-end px-2 py-0.5" aria-label={c.viewControls}>
+          <details className="group relative">
+            <summary className="flex h-6 cursor-pointer list-none items-center gap-1.5 border border-white/10 bg-[#111314] px-2 text-[10px] text-white/55 hover:text-white marker:hidden">
+              <Layers3 className="h-3 w-3" />{language === "es" ? "Vista" : language === "de" ? "Ansicht" : "View"}
+            </summary>
+            <div className="absolute right-0 top-7 z-50 w-56 border border-white/10 bg-[#17191a] p-1 shadow-xl">
+              <button type="button" onClick={() => setPreferences((current) => ({ ...current, showSummary: !current.showSummary }))} className="flex h-8 w-full items-center gap-2 px-2 text-left text-xs text-white/70 hover:bg-white/5"><Rows3 className="h-3.5 w-3.5" />{c.summary}<span className="ml-auto text-[10px] text-white/35">{preferences.showSummary ? "ON" : "OFF"}</span></button>
+              <button type="button" onClick={() => setPreferences((current) => ({ ...current, showLayerToolbar: !current.showLayerToolbar }))} className="flex h-8 w-full items-center gap-2 px-2 text-left text-xs text-white/70 hover:bg-white/5"><Layers3 className="h-3.5 w-3.5" />{c.layersButton}</button>
+              <button type="button" onClick={() => setShowKeyboardHelp((current) => !current)} className="flex h-8 w-full items-center gap-2 px-2 text-left text-xs text-white/70 hover:bg-white/5"><Keyboard className="h-3.5 w-3.5" />{c.shortcuts}</button>
+              <button type="button" onClick={expandActiveGroups} className="flex h-8 w-full items-center gap-2 px-2 text-left text-xs text-white/70 hover:bg-white/5"><ChevronRight className="h-3.5 w-3.5 rotate-90" />{language === "es" ? "Expandir con actividad" : language === "de" ? "Aktive aufklappen" : "Expand active"}</button>
+              <button type="button" onClick={toggleAllGroups} className="flex h-8 w-full items-center gap-2 px-2 text-left text-xs text-white/70 hover:bg-white/5"><ChevronRight className={`h-3.5 w-3.5 ${allGroupsCollapsed ? "" : "rotate-90"}`} />{allGroupsCollapsed ? c.expandGroups : c.collapseGroups}</button>
+            </div>
+          </details>
         </div>
-        {showKeyboardHelp && <div className="flex flex-wrap items-center gap-x-5 gap-y-1 border-t bg-muted/20 px-3 py-1.5 text-[10px] text-muted-foreground"><span>{c.interactionHint}</span><span><kbd>←/→</kbd> {c.navigate}</span><span><kbd>S</kbd> {c.summary.toLowerCase()}</span><span><kbd>L</kbd> {c.layersButton.toLowerCase()}</span><span><kbd>⌘/Ctrl+A</kbd> {c.select}</span><span><kbd>?</kbd> {c.help}</span></div>}
-        {preferences.showLayerToolbar && <div className="flex flex-wrap items-center gap-1 border-t bg-muted/20 px-2 py-1">
-          <button type="button" onClick={toggleAllLayers} className={`border px-2 py-1 text-[10px] font-medium transition ${activeLayers.size === layers.length ? "border-primary bg-primary text-primary-foreground" : "bg-background hover:bg-muted"}`}>{c.all}</button>
-          {layers.map(({ key, label, Icon }) => <button key={key} type="button" onClick={() => toggleLayer(key)} className={`inline-flex items-center gap-1 border px-2 py-1 text-[10px] transition ${activeLayers.has(key) ? "border-primary/40 bg-primary/10 text-primary" : "bg-background text-muted-foreground hover:bg-muted"}`}><Icon className="h-3 w-3" />{label}</button>)}
+        {showKeyboardHelp && <div className="flex flex-wrap items-center gap-x-5 gap-y-1 border-t border-white/5 bg-[#111314] px-3 py-1.5 text-[10px] text-white/45"><span>{c.interactionHint}</span><span><kbd>←/→</kbd> {c.navigate}</span><span><kbd>S</kbd> {c.summary.toLowerCase()}</span><span><kbd>L</kbd> {c.layersButton.toLowerCase()}</span><span><kbd>⌘/Ctrl+A</kbd> {c.select}</span><span><kbd>?</kbd> {c.help}</span></div>}
+        {preferences.showLayerToolbar && <div className="flex flex-wrap items-center gap-1 border-t border-white/5 bg-[#111314] px-2 py-1">
+          <button type="button" onClick={toggleAllLayers} className={`border border-white/10 px-2 py-1 text-[10px] font-medium transition ${activeLayers.size === layers.length ? "bg-emerald-700 text-white" : "text-white/55 hover:bg-white/5"}`}>{c.all}</button>
+          {layers.map(({ key, label, Icon }) => <button key={key} type="button" onClick={() => toggleLayer(key)} className={`inline-flex items-center gap-1 border border-white/10 px-2 py-1 text-[10px] transition ${activeLayers.has(key) ? "bg-white/10 text-white" : "text-white/40 hover:bg-white/5"}`}><Icon className="h-3 w-3" />{label}</button>)}
         </div>}
       </div>
 
