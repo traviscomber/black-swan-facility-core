@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { ExternalLink, Loader2, Save } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
@@ -44,6 +44,35 @@ function fieldClass() {
 export function SiiPdfMetadataForm({ uploadId, filename, onCompleted }: Props) {
   const [form, setForm] = useState<FormState>(initialState)
   const [saving, setSaving] = useState(false)
+  const [extracting, setExtracting] = useState(true)
+  const [extractionNote, setExtractionNote] = useState<string | null>(null)
+
+  useEffect(() => {
+    let active = true
+    void (async () => {
+      try {
+        const response = await fetch('/api/finance/sii-invoices/extract', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ upload_id: uploadId }),
+        })
+        const payload = await response.json() as { error?: string; status?: string; result?: { document_id?: string | null; status?: string }; metadata?: FormState }
+        if (!active) return
+        if (response.ok && (payload.status === 'automatic' || payload.status === 'already_finalized')) {
+          toast.success('Factura leída automáticamente y enviada a clasificación.')
+          onCompleted(payload.result ?? { status: payload.status })
+          return
+        }
+        if (payload.metadata) setForm((current) => ({ ...current, ...payload.metadata }))
+        setExtractionNote('No fue posible confirmar todos los datos automáticamente. Revisa solo los campos pendientes.')
+      } catch {
+        if (active) setExtractionNote('No fue posible leer la factura automáticamente. Revisa los datos antes de continuar.')
+      } finally {
+        if (active) setExtracting(false)
+      }
+    })()
+    return () => { active = false }
+  }, [onCompleted, uploadId])
 
   function update<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((current) => ({ ...current, [key]: value }))
@@ -84,13 +113,22 @@ export function SiiPdfMetadataForm({ uploadId, filename, onCompleted }: Props) {
     }
   }
 
+  if (extracting) {
+    return (
+      <div className="mt-4 flex items-center gap-3 bg-[var(--bs-surface-primary)] p-4 text-sm text-[var(--bs-text-secondary)]">
+        <Loader2 className="h-4 w-4 animate-spin text-[var(--bs-warm-yellow)]" />
+        Leyendo factura y extrayendo datos fiscales…
+      </div>
+    )
+  }
+
   return (
     <div className="mt-4 bg-[var(--bs-surface-primary)] p-4">
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div>
           <p className="text-xs uppercase tracking-[0.1em] text-[var(--bs-text-muted)]">Completar PDF</p>
           <p className="mt-1 text-sm text-[var(--bs-text-primary)]">{filename}</p>
-          <p className="mt-1 text-xs text-[var(--bs-text-secondary)]">Los datos se registran como metadata manual; Raimundo mantiene la aprobación final.</p>
+          <p className="mt-1 text-xs text-[var(--bs-text-secondary)]">{extractionNote ?? 'Extracción automática incompleta; confirma únicamente los datos que falten. Raimundo mantiene la aprobación final.'}</p>
         </div>
         <Button variant="outline" size="sm" asChild>
           <a href={`/api/finance/sii-invoices/source?uploadId=${encodeURIComponent(uploadId)}`} target="_blank" rel="noreferrer"><ExternalLink className="mr-2 h-4 w-4" />Abrir PDF</a>
