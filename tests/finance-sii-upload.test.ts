@@ -103,3 +103,21 @@ test('upload route enforces Maribel-compatible least privilege and safe file han
   assert.match(source, /\.eq\('uploaded_by',\s*authorization\.user\.id\)/)
   assert.match(source, /Only PDF uploads use manual metadata completion/)
 })
+
+
+test('PDF intake attempts automatic fiscal extraction before manual fallback', () => {
+  const source = readFileSync(routeUrl, 'utf8')
+  const extractionSource = readFileSync(new URL('../lib/finance/sii-pdf-extraction.ts', import.meta.url), 'utf8')
+
+  assert.match(source, /extractSiiPdfFiscalMetadata/)
+  assert.match(source, /finalize_sii_pdf_upload/)
+  assert.match(extractionSource, /DOCUMENT_AI_ENDPOINT/)
+  assert.match(extractionSource, /supplier_name/)
+  assert.match(extractionSource, /supplier_rut/)
+  assert.match(extractionSource, /document_number/)
+  assert.match(extractionSource, /document_date/)
+  assert.match(extractionSource, /net_amount/)
+  assert.match(extractionSource, /tax_amount/)
+  assert.match(extractionSource, /total_amount/)
+  assert.match(extractionSource, /Never infer or invent a missing fiscal value/)
+})
