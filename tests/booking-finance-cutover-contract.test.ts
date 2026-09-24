@@ -55,3 +55,30 @@ test("stay cockpit separates reservation balance from invoiced balance and human
   assert.match(stayCockpit, /operationalLabel\(x\.task_type/)
   assert.match(stayCockpit, /reservationBalance = Math\.max/)
 })
+
+
+test("finalized invoices are immutable and the UI becomes payment-only", () => {
+  assert.match(invoiceMutationRoute, /currentInvoice\.finalized_at/)
+  assert.match(invoiceMutationRoute, /Una factura finalizada es inmutable/)
+  assert.match(invoiceMutationRoute, /from\("payments"\)/)
+  assert.doesNotMatch(invoiceMutationRoute, /from\("invoice_payments"\)/)
+  assert.match(invoiceEditor, /const invoiceLocked = financial\.finalized/)
+  assert.match(invoiceEditor, /readOnly=\{!effectiveInvoiceId \|\| invoiceLocked\}/)
+  assert.match(invoiceEditor, /!invoiceLocked && <Button[^>]*onClick=\{\(\) => void saveInvoice\(\)\}/)
+})
+
+test("stay cockpit separates reservation and invoice balances and hides operational tokens", () => {
+  assert.match(stayCockpit, /reservationBalance:"Reservation balance"/)
+  assert.match(stayCockpit, /invoicedBalance:"Invoiced balance"/)
+  assert.match(stayCockpit, /notInvoiced:"Not invoiced"/)
+  assert.match(stayCockpit, /operationalLabel\(x\.task_type/)
+  assert.match(stayCockpit, /reservationBalance = Math\.max/)
+})
+
+test("final booking hardening closes concurrent booking and payment races", () => {
+  assert.match(finalHardeningMigration, /reservations_no_active_bed_overlap/)
+  assert.match(finalHardeningMigration, /exclude using gist/)
+  assert.match(finalHardeningMigration, /pg_advisory_xact_lock/)
+  assert.match(finalHardeningMigration, /where id = p_reservation_id\s+for update/)
+  assert.match(finalHardeningMigration, /p_amount > v_balance/)
+})
