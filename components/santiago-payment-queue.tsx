@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Check, CreditCard, FileText, RefreshCw, ShieldCheck, X } from 'lucide-react'
+import { Bell, Check, CreditCard, FileText, RefreshCw, ShieldCheck, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { createClient } from '@/lib/supabase/client'
@@ -31,6 +31,17 @@ type PaymentRow = {
 
 type Division = { id: string; name: string }
 type Category = { id: string; name: string }
+type FinanceAlert = {
+  id: string
+  document_id: string
+  change_kind: string
+  old_value: string | null
+  new_value: string | null
+  title: string
+  detail: string | null
+  created_at: string
+  read_at: string | null
+}
 
 const tabs: Array<{ key: PaymentStatus; label: string }> = [
   { key: 'pending_santiago', label: 'Por autorizar' },
@@ -60,6 +71,7 @@ export function SantiagoPaymentQueue() {
   const [method, setMethod] = useState('transferencia_bancaria')
   const [reference, setReference] = useState('')
   const [sourceDocumentIds, setSourceDocumentIds] = useState<Set<string>>(new Set())
+  const [alerts, setAlerts] = useState<FinanceAlert[]>([])
 
   const load = useCallback(async () => {
     const permission = await supabase.rpc('can_finance_payment_authorize')
@@ -71,7 +83,7 @@ export function SantiagoPaymentQueue() {
     setAllowed(canPay)
     if (!canPay) return
 
-    const [documents, divisionResult, categoryResult, sourceResult] = await Promise.all([
+    const [documents, divisionResult, categoryResult, sourceResult, alertResult] = await Promise.all([
       supabase.from('finance_documents')
         .select('id,supplier_name,document_number,document_date,due_date,total_amount,currency,division_id,category_id,cost_center_id,operational_label,approved_at,payment_status,payment_decision_notes,payment_decided_at,paid_at,payment_method,payment_reference')
         .neq('payment_status', 'not_ready')
@@ -79,8 +91,9 @@ export function SantiagoPaymentQueue() {
       supabase.from('budget_divisions').select('id,name'),
       supabase.from('budget_categories').select('id,name'),
       supabase.from('finance_sii_uploads').select('finance_document_id').not('finance_document_id', 'is', null),
+      supabase.from('finance_document_alerts').select('id,document_id,change_kind,old_value,new_value,title,detail,created_at,read_at').order('created_at', { ascending: false }).limit(20),
     ])
-    const error = documents.error || divisionResult.error || categoryResult.error || sourceResult.error
+    const error = documents.error || divisionResult.error || categoryResult.error || sourceResult.error || alertResult.error
     if (error) {
       toast.error(error.message)
       return
@@ -89,21 +102,39 @@ export function SantiagoPaymentQueue() {
     setDivisions((divisionResult.data ?? []) as Division[])
     setCategories((categoryResult.data ?? []) as Category[])
     setSourceDocumentIds(new Set((sourceResult.data ?? []).map((row) => row.finance_document_id).filter((value): value is string => typeof value === 'string')))
+    setAlerts((alertResult.data ?? []) as FinanceAlert[])
   }, [supabase])
 
   useEffect(() => { void load() }, [load])
   useEffect(() => {
     const channel = supabase.channel('santiago-payment-queue-live')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'finance_documents' }, () => void load())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'finance_document_alerts' }, () => void load())
       .subscribe()
     return () => { void supabase.removeChannel(channel) }
   }, [load, supabase])
 
   const filtered = rows.filter((row) => row.payment_status === status)
+  const unreadAlerts = alerts.filter((alert) => !alert.read_at)
   const counts = rows.reduce<Record<string, number>>((acc, row) => {
     acc[row.payment_status] = (acc[row.payment_status] ?? 0) + 1
     return acc
   }, {})
+
+  async function markAlertRead(alert: FinanceAlert) {
+    if (alert.read_at) return
+    const { error } = await supabase.from('finance_document_alerts').update({ read_at: new Date().toISOString() }).eq('id', alert.id)
+    if (error) toast.error(error.message)
+    else await load()
+  }
+
+  async function markAllAlertsRead() {
+    const ids = unreadAlerts.map((alert) => alert.id)
+    if (!ids.length) return
+    const { error } = await supabase.from('finance_document_alerts').update({ read_at: new Date().toISOString() }).in('id', ids)
+    if (error) toast.error(error.message)
+    else await load()
+  }
 
   async function decide(row: PaymentRow, decision: 'authorized' | 'rejected') {
     const notes = decision === 'rejected'
@@ -174,6 +205,28 @@ export function SantiagoPaymentQueue() {
         </div>
       </section>
 
+      <section className="bg-[var(--bs-surface-primary)] p-5 md:p-6">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <p className="text-xs uppercase tracking-[0.14em] text-[var(--bs-warm-yellow)]">Cambios recientes</p>
+            <h3 className="mt-2 text-lg text-[var(--bs-text-primary)]">Alertas financieras · {unreadAlerts.length} sin leer</h3>
+            <p className="mt-1 text-sm text-[var(--bs-text-secondary)]">Santiago recibe cambios aunque todavía no exista un pago accionable.</p>
+          </div>
+          {unreadAlerts.length > 0 && <Button variant="outline" onClick={() => void markAllAlertsRead()}>Marcar leídas</Button>}
+        </div>
+        <div className="mt-4 divide-y divide-[var(--bs-divider-subtle)]">
+          {alerts.slice(0, 8).map((alert) => <button key={alert.id} type="button" onClick={() => void markAlertRead(alert)} className="flex w-full items-start gap-3 py-3 text-left">
+            <Bell className={`mt-0.5 h-4 w-4 shrink-0 ${alert.read_at ? 'text-[var(--bs-text-muted)]' : 'text-[var(--bs-warm-yellow)]'}`} />
+            <span className="min-w-0 flex-1">
+              <span className="block text-sm text-[var(--bs-text-primary)]">{alert.title}</span>
+              <span className="mt-1 block text-xs text-[var(--bs-text-secondary)]">{alert.detail ?? 'Documento financiero'} · {new Date(alert.created_at).toLocaleString('es-CL')}</span>
+            </span>
+            {!alert.read_at && <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-[var(--bs-warm-yellow)]" />}
+          </button>)}
+          {!alerts.length && <p className="py-5 text-sm text-[var(--bs-text-muted)]">Sin cambios recientes.</p>}
+        </div>
+      </section>
+
       <section className="bg-[var(--bs-surface-primary)]">
         <div className="flex flex-wrap gap-2 p-4">
           {tabs.map((tab) => (
@@ -229,7 +282,7 @@ export function SantiagoPaymentQueue() {
                   </tr>
                 )
               })}
-              {!filtered.length && <tr><td colSpan={5} className="px-5 py-12 text-center text-[var(--bs-text-muted)]">No hay documentos en esta etapa.</td></tr>}
+              {!filtered.length && <tr><td colSpan={5} className="px-5 py-12 text-center text-[var(--bs-text-muted)]">{status === 'pending_santiago' ? 'No hay pagos pendientes. Los cambios de estado igualmente aparecerán arriba como alertas.' : 'No hay documentos en esta etapa.'}</td></tr>}
             </tbody>
           </table>
         </div>
