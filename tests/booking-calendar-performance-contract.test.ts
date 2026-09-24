@@ -170,3 +170,16 @@ test("calendar supports an explicit date deep-link for operational QA and handof
   assert.match(calendarPage, /searchParams\.get\("date"\)/)
   assert.match(calendarPage, /bookingDateFromKey\(requested\)/)
 })
+
+
+test("calendar summary hides zero-noise and uses compact operational views", () => {
+  const summary = readFileSync(new URL("../components/calendar/calendar-daily-operations-summary.tsx", import.meta.url), "utf8")
+  assert.match(summary, /data-calendar-summary/)
+  assert.match(summary, /max-h-\[32vh\]/)
+  assert.match(summary, /activeDays = counts/)
+  assert.match(summary, /filter\(\(\{ count \}\) => Object\.values\(count\)\.some/)
+  assert.match(summary, /view === "agenda"/)
+  assert.match(summary, /view === "daily"/)
+  assert.match(summary, /view === "alerts"/)
+  assert.doesNotMatch(summary, /gridTemplateColumns: `repeat\(\$\{dates\.length\}/)
+})

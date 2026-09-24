@@ -136,6 +136,7 @@ export function CalendarDailyOperationsSummary({ dates, reservations, timelineWi
   const [housekeeping, setHousekeeping] = useState<HousekeepingOperational[]>([])
   const [logistics, setLogistics] = useState<LogisticsOperational[]>([])
   const [employeeNames, setEmployeeNames] = useState<Record<string, string>>({})
+  const [view, setView] = useState<"agenda" | "daily" | "alerts">("agenda")
 
   const load = useCallback(async () => {
     const ids = [...new Set(reservations.map((reservation) => reservation.event_id))]
@@ -266,51 +267,82 @@ export function CalendarDailyOperationsSummary({ dates, reservations, timelineWi
   }, [c, employeeNames, housekeeping, logistics, reservationDetails])
 
   const warnings = agenda.filter((item) => item.warning === c.unassigned).length
+  const activeDays = counts
+    .map((count, index) => ({ count, date: dates[index] }))
+    .filter(({ count }) => Object.values(count).some((value) => value > 0))
+    .slice(0, 7)
+  const visibleTotals = counts.reduce<DailyCounts>((acc, count) => ({
+    occupied: Math.max(acc.occupied, count.occupied),
+    arrivals: acc.arrivals + count.arrivals,
+    departures: acc.departures + count.departures,
+    housekeeping: acc.housekeeping + count.housekeeping,
+    hospitality: acc.hospitality + count.hospitality,
+    issues: acc.issues + count.issues,
+  }), { ...EMPTY })
+  const alertCount = warnings + visibleTotals.issues
+  const hasAnyActivity = activeDays.length > 0 || agenda.length > 0 || alertCount > 0
 
   return (
-    <>
-      <div className="border-t bg-background px-3 py-3">
-        <div className="mb-2 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <div className="flex items-center gap-2"><Clock3 className="h-4 w-4 text-primary" /><p className="text-sm font-semibold">{c.agenda}</p>{warnings > 0 && <Badge variant="destructive" className="h-5 px-1.5 text-[10px]">{warnings} {c.unassigned.toLowerCase()}</Badge>}</div>
-            <p className="mt-0.5 text-[11px] text-muted-foreground">{c.agendaHint}</p>
-          </div>
+    <section data-calendar-summary className="border-t border-white/10 bg-[#17191a]">
+      <div className="flex min-h-11 items-center gap-2 px-3">
+        <div className="flex min-w-0 flex-1 items-center gap-2">
+          <Users className="h-4 w-4 text-emerald-400" />
+          <span className="text-xs font-medium">{c.summary}</span>
+          {!hasAnyActivity ? <span className="truncate text-[11px] text-muted-foreground">{c.noAgenda}</span> : <>
+            {visibleTotals.arrivals > 0 && <span className="text-[10px] text-emerald-300">{visibleTotals.arrivals} {c.arrivals.toLowerCase()}</span>}
+            {visibleTotals.departures > 0 && <span className="text-[10px] text-amber-300">{visibleTotals.departures} {c.departures.toLowerCase()}</span>}
+            {visibleTotals.housekeeping > 0 && <span className="text-[10px] text-white/65">{visibleTotals.housekeeping} {c.housekeeping.toLowerCase()}</span>}
+            {visibleTotals.issues > 0 && <span className="text-[10px] text-red-300">{visibleTotals.issues} {c.issues.toLowerCase()}</span>}
+          </>}
         </div>
-        {agenda.length === 0 ? <p className="py-2 text-xs text-muted-foreground">{c.noAgenda}</p> : (
-          <div className="grid gap-1.5 lg:grid-cols-2 xl:grid-cols-3">
+        <div className="inline-flex shrink-0 border border-white/10 bg-[#111314] p-0.5 text-[10px]">
+          <button type="button" onClick={() => setView("agenda")} className={`h-7 px-2.5 ${view === "agenda" ? "bg-[#2b2722] text-white" : "text-white/45 hover:text-white/80"}`}>{language === "es" ? "Agenda 72h" : language === "de" ? "Agenda 72h" : "72h agenda"}</button>
+          <button type="button" onClick={() => setView("daily")} className={`h-7 px-2.5 ${view === "daily" ? "bg-[#2b2722] text-white" : "text-white/45 hover:text-white/80"}`}>{c.summary}</button>
+          <button type="button" onClick={() => setView("alerts")} className={`h-7 px-2.5 ${view === "alerts" ? "bg-[#2b2722] text-white" : "text-white/45 hover:text-white/80"}`}>{language === "es" ? "Alertas" : language === "de" ? "Warnungen" : "Alerts"}{alertCount > 0 ? ` · ${alertCount}` : ""}</button>
+        </div>
+      </div>
+
+      <div className="max-h-[32vh] overflow-y-auto border-t border-white/[.06]">
+        {view === "agenda" && <div className="p-3">
+          {agenda.length === 0 ? <p className="py-2 text-xs text-muted-foreground">{c.noAgenda}</p> : <div className="grid gap-1.5 lg:grid-cols-2 xl:grid-cols-3">
             {agenda.map((item) => {
               const Icon = item.kind === "logistics" ? Car : item.kind === "arrival" ? LogIn : item.title === c.inspection ? CheckCircle2 : BedDouble
-              return <div key={item.id} className="flex min-w-0 items-start gap-2 rounded-[5px] bg-muted/45 px-2.5 py-2">
-                <Icon className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" />
+              return <div key={item.id} className="flex min-w-0 items-start gap-2 bg-[#211e1a] px-2.5 py-2">
+                <Icon className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-400" />
                 <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-1.5"><span className="whitespace-nowrap text-[10px] font-medium text-muted-foreground">{operationalTime(item.at)}</span>{item.warning && <span className="text-[10px] font-semibold text-amber-700">{item.warning}</span>}</div>
-                  <p className="truncate text-xs font-semibold">{item.title} · {item.guest}</p>
+                  <div className="flex items-center gap-1.5"><span className="whitespace-nowrap text-[10px] font-medium text-muted-foreground">{operationalTime(item.at)}</span>{item.warning && <span className="text-[10px] font-semibold text-amber-300">{item.warning}</span>}</div>
+                  <p className="truncate text-xs font-medium">{item.title} · {item.guest}</p>
                   <div className="mt-0.5 flex flex-wrap items-center gap-x-2 text-[10px] text-muted-foreground"><span className="truncate">{item.place || "—"}</span><span className="inline-flex items-center gap-1"><UserRound className="h-2.5 w-2.5" />{item.owner ?? c.unassigned}</span><span>{item.state}</span></div>
                 </div>
               </div>
             })}
-          </div>
-        )}
-      </div>
+          </div>}
+        </div>}
 
-      <div className="sticky bottom-0 z-30 flex border-t bg-background/95 shadow-[0_-4px_12px_rgba(0,0,0,0.05)] backdrop-blur">
-        <div className="sticky left-0 z-40 flex shrink-0 items-center gap-2 border-r bg-background px-3 text-xs font-semibold" style={{ width: LABEL_WIDTH, height: 46 }}>
-          <Users className="h-4 w-4 text-primary" />
-          {c.summary}
-        </div>
-        <div className="grid" style={{ width: timelineWidth, gridTemplateColumns: `repeat(${dates.length}, ${DAY_WIDTH}px)` }}>
-          {counts.map((count, index) => (
-            <div key={dates[index].toISOString()} className="flex h-[46px] flex-wrap content-center justify-center gap-x-1.5 gap-y-0.5 border-r px-1 text-[9px] text-muted-foreground">
-              <span title={c.occupied} className="inline-flex items-center gap-0.5"><Users className="h-2.5 w-2.5" />{count.occupied}</span>
-              <span title={c.arrivals} className="inline-flex items-center gap-0.5 text-emerald-700"><LogIn className="h-2.5 w-2.5" />{count.arrivals}</span>
-              <span title={c.departures} className="inline-flex items-center gap-0.5 text-amber-700"><LogOut className="h-2.5 w-2.5" />{count.departures}</span>
-              <span title="Housekeeping" className="inline-flex items-center gap-0.5"><BedDouble className="h-2.5 w-2.5" />{count.housekeeping}</span>
-              <span title="Hospitality" className="inline-flex items-center gap-0.5"><ConciergeBell className="h-2.5 w-2.5" />{count.hospitality}</span>
-              <span title={c.issues} className={`inline-flex items-center gap-0.5 ${count.issues > 0 ? "text-red-700" : ""}`}><TriangleAlert className="h-2.5 w-2.5" />{count.issues}</span>
-            </div>
-          ))}
-        </div>
+        {view === "daily" && <div className="p-3">
+          {activeDays.length === 0 ? <p className="py-2 text-xs text-muted-foreground">{c.noAgenda}</p> : <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+            {activeDays.map(({ count, date }) => <div key={date.toISOString()} className="bg-[#211e1a] p-3">
+              <div className="mb-2 text-[10px] font-medium uppercase tracking-[.07em] text-white/55">{format(date, "EEE dd")}</div>
+              <div className="flex flex-wrap gap-1.5 text-[10px]">
+                {count.occupied > 0 && <span className="bg-white/5 px-2 py-1">{count.occupied} {c.occupied.toLowerCase()}</span>}
+                {count.arrivals > 0 && <span className="bg-emerald-500/10 px-2 py-1 text-emerald-300">{count.arrivals} {c.arrivals.toLowerCase()}</span>}
+                {count.departures > 0 && <span className="bg-amber-500/10 px-2 py-1 text-amber-300">{count.departures} {c.departures.toLowerCase()}</span>}
+                {count.housekeeping > 0 && <span className="bg-white/5 px-2 py-1">{count.housekeeping} {c.housekeeping.toLowerCase()}</span>}
+                {count.hospitality > 0 && <span className="bg-white/5 px-2 py-1">{count.hospitality} hospitality</span>}
+                {count.issues > 0 && <span className="bg-red-500/10 px-2 py-1 text-red-300">{count.issues} {c.issues.toLowerCase()}</span>}
+              </div>
+            </div>)}
+          </div>}
+        </div>}
+
+        {view === "alerts" && <div className="p-3">
+          {alertCount === 0 ? <p className="py-2 text-xs text-muted-foreground">{language === "es" ? "Sin alertas operacionales activas." : language === "de" ? "Keine aktiven Betriebswarnungen." : "No active operational alerts."}</p> :
+          <div className="space-y-2">
+            {warnings > 0 && <div className="flex items-center gap-2 bg-amber-500/10 px-3 py-2 text-xs text-amber-200"><TriangleAlert className="h-3.5 w-3.5" />{warnings} {c.unassigned.toLowerCase()}</div>}
+            {visibleTotals.issues > 0 && <div className="flex items-center gap-2 bg-red-500/10 px-3 py-2 text-xs text-red-200"><TriangleAlert className="h-3.5 w-3.5" />{visibleTotals.issues} {c.issues.toLowerCase()}</div>}
+          </div>}
+        </div>}
       </div>
-    </>
+    </section>
   )
 }
