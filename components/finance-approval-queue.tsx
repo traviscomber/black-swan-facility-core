@@ -85,19 +85,17 @@ export function FinanceApprovalQueue() {
   const [reassignCenterId, setReassignCenterId] = useState('')
   const [reassignNote, setReassignNote] = useState('')
   const [canApprove, setCanApprove] = useState(false)
-  const [canAdmin, setCanAdmin] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
-    const [queueResult, divisionResult, categoryResult, centerResult, approvePermission, adminPermission] = await Promise.all([
+    const [queueResult, divisionResult, categoryResult, centerResult, approvePermission] = await Promise.all([
       supabase.from('finance_approval_queue').select('*').order('queue_order').order('document_date', { ascending: false }),
       supabase.from('budget_divisions').select('id,name').eq('is_active', true).eq('is_aggregate', false).not('source_key', 'is', null).order('sort_order'),
       supabase.from('budget_categories').select('id,division_id,name').eq('is_active', true).not('source_key', 'is', null).eq('category_role', 'cost').order('sort_order'),
       supabase.from('finance_historical_cost_centers').select('id,historical_label,operational_label,division_id,category_id').eq('mapping_status','mapped').not('division_id','is',null).not('category_id','is',null).order('historical_label'),
       supabase.rpc('can_finance_approve'),
-      supabase.rpc('can_finance_admin'),
     ])
-    const error = queueResult.error || divisionResult.error || categoryResult.error || centerResult.error || approvePermission.error || adminPermission.error
+    const error = queueResult.error || divisionResult.error || categoryResult.error || centerResult.error || approvePermission.error
     if (error) toast.error(error.message)
     else {
       setRows((queueResult.data ?? []) as QueueRow[])
@@ -105,7 +103,6 @@ export function FinanceApprovalQueue() {
       setCategories((categoryResult.data ?? []) as Category[])
       setHistoricalCenters((centerResult.data ?? []) as HistoricalCenter[])
       setCanApprove(Boolean(approvePermission.data))
-      setCanAdmin(Boolean(adminPermission.data))
     }
     setLoading(false)
   }, [supabase])
