@@ -147,3 +147,10 @@ test("expanded calendar operations stay compact and hide empty optional lanes", 
   assert.match(operationalLanes, /Limpieza post check-out/)
   assert.match(operationalLanes, /Liberar habitación/)
 })
+
+
+test("calendar keeps BedBooking-like filters collapsed behind the familiar search action", () => {
+  assert.match(calendarPage, /const \[showFilters, setShowFilters\] = useState\(false\)/)
+  assert.match(calendarPage, /aria-expanded=\{showFilters\}/)
+  assert.match(calendarPage, /\{showFilters && <div className="flex min-h-9/)
+})
