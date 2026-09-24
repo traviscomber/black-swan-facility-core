@@ -119,7 +119,7 @@ export function FinanceApprovalQueue() {
   }, [load, supabase])
   useEffect(() => { setSelected(new Set()) }, [status])
 
-  const filtered = useMemo(() => rows.filter((row) => row.approval_status === status), [rows, status])
+  const filtered = useMemo(() => rows.filter((row) => status === 'approved' ? row.approval_status === 'approved' || row.approval_status === 'pending_valuation' : row.approval_status === status), [rows, status])
   const eligible = useMemo(() => filtered.filter(isCanonicalMapped), [filtered])
   const counts = useMemo(() => rows.reduce<Record<string, number>>((acc, row) => { acc[row.approval_status] = (acc[row.approval_status] ?? 0) + 1; return acc }, {}), [rows])
   const decisionBreakdown = useMemo(() => rows.filter((row) => row.approval_status === 'ready').reduce<Record<string, number>>((acc, row) => { acc[row.classification_status] = (acc[row.classification_status] ?? 0) + 1; return acc }, {}), [rows])
