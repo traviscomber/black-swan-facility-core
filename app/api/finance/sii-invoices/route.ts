@@ -2,95 +2,13 @@ import { createHash, randomUUID } from 'node:crypto'
 import { NextResponse } from 'next/server'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase/server'
+import { parseManualPdfMetadata, parseSiiXml, siiBaseName, siiExtension, type ParsedSiiInvoice } from '@/lib/finance/sii-invoice'
 
 export const runtime = 'nodejs'
 
 const BUCKET = 'finance-sii-invoices'
 const MAX_FILE_BYTES = 15 * 1024 * 1024
 const MAX_FILES = 10
-
-type ParsedSiiInvoice = {
-  supplier_name: string | null
-  supplier_rut: string | null
-  document_number: string | null
-  document_date: string | null
-  due_date: string | null
-  document_type: 'invoice' | 'credit_note' | 'debit_note' | 'other'
-  sii_document_type: string | null
-  net_amount: number | null
-  tax_amount: number | null
-  total_amount: number | null
-  currency: string
-  extraction_method: 'sii_xml'
-}
-
-type ManualPdfMetadata = {
-  supplier_name: string
-  supplier_rut: string
-  document_number: string
-  document_date: string
-  due_date?: string | null
-  document_type: 'invoice' | 'credit_note' | 'debit_note' | 'other'
-  net_amount?: number | null
-  tax_amount?: number | null
-  total_amount: number
-  currency: string
-}
-
-function extension(name: string) {
-  const value = name.toLowerCase().split('.').pop()
-  return value === 'pdf' || value === 'xml' ? value : null
-}
-
-function baseName(name: string) {
-  return name.replace(/\.[^.]+$/, '').trim().toLowerCase()
-}
-
-function xmlValue(xml: string, tag: string) {
-  const escaped = tag.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-  const match = xml.match(new RegExp(`<(?:(?:[\\w.-]+):)?${escaped}(?:\\s[^>]*)?>([\\s\\S]*?)<\\/(?:(?:[\\w.-]+):)?${escaped}>`, 'i'))
-  if (!match) return null
-  return match[1]
-    .replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, '$1')
-    .replace(/&amp;/g, '&')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    .trim() || null
-}
-
-function money(value: string | null) {
-  if (!value) return null
-  const normalized = value.replace(/\s/g, '').replace(',', '.')
-  const parsed = Number(normalized)
-  return Number.isFinite(parsed) ? parsed : null
-}
-
-function mapDocumentType(tipoDte: string | null): ParsedSiiInvoice['document_type'] {
-  if (tipoDte === '33' || tipoDte === '34' || tipoDte === '46') return 'invoice'
-  if (tipoDte === '61') return 'credit_note'
-  if (tipoDte === '56') return 'debit_note'
-  return 'other'
-}
-
-function parseSiiXml(xml: string): ParsedSiiInvoice {
-  const tipoDte = xmlValue(xml, 'TipoDTE')
-  return {
-    supplier_name: xmlValue(xml, 'RznSoc') ?? xmlValue(xml, 'RznSocEmisor'),
-    supplier_rut: xmlValue(xml, 'RUTEmisor') ?? xmlValue(xml, 'RutEmisor'),
-    document_number: xmlValue(xml, 'Folio'),
-    document_date: xmlValue(xml, 'FchEmis'),
-    due_date: xmlValue(xml, 'FchVenc'),
-    document_type: mapDocumentType(tipoDte),
-    sii_document_type: tipoDte,
-    net_amount: money(xmlValue(xml, 'MntNeto')),
-    tax_amount: money(xmlValue(xml, 'IVA')),
-    total_amount: money(xmlValue(xml, 'MntTotal')),
-    currency: (xmlValue(xml, 'TpoMoneda') ?? 'CLP').toUpperCase(),
-    extraction_method: 'sii_xml',
-  }
-}
 
 async function authorizeFinance() {
   const supabase = await createClient()
@@ -112,40 +30,6 @@ function adminClient() {
   return createAdminClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } })
 }
 
-function parseManualPdfMetadata(value: unknown): ManualPdfMetadata | null {
-  if (!value || typeof value !== 'object') return null
-  const row = value as Record<string, unknown>
-  const supplierName = typeof row.supplier_name === 'string' ? row.supplier_name.trim() : ''
-  const supplierRut = typeof row.supplier_rut === 'string' ? row.supplier_rut.trim() : ''
-  const documentNumber = typeof row.document_number === 'string' ? row.document_number.trim() : ''
-  const documentDate = typeof row.document_date === 'string' ? row.document_date.trim() : ''
-  const dueDate = typeof row.due_date === 'string' && row.due_date.trim() ? row.due_date.trim() : null
-  const documentType = typeof row.document_type === 'string' ? row.document_type : 'invoice'
-  const currency = typeof row.currency === 'string' ? row.currency.trim().toUpperCase() : 'CLP'
-  const totalAmount = Number(row.total_amount)
-  const netAmount = row.net_amount === '' || row.net_amount == null ? null : Number(row.net_amount)
-  const taxAmount = row.tax_amount === '' || row.tax_amount == null ? null : Number(row.tax_amount)
-
-  if (!supplierName || !supplierRut || !documentNumber || !/^\d{4}-\d{2}-\d{2}$/.test(documentDate)) return null
-  if (!['invoice', 'credit_note', 'debit_note', 'other'].includes(documentType)) return null
-  if (!/^[A-Z]{3}$/.test(currency) || !Number.isFinite(totalAmount) || totalAmount < 0) return null
-  if (netAmount != null && (!Number.isFinite(netAmount) || netAmount < 0)) return null
-  if (taxAmount != null && (!Number.isFinite(taxAmount) || taxAmount < 0)) return null
-
-  return {
-    supplier_name: supplierName,
-    supplier_rut: supplierRut,
-    document_number: documentNumber,
-    document_date: documentDate,
-    due_date: dueDate,
-    document_type: documentType as ManualPdfMetadata['document_type'],
-    net_amount: netAmount,
-    tax_amount: taxAmount,
-    total_amount: totalAmount,
-    currency,
-  }
-}
-
 export async function POST(request: Request) {
   const authorization = await authorizeFinance()
   if ('error' in authorization) return authorization.error
@@ -156,16 +40,16 @@ export async function POST(request: Request) {
     if (!files.length) return NextResponse.json({ error: 'At least one PDF or XML file is required' }, { status: 400 })
     if (files.length > MAX_FILES) return NextResponse.json({ error: `Maximum ${MAX_FILES} files per upload` }, { status: 400 })
 
-    const invalid = files.find((file) => !extension(file.name) || file.size <= 0 || file.size > MAX_FILE_BYTES)
+    const invalid = files.find((file) => !siiExtension(file.name) || file.size <= 0 || file.size > MAX_FILE_BYTES)
     if (invalid) return NextResponse.json({ error: `Invalid file: ${invalid.name}. Use PDF/XML up to 15 MB each.` }, { status: 400 })
 
     const admin = adminClient()
-    const orderedFiles = [...files].sort((a, b) => Number(extension(b.name) === 'xml') - Number(extension(a.name) === 'xml'))
+    const orderedFiles = [...files].sort((a, b) => Number(siiExtension(b.name) === 'xml') - Number(siiExtension(a.name) === 'xml'))
     const documentByBase = new Map<string, string>()
     const results: Array<Record<string, unknown>> = []
 
     for (const file of orderedFiles) {
-      const ext = extension(file.name)!
+      const ext = siiExtension(file.name)!
       const bytes = Buffer.from(await file.arrayBuffer())
       if (ext === 'pdf' && bytes.subarray(0, 5).toString('ascii') !== '%PDF-') {
         results.push({ filename: file.name, status: 'failed', error: 'El archivo no contiene una cabecera PDF válida.' })
@@ -191,7 +75,7 @@ export async function POST(request: Request) {
 
       if (existingUpload) {
         results.push({ filename: file.name, upload_id: existingUpload.id, document_id: existingUpload.finance_document_id, status: existingUpload.finance_document_id ? 'duplicate' : existingUpload.status, duplicate: Boolean(existingUpload.finance_document_id) })
-        if (existingUpload.finance_document_id) documentByBase.set(baseName(file.name), existingUpload.finance_document_id)
+        if (existingUpload.finance_document_id) documentByBase.set(siiBaseName(file.name), existingUpload.finance_document_id)
         continue
       }
 
@@ -222,13 +106,13 @@ export async function POST(request: Request) {
       }
 
       const result = registration as { upload_id?: string; document_id?: string | null; status?: string; classification_status?: string; duplicate?: boolean }
-      if (result.document_id) documentByBase.set(baseName(file.name), result.document_id)
+      if (result.document_id) documentByBase.set(siiBaseName(file.name), result.document_id)
       results.push({ filename: file.name, ...result })
     }
 
     for (const result of results) {
       if (typeof result.filename !== 'string' || !result.upload_id || result.document_id || result.status === 'failed') continue
-      const documentId = documentByBase.get(baseName(result.filename))
+      const documentId = documentByBase.get(siiBaseName(result.filename))
       if (!documentId || !String(result.filename).toLowerCase().endsWith('.pdf')) continue
       const { error } = await admin.from('finance_sii_uploads').update({ finance_document_id: documentId, status: 'linked', updated_at: new Date().toISOString() }).eq('id', result.upload_id)
       if (!error) {
