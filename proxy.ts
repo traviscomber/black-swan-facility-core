@@ -254,6 +254,18 @@ export async function proxy(request: NextRequest) {
     }
   }
 
+  // Intake-only users are confined to their one workspace and its two upload APIs.
+  if (routeAccess.role_key === "finance_uploader") {
+    const activeLocale = locale ?? DEFAULT_LOCALE
+    const allowedApi = isPathFamily(effectivePathname, "/api/finance/sii-invoices")
+      || isPathFamily(effectivePathname, "/api/finance/bank-statements")
+      || isPathFamily(effectivePathname, "/api/auth")
+    if (apiRequest && !allowedApi) return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+    if (!apiRequest && effectivePathname !== "/budgets/documents" && effectivePathname !== "/") {
+      return setLocaleCookie(NextResponse.redirect(localizedUrl(request, activeLocale, "/budgets/documents")), activeLocale)
+    }
+  }
+
   if (!apiRequest && isItControlPath(effectivePathname)) {
     const { data: effectiveAccessData, error: effectiveAccessError } = await supabase.rpc(
       "get_current_user_effective_access",

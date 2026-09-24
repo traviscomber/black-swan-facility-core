@@ -31,12 +31,24 @@ export default function LoginPage() {
       }
 
       if (data?.user) {
+        const normalizedEmail = data.user.email?.trim().toLowerCase() ?? ''
+        const isMaribel = normalizedEmail === 'maribel@blackswn.org'
         const requestedPath = searchParams.get('next')
-        const destination = requestedPath?.startsWith('/') && !requestedPath.startsWith('//')
+        const safeRequestedPath = requestedPath?.startsWith('/') && !requestedPath.startsWith('//')
           ? requestedPath
-          : `/${language}`
+          : null
+
+        const destination = isMaribel
+          ? '/es/budgets/documents'
+          : safeRequestedPath ?? `/${language}`
+
+        if (isMaribel) {
+          localStorage.setItem('language', 'es')
+          document.cookie = 'site-locale=es; path=/; samesite=lax'
+        }
+
+        router.replace(destination)
         router.refresh()
-        router.push(destination)
       }
     } catch (error: unknown) {
       toast.error(error instanceof Error ? error.message : copy.genericError)
