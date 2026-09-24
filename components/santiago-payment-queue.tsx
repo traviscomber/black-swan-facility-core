@@ -189,7 +189,7 @@ export function SantiagoPaymentQueue() {
             <p className="text-xs uppercase tracking-[0.14em] text-[var(--bs-cool-sage)]">Control final · Santiago</p>
             <h2 className="mt-2 text-xl font-normal text-[var(--bs-text-primary)]">Autorizar y ejecutar pagos</h2>
             <p className="mt-2 text-sm leading-6 text-[var(--bs-text-secondary)]">
-              Aquí llegan únicamente gastos ya validados por Raimundo. Santiago autoriza o rechaza el pago y, una vez autorizado, registra la ejecución con referencia bancaria.
+Solo lo que requiere acción: decidir pagos, ejecutar los autorizados y revisar cambios relevantes.
             </p>
           </div>
           <div className="flex items-center gap-3">
@@ -197,10 +197,9 @@ export function SantiagoPaymentQueue() {
             <Button variant="outline" onClick={() => void load()}><RefreshCw className="mr-2 h-4 w-4" />Actualizar</Button>
           </div>
         </div>
-        <div className="mt-5 grid gap-3 sm:grid-cols-4">
-          <Metric label="Por autorizar" value={counts.pending_santiago ?? 0} />
-          <Metric label="Autorizados" value={counts.authorized ?? 0} />
-          <Metric label="Rechazados" value={counts.rejected ?? 0} />
+        <div className="mt-5 grid gap-3 sm:grid-cols-3">
+          <Metric label="Por decidir" value={counts.pending_santiago ?? 0} />
+          <Metric label="Alertas nuevas" value={unreadAlerts.length} />
           <Metric label="Pagados" value={counts.paid ?? 0} />
         </div>
       </section>
@@ -208,14 +207,14 @@ export function SantiagoPaymentQueue() {
       <section className="bg-[var(--bs-surface-primary)] p-5 md:p-6">
         <div className="flex items-center justify-between gap-3">
           <div>
-            <p className="text-xs uppercase tracking-[0.14em] text-[var(--bs-warm-yellow)]">Cambios recientes</p>
-            <h3 className="mt-2 text-lg text-[var(--bs-text-primary)]">Alertas financieras · {unreadAlerts.length} sin leer</h3>
-            <p className="mt-1 text-sm text-[var(--bs-text-secondary)]">Santiago recibe cambios aunque todavía no exista un pago accionable.</p>
+            <p className="text-xs uppercase tracking-[0.14em] text-[var(--bs-warm-yellow)]">Atención</p>
+            <h3 className="mt-2 text-lg text-[var(--bs-text-primary)]">Cambios relevantes · {unreadAlerts.length}</h3>
+            <p className="mt-1 text-sm text-[var(--bs-text-secondary)]">Solo cambios de estado que Santiago necesita conocer.</p>
           </div>
           {unreadAlerts.length > 0 && <Button variant="outline" onClick={() => void markAllAlertsRead()}>Marcar leídas</Button>}
         </div>
         <div className="mt-4 divide-y divide-[var(--bs-divider-subtle)]">
-          {alerts.slice(0, 8).map((alert) => <button key={alert.id} type="button" onClick={() => void markAlertRead(alert)} className="flex w-full items-start gap-3 py-3 text-left">
+          {alerts.filter((alert) => !alert.read_at).slice(0, 5).map((alert) => <button key={alert.id} type="button" onClick={() => void markAlertRead(alert)} className="flex w-full items-start gap-3 py-3 text-left">
             <Bell className={`mt-0.5 h-4 w-4 shrink-0 ${alert.read_at ? 'text-[var(--bs-text-muted)]' : 'text-[var(--bs-warm-yellow)]'}`} />
             <span className="min-w-0 flex-1">
               <span className="block text-sm text-[var(--bs-text-primary)]">{alert.title}</span>
@@ -223,7 +222,7 @@ export function SantiagoPaymentQueue() {
             </span>
             {!alert.read_at && <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-[var(--bs-warm-yellow)]" />}
           </button>)}
-          {!alerts.length && <p className="py-5 text-sm text-[var(--bs-text-muted)]">Sin cambios recientes.</p>}
+          {!unreadAlerts.length && <p className="py-5 text-sm text-[var(--bs-text-muted)]">Sin alertas pendientes.</p>}
         </div>
       </section>
 
