@@ -265,7 +265,7 @@ export default function BookingsCalendarPage() {
     if (!resizeState || resizeState.pointerId !== pointerEvent.pointerId) { clearResize(); return }
     const pendingResize = resizeState
     if (pendingResize.previewStart === pendingResize.originalStart && pendingResize.previewEnd === pendingResize.originalEnd) { clearResize(); return }
-    if (resizeConflict) { toast.error(resizeConflict.event_type === "block" ? "Las nuevas fechas chocan con un bloqueo" : "Las nuevas fechas chocan con otra reserva"); clearResize(); return }
+    if (resizeConflict) { toast.error(resizeConflict.event_type === "block" ? pageCopy.resizeBlockConflict : pageCopy.resizeReservationConflict); clearResize(); return }
     const previousEvents = events
     setError(null)
     captureRect(pendingResize.reservationId, blockRefs.current.get(pendingResize.reservationId) ?? null)
@@ -277,12 +277,12 @@ export default function BookingsCalendarPage() {
     if (resizeError || !result?.success) {
       captureRect(pendingResize.reservationId, blockRefs.current.get(pendingResize.reservationId) ?? null)
       pendingFlipIds.current.push(pendingResize.reservationId)
-      setEvents(previousEvents); const message = resizeError?.message ?? result?.message ?? "La disponibilidad cambió antes de confirmar las fechas"; setError(message); toast.error("El cambio de fechas fue rechazado y se restauró la reserva"); clearResize(); return
+      setEvents(previousEvents); const message = resizeError?.message ?? result?.message ?? pageCopy.resizeChanged; setError(message); toast.error(pageCopy.resizeRejected); clearResize(); return
     }
     captureRect(pendingResize.reservationId, blockRefs.current.get(pendingResize.reservationId) ?? null)
     pendingFlipIds.current.push(pendingResize.reservationId)
     setEvents((current) => current.map((event) => event.event_type === "reservation" && event.event_id === pendingResize.reservationId ? { ...event, starts_on: result.check_in, ends_on: result.check_out } : event))
-    toast.success(`Reserva actualizada: ${result.check_in} → ${result.check_out}`); clearResize(); await refreshEvents()
+    toast.success(`${pageCopy.reservationUpdated}: ${result.check_in} → ${result.check_out}`); clearResize(); await refreshEvents()
   }
   async function openBlock(event: CalendarEvent) { setError(null); const { data, error: detailError } = await supabase.from("room_blocks").select("id, room_id, start_date, end_date, block_type, reason, notes, status").eq("id", event.event_id).single(); if (detailError) { setError(detailError.message); return }; setSelectedBlock(data as RoomBlock) }
 
@@ -300,9 +300,9 @@ export default function BookingsCalendarPage() {
     try {
       const res = await fetch("/api/bookings/bulk/status", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ reservation_ids: [...selectedIds], status: nextStatus }) })
       const data = await res.json()
-      if (!res.ok || !data.success) { toast.error(data.error ?? "No fue posible actualizar el estado"); return }
-      armUndoTimer(data.operation_id); toast.success(`${data.updated_count} reserva${data.updated_count !== 1 ? "s" : ""} actualizadas a "${STATUS_LABELS[nextStatus] ?? nextStatus}"`); clearSelection(); await refreshEvents()
-    } catch { toast.error("Error de red al actualizar estado") } finally { setBulkLoading(false) }
+      if (!res.ok || !data.success) { toast.error(data.error ?? pageCopy.statusUpdateFailed); return }
+      const nextLabel = nextStatus === "pending" ? pageCopy.pending : nextStatus === "confirmed" ? pageCopy.confirmed : nextStatus === "checked_in" ? pageCopy.checkedIn : nextStatus === "checked_out" ? pageCopy.completed : nextStatus; armUndoTimer(data.operation_id); toast.success(`${data.updated_count} ${pageCopy.modified} · ${nextLabel}`); clearSelection(); await refreshEvents()
+    } catch { toast.error(pageCopy.statusNetworkError) } finally { setBulkLoading(false) }
   }
 
   async function executeBulkShift(daysDelta: number) {
@@ -312,10 +312,10 @@ export default function BookingsCalendarPage() {
     try {
       const res = await fetch("/api/bookings/bulk/execute", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ reservation_ids: [...selectedIds], updates, operation_type: "move" }) })
       const data = await res.json()
-      if (res.status === 409) { setBulkConflicts(data.conflicts ?? []); toast.error(data.error ?? "Conflictos detectados"); return }
-      if (!res.ok || !data.success) { toast.error(data.error ?? "No fue posible mover las reservas"); return }
-      armUndoTimer(data.operation_id); toast.success(`${data.updated_count} reserva${data.updated_count !== 1 ? "s" : ""} movidas`); clearSelection(); await refreshEvents()
-    } catch { toast.error("Error de red al mover reservas") } finally { setBulkLoading(false) }
+      if (res.status === 409) { setBulkConflicts(data.conflicts ?? []); toast.error(data.error ?? pageCopy.conflictsDetected); return }
+      if (!res.ok || !data.success) { toast.error(data.error ?? pageCopy.moveFailed); return }
+      armUndoTimer(data.operation_id); toast.success(`${data.updated_count} ${pageCopy.moved}`); clearSelection(); await refreshEvents()
+    } catch { toast.error(pageCopy.moveNetworkError) } finally { setBulkLoading(false) }
   }
 
   async function executeBulkExtend(daysExtend: number) {
@@ -325,7 +325,7 @@ export default function BookingsCalendarPage() {
     try {
       const res = await fetch("/api/bookings/bulk/execute", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ reservation_ids: [...selectedIds], updates, operation_type: daysExtend > 0 ? "extend" : "reduce" }) })
       const data = await res.json()
-      if (res.status === 409) { setBulkConflicts(data.conflicts ?? []); toast.error(data.error ?? "Conflictos detectados"); return }
+      if (res.status === 409) { setBulkConflicts(data.conflicts ?? []); toast.error(data.error ?? pageCopy.conflictsDetected); return }
       if (!res.ok || !data.success) { toast.error(data.error ?? "No fue posible modificar las reservas"); return }
       armUndoTimer(data.operation_id); toast.success(`${data.updated_count} ${pageCopy.modified}`); clearSelection(); await refreshEvents()
     } catch { toast.error(pageCopy.networkModifyError) } finally { setBulkLoading(false) }
