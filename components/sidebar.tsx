@@ -80,6 +80,7 @@ const itemIcons: Record<string, ElementType> = {
   fuel: Fuel,
   budget: DollarSign,
   approvals: CheckSquare,
+  payments: DollarSign,
   documents: Receipt,
   reconciliation: TrendingUp,
   accounting: DollarSign,
@@ -111,6 +112,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const [userEmail, setUserEmail] = useState<string | null>(null)
   const [userInitials, setUserInitials] = useState("?")
   const [financePendingCount, setFinancePendingCount] = useState(0)
+  const [financePaymentPendingCount, setFinancePaymentPendingCount] = useState(0)
 
   useEffect(() => {
     void supabase.auth.getUser().then(({ data: { user } }) => {
@@ -136,17 +138,21 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
   useEffect(() => {
     if (!canAccessDepartment("finance")) {
       setFinancePendingCount(0)
+      setFinancePaymentPendingCount(0)
       return
     }
     let cancelled = false
     const loadFinancePendingCount = async () => {
-      const [readyResult, mappingResult, reviewResult] = await Promise.all([
+      const [readyResult, mappingResult, reviewResult, payerResult, paymentPendingResult] = await Promise.all([
         supabase.from("finance_documents").select("id", { count: "exact", head: true }).eq("approval_status", "ready"),
         supabase.from("finance_documents").select("id", { count: "exact", head: true }).eq("approval_status", "pending_mapping"),
         supabase.rpc("can_finance_review_ambiguous"),
+        supabase.rpc("can_finance_payment_authorize"),
+        supabase.from("finance_documents").select("id", { count: "exact", head: true }).eq("payment_status", "pending_santiago"),
       ])
       if (cancelled) return
       setFinancePendingCount((readyResult.count ?? 0) + (reviewResult.data ? (mappingResult.count ?? 0) : 0))
+      setFinancePaymentPendingCount(payerResult.data ? (paymentPendingResult.count ?? 0) : 0)
     }
     void loadFinancePendingCount()
     const handler = () => void loadFinancePendingCount()
@@ -231,7 +237,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                 </Link>
                 {!isToday && area.items.length > 0 && <button onClick={() => toggleSetValue(setExpandedAreas, expandedAreas, area.key)} className="rounded p-2 hover:bg-muted" aria-label={`${t("shell.toggle")} ${t(area.labelKey)}`}><ChevronDown className={cn("h-4 w-4 transition-transform", expandedAreas.has(area.key) ? "rotate-0" : "-rotate-90")} /></button>}
               </div>
-              {!isToday && expandedAreas.has(area.key) && <div className="space-y-0.5 pl-2">{area.items.map((item) => <NavItem key={item.key} item={item} language={language} internalPathname={internalPathname} t={t} onClose={onClose} financePendingCount={financePendingCount} expandedItems={expandedItems} toggleItem={() => toggleSetValue(setExpandedItems, expandedItems, item.key)} />)}</div>}
+              {!isToday && expandedAreas.has(area.key) && <div className="space-y-0.5 pl-2">{area.items.map((item) => <NavItem key={item.key} item={item} language={language} internalPathname={internalPathname} t={t} onClose={onClose} financePendingCount={financePendingCount} financePaymentPendingCount={financePaymentPendingCount} expandedItems={expandedItems} toggleItem={() => toggleSetValue(setExpandedItems, expandedItems, item.key)} />)}</div>}
             </div>
           })}
 
@@ -260,12 +266,12 @@ function isItemActive(pathname: string, item: OsNavItem) {
   return pathname === item.href || (item.href !== "/" && pathname.startsWith(`${item.href}/`)) || Boolean(item.subItems?.some((subItem) => pathname === subItem.href))
 }
 
-function NavItem({ item, language, internalPathname, t, onClose, financePendingCount, expandedItems, toggleItem }: { item: OsNavItem; language: string; internalPathname: string; t: (key: string) => string; onClose?: () => void; financePendingCount: number; expandedItems: Set<string>; toggleItem: () => void }) {
+function NavItem({ item, language, internalPathname, t, onClose, financePendingCount, financePaymentPendingCount, expandedItems, toggleItem }: { item: OsNavItem; language: string; internalPathname: string; t: (key: string) => string; onClose?: () => void; financePendingCount: number; financePaymentPendingCount: number; expandedItems: Set<string>; toggleItem: () => void }) {
   const Icon = itemIcons[item.key] ?? LayoutDashboard
   const isActive = isItemActive(internalPathname, item)
   const hasSubItems = Boolean(item.subItems?.length)
   const isExpanded = expandedItems.has(item.key)
-  const badgeValue = item.badge === "finance_pending" ? financePendingCount : 0
+  const badgeValue = item.badge === "finance_pending" ? financePendingCount : item.badge === "finance_payment_pending" ? financePaymentPendingCount : 0
   return <div className="min-w-0">
     <div className="flex min-w-0 items-center">
       <Link href={localizedHref(language, item.href)} onClick={onClose} className={cn("group flex min-w-0 flex-1 items-center gap-3 rounded px-3 py-2 text-sm font-medium transition-colors", isActive ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted hover:text-foreground")} title={t(item.tipKey)}><Icon className="h-4 w-4 flex-shrink-0" /><span className="flex-1 truncate">{t(item.nameKey)}</span>{badgeValue > 0 && <span className="min-w-6 bg-[var(--bs-warm-yellow)] px-1.5 py-0.5 text-center text-[11px] font-semibold text-[var(--bs-bg-primary)]">{badgeValue > 99 ? "99+" : badgeValue}</span>}</Link>

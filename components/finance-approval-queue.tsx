@@ -43,6 +43,7 @@ type QueueRow = {
 }
 type Division = { id: string; name: string }
 type Category = { id: string; division_id: string; name: string }
+type HistoricalCenter = { id: string; historical_label: string; operational_label: string | null; division_id: string; category_id: string }
 
 const pct = new Intl.NumberFormat('es-CL', { style: 'percent', maximumFractionDigits: 0 })
 function n(value: unknown) { const parsed = Number(value ?? 0); return Number.isFinite(parsed) ? parsed : 0 }
@@ -77,23 +78,31 @@ export function FinanceApprovalQueue() {
   const [divisions, setDivisions] = useState<Division[]>([])
   const [categories, setCategories] = useState<Category[]>([])
   const [reassigningId, setReassigningId] = useState<string | null>(null)
-  const [reassignDivision, setReassignDivision] = useState('')
-  const [reassignCategory, setReassignCategory] = useState('')
+  const [historicalCenters, setHistoricalCenters] = useState<HistoricalCenter[]>([])
+  const [reassignCenterId, setReassignCenterId] = useState('')
   const [reassignNote, setReassignNote] = useState('')
+  const [canApprove, setCanApprove] = useState(false)
+  const [canAdmin, setCanAdmin] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
-    const [queueResult, divisionResult, categoryResult] = await Promise.all([
+    const [queueResult, divisionResult, categoryResult, centerResult, approvePermission, adminPermission] = await Promise.all([
       supabase.from('finance_approval_queue').select('*').order('queue_order').order('document_date', { ascending: false }),
       supabase.from('budget_divisions').select('id,name').eq('is_active', true).eq('is_aggregate', false).not('source_key', 'is', null).order('sort_order'),
       supabase.from('budget_categories').select('id,division_id,name').eq('is_active', true).not('source_key', 'is', null).eq('category_role', 'cost').order('sort_order'),
+      supabase.from('finance_historical_cost_centers').select('id,historical_label,operational_label,division_id,category_id').eq('mapping_status','mapped').not('division_id','is',null).not('category_id','is',null).order('historical_label'),
+      supabase.rpc('can_finance_approve'),
+      supabase.rpc('can_finance_admin'),
     ])
-    const error = queueResult.error || divisionResult.error || categoryResult.error
+    const error = queueResult.error || divisionResult.error || categoryResult.error || centerResult.error || approvePermission.error || adminPermission.error
     if (error) toast.error(error.message)
     else {
       setRows((queueResult.data ?? []) as QueueRow[])
       setDivisions((divisionResult.data ?? []) as Division[])
       setCategories((categoryResult.data ?? []) as Category[])
+      setHistoricalCenters((centerResult.data ?? []) as HistoricalCenter[])
+      setCanApprove(Boolean(approvePermission.data))
+      setCanAdmin(Boolean(adminPermission.data))
     }
     setLoading(false)
   }, [supabase])
@@ -141,26 +150,25 @@ export function FinanceApprovalQueue() {
 
   function startReassign(row: QueueRow) {
     setReassigningId(row.id)
-    setReassignDivision(row.division_id ?? '')
-    setReassignCategory(row.category_id ?? '')
+    const current = historicalCenters.find((center) => center.division_id === row.division_id && center.category_id === row.category_id && center.operational_label === row.operational_label)
+    setReassignCenterId(current?.id ?? '')
     setReassignNote('')
   }
 
   async function reassign(row: QueueRow) {
-    if (!reassignDivision || !reassignCategory || !reassignNote.trim()) {
-      toast.error('Selecciona P&L, categoría y registra el motivo del cambio.')
+    if (!reassignCenterId || !reassignNote.trim()) {
+      toast.error('Selecciona el centro de costo correcto y registra el motivo del cambio.')
       return
     }
     setBusy(true)
     const { error } = await supabase.rpc('reassign_finance_document_center', {
       p_document_id: row.id,
-      p_division_id: reassignDivision,
-      p_category_id: reassignCategory,
+      p_target_center_id: reassignCenterId,
       p_note: reassignNote.trim(),
     })
     if (error) toast.error(error.message)
     else {
-      toast.success('Centro/categoría reasignado. El documento sigue listo para decisión de Raimundo.')
+      toast.success('Centro de costo reasignado. El documento sigue listo para decisión de Raimundo.')
       setReassigningId(null)
       setReassignNote('')
       await load()
@@ -215,11 +223,11 @@ export function FinanceApprovalQueue() {
       <section className="bg-[var(--bs-surface-primary)]">
         <div className="flex flex-col gap-3 p-4 md:flex-row md:items-center md:justify-between">
           <div className="flex flex-wrap gap-2">{tabs.map((tab) => <button key={tab.key} type="button" onClick={() => setStatus(tab.key)} className={`min-h-10 px-3 text-xs ${status === tab.key ? 'bg-[var(--bs-surface-elevated)] text-[var(--bs-text-primary)]' : 'bg-[var(--bs-surface-secondary)] text-[var(--bs-text-secondary)] hover:text-[var(--bs-text-primary)]'}`}>{tab.label} · {counts[tab.key] ?? 0}</button>)}</div>
-          {status === 'ready' && eligible.length > 0 && <Button onClick={() => void approve(Array.from(selected.size ? selected : new Set(eligible.map((row) => row.id))))} disabled={busy}><CheckCircle2 className="mr-2 h-4 w-4" />{selected.size ? `Aprobar ${selected.size}` : `Aprobar elegibles (${eligible.length})`}</Button>}
+          {status === 'ready' && canApprove && eligible.length > 0 && <Button onClick={() => void approve(Array.from(selected.size ? selected : new Set(eligible.map((row) => row.id))))} disabled={busy}><CheckCircle2 className="mr-2 h-4 w-4" />{selected.size ? `Aprobar ${selected.size}` : `Aprobar elegibles (${eligible.length})`}</Button>}
         </div>
         <div className="overflow-x-auto">
           <table className="w-full min-w-[1160px] text-sm">
-            <thead className="text-left text-xs uppercase tracking-[0.1em] text-[var(--bs-text-muted)]"><tr>{status === 'ready' && <th className="w-12 px-4 py-3 font-normal"><input type="checkbox" checked={eligible.length > 0 && eligible.every((row) => selected.has(row.id))} onChange={toggleAllEligible} disabled={!eligible.length} aria-label="Seleccionar todos los elegibles" /></th>}<th className="px-4 py-3 font-normal">Documento</th><th className="px-4 py-3 font-normal">Budget</th><th className="px-4 py-3 font-normal">Clasificación histórica</th><th className="px-4 py-3 text-right font-normal">Monto</th><th className="px-4 py-3 font-normal">Evidencia</th><th className="px-4 py-3 text-right font-normal">Acción</th></tr></thead>
+            <thead className="text-left text-xs uppercase tracking-[0.1em] text-[var(--bs-text-muted)]"><tr>{status === 'ready' && <th className="w-12 px-4 py-3 font-normal"><input type="checkbox" checked={eligible.length > 0 && eligible.every((row) => selected.has(row.id))} onChange={toggleAllEligible} disabled={!eligible.length} aria-label="Seleccionar todos los elegibles" /></th>}<th className="px-4 py-3 font-normal">Documento</th><th className="px-4 py-3 font-normal">Centro de costo / imputación</th><th className="px-4 py-3 font-normal">Clasificación histórica</th><th className="px-4 py-3 text-right font-normal">Monto</th><th className="px-4 py-3 font-normal">Evidencia</th><th className="px-4 py-3 text-right font-normal">Acción</th></tr></thead>
             <tbody>
               {filtered.map((row) => {
                 const mapped = isCanonicalMapped(row)
@@ -233,30 +241,31 @@ export function FinanceApprovalQueue() {
                   <td className="px-4 py-4 text-right">{row.approval_status === 'pending_mapping' ? <span className="text-xs text-[var(--bs-text-muted)]">Mapear arriba</span> : row.approval_status === 'ready' ? (
                     <div className="space-y-2">
                       <div className="flex justify-end gap-2">
-                        <Button size="sm" onClick={() => void approve([row.id])} disabled={busy || !mapped}><Check className="mr-2 h-4 w-4" />Aprobar</Button>
-                        <Button size="sm" variant="outline" onClick={() => startReassign(row)} disabled={busy}>Reasignar</Button>
-                        <Button size="sm" variant="outline" onClick={() => void reject(row)} disabled={busy}><X className="mr-2 h-4 w-4" />Rechazar gasto</Button>
+                        {canApprove && <Button size="sm" onClick={() => void approve([row.id])} disabled={busy || !mapped}><Check className="mr-2 h-4 w-4" />Aprobar</Button>}
+                        {canApprove && <Button size="sm" variant="outline" onClick={() => startReassign(row)} disabled={busy}>Reasignar</Button>}
+                        {canApprove && <Button size="sm" variant="outline" onClick={() => void reject(row)} disabled={busy}><X className="mr-2 h-4 w-4" />Rechazar gasto</Button>}
+                        {!canApprove && <span className="text-xs text-[var(--bs-text-muted)]">Solo lectura</span>}
                       </div>
                       {reassigningId === row.id && (
                         <div className="ml-auto w-[340px] space-y-2 bg-[var(--bs-surface-secondary)] p-3 text-left">
-                          <p className="text-xs text-[var(--bs-text-secondary)]">Corrige la imputación antes de aprobar. El documento no avanza a Santiago hasta que Raimundo confirme.</p>
-                          <select value={reassignDivision} onChange={(event) => { setReassignDivision(event.target.value); setReassignCategory('') }} className="h-9 w-full bg-[var(--bs-bg-primary)] px-2 text-xs text-[var(--bs-text-primary)]">
-                            <option value="">Seleccionar P&L</option>
-                            {divisions.map((division) => <option key={division.id} value={division.id}>{division.name}</option>)}
-                          </select>
-                          <select value={reassignCategory} onChange={(event) => setReassignCategory(event.target.value)} disabled={!reassignDivision} className="h-9 w-full bg-[var(--bs-bg-primary)] px-2 text-xs text-[var(--bs-text-primary)] disabled:opacity-50">
-                            <option value="">Seleccionar categoría</option>
-                            {categories.filter((category) => category.division_id === reassignDivision).map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}
+                          <p className="text-xs text-[var(--bs-text-secondary)]">Selecciona el centro de costo correcto antes de aprobar. El documento no avanza a Santiago hasta que Raimundo confirme.</p>
+                          <select value={reassignCenterId} onChange={(event) => setReassignCenterId(event.target.value)} className="h-9 w-full bg-[var(--bs-bg-primary)] px-2 text-xs text-[var(--bs-text-primary)]">
+                            <option value="">Seleccionar centro de costo</option>
+                            {historicalCenters.map((center) => {
+                              const division = divisions.find((item) => item.id === center.division_id)?.name ?? 'P&L'
+                              const category = categories.find((item) => item.id === center.category_id)?.name ?? 'Categoría'
+                              return <option key={center.id} value={center.id}>{center.operational_label ?? center.historical_label} · {division} · {category}</option>
+                            })}
                           </select>
                           <input value={reassignNote} onChange={(event) => setReassignNote(event.target.value)} placeholder="Motivo de la reasignación" className="h-9 w-full bg-[var(--bs-bg-primary)] px-2 text-xs text-[var(--bs-text-primary)]" />
                           <div className="flex justify-end gap-2">
                             <Button size="sm" variant="outline" onClick={() => setReassigningId(null)} disabled={busy}>Cancelar</Button>
-                            <Button size="sm" onClick={() => void reassign(row)} disabled={busy || !reassignDivision || !reassignCategory || !reassignNote.trim()}>Guardar reasignación</Button>
+                            <Button size="sm" onClick={() => void reassign(row)} disabled={busy || !reassignCenterId || !reassignNote.trim()}>Guardar reasignación</Button>
                           </div>
                         </div>
                       )}
                     </div>
-                  ) : row.approval_status === 'pending_valuation' ? <Button size="sm" onClick={() => void valueInEur(row)} disabled={busy}>Valorizar EUR</Button> : <span className="text-xs text-[var(--bs-text-muted)]">{row.approval_status === 'approved' ? 'Posteado al Budget' : 'Rechazado'}</span>}</td>
+                  ) : row.approval_status === 'pending_valuation' ? (canAdmin ? <Button size="sm" onClick={() => void valueInEur(row)} disabled={busy}>Valorizar EUR</Button> : <span className="text-xs text-[var(--bs-text-muted)]">Aprobado por Raimundo</span>) : <span className="text-xs text-[var(--bs-text-muted)]">{row.approval_status === 'approved' ? 'Posteado al Budget' : 'Rechazado'}</span>}</td>
                 </tr>
               })}
               {!loading && !filtered.length && <tr><td colSpan={7} className="px-5 py-12 text-center text-[var(--bs-text-muted)]">No hay documentos en esta etapa.</td></tr>}
