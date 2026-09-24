@@ -327,8 +327,8 @@ export default function BookingsCalendarPage() {
       const data = await res.json()
       if (res.status === 409) { setBulkConflicts(data.conflicts ?? []); toast.error(data.error ?? "Conflictos detectados"); return }
       if (!res.ok || !data.success) { toast.error(data.error ?? "No fue posible modificar las reservas"); return }
-      armUndoTimer(data.operation_id); toast.success(`${data.updated_count} reserva${data.updated_count !== 1 ? "s" : ""} modificadas`); clearSelection(); await refreshEvents()
-    } catch { toast.error("Error de red al modificar reservas") } finally { setBulkLoading(false) }
+      armUndoTimer(data.operation_id); toast.success(`${data.updated_count} ${pageCopy.modified}`); clearSelection(); await refreshEvents()
+    } catch { toast.error(pageCopy.networkModifyError) } finally { setBulkLoading(false) }
   }
 
   async function executeBulkDelete() {
@@ -337,9 +337,9 @@ export default function BookingsCalendarPage() {
     try {
       const res = await fetch("/api/bookings/bulk/delete", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ reservation_ids: [...selectedIds] }) })
       const data = await res.json()
-      if (!res.ok || !data.success) { toast.error(data.error ?? "No fue posible eliminar las reservas"); return }
-      toast.success(`${data.deleted_count} reserva${data.deleted_count !== 1 ? "s" : ""} eliminadas`); clearSelection(); await refreshEvents()
-    } catch { toast.error("Error de red al eliminar reservas") } finally { setBulkLoading(false) }
+      if (!res.ok || !data.success) { toast.error(data.error ?? pageCopy.deleteFailed); return }
+      toast.success(`${data.deleted_count} ${pageCopy.deleted}`); clearSelection(); await refreshEvents()
+    } catch { toast.error(pageCopy.networkDeleteError) } finally { setBulkLoading(false) }
   }
 
   async function undoLastOperation() {
@@ -348,10 +348,10 @@ export default function BookingsCalendarPage() {
     try {
       const res = await fetch("/api/bookings/bulk/undo", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ operation_id: lastOperationId }) })
       const data = await res.json()
-      if (!res.ok || !data.success) { toast.error(data.error ?? "No fue posible deshacer la operación"); return }
+      if (!res.ok || !data.success) { toast.error(data.error ?? pageCopy.undoFailed); return }
       if (undoTimerRef.current) clearTimeout(undoTimerRef.current)
-      setLastOperationId(null); setUndoExpiry(null); toast.success(`Operación deshecha: ${data.restored_count} reserva${data.restored_count !== 1 ? "s" : ""} restauradas`); await refreshEvents()
-    } catch { toast.error("Error de red al deshacer") } finally { setBulkLoading(false) }
+      setLastOperationId(null); setUndoExpiry(null); toast.success(`${pageCopy.undo}: ${data.restored_count} ${pageCopy.restored}`); await refreshEvents()
+    } catch { toast.error(pageCopy.networkUndoError) } finally { setBulkLoading(false) }
   }
 
   const rangeLabel = `${format(startDate, "dd MMM")} - ${format(addDays(endDate, -1), "dd MMM")}`
@@ -361,24 +361,24 @@ export default function BookingsCalendarPage() {
   return <div className="min-h-screen bg-[#101314]">
     <div className="sticky top-0 z-50 border-b border-white/10 bg-[#17191a]">
       <div className="flex min-h-12 items-center gap-1.5 overflow-x-auto px-2 py-1.5">
-        <Input type="month" value={monthValue} onChange={(event) => { if (event.target.value) setStartDate(bookingDateFromKey(`${event.target.value}-01`)) }} className="h-8 w-[160px] shrink-0 border-white/10 bg-[#111314] text-xs" aria-label="Month" />
+        <Input type="month" value={monthValue} onChange={(event) => { if (event.target.value) setStartDate(bookingDateFromKey(`${event.target.value}-01`)) }} className="h-8 w-[160px] shrink-0 border-white/10 bg-[#111314] text-xs" aria-label={pageCopy.month} />
         <Button variant="outline" size="sm" className="h-8 shrink-0 border-emerald-600 px-3 text-emerald-400 hover:bg-emerald-950" onClick={() => setStartDate(bookingTodayDate())}><CalendarDays className="mr-1.5 h-3.5 w-3.5" />{pageCopy.today}</Button>
         <Button variant="outline" size="icon" className="h-8 w-8 shrink-0" onClick={() => setStartDate(addDays(startDate, -rangeDays))}><ChevronLeft className="h-4 w-4" /></Button>
         <div className="min-w-[108px] shrink-0 text-center text-[11px] font-medium text-white/75">{rangeLabel}</div>
         <Button variant="outline" size="icon" className="h-8 w-8 shrink-0" onClick={() => setStartDate(addDays(startDate, rangeDays))}><ChevronRight className="h-4 w-4" /></Button>
         <div className="ml-auto flex items-center gap-1.5" aria-label="Calendar actions">
-          <Button variant="outline" size="icon" className="h-8 w-8 shrink-0" title="Print calendar" aria-label="Print calendar" onClick={() => window.print()}><Printer className="h-4 w-4" /></Button>
-          <Button asChild variant="outline" size="icon" className="h-8 w-8 shrink-0" title="Rooms & beds" aria-label="Rooms & beds"><Link href={`/${language}/bookings/rooms`}><BedDouble className="h-4 w-4" /></Link></Button>
+          <Button variant="outline" size="icon" className="h-8 w-8 shrink-0" title={pageCopy.print} aria-label={pageCopy.print} onClick={() => window.print()}><Printer className="h-4 w-4" /></Button>
+          <Button asChild variant="outline" size="icon" className="h-8 w-8 shrink-0" title={pageCopy.roomsBeds} aria-label={pageCopy.roomsBeds}><Link href={`/${language}/bookings/rooms`}><BedDouble className="h-4 w-4" /></Link></Button>
           <Button size="sm" className="h-8 shrink-0 bg-emerald-600 px-3 text-xs text-white hover:bg-emerald-500" onClick={() => { setPreselectedBed(null); setPreselectedDate(null); setPreselectedCheckOutDate(null); setNewReservationOpen(true) }}><Plus className="mr-1 h-3.5 w-3.5" />{addLabel}</Button>
-          <Button variant="outline" size="icon" className="h-8 w-8 shrink-0" title="Search" aria-label="Search" onClick={() => searchInputRef.current?.focus()}><Search className="h-4 w-4" /></Button>
-          <Button variant="outline" size="icon" className="h-8 w-8 shrink-0" onClick={() => void refreshEvents()} title="Refresh" aria-label="Refresh"><RefreshCw className="h-4 w-4" /></Button>
-          <Button asChild variant="outline" size="icon" className="h-8 w-8 shrink-0" title="Tasks & alerts" aria-label="Tasks & alerts"><Link href={`/${language}/bookings/operations`}><Bell className="h-4 w-4" /></Link></Button>
-          <Button asChild variant="outline" size="icon" className="h-8 w-8 shrink-0" title="Profile" aria-label="Profile"><Link href={`/${language}/bookings/profile`}><UserCircle className="h-4 w-4" /></Link></Button>
+          <Button variant="outline" size="icon" className="h-8 w-8 shrink-0" title={pageCopy.search} aria-label={pageCopy.search} onClick={() => searchInputRef.current?.focus()}><Search className="h-4 w-4" /></Button>
+          <Button variant="outline" size="icon" className="h-8 w-8 shrink-0" onClick={() => void refreshEvents()} title={pageCopy.refresh} aria-label={pageCopy.refresh}><RefreshCw className="h-4 w-4" /></Button>
+          <Button asChild variant="outline" size="icon" className="h-8 w-8 shrink-0" title={pageCopy.tasksAlerts} aria-label={pageCopy.tasksAlerts}><Link href={`/${language}/bookings/operations`}><Bell className="h-4 w-4" /></Link></Button>
+          <Button asChild variant="outline" size="icon" className="h-8 w-8 shrink-0" title={pageCopy.profile} aria-label={pageCopy.profile}><Link href={`/${language}/bookings/profile`}><UserCircle className="h-4 w-4" /></Link></Button>
         </div>
       </div>
       <div className="flex min-h-10 items-center gap-1.5 overflow-x-auto border-t border-white/5 px-2 py-1">
-        <div className="relative min-w-[240px] flex-1"><Search className="absolute left-3 top-2 h-4 w-4 text-white/35" /><Input ref={searchInputRef} className="h-8 border-white/10 bg-[#111314] pl-9 text-xs" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search guest or room" /></div>
-        <Select value={locationId} onValueChange={setLocationId}><SelectTrigger className="h-8 w-44 shrink-0 border-white/10 bg-[#111314] text-xs"><SelectValue placeholder="Property" /></SelectTrigger><SelectContent><SelectItem value="all">All properties</SelectItem>{locations.map((item) => <SelectItem key={item.id} value={item.id}>{item.name}</SelectItem>)}</SelectContent></Select>
+        <div className="relative min-w-[240px] flex-1"><Search className="absolute left-3 top-2 h-4 w-4 text-white/35" /><Input ref={searchInputRef} className="h-8 border-white/10 bg-[#111314] pl-9 text-xs" value={search} onChange={(event) => setSearch(event.target.value)} placeholder={pageCopy.searchPlaceholder} /></div>
+        <Select value={locationId} onValueChange={setLocationId}><SelectTrigger className="h-8 w-44 shrink-0 border-white/10 bg-[#111314] text-xs"><SelectValue placeholder={pageCopy.property} /></SelectTrigger><SelectContent><SelectItem value="all">{pageCopy.allProperties}</SelectItem>{locations.map((item) => <SelectItem key={item.id} value={item.id}>{item.name}</SelectItem>)}</SelectContent></Select>
         <Select value={status} onValueChange={setStatus}><SelectTrigger className="h-8 w-36 shrink-0 border-white/10 bg-[#111314] text-xs"><SelectValue placeholder={pageCopy.allStatuses} /></SelectTrigger><SelectContent><SelectItem value="all">{pageCopy.allStatuses}</SelectItem><SelectItem value="pending">{pageCopy.pending}</SelectItem><SelectItem value="confirmed">{pageCopy.confirmed}</SelectItem><SelectItem value="checked_in">{pageCopy.checkedIn}</SelectItem><SelectItem value="checked_out">{pageCopy.completed}</SelectItem></SelectContent></Select>
         <Select value={String(rangeDays)} onValueChange={(value) => setRangeDays(Number(value))}><SelectTrigger className="h-8 w-24 shrink-0 border-white/10 bg-[#111314] text-xs"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="7">7 {pageCopy.days}</SelectItem><SelectItem value="14">14 {pageCopy.days}</SelectItem><SelectItem value="19">19 {pageCopy.days}</SelectItem><SelectItem value="30">30 {pageCopy.days}</SelectItem></SelectContent></Select>
       </div>
@@ -389,7 +389,7 @@ export default function BookingsCalendarPage() {
     {lastOperationId && undoSecondsLeft > 0 && <div className="flex items-center gap-3 border-b border-primary/20 bg-primary/5 px-4 py-2"><RotateCcw className="h-4 w-4 text-primary" /><p className="flex-1 text-xs">{pageCopy.operationComplete} · {undoSecondsLeft}s {pageCopy.undoWindow}.</p><Button size="sm" variant="outline" onClick={undoLastOperation} disabled={bulkLoading}>{pageCopy.undo}</Button></div>}
 
     <Card className="overflow-hidden border-0 bg-transparent shadow-none">
-      {isBulkMode && <div className="flex flex-wrap items-center gap-2 border-b border-white/10 bg-primary/5 px-3 py-2"><span className="mr-1 text-xs font-semibold text-primary">{selectedIds.size} {pageCopy.selected}</span><Button size="sm" variant="outline" onClick={selectAll} disabled={bulkLoading}><CheckSquare className="mr-1.5 h-3.5 w-3.5" />{pageCopy.all}</Button><Button size="sm" variant="outline" onClick={() => executeBulkShift(-1)} disabled={bulkLoading}>-1 día</Button><Button size="sm" variant="outline" onClick={() => executeBulkShift(1)} disabled={bulkLoading}>+1 día</Button><Button size="sm" variant="outline" onClick={() => executeBulkShift(7)} disabled={bulkLoading}>+7 días</Button><Button size="sm" variant="outline" onClick={() => executeBulkExtend(1)} disabled={bulkLoading}>{pageCopy.extend} +1</Button><Button size="sm" variant="outline" onClick={() => executeBulkExtend(-1)} disabled={bulkLoading}>{pageCopy.reduce} -1</Button><Button size="sm" variant="outline" onClick={() => executeBulkStatus("confirmed")} disabled={bulkLoading}>Confirmar</Button><Button size="sm" variant="outline" onClick={() => executeBulkStatus("checked_in")} disabled={bulkLoading}>Check-in</Button><Button size="sm" variant="outline" onClick={() => executeBulkStatus("cancelled")} disabled={bulkLoading}>{pageCopy.cancel}</Button><Button size="sm" variant="destructive" onClick={executeBulkDelete} disabled={bulkLoading}><Trash2 className="mr-1.5 h-3.5 w-3.5" />{pageCopy.delete}</Button><div className="ml-auto flex items-center gap-2">{bulkLoading && <Loader2 className="h-4 w-4 animate-spin" />}<Button size="sm" variant="ghost" onClick={clearSelection}><X className="mr-1.5 h-3.5 w-3.5" />{pageCopy.clear}</Button></div></div>}
+      {isBulkMode && <div className="flex flex-wrap items-center gap-2 border-b border-white/10 bg-primary/5 px-3 py-2"><span className="mr-1 text-xs font-semibold text-primary">{selectedIds.size} {pageCopy.selected}</span><Button size="sm" variant="outline" onClick={selectAll} disabled={bulkLoading}><CheckSquare className="mr-1.5 h-3.5 w-3.5" />{pageCopy.all}</Button><Button size="sm" variant="outline" onClick={() => executeBulkShift(-1)} disabled={bulkLoading}>-1 {pageCopy.shiftDay}</Button><Button size="sm" variant="outline" onClick={() => executeBulkShift(1)} disabled={bulkLoading}>+1 {pageCopy.shiftDay}</Button><Button size="sm" variant="outline" onClick={() => executeBulkShift(7)} disabled={bulkLoading}>+7 {pageCopy.days}</Button><Button size="sm" variant="outline" onClick={() => executeBulkExtend(1)} disabled={bulkLoading}>{pageCopy.extend} +1</Button><Button size="sm" variant="outline" onClick={() => executeBulkExtend(-1)} disabled={bulkLoading}>{pageCopy.reduce} -1</Button><Button size="sm" variant="outline" onClick={() => executeBulkStatus("confirmed")} disabled={bulkLoading}>{pageCopy.confirmAction}</Button><Button size="sm" variant="outline" onClick={() => executeBulkStatus("checked_in")} disabled={bulkLoading}>{pageCopy.checkInAction}</Button><Button size="sm" variant="outline" onClick={() => executeBulkStatus("cancelled")} disabled={bulkLoading}>{pageCopy.cancel}</Button><Button size="sm" variant="destructive" onClick={executeBulkDelete} disabled={bulkLoading}><Trash2 className="mr-1.5 h-3.5 w-3.5" />{pageCopy.delete}</Button><div className="ml-auto flex items-center gap-2">{bulkLoading && <Loader2 className="h-4 w-4 animate-spin" />}<Button size="sm" variant="ghost" onClick={clearSelection}><X className="mr-1.5 h-3.5 w-3.5" />{pageCopy.clear}</Button></div></div>}
 
       <TimelineGrid
         dates={dates}
