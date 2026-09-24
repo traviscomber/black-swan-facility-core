@@ -103,3 +103,14 @@ test("reservation list defaults to live operations and isolates old imported his
   assert.match(reservationList, /scope === "history" \? historicalImported : !historicalImported/)
   assert.match(reservationList, /sourceAmount:"Source amount"/)
 })
+
+
+test("stay cockpit nests secondary tasks into two compact operational workspaces", () => {
+  assert.match(stayCockpit, /data-stay-operations/)
+  assert.match(stayCockpit, /data-stay-details/)
+  assert.match(stayCockpit, /function NestedSection/)
+  assert.match(stayCockpit, /activeOperations/)
+  assert.match(stayCockpit, /defaultOpen=\{activeHousekeeping > 0\}/)
+  assert.match(stayCockpit, /defaultOpen=\{activeRequests > 0\}/)
+  assert.match(stayCockpit, /defaultOpen=\{activeIssues > 0\}/)
+})
