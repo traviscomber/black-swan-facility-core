@@ -195,3 +195,12 @@ test("calendar primary toolbar keeps only high-frequency actions visible", () =>
   assert.match(actions, /<Bell/)
   assert.match(actions, /<details/)
 })
+
+
+test("calendar view controls are consolidated and inactive properties collapse by default", () => {
+  assert.match(timelineGrid, /Expand active/)
+  assert.match(timelineGrid, /function expandActiveGroups/)
+  assert.match(timelineGrid, /uniqueGroupReservationEvents\(group, eventsByBed\)\.length === 0/)
+  assert.match(timelineGrid, /<details className="group relative">/)
+  assert.doesNotMatch(timelineGrid, /inline-flex h-5 w-5 items-center justify-center border/)
+})
