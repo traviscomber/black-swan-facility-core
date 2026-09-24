@@ -31,7 +31,7 @@ export async function GET() {
   const access = await authorized()
   if ('error' in access) return access.error
   const { data, error } = await access.supabase.from('finance_bank_statement_uploads')
-    .select('id,original_filename,period_start,period_end,status,created_at')
+    .select('id,original_filename,period_start,period_end,status,created_at,processed_at,matched_count,unmatched_count,processing_error')
     .order('created_at', { ascending: false }).limit(20)
   if (error) return NextResponse.json({ error: 'Could not load bank statements' }, { status: 500 })
   return NextResponse.json({ rows: data ?? [] })
