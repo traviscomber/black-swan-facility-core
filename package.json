@@ -27,7 +27,7 @@
     "test:e2e:booking": "node scripts/run-booking-calendar-e2e.mjs",
     "test:visual": "node scripts/run-visual-qa.mjs",
     "map:backfill-derivatives": "node scripts/backfill-gis-overlay-derivatives.mjs",
-    "test:finance": "node --experimental-strip-types --test tests/finance-sii-upload.test.ts tests/finance-payment-control.test.ts"
+    "test:finance": "node --experimental-strip-types --test tests/finance-sii-upload.test.ts tests/finance-payment-control.test.ts tests/finance-status-alerts.test.ts"
   },
   "pnpm": {
     "onlyBuiltDependencies": [
