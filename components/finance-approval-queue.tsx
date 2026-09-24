@@ -200,22 +200,6 @@ export function FinanceApprovalQueue() {
     setBusy(false)
   }
 
-  async function valueInEur(row: QueueRow) {
-    const amountRaw = window.prompt(`Monto canónico en EUR para ${row.document_number}`)
-    if (!amountRaw) return
-    const rateRaw = window.prompt(`Tipo de cambio: EUR por 1 ${row.currency}`)
-    if (!rateRaw) return
-    const dateRaw = window.prompt('Fecha del tipo de cambio (AAAA-MM-DD)', row.document_date)
-    if (!dateRaw) return
-    const amount = Number(amountRaw.replace(',', '.'))
-    const rate = Number(rateRaw.replace(',', '.'))
-    if (!Number.isFinite(amount) || amount <= 0 || !Number.isFinite(rate) || rate <= 0) { toast.error('Monto EUR o tipo de cambio inválido.'); return }
-    setBusy(true)
-    const { error } = await supabase.rpc('value_finance_document_eur', { p_document_id: row.id, p_amount_eur: amount, p_fx_rate_to_eur: rate, p_fx_date: dateRaw, p_notes: 'Valorización EUR validada desde aprobación financiera' })
-    if (error) toast.error(error.message); else toast.success('Valorización EUR registrada y posteada al Budget.')
-    await load(); setBusy(false)
-  }
-
   return (
     <div className="space-y-5 p-4 md:p-8">
       <section className="bg-[var(--bs-surface-primary)] p-5 md:p-6">
