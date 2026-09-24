@@ -150,13 +150,6 @@ export function TimelineGrid(props: TimelineGridProps) {
   const c = copy[language]
   const dateLocale = dateLocales[language]
   const layers = useMemo(() => layerIcons.map((item) => ({ ...item, label: c.layers[item.key] })), [c.layers])
-  const statusLegend = useMemo(() => [
-    { label: c.legend.pending, className: "bg-amber-400" },
-    { label: c.legend.confirmed, className: "bg-blue-600" },
-    { label: c.legend.checkedIn, className: "bg-emerald-600" },
-    { label: c.legend.completed, className: "bg-slate-500" },
-    { label: c.legend.block, className: "bg-zinc-800" },
-  ], [c.legend])
   const totalWidth = LABEL_WIDTH + timelineWidth
   const isInteracting = Boolean(draggingEventId) || isResizing
   const scrollRef = useCalendarAutoscroll({ active: isInteracting })
@@ -272,9 +265,6 @@ export function TimelineGrid(props: TimelineGridProps) {
           <button type="button" title={c.summary} aria-label={c.summary} onClick={() => setPreferences((current) => ({ ...current, showSummary: !current.showSummary }))} className={`inline-flex h-5 w-5 items-center justify-center border transition hover:bg-muted ${preferences.showSummary ? "border-primary/40 bg-primary/10 text-primary" : "bg-background text-muted-foreground"}`}><Rows3 className="h-3.5 w-3.5" /></button>
           <button type="button" title={`${c.shortcuts} · ${c.interactionHint}`} aria-label={c.shortcuts} onClick={() => setShowKeyboardHelp((current) => !current)} className={`inline-flex h-5 w-5 items-center justify-center border transition hover:bg-muted ${showKeyboardHelp ? "border-primary/40 bg-primary/10 text-primary" : "bg-background text-muted-foreground"}`}><Keyboard className="h-3.5 w-3.5" /></button>
           {inventoryGroups.length > 0 && <button type="button" title={allGroupsCollapsed ? c.expandGroups : c.collapseGroups} aria-label={allGroupsCollapsed ? c.expandGroups : c.collapseGroups} onClick={toggleAllGroups} className="inline-flex h-5 w-5 items-center justify-center border bg-background text-muted-foreground transition hover:bg-muted"><ChevronRight className={`h-3.5 w-3.5 transition-transform ${allGroupsCollapsed ? "" : "rotate-90"}`} /></button>}
-          <div className="ml-1 flex items-center gap-1 border-l pl-2" aria-label={c.statusLegend}>
-            {statusLegend.map((item) => <span key={item.label} title={item.label} aria-label={item.label} className={`h-1.5 w-1.5 ${item.className}`} />)}
-          </div>
         </div>
         {showKeyboardHelp && <div className="flex flex-wrap items-center gap-x-5 gap-y-1 border-t bg-muted/20 px-3 py-1.5 text-[10px] text-muted-foreground"><span>{c.interactionHint}</span><span><kbd>←/→</kbd> {c.navigate}</span><span><kbd>S</kbd> {c.summary.toLowerCase()}</span><span><kbd>L</kbd> {c.layersButton.toLowerCase()}</span><span><kbd>⌘/Ctrl+A</kbd> {c.select}</span><span><kbd>?</kbd> {c.help}</span></div>}
         {preferences.showLayerToolbar && <div className="flex flex-wrap items-center gap-1 border-t bg-muted/20 px-2 py-1">
