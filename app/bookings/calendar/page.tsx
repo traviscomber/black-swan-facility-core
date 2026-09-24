@@ -50,7 +50,7 @@ export default function BookingsCalendarPage() {
   const [search, setSearch] = useState("")
   const [showFilters, setShowFilters] = useState(false)
   const [rangeDays, setRangeDays] = useState(33)
-  const [startDate, setStartDate] = useState(bookingTodayDate)
+  const [startDate, setStartDate] = useState(() => { const requested = searchParams.get("date"); return requested && /^\\d{4}-\\d{2}-\\d{2}$/.test(requested) ? bookingDateFromKey(requested) : bookingTodayDate() })
   const [inventoryReady, setInventoryReady] = useState(false)
   const [eventsReady, setEventsReady] = useState(false)
   const [error, setError] = useState<string | null>(null)

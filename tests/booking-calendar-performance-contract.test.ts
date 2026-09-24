@@ -154,3 +154,19 @@ test("calendar keeps BedBooking-like filters collapsed behind the familiar searc
   assert.match(calendarPage, /aria-expanded=\{showFilters\}/)
   assert.match(calendarPage, /\{showFilters && <div className="flex min-h-9/)
 })
+
+
+test("expanded reservation combines operational activities into one compact infinite-calendar lane", () => {
+  const lanes = readFileSync(new URL("../components/calendar/reservation-operational-lanes.tsx", import.meta.url), "utf8")
+  assert.match(lanes, /data-combined-operations-lane/)
+  assert.match(lanes, /const operationItems = visibleLanes/)
+  assert.match(lanes, /filter\(\(lane\) => lane\.key !== "milestones"\)/)
+  assert.match(lanes, /min-h-\[42px\]/)
+  assert.doesNotMatch(lanes, /visibleLanes\.map\(\(\{ key, label, Icon, className, items \}\)/)
+})
+
+test("calendar supports an explicit date deep-link for operational QA and handoff", () => {
+  const calendarPage = readFileSync(new URL("../app/bookings/calendar/page.tsx", import.meta.url), "utf8")
+  assert.match(calendarPage, /searchParams\.get\("date"\)/)
+  assert.match(calendarPage, /bookingDateFromKey\(requested\)/)
+})
