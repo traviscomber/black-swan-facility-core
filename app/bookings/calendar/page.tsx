@@ -48,7 +48,8 @@ export default function BookingsCalendarPage() {
   const [search, setSearch] = useState("")
   const [rangeDays, setRangeDays] = useState(33)
   const [startDate, setStartDate] = useState(bookingTodayDate)
-  const [loading, setLoading] = useState(true)
+  const [inventoryReady, setInventoryReady] = useState(false)
+  const [eventsReady, setEventsReady] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [newReservationOpen, setNewReservationOpen] = useState(false)
   const [preselectedBed, setPreselectedBed] = useState<Bed | null>(null)
@@ -143,15 +144,16 @@ export default function BookingsCalendarPage() {
 
   useEffect(() => {
     let active = true
-    setLoading(true)
     setError(null)
-    void loadInventory().finally(() => { if (active) setLoading(false) })
+    void loadInventory().finally(() => { if (active) setInventoryReady(true) })
     return () => { active = false }
   }, [loadInventory])
 
   useEffect(() => {
+    let active = true
     setError(null)
-    void loadEvents()
+    void loadEvents().finally(() => { if (active) setEventsReady(true) })
+    return () => { active = false }
   }, [loadEvents])
   useEffect(() => {
     const scheduleEvents = () => {
@@ -187,6 +189,7 @@ export default function BookingsCalendarPage() {
     return () => clearInterval(interval)
   }, [undoExpiry])
 
+  const loading = !inventoryReady || !eventsReady
   const searchTerm = search.trim().toLowerCase()
   const roomMatchedBedIds = useMemo(() => {
     const matched = new Set<string>()
