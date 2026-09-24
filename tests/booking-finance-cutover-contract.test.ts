@@ -83,3 +83,14 @@ test("final booking hardening closes concurrent booking and payment races", () =
   assert.match(finalHardeningMigration, /where id = p_reservation_id\s+for update/)
   assert.match(finalHardeningMigration, /p_amount > v_balance/)
 })
+
+
+test("historical imports are reference-only and cannot look operational", () => {
+  assert.match(stayCockpit, /historicalImported = reservation\.source === "canonical_event_xls" && reservation\.check_out < todayChile/)
+  assert.match(stayCockpit, /historicalNote:"Imported history for reference only/)
+  assert.match(stayCockpit, /!historicalImported && <button[^>]*setInvoiceOpen/)
+  assert.match(stayCockpit, /historicalImported \? c\.historical/)
+  assert.match(stayCockpit, /historicalImported \? <Row title=\{c\.historicalAmount\}/)
+  assert.match(stayCockpit, /\{!historicalImported && <><Panel title=\{c\.housekeeping\}/)
+  assert.match(stayCockpit, /\{!historicalImported && <InvoiceEditorModal/)
+})
