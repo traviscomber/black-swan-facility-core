@@ -60,7 +60,6 @@ function isCanonicalMapped(row: QueueRow) { return Boolean(row.division_name && 
 const tabs: Array<{ key: ApprovalStatus; label: string }> = [
   { key: 'pending_mapping', label: 'Por clasificar' },
   { key: 'ready', label: 'Para decidir' },
-  { key: 'pending_valuation', label: 'Valorar EUR' },
   { key: 'approved', label: 'Aprobadas' },
   { key: 'rejected', label: 'Rechazadas' },
 ]
