@@ -156,7 +156,7 @@ test("calendar keeps BedBooking-like filters collapsed behind the familiar searc
 })
 
 test("calendar day range is available without opening search filters", () => {
-  const toolbar = calendarPage.slice(calendarPage.indexOf('return <div className="flex h-full'), calendarPage.indexOf('{showFilters &&'))
+  const toolbar = calendarPage.slice(calendarPage.indexOf('return <div ref={calendarRef}'), calendarPage.indexOf('{showFilters &&'))
   assert.match(toolbar, /<Select value=\{String\(rangeDays\)\}/)
   for (const days of [7, 14, 19, 30, 33]) assert.match(toolbar, new RegExp(`value="${days}"`))
   assert.match(calendarPage, /<Card className="flex min-h-0 flex-1 flex-col gap-0[^\n]*py-0/)

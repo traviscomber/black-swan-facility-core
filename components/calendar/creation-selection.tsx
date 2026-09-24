@@ -2,7 +2,7 @@
 
 import { useCallback, useState } from "react"
 import { addDays, format } from "date-fns"
-import { DAY_WIDTH, ROW_HEIGHT } from "./timeline-row"
+import { ROW_HEIGHT } from "./timeline-row"
 import { ReservationPreview } from "./reservation-preview"
 import { useLanguage } from "@/lib/hooks/use-language"
 
@@ -17,6 +17,7 @@ export interface CreationRange {
 export interface CreationSelectionProps {
   bedId: string
   dates: Date[]
+  dayWidth: number
   timelineWidth: number
   isActive: boolean
   onCreationStart: (range: CreationRange) => void
@@ -33,6 +34,7 @@ const previewLabels = {
 export function CreationSelection({
   bedId,
   dates,
+  dayWidth,
   timelineWidth,
   isActive,
   onCreationStart,
@@ -61,12 +63,12 @@ export function CreationSelection({
       e.preventDefault()
       e.stopPropagation()
       const rect = e.currentTarget.getBoundingClientRect()
-      const dayIndex = Math.floor((e.clientX - rect.left) / DAY_WIDTH)
+      const dayIndex = Math.floor((e.clientX - rect.left) / dayWidth)
       if (dayIndex < 0 || dayIndex >= dates.length) return
       setDragState({ startX: e.clientX, startIndex: dayIndex, currentIndex: dayIndex })
       onCreationStart(toRange(dayIndex, dayIndex))
       e.currentTarget.setPointerCapture(e.pointerId)
-    }, [dates.length, isActive, onCreationStart, toRange])
+    }, [dates.length, dayWidth, isActive, onCreationStart, toRange])
 
   const handlePointerMove = useCallback(
     (e: React.PointerEvent<HTMLDivElement>) => {
@@ -74,11 +76,11 @@ export function CreationSelection({
       e.preventDefault()
       e.stopPropagation()
       const rect = e.currentTarget.getBoundingClientRect()
-      const dayIndex = Math.max(0, Math.min(dates.length - 1, Math.floor((e.clientX - rect.left) / DAY_WIDTH)))
+      const dayIndex = Math.max(0, Math.min(dates.length - 1, Math.floor((e.clientX - rect.left) / dayWidth)))
       const [startIdx, endIdx] = dayIndex >= dragState.startIndex ? [dragState.startIndex, dayIndex] : [dayIndex, dragState.startIndex]
       setDragState((prev) => prev ? { ...prev, currentIndex: dayIndex } : null)
       onCreationStart(toRange(startIdx, endIdx))
-    }, [dates.length, dragState, onCreationStart, toRange])
+    }, [dates.length, dayWidth, dragState, onCreationStart, toRange])
 
   const handlePointerUp = useCallback(
     (e: React.PointerEvent<HTMLDivElement>) => {
@@ -86,13 +88,13 @@ export function CreationSelection({
       e.preventDefault()
       e.stopPropagation()
       const rect = e.currentTarget.getBoundingClientRect()
-      const dayIndex = Math.max(0, Math.min(dates.length - 1, Math.floor((e.clientX - rect.left) / DAY_WIDTH)))
+      const dayIndex = Math.max(0, Math.min(dates.length - 1, Math.floor((e.clientX - rect.left) / dayWidth)))
       const [startIdx, endIdx] = dayIndex >= dragState.startIndex ? [dragState.startIndex, dayIndex] : [dayIndex, dragState.startIndex]
       const createdRange = toRange(startIdx, endIdx)
       setDragState(null)
       if (e.currentTarget.hasPointerCapture(e.pointerId)) e.currentTarget.releasePointerCapture(e.pointerId)
       onCreationCommit(createdRange)
-    }, [dates.length, dragState, onCreationCommit, toRange])
+    }, [dates.length, dayWidth, dragState, onCreationCommit, toRange])
 
   const handlePointerCancel = useCallback(
     (e: React.PointerEvent<HTMLDivElement>) => {
@@ -109,7 +111,7 @@ export function CreationSelection({
     const [startIdx, endIdx] = dragState.currentIndex >= dragState.startIndex
       ? [dragState.startIndex, dragState.currentIndex]
       : [dragState.currentIndex, dragState.startIndex]
-    previewGeometry = { left: startIdx * DAY_WIDTH, width: (endIdx - startIdx + 1) * DAY_WIDTH }
+    previewGeometry = { left: startIdx * dayWidth, width: (endIdx - startIdx + 1) * dayWidth }
   }
 
   return (

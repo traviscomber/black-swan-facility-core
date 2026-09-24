@@ -18,11 +18,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useLanguage } from "@/lib/hooks/use-language"
 import { bookingsCalendarPageCopy } from "@/lib/translations/bookings-calendar-page"
 import { bookingDateFromKey, bookingTodayDate } from "@/lib/booking/timezone"
+import { calendarDayWidth } from "@/lib/bookings/calendar-day-width"
 import { type ReservationResizeEdge, useReservationResizeState } from "./use-reservation-resize-state"
 import { useFlipAnimation } from "./use-flip-animation"
 import { useCalendarInteraction } from "./use-calendar-interaction"
 import { TimelineGrid } from "@/components/calendar/timeline-grid"
-import { normalizedStatus } from "@/components/calendar/timeline-row"
+import { DAY_WIDTH, LABEL_WIDTH, normalizedStatus } from "@/components/calendar/timeline-row"
 
 interface Location { id: string; name: string }
 interface Bed { id: string; bed_number: string; bed_type: string; room: { id: string; room_number: string; room_type?: string; location_id: string; location_ref?: { id: string; name: string } } }
@@ -31,7 +32,6 @@ interface RoomBlock { id: string; room_id: string; start_date: string; end_date:
 interface ResizeRpcResult { success: boolean; message: string; check_in: string; check_out: string }
 interface BulkConflict { reservation_id: string; reason: string }
 
-const DAY_WIDTH = 46
 function intervalsOverlap(startA: string, endA: string, startB: string, endB: string) { return parseISO(startA) < parseISO(endB) && parseISO(endA) > parseISO(startB) }
 
 export default function BookingsCalendarPage() {
@@ -50,6 +50,8 @@ export default function BookingsCalendarPage() {
   const [search, setSearch] = useState("")
   const [showFilters, setShowFilters] = useState(false)
   const [rangeDays, setRangeDays] = useState(33)
+  const [calendarWidth, setCalendarWidth] = useState(0)
+  const calendarRef = useRef<HTMLDivElement | null>(null)
   const [startDate, setStartDate] = useState(() => { const requested = searchParams.get("date"); return requested && /^\\d{4}-\\d{2}-\\d{2}$/.test(requested) ? bookingDateFromKey(requested) : bookingTodayDate() })
   const [inventoryReady, setInventoryReady] = useState(false)
   const [eventsReady, setEventsReady] = useState(false)
@@ -86,11 +88,19 @@ export default function BookingsCalendarPage() {
   const [isTouchDevice, setIsTouchDevice] = useState(false)
 
   useEffect(() => { setIsTouchDevice(() => window.matchMedia("(hover: none)").matches || "ontouchstart" in window) }, [])
+  useEffect(() => {
+    const container = calendarRef.current
+    if (!container) return
+    const observer = new ResizeObserver(([entry]) => setCalendarWidth(entry.contentRect.width))
+    observer.observe(container)
+    return () => observer.disconnect()
+  }, [])
   useEffect(() => { if (searchParams.get("new") === "1") { setPreselectedBed(null); setPreselectedDate(null); setPreselectedCheckOutDate(null); setNewReservationOpen(true) } }, [searchParams])
 
   const endDate = useMemo(() => addDays(startDate, rangeDays), [startDate, rangeDays])
   const dates = useMemo(() => Array.from({ length: rangeDays }, (_, index) => addDays(startDate, index)), [rangeDays, startDate])
-  const timelineWidth = rangeDays * DAY_WIDTH
+  const dayWidth = calendarDayWidth(calendarWidth, rangeDays, LABEL_WIDTH, DAY_WIDTH)
+  const timelineWidth = rangeDays * dayWidth
 
   const loadInventory = useCallback(async () => {
     const bedsResult = await supabase.from("beds").select(`id, bed_number, bed_type, room:rooms!inner(id, room_number, room_type, location_id, location_ref:locations!inner(id, name, is_active))`).eq("room.location_ref.is_active", true).order("room_id")
@@ -261,14 +271,14 @@ export default function BookingsCalendarPage() {
   function clearSelection() { setSelectedIds(new Set()); setBulkConflicts([]) }
 
   function eventAt(bedId: string, date: Date, type: CalendarEvent["event_type"]) { return (eventsByBed.get(bedId) ?? []).find((event) => event.event_type === type && date >= parseISO(event.starts_on) && date < parseISO(event.ends_on)) }
-  function geometryForDates(startsOn: string, endsOn: string) { const eventStart = parseISO(startsOn) < startDate ? startDate : parseISO(startsOn); const eventEnd = parseISO(endsOn) > endDate ? endDate : parseISO(endsOn); const offsetDays = Math.max(0, differenceInCalendarDays(eventStart, startDate)); const durationDays = Math.max(1, differenceInCalendarDays(eventEnd, eventStart)); return { left: offsetDays * DAY_WIDTH + 2, width: Math.max(22, durationDays * DAY_WIDTH - 4) } }
+  function geometryForDates(startsOn: string, endsOn: string) { const eventStart = parseISO(startsOn) < startDate ? startDate : parseISO(startsOn); const eventEnd = parseISO(endsOn) > endDate ? endDate : parseISO(endsOn); const offsetDays = Math.max(0, differenceInCalendarDays(eventStart, startDate)); const durationDays = Math.max(1, differenceInCalendarDays(eventEnd, eventStart)); return { left: offsetDays * dayWidth + 2, width: Math.max(22, durationDays * dayWidth - 4) } }
   function eventGeometry(event: CalendarEvent) { return geometryForDates(event.starts_on, event.ends_on) }
 
   function openNewReservation(bed: Bed, date: Date) { if (eventAt(bed.id, date, "block") || eventAt(bed.id, date, "reservation")) return; setPreselectedBed(bed); setPreselectedDate(date); setNewReservationOpen(true) }
-  function openReservationFromTimeline(bed: Bed, clientX: number, currentTarget: HTMLDivElement) { if (draggingEventId || isResizing || confirmingReservationId || isBulkMode) return; const rect = currentTarget.getBoundingClientRect(); const offset = Math.max(0, Math.min(timelineWidth - 1, clientX - rect.left)); openNewReservation(bed, addDays(startDate, Math.floor(offset / DAY_WIDTH))) }
+  function openReservationFromTimeline(bed: Bed, clientX: number, currentTarget: HTMLDivElement) { if (draggingEventId || isResizing || confirmingReservationId || isBulkMode) return; const rect = currentTarget.getBoundingClientRect(); const offset = Math.max(0, Math.min(timelineWidth - 1, clientX - rect.left)); openNewReservation(bed, addDays(startDate, Math.floor(offset / dayWidth))) }
 
   function beginReservationResize(event: CalendarEvent, edge: ReservationResizeEdge, pointerEvent: React.PointerEvent<HTMLSpanElement>) { if (event.event_type !== "reservation" || movingReservationId || draggingEventId || confirmingReservationId || isBulkMode) return; pointerEvent.preventDefault(); pointerEvent.stopPropagation(); pointerEvent.currentTarget.setPointerCapture(pointerEvent.pointerId); beginResize({ reservationId: event.event_id, bedId: event.bed_id, edge, pointerId: pointerEvent.pointerId, pointerStartX: pointerEvent.clientX, startsOn: event.starts_on, endsOn: event.ends_on }) }
-  function moveReservationResize(pointerEvent: React.PointerEvent<HTMLSpanElement>) { if (!resizeState || resizeState.pointerId !== pointerEvent.pointerId) return; pointerEvent.preventDefault(); pointerEvent.stopPropagation(); const deltaDays = Math.round((pointerEvent.clientX - resizeState.pointerStartX) / DAY_WIDTH); const originalStart = parseISO(resizeState.originalStart); const originalEnd = parseISO(resizeState.originalEnd); if (resizeState.edge === "left") { const candidate = addDays(originalStart, deltaDays); const latestStart = addDays(originalEnd, -1); updatePreview(format(candidate > latestStart ? latestStart : candidate, "yyyy-MM-dd"), resizeState.originalEnd) } else { const candidate = addDays(originalEnd, deltaDays); const earliestEnd = addDays(originalStart, 1); updatePreview(resizeState.originalStart, format(candidate < earliestEnd ? earliestEnd : candidate, "yyyy-MM-dd")) } }
+  function moveReservationResize(pointerEvent: React.PointerEvent<HTMLSpanElement>) { if (!resizeState || resizeState.pointerId !== pointerEvent.pointerId) return; pointerEvent.preventDefault(); pointerEvent.stopPropagation(); const deltaDays = Math.round((pointerEvent.clientX - resizeState.pointerStartX) / dayWidth); const originalStart = parseISO(resizeState.originalStart); const originalEnd = parseISO(resizeState.originalEnd); if (resizeState.edge === "left") { const candidate = addDays(originalStart, deltaDays); const latestStart = addDays(originalEnd, -1); updatePreview(format(candidate > latestStart ? latestStart : candidate, "yyyy-MM-dd"), resizeState.originalEnd) } else { const candidate = addDays(originalEnd, deltaDays); const earliestEnd = addDays(originalStart, 1); updatePreview(resizeState.originalStart, format(candidate < earliestEnd ? earliestEnd : candidate, "yyyy-MM-dd")) } }
   async function finishReservationResize(pointerEvent: React.PointerEvent<HTMLSpanElement>) {
     pointerEvent.preventDefault(); pointerEvent.stopPropagation()
     if (pointerEvent.currentTarget.hasPointerCapture(pointerEvent.pointerId)) pointerEvent.currentTarget.releasePointerCapture(pointerEvent.pointerId)
@@ -368,7 +378,7 @@ export default function BookingsCalendarPage() {
   const monthValue = format(startDate, "yyyy-MM")
   const addLabel = language === "es" ? "Agregar" : language === "de" ? "Hinzufügen" : "Add"
 
-  return <div className="flex h-full min-h-0 flex-col bg-[#101314]">
+  return <div ref={calendarRef} className="flex h-full min-h-0 flex-col bg-[#101314]">
     <div className="sticky top-0 z-50 border-b border-white/10 bg-[#17191a]">
       <div className="flex min-h-12 items-center gap-1.5 overflow-x-auto px-2 py-1.5">
         <Input type="month" value={monthValue} onChange={(event) => { if (event.target.value) setStartDate(bookingDateFromKey(`${event.target.value}-01`)) }} className="h-8 w-[160px] shrink-0 border-white/10 bg-[#111314] text-xs" aria-label={pageCopy.month} />
@@ -409,6 +419,7 @@ export default function BookingsCalendarPage() {
       <TimelineGrid
         dates={dates}
         rangeDays={rangeDays}
+        dayWidth={dayWidth}
         timelineWidth={timelineWidth}
         isTouchDevice={isTouchDevice}
         visibleBeds={visibleBeds}

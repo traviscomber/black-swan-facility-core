@@ -98,6 +98,7 @@ export interface ResizeState {
 export interface TimelineRowProps {
   bed: Bed
   dates: Date[]
+  dayWidth: number
   timelineWidth: number
   isTouchDevice: boolean
   bedEvents: CalendarEvent[]
@@ -138,7 +139,7 @@ export interface TimelineRowProps {
 
 export function TimelineRow(props: TimelineRowProps) {
   const {
-    bed, dates, timelineWidth, isTouchDevice, bedEvents, activeLayers, selectedIds, conflictIds, isBulkMode, onToggleSelect,
+    bed, dates, dayWidth, timelineWidth, isTouchDevice, bedEvents, activeLayers, selectedIds, conflictIds, isBulkMode, onToggleSelect,
     draggingEventId, dropTargetBedId, movingReservationId, moveConflict, draggingEvent, onEventPointerDown,
     onEventPointerMove, onEventPointerUp, onEventPointerCancel, resizeState, resizingReservationId,
     confirmingReservationId, isResizing, resizeConflict, onBeginResize, onMoveResize, onFinishResize,
@@ -165,9 +166,9 @@ export function TimelineRow(props: TimelineRowProps) {
             </div>
           </div>
         </div>
-        <div className="relative cursor-crosshair" style={{ width: timelineWidth, height: ROW_HEIGHT, backgroundImage: `repeating-linear-gradient(to right, transparent 0, transparent ${DAY_WIDTH - 1}px, rgba(255,255,255,.06) ${DAY_WIDTH - 1}px, rgba(255,255,255,.06) ${DAY_WIDTH}px)` }} onClick={(event) => onRowClick(bed, event.clientX, event.currentTarget)}>
-          <CreationSelection bedId={bed.id} dates={dates} timelineWidth={timelineWidth} isActive={!draggingEventId && !isResizing && !isBulkMode} onCreationStart={onCreationStart} onCreationAbort={onCreationAbort} onCreationCommit={onCreationCommit} />
-          {dates.map((date, index) => isBookingToday(date) ? <div key={`today-${bed.id}-${index}`} className="pointer-events-none absolute inset-y-0 bg-emerald-600/20" style={{ left: index * DAY_WIDTH, width: DAY_WIDTH }} /> : null)}
+        <div className="relative cursor-crosshair" style={{ width: timelineWidth, height: ROW_HEIGHT, backgroundImage: `repeating-linear-gradient(to right, transparent 0, transparent ${dayWidth - 1}px, rgba(255,255,255,.06) ${dayWidth - 1}px, rgba(255,255,255,.06) ${dayWidth}px)` }} onClick={(event) => onRowClick(bed, event.clientX, event.currentTarget)}>
+          <CreationSelection bedId={bed.id} dates={dates} dayWidth={dayWidth} timelineWidth={timelineWidth} isActive={!draggingEventId && !isResizing && !isBulkMode} onCreationStart={onCreationStart} onCreationAbort={onCreationAbort} onCreationCommit={onCreationCommit} />
+          {dates.map((date, index) => isBookingToday(date) ? <div key={`today-${bed.id}-${index}`} className="pointer-events-none absolute inset-y-0 bg-emerald-600/20" style={{ left: index * dayWidth, width: dayWidth }} /> : null)}
           {bedEvents.map((event) => {
             const geometry = eventGeometry(event)
             const isBlock = event.event_type === "block"

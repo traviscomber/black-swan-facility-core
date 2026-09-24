@@ -6,7 +6,7 @@ import { de, enUS, es } from "date-fns/locale"
 import { BedDouble, CheckSquare, ChevronRight, CircleDollarSign, ConciergeBell, Flag, Keyboard, Layers3, Rows3, Sparkles, Square, TriangleAlert, Wrench } from "lucide-react"
 import { CardContent } from "@/components/ui/card"
 import { toast } from "sonner"
-import { TimelineRow, DAY_WIDTH, LABEL_WIDTH, type Bed, type CalendarEvent, type ResizeState, type TimelineRowProps } from "./timeline-row"
+import { TimelineRow, LABEL_WIDTH, type Bed, type CalendarEvent, type ResizeState, type TimelineRowProps } from "./timeline-row"
 import type { ReservationResizeEdge } from "@/app/bookings/calendar/use-reservation-resize-state"
 import { useCalendarAutoscroll } from "@/app/bookings/calendar/use-calendar-autoscroll"
 import { CalendarDailyOperationsSummary } from "@/components/calendar/calendar-daily-operations-summary"
@@ -19,6 +19,7 @@ import { isBookingToday } from "@/lib/booking/timezone"
 export interface TimelineGridProps {
   dates: Date[]
   rangeDays: number
+  dayWidth: number
   timelineWidth: number
   isTouchDevice: boolean
   visibleBeds: Bed[]
@@ -139,7 +140,7 @@ function freeBedForRange(roomBeds: Bed[], eventsByBed: Map<string, CalendarEvent
 
 export function TimelineGrid(props: TimelineGridProps) {
   const {
-    dates, rangeDays, timelineWidth, isTouchDevice, visibleBeds, loading, eventsByBed, availabilityEventsByBed, selectedIds, conflictIds, isBulkMode,
+    dates, rangeDays, dayWidth, timelineWidth, isTouchDevice, visibleBeds, loading, eventsByBed, availabilityEventsByBed, selectedIds, conflictIds, isBulkMode,
     visibleReservationEvents, onToggleSelect, onSelectAll, onClearSelection, draggingEventId, dropTargetBedId,
     movingReservationId, moveConflict, draggingEvent, onEventPointerDown, onEventPointerMove, onEventPointerUp,
     onEventPointerCancel, resizeState, resizingReservationId, confirmingReservationId, isResizing, resizeConflict,
@@ -212,8 +213,8 @@ export function TimelineGrid(props: TimelineGridProps) {
   useEffect(() => {
     if (!scrollRef.current || dates.length === 0) return
     const todayIndex = dates.findIndex((date) => isBookingToday(date))
-    if (todayIndex >= 0) scrollRef.current.scrollLeft = todayIndex * DAY_WIDTH
-  }, [dates, scrollRef])
+    if (todayIndex >= 0) scrollRef.current.scrollLeft = todayIndex * dayWidth
+  }, [dates, dayWidth, scrollRef])
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
@@ -223,12 +224,12 @@ export function TimelineGrid(props: TimelineGridProps) {
       if (event.key.toLowerCase() === "s") { event.preventDefault(); setPreferences((current) => ({ ...current, showSummary: !current.showSummary })); return }
       if (event.key.toLowerCase() === "l") { event.preventDefault(); setPreferences((current) => ({ ...current, showLayerToolbar: !current.showLayerToolbar })); return }
       if (event.key.toLowerCase() === "a" && (event.ctrlKey || event.metaKey)) { event.preventDefault(); if (isBulkMode) onClearSelection(); else onSelectAll(); return }
-      if (event.key === "ArrowLeft" && scrollRef.current) { event.preventDefault(); scrollRef.current.scrollBy({ left: -DAY_WIDTH * 2, behavior: "smooth" }); return }
-      if (event.key === "ArrowRight" && scrollRef.current) { event.preventDefault(); scrollRef.current.scrollBy({ left: DAY_WIDTH * 2, behavior: "smooth" }) }
+      if (event.key === "ArrowLeft" && scrollRef.current) { event.preventDefault(); scrollRef.current.scrollBy({ left: -dayWidth * 2, behavior: "smooth" }); return }
+      if (event.key === "ArrowRight" && scrollRef.current) { event.preventDefault(); scrollRef.current.scrollBy({ left: dayWidth * 2, behavior: "smooth" }) }
     }
     window.addEventListener("keydown", onKeyDown)
     return () => window.removeEventListener("keydown", onKeyDown)
-  }, [isBulkMode, onClearSelection, onSelectAll, scrollRef, setPreferences])
+  }, [dayWidth, isBulkMode, onClearSelection, onSelectAll, scrollRef, setPreferences])
 
   function updateCollapsedGroups(next: Set<string>) {
     setCollapsedGroups(next)
@@ -258,7 +259,7 @@ export function TimelineGrid(props: TimelineGridProps) {
   }
   function toggleAllLayers() { setPreferences((current) => ({ ...current, activeLayers: current.activeLayers.length === layers.length ? [] : defaultLayers })) }
   const sharedRowProps: Omit<TimelineRowProps, "bed" | "bedEvents" | "onRowClick" | "onCreationCommit"> = {
-    dates, timelineWidth, isTouchDevice, activeLayers, selectedIds, conflictIds, isBulkMode, onToggleSelect,
+    dates, dayWidth, timelineWidth, isTouchDevice, activeLayers, selectedIds, conflictIds, isBulkMode, onToggleSelect,
     draggingEventId, dropTargetBedId, movingReservationId, moveConflict, draggingEvent, onEventPointerDown,
     onEventPointerMove, onEventPointerUp, onEventPointerCancel, resizeState, resizingReservationId,
     confirmingReservationId, isResizing, resizeConflict, onBeginResize, onMoveResize, onFinishResize, onClearResize,
@@ -297,7 +298,7 @@ export function TimelineGrid(props: TimelineGridProps) {
               {visibleReservationEvents.length > 0 && <button type="button" onClick={isBulkMode ? onClearSelection : onSelectAll} className="shrink-0 text-white/50 transition hover:text-white" aria-label={isBulkMode ? c.deselectAll : c.selectAll}>{isBulkMode ? <CheckSquare className="h-4 w-4 text-primary" /> : <Square className="h-4 w-4" />}</button>}
               <span>{c.rooms} ({roomCount})</span>
             </div>
-            <div className="grid" style={{ width: timelineWidth, gridTemplateColumns: `repeat(${rangeDays}, ${DAY_WIDTH}px)` }}>
+            <div className="grid" style={{ width: timelineWidth, gridTemplateColumns: `repeat(${rangeDays}, ${dayWidth}px)` }}>
               {dates.map((date, index) => {
                 const weekend = date.getDay() === 0 || date.getDay() === 6
                 const monthBoundary = index === 0 || date.getDate() === 1
@@ -344,7 +345,7 @@ export function TimelineGrid(props: TimelineGridProps) {
                   onRowClick={(_, clientX, currentTarget) => {
                     const rect = currentTarget.getBoundingClientRect()
                     const offset = Math.max(0, Math.min(timelineWidth - 1, clientX - rect.left))
-                    const day = dates[Math.min(dates.length - 1, Math.floor(offset / DAY_WIDTH))]
+                    const day = dates[Math.min(dates.length - 1, Math.floor(offset / dayWidth))]
                     if (!day) return
                     const startsOn = format(day, "yyyy-MM-dd")
                     const endsOn = format(addDays(day, 1), "yyyy-MM-dd")
