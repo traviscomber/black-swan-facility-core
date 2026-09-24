@@ -310,13 +310,13 @@ export function TimelineGrid(props: TimelineGridProps) {
             const selectedCount = groupReservations.filter((event) => selectedIds.has(event.event_id)).length
             const conflictCount = groupReservations.filter((event) => conflictIds.has(event.event_id)).length
             return <section key={location.locationId} className={`[content-visibility:auto] [contain-intrinsic-size:180px] ${propertyBand}`} title={location.locationName} data-property-group data-collapsed={isCollapsed ? "true" : "false"}>
-              <button type="button" onClick={() => toggleGroup(location.locationId)} className="flex h-7 w-full items-center border-b border-white/5 text-left text-white/75 transition hover:brightness-110 focus-visible:outline-none" aria-expanded={!isCollapsed} aria-label={`${isCollapsed ? c.expandGroups : c.collapseGroups}: ${location.locationName}`}>
+              <button type="button" onClick={() => toggleGroup(location.locationId)} className="flex h-5 w-full items-center border-b border-white/5 text-left text-white/70 transition hover:brightness-110 focus-visible:outline-none" aria-expanded={!isCollapsed} aria-label={`${isCollapsed ? c.expandGroups : c.collapseGroups}: ${location.locationName}`}>
                 <span className="sticky left-0 z-20 flex h-full shrink-0 items-center gap-2 border-r border-white/5 px-3" style={{ width: LABEL_WIDTH }}>
                   <ChevronRight className={`h-3.5 w-3.5 shrink-0 transition-transform ${isCollapsed ? "" : "rotate-90"}`} />
-                  <span className="min-w-0 flex-1 truncate text-[11px] font-semibold tracking-[0.02em] text-white/90">{location.locationName || "—"}</span>
-                  <span className="shrink-0 text-[9px] text-white/45">{location.rooms.length}</span>
+                  <span className="min-w-0 flex-1 truncate text-[10px] font-medium tracking-[0.02em] text-white/85">{location.locationName || "—"}</span>
+                  <span className="shrink-0 text-[8px] text-white/40">{location.rooms.length}</span>
                 </span>
-                <span className="flex h-full items-center gap-3 px-3 text-[9px] text-white/48" style={{ width: timelineWidth }}>
+                <span className="flex h-full items-center gap-3 px-3 text-[8px] text-white/42" style={{ width: timelineWidth }}>
                   <span>{location.rooms.length} {c.roomCount}</span>
                   <span>{groupReservations.length} {c.reservationCount}</span>
                   {selectedCount > 0 && <span className="text-white/75">{selectedCount} {c.selectedCount}</span>}
