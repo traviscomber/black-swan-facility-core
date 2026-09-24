@@ -92,7 +92,7 @@ export default function BookingsPage() {
         </div>
         <div className="flex items-center gap-2">
           <Link href={`/${language}/bookings/calendar`} prefetch={false} className="inline-flex h-9 items-center gap-2 bg-[#2b2722] px-3 text-xs hover:bg-[#332e28]"><CalendarDays className="h-4 w-4" />{c.calendar}</Link>
-          <button type="button" onClick={() => downloadCsv(`reservations-${new Date().toISOString().slice(0,10)}.csv`, [c.guest,c.stay,c.room,c.guests,c.status,c.amount], filtered.map((row)=>[row.guest_name,`${row.check_in} → ${row.check_out}`,`${row.room?.location?.name ?? ""} / ${row.room?.room_number ?? ""}`,row.num_guests ?? 1,statusLabel(row.status),Number(row.total_amount ?? 0)]))} className="inline-flex h-9 items-center gap-2 bg-[#2b2722] px-3 text-xs"><Download className="h-4 w-4" />{c.export}</button>
+          <button type="button" onClick={() => downloadCsv(`reservations-${new Date().toISOString().slice(0,10)}.csv`, [c.guest,c.stay,c.room,c.guests,c.status,c.amount], filtered.map((row)=>[row.guest_name,`${row.check_in} → ${row.check_out}`,`${row.room?.location?.name ?? ""} / ${row.room?.room_number ?? ""}`,row.num_guests ?? 1,statusLabel(row.status),row.total_amount ?? ""]))} className="inline-flex h-9 items-center gap-2 bg-[#2b2722] px-3 text-xs"><Download className="h-4 w-4" />{c.export}</button>
           <button type="button" onClick={() => void load()} className="inline-flex h-9 w-9 items-center justify-center bg-[#2b2722]" aria-label={c.refresh}><RefreshCw className="h-4 w-4" /></button>
           <Link href={`/${language}/bookings/calendar?new=1`} prefetch={false} className="inline-flex h-9 items-center gap-2 bg-[#6f8373] px-4 text-xs font-medium text-[#171512]"><Plus className="h-4 w-4" />{c.add}</Link>
         </div>
@@ -132,7 +132,7 @@ export default function BookingsPage() {
                 <td className="px-3 py-3"><div className="flex items-center gap-2 text-[#b9b0a4]"><BedDouble className="h-3.5 w-3.5 text-[#8f867b]" />{row.room?.room_number ?? "—"}</div><div className="mt-1 text-[10px] text-[#8f867b]">{row.room?.location?.name ?? ""}</div></td>
                 <td className="px-3 py-3"><span className="inline-flex items-center gap-1.5 text-[#b9b0a4]"><Users className="h-3.5 w-3.5" />{row.num_guests ?? 1}</span></td>
                 <td className="px-3 py-3"><span className={`px-2 py-1 capitalize ${statusClass(row.status)}`}>{statusLabel(row.status)}</span></td>
-                <td className="px-4 py-3 text-right tabular-nums text-[#b9b0a4]">{new Intl.NumberFormat(language === "de" ? "de-DE" : language === "es" ? "es-CL" : "en-US", { style: "currency", currency: "CLP", maximumFractionDigits: 0 }).format(Number(row.total_amount ?? 0))}</td>
+                <td className="px-4 py-3 text-right tabular-nums text-[#b9b0a4]">{row.total_amount == null ? "—" : new Intl.NumberFormat(language === "de" ? "de-DE" : language === "es" ? "es-CL" : "en-US", { style: "currency", currency: "CLP", maximumFractionDigits: 0 }).format(Number(row.total_amount))}</td>
               </tr>
             ))}
           </tbody>
