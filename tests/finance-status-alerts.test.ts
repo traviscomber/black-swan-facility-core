@@ -26,8 +26,8 @@ test('Raimundo can record reconciliation independently from expense approval', (
 })
 
 test('Santiago sees alerts even when no payment is actionable', () => {
-  assert.match(payments, /Cambios recientes/)
-  assert.match(payments, /Santiago recibe cambios aunque todavía no exista un pago accionable/)
+  assert.match(payments, /Cambios relevantes/)
+  assert.match(payments, /Solo cambios de estado que Santiago necesita conocer/)
   assert.match(payments, /finance_document_alerts/)
   assert.match(sidebar, /finance_document_alerts/)
   assert.match(sidebar, /paymentPendingResult\.count.*alertResult\.count/)
