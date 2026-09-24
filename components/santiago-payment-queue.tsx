@@ -32,8 +32,6 @@ type PaymentRow = {
   reconciliation_notes: string | null
 }
 
-type Division = { id: string; name: string }
-type Category = { id: string; name: string }
 type BankStatement = { period_end: string; processed_at: string | null; matched_count: number; unmatched_count: number; processing_error: string | null }
 type FinanceAlert = {
   id: string
@@ -67,8 +65,6 @@ export function SantiagoPaymentQueue() {
   const supabase = useMemo(() => createClient(), [])
   const [allowed, setAllowed] = useState<boolean | null>(null)
   const [rows, setRows] = useState<PaymentRow[]>([])
-  const [divisions, setDivisions] = useState<Division[]>([])
-  const [categories, setCategories] = useState<Category[]>([])
   const [status, setStatus] = useState<PaymentStatus>('pending_santiago')
   const [busy, setBusy] = useState<string | null>(null)
   const [payingId, setPayingId] = useState<string | null>(null)
@@ -88,25 +84,21 @@ export function SantiagoPaymentQueue() {
     setAllowed(canPay)
     if (!canPay) return
 
-    const [documents, divisionResult, categoryResult, sourceResult, alertResult, statementResult] = await Promise.all([
+    const [documents, sourceResult, alertResult, statementResult] = await Promise.all([
       supabase.from('finance_documents')
         .select('id,supplier_name,document_number,document_date,due_date,total_amount,currency,division_id,category_id,cost_center_id,operational_label,approved_at,payment_status,payment_decision_notes,payment_decided_at,paid_at,payment_method,payment_reference,reconciliation_status,reconciliation_checked_at,reconciliation_notes')
         .neq('payment_status', 'not_ready')
         .order('approved_at', { ascending: false }),
-      supabase.from('budget_divisions').select('id,name'),
-      supabase.from('budget_categories').select('id,name'),
       supabase.from('finance_sii_uploads').select('finance_document_id').not('finance_document_id', 'is', null),
       supabase.from('finance_document_alerts').select('id,document_id,change_kind,old_value,new_value,title,detail,created_at,read_at').order('created_at', { ascending: false }).limit(20),
       supabase.from('finance_bank_statement_uploads').select('period_end,processed_at,matched_count,unmatched_count,processing_error').order('period_end', { ascending: false }).order('created_at', { ascending: false }).limit(1).maybeSingle(),
     ])
-    const error = documents.error || divisionResult.error || categoryResult.error || sourceResult.error || alertResult.error || statementResult.error
+    const error = documents.error || sourceResult.error || alertResult.error || statementResult.error
     if (error) {
       toast.error(error.message)
       return
     }
     setRows((documents.data ?? []) as PaymentRow[])
-    setDivisions((divisionResult.data ?? []) as Division[])
-    setCategories((categoryResult.data ?? []) as Category[])
     setSourceDocumentIds(new Set((sourceResult.data ?? []).map((row) => row.finance_document_id).filter((value): value is string => typeof value === 'string')))
     setAlerts((alertResult.data ?? []) as FinanceAlert[])
     setLatestStatement((statementResult.data ?? null) as BankStatement | null)
@@ -253,8 +245,6 @@ export function SantiagoPaymentQueue() {
             </thead>
             <tbody>
               {filtered.map((row) => {
-                const division = divisions.find((item) => item.id === row.division_id)?.name ?? 'P&L'
-                const category = categories.find((item) => item.id === row.category_id)?.name ?? 'Categoría'
                 return (
                   <tr key={row.id} className="border-t border-[var(--bs-divider-subtle)] align-top">
                     <td className="px-4 py-4">
