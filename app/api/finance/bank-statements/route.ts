@@ -2,6 +2,7 @@ import { createHash, randomUUID } from 'node:crypto'
 import { NextResponse } from 'next/server'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase/server'
+import { matchBankRow, parseBankStatement, type FinanceMatchCandidate } from '@/lib/finance/bank-statement'
 
 export const runtime = 'nodejs'
 const BUCKET = 'finance-bank-statements'
@@ -71,7 +72,77 @@ export async function POST(request: Request) {
       await admin.storage.from(BUCKET).remove([path])
       return NextResponse.json({ error: 'Could not register statement' }, { status: 500 })
     }
-    return NextResponse.json({ id: data.id, status: data.status }, { status: 201 })
+
+    let matchedCount = 0
+    let unmatchedCount = 0
+    let processingError: string | null = null
+
+    try {
+      const parsedRows = await parseBankStatement(bytes, file.name)
+      const { data: candidates, error: candidateError } = await admin.from('finance_documents')
+        .select('id,supplier_name,document_number,document_date,due_date,total_amount,currency')
+        .in('approval_status', ['approved', 'pending_valuation'])
+        .neq('reconciliation_status', 'reconciled')
+      if (candidateError) throw candidateError
+
+      const remaining = new Map((candidates ?? []).map((row) => [row.id, row as FinanceMatchCandidate]))
+      const persisted = parsedRows.map((row) => {
+        const match = matchBankRow(row, Array.from(remaining.values()))
+        if (match) {
+          matchedCount += 1
+          remaining.delete(match.document.id)
+        } else {
+          unmatchedCount += 1
+        }
+        return {
+          statement_id: data.id,
+          ...row,
+          matched_document_id: match?.document.id ?? null,
+          match_confidence: match?.confidence ?? null,
+          match_reason: match?.reason ?? null,
+        }
+      })
+
+      if (persisted.length) {
+        const { error: rowError } = await admin.from('finance_bank_statement_rows').insert(persisted)
+        if (rowError) throw rowError
+      }
+
+      const matched = persisted.filter((row) => row.matched_document_id)
+      for (const row of matched) {
+        const { error: updateError } = await admin.from('finance_documents').update({
+          reconciliation_status: 'paid_observed',
+          reconciliation_checked_by: null,
+          reconciliation_checked_at: new Date().toISOString(),
+          reconciliation_notes: `Cruce automático con cartola ${file.name.slice(0, 120)} · ${row.transaction_date}`,
+          updated_at: new Date().toISOString(),
+        }).eq('id', row.matched_document_id!)
+        if (updateError) throw updateError
+      }
+
+      await admin.from('finance_bank_statement_uploads').update({
+        processed_at: new Date().toISOString(),
+        matched_count: matchedCount,
+        unmatched_count: unmatchedCount,
+        processing_error: null,
+      }).eq('id', data.id)
+    } catch (processing) {
+      processingError = processing instanceof Error ? processing.message : 'Could not process bank statement'
+      await admin.from('finance_bank_statement_uploads').update({
+        processed_at: new Date().toISOString(),
+        processing_error: processingError.slice(0, 500),
+      }).eq('id', data.id)
+      console.error('[bank-statements] automatic cross failed', processing)
+    }
+
+    return NextResponse.json({
+      id: data.id,
+      status: data.status,
+      processed: !processingError,
+      matched_count: matchedCount,
+      unmatched_count: unmatchedCount,
+      processing_error: processingError,
+    }, { status: 201 })
   } catch (error) {
     console.error('[bank-statements] upload failed', error)
     return NextResponse.json({ error: 'Could not upload statement' }, { status: 500 })
