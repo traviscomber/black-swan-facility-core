@@ -113,7 +113,6 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const [userInitials, setUserInitials] = useState("?")
   const [financePendingCount, setFinancePendingCount] = useState(0)
   const [financePaymentPendingCount, setFinancePaymentPendingCount] = useState(0)
-  const [financeAlertCount, setFinanceAlertCount] = useState(0)
   const [canFinanceReview, setCanFinanceReview] = useState(false)
   const [canFinancePay, setCanFinancePay] = useState(false)
 
@@ -142,7 +141,6 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
     if (!canAccessDepartment("finance")) {
       setFinancePendingCount(0)
       setFinancePaymentPendingCount(0)
-      setFinanceAlertCount(0)
       setCanFinanceReview(false)
       setCanFinancePay(false)
       return
@@ -163,7 +161,6 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
       setCanFinanceReview(reviewer)
       setCanFinancePay(payer)
       setFinancePendingCount(reviewer ? (readyResult.count ?? 0) + (mappingResult.count ?? 0) : 0)
-      setFinanceAlertCount(payer ? (alertResult.count ?? 0) : 0)
       setFinancePaymentPendingCount(payer ? (paymentPendingResult.count ?? 0) + (alertResult.count ?? 0) : 0)
     }
     void loadFinancePendingCount()
