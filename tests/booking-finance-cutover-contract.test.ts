@@ -105,11 +105,17 @@ test("reservation list defaults to live operations and isolates old imported his
 })
 
 
-test("stay cockpit nests secondary tasks into two compact operational workspaces", () => {
+test("new reservations continue directly into the operational Stay Cockpit", () => {
+  const addReservation = readFileSync(new URL("../components/add-reservation-dialog.tsx", import.meta.url), "utf8")
+  assert.match(addReservation, /useRouter/)
+  assert.match(addReservation, /result\.reservation_id \|\| result\.reservation\?\.id/)
+  assert.match(addReservation, /router\.push\(`\/\$\{language\}\/bookings\/reservations\/\$\{reservationId\}`\)/)
+})
+
+test("Stay Cockpit presents operational work as nested workstreams instead of a card wall", () => {
   assert.match(stayCockpit, /data-stay-operations/)
   assert.match(stayCockpit, /data-stay-details/)
   assert.match(stayCockpit, /function NestedSection/)
-  assert.match(stayCockpit, /activeOperations/)
   assert.match(stayCockpit, /defaultOpen=\{activeHousekeeping > 0\}/)
   assert.match(stayCockpit, /defaultOpen=\{activeRequests > 0\}/)
   assert.match(stayCockpit, /defaultOpen=\{activeIssues > 0\}/)
