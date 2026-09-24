@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { AlertTriangle, Check, CheckCircle2, FileSearch, RefreshCw, X } from 'lucide-react'
+import { Check, RefreshCw, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { createClient } from '@/lib/supabase/client'
@@ -115,9 +115,7 @@ export function FinanceApprovalQueue() {
   }, [load, supabase])
 
   const filtered = useMemo(() => rows.filter((row) => status === 'approved' ? row.approval_status === 'approved' || row.approval_status === 'pending_valuation' : row.approval_status === status), [rows, status])
-  const eligible = useMemo(() => filtered.filter(isCanonicalMapped), [filtered])
   const counts = useMemo(() => rows.reduce<Record<string, number>>((acc, row) => { acc[row.approval_status] = (acc[row.approval_status] ?? 0) + 1; return acc }, {}), [rows])
-  const decisionBreakdown = useMemo(() => rows.filter((row) => row.approval_status === 'ready').reduce<Record<string, number>>((acc, row) => { acc[row.classification_status] = (acc[row.classification_status] ?? 0) + 1; return acc }, {}), [rows])
 
   async function approve(ids: string[]) {
     const validIds = ids.filter((id) => rows.some((row) => row.id === id && row.approval_status === 'ready' && isCanonicalMapped(row)))
