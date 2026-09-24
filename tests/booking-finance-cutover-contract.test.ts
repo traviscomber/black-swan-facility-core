@@ -94,3 +94,12 @@ test("historical imports are reference-only and cannot look operational", () => 
   assert.match(stayCockpit, /\{!historicalImported && <><Panel title=\{c\.housekeeping\}/)
   assert.match(stayCockpit, /\{!historicalImported && <InvoiceEditorModal/)
 })
+
+
+test("reservation list defaults to live operations and isolates old imported history", () => {
+  const reservationList = readFileSync(new URL("../app/bookings/page.tsx", import.meta.url), "utf8")
+  assert.match(reservationList, /useState<"operational" \| "history">\("operational"\)/)
+  assert.match(reservationList, /row\.source === "canonical_event_xls" && row\.check_out < todayChile/)
+  assert.match(reservationList, /scope === "history" \? historicalImported : !historicalImported/)
+  assert.match(reservationList, /sourceAmount:"Source amount"/)
+})
