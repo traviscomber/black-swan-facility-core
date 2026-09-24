@@ -10,6 +10,8 @@ const timelineGrid = readFileSync(new URL("../components/calendar/timeline-grid.
 const activitiesPage = readFileSync(new URL("../app/bookings/activities/page.tsx", import.meta.url), "utf8")
 const availabilityPicker = readFileSync(new URL("../components/availability-calendar-picker.tsx", import.meta.url), "utf8")
 const inspector = readFileSync(new URL("../components/calendar/reservation-quick-inspector.tsx", import.meta.url), "utf8")
+const addReservationDialog = readFileSync(new URL("../components/add-reservation-dialog.tsx", import.meta.url), "utf8")
+const operationalLanes = readFileSync(new URL("../components/calendar/reservation-operational-lanes.tsx", import.meta.url), "utf8")
 const vercelConfig = readFileSync(new URL("../vercel.json", import.meta.url), "utf8")
 
 test("calendar separates stable inventory reads from date-range event reads", () => {
@@ -126,4 +128,22 @@ test("calendar does not reload stable room inventory on every date-window event 
   assert.doesNotMatch(calendarPage, /loadInitialData/)
   assert.match(calendarPage, /void loadInventory\(\)\.finally/)
   assert.match(calendarPage, /void loadEvents\(\)/)
+})
+
+
+test("new reservation keeps a compact BedBooking-like primary hierarchy", () => {
+  assert.match(addReservationDialog, /max-w-xl overflow-hidden rounded-none p-0/)
+  assert.match(addReservationDialog, /stayNights/)
+  assert.match(addReservationDialog, /selectedLocationName/)
+  assert.match(addReservationDialog, /More details|copy\.moreDetails/)
+  assert.match(addReservationDialog, /DialogFooter className="[^"]*border-t/)
+})
+
+test("expanded calendar operations stay compact and hide empty optional lanes", () => {
+  assert.match(operationalLanes, /lane\.key === "milestones" \|\| lane\.items\.length > 0/)
+  assert.match(operationalLanes, /min-h-6/)
+  assert.match(operationalLanes, /housekeepingLabel\(item\.task_type, language\)/)
+  assert.match(operationalLanes, /Preparar habitación/)
+  assert.match(operationalLanes, /Limpieza post check-out/)
+  assert.match(operationalLanes, /Liberar habitación/)
 })
