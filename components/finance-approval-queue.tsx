@@ -80,20 +80,26 @@ export function FinanceApprovalQueue() {
   const [reassignDivision, setReassignDivision] = useState('')
   const [reassignCategory, setReassignCategory] = useState('')
   const [reassignNote, setReassignNote] = useState('')
+  const [canApprove, setCanApprove] = useState(false)
+  const [canAdmin, setCanAdmin] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
-    const [queueResult, divisionResult, categoryResult] = await Promise.all([
+    const [queueResult, divisionResult, categoryResult, approvePermission, adminPermission] = await Promise.all([
       supabase.from('finance_approval_queue').select('*').order('queue_order').order('document_date', { ascending: false }),
       supabase.from('budget_divisions').select('id,name').eq('is_active', true).eq('is_aggregate', false).not('source_key', 'is', null).order('sort_order'),
       supabase.from('budget_categories').select('id,division_id,name').eq('is_active', true).not('source_key', 'is', null).eq('category_role', 'cost').order('sort_order'),
+      supabase.rpc('can_finance_approve'),
+      supabase.rpc('can_finance_admin'),
     ])
-    const error = queueResult.error || divisionResult.error || categoryResult.error
+    const error = queueResult.error || divisionResult.error || categoryResult.error || approvePermission.error || adminPermission.error
     if (error) toast.error(error.message)
     else {
       setRows((queueResult.data ?? []) as QueueRow[])
       setDivisions((divisionResult.data ?? []) as Division[])
       setCategories((categoryResult.data ?? []) as Category[])
+      setCanApprove(Boolean(approvePermission.data))
+      setCanAdmin(Boolean(adminPermission.data))
     }
     setLoading(false)
   }, [supabase])
@@ -215,7 +221,7 @@ export function FinanceApprovalQueue() {
       <section className="bg-[var(--bs-surface-primary)]">
         <div className="flex flex-col gap-3 p-4 md:flex-row md:items-center md:justify-between">
           <div className="flex flex-wrap gap-2">{tabs.map((tab) => <button key={tab.key} type="button" onClick={() => setStatus(tab.key)} className={`min-h-10 px-3 text-xs ${status === tab.key ? 'bg-[var(--bs-surface-elevated)] text-[var(--bs-text-primary)]' : 'bg-[var(--bs-surface-secondary)] text-[var(--bs-text-secondary)] hover:text-[var(--bs-text-primary)]'}`}>{tab.label} · {counts[tab.key] ?? 0}</button>)}</div>
-          {status === 'ready' && eligible.length > 0 && <Button onClick={() => void approve(Array.from(selected.size ? selected : new Set(eligible.map((row) => row.id))))} disabled={busy}><CheckCircle2 className="mr-2 h-4 w-4" />{selected.size ? `Aprobar ${selected.size}` : `Aprobar elegibles (${eligible.length})`}</Button>}
+          {status === 'ready' && canApprove && eligible.length > 0 && <Button onClick={() => void approve(Array.from(selected.size ? selected : new Set(eligible.map((row) => row.id))))} disabled={busy}><CheckCircle2 className="mr-2 h-4 w-4" />{selected.size ? `Aprobar ${selected.size}` : `Aprobar elegibles (${eligible.length})`}</Button>}
         </div>
         <div className="overflow-x-auto">
           <table className="w-full min-w-[1160px] text-sm">
@@ -233,9 +239,10 @@ export function FinanceApprovalQueue() {
                   <td className="px-4 py-4 text-right">{row.approval_status === 'pending_mapping' ? <span className="text-xs text-[var(--bs-text-muted)]">Mapear arriba</span> : row.approval_status === 'ready' ? (
                     <div className="space-y-2">
                       <div className="flex justify-end gap-2">
-                        <Button size="sm" onClick={() => void approve([row.id])} disabled={busy || !mapped}><Check className="mr-2 h-4 w-4" />Aprobar</Button>
-                        <Button size="sm" variant="outline" onClick={() => startReassign(row)} disabled={busy}>Reasignar</Button>
-                        <Button size="sm" variant="outline" onClick={() => void reject(row)} disabled={busy}><X className="mr-2 h-4 w-4" />Rechazar gasto</Button>
+                        {canApprove && <Button size="sm" onClick={() => void approve([row.id])} disabled={busy || !mapped}><Check className="mr-2 h-4 w-4" />Aprobar</Button>}
+                        {canApprove && <Button size="sm" variant="outline" onClick={() => startReassign(row)} disabled={busy}>Reasignar</Button>}
+                        {canApprove && <Button size="sm" variant="outline" onClick={() => void reject(row)} disabled={busy}><X className="mr-2 h-4 w-4" />Rechazar gasto</Button>}
+                        {!canApprove && <span className="text-xs text-[var(--bs-text-muted)]">Solo lectura</span>}
                       </div>
                       {reassigningId === row.id && (
                         <div className="ml-auto w-[340px] space-y-2 bg-[var(--bs-surface-secondary)] p-3 text-left">
@@ -256,7 +263,7 @@ export function FinanceApprovalQueue() {
                         </div>
                       )}
                     </div>
-                  ) : row.approval_status === 'pending_valuation' ? <Button size="sm" onClick={() => void valueInEur(row)} disabled={busy}>Valorizar EUR</Button> : <span className="text-xs text-[var(--bs-text-muted)]">{row.approval_status === 'approved' ? 'Posteado al Budget' : 'Rechazado'}</span>}</td>
+                  ) : row.approval_status === 'pending_valuation' ? (canAdmin ? <Button size="sm" onClick={() => void valueInEur(row)} disabled={busy}>Valorizar EUR</Button> : <span className="text-xs text-[var(--bs-text-muted)]">Aprobado por Raimundo</span>) : <span className="text-xs text-[var(--bs-text-muted)]">{row.approval_status === 'approved' ? 'Posteado al Budget' : 'Rechazado'}</span>}</td>
                 </tr>
               })}
               {!loading && !filtered.length && <tr><td colSpan={7} className="px-5 py-12 text-center text-[var(--bs-text-muted)]">No hay documentos en esta etapa.</td></tr>}
