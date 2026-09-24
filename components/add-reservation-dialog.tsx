@@ -4,6 +4,7 @@ import type React from "react"
 import { ReservationConfirmationModal } from "@/components/reservation-confirmation-modal"
 import { AvailabilityCalendarPicker } from "@/components/availability-calendar-picker"
 import { useMemo, useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import { createBrowserClient } from "@/lib/supabase/client"
 import { useEffectiveAccess } from "@/lib/hooks/use-effective-access"
 import { useLanguage } from "@/lib/hooks/use-language"
@@ -80,6 +81,7 @@ export function AddReservationDialog({
   preselectedLocation,
 }: AddReservationDialogProps) {
   const { language } = useLanguage()
+  const router = useRouter()
   const copy = addReservationCopy[language]
   const { loading: accessLoading, can, canAccessDepartment } = useEffectiveAccess()
   const canCreateReservation = can("booking.modify") && canAccessDepartment("booking")
@@ -260,10 +262,12 @@ export function AddReservationDialog({
         return
       }
 
+      const reservationId = String(result.reservation_id || result.reservation?.id || "")
       setShowConfirmation(false)
       onSuccess()
       onOpenChange(false)
       resetForm()
+      if (reservationId) router.push(`/${language}/bookings/reservations/${reservationId}`)
     } catch (error) {
       console.error("Error creating reservation:", error)
       alert(error instanceof Error ? error.message : copy.errorCreating)
