@@ -326,7 +326,7 @@ export default function BookingsCalendarPage() {
       const res = await fetch("/api/bookings/bulk/execute", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ reservation_ids: [...selectedIds], updates, operation_type: daysExtend > 0 ? "extend" : "reduce" }) })
       const data = await res.json()
       if (res.status === 409) { setBulkConflicts(data.conflicts ?? []); toast.error(data.error ?? pageCopy.conflictsDetected); return }
-      if (!res.ok || !data.success) { toast.error(data.error ?? "No fue posible modificar las reservas"); return }
+      if (!res.ok || !data.success) { toast.error(data.error ?? pageCopy.networkModifyError); return }
       armUndoTimer(data.operation_id); toast.success(`${data.updated_count} ${pageCopy.modified}`); clearSelection(); await refreshEvents()
     } catch { toast.error(pageCopy.networkModifyError) } finally { setBulkLoading(false) }
   }
