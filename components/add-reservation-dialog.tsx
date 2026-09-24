@@ -3,7 +3,7 @@
 import type React from "react"
 import { ReservationConfirmationModal } from "@/components/reservation-confirmation-modal"
 import { AvailabilityCalendarPicker } from "@/components/availability-calendar-picker"
-import { useState, useEffect } from "react"
+import { useMemo, useState, useEffect } from "react"
 import { createBrowserClient } from "@/lib/supabase/client"
 import { useEffectiveAccess } from "@/lib/hooks/use-effective-access"
 import { useLanguage } from "@/lib/hooks/use-language"
@@ -309,19 +309,39 @@ export function AddReservationDialog({
         const locationName = bed.room?.location_ref?.name || bed.room?.location
         return locationName === selectedLocationFilter
       })
+  const selectedBed = useMemo(() => beds.find((bed) => bed.id === formData.bed_id) ?? null, [beds, formData.bed_id])
+  const stayNights = useMemo(() => {
+    if (!formData.check_in || !formData.check_out) return 0
+    try { return Math.max(0, differenceInCalendarDays(parseISO(formData.check_out), parseISO(formData.check_in))) } catch { return 0 }
+  }, [formData.check_in, formData.check_out])
+  const selectedLocationName = selectedBed?.room?.location_ref?.name || selectedBed?.room?.location || (selectedLocationFilter === "all" ? "" : selectedLocationFilter)
 
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-2xl rounded-none">
-          <DialogHeader><DialogTitle>{copy.title}</DialogTitle></DialogHeader>
+        <DialogContent className="max-w-xl overflow-hidden rounded-none p-0">
+          <DialogHeader className="border-b px-4 py-3">
+            <DialogTitle className="text-base font-medium">{copy.title}</DialogTitle>
+            {(selectedBed || formData.check_in) && (
+              <div className="mt-2 grid grid-cols-[1fr_auto] items-end gap-3 border-t pt-2 text-xs">
+                <div className="min-w-0">
+                  <div className="truncate font-medium">{selectedBed?.room?.room_number || copy.selectBed}{selectedLocationName ? ` · ${selectedLocationName}` : ""}</div>
+                  <div className="mt-0.5 text-muted-foreground">{formData.check_in && formData.check_out ? `${formData.check_in} → ${formData.check_out} · ${stayNights} ${stayNights === 1 ? copy.night : copy.nights}` : copy.selectDates}</div>
+                </div>
+                <div className="text-right">
+                  <div className="font-medium">{formData.total_amount > 0 ? new Intl.NumberFormat(language === "de" ? "de-DE" : language === "es" ? "es-CL" : "en-US", { style: "currency", currency: "CLP", maximumFractionDigits: 0 }).format(formData.total_amount) : "—"}</div>
+                  <div className="text-[10px] uppercase tracking-wide text-muted-foreground">{copy.totalAmount}</div>
+                </div>
+              </div>
+            )}
+          </DialogHeader>
 
           {!accessLoading && !canCreateReservation ? (
             <div className="rounded-md border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">
               {copy.noPermissionDepartment}
             </div>
           ) : (
-            <form onSubmit={handleSubmit} className="space-y-3">
+            <form onSubmit={handleSubmit} className="space-y-3 px-4 py-3">
               {capacityWarning && (
                 <div className="rounded-md border border-yellow-200 bg-yellow-50 p-3 dark:border-yellow-800 dark:bg-yellow-900/20">
                   <p className="text-sm text-yellow-800 dark:text-yellow-200">{capacityWarning}</p>
@@ -330,10 +350,10 @@ export function AddReservationDialog({
               )}
 
               <div className="grid gap-3 sm:grid-cols-2">
-                <div className="space-y-2 sm:col-span-2">
+                <div className="space-y-1.5">
                   <Label htmlFor="location_filter">{copy.filterLocation}</Label>
                   <Select value={selectedLocationFilter} onValueChange={setSelectedLocationFilter}>
-                    <SelectTrigger><SelectValue placeholder={copy.allLocations} /></SelectTrigger>
+                    <SelectTrigger className="rounded-none"><SelectValue placeholder={copy.allLocations} /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">{copy.allLocations}</SelectItem>
                       {locations.map((loc) => <SelectItem key={loc.id} value={loc.name}>{loc.name}</SelectItem>)}
@@ -341,10 +361,10 @@ export function AddReservationDialog({
                   </Select>
                 </div>
 
-                <div className="space-y-2 sm:col-span-2">
+                <div className="space-y-1.5">
                   <Label htmlFor="bed_id">{copy.bed}</Label>
                   <Select value={formData.bed_id} onValueChange={(value) => setFormData({ ...formData, bed_id: value })}>
-                    <SelectTrigger><SelectValue placeholder={copy.selectBed} /></SelectTrigger>
+                    <SelectTrigger className="rounded-none"><SelectValue placeholder={copy.selectBed} /></SelectTrigger>
                     <SelectContent>
                       {filteredBeds.map((bed) => (
                         <SelectItem key={bed.id} value={bed.id}>
@@ -356,7 +376,7 @@ export function AddReservationDialog({
                   </Select>
                 </div>
 
-                <div className="space-y-2 sm:col-span-2">
+                <div className="space-y-1.5 sm:col-span-2 border-t pt-3">
                   <Label htmlFor="guest_id">{copy.existingGuest}</Label>
                   <Select value={formData.guest_id} onValueChange={handleGuestSelect}>
                     <SelectTrigger className="rounded-none"><SelectValue placeholder={copy.selectGuest} /></SelectTrigger>
@@ -376,7 +396,7 @@ export function AddReservationDialog({
                 </div>
 
                 {formData.bed_id && (
-                  <div className="space-y-2 sm:col-span-2">
+                  <div className="space-y-1.5 sm:col-span-2 border-t pt-3">
                     <Label>{copy.selectDates} *</Label>
                     <AvailabilityCalendarPicker
                       bedId={formData.bed_id}
@@ -390,7 +410,7 @@ export function AddReservationDialog({
 
                 {!formData.bed_id && <div className="sm:col-span-2 text-sm italic text-muted-foreground">{copy.selectBedHint}</div>}
 
-                <div className="space-y-2">
+                <div className="space-y-1.5 sm:col-span-2 border-t pt-3">
                   <Label htmlFor="total_amount">{copy.totalAmount}</Label>
                   <Input id="total_amount" className="rounded-none" type="number" step="0.01" value={formData.total_amount} onChange={(e) => { setAmountTouched(true); setFormData({ ...formData, total_amount: Number.parseFloat(e.target.value) }) }} required />
                   {!amountTouched && formData.total_amount > 0 && <p className="text-[11px] text-muted-foreground">{copy.estimated}</p>}
@@ -432,9 +452,13 @@ export function AddReservationDialog({
                 </div>
               )}
 
-              <DialogFooter>
-                <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>{copy.cancel}</Button>
-                <Button type="submit" disabled={loading || accessLoading || !canCreateReservation}>
+              <DialogFooter className="-mx-4 -mb-3 mt-4 flex-row items-center justify-between border-t bg-muted/10 px-4 py-3 sm:justify-between">
+                <div className="mr-auto text-left">
+                  <div className="text-sm font-medium">{stayNights > 0 ? `${stayNights} ${stayNights === 1 ? copy.night : copy.nights}` : copy.selectDates}</div>
+                  <div className="text-[11px] text-muted-foreground">{formData.total_amount > 0 ? new Intl.NumberFormat(language === "de" ? "de-DE" : language === "es" ? "es-CL" : "en-US", { style: "currency", currency: "CLP", maximumFractionDigits: 0 }).format(formData.total_amount) : copy.totalAmount}</div>
+                </div>
+                <Button type="button" variant="outline" className="rounded-none" onClick={() => onOpenChange(false)}>{copy.cancel}</Button>
+                <Button type="submit" className="rounded-none" disabled={loading || accessLoading || !canCreateReservation}>
                   {loading ? copy.creating : copy.create}
                 </Button>
               </DialogFooter>
