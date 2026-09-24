@@ -40,6 +40,10 @@ type QueueRow = {
   cost_center_name: string | null
   operational_label: string | null
   decision_notes: string | null
+  payment_status: string
+  reconciliation_status: 'unknown' | 'unpaid' | 'paid_observed' | 'reconciled' | 'exception'
+  reconciliation_checked_at: string | null
+  reconciliation_notes: string | null
 }
 type Division = { id: string; name: string }
 type Category = { id: string; division_id: string; name: string }
@@ -185,6 +189,26 @@ export function FinanceApprovalQueue() {
     await load(); setBusy(false)
   }
 
+  async function setReconciliation(row: QueueRow, next: QueueRow['reconciliation_status']) {
+    const note = next === 'unknown' ? null : window.prompt(
+      next === 'unpaid' ? 'Nota opcional: por qué sigue impago' :
+      next === 'paid_observed' ? 'Nota opcional: evidencia de pago observada' :
+      next === 'reconciled' ? 'Nota opcional: referencia de conciliación' :
+      'Describe la excepción de conciliación'
+    )
+    if (next === 'exception' && !note?.trim()) return
+    setBusy(true)
+    const { error } = await supabase.rpc('set_finance_document_reconciliation_status', {
+      p_document_id: row.id,
+      p_status: next,
+      p_notes: note?.trim() || null,
+    })
+    if (error) toast.error(error.message)
+    else toast.success('Estado de conciliación actualizado. Santiago recibió una alerta.')
+    await load()
+    setBusy(false)
+  }
+
   async function valueInEur(row: QueueRow) {
     const amountRaw = window.prompt(`Monto canónico en EUR para ${row.document_number}`)
     if (!amountRaw) return
@@ -227,7 +251,7 @@ export function FinanceApprovalQueue() {
         </div>
         <div className="overflow-x-auto">
           <table className="w-full min-w-[1160px] text-sm">
-            <thead className="text-left text-xs uppercase tracking-[0.1em] text-[var(--bs-text-muted)]"><tr>{status === 'ready' && <th className="w-12 px-4 py-3 font-normal"><input type="checkbox" checked={eligible.length > 0 && eligible.every((row) => selected.has(row.id))} onChange={toggleAllEligible} disabled={!eligible.length} aria-label="Seleccionar todos los elegibles" /></th>}<th className="px-4 py-3 font-normal">Documento</th><th className="px-4 py-3 font-normal">Centro de costo / imputación</th><th className="px-4 py-3 font-normal">Clasificación histórica</th><th className="px-4 py-3 text-right font-normal">Monto</th><th className="px-4 py-3 font-normal">Evidencia</th><th className="px-4 py-3 text-right font-normal">Acción</th></tr></thead>
+            <thead className="text-left text-xs uppercase tracking-[0.1em] text-[var(--bs-text-muted)]"><tr>{status === 'ready' && <th className="w-12 px-4 py-3 font-normal"><input type="checkbox" checked={eligible.length > 0 && eligible.every((row) => selected.has(row.id))} onChange={toggleAllEligible} disabled={!eligible.length} aria-label="Seleccionar todos los elegibles" /></th>}<th className="px-4 py-3 font-normal">Documento</th><th className="px-4 py-3 font-normal">Centro de costo / imputación</th><th className="px-4 py-3 font-normal">Clasificación histórica</th><th className="px-4 py-3 text-right font-normal">Monto</th><th className="px-4 py-3 font-normal">Evidencia</th><th className="px-4 py-3 font-normal">Conciliación</th><th className="px-4 py-3 text-right font-normal">Acción</th></tr></thead>
             <tbody>
               {filtered.map((row) => {
                 const mapped = isCanonicalMapped(row)
@@ -238,6 +262,11 @@ export function FinanceApprovalQueue() {
                   <td className="px-4 py-4"><div className="flex gap-2 text-xs leading-5 text-[var(--bs-text-secondary)]">{row.classification_status === 'ready' ? <Check className="mt-0.5 h-4 w-4 shrink-0 text-[var(--bs-cool-sage)]" /> : row.classification_status === 'exception' ? <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-[var(--bs-warm-orange)]" /> : <FileSearch className="mt-0.5 h-4 w-4 shrink-0 text-[var(--bs-cool-sky)]" />}<span><span className="block text-[var(--bs-text-primary)]">{classificationLabel(row.classification_status)}</span>{row.classification_reason ?? 'Sin explicación registrada.'}</span></div></td>
                   <td className="px-4 py-4 text-right"><p className="text-[var(--bs-text-primary)]">{formatMoney(row.total_amount, row.currency)}</p>{row.amount_eur != null && <p className="mt-1 text-xs text-[var(--bs-cool-sage)]">{formatMoney(row.amount_eur, 'EUR')}</p>}</td>
                   <td className="px-4 py-4 text-xs leading-5 text-[var(--bs-text-secondary)]"><p>{row.confidence_label ?? (row.confidence == null ? 'Sin confianza' : `Confianza ${pct.format(n(row.confidence))}`)}</p><p>{row.historical_count} antecedentes · {row.historical_dominance == null ? 'dominio —' : `dominio ${pct.format(n(row.historical_dominance))}`}</p><p className={row.amount_in_range === false ? 'text-[var(--bs-warm-orange)]' : row.amount_in_range === true ? 'text-[var(--bs-cool-sage)]' : 'text-[var(--bs-text-muted)]'}>{row.amount_in_range == null ? 'Sin rango' : row.amount_in_range ? 'Dentro de rango' : 'Fuera de rango'}</p></td>
+                  <td className="px-4 py-4 text-xs text-[var(--bs-text-secondary)]">
+                    <p className="text-[var(--bs-text-primary)]">{row.reconciliation_status === 'unknown' ? 'Sin revisar' : row.reconciliation_status === 'unpaid' ? 'Impago' : row.reconciliation_status === 'paid_observed' ? 'Pago observado' : row.reconciliation_status === 'reconciled' ? 'Conciliado' : 'Excepción'}</p>
+                    {row.reconciliation_checked_at && <p className="mt-1 text-[11px] text-[var(--bs-text-muted)]">{new Date(row.reconciliation_checked_at).toLocaleString('es-CL')}</p>}
+                    {canApprove && row.approval_status !== 'rejected' && <select value={row.reconciliation_status} disabled={busy} onChange={(event) => void setReconciliation(row, event.target.value as QueueRow['reconciliation_status'])} className="mt-2 h-8 max-w-[160px] bg-[var(--bs-surface-secondary)] px-2 text-xs text-[var(--bs-text-primary)]"><option value="unknown">Sin revisar</option><option value="unpaid">Impago</option><option value="paid_observed">Pago observado</option><option value="reconciled">Conciliado</option><option value="exception">Excepción</option></select>}
+                  </td>
                   <td className="px-4 py-4 text-right">{row.approval_status === 'pending_mapping' ? <span className="text-xs text-[var(--bs-text-muted)]">Mapear arriba</span> : row.approval_status === 'ready' ? (
                     <div className="space-y-2">
                       <div className="flex justify-end gap-2">
