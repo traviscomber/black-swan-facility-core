@@ -59,6 +59,7 @@ export function SantiagoPaymentQueue() {
   const [payingId, setPayingId] = useState<string | null>(null)
   const [method, setMethod] = useState('transferencia_bancaria')
   const [reference, setReference] = useState('')
+  const [sourceDocumentIds, setSourceDocumentIds] = useState<Set<string>>(new Set())
 
   const load = useCallback(async () => {
     const permission = await supabase.rpc('can_finance_payment_authorize')
@@ -70,15 +71,16 @@ export function SantiagoPaymentQueue() {
     setAllowed(canPay)
     if (!canPay) return
 
-    const [documents, divisionResult, categoryResult] = await Promise.all([
+    const [documents, divisionResult, categoryResult, sourceResult] = await Promise.all([
       supabase.from('finance_documents')
         .select('id,supplier_name,document_number,document_date,due_date,total_amount,currency,division_id,category_id,cost_center_id,operational_label,approved_at,payment_status,payment_decision_notes,payment_decided_at,paid_at,payment_method,payment_reference')
         .neq('payment_status', 'not_ready')
         .order('approved_at', { ascending: false }),
       supabase.from('budget_divisions').select('id,name'),
       supabase.from('budget_categories').select('id,name'),
+      supabase.from('finance_sii_uploads').select('finance_document_id').not('finance_document_id', 'is', null),
     ])
-    const error = documents.error || divisionResult.error || categoryResult.error
+    const error = documents.error || divisionResult.error || categoryResult.error || sourceResult.error
     if (error) {
       toast.error(error.message)
       return
@@ -86,6 +88,7 @@ export function SantiagoPaymentQueue() {
     setRows((documents.data ?? []) as PaymentRow[])
     setDivisions((divisionResult.data ?? []) as Division[])
     setCategories((categoryResult.data ?? []) as Category[])
+    setSourceDocumentIds(new Set((sourceResult.data ?? []).map((row) => row.finance_document_id).filter((value): value is string => typeof value === 'string')))
   }, [supabase])
 
   useEffect(() => { void load() }, [load])
@@ -195,7 +198,7 @@ export function SantiagoPaymentQueue() {
                     <td className="px-4 py-4">
                       <p className="text-[var(--bs-text-primary)]">{row.supplier_name}</p>
                       <p className="mt-1 text-xs text-[var(--bs-text-muted)]">{row.document_number} · {new Date(`${row.document_date}T00:00:00`).toLocaleDateString('es-CL')}</p>
-                      <a className="mt-2 inline-flex items-center gap-1 text-xs text-[var(--bs-cool-sky)] underline" href={`/api/finance/sii-invoices/source?documentId=${encodeURIComponent(row.id)}`} target="_blank" rel="noreferrer"><FileText className="h-3.5 w-3.5" />Ver factura</a>
+                      {sourceDocumentIds.has(row.id) ? <a className="mt-2 inline-flex items-center gap-1 text-xs text-[var(--bs-cool-sky)] underline" href={`/api/finance/sii-invoices/source?documentId=${encodeURIComponent(row.id)}`} target="_blank" rel="noreferrer"><FileText className="h-3.5 w-3.5" />Ver factura</a> : <p className="mt-2 text-xs text-[var(--bs-text-muted)]">Sin archivo SII adjunto · evidencia histórica</p>}
                     </td>
                     <td className="px-4 py-4">
                       <p className="text-[var(--bs-text-primary)]">{division} · {category}</p>
