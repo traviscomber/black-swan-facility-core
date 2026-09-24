@@ -4,6 +4,7 @@ import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
 import { addDays, differenceInCalendarDays, format, parseISO } from "date-fns"
+import { de, enUS, es } from "date-fns/locale"
 import { Ban, Bell, BedDouble, CalendarDays, CheckSquare, ChevronLeft, ChevronRight, Loader2, Plus, Printer, RefreshCw, RotateCcw, Search, Trash2, UserCircle, X } from "lucide-react"
 import { toast } from "sonner"
 import { createClient } from "@/lib/supabase/client"
@@ -38,6 +39,7 @@ export default function BookingsCalendarPage() {
   const searchParams = useSearchParams()
   const router = useRouter()
   const pageCopy = bookingsCalendarPageCopy[language]
+  const dateLocale = language === "es" ? es : language === "de" ? de : enUS
   const blocksHref = `/${language}/bookings/blocks`
   const supabase = useMemo(() => createClient(), [])
   const [locations, setLocations] = useState<Location[]>([])
@@ -361,7 +363,7 @@ export default function BookingsCalendarPage() {
     } catch { toast.error(pageCopy.networkUndoError) } finally { setBulkLoading(false) }
   }
 
-  const rangeLabel = `${format(startDate, "dd MMM")} - ${format(addDays(endDate, -1), "dd MMM")}`
+  const rangeLabel = `${format(startDate, "dd MMM", { locale: dateLocale })} - ${format(addDays(endDate, -1), "dd MMM", { locale: dateLocale })}`
   const monthValue = format(startDate, "yyyy-MM")
   const addLabel = language === "es" ? "Agregar" : language === "de" ? "Hinzufügen" : "Add"
 
