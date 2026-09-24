@@ -214,7 +214,7 @@ export function FinanceApprovalQueue() {
         <div className="mt-5 grid gap-3 md:grid-cols-4">
           <div className="bg-[var(--bs-surface-secondary)] p-4"><p className="text-xs uppercase tracking-[0.1em] text-[var(--bs-text-muted)]">Por clasificar</p><p className="mt-2 text-xl text-[var(--bs-warm-yellow)]">{counts.pending_mapping ?? 0}</p></div>
           <div className="bg-[var(--bs-surface-secondary)] p-4"><p className="text-xs uppercase tracking-[0.1em] text-[var(--bs-text-muted)]">Para decidir</p><p className="mt-2 text-xl text-[var(--bs-cool-sage)]">{counts.ready ?? 0}</p><p className="mt-1 text-xs text-[var(--bs-text-secondary)]">{decisionBreakdown.ready ?? 0} consistentes · {decisionBreakdown.exception ?? 0} excepciones · {decisionBreakdown.manual_review ?? 0} manuales</p></div>
-          <div className="bg-[var(--bs-surface-secondary)] p-4"><p className="text-xs uppercase tracking-[0.1em] text-[var(--bs-text-muted)]">Aprobadas por Raimundo</p><p className="mt-2 text-xl text-[var(--bs-cool-sky)]">{(counts.approved ?? 0) + (counts.pending_valuation ?? 0)}</p><p className="mt-1 text-xs text-[var(--bs-text-secondary)]">Sin segunda aprobación financiera</p></div>
+          <div className="bg-[var(--bs-surface-secondary)] p-4"><p className="text-xs uppercase tracking-[0.1em] text-[var(--bs-text-muted)]">Ya aprobadas</p><p className="mt-2 text-xl text-[var(--bs-cool-sky)]">{(counts.approved ?? 0) + (counts.pending_valuation ?? 0)}</p><p className="mt-1 text-xs text-[var(--bs-text-secondary)]">Sin segunda aprobación financiera</p></div>
           <div className="bg-[var(--bs-surface-secondary)] p-4"><p className="text-xs uppercase tracking-[0.1em] text-[var(--bs-text-muted)]">Rechazadas</p><p className="mt-2 text-xl text-[var(--bs-text-primary)]">{counts.rejected ?? 0}</p></div>
         </div>
       </section>
@@ -269,7 +269,7 @@ export function FinanceApprovalQueue() {
                         </div>
                       )}
                     </div>
-                  ) : row.approval_status === 'pending_valuation' ? <span className="text-xs text-[var(--bs-cool-sage)]">Aprobado por Raimundo · conversión EUR interna</span> : <span className="text-xs text-[var(--bs-text-muted)]">{row.approval_status === 'approved' ? 'Aprobado · posteado al Budget' : 'Rechazado'}</span>}</td>
+                  ) : row.approval_status === 'pending_valuation' ? <span className="text-xs text-[var(--bs-cool-sage)]">Aprobado · conversión EUR interna</span> : <span className="text-xs text-[var(--bs-text-muted)]">{row.approval_status === 'approved' ? 'Aprobado · posteado al Budget' : 'Rechazado'}</span>}</td>
                 </tr>
               })}
               {!loading && !filtered.length && <tr><td colSpan={7} className="px-5 py-12 text-center text-[var(--bs-text-muted)]">No hay documentos en esta etapa.</td></tr>}
