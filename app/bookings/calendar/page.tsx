@@ -21,7 +21,7 @@ import { type ReservationResizeEdge, useReservationResizeState } from "./use-res
 import { useFlipAnimation } from "./use-flip-animation"
 import { useCalendarInteraction } from "./use-calendar-interaction"
 import { TimelineGrid } from "@/components/calendar/timeline-grid"
-import { normalizedStatus, STATUS_LABELS, BLOCK_LABELS } from "@/components/calendar/timeline-row"
+import { normalizedStatus } from "@/components/calendar/timeline-row"
 
 interface Location { id: string; name: string }
 interface Bed { id: string; bed_number: string; bed_type: string; room: { id: string; room_number: string; room_type?: string; location_id: string; location_ref?: { id: string; name: string } } }
@@ -443,7 +443,7 @@ export default function BookingsCalendarPage() {
     </Card>
 
     <AddReservationDialog open={newReservationOpen} onOpenChange={setNewReservationOpen} onSuccess={refreshEvents} preselectedBed={preselectedBed?.id} preselectedDate={preselectedDate ?? undefined} preselectedCheckOut={preselectedCheckOutDate ?? undefined} preselectedLocation={preselectedBed?.room.location_ref?.name} />
-    <Dialog open={!!selectedBlock} onOpenChange={(open) => !open && setSelectedBlock(null)}><DialogContent><DialogHeader><DialogTitle>{pageCopy.blockTitle}</DialogTitle></DialogHeader>{selectedBlock && <div className="space-y-4"><Badge variant="secondary">{BLOCK_LABELS[selectedBlock.block_type] ?? selectedBlock.block_type}</Badge><Detail label={pageCopy.reason} value={selectedBlock.reason} /><div className="grid grid-cols-2 gap-4"><Detail label={pageCopy.from} value={selectedBlock.start_date} /><Detail label={pageCopy.to} value={selectedBlock.end_date} /></div>{selectedBlock.notes && <Detail label={pageCopy.notes} value={selectedBlock.notes} />}<Button asChild className="w-full"><Link href={blocksHref}>{pageCopy.manageBlocks}</Link></Button></div>}</DialogContent></Dialog>
+    <Dialog open={!!selectedBlock} onOpenChange={(open) => !open && setSelectedBlock(null)}><DialogContent><DialogHeader><DialogTitle>{pageCopy.blockTitle}</DialogTitle></DialogHeader>{selectedBlock && <div className="space-y-4"><Badge variant="secondary">{selectedBlock.block_type === "maintenance" ? pageCopy.maintenance : selectedBlock.block_type === "owner_use" ? pageCopy.ownerUse : selectedBlock.block_type === "out_of_service" ? pageCopy.outOfService : pageCopy.blocked}</Badge><Detail label={pageCopy.reason} value={selectedBlock.reason} /><div className="grid grid-cols-2 gap-4"><Detail label={pageCopy.from} value={selectedBlock.start_date} /><Detail label={pageCopy.to} value={selectedBlock.end_date} /></div>{selectedBlock.notes && <Detail label={pageCopy.notes} value={selectedBlock.notes} />}<Button asChild className="w-full"><Link href={blocksHref}>{pageCopy.manageBlocks}</Link></Button></div>}</DialogContent></Dialog>
   </div>
 }
 
