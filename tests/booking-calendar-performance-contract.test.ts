@@ -183,3 +183,15 @@ test("calendar summary hides zero-noise and uses compact operational views", () 
   assert.match(summary, /view === "alerts"/)
   assert.doesNotMatch(summary, /gridTemplateColumns: `repeat\(\$\{dates\.length\}/)
 })
+
+
+test("calendar primary toolbar keeps only high-frequency actions visible", () => {
+  assert.match(calendarPage, /aria-label="Calendar actions"/)
+  assert.match(calendarPage, /More actions/)
+  assert.match(calendarPage, /<summary[^>]*className="[^"]*h-8 w-8/)
+  const actions = calendarPage.slice(calendarPage.indexOf('aria-label="Calendar actions"'), calendarPage.indexOf('{showFilters &&'))
+  assert.match(actions, /<Plus/)
+  assert.match(actions, /<Search/)
+  assert.match(actions, /<Bell/)
+  assert.match(actions, /<details/)
+})
