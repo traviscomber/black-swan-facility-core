@@ -229,7 +229,7 @@ export function SantiagoPaymentQueue() {
                   </tr>
                 )
               })}
-              {!filtered.length && <tr><td colSpan={5} className="px-5 py-12 text-center text-[var(--bs-text-muted)]">No hay documentos en esta etapa.</td></tr>}
+              {!filtered.length && <tr><td colSpan={5} className="px-5 py-12 text-center text-[var(--bs-text-muted)]">{status === 'pending_santiago' ? 'No hay pagos pendientes. Cuando Raimundo apruebe un gasto, aparecerá aquí para decisión de Santiago.' : 'No hay documentos en esta etapa.'}</td></tr>}
             </tbody>
           </table>
         </div>

@@ -113,6 +113,8 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const [userInitials, setUserInitials] = useState("?")
   const [financePendingCount, setFinancePendingCount] = useState(0)
   const [financePaymentPendingCount, setFinancePaymentPendingCount] = useState(0)
+  const [canFinanceReview, setCanFinanceReview] = useState(false)
+  const [canFinancePay, setCanFinancePay] = useState(false)
 
   useEffect(() => {
     void supabase.auth.getUser().then(({ data: { user } }) => {
@@ -139,6 +141,8 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
     if (!canAccessDepartment("finance")) {
       setFinancePendingCount(0)
       setFinancePaymentPendingCount(0)
+      setCanFinanceReview(false)
+      setCanFinancePay(false)
       return
     }
     let cancelled = false
@@ -151,8 +155,12 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
         supabase.from("finance_documents").select("id", { count: "exact", head: true }).eq("payment_status", "pending_santiago"),
       ])
       if (cancelled) return
-      setFinancePendingCount((readyResult.count ?? 0) + (reviewResult.data ? (mappingResult.count ?? 0) : 0))
-      setFinancePaymentPendingCount(payerResult.data ? (paymentPendingResult.count ?? 0) : 0)
+      const reviewer = Boolean(reviewResult.data)
+      const payer = Boolean(payerResult.data)
+      setCanFinanceReview(reviewer)
+      setCanFinancePay(payer)
+      setFinancePendingCount(reviewer ? (readyResult.count ?? 0) + (mappingResult.count ?? 0) : 0)
+      setFinancePaymentPendingCount(payer ? (paymentPendingResult.count ?? 0) : 0)
     }
     void loadFinancePendingCount()
     const handler = () => void loadFinancePendingCount()
@@ -177,9 +185,17 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
     persona,
   ), [access, persona, routeCapabilities])
   const intakeOnly = access.role === "finance_uploader"
-  const displayedAreas = useMemo(() => intakeOnly ? osAreas.filter(area => area.key === "finance").map(area => ({
-    ...area, items: area.items.filter(item => item.key === "documents"),
-  })) : visibleAreas, [intakeOnly, visibleAreas])
+  const displayedAreas = useMemo(() => {
+    if (intakeOnly) return osAreas.filter(area => area.key === "finance").map(area => ({ ...area, items: area.items.filter(item => item.key === "documents") }))
+    return visibleAreas.map((area) => area.key !== "finance" ? area : ({
+      ...area,
+      items: area.items.filter((item) => {
+        if (item.key === "approvals") return canFinanceReview
+        if (item.key === "payments") return canFinancePay
+        return true
+      }),
+    }))
+  }, [canFinancePay, canFinanceReview, intakeOnly, visibleAreas])
 
   useEffect(() => {
     const initial = new Set<string>()
