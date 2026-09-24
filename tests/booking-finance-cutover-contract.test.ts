@@ -7,6 +7,7 @@ const paymentsRoute = readFileSync(new URL("../app/api/bookings/payments/route.t
 const invoiceEditor = readFileSync(new URL("../components/invoice-editor-modal.tsx", import.meta.url), "utf8")
 const invoiceMutationRoute = readFileSync(new URL("../app/api/bookings/invoices/[id]/route.ts", import.meta.url), "utf8")
 const stayCockpit = readFileSync(new URL("../components/booking-reservation-stay-cockpit.tsx", import.meta.url), "utf8")
+const finalHardeningMigration = readFileSync(new URL("../supabase/migrations/20260924013000_booking_final_hardening.sql", import.meta.url), "utf8")
 
 test("new operational invoices use the canonical finalized reservation folio", () => {
   assert.match(invoiceRoute, /rpc\("generate_reservation_invoice"/)
