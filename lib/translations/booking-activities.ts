@@ -40,7 +40,7 @@ export const bookingActivitiesTranslations: Record<Language, Record<string, stri
     statusPending: "Pending",
     statusConfirmed: "Confirmed",
     statusCancelled: "Cancelled",
-    propertyRoom: "Property / Room", stay: "Stay", status: "Status", action: "Action",
+    propertyRoom: "Property / Room", stay: "Stay", status: "Status", action: "Action", openStay:"Open stay",
   },
   es: {
     title: "Centro de Operaciones",
@@ -81,7 +81,7 @@ export const bookingActivitiesTranslations: Record<Language, Record<string, stri
     statusPending: "Pendiente",
     statusConfirmed: "Confirmada",
     statusCancelled: "Cancelada",
-    propertyRoom: "Propiedad / Habitación", stay: "Estadía", status: "Estado", action: "Acción",
+    propertyRoom: "Propiedad / Habitación", stay: "Estadía", status: "Estado", action: "Acción", openStay:"Abrir estadía",
   },
   de: {
     title: "Betriebszentrale",
@@ -122,6 +122,6 @@ export const bookingActivitiesTranslations: Record<Language, Record<string, stri
     statusPending: "Ausstehend",
     statusConfirmed: "Bestätigt",
     statusCancelled: "Storniert",
-    propertyRoom: "Unterkunft / Zimmer", stay: "Aufenthalt", status: "Status", action: "Aktion",
+    propertyRoom: "Unterkunft / Zimmer", stay: "Aufenthalt", status: "Status", action: "Aktion", openStay:"Aufenthalt öffnen",
   },
 }
