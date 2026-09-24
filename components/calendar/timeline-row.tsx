@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { isSameDay, parseISO } from "date-fns"
+import { parseISO } from "date-fns"
 import { CheckSquare, ChevronDown, ChevronRight, Square, Users } from "lucide-react"
 import type { ReservationResizeEdge } from "@/app/bookings/calendar/use-reservation-resize-state"
 import { ReservationPreview, type PreviewConflict } from "@/components/calendar/reservation-preview"
@@ -9,10 +9,11 @@ import { CreationSelection, type CreationRange } from "@/components/calendar/cre
 import { ReservationOperationalLanes, type CalendarLayerKey } from "@/components/calendar/reservation-operational-lanes"
 import { ReservationQuickInspector } from "@/components/calendar/reservation-quick-inspector"
 import { useLanguage, type Language } from "@/lib/hooks/use-language"
+import { isBookingToday } from "@/lib/booking/timezone"
 
 export const DAY_WIDTH = 46
-export const LABEL_WIDTH = 176
-export const ROW_HEIGHT = 45
+export const LABEL_WIDTH = 168
+export const ROW_HEIGHT = 40
 
 export const STATUS_STYLES: Record<string, string> = {
   confirmed: "border-white/35 bg-[#292929] text-white",
@@ -154,19 +155,19 @@ export function TimelineRow(props: TimelineRowProps) {
   const expandedReservation = bedEvents.find((event) => event.event_type === "reservation" && event.event_id === expandedReservationId) ?? null
 
   return (
-    <div className={`border-b border-white/5 transition [content-visibility:auto] [contain-intrinsic-size:45px] ${isDropTarget ? "bg-emerald-500/10 ring-1 ring-inset ring-emerald-500" : ""}`} data-bed-id={bed.id} data-calendar-row>
+    <div className={`border-b border-white/5 transition [content-visibility:auto] [contain-intrinsic-size:40px] ${isDropTarget ? "bg-emerald-500/10 ring-1 ring-inset ring-emerald-500" : ""}`} data-bed-id={bed.id} data-calendar-row>
       <div className="flex" style={{ height: ROW_HEIGHT }}>
         <div className="sticky left-0 z-20 flex shrink-0 items-center border-r border-white/10 bg-[#162425] px-2" style={{ width: LABEL_WIDTH, height: ROW_HEIGHT }}>
           <div className="min-w-0 flex-1">
-            <div className="truncate text-[12px] font-medium leading-4 text-white/90">{bed.display_name ?? bed.bed_number}</div>
-            <div className="flex items-center gap-1 text-[10px] leading-3 text-white/65">
+            <div className="truncate text-[11px] font-medium leading-4 text-white/90">{bed.display_name ?? bed.bed_number}</div>
+            <div className="flex items-center gap-1 text-[9px] leading-3 text-white/55">
               {typeof bed.guest_capacity === "number" ? <><Users className="h-3 w-3" /><span>{bed.guest_capacity}</span></> : <span className="truncate">{bed.bed_type}</span>}
             </div>
           </div>
         </div>
         <div className="relative cursor-crosshair" style={{ width: timelineWidth, height: ROW_HEIGHT, backgroundImage: `repeating-linear-gradient(to right, transparent 0, transparent ${DAY_WIDTH - 1}px, rgba(255,255,255,.06) ${DAY_WIDTH - 1}px, rgba(255,255,255,.06) ${DAY_WIDTH}px)` }} onClick={(event) => onRowClick(bed, event.clientX, event.currentTarget)}>
           <CreationSelection bedId={bed.id} dates={dates} timelineWidth={timelineWidth} isActive={!draggingEventId && !isResizing && !isBulkMode} onCreationStart={onCreationStart} onCreationAbort={onCreationAbort} onCreationCommit={onCreationCommit} />
-          {dates.map((date, index) => isSameDay(date, new Date()) ? <div key={`today-${bed.id}-${index}`} className="pointer-events-none absolute inset-y-0 bg-emerald-600/20" style={{ left: index * DAY_WIDTH, width: DAY_WIDTH }} /> : null)}
+          {dates.map((date, index) => isBookingToday(date) ? <div key={`today-${bed.id}-${index}`} className="pointer-events-none absolute inset-y-0 bg-emerald-600/20" style={{ left: index * DAY_WIDTH, width: DAY_WIDTH }} /> : null)}
           {bedEvents.map((event) => {
             const geometry = eventGeometry(event)
             const isBlock = event.event_type === "block"
@@ -189,15 +190,15 @@ export function TimelineRow(props: TimelineRowProps) {
                 onPointerCancel={() => { if (!isBlock) onEventPointerCancel() }}
                 onClick={(clickEvent) => { clickEvent.stopPropagation(); if (draggingEventId || isResizing || confirmingReservationId) return; if (!isBlock && (clickEvent.ctrlKey || clickEvent.metaKey || isBulkMode)) { onToggleSelect(event.event_id, clickEvent.shiftKey); return } if (isBlock) onOpenBlock(event); else setInspectedReservation(event) }}
                 onDoubleClick={(doubleClickEvent) => { doubleClickEvent.stopPropagation(); if (!isBlock) onOpenReservation(event) }}
-                className={`group absolute top-[5px] h-[35px] overflow-hidden border px-3 text-left text-[11px] shadow-none transition-all duration-100 hover:brightness-110 focus:outline-none focus:ring-2 focus:ring-emerald-500 ${isBulkConflict ? "ring-2 ring-amber-400" : ""} ${isSelected ? "ring-2 ring-white" : ""} ${isBlock ? "border-zinc-500/70 bg-zinc-800 text-white" : STATUS_STYLES[statusKey] ?? "border-white/35 bg-[#292929] text-white"} ${isMoving || isConfirmingResize ? "opacity-60" : ""}`}
+                className={`group absolute top-[4px] h-[32px] overflow-hidden border px-2.5 text-left text-[10px] shadow-none transition-all duration-100 hover:brightness-110 focus:outline-none focus:ring-2 focus:ring-emerald-500 ${isBulkConflict ? "ring-2 ring-amber-400" : ""} ${isSelected ? "ring-2 ring-white" : ""} ${isBlock ? "border-zinc-500/70 bg-zinc-800 text-white" : STATUS_STYLES[statusKey] ?? "border-white/35 bg-[#292929] text-white"} ${isMoving || isConfirmingResize ? "opacity-60" : ""}`}
                 style={{ left: geometry.left, width: geometry.width, clipPath: isBlock ? undefined : "polygon(10px 0, 100% 0, calc(100% - 10px) 100%, 0 100%)" }}>
                 {!isBlock && <span className={`absolute left-2 top-1 z-10 transition ${isSelected ? "opacity-100" : "opacity-0 group-hover:opacity-60"}`} onClick={(clickEvent) => { clickEvent.stopPropagation(); onToggleSelect(event.event_id, false) }}>{isSelected ? <CheckSquare className="h-3 w-3" /> : <Square className="h-3 w-3" />}</span>}
                 {!isBlock && <><span aria-hidden="true" className={`absolute inset-y-0 left-0 z-10 cursor-ew-resize opacity-0 hover:bg-white/20 group-hover:opacity-100 ${isTouchDevice ? "w-8" : "w-2"}`} onClick={(clickEvent) => { clickEvent.preventDefault(); clickEvent.stopPropagation() }} onPointerDown={(pointerEvent) => onBeginResize(event, "left", pointerEvent)} onPointerMove={onMoveResize} onPointerUp={(pointerEvent) => void onFinishResize(pointerEvent)} onPointerCancel={(pointerEvent) => { pointerEvent.preventDefault(); pointerEvent.stopPropagation(); onClearResize() }} /><span aria-hidden="true" className={`absolute inset-y-0 right-0 z-10 cursor-ew-resize opacity-0 hover:bg-white/20 group-hover:opacity-100 ${isTouchDevice ? "w-8" : "w-2"}`} onClick={(clickEvent) => { clickEvent.preventDefault(); clickEvent.stopPropagation() }} onPointerDown={(pointerEvent) => onBeginResize(event, "right", pointerEvent)} onPointerMove={onMoveResize} onPointerUp={(pointerEvent) => void onFinishResize(pointerEvent)} onPointerCancel={(pointerEvent) => { pointerEvent.preventDefault(); pointerEvent.stopPropagation(); onClearResize() }} /></>}
                 {!isBlock && <span role="button" tabIndex={0} aria-label={isExpanded ? c.hideOperations : c.showOperations} className="absolute right-2 top-1 z-30 inline-flex h-4 w-4 items-center justify-center bg-black/20 hover:bg-black/35" onPointerDown={(pointerEvent) => { pointerEvent.preventDefault(); pointerEvent.stopPropagation() }} onClick={(clickEvent) => { clickEvent.preventDefault(); clickEvent.stopPropagation(); setExpandedReservationId((current) => current === event.event_id ? null : event.event_id) }} onKeyDown={(keyEvent) => { if (keyEvent.key === "Enter" || keyEvent.key === " ") { keyEvent.preventDefault(); keyEvent.stopPropagation(); setExpandedReservationId((current) => current === event.event_id ? null : event.event_id) } }}>{isExpanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}</span>}
-                <div className="truncate pr-5 font-medium leading-4">{isMoving ? c.validating : isConfirmingResize ? c.confirming : isEventResizing ? c.resizing : isBlock ? blockLabels[blockKey] ?? blockLabels.other : event.guest_name ?? event.label}</div>
-                <div className="truncate pr-5 text-[9px] opacity-65">{isBlock ? event.label : statusLabels[statusKey] ?? event.status}</div>
-                {!isBlock && isSameDay(parseISO(event.starts_on), new Date()) && <div className="absolute left-0 top-0 h-full w-0.5 bg-emerald-400" title={c.checkinToday} />}
-                {!isBlock && isSameDay(parseISO(event.ends_on), new Date()) && <div className="absolute right-0 top-0 h-full w-0.5 bg-amber-300" title={c.checkoutToday} />}
+                <div className="truncate pr-5 font-medium leading-[14px]">{isMoving ? c.validating : isConfirmingResize ? c.confirming : isEventResizing ? c.resizing : isBlock ? blockLabels[blockKey] ?? blockLabels.other : event.guest_name ?? event.label}</div>
+                <div className="truncate pr-5 text-[8px] leading-3 opacity-60">{isBlock ? event.label : statusLabels[statusKey] ?? event.status}</div>
+                {!isBlock && isBookingToday(parseISO(event.starts_on)) && <div className="absolute left-0 top-0 h-full w-0.5 bg-emerald-400" title={c.checkinToday} />}
+                {!isBlock && isBookingToday(parseISO(event.ends_on)) && <div className="absolute right-0 top-0 h-full w-0.5 bg-amber-300" title={c.checkoutToday} />}
               </button>
             </div>
           })}

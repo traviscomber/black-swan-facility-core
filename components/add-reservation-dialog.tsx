@@ -13,7 +13,8 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
-import { format } from "date-fns"
+import { differenceInCalendarDays, format, parseISO } from "date-fns"
+import { ChevronDown } from "lucide-react"
 import { addReservationCopy, fillReservationCopy } from "@/lib/translations/add-reservation"
 
 interface Room {
@@ -90,6 +91,8 @@ export function AddReservationDialog({
   const [showConfirmation, setShowConfirmation] = useState(false)
   const [confirmationData, setConfirmationData] = useState<ReservationConfirmationData | null>(null)
   const [capacityWarning, setCapacityWarning] = useState<string | null>(null)
+  const [showDetails, setShowDetails] = useState(false)
+  const [amountTouched, setAmountTouched] = useState(false)
 
   const [formData, setFormData] = useState({
     bed_id: preselectedBed || "",
@@ -121,6 +124,8 @@ export function AddReservationDialog({
             room_number,
             room_type,
             rate_per_night,
+            capacity,
+            max_guests,
             location,
             location_id,
             location_ref:locations!rooms_location_id_fkey(id, name)
@@ -180,6 +185,16 @@ export function AddReservationDialog({
     }
   }, [beds, copy.capacityWarning, formData.bed_id, formData.num_guests])
 
+  useEffect(() => {
+    if (amountTouched || !formData.bed_id || !formData.check_in || !formData.check_out) return
+    const selectedBed = beds.find((bed) => bed.id === formData.bed_id)
+    const rate = Number(selectedBed?.room?.rate_per_night ?? 0)
+    const nights = Math.max(0, differenceInCalendarDays(parseISO(formData.check_out), parseISO(formData.check_in)))
+    if (rate > 0 && nights > 0) {
+      setFormData((current) => ({ ...current, total_amount: rate * nights }))
+    }
+  }, [amountTouched, beds, formData.bed_id, formData.check_in, formData.check_out])
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!canCreateReservation) {
@@ -203,7 +218,7 @@ export function AddReservationDialog({
       checkOut: formData.check_out,
       nights,
       totalAmount: formData.total_amount,
-      locationName: selectedLocationFilter === "all" ? copy.multiple : selectedLocationFilter,
+      locationName: selectedBed?.room?.location_ref?.name || selectedBed?.room?.location || (selectedLocationFilter === "all" ? copy.multiple : selectedLocationFilter),
     })
     setShowConfirmation(true)
   }
@@ -271,6 +286,8 @@ export function AddReservationDialog({
       status: "confirmed",
       special_requests: "",
     })
+    setShowDetails(false)
+    setAmountTouched(false)
   }
 
   function handleGuestSelect(guestId: string) {
@@ -296,7 +313,7 @@ export function AddReservationDialog({
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-2xl rounded-none">
           <DialogHeader><DialogTitle>{copy.title}</DialogTitle></DialogHeader>
 
           {!accessLoading && !canCreateReservation ? (
@@ -304,7 +321,7 @@ export function AddReservationDialog({
               {copy.noPermissionDepartment}
             </div>
           ) : (
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit} className="space-y-3">
               {capacityWarning && (
                 <div className="rounded-md border border-yellow-200 bg-yellow-50 p-3 dark:border-yellow-800 dark:bg-yellow-900/20">
                   <p className="text-sm text-yellow-800 dark:text-yellow-200">{capacityWarning}</p>
@@ -312,7 +329,7 @@ export function AddReservationDialog({
                 </div>
               )}
 
-              <div className="grid gap-4 sm:grid-cols-2">
+              <div className="grid gap-3 sm:grid-cols-2">
                 <div className="space-y-2 sm:col-span-2">
                   <Label htmlFor="location_filter">{copy.filterLocation}</Label>
                   <Select value={selectedLocationFilter} onValueChange={setSelectedLocationFilter}>
@@ -342,7 +359,7 @@ export function AddReservationDialog({
                 <div className="space-y-2 sm:col-span-2">
                   <Label htmlFor="guest_id">{copy.existingGuest}</Label>
                   <Select value={formData.guest_id} onValueChange={handleGuestSelect}>
-                    <SelectTrigger><SelectValue placeholder={copy.selectGuest} /></SelectTrigger>
+                    <SelectTrigger className="rounded-none"><SelectValue placeholder={copy.selectGuest} /></SelectTrigger>
                     <SelectContent>
                       {guests.map((guest) => <SelectItem key={guest.id} value={guest.id}>{guest.name} - {guest.email}</SelectItem>)}
                     </SelectContent>
@@ -351,20 +368,11 @@ export function AddReservationDialog({
 
                 <div className="space-y-2">
                   <Label htmlFor="guest_name">{copy.guestName} *</Label>
-                  <Input id="guest_name" value={formData.guest_name} onChange={(e) => setFormData({ ...formData, guest_name: e.target.value })} required />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="guest_email">{copy.email}</Label>
-                  <Input id="guest_email" type="email" value={formData.guest_email} onChange={(e) => setFormData({ ...formData, guest_email: e.target.value })} />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="guest_phone">{copy.phone}</Label>
-                  <Input id="guest_phone" value={formData.guest_phone} onChange={(e) => setFormData({ ...formData, guest_phone: e.target.value })} />
+                  <Input id="guest_name" className="rounded-none" value={formData.guest_name} onChange={(e) => setFormData({ ...formData, guest_name: e.target.value })} required />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="num_guests">{copy.numberGuests}</Label>
-                  <Input id="num_guests" type="number" min="1" value={formData.num_guests} onChange={(e) => setFormData({ ...formData, num_guests: Number.parseInt(e.target.value) })} required />
-                  <p className="text-xs text-muted-foreground">{copy.capacityHint}</p>
+                  <Input id="num_guests" className="rounded-none" type="number" min="1" value={formData.num_guests} onChange={(e) => setFormData({ ...formData, num_guests: Number.parseInt(e.target.value) })} required />
                 </div>
 
                 {formData.bed_id && (
@@ -372,6 +380,7 @@ export function AddReservationDialog({
                     <Label>{copy.selectDates} *</Label>
                     <AvailabilityCalendarPicker
                       bedId={formData.bed_id}
+                      roomId={beds.find((bed) => bed.id === formData.bed_id)?.room_id}
                       onDateRangeSelect={(checkIn, checkOut) => setFormData({ ...formData, check_in: checkIn, check_out: checkOut })}
                       currentCheckIn={formData.check_in}
                       currentCheckOut={formData.check_out}
@@ -383,27 +392,45 @@ export function AddReservationDialog({
 
                 <div className="space-y-2">
                   <Label htmlFor="total_amount">{copy.totalAmount}</Label>
-                  <Input id="total_amount" type="number" step="0.01" value={formData.total_amount} onChange={(e) => setFormData({ ...formData, total_amount: Number.parseFloat(e.target.value) })} required />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="status">{copy.status}</Label>
-                  <Select value={formData.status} onValueChange={(value) => setFormData({ ...formData, status: value })}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="confirmed">{copy.confirmed}</SelectItem>
-                      <SelectItem value="pending">{copy.pending}</SelectItem>
-                      <SelectItem value="checked_in">{copy.checkedIn}</SelectItem>
-                      <SelectItem value="checked_out">{copy.checkedOut}</SelectItem>
-                      <SelectItem value="cancelled">{copy.cancelled}</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <Input id="total_amount" className="rounded-none" type="number" step="0.01" value={formData.total_amount} onChange={(e) => { setAmountTouched(true); setFormData({ ...formData, total_amount: Number.parseFloat(e.target.value) }) }} required />
+                  {!amountTouched && formData.total_amount > 0 && <p className="text-[11px] text-muted-foreground">{copy.estimated}</p>}
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="special_requests">{copy.specialRequests}</Label>
-                <Textarea id="special_requests" value={formData.special_requests || ""} onChange={(e) => setFormData({ ...formData, special_requests: e.target.value })} rows={3} />
-              </div>
+              <button type="button" onClick={() => setShowDetails((current) => !current)} className="flex h-8 w-full items-center justify-between border-y px-1 text-xs text-muted-foreground hover:text-foreground">
+                <span>{showDetails ? copy.hideDetails : copy.moreDetails}</span>
+                <ChevronDown className={`h-3.5 w-3.5 transition-transform ${showDetails ? "rotate-180" : ""}`} />
+              </button>
+
+              {showDetails && (
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="guest_email">{copy.email}</Label>
+                    <Input id="guest_email" className="rounded-none" type="email" value={formData.guest_email} onChange={(e) => setFormData({ ...formData, guest_email: e.target.value })} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="guest_phone">{copy.phone}</Label>
+                    <Input id="guest_phone" className="rounded-none" value={formData.guest_phone} onChange={(e) => setFormData({ ...formData, guest_phone: e.target.value })} />
+                  </div>
+                  <div className="space-y-2 sm:col-span-2">
+                    <Label htmlFor="status">{copy.status}</Label>
+                    <Select value={formData.status} onValueChange={(value) => setFormData({ ...formData, status: value })}>
+                      <SelectTrigger className="rounded-none"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="confirmed">{copy.confirmed}</SelectItem>
+                        <SelectItem value="pending">{copy.pending}</SelectItem>
+                        <SelectItem value="checked_in">{copy.checkedIn}</SelectItem>
+                        <SelectItem value="checked_out">{copy.checkedOut}</SelectItem>
+                        <SelectItem value="cancelled">{copy.cancelled}</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2 sm:col-span-2">
+                    <Label htmlFor="special_requests">{copy.specialRequests}</Label>
+                    <Textarea id="special_requests" className="rounded-none" value={formData.special_requests || ""} onChange={(e) => setFormData({ ...formData, special_requests: e.target.value })} rows={3} />
+                  </div>
+                </div>
+              )}
 
               <DialogFooter>
                 <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>{copy.cancel}</Button>

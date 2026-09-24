@@ -257,8 +257,8 @@
 }
 
 .booking-workspace[data-booking-section="operations"] .fixed.inset-0.z-50.flex.justify-end > aside {
-  width: min(430px,100vw) !important;
-  max-width: 430px !important;
+  width: min(600px,100vw) !important;
+  max-width: 600px !important;
 }
 
 @media (max-width: 1023px) {
@@ -275,4 +275,22 @@
   .booking-calendar-bedbooking-shell table {
     font-size: .75rem;
   }
+}
+
+
+/* Final calendar parity geometry: denser inventory rows, clearer today cue, more room for Stay Cockpit. */
+.booking-workspace[data-booking-section="calendar"] [data-calendar-row] {
+  min-height: 40px !important;
+}
+
+.booking-workspace[data-booking-section="calendar"] [data-property-group] > button {
+  min-height: 28px !important;
+}
+
+.booking-workspace[data-booking-section="calendar"] [data-calendar-row] button {
+  border-radius: 1px !important;
+}
+
+.booking-workspace[data-booking-section="calendar"] [data-calendar-row] [class*="bg-emerald-600/20"] {
+  background: rgba(147, 201, 170, .10) !important;
 }

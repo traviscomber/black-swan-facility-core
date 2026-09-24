@@ -26,6 +26,7 @@ export default function GuestsPage() {
   const localize = (href: string) => `/${language}${href}`
   const [guests, setGuests] = useState<Guest[]>([])
   const [searchQuery, setSearchQuery] = useState("")
+  const [guestFilter, setGuestFilter] = useState<"all" | "vip" | "returning">("all")
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [showAddDialog, setShowAddDialog] = useState(false)
@@ -51,7 +52,7 @@ export default function GuestsPage() {
     })
   }, [guests])
 
-  const filteredGuests = useMemo(() => { const query = searchQuery.trim().toLowerCase(); if (!query) return enrichedGuests; return enrichedGuests.filter((guest) => [guest.name, guest.email, guest.phone, guest.company_name].filter(Boolean).some((value) => value.toLowerCase().includes(query))) }, [enrichedGuests, searchQuery])
+  const filteredGuests = useMemo(() => { const query = searchQuery.trim().toLowerCase(); return enrichedGuests.filter((guest) => { if (guestFilter === "vip" && !guest.vip_status) return false; if (guestFilter === "returning" && guest.stays < 2) return false; if (!query) return true; return [guest.name, guest.email, guest.phone, guest.company_name].filter(Boolean).some((value) => value.toLowerCase().includes(query)) }) }, [enrichedGuests, guestFilter, searchQuery])
 
   async function handleDeleteGuest(guestId: string) { if (!confirm(copy.deleteConfirm)) return; const { error: deleteError } = await supabase.from("guests").delete().eq("id", guestId); if (deleteError) setError(deleteError.message); else void loadGuests() }
   function handleWhatsApp(guest: Guest) { const phone = guest.phone?.replace(/\D/g, ""); if (phone) window.open(`https://wa.me/${phone}`, "_blank", "noopener,noreferrer") }
@@ -62,7 +63,7 @@ export default function GuestsPage() {
       <div className="flex items-center gap-2"><Link href={localize("/bookings/calendar")} className="inline-flex h-9 items-center gap-2 rounded-[4px] border border-white/10 bg-[#111314] px-3 text-xs hover:bg-white/5"><CalendarDays className="h-4 w-4" />{copy.operationalCenter}</Link><button onClick={() => setShowAddDialog(true)} className="inline-flex h-9 items-center gap-2 rounded-[5px] bg-[#04b958] px-4 text-xs font-medium"><Plus className="h-4 w-4" />{copy.newGuest}</button></div>
     </header>
 
-    <div className="border-b border-white/10 bg-[#151718] p-2"><div className="relative"><Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/35" /><input className="h-8 w-full rounded-[3px] border border-white/10 bg-[#111314] pl-9 pr-3 text-xs outline-none placeholder:text-white/30 focus:border-[#04b958]/70" placeholder={copy.search} value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} /></div></div>
+    <div className="flex items-center gap-2 border-b border-white/10 bg-[#151718] p-2"><div className="relative min-w-0 flex-1"><Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/35" /><input className="h-8 w-full rounded-[3px] border border-white/10 bg-[#111314] pl-9 pr-3 text-xs outline-none placeholder:text-white/30 focus:border-[#04b958]/70" placeholder={copy.search} value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} /></div><select value={guestFilter} onChange={(event)=>setGuestFilter(event.target.value as "all"|"vip"|"returning")} className="h-8 min-w-32 bg-[#111314] px-2 text-xs text-white/70 outline-none"><option value="all">{copy.guests}</option><option value="vip">VIP</option><option value="returning">{copy.returning}</option></select></div>
 
     {error && <div className="m-3 border border-red-500/30 bg-red-500/10 p-3 text-xs text-red-200">{error}</div>}
 

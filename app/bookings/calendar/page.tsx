@@ -1,9 +1,10 @@
 "use client"
 
 import Link from "next/link"
-import { useSearchParams } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
 import { addDays, differenceInCalendarDays, format, parseISO } from "date-fns"
+import { de, enUS, es } from "date-fns/locale"
 import { Ban, Bell, BedDouble, CalendarDays, CheckSquare, ChevronLeft, ChevronRight, Loader2, Plus, Printer, RefreshCw, RotateCcw, Search, Trash2, UserCircle, X } from "lucide-react"
 import { toast } from "sonner"
 import { createClient } from "@/lib/supabase/client"
@@ -21,24 +22,24 @@ import { type ReservationResizeEdge, useReservationResizeState } from "./use-res
 import { useFlipAnimation } from "./use-flip-animation"
 import { useCalendarInteraction } from "./use-calendar-interaction"
 import { TimelineGrid } from "@/components/calendar/timeline-grid"
-import { normalizedStatus, STATUS_LABELS, BLOCK_LABELS } from "@/components/calendar/timeline-row"
+import { normalizedStatus } from "@/components/calendar/timeline-row"
 
 interface Location { id: string; name: string }
 interface Bed { id: string; bed_number: string; bed_type: string; room: { id: string; room_number: string; room_type?: string; location_id: string; location_ref?: { id: string; name: string } } }
 interface CalendarEvent { event_id: string; event_type: "reservation" | "block"; bed_id: string; room_id: string; location_id: string; starts_on: string; ends_on: string; status: string; label: string; guest_name: string | null; block_type: string | null; source: string | null; total_amount: number | null }
-interface Reservation { id: string; bed_id: string | null; guest_name: string; guest_email?: string | null; guest_phone?: string | null; check_in: string; check_out: string; status: string; num_guests?: number | null; total_amount?: number | null; special_requests?: string | null }
 interface RoomBlock { id: string; room_id: string; start_date: string; end_date: string; block_type: string; reason: string; notes?: string | null; status: string }
 interface ResizeRpcResult { success: boolean; message: string; check_in: string; check_out: string }
 interface BulkConflict { reservation_id: string; reason: string }
 
 const DAY_WIDTH = 46
-function formatClp(value: number) { return new Intl.NumberFormat("es-CL", { style: "currency", currency: "CLP", maximumFractionDigits: 0 }).format(value) }
 function intervalsOverlap(startA: string, endA: string, startB: string, endB: string) { return parseISO(startA) < parseISO(endB) && parseISO(endA) > parseISO(startB) }
 
 export default function BookingsCalendarPage() {
   const { language } = useLanguage()
   const searchParams = useSearchParams()
+  const router = useRouter()
   const pageCopy = bookingsCalendarPageCopy[language]
+  const dateLocale = language === "es" ? es : language === "de" ? de : enUS
   const blocksHref = `/${language}/bookings/blocks`
   const supabase = useMemo(() => createClient(), [])
   const [locations, setLocations] = useState<Location[]>([])
@@ -47,17 +48,16 @@ export default function BookingsCalendarPage() {
   const [locationId, setLocationId] = useState("all")
   const [status, setStatus] = useState("all")
   const [search, setSearch] = useState("")
-  const [rangeDays, setRangeDays] = useState(19)
+  const [rangeDays, setRangeDays] = useState(33)
   const [startDate, setStartDate] = useState(bookingTodayDate)
-  const [loading, setLoading] = useState(true)
+  const [inventoryReady, setInventoryReady] = useState(false)
+  const [eventsReady, setEventsReady] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [newReservationOpen, setNewReservationOpen] = useState(false)
   const [preselectedBed, setPreselectedBed] = useState<Bed | null>(null)
   const [preselectedDate, setPreselectedDate] = useState<Date | null>(null)
   const [preselectedCheckOutDate, setPreselectedCheckOutDate] = useState<Date | null>(null)
-  const [selectedReservation, setSelectedReservation] = useState<Reservation | null>(null)
   const [selectedBlock, setSelectedBlock] = useState<RoomBlock | null>(null)
-  const [updatingStatus, setUpdatingStatus] = useState<string | null>(null)
   const { resizeState, resizingReservationId, confirmingReservationId, isResizing, beginResize, updatePreview, markConfirming, clearResize } = useReservationResizeState()
   const { captureRect, flipTo } = useFlipAnimation()
   const blockRefs = useRef<Map<string, HTMLButtonElement>>(new Map())
@@ -112,13 +112,6 @@ export default function BookingsCalendarPage() {
 
   loadEventsRef.current = loadEvents
 
-  const loadInitialData = useCallback(async () => {
-    setLoading(true)
-    setError(null)
-    await Promise.all([loadInventory(), loadEvents()])
-    setLoading(false)
-  }, [loadEvents, loadInventory])
-
   const refreshEvents = useCallback(async () => {
     setError(null)
     await loadEvents()
@@ -151,7 +144,19 @@ export default function BookingsCalendarPage() {
     onMoveComplete: () => loadEventsRef.current(),
   })
 
-  useEffect(() => { void loadInitialData() }, [loadInitialData])
+  useEffect(() => {
+    let active = true
+    setError(null)
+    void loadInventory().finally(() => { if (active) setInventoryReady(true) })
+    return () => { active = false }
+  }, [loadInventory])
+
+  useEffect(() => {
+    let active = true
+    setError(null)
+    void loadEvents().finally(() => { if (active) setEventsReady(true) })
+    return () => { active = false }
+  }, [loadEvents])
   useEffect(() => {
     const scheduleEvents = () => {
       if (realtimeEventsTimer.current) clearTimeout(realtimeEventsTimer.current)
@@ -186,6 +191,7 @@ export default function BookingsCalendarPage() {
     return () => clearInterval(interval)
   }, [undoExpiry])
 
+  const loading = !inventoryReady || !eventsReady
   const searchTerm = search.trim().toLowerCase()
   const roomMatchedBedIds = useMemo(() => {
     const matched = new Set<string>()
@@ -223,6 +229,15 @@ export default function BookingsCalendarPage() {
     })
     return map
   }, [visibleEvents])
+  const availabilityEventsByBed = useMemo(() => {
+    const map = new Map<string, CalendarEvent[]>()
+    events.forEach((event) => {
+      const list = map.get(event.bed_id)
+      if (list) list.push(event)
+      else map.set(event.bed_id, [event])
+    })
+    return map
+  }, [events])
   const resizeConflict = useMemo(() => {
     if (!resizeState) return null
     return events.find((event) => event.bed_id === resizeState.bedId && event.event_id !== resizeState.reservationId && intervalsOverlap(resizeState.previewStart, resizeState.previewEnd, event.starts_on, event.ends_on)) ?? null
@@ -259,7 +274,7 @@ export default function BookingsCalendarPage() {
     if (!resizeState || resizeState.pointerId !== pointerEvent.pointerId) { clearResize(); return }
     const pendingResize = resizeState
     if (pendingResize.previewStart === pendingResize.originalStart && pendingResize.previewEnd === pendingResize.originalEnd) { clearResize(); return }
-    if (resizeConflict) { toast.error(resizeConflict.event_type === "block" ? "Las nuevas fechas chocan con un bloqueo" : "Las nuevas fechas chocan con otra reserva"); clearResize(); return }
+    if (resizeConflict) { toast.error(resizeConflict.event_type === "block" ? pageCopy.resizeBlockConflict : pageCopy.resizeReservationConflict); clearResize(); return }
     const previousEvents = events
     setError(null)
     captureRect(pendingResize.reservationId, blockRefs.current.get(pendingResize.reservationId) ?? null)
@@ -271,16 +286,14 @@ export default function BookingsCalendarPage() {
     if (resizeError || !result?.success) {
       captureRect(pendingResize.reservationId, blockRefs.current.get(pendingResize.reservationId) ?? null)
       pendingFlipIds.current.push(pendingResize.reservationId)
-      setEvents(previousEvents); const message = resizeError?.message ?? result?.message ?? "La disponibilidad cambió antes de confirmar las fechas"; setError(message); toast.error("El cambio de fechas fue rechazado y se restauró la reserva"); clearResize(); return
+      setEvents(previousEvents); const message = resizeError?.message ?? result?.message ?? pageCopy.resizeChanged; setError(message); toast.error(pageCopy.resizeRejected); clearResize(); return
     }
     captureRect(pendingResize.reservationId, blockRefs.current.get(pendingResize.reservationId) ?? null)
     pendingFlipIds.current.push(pendingResize.reservationId)
     setEvents((current) => current.map((event) => event.event_type === "reservation" && event.event_id === pendingResize.reservationId ? { ...event, starts_on: result.check_in, ends_on: result.check_out } : event))
-    toast.success(`Reserva actualizada: ${result.check_in} → ${result.check_out}`); clearResize(); await refreshEvents()
+    toast.success(`${pageCopy.reservationUpdated}: ${result.check_in} → ${result.check_out}`); clearResize(); await refreshEvents()
   }
-  async function openReservation(event: CalendarEvent) { setError(null); const { data, error: detailError } = await supabase.from("reservations").select("id, bed_id, guest_name, guest_email, guest_phone, check_in, check_out, status, num_guests, total_amount, special_requests").eq("id", event.event_id).single(); if (detailError) { setError(detailError.message); return }; setSelectedReservation(data as Reservation) }
   async function openBlock(event: CalendarEvent) { setError(null); const { data, error: detailError } = await supabase.from("room_blocks").select("id, room_id, start_date, end_date, block_type, reason, notes, status").eq("id", event.event_id).single(); if (detailError) { setError(detailError.message); return }; setSelectedBlock(data as RoomBlock) }
-  async function updateReservationStatus(reservation: Reservation, nextStatus: string) { setUpdatingStatus(reservation.id); setError(null); const { error: updateError } = await supabase.from("reservations").update({ status: nextStatus }).eq("id", reservation.id); if (updateError) setError(updateError.message); else { setSelectedReservation({ ...reservation, status: nextStatus }); await refreshEvents() }; setUpdatingStatus(null) }
 
   function armUndoTimer(operationId: string) {
     if (undoTimerRef.current) clearTimeout(undoTimerRef.current)
@@ -296,9 +309,9 @@ export default function BookingsCalendarPage() {
     try {
       const res = await fetch("/api/bookings/bulk/status", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ reservation_ids: [...selectedIds], status: nextStatus }) })
       const data = await res.json()
-      if (!res.ok || !data.success) { toast.error(data.error ?? "No fue posible actualizar el estado"); return }
-      armUndoTimer(data.operation_id); toast.success(`${data.updated_count} reserva${data.updated_count !== 1 ? "s" : ""} actualizadas a "${STATUS_LABELS[nextStatus] ?? nextStatus}"`); clearSelection(); await refreshEvents()
-    } catch { toast.error("Error de red al actualizar estado") } finally { setBulkLoading(false) }
+      if (!res.ok || !data.success) { toast.error(data.error ?? pageCopy.statusUpdateFailed); return }
+      const nextLabel = nextStatus === "pending" ? pageCopy.pending : nextStatus === "confirmed" ? pageCopy.confirmed : nextStatus === "checked_in" ? pageCopy.checkedIn : nextStatus === "checked_out" ? pageCopy.completed : nextStatus; armUndoTimer(data.operation_id); toast.success(`${data.updated_count} ${pageCopy.modified} · ${nextLabel}`); clearSelection(); await refreshEvents()
+    } catch { toast.error(pageCopy.statusNetworkError) } finally { setBulkLoading(false) }
   }
 
   async function executeBulkShift(daysDelta: number) {
@@ -308,10 +321,10 @@ export default function BookingsCalendarPage() {
     try {
       const res = await fetch("/api/bookings/bulk/execute", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ reservation_ids: [...selectedIds], updates, operation_type: "move" }) })
       const data = await res.json()
-      if (res.status === 409) { setBulkConflicts(data.conflicts ?? []); toast.error(data.error ?? "Conflictos detectados"); return }
-      if (!res.ok || !data.success) { toast.error(data.error ?? "No fue posible mover las reservas"); return }
-      armUndoTimer(data.operation_id); toast.success(`${data.updated_count} reserva${data.updated_count !== 1 ? "s" : ""} movidas`); clearSelection(); await refreshEvents()
-    } catch { toast.error("Error de red al mover reservas") } finally { setBulkLoading(false) }
+      if (res.status === 409) { setBulkConflicts(data.conflicts ?? []); toast.error(data.error ?? pageCopy.conflictsDetected); return }
+      if (!res.ok || !data.success) { toast.error(data.error ?? pageCopy.moveFailed); return }
+      armUndoTimer(data.operation_id); toast.success(`${data.updated_count} ${pageCopy.moved}`); clearSelection(); await refreshEvents()
+    } catch { toast.error(pageCopy.moveNetworkError) } finally { setBulkLoading(false) }
   }
 
   async function executeBulkExtend(daysExtend: number) {
@@ -321,10 +334,10 @@ export default function BookingsCalendarPage() {
     try {
       const res = await fetch("/api/bookings/bulk/execute", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ reservation_ids: [...selectedIds], updates, operation_type: daysExtend > 0 ? "extend" : "reduce" }) })
       const data = await res.json()
-      if (res.status === 409) { setBulkConflicts(data.conflicts ?? []); toast.error(data.error ?? "Conflictos detectados"); return }
-      if (!res.ok || !data.success) { toast.error(data.error ?? "No fue posible modificar las reservas"); return }
-      armUndoTimer(data.operation_id); toast.success(`${data.updated_count} reserva${data.updated_count !== 1 ? "s" : ""} modificadas`); clearSelection(); await refreshEvents()
-    } catch { toast.error("Error de red al modificar reservas") } finally { setBulkLoading(false) }
+      if (res.status === 409) { setBulkConflicts(data.conflicts ?? []); toast.error(data.error ?? pageCopy.conflictsDetected); return }
+      if (!res.ok || !data.success) { toast.error(data.error ?? pageCopy.networkModifyError); return }
+      armUndoTimer(data.operation_id); toast.success(`${data.updated_count} ${pageCopy.modified}`); clearSelection(); await refreshEvents()
+    } catch { toast.error(pageCopy.networkModifyError) } finally { setBulkLoading(false) }
   }
 
   async function executeBulkDelete() {
@@ -333,9 +346,9 @@ export default function BookingsCalendarPage() {
     try {
       const res = await fetch("/api/bookings/bulk/delete", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ reservation_ids: [...selectedIds] }) })
       const data = await res.json()
-      if (!res.ok || !data.success) { toast.error(data.error ?? "No fue posible eliminar las reservas"); return }
-      toast.success(`${data.deleted_count} reserva${data.deleted_count !== 1 ? "s" : ""} eliminadas`); clearSelection(); await refreshEvents()
-    } catch { toast.error("Error de red al eliminar reservas") } finally { setBulkLoading(false) }
+      if (!res.ok || !data.success) { toast.error(data.error ?? pageCopy.deleteFailed); return }
+      toast.success(`${data.deleted_count} ${pageCopy.deleted}`); clearSelection(); await refreshEvents()
+    } catch { toast.error(pageCopy.networkDeleteError) } finally { setBulkLoading(false) }
   }
 
   async function undoLastOperation() {
@@ -344,47 +357,48 @@ export default function BookingsCalendarPage() {
     try {
       const res = await fetch("/api/bookings/bulk/undo", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ operation_id: lastOperationId }) })
       const data = await res.json()
-      if (!res.ok || !data.success) { toast.error(data.error ?? "No fue posible deshacer la operación"); return }
+      if (!res.ok || !data.success) { toast.error(data.error ?? pageCopy.undoFailed); return }
       if (undoTimerRef.current) clearTimeout(undoTimerRef.current)
-      setLastOperationId(null); setUndoExpiry(null); toast.success(`Operación deshecha: ${data.restored_count} reserva${data.restored_count !== 1 ? "s" : ""} restauradas`); await refreshEvents()
-    } catch { toast.error("Error de red al deshacer") } finally { setBulkLoading(false) }
+      setLastOperationId(null); setUndoExpiry(null); toast.success(`${pageCopy.undo}: ${data.restored_count} ${pageCopy.restored}`); await refreshEvents()
+    } catch { toast.error(pageCopy.networkUndoError) } finally { setBulkLoading(false) }
   }
 
-  const rangeLabel = `${format(startDate, "dd MMM")} - ${format(addDays(endDate, -1), "dd MMM")}`
+  const rangeLabel = `${format(startDate, "dd MMM", { locale: dateLocale })} - ${format(addDays(endDate, -1), "dd MMM", { locale: dateLocale })}`
   const monthValue = format(startDate, "yyyy-MM")
+  const addLabel = language === "es" ? "Agregar" : language === "de" ? "Hinzufügen" : "Add"
 
   return <div className="min-h-screen bg-[#101314]">
     <div className="sticky top-0 z-50 border-b border-white/10 bg-[#17191a]">
-      <div className="flex min-h-14 items-center gap-2 overflow-x-auto px-2 py-2">
-        <Input type="month" value={monthValue} onChange={(event) => { if (event.target.value) setStartDate(bookingDateFromKey(`${event.target.value}-01`)) }} className="h-9 w-[160px] shrink-0 border-white/10 bg-[#111314] text-xs" aria-label="Month" />
-        <Button variant="outline" size="sm" className="h-9 shrink-0 border-emerald-600 text-emerald-400 hover:bg-emerald-950" onClick={() => setStartDate(bookingTodayDate())}><CalendarDays className="mr-1.5 h-3.5 w-3.5" />{pageCopy.today}</Button>
-        <Button variant="outline" size="icon" className="h-9 w-9 shrink-0" onClick={() => setStartDate(addDays(startDate, -rangeDays))}><ChevronLeft className="h-4 w-4" /></Button>
-        <div className="min-w-[118px] shrink-0 text-center text-xs font-medium text-white/80">{rangeLabel}</div>
-        <Button variant="outline" size="icon" className="h-9 w-9 shrink-0" onClick={() => setStartDate(addDays(startDate, rangeDays))}><ChevronRight className="h-4 w-4" /></Button>
-        <div className="ml-auto flex items-center gap-2" aria-label="Calendar actions">
-          <Button variant="outline" size="icon" className="h-9 w-9 shrink-0" title="Print calendar" aria-label="Print calendar" onClick={() => window.print()}><Printer className="h-4 w-4" /></Button>
-          <Button asChild variant="outline" size="icon" className="h-9 w-9 shrink-0" title="Rooms & beds" aria-label="Rooms & beds"><Link href={`/${language}/bookings/rooms`}><BedDouble className="h-4 w-4" /></Link></Button>
-          <Button size="sm" className="h-9 shrink-0 bg-emerald-600 px-4 text-white hover:bg-emerald-500" onClick={() => { setPreselectedBed(null); setPreselectedDate(null); setPreselectedCheckOutDate(null); setNewReservationOpen(true) }}><Plus className="mr-1.5 h-4 w-4" />{pageCopy.newReservation}</Button>
-          <Button variant="outline" size="icon" className="h-9 w-9 shrink-0" title="Search" aria-label="Search" onClick={() => searchInputRef.current?.focus()}><Search className="h-4 w-4" /></Button>
-          <Button variant="outline" size="icon" className="h-9 w-9 shrink-0" onClick={() => void refreshEvents()} title="Refresh" aria-label="Refresh"><RefreshCw className="h-4 w-4" /></Button>
-          <Button asChild variant="outline" size="icon" className="h-9 w-9 shrink-0" title="Tasks & alerts" aria-label="Tasks & alerts"><Link href={`/${language}/bookings/operations`}><Bell className="h-4 w-4" /></Link></Button>
-          <Button asChild variant="outline" size="icon" className="h-9 w-9 shrink-0" title="Profile" aria-label="Profile"><Link href={`/${language}/bookings/profile`}><UserCircle className="h-4 w-4" /></Link></Button>
+      <div className="flex min-h-12 items-center gap-1.5 overflow-x-auto px-2 py-1.5">
+        <Input type="month" value={monthValue} onChange={(event) => { if (event.target.value) setStartDate(bookingDateFromKey(`${event.target.value}-01`)) }} className="h-8 w-[160px] shrink-0 border-white/10 bg-[#111314] text-xs" aria-label={pageCopy.month} />
+        <Button variant="outline" size="sm" className="h-8 shrink-0 border-emerald-600 px-3 text-emerald-400 hover:bg-emerald-950" onClick={() => setStartDate(bookingTodayDate())}><CalendarDays className="mr-1.5 h-3.5 w-3.5" />{pageCopy.today}</Button>
+        <Button variant="outline" size="icon" className="h-8 w-8 shrink-0" onClick={() => setStartDate(addDays(startDate, -rangeDays))}><ChevronLeft className="h-4 w-4" /></Button>
+        <div className="min-w-[108px] shrink-0 text-center text-[11px] font-medium text-white/75">{rangeLabel}</div>
+        <Button variant="outline" size="icon" className="h-8 w-8 shrink-0" onClick={() => setStartDate(addDays(startDate, rangeDays))}><ChevronRight className="h-4 w-4" /></Button>
+        <div className="ml-auto flex items-center gap-1.5" aria-label="Calendar actions">
+          <Button variant="outline" size="icon" className="h-8 w-8 shrink-0" title={pageCopy.print} aria-label={pageCopy.print} onClick={() => window.print()}><Printer className="h-4 w-4" /></Button>
+          <Button asChild variant="outline" size="icon" className="h-8 w-8 shrink-0" title={pageCopy.roomsBeds} aria-label={pageCopy.roomsBeds}><Link href={`/${language}/bookings/rooms`}><BedDouble className="h-4 w-4" /></Link></Button>
+          <Button size="sm" className="h-8 shrink-0 bg-emerald-600 px-3 text-xs text-white hover:bg-emerald-500" onClick={() => { setPreselectedBed(null); setPreselectedDate(null); setPreselectedCheckOutDate(null); setNewReservationOpen(true) }}><Plus className="mr-1 h-3.5 w-3.5" />{addLabel}</Button>
+          <Button variant="outline" size="icon" className="h-8 w-8 shrink-0" title={pageCopy.search} aria-label={pageCopy.search} onClick={() => searchInputRef.current?.focus()}><Search className="h-4 w-4" /></Button>
+          <Button variant="outline" size="icon" className="h-8 w-8 shrink-0" onClick={() => void refreshEvents()} title={pageCopy.refresh} aria-label={pageCopy.refresh}><RefreshCw className="h-4 w-4" /></Button>
+          <Button asChild variant="outline" size="icon" className="h-8 w-8 shrink-0" title={pageCopy.tasksAlerts} aria-label={pageCopy.tasksAlerts}><Link href={`/${language}/bookings/operations`}><Bell className="h-4 w-4" /></Link></Button>
+          <Button asChild variant="outline" size="icon" className="h-8 w-8 shrink-0" title={pageCopy.profile} aria-label={pageCopy.profile}><Link href={`/${language}/bookings/profile`}><UserCircle className="h-4 w-4" /></Link></Button>
         </div>
       </div>
-      <div className="flex min-h-11 items-center gap-2 overflow-x-auto border-t border-white/5 px-2 py-1.5">
-        <div className="relative min-w-[240px] flex-1"><Search className="absolute left-3 top-2.5 h-4 w-4 text-white/35" /><Input ref={searchInputRef} className="h-9 border-white/10 bg-[#111314] pl-9 text-xs" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search guest or room" /></div>
-        <Select value={locationId} onValueChange={setLocationId}><SelectTrigger className="h-9 w-48 shrink-0 border-white/10 bg-[#111314] text-xs"><SelectValue placeholder="Property" /></SelectTrigger><SelectContent><SelectItem value="all">All properties</SelectItem>{locations.map((item) => <SelectItem key={item.id} value={item.id}>{item.name}</SelectItem>)}</SelectContent></Select>
-        <Select value={status} onValueChange={setStatus}><SelectTrigger className="h-9 w-40 shrink-0 border-white/10 bg-[#111314] text-xs"><SelectValue placeholder="Status" /></SelectTrigger><SelectContent><SelectItem value="all">All statuses</SelectItem><SelectItem value="pending">Pending</SelectItem><SelectItem value="confirmed">Confirmed</SelectItem><SelectItem value="checked_in">Checked in</SelectItem><SelectItem value="checked_out">Completed</SelectItem></SelectContent></Select>
-        <Select value={String(rangeDays)} onValueChange={(value) => setRangeDays(Number(value))}><SelectTrigger className="h-9 w-28 shrink-0 border-white/10 bg-[#111314] text-xs"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="7">7 days</SelectItem><SelectItem value="14">14 days</SelectItem><SelectItem value="19">19 days</SelectItem><SelectItem value="30">30 days</SelectItem></SelectContent></Select>
+      <div className="flex min-h-10 items-center gap-1.5 overflow-x-auto border-t border-white/5 px-2 py-1">
+        <div className="relative min-w-[240px] flex-1"><Search className="absolute left-3 top-2 h-4 w-4 text-white/35" /><Input ref={searchInputRef} className="h-8 border-white/10 bg-[#111314] pl-9 text-xs" value={search} onChange={(event) => setSearch(event.target.value)} placeholder={pageCopy.searchPlaceholder} /></div>
+        <Select value={locationId} onValueChange={setLocationId}><SelectTrigger className="h-8 w-44 shrink-0 border-white/10 bg-[#111314] text-xs"><SelectValue placeholder={pageCopy.property} /></SelectTrigger><SelectContent><SelectItem value="all">{pageCopy.allProperties}</SelectItem>{locations.map((item) => <SelectItem key={item.id} value={item.id}>{item.name}</SelectItem>)}</SelectContent></Select>
+        <Select value={status} onValueChange={setStatus}><SelectTrigger className="h-8 w-36 shrink-0 border-white/10 bg-[#111314] text-xs"><SelectValue placeholder={pageCopy.allStatuses} /></SelectTrigger><SelectContent><SelectItem value="all">{pageCopy.allStatuses}</SelectItem><SelectItem value="pending">{pageCopy.pending}</SelectItem><SelectItem value="confirmed">{pageCopy.confirmed}</SelectItem><SelectItem value="checked_in">{pageCopy.checkedIn}</SelectItem><SelectItem value="checked_out">{pageCopy.completed}</SelectItem></SelectContent></Select>
+        <Select value={String(rangeDays)} onValueChange={(value) => setRangeDays(Number(value))}><SelectTrigger className="h-8 w-24 shrink-0 border-white/10 bg-[#111314] text-xs"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="7">7 {pageCopy.days}</SelectItem><SelectItem value="14">14 {pageCopy.days}</SelectItem><SelectItem value="19">19 {pageCopy.days}</SelectItem><SelectItem value="30">30 {pageCopy.days}</SelectItem><SelectItem value="33">33 {pageCopy.days}</SelectItem></SelectContent></Select>
       </div>
     </div>
 
     {error && <div className="border-b border-red-500/30 bg-red-500/10 px-4 py-2 text-xs text-red-300">{error}</div>}
-    {bulkConflicts.length > 0 && <div className="border-b border-amber-500/30 bg-amber-500/10 px-4 py-2 text-xs text-amber-300">{bulkConflicts.length} conflicto{bulkConflicts.length !== 1 ? "s" : ""} detectado{bulkConflicts.length !== 1 ? "s" : ""}.</div>}
-    {lastOperationId && undoSecondsLeft > 0 && <div className="flex items-center gap-3 border-b border-primary/20 bg-primary/5 px-4 py-2"><RotateCcw className="h-4 w-4 text-primary" /><p className="flex-1 text-xs">Operación completada · {undoSecondsLeft}s para deshacer.</p><Button size="sm" variant="outline" onClick={undoLastOperation} disabled={bulkLoading}>Deshacer</Button></div>}
+    {bulkConflicts.length > 0 && <div className="border-b border-amber-500/30 bg-amber-500/10 px-4 py-2 text-xs text-amber-300">{bulkConflicts.length} {pageCopy.conflicts}.</div>}
+    {lastOperationId && undoSecondsLeft > 0 && <div className="flex items-center gap-3 border-b border-primary/20 bg-primary/5 px-4 py-2"><RotateCcw className="h-4 w-4 text-primary" /><p className="flex-1 text-xs">{pageCopy.operationComplete} · {undoSecondsLeft}s {pageCopy.undoWindow}.</p><Button size="sm" variant="outline" onClick={undoLastOperation} disabled={bulkLoading}>{pageCopy.undo}</Button></div>}
 
     <Card className="overflow-hidden border-0 bg-transparent shadow-none">
-      {isBulkMode && <div className="flex flex-wrap items-center gap-2 border-b border-white/10 bg-primary/5 px-3 py-2"><span className="mr-1 text-xs font-semibold text-primary">{selectedIds.size} seleccionada{selectedIds.size !== 1 ? "s" : ""}</span><Button size="sm" variant="outline" onClick={selectAll} disabled={bulkLoading}><CheckSquare className="mr-1.5 h-3.5 w-3.5" />Todas</Button><Button size="sm" variant="outline" onClick={() => executeBulkShift(-1)} disabled={bulkLoading}>-1 día</Button><Button size="sm" variant="outline" onClick={() => executeBulkShift(1)} disabled={bulkLoading}>+1 día</Button><Button size="sm" variant="outline" onClick={() => executeBulkShift(7)} disabled={bulkLoading}>+7 días</Button><Button size="sm" variant="outline" onClick={() => executeBulkExtend(1)} disabled={bulkLoading}>Extender +1</Button><Button size="sm" variant="outline" onClick={() => executeBulkExtend(-1)} disabled={bulkLoading}>Reducir -1</Button><Button size="sm" variant="outline" onClick={() => executeBulkStatus("confirmed")} disabled={bulkLoading}>Confirmar</Button><Button size="sm" variant="outline" onClick={() => executeBulkStatus("checked_in")} disabled={bulkLoading}>Check-in</Button><Button size="sm" variant="outline" onClick={() => executeBulkStatus("cancelled")} disabled={bulkLoading}>Cancelar</Button><Button size="sm" variant="destructive" onClick={executeBulkDelete} disabled={bulkLoading}><Trash2 className="mr-1.5 h-3.5 w-3.5" />Eliminar</Button><div className="ml-auto flex items-center gap-2">{bulkLoading && <Loader2 className="h-4 w-4 animate-spin" />}<Button size="sm" variant="ghost" onClick={clearSelection}><X className="mr-1.5 h-3.5 w-3.5" />Limpiar</Button></div></div>}
+      {isBulkMode && <div className="flex flex-wrap items-center gap-2 border-b border-white/10 bg-primary/5 px-3 py-2"><span className="mr-1 text-xs font-semibold text-primary">{selectedIds.size} {pageCopy.selected}</span><Button size="sm" variant="outline" onClick={selectAll} disabled={bulkLoading}><CheckSquare className="mr-1.5 h-3.5 w-3.5" />{pageCopy.all}</Button><Button size="sm" variant="outline" onClick={() => executeBulkShift(-1)} disabled={bulkLoading}>-1 {pageCopy.shiftDay}</Button><Button size="sm" variant="outline" onClick={() => executeBulkShift(1)} disabled={bulkLoading}>+1 {pageCopy.shiftDay}</Button><Button size="sm" variant="outline" onClick={() => executeBulkShift(7)} disabled={bulkLoading}>+7 {pageCopy.days}</Button><Button size="sm" variant="outline" onClick={() => executeBulkExtend(1)} disabled={bulkLoading}>{pageCopy.extend} +1</Button><Button size="sm" variant="outline" onClick={() => executeBulkExtend(-1)} disabled={bulkLoading}>{pageCopy.reduce} -1</Button><Button size="sm" variant="outline" onClick={() => executeBulkStatus("confirmed")} disabled={bulkLoading}>{pageCopy.confirmAction}</Button><Button size="sm" variant="outline" onClick={() => executeBulkStatus("checked_in")} disabled={bulkLoading}>{pageCopy.checkInAction}</Button><Button size="sm" variant="outline" onClick={() => executeBulkStatus("cancelled")} disabled={bulkLoading}>{pageCopy.cancel}</Button><Button size="sm" variant="destructive" onClick={executeBulkDelete} disabled={bulkLoading}><Trash2 className="mr-1.5 h-3.5 w-3.5" />{pageCopy.delete}</Button><div className="ml-auto flex items-center gap-2">{bulkLoading && <Loader2 className="h-4 w-4 animate-spin" />}<Button size="sm" variant="ghost" onClick={clearSelection}><X className="mr-1.5 h-3.5 w-3.5" />{pageCopy.clear}</Button></div></div>}
 
       <TimelineGrid
         dates={dates}
@@ -394,6 +408,7 @@ export default function BookingsCalendarPage() {
         visibleBeds={visibleBeds}
         loading={loading}
         eventsByBed={eventsByBed}
+        availabilityEventsByBed={availabilityEventsByBed}
         selectedIds={selectedIds}
         conflictIds={conflictIds}
         isBulkMode={isBulkMode}
@@ -431,16 +446,14 @@ export default function BookingsCalendarPage() {
         eventGeometry={eventGeometry}
         geometryForDates={geometryForDates}
         onRowClick={openReservationFromTimeline}
-        onOpenReservation={(event) => void openReservation(event)}
+        onOpenReservation={(event) => router.push(`/${language}/bookings/reservations/${event.event_id}`)}
         onOpenBlock={(event) => void openBlock(event)}
       />
     </Card>
 
     <AddReservationDialog open={newReservationOpen} onOpenChange={setNewReservationOpen} onSuccess={refreshEvents} preselectedBed={preselectedBed?.id} preselectedDate={preselectedDate ?? undefined} preselectedCheckOut={preselectedCheckOutDate ?? undefined} preselectedLocation={preselectedBed?.room.location_ref?.name} />
-    <Dialog open={!!selectedBlock} onOpenChange={(open) => !open && setSelectedBlock(null)}><DialogContent><DialogHeader><DialogTitle>Bloqueo de habitación</DialogTitle></DialogHeader>{selectedBlock && <div className="space-y-4"><Badge variant="secondary">{BLOCK_LABELS[selectedBlock.block_type] ?? selectedBlock.block_type}</Badge><Detail label="Motivo" value={selectedBlock.reason} /><div className="grid grid-cols-2 gap-4"><Detail label="Desde" value={selectedBlock.start_date} /><Detail label="Hasta" value={selectedBlock.end_date} /></div>{selectedBlock.notes && <Detail label="Notas" value={selectedBlock.notes} />}<Button asChild className="w-full"><Link href={blocksHref}>Administrar bloqueos</Link></Button></div>}</DialogContent></Dialog>
-    <Dialog open={!!selectedReservation} onOpenChange={(open) => !open && setSelectedReservation(null)}><DialogContent className="max-w-lg"><DialogHeader><DialogTitle>Detalle de reserva</DialogTitle></DialogHeader>{selectedReservation && <div className="space-y-5"><div className="flex items-start justify-between gap-4"><div><p className="text-xs text-muted-foreground">Huésped</p><p className="text-xl font-semibold">{selectedReservation.guest_name}</p></div><Badge>{STATUS_LABELS[selectedReservation.status] ?? selectedReservation.status}</Badge></div><div className="grid grid-cols-2 gap-4 text-sm"><Detail label="Check-in" value={selectedReservation.check_in} /><Detail label="Check-out" value={selectedReservation.check_out} /><Detail label="Huéspedes" value={String(selectedReservation.num_guests ?? 1)} /><Detail label="Monto registrado" value={formatClp(Number(selectedReservation.total_amount ?? 0))} /></div>{selectedReservation.special_requests && <Detail label="Solicitudes especiales" value={selectedReservation.special_requests} />}<div className="flex flex-wrap justify-end gap-2 border-t pt-4"><Button asChild variant="outline"><Link href={`/${language}/bookings/reservations/${selectedReservation.id}`}>Stay Cockpit</Link></Button>{normalizedStatus(selectedReservation.status) === "pending" && <StatusButton loading={updatingStatus === selectedReservation.id} label="Confirmar reserva" onClick={() => updateReservationStatus(selectedReservation, "confirmed")} />}{normalizedStatus(selectedReservation.status) === "confirmed" && <StatusButton loading={updatingStatus === selectedReservation.id} label="Registrar check-in" onClick={() => updateReservationStatus(selectedReservation, "checked_in")} />}{normalizedStatus(selectedReservation.status) === "checked_in" && <StatusButton loading={updatingStatus === selectedReservation.id} label="Registrar check-out" onClick={() => updateReservationStatus(selectedReservation, "checked_out")} />}</div></div>}</DialogContent></Dialog>
+    <Dialog open={!!selectedBlock} onOpenChange={(open) => !open && setSelectedBlock(null)}><DialogContent><DialogHeader><DialogTitle>{pageCopy.blockTitle}</DialogTitle></DialogHeader>{selectedBlock && <div className="space-y-4"><Badge variant="secondary">{selectedBlock.block_type === "maintenance" ? pageCopy.maintenance : selectedBlock.block_type === "owner_use" ? pageCopy.ownerUse : selectedBlock.block_type === "out_of_service" ? pageCopy.outOfService : pageCopy.blocked}</Badge><Detail label={pageCopy.reason} value={selectedBlock.reason} /><div className="grid grid-cols-2 gap-4"><Detail label={pageCopy.from} value={selectedBlock.start_date} /><Detail label={pageCopy.to} value={selectedBlock.end_date} /></div>{selectedBlock.notes && <Detail label={pageCopy.notes} value={selectedBlock.notes} />}<Button asChild className="w-full"><Link href={blocksHref}>{pageCopy.manageBlocks}</Link></Button></div>}</DialogContent></Dialog>
   </div>
 }
 
 function Detail({ label, value }: { label: string; value: string }) { return <div><p className="text-xs text-muted-foreground">{label}</p><p className="font-medium">{value}</p></div> }
-function StatusButton({ loading, label, onClick }: { loading: boolean; label: string; onClick: () => void }) { return <Button onClick={onClick} disabled={loading}>{loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}{label}</Button> }

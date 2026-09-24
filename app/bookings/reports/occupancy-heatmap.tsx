@@ -11,13 +11,21 @@ import {
   isToday,
   parseISO,
 } from "date-fns"
-import { es } from "date-fns/locale"
-import { ChevronLeft, ChevronRight, Download, RefreshCw, BedDouble, TrendingUp, DollarSign, BarChart3 } from "lucide-react"
+import { de, enUS, es } from "date-fns/locale"
+import { useLanguage, type Language } from "@/lib/hooks/use-language"
+import { ChevronLeft, ChevronRight, Download, RefreshCw } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Card, CardContent } from "@/components/ui/card"
 import type { HeatmapRow } from "@/app/api/bookings/revenue/occupancy/route"
 import { downloadCsv } from "@/lib/client-csv"
+
+const COPY = {
+  en: { occupancy:"Occupancy", avgOccupancy:"Average occupancy", periodRevenue:"Period revenue", avgRate:"Average rate/night", occupiedBed:"per occupied bed", totalBeds:"Total beds", peak:"Peak", available:"available", low:"Low", mediumLow:"Medium-low", medium:"Medium", high:"High", full:"Full", free:"Free", beds:"Beds", blocked:"Blocked", revenue:"Revenue", avg:"Avg rate", allLocations:"All properties", location:"Property", revenueDay:"Revenue/day", noBeds:"No beds configured for this period", loadError:"Error loading data", previous:"Previous month", next:"Next month", export:"Export CSV", refresh:"Refresh" },
+  es: { occupancy:"Ocupación", avgOccupancy:"Ocupación promedio", periodRevenue:"Revenue del periodo", avgRate:"Tarifa promedio/noche", occupiedBed:"por cama ocupada", totalBeds:"Camas totales", peak:"Pico", available:"disponibles", low:"Baja", mediumLow:"Media-baja", medium:"Media", high:"Alta", full:"Llena", free:"Libre", beds:"Camas", blocked:"Bloqueadas", revenue:"Revenue", avg:"Tarifa avg", allLocations:"Todas las propiedades", location:"Propiedad", revenueDay:"Revenue/día", noBeds:"No hay camas configuradas para este periodo", loadError:"Error cargando datos", previous:"Mes anterior", next:"Mes siguiente", export:"Exportar CSV", refresh:"Actualizar" },
+  de: { occupancy:"Belegung", avgOccupancy:"Durchschnittliche Belegung", periodRevenue:"Umsatz im Zeitraum", avgRate:"Durchschnitt/Nacht", occupiedBed:"pro belegtem Bett", totalBeds:"Betten gesamt", peak:"Spitze", available:"verfügbar", low:"Niedrig", mediumLow:"Mittel-niedrig", medium:"Mittel", high:"Hoch", full:"Voll", free:"Frei", beds:"Betten", blocked:"Gesperrt", revenue:"Umsatz", avg:"Ø-Rate", allLocations:"Alle Unterkünfte", location:"Unterkunft", revenueDay:"Umsatz/Tag", noBeds:"Keine Betten für diesen Zeitraum konfiguriert", loadError:"Fehler beim Laden", previous:"Vorheriger Monat", next:"Nächster Monat", export:"CSV exportieren", refresh:"Aktualisieren" },
+} as const
+type HeatmapCopy = (typeof COPY)[Language]
+const DATE_LOCALES = { en: enUS, es, de } satisfies Record<Language, typeof enUS>
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -51,13 +59,13 @@ function occupancyColor(pct: number): string {
   return "hsl(0 75% 45%)"                       // full — red
 }
 
-function occupancyLabel(pct: number): string {
-  if (pct === 0) return "Libre"
-  if (pct <= 20) return "Baja"
-  if (pct <= 40) return "Media-Baja"
-  if (pct <= 60) return "Media"
-  if (pct <= 80) return "Alta"
-  return "Llena"
+function occupancyLabel(pct: number, labels: HeatmapCopy): string {
+  if (pct === 0) return labels.free
+  if (pct <= 20) return labels.low
+  if (pct <= 40) return labels.mediumLow
+  if (pct <= 60) return labels.medium
+  if (pct <= 80) return labels.high
+  return labels.full
 }
 
 function formatCLP(n: number): string {
@@ -68,7 +76,7 @@ function formatCLP(n: number): string {
 
 // ─── KPI Cards ────────────────────────────────────────────────────────────────
 
-function KpiCards({ rows, totalBeds }: { rows: HeatmapRow[]; totalBeds: number }) {
+function KpiCards({ rows, totalBeds, labels, dateLocale }: { rows: HeatmapRow[]; totalBeds: number; labels: HeatmapCopy; dateLocale: typeof enUS }) {
   const kpis = useMemo(() => {
     if (!rows.length) return { occupancy: 0, revenue: 0, avgRate: 0, peakDay: "" }
 
@@ -76,67 +84,34 @@ function KpiCards({ rows, totalBeds }: { rows: HeatmapRow[]; totalBeds: number }
     const totalOccupied = rows.reduce((s, r) => s + r.occupied_beds, 0)
     const totalSlots = rows.reduce((s, r) => s + r.total_beds, 0)
     const occupancy = totalSlots > 0 ? (totalOccupied / totalSlots) * 100 : 0
-
-    // avg rate: revenue / occupied-bed-days
     const avgRate = totalOccupied > 0 ? totalRevenue / totalOccupied : 0
 
-    // find peak day (highest total occupancy across locations)
     const byDay: Record<string, number> = {}
     rows.forEach((r) => {
       byDay[r.day] = (byDay[r.day] ?? 0) + r.occupied_beds
     })
     const peakDay = Object.entries(byDay).sort((a, b) => b[1] - a[1])[0]?.[0] ?? ""
-
     return { occupancy, revenue: totalRevenue, avgRate, peakDay }
   }, [rows])
 
+  const metrics = [
+    { label: labels.avgOccupancy, value: `${kpis.occupancy.toFixed(1)}%`, detail: occupancyLabel(kpis.occupancy, labels) },
+    { label: labels.periodRevenue, value: formatCLP(kpis.revenue), detail: "CLP" },
+    { label: labels.avgRate, value: formatCLP(kpis.avgRate), detail: labels.occupiedBed },
+    { label: labels.totalBeds, value: String(totalBeds), detail: kpis.peakDay ? `${labels.peak}: ${format(parseISO(kpis.peakDay), "d MMM", { locale: dateLocale })}` : labels.available },
+  ]
+
   return (
-    <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-      <Card className="border-border/50 bg-card">
-        <CardContent className="flex items-start justify-between p-4">
-          <div>
-            <p className="text-xs font-medium text-muted-foreground">Ocupacion promedio</p>
-            <p className="mt-1 text-2xl font-bold tabular-nums">{kpis.occupancy.toFixed(1)}%</p>
-            <p className="mt-0.5 text-xs text-muted-foreground">{occupancyLabel(kpis.occupancy)}</p>
+    <div className="grid grid-cols-2 border-y border-white/[0.06] bg-[#211e1a] md:grid-cols-4">
+      {metrics.map((metric) => (
+        <div key={metric.label} className="min-h-[62px] border-white/[0.06] px-3 py-2 md:border-r md:last:border-r-0">
+          <p className="text-[10px] uppercase tracking-[0.06em] text-[#8f867b]">{metric.label}</p>
+          <div className="mt-0.5 flex items-baseline gap-2">
+            <span className="text-[17px] font-medium tabular-nums text-[#e7e1d8]">{metric.value}</span>
+            <span className="truncate text-[10px] text-[#8f867b]">{metric.detail}</span>
           </div>
-          <BarChart3 className="mt-0.5 h-5 w-5 shrink-0 text-muted-foreground" />
-        </CardContent>
-      </Card>
-
-      <Card className="border-border/50 bg-card">
-        <CardContent className="flex items-start justify-between p-4">
-          <div>
-            <p className="text-xs font-medium text-muted-foreground">Revenue del periodo</p>
-            <p className="mt-1 text-2xl font-bold tabular-nums">{formatCLP(kpis.revenue)}</p>
-            <p className="mt-0.5 text-xs text-muted-foreground">CLP</p>
-          </div>
-          <DollarSign className="mt-0.5 h-5 w-5 shrink-0 text-muted-foreground" />
-        </CardContent>
-      </Card>
-
-      <Card className="border-border/50 bg-card">
-        <CardContent className="flex items-start justify-between p-4">
-          <div>
-            <p className="text-xs font-medium text-muted-foreground">Tarifa promedio/noche</p>
-            <p className="mt-1 text-2xl font-bold tabular-nums">{formatCLP(kpis.avgRate)}</p>
-            <p className="mt-0.5 text-xs text-muted-foreground">por cama ocupada</p>
-          </div>
-          <TrendingUp className="mt-0.5 h-5 w-5 shrink-0 text-muted-foreground" />
-        </CardContent>
-      </Card>
-
-      <Card className="border-border/50 bg-card">
-        <CardContent className="flex items-start justify-between p-4">
-          <div>
-            <p className="text-xs font-medium text-muted-foreground">Camas totales</p>
-            <p className="mt-1 text-2xl font-bold tabular-nums">{totalBeds}</p>
-            <p className="mt-0.5 text-xs text-muted-foreground">
-              {kpis.peakDay ? `Pico: ${format(parseISO(kpis.peakDay), "d MMM", { locale: es })}` : "disponibles"}
-            </p>
-          </div>
-          <BedDouble className="mt-0.5 h-5 w-5 shrink-0 text-muted-foreground" />
-        </CardContent>
-      </Card>
+        </div>
+      ))}
     </div>
   )
 }
@@ -176,7 +151,7 @@ function HeatmapCell({
       style={{ backgroundColor: bg, minHeight: 28 }}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={onLeave}
-      aria-label={`${row.location_name} ${row.day}: ${row.occupancy_pct}% ocupacion`}
+      aria-label={`${row.location_name} ${row.day}: ${row.occupancy_pct}%`}
     >
       {row.occupancy_pct > 0 ? `${Math.round(row.occupancy_pct)}%` : ""}
     </div>
@@ -185,38 +160,38 @@ function HeatmapCell({
 
 // ─── Tooltip ──────────────────────────────────────────────────────────────────
 
-function HeatmapTooltip({ tip }: { tip: TooltipState }) {
+function HeatmapTooltip({ tip, labels, dateLocale }: { tip: TooltipState; labels: HeatmapCopy; dateLocale: typeof enUS }) {
   return (
     <div
       className="pointer-events-none fixed z-50 w-52 rounded-lg border border-border bg-popover p-3 text-xs shadow-xl"
       style={{ left: tip.x + 14, top: tip.y - 10 }}
     >
       <p className="mb-1.5 font-semibold text-foreground">{tip.locationName}</p>
-      <p className="text-muted-foreground">{format(parseISO(tip.day), "EEEE d MMMM yyyy", { locale: es })}</p>
+      <p className="text-muted-foreground">{format(parseISO(tip.day), "EEEE d MMMM yyyy", { locale: dateLocale })}</p>
       <div className="mt-2 space-y-1 border-t border-border pt-2">
         <div className="flex justify-between">
-          <span className="text-muted-foreground">Ocupacion</span>
+          <span className="text-muted-foreground">{labels.occupancy}</span>
           <span className="font-medium text-foreground">{tip.occupancyPct.toFixed(1)}%</span>
         </div>
         <div className="flex justify-between">
-          <span className="text-muted-foreground">Camas</span>
+          <span className="text-muted-foreground">{labels.beds}</span>
           <span className="font-medium text-foreground">
             {tip.occupiedBeds} de {tip.totalBeds}
           </span>
         </div>
         {tip.blockedBeds > 0 && (
           <div className="flex justify-between">
-            <span className="text-muted-foreground">Bloqueadas</span>
+            <span className="text-muted-foreground">{labels.blocked}</span>
             <span className="font-medium text-amber-400">{tip.blockedBeds}</span>
           </div>
         )}
         <div className="flex justify-between">
-          <span className="text-muted-foreground">Revenue</span>
+          <span className="text-muted-foreground">{labels.revenue}</span>
           <span className="font-medium text-foreground">{formatCLP(tip.revenue)}</span>
         </div>
         {tip.avgRate > 0 && (
           <div className="flex justify-between">
-            <span className="text-muted-foreground">Tarifa avg</span>
+            <span className="text-muted-foreground">{labels.avg}</span>
             <span className="font-medium text-foreground">{formatCLP(tip.avgRate)}</span>
           </div>
         )}
@@ -227,7 +202,7 @@ function HeatmapTooltip({ tip }: { tip: TooltipState }) {
 
 // ─── Legend ───────────────────────────────────────────────────────────────────
 
-function HeatmapLegend() {
+function HeatmapLegend({ labels }: { labels: HeatmapCopy }) {
   const steps = [
     { pct: 0, label: "0%" },
     { pct: 20, label: "20%" },
@@ -238,7 +213,7 @@ function HeatmapLegend() {
   ]
   return (
     <div className="flex items-center gap-2">
-      <span className="text-xs text-muted-foreground">Ocupacion:</span>
+      <span className="text-xs text-muted-foreground">{labels.occupancy}:</span>
       <div className="flex items-center gap-1">
         {steps.map((s) => (
           <div key={s.pct} className="flex flex-col items-center gap-0.5">
@@ -262,6 +237,9 @@ interface OccupancyHeatmapProps {
 }
 
 export function OccupancyHeatmap({ locations }: OccupancyHeatmapProps) {
+  const { language } = useLanguage()
+  const labels = COPY[language]
+  const dateLocale = DATE_LOCALES[language]
   const [viewMonth, setViewMonth] = useState<Date>(() => startOfMonth(new Date()))
   const [selectedLocation, setSelectedLocation] = useState<string>("all")
   const [rows, setRows] = useState<HeatmapRow[]>([])
@@ -353,19 +331,19 @@ export function OccupancyHeatmap({ locations }: OccupancyHeatmapProps) {
             size="icon"
             className="h-8 w-8"
             onClick={() => setViewMonth((m) => subMonths(m, 1))}
-            aria-label="Mes anterior"
+            aria-label={labels.previous}
           >
             <ChevronLeft className="h-4 w-4" />
           </Button>
           <span className="min-w-[140px] text-center text-sm font-medium capitalize">
-            {format(viewMonth, "MMMM yyyy", { locale: es })}
+            {format(viewMonth, "MMMM yyyy", { locale: dateLocale })}
           </span>
           <Button
             variant="outline"
             size="icon"
             className="h-8 w-8"
             onClick={() => setViewMonth((m) => addMonths(m, 1))}
-            aria-label="Mes siguiente"
+            aria-label={labels.next}
           >
             <ChevronRight className="h-4 w-4" />
           </Button>
@@ -378,8 +356,8 @@ export function OccupancyHeatmap({ locations }: OccupancyHeatmapProps) {
               ["Date","Property","Total beds","Occupied beds","Blocked beds","Available beds","Occupancy %","Revenue","Average rate"],
               rows.map((row) => [row.day,row.location_name,row.total_beds,row.occupied_beds,row.blocked_beds,row.available_beds,row.occupancy_pct,row.revenue,row.avg_rate]),
             )}
-            aria-label="Exportar CSV"
-            title="Exportar CSV"
+            aria-label={labels.export}
+            title={labels.export}
           >
             <Download className="h-3.5 w-3.5" />
           </Button>
@@ -389,20 +367,20 @@ export function OccupancyHeatmap({ locations }: OccupancyHeatmapProps) {
             className="h-8 w-8"
             onClick={fetchHeatmap}
             disabled={loading}
-            aria-label="Actualizar"
+            aria-label={labels.refresh}
           >
             <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
           </Button>
         </div>
 
         <div className="flex items-center gap-2">
-          <HeatmapLegend />
+          <HeatmapLegend labels={labels} />
           <Select value={selectedLocation} onValueChange={setSelectedLocation}>
             <SelectTrigger className="h-8 w-[180px] text-xs">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Todas las ubicaciones</SelectItem>
+              <SelectItem value="all">{labels.allLocations}</SelectItem>
               {locations.map((l) => (
                 <SelectItem key={l.id} value={l.id}>
                   {l.name}
@@ -414,12 +392,12 @@ export function OccupancyHeatmap({ locations }: OccupancyHeatmapProps) {
       </div>
 
       {/* KPIs */}
-      <KpiCards rows={rows} totalBeds={totalBeds} />
+      <KpiCards rows={rows} totalBeds={totalBeds} labels={labels} dateLocale={dateLocale} />
 
       {/* Grid */}
       {error ? (
         <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive">
-          Error cargando datos: {error}
+          {labels.loadError}: {error}
         </div>
       ) : loading && rows.length === 0 ? (
         <div className="flex h-48 items-center justify-center">
@@ -439,7 +417,7 @@ export function OccupancyHeatmap({ locations }: OccupancyHeatmapProps) {
               className="grid border-b border-border bg-muted/30"
               style={{ gridTemplateColumns: `140px repeat(${days.length}, minmax(32px, 1fr))` }}
             >
-              <div className="px-3 py-2 text-xs font-medium text-muted-foreground">Ubicacion</div>
+              <div className="px-3 py-2 text-xs font-medium text-muted-foreground">{labels.location}</div>
               {days.map((d) => (
                 <div
                   key={d.toISOString()}
@@ -448,7 +426,7 @@ export function OccupancyHeatmap({ locations }: OccupancyHeatmapProps) {
                   }`}
                 >
                   <div>{format(d, "d")}</div>
-                  <div className="text-[9px] opacity-60">{format(d, "EEE", { locale: es }).substring(0, 2)}</div>
+                  <div className="text-[9px] opacity-60">{format(d, "EEE", { locale: dateLocale }).substring(0, 2)}</div>
                 </div>
               ))}
             </div>
@@ -494,7 +472,7 @@ export function OccupancyHeatmap({ locations }: OccupancyHeatmapProps) {
               style={{ gridTemplateColumns: `140px repeat(${days.length}, minmax(32px, 1fr))` }}
             >
               <div className="flex items-center px-3 py-2 text-xs font-medium text-muted-foreground">
-                Revenue/dia
+                {labels.revenueDay}
               </div>
               {days.map((d) => {
                 const dayStr = format(d, "yyyy-MM-dd")
@@ -514,7 +492,7 @@ export function OccupancyHeatmap({ locations }: OccupancyHeatmapProps) {
       )}
 
       {/* Tooltip */}
-      {tooltip && <HeatmapTooltip tip={tooltip} />}
+      {tooltip && <HeatmapTooltip tip={tooltip} labels={labels} dateLocale={dateLocale} />}
     </div>
   )
 }

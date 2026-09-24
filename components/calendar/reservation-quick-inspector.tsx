@@ -65,9 +65,9 @@ const copy = {
     reservation: "Stay cockpit", loading: "Loading stay…", room: "Room", roomShort: "Room", unassigned: "Unassigned", guests: "Guests", total: "Total", payment: "Payment",
     related: "Live operations", services: "Services", activities: "Activities", issues: "Issues", maintenance: "Maintenance", exceptions: "Attention required", noExceptions: "No open operational exceptions.",
     blocksCheckin: "blocks check-in", overdue: "overdue", status: "Status", due: "Due", contact: "Guest contact", confirm: "Confirm reservation", checkin: "Register check-in", checkout: "Register check-out", openFull: "Open full record",
-    logistics: "Arrival / departure logistics", noLogistics: "No active logistics for this stay.", handover: "Shift handover", noHandover: "No handover items linked to this stay.", specialRequests: "Special requests", lifecycle: "Stay lifecycle",
-    dataNote: "Loaded only when the booking is opened; no Vercel server function is used.", confirmedToast: "Reservation confirmed", checkinToast: "Check-in registered", checkoutToast: "Check-out registered",
-    statuses: { checked_in: "Checked in", checked_out: "Completed", confirmed: "Confirmed", cancelled: "Cancelled", pending: "Pending" },
+    logistics: "Arrival / departure logistics", arrival: "Arrival", departure: "Departure", noLogistics: "No active logistics for this stay.", handover: "Shift handover", noHandover: "No handover items linked to this stay.", specialRequests: "Special requests", lifecycle: "Stay lifecycle",
+    dataNote: "Loaded only when the booking is opened; no Vercel server function is used.", confirmedToast: "Reservation confirmed", checkinToast: "Check-in registered", queuedToast: "Room is not ready. Arrival was queued.", checkoutToast: "Check-out registered",
+    statuses: { checked_in: "Checked in", checked_out: "Completed", confirmed: "Confirmed", cancelled: "Cancelled", pending: "Pending", waiting_for_room: "Waiting for room", ready_for_checkin: "Ready for check-in" },
     domains: { housekeeping: "Housekeeping", hospitality: "Hospitality", maintenance: "Maintenance", issue: "Issue" },
     stages: ["Booked", "Ready", "In stay", "Closed"],
   },
@@ -75,9 +75,9 @@ const copy = {
     reservation: "Cockpit de estadía", loading: "Cargando estadía…", room: "Habitación", roomShort: "Hab.", unassigned: "Sin asignar", guests: "Huéspedes", total: "Total", payment: "Pago",
     related: "Operación en vivo", services: "Servicios", activities: "Actividades", issues: "Incidencias", maintenance: "Mantenimiento", exceptions: "Requiere atención", noExceptions: "Sin excepciones operacionales abiertas.",
     blocksCheckin: "bloquea check-in", overdue: "vencida", status: "Estado", due: "Objetivo", contact: "Contacto huésped", confirm: "Confirmar reserva", checkin: "Registrar check-in", checkout: "Registrar check-out", openFull: "Abrir ficha completa",
-    logistics: "Logística llegada / salida", noLogistics: "Sin logística activa para esta estadía.", handover: "Entrega de turno", noHandover: "Sin pendientes de turno ligados a esta estadía.", specialRequests: "Solicitudes especiales", lifecycle: "Ciclo de estadía",
-    dataNote: "Se carga sólo al abrir el booking; no utiliza funciones serverless de Vercel.", confirmedToast: "Reserva confirmada", checkinToast: "Check-in registrado", checkoutToast: "Check-out registrado",
-    statuses: { checked_in: "Hospedado", checked_out: "Finalizada", confirmed: "Confirmada", cancelled: "Cancelada", pending: "Pendiente" },
+    logistics: "Logística llegada / salida", arrival: "Llegada", departure: "Salida", noLogistics: "Sin logística activa para esta estadía.", handover: "Entrega de turno", noHandover: "Sin pendientes de turno ligados a esta estadía.", specialRequests: "Solicitudes especiales", lifecycle: "Ciclo de estadía",
+    dataNote: "Se carga sólo al abrir el booking; no utiliza funciones serverless de Vercel.", confirmedToast: "Reserva confirmada", checkinToast: "Check-in registrado", queuedToast: "La habitación no está lista. La llegada quedó en cola.", checkoutToast: "Check-out registrado",
+    statuses: { checked_in: "Hospedado", checked_out: "Finalizada", confirmed: "Confirmada", cancelled: "Cancelada", pending: "Pendiente", waiting_for_room: "Esperando habitación", ready_for_checkin: "Lista para check-in" },
     domains: { housekeeping: "Housekeeping", hospitality: "Hospitality", maintenance: "Mantenimiento", issue: "Incidencia" },
     stages: ["Reserva", "Preparación", "Estadía", "Cierre"],
   },
@@ -85,9 +85,9 @@ const copy = {
     reservation: "Aufenthalts-Cockpit", loading: "Aufenthalt wird geladen…", room: "Zimmer", roomShort: "Zi.", unassigned: "Nicht zugewiesen", guests: "Gäste", total: "Gesamt", payment: "Zahlung",
     related: "Laufender Betrieb", services: "Services", activities: "Aktivitäten", issues: "Vorfälle", maintenance: "Wartung", exceptions: "Aufmerksamkeit erforderlich", noExceptions: "Keine offenen betrieblichen Ausnahmen.",
     blocksCheckin: "blockiert Check-in", overdue: "überfällig", status: "Status", due: "Fällig", contact: "Gastkontakt", confirm: "Reservierung bestätigen", checkin: "Check-in erfassen", checkout: "Check-out erfassen", openFull: "Vollständigen Datensatz öffnen",
-    logistics: "An-/Abreise-Logistik", noLogistics: "Keine aktive Logistik für diesen Aufenthalt.", handover: "Schichtübergabe", noHandover: "Keine Übergabepunkte für diesen Aufenthalt.", specialRequests: "Besondere Wünsche", lifecycle: "Aufenthaltszyklus",
-    dataNote: "Wird nur beim Öffnen der Buchung geladen; keine Vercel-Serverfunktion.", confirmedToast: "Reservierung bestätigt", checkinToast: "Check-in erfasst", checkoutToast: "Check-out erfasst",
-    statuses: { checked_in: "Eingecheckt", checked_out: "Abgeschlossen", confirmed: "Bestätigt", cancelled: "Storniert", pending: "Ausstehend" },
+    logistics: "An-/Abreise-Logistik", arrival: "Anreise", departure: "Abreise", noLogistics: "Keine aktive Logistik für diesen Aufenthalt.", handover: "Schichtübergabe", noHandover: "Keine Übergabepunkte für diesen Aufenthalt.", specialRequests: "Besondere Wünsche", lifecycle: "Aufenthaltszyklus",
+    dataNote: "Wird nur beim Öffnen der Buchung geladen; keine Vercel-Serverfunktion.", confirmedToast: "Reservierung bestätigt", checkinToast: "Check-in erfasst", queuedToast: "Das Zimmer ist noch nicht bereit. Die Anreise wurde eingereiht.", checkoutToast: "Check-out erfasst",
+    statuses: { checked_in: "Eingecheckt", checked_out: "Abgeschlossen", confirmed: "Bestätigt", cancelled: "Storniert", pending: "Ausstehend", waiting_for_room: "Wartet auf Zimmer", ready_for_checkin: "Bereit zum Check-in" },
     domains: { housekeeping: "Housekeeping", hospitality: "Hospitality", maintenance: "Wartung", issue: "Vorfall" },
     stages: ["Gebucht", "Bereit", "Aufenthalt", "Abschluss"],
   },
@@ -99,10 +99,6 @@ function emptyData(reservationLabel: string): InspectorData {
   return { guestName: reservationLabel, guestEmail: null, guestPhone: null, guests: 0, paymentStatus: "pending", totalAmount: 0, roomNumber: null, specialRequests: null, housekeeping: 0, hospitality: 0, services: 0, activities: 0, issues: 0, maintenance: 0 }
 }
 
-function formatClp(value: number) {
-  return new Intl.NumberFormat("es-CL", { style: "currency", currency: "CLP", maximumFractionDigits: 0 }).format(value)
-}
-
 function normalizedStatus(value: string | null | undefined) {
   return (value ?? "pending").replaceAll("-", "_")
 }
@@ -110,7 +106,7 @@ function normalizedStatus(value: string | null | undefined) {
 function stageIndex(status: string) {
   if (status === "checked_out") return 3
   if (status === "checked_in") return 2
-  if (status === "confirmed") return 1
+  if (status === "confirmed" || status === "waiting_for_room" || status === "ready_for_checkin") return 1
   return 0
 }
 
@@ -124,6 +120,8 @@ export function ReservationQuickInspector({ reservation, open, onOpenChange, onO
   const { language } = useLanguage()
   const c = copy[language]
   const dateLocale = dateLocales[language]
+  const intlLocale = language === "es" ? "es-CL" : language === "de" ? "de-DE" : "en-US"
+  const formatClp = useCallback((value: number) => new Intl.NumberFormat(intlLocale, { style: "currency", currency: "CLP", maximumFractionDigits: 0 }).format(value), [intlLocale])
   const [data, setData] = useState<InspectorData>(() => emptyData(c.reservation))
   const [exceptions, setExceptions] = useState<OperationalException[]>([])
   const [logistics, setLogistics] = useState<ReservationLogistics[]>([])
@@ -187,14 +185,35 @@ export function ReservationQuickInspector({ reservation, open, onOpenChange, onO
   async function updateStatus(nextStatus: "confirmed" | "checked_in" | "checked_out") {
     if (!reservation || updating) return
     setUpdating(true)
-    const { error } = await supabase.from("reservations").update({ status: nextStatus }).eq("id", reservation.event_id)
-    if (error) toast.error(error.message)
-    else {
-      setCurrentStatus(nextStatus)
-      toast.success(nextStatus === "confirmed" ? c.confirmedToast : nextStatus === "checked_in" ? c.checkinToast : c.checkoutToast)
+    try {
+      if (nextStatus === "checked_in") {
+        const { data: result, error } = await supabase.rpc("check_in_or_queue", { p_reservation_id: reservation.event_id })
+        if (error) throw error
+        const outcome = (result as { result?: string } | null)?.result
+        if (outcome === "checked_in") {
+          setCurrentStatus("checked_in")
+          toast.success(c.checkinToast)
+        } else {
+          setCurrentStatus("waiting_for_room")
+          toast.warning(c.queuedToast)
+        }
+      } else {
+        const action = nextStatus === "confirmed" ? "confirm" : "checkout"
+        const { data: result, error } = await supabase.rpc("transition_reservation_status", {
+          p_reservation_id: reservation.event_id,
+          p_action: action,
+        })
+        if (error) throw error
+        const canonical = result as { status?: string } | null
+        setCurrentStatus(normalizedStatus(canonical?.status ?? nextStatus))
+        toast.success(nextStatus === "confirmed" ? c.confirmedToast : c.checkoutToast)
+      }
       await load()
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : String(error))
+    } finally {
+      setUpdating(false)
     }
-    setUpdating(false)
   }
 
   const counters = [
@@ -242,7 +261,7 @@ export function ReservationQuickInspector({ reservation, open, onOpenChange, onO
 
             <section className="border-b pb-4">
               <div className="mb-2 flex items-center justify-between gap-2"><h3 className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{c.logistics}</h3><Truck className="h-3.5 w-3.5 text-muted-foreground" /></div>
-              {logistics.length === 0 ? <p className="text-xs text-muted-foreground">{c.noLogistics}</p> : <div className="space-y-1.5">{logistics.slice(0, 4).map((item) => <div key={item.id} className="border-l-2 border-primary/50 pl-3 text-xs"><div className="flex items-center justify-between gap-2"><strong className="capitalize">{item.direction} · {item.hub}</strong><span className="text-[10px] uppercase text-muted-foreground">{item.status}</span></div>{item.anchor_at && <div className="mt-0.5 text-muted-foreground">{format(parseISO(item.anchor_at), "dd MMM · HH:mm", { locale: dateLocale })}</div>}{item.notes && <div className="mt-0.5 text-muted-foreground">{item.notes}</div>}</div>)}</div>}
+              {logistics.length === 0 ? <p className="text-xs text-muted-foreground">{c.noLogistics}</p> : <div className="space-y-1.5">{logistics.slice(0, 4).map((item) => <div key={item.id} className="border-l-2 border-primary/50 pl-3 text-xs"><div className="flex items-center justify-between gap-2"><strong>{item.direction === "arrival" ? c.arrival : item.direction === "departure" ? c.departure : item.direction} · {item.hub}</strong><span className="text-[10px] uppercase text-muted-foreground">{item.status}</span></div>{item.anchor_at && <div className="mt-0.5 text-muted-foreground">{format(parseISO(item.anchor_at), "dd MMM · HH:mm", { locale: dateLocale })}</div>}{item.notes && <div className="mt-0.5 text-muted-foreground">{item.notes}</div>}</div>)}</div>}
             </section>
 
             <section className="border-b pb-4">

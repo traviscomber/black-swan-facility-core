@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { addDays, format, isSameDay, parseISO, startOfDay } from "date-fns"
-import { AlertTriangle, Grid3x3, LogIn, LogOut, RefreshCw, Search, Sparkles, Wrench } from "lucide-react"
+import { AlertTriangle, ExternalLink, Grid3x3, LogIn, LogOut, RefreshCw, Search, Sparkles, Wrench } from "lucide-react"
+import Link from "next/link"
 import { createClient } from "@/lib/supabase/client"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -192,8 +193,16 @@ export default function BookingActivitiesPage() {
       await loadReservations()
       return
     }
-    const { error: updateError } = await supabase.from("reservations").update({ status }).eq("id", id)
-    if (updateError) setActionError(classifyActionError(updateError.message))
+    const action = status === "confirmed" ? "confirm" : status === "checked_out" ? "checkout" : null
+    if (!action) {
+      setActionError(classifyActionError("unsupported_reservation_transition"))
+      return
+    }
+    const { error: transitionError } = await supabase.rpc("transition_reservation_status", {
+      p_reservation_id: id,
+      p_action: action,
+    })
+    if (transitionError) setActionError(classifyActionError(transitionError.message))
     else await loadReservations()
   }
 
@@ -216,8 +225,8 @@ export default function BookingActivitiesPage() {
 
   return <div className="min-h-screen bg-[#111213] text-foreground">
     <header className="flex min-h-[58px] flex-col gap-3 border-b border-white/10 px-4 py-3 md:flex-row md:items-center md:justify-between md:px-5">
-      <div><h1 className="text-xl font-semibold tracking-tight">{copy.title}</h1><p className="text-xs text-muted-foreground">{copy.subtitle}</p></div>
-      <Button variant="outline" className="h-8 rounded-[4px] border-white/10 bg-[#111314] px-3 text-xs" onClick={() => { setActionError(null); void loadReservations(); void loadOps() }}><RefreshCw className="mr-1.5 h-3.5 w-3.5" />{copy.refresh}</Button>
+      <div><h1 className="text-[15px] font-medium tracking-tight">{copy.title}</h1><p className="text-[11px] text-muted-foreground">{copy.subtitle}</p></div>
+      <Button variant="outline" className="h-8 rounded-none border-white/10 bg-[#111314] px-3 text-xs" onClick={() => { setActionError(null); void loadReservations(); void loadOps() }}><RefreshCw className="mr-1.5 h-3.5 w-3.5" />{copy.refresh}</Button>
     </header>
 
     <div className="flex min-h-[44px] flex-col gap-2 border-b border-white/10 bg-[#151718] px-4 py-1.5 md:flex-row md:items-center md:px-5">
@@ -240,9 +249,9 @@ export default function BookingActivitiesPage() {
       <div className="flex items-center justify-between bg-[#17191a] px-4 py-2 text-[11px] uppercase tracking-[0.08em] text-muted-foreground md:px-5"><span>{visibleLabel}</span><span>{visible.length}</span></div>
       <div className="overflow-x-auto">
         <table className="w-full min-w-[880px] text-xs">
-          <thead className="border-y border-white/[0.06] bg-[#141617] text-left text-[10px] uppercase tracking-[0.08em] text-muted-foreground"><tr><th className="px-4 py-2">{copy.guest}</th><th className="px-4 py-2">Property / Room</th><th className="px-4 py-2">Stay</th><th className="px-4 py-2">{copy.status}</th><th className="px-4 py-2 text-right">Action</th></tr></thead>
+          <thead className="border-y border-white/[0.06] bg-[#141617] text-left text-[10px] uppercase tracking-[0.08em] text-muted-foreground"><tr><th className="px-4 py-2">{copy.guest}</th><th className="px-3 py-2">{copy.propertyRoom}</th><th className="px-3 py-2">{copy.stay}</th><th className="px-3 py-2">{copy.status}</th><th className="px-3 py-2 text-right">{copy.action}</th></tr></thead>
           <tbody className="divide-y divide-white/[0.06]">
-            {loading ? <tr><td colSpan={5} className="px-4 py-10 text-center text-muted-foreground">{copy.loading}</td></tr> : visible.length === 0 ? <tr><td colSpan={5} className="px-4 py-10 text-center text-muted-foreground">{copy.noActivity}</td></tr> : visible.map((reservation) => <tr key={reservation.id} className="hover:bg-white/[0.025]"><td className="px-4 py-2.5"><div className="font-medium">{reservation.guest_name}</div><div className="text-[11px] text-muted-foreground">{reservation.guest_email || reservation.guest_phone || "—"}</div></td><td className="px-4 py-2.5 text-muted-foreground">{reservation.bed?.room?.location?.name ?? copy.noProperty} · {copy.roomShort} {reservation.bed?.room?.room_number ?? "—"} · {reservation.bed?.bed_number ?? "—"}</td><td className="whitespace-nowrap px-4 py-2.5 text-muted-foreground">{reservation.check_in} → {reservation.check_out} · {reservation.num_guests ?? 1} {copy.guests}</td><td className="px-4 py-2.5"><Badge variant="outline" className="h-5 rounded-[3px] px-1.5 text-[10px]">{statusLabels[reservation.status] ?? reservation.status}</Badge></td><td className="px-4 py-2.5 text-right">{reservation.status === "pending" ? <Button size="sm" className="h-7 rounded-[4px] px-2 text-xs" onClick={() => void updateReservationStatus(reservation.id, "confirmed")}>{copy.confirm}</Button> : reservation.status === "confirmed" ? <Button size="sm" className="h-7 rounded-[4px] px-2 text-xs" onClick={() => void updateReservationStatus(reservation.id, "checked_in")}><LogIn className="mr-1 h-3.5 w-3.5" />{copy.checkIn}</Button> : (reservation.status === "checked_in" || reservation.status === "checked-in") ? <Button size="sm" className="h-7 rounded-[4px] px-2 text-xs" onClick={() => void updateReservationStatus(reservation.id, "checked_out")}><LogOut className="mr-1 h-3.5 w-3.5" />{copy.checkOut}</Button> : null}</td></tr>)}
+            {loading ? <tr><td colSpan={5} className="px-4 py-10 text-center text-muted-foreground">{copy.loading}</td></tr> : visible.length === 0 ? <tr><td colSpan={5} className="px-4 py-10 text-center text-muted-foreground">{copy.noActivity}</td></tr> : visible.map((reservation) => <tr key={reservation.id} className="hover:bg-white/[0.025]"><td className="px-3 py-2"><Link href={`/${language}/bookings/reservations/${reservation.id}`} className="font-medium hover:underline">{reservation.guest_name}</Link><div className="text-[11px] text-muted-foreground">{reservation.guest_email || reservation.guest_phone || "—"}</div></td><td className="px-4 py-2.5 text-muted-foreground">{reservation.bed?.room?.location?.name ?? copy.noProperty} · {copy.roomShort} {reservation.bed?.room?.room_number ?? "—"} · {reservation.bed?.bed_number ?? "—"}</td><td className="whitespace-nowrap px-3 py-2 text-muted-foreground">{reservation.check_in} → {reservation.check_out} · {reservation.num_guests ?? 1} {copy.guests}</td><td className="px-4 py-2.5"><Badge variant="outline" className="h-5 rounded-[3px] px-1.5 text-[10px]">{statusLabels[reservation.status] ?? reservation.status}</Badge></td><td className="px-3 py-2"><div className="flex justify-end gap-1">{reservation.status === "pending" ? <Button size="sm" className="h-7 rounded-none px-2 text-xs" onClick={() => void updateReservationStatus(reservation.id, "confirmed")}>{copy.confirm}</Button> : reservation.status === "confirmed" ? <Button size="sm" className="h-7 rounded-none px-2 text-xs" onClick={() => void updateReservationStatus(reservation.id, "checked_in")}><LogIn className="mr-1 h-3.5 w-3.5" />{copy.checkIn}</Button> : (reservation.status === "checked_in" || reservation.status === "checked-in") ? <Button size="sm" className="h-7 rounded-none px-2 text-xs" onClick={() => void updateReservationStatus(reservation.id, "checked_out")}><LogOut className="mr-1 h-3.5 w-3.5" />{copy.checkOut}</Button> : null}<Button asChild size="icon" variant="outline" className="h-7 w-7 rounded-none" title={copy.openStay} aria-label={copy.openStay}><Link href={`/${language}/bookings/reservations/${reservation.id}`}><ExternalLink className="h-3.5 w-3.5" /></Link></Button></div></td></tr>)}
           </tbody>
         </table>
       </div>
@@ -252,7 +261,7 @@ export default function BookingActivitiesPage() {
       <div className="flex flex-wrap items-center gap-1.5 border-b border-white/10 bg-[#151718] px-4 py-1.5 md:px-5">
         {opsTabs.map(({ id, label, value, icon: Icon }) => <button key={id} type="button" onClick={() => setOpsTab(id)} className={`inline-flex h-8 items-center gap-1.5 rounded-[4px] border px-2.5 text-xs ${opsTab === id ? "border-[#00ce63]/50 bg-[#15261d] text-[#00ce63]" : "border-white/10 bg-[#111314] text-muted-foreground hover:text-foreground"}`}><Icon className="h-3.5 w-3.5" /><span>{label}</span><span className="font-semibold tabular-nums">{value}</span>{id === "maintenance" && maintUrgent > 0 ? <span className="text-rose-400">+{maintUrgent}</span> : null}</button>)}
       </div>
-      <div className="p-4 md:p-5">{opsLoading ? <p className="py-10 text-center text-sm text-muted-foreground">{copy.loadingOperations}</p> : opsTab === "housekeeping" ? <HousekeepingTimeline tasks={hkTasks as Parameters<typeof HousekeepingTimeline>[0]["tasks"]} onStatusChange={handleHkStatusChange} /> : opsTab === "maintenance" ? <MaintenanceTimeline tasks={maintTasks as Parameters<typeof MaintenanceTimeline>[0]["tasks"]} onStatusChange={handleMaintStatusChange} /> : <RoomStateMatrix rooms={roomStates as Parameters<typeof RoomStateMatrix>[0]["rooms"]} />}</div>
+      <div className="p-2 md:p-3">{opsLoading ? <p className="py-10 text-center text-sm text-muted-foreground">{copy.loadingOperations}</p> : opsTab === "housekeeping" ? <HousekeepingTimeline tasks={hkTasks as Parameters<typeof HousekeepingTimeline>[0]["tasks"]} onStatusChange={handleHkStatusChange} /> : opsTab === "maintenance" ? <MaintenanceTimeline tasks={maintTasks as Parameters<typeof MaintenanceTimeline>[0]["tasks"]} onStatusChange={handleMaintStatusChange} /> : <RoomStateMatrix rooms={roomStates as Parameters<typeof RoomStateMatrix>[0]["rooms"]} />}</div>
     </section>
   </div>
 }

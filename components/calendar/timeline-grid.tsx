@@ -5,8 +5,8 @@ import { addDays, format } from "date-fns"
 import { de, enUS, es } from "date-fns/locale"
 import { BedDouble, CheckSquare, ChevronRight, CircleDollarSign, ConciergeBell, Flag, Keyboard, Layers3, Rows3, Sparkles, Square, TriangleAlert, Wrench } from "lucide-react"
 import { CardContent } from "@/components/ui/card"
+import { toast } from "sonner"
 import { TimelineRow, DAY_WIDTH, LABEL_WIDTH, type Bed, type CalendarEvent, type ResizeState, type TimelineRowProps } from "./timeline-row"
-import { ReservationQuickInspector } from "./reservation-quick-inspector"
 import type { ReservationResizeEdge } from "@/app/bookings/calendar/use-reservation-resize-state"
 import { useCalendarAutoscroll } from "@/app/bookings/calendar/use-calendar-autoscroll"
 import { CalendarDailyOperationsSummary } from "@/components/calendar/calendar-daily-operations-summary"
@@ -24,6 +24,7 @@ export interface TimelineGridProps {
   visibleBeds: Bed[]
   loading: boolean
   eventsByBed: Map<string, CalendarEvent[]>
+  availabilityEventsByBed: Map<string, CalendarEvent[]>
   selectedIds: Set<string>
   conflictIds: Set<string>
   isBulkMode: boolean
@@ -87,23 +88,23 @@ const copy = {
   en: {
     layers: { milestones: "Milestones", housekeeping: "Housekeeping", hospitality: "Hospitality", services: "Services", activities: "Activities", payments: "Payments", issues: "Issues", maintenance: "Maintenance" },
     legend: { pending: "Pending", confirmed: "Confirmed", checkedIn: "Checked in", completed: "Completed", block: "Block" },
-    layersButton: "Layers", summary: "Summary", shortcuts: "Shortcuts", interactionHint: "Click: inspect · double-click: edit · drag: move · edges: dates",
+    layersButton: "Layers", summary: "Summary", shortcuts: "Shortcuts", interactionHint: "Click: inspect · double-click: full view · drag: move · edges: dates",
     navigate: "navigate", select: "select", help: "help", all: "All", deselectAll: "Deselect all", selectAll: "Select all", rooms: "ROOMS",
-    loading: "Loading availability…", empty: "No rooms match the selected filters.", collapseGroups: "Collapse groups", expandGroups: "Expand groups", roomCount: "rooms", reservationCount: "bookings", selectedCount: "selected", conflictCount: "conflicts",
+    loading: "Loading availability…", empty: "No rooms match the selected filters.", noAvailability: "No bed is available for the selected dates.", collapseGroups: "Collapse groups", expandGroups: "Expand groups", roomCount: "rooms", reservationCount: "bookings", selectedCount: "selected", conflictCount: "conflicts", viewControls:"Calendar view controls", statusLegend:"Reservation status legend",
   },
   es: {
     layers: { milestones: "Hitos", housekeeping: "Limpieza", hospitality: "Hospitalidad", services: "Servicios", activities: "Actividades", payments: "Pagos", issues: "Incidencias", maintenance: "Mantenimiento" },
     legend: { pending: "Pendiente", confirmed: "Confirmada", checkedIn: "Hospedado", completed: "Finalizada", block: "Bloqueo" },
-    layersButton: "Capas", summary: "Resumen", shortcuts: "Atajos", interactionHint: "Clic: revisar · doble clic: editar · arrastra: mover · extremos: fechas",
+    layersButton: "Capas", summary: "Resumen", shortcuts: "Atajos", interactionHint: "Clic: revisar · doble clic: vista completa · arrastra: mover · extremos: fechas",
     navigate: "navegar", select: "seleccionar", help: "ayuda", all: "Todo", deselectAll: "Deseleccionar todo", selectAll: "Seleccionar todo", rooms: "HABITACIONES",
-    loading: "Cargando disponibilidad…", empty: "No hay habitaciones para los filtros seleccionados.", collapseGroups: "Colapsar grupos", expandGroups: "Expandir grupos", roomCount: "habitaciones", reservationCount: "reservas", selectedCount: "seleccionadas", conflictCount: "conflictos",
+    loading: "Cargando disponibilidad…", empty: "No hay habitaciones para los filtros seleccionados.", noAvailability: "No hay una cama disponible para las fechas seleccionadas.", collapseGroups: "Colapsar grupos", expandGroups: "Expandir grupos", roomCount: "habitaciones", reservationCount: "reservas", selectedCount: "seleccionadas", conflictCount: "conflictos", viewControls:"Controles de vista del calendario", statusLegend:"Leyenda de estados de reserva",
   },
   de: {
     layers: { milestones: "Meilensteine", housekeeping: "Zimmerreinigung", hospitality: "Gästeservice", services: "Leistungen", activities: "Aktivitäten", payments: "Zahlungen", issues: "Vorfälle", maintenance: "Wartung" },
     legend: { pending: "Ausstehend", confirmed: "Bestätigt", checkedIn: "Eingecheckt", completed: "Abgeschlossen", block: "Sperre" },
-    layersButton: "Ebenen", summary: "Übersicht", shortcuts: "Tastenkürzel", interactionHint: "Klick: prüfen · Doppelklick: bearbeiten · ziehen: verschieben · Ränder: Daten",
+    layersButton: "Ebenen", summary: "Übersicht", shortcuts: "Tastenkürzel", interactionHint: "Klick: prüfen · Doppelklick: Vollansicht · ziehen: verschieben · Ränder: Daten",
     navigate: "navigieren", select: "auswählen", help: "Hilfe", all: "Alle", deselectAll: "Auswahl aufheben", selectAll: "Alle auswählen", rooms: "ZIMMER",
-    loading: "Verfügbarkeit wird geladen…", empty: "Keine Zimmer entsprechen den gewählten Filtern.", collapseGroups: "Gruppen einklappen", expandGroups: "Gruppen ausklappen", roomCount: "Zimmer", reservationCount: "Buchungen", selectedCount: "ausgewählt", conflictCount: "Konflikte",
+    loading: "Verfügbarkeit wird geladen…", empty: "Keine Zimmer entsprechen den gewählten Filtern.", noAvailability: "Für die ausgewählten Daten ist kein Bett verfügbar.", collapseGroups: "Gruppen einklappen", expandGroups: "Gruppen ausklappen", roomCount: "Zimmer", reservationCount: "Buchungen", selectedCount: "ausgewählt", conflictCount: "Konflikte", viewControls:"Kalenderansicht steuern", statusLegend:"Legende der Reservierungsstatus",
   },
 } satisfies Record<Language, any>
 
@@ -133,12 +134,12 @@ function uniqueGroupReservationEvents(group: InventoryGroup, eventsByBed: Map<st
 }
 
 function freeBedForRange(roomBeds: Bed[], eventsByBed: Map<string, CalendarEvent[]>, startsOn: string, endsOn: string, ignoreEventId?: string | null) {
-  return roomBeds.find((bed) => !(eventsByBed.get(bed.id) ?? []).some((event) => event.event_id !== ignoreEventId && overlaps(startsOn, endsOn, event.starts_on, event.ends_on))) ?? roomBeds[0]
+  return roomBeds.find((bed) => !(eventsByBed.get(bed.id) ?? []).some((event) => event.event_id !== ignoreEventId && overlaps(startsOn, endsOn, event.starts_on, event.ends_on))) ?? null
 }
 
 export function TimelineGrid(props: TimelineGridProps) {
   const {
-    dates, rangeDays, timelineWidth, isTouchDevice, visibleBeds, loading, eventsByBed, selectedIds, conflictIds, isBulkMode,
+    dates, rangeDays, timelineWidth, isTouchDevice, visibleBeds, loading, eventsByBed, availabilityEventsByBed, selectedIds, conflictIds, isBulkMode,
     visibleReservationEvents, onToggleSelect, onSelectAll, onClearSelection, draggingEventId, dropTargetBedId,
     movingReservationId, moveConflict, draggingEvent, onEventPointerDown, onEventPointerMove, onEventPointerUp,
     onEventPointerCancel, resizeState, resizingReservationId, confirmingReservationId, isResizing, resizeConflict,
@@ -163,7 +164,6 @@ export function TimelineGrid(props: TimelineGridProps) {
   const { preferences, setPreferences } = useCalendarViewPreferences(defaultLayers)
   const activeLayers = useMemo(() => new Set(preferences.activeLayers), [preferences.activeLayers])
   const [showKeyboardHelp, setShowKeyboardHelp] = useState(false)
-  const [inspectedReservation, setInspectedReservation] = useState<CalendarEvent | null>(null)
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set())
 
   const inventoryGroups = useMemo<InventoryGroup[]>(() => {
@@ -255,39 +255,38 @@ export function TimelineGrid(props: TimelineGridProps) {
     })
   }
   function toggleAllLayers() { setPreferences((current) => ({ ...current, activeLayers: current.activeLayers.length === layers.length ? [] : defaultLayers })) }
-  function inspectReservation(event: CalendarEvent) { if (event.event_type === "reservation") setInspectedReservation(event) }
-
   const sharedRowProps: Omit<TimelineRowProps, "bed" | "bedEvents" | "onRowClick" | "onCreationCommit"> = {
     dates, timelineWidth, isTouchDevice, activeLayers, selectedIds, conflictIds, isBulkMode, onToggleSelect,
     draggingEventId, dropTargetBedId, movingReservationId, moveConflict, draggingEvent, onEventPointerDown,
     onEventPointerMove, onEventPointerUp, onEventPointerCancel, resizeState, resizingReservationId,
     confirmingReservationId, isResizing, resizeConflict, onBeginResize, onMoveResize, onFinishResize, onClearResize,
     blockRefCallback, eventGeometry, geometryForDates, creatingRange, onCreationStart, onCreationAbort,
-    onOpenReservation: inspectReservation, onOpenBlock,
+    onOpenReservation, onOpenBlock,
   }
 
   return (
     <CardContent className="p-0">
       <div className="border-b bg-background">
-        <div className="flex min-h-9 flex-wrap items-center gap-2 px-3 py-1">
-          <button type="button" onClick={() => setPreferences((current) => ({ ...current, showLayerToolbar: !current.showLayerToolbar }))} className={`inline-flex items-center gap-1 border px-2 py-1 text-[11px] font-medium transition ${preferences.showLayerToolbar ? "border-primary bg-primary text-primary-foreground" : "bg-background hover:bg-muted"}`}><Layers3 className="h-3.5 w-3.5" />{c.layersButton}</button>
-          <button type="button" onClick={() => setPreferences((current) => ({ ...current, showSummary: !current.showSummary }))} className={`inline-flex items-center gap-1 border px-2 py-1 text-[11px] transition ${preferences.showSummary ? "border-primary/40 bg-primary/10 text-primary" : "bg-background text-muted-foreground hover:bg-muted"}`}><Rows3 className="h-3.5 w-3.5" />{c.summary}</button>
-          <button type="button" onClick={() => setShowKeyboardHelp((current) => !current)} className="inline-flex items-center gap-1 border bg-background px-2 py-1 text-[11px] text-muted-foreground hover:bg-muted"><Keyboard className="h-3.5 w-3.5" />{c.shortcuts}</button>
-          {inventoryGroups.length > 0 && <button type="button" onClick={toggleAllGroups} className="inline-flex items-center gap-1 border bg-background px-2 py-1 text-[11px] text-muted-foreground hover:bg-muted"><Rows3 className="h-3.5 w-3.5" />{allGroupsCollapsed ? c.expandGroups : c.collapseGroups}</button>}
-          <div className="hidden items-center gap-3 border-l pl-3 xl:flex">{statusLegend.map((item) => <span key={item.label} className="inline-flex items-center gap-1 text-[10px] text-muted-foreground"><span className={`h-2.5 w-2.5 ${item.className}`} />{item.label}</span>)}</div>
-          <span className="ml-auto text-[10px] text-muted-foreground">{c.interactionHint}</span>
+        <div className="flex min-h-8 items-center gap-1 px-2 py-1" aria-label={c.viewControls}>
+          <button type="button" title={c.layersButton} aria-label={c.layersButton} onClick={() => setPreferences((current) => ({ ...current, showLayerToolbar: !current.showLayerToolbar }))} className={`inline-flex h-7 w-7 items-center justify-center border text-muted-foreground transition hover:bg-muted ${preferences.showLayerToolbar ? "border-primary bg-primary text-primary-foreground" : "bg-background"}`}><Layers3 className="h-3.5 w-3.5" /></button>
+          <button type="button" title={c.summary} aria-label={c.summary} onClick={() => setPreferences((current) => ({ ...current, showSummary: !current.showSummary }))} className={`inline-flex h-7 w-7 items-center justify-center border transition hover:bg-muted ${preferences.showSummary ? "border-primary/40 bg-primary/10 text-primary" : "bg-background text-muted-foreground"}`}><Rows3 className="h-3.5 w-3.5" /></button>
+          <button type="button" title={`${c.shortcuts} · ${c.interactionHint}`} aria-label={c.shortcuts} onClick={() => setShowKeyboardHelp((current) => !current)} className={`inline-flex h-7 w-7 items-center justify-center border transition hover:bg-muted ${showKeyboardHelp ? "border-primary/40 bg-primary/10 text-primary" : "bg-background text-muted-foreground"}`}><Keyboard className="h-3.5 w-3.5" /></button>
+          {inventoryGroups.length > 0 && <button type="button" title={allGroupsCollapsed ? c.expandGroups : c.collapseGroups} aria-label={allGroupsCollapsed ? c.expandGroups : c.collapseGroups} onClick={toggleAllGroups} className="inline-flex h-7 w-7 items-center justify-center border bg-background text-muted-foreground transition hover:bg-muted"><ChevronRight className={`h-3.5 w-3.5 transition-transform ${allGroupsCollapsed ? "" : "rotate-90"}`} /></button>}
+          <div className="ml-1 flex items-center gap-1.5 border-l pl-2" aria-label={c.statusLegend}>
+            {statusLegend.map((item) => <span key={item.label} title={item.label} aria-label={item.label} className={`h-2 w-2 ${item.className}`} />)}
+          </div>
         </div>
-        {showKeyboardHelp && <div className="flex flex-wrap gap-x-5 gap-y-1 border-t bg-muted/20 px-3 py-2 text-[10px] text-muted-foreground"><span><kbd>←/→</kbd> {c.navigate}</span><span><kbd>S</kbd> {c.summary.toLowerCase()}</span><span><kbd>L</kbd> {c.layersButton.toLowerCase()}</span><span><kbd>⌘/Ctrl+A</kbd> {c.select}</span><span><kbd>?</kbd> {c.help}</span></div>}
-        {preferences.showLayerToolbar && <div className="flex flex-wrap items-center gap-1 border-t bg-muted/20 px-3 py-1.5">
-          <button type="button" onClick={toggleAllLayers} className={`border px-2 py-1 text-[11px] font-medium transition ${activeLayers.size === layers.length ? "border-primary bg-primary text-primary-foreground" : "bg-background hover:bg-muted"}`}>{c.all}</button>
-          {layers.map(({ key, label, Icon }) => <button key={key} type="button" onClick={() => toggleLayer(key)} className={`inline-flex items-center gap-1 border px-2 py-1 text-[11px] transition ${activeLayers.has(key) ? "border-primary/40 bg-primary/10 text-primary" : "bg-background text-muted-foreground hover:bg-muted"}`}><Icon className="h-3.5 w-3.5" />{label}</button>)}
+        {showKeyboardHelp && <div className="flex flex-wrap items-center gap-x-5 gap-y-1 border-t bg-muted/20 px-3 py-1.5 text-[10px] text-muted-foreground"><span>{c.interactionHint}</span><span><kbd>←/→</kbd> {c.navigate}</span><span><kbd>S</kbd> {c.summary.toLowerCase()}</span><span><kbd>L</kbd> {c.layersButton.toLowerCase()}</span><span><kbd>⌘/Ctrl+A</kbd> {c.select}</span><span><kbd>?</kbd> {c.help}</span></div>}
+        {preferences.showLayerToolbar && <div className="flex flex-wrap items-center gap-1 border-t bg-muted/20 px-2 py-1">
+          <button type="button" onClick={toggleAllLayers} className={`border px-2 py-1 text-[10px] font-medium transition ${activeLayers.size === layers.length ? "border-primary bg-primary text-primary-foreground" : "bg-background hover:bg-muted"}`}>{c.all}</button>
+          {layers.map(({ key, label, Icon }) => <button key={key} type="button" onClick={() => toggleLayer(key)} className={`inline-flex items-center gap-1 border px-2 py-1 text-[10px] transition ${activeLayers.has(key) ? "border-primary/40 bg-primary/10 text-primary" : "bg-background text-muted-foreground hover:bg-muted"}`}><Icon className="h-3 w-3" />{label}</button>)}
         </div>}
       </div>
 
       <div ref={scrollRef} className="overflow-auto bg-[#122526]">
         <div style={{ minWidth: totalWidth }}>
           <div className="sticky top-0 z-30 flex border-b border-white/10 bg-[#17191a] shadow-sm">
-            <div className="sticky left-0 z-40 flex shrink-0 items-center gap-2 border-r border-white/10 bg-[#17191a] px-3 text-[11px] font-medium tracking-wide text-white/65" style={{ width: LABEL_WIDTH, height: 44 }}>
+            <div className="sticky left-0 z-40 flex shrink-0 items-center gap-2 border-r border-white/10 bg-[#17191a] px-3 text-[11px] font-medium tracking-wide text-white/65" style={{ width: LABEL_WIDTH, height: 40 }}>
               {visibleReservationEvents.length > 0 && <button type="button" onClick={isBulkMode ? onClearSelection : onSelectAll} className="shrink-0 text-white/50 transition hover:text-white" aria-label={isBulkMode ? c.deselectAll : c.selectAll}>{isBulkMode ? <CheckSquare className="h-4 w-4 text-primary" /> : <Square className="h-4 w-4" />}</button>}
               <span>{c.rooms} ({roomCount})</span>
             </div>
@@ -296,7 +295,7 @@ export function TimelineGrid(props: TimelineGridProps) {
                 const weekend = date.getDay() === 0 || date.getDay() === 6
                 const monthBoundary = index === 0 || date.getDate() === 1
                 const today = isBookingToday(date)
-                return <div key={date.toISOString()} className={`relative flex flex-col items-center justify-center border-r border-white/10 text-center text-white ${weekend ? "bg-black/10" : ""} ${today ? "bg-emerald-600" : ""} ${monthBoundary ? "border-l border-l-white/20" : ""}`} style={{ height: 44 }}>
+                return <div key={date.toISOString()} className={`relative flex flex-col items-center justify-center border-r border-white/10 text-center text-white ${weekend ? "bg-black/10" : ""} ${today ? "bg-emerald-500/20 text-emerald-100" : ""} ${monthBoundary ? "border-l border-l-white/20" : ""}` } style={{ height: 40 }}>
                   {monthBoundary && <span className="absolute left-1 top-0 text-[8px] font-medium uppercase tracking-wide text-white/45">{format(date, "MMM", { locale: dateLocale })}</span>}
                   <div className={`text-[9px] ${today ? "text-white" : "text-white/65"}`}>{format(date, "EEE", { locale: dateLocale })}</div><div className="text-sm font-medium leading-none">{format(date, "dd")}</div>
                 </div>
@@ -311,16 +310,14 @@ export function TimelineGrid(props: TimelineGridProps) {
             const selectedCount = groupReservations.filter((event) => selectedIds.has(event.event_id)).length
             const conflictCount = groupReservations.filter((event) => conflictIds.has(event.event_id)).length
             return <section key={location.locationId} className={`[content-visibility:auto] [contain-intrinsic-size:180px] ${propertyBand}`} title={location.locationName} data-property-group data-collapsed={isCollapsed ? "true" : "false"}>
-              <button type="button" onClick={() => toggleGroup(location.locationId)} className="flex h-8 w-full items-center border-b border-white/5 text-left text-white/75 transition hover:brightness-110 focus-visible:outline-none" aria-expanded={!isCollapsed} aria-label={`${isCollapsed ? c.expandGroups : c.collapseGroups}: ${location.locationName}`}>
-                <span className="sticky left-0 z-20 flex h-full shrink-0 items-center gap-2 border-r border-white/5 px-3" style={{ width: LABEL_WIDTH }}>
-                  <ChevronRight className={`h-3.5 w-3.5 shrink-0 transition-transform ${isCollapsed ? "" : "rotate-90"}`} />
-                  <span className="min-w-0 flex-1 truncate text-[11px] font-semibold tracking-[0.02em] text-white/90">{location.locationName || "—"}</span>
-                  <span className="shrink-0 text-[9px] text-white/45">{location.rooms.length}</span>
+              <button type="button" onClick={() => toggleGroup(location.locationId)} className="flex h-4 w-full items-center border-b border-white/5 text-left text-white/60 transition hover:brightness-110 focus-visible:outline-none" aria-expanded={!isCollapsed} aria-label={`${isCollapsed ? c.expandGroups : c.collapseGroups}: ${location.locationName}`}>
+                <span className="sticky left-0 z-20 flex h-full shrink-0 items-center gap-1.5 border-r border-white/5 px-3" style={{ width: LABEL_WIDTH }}>
+                  <ChevronRight className={`h-3 w-3 shrink-0 transition-transform ${isCollapsed ? "" : "rotate-90"}`} />
+                  <span className="min-w-0 flex-1 truncate text-[9px] font-medium tracking-[0.04em] text-white/70">{location.locationName || "—"}</span>
+                  <span className="shrink-0 text-[8px] tabular-nums text-white/35">{location.rooms.length}</span>
                 </span>
-                <span className="flex h-full items-center gap-3 px-3 text-[9px] text-white/48" style={{ width: timelineWidth }}>
-                  <span>{location.rooms.length} {c.roomCount}</span>
-                  <span>{groupReservations.length} {c.reservationCount}</span>
-                  {selectedCount > 0 && <span className="text-white/75">{selectedCount} {c.selectedCount}</span>}
+                <span className="flex h-full items-center gap-3 px-3 text-[8px]" style={{ width: timelineWidth }}>
+                  {selectedCount > 0 && <span className="text-white/70">{selectedCount} {c.selectedCount}</span>}
                   {conflictCount > 0 && <span className="text-amber-300/90">{conflictCount} {c.conflictCount}</span>}
                 </span>
               </button>
@@ -328,7 +325,7 @@ export function TimelineGrid(props: TimelineGridProps) {
                 const identity = getBedBookingDisplayIdentity({ propertyName: location.locationName, roomNumber: room.roomNumber })
                 const roomEvents = uniqueRoomEvents(room.beds, eventsByBed)
                 const targetBed = draggingEvent
-                  ? freeBedForRange(room.beds, eventsByBed, draggingEvent.starts_on, draggingEvent.ends_on, draggingEvent.event_id)
+                  ? freeBedForRange(room.beds, availabilityEventsByBed, draggingEvent.starts_on, draggingEvent.ends_on, draggingEvent.event_id) ?? room.beds[0]
                   : room.beds[0]
                 if (!targetBed) return null
                 const displayBed: Bed = { ...targetBed, display_name: identity.displayName, guest_capacity: identity.guestCapacity }
@@ -344,12 +341,14 @@ export function TimelineGrid(props: TimelineGridProps) {
                     if (!day) return
                     const startsOn = format(day, "yyyy-MM-dd")
                     const endsOn = format(addDays(day, 1), "yyyy-MM-dd")
-                    const availableBed = freeBedForRange(room.beds, eventsByBed, startsOn, endsOn)
-                    if (availableBed) onRowClick(availableBed, clientX, currentTarget)
+                    const availableBed = freeBedForRange(room.beds, availabilityEventsByBed, startsOn, endsOn)
+                    if (!availableBed) { toast.error(c.noAvailability); return }
+                    onRowClick(availableBed, clientX, currentTarget)
                   }}
                   onCreationCommit={(range) => {
-                    const availableBed = freeBedForRange(room.beds, eventsByBed, range.startDate, range.endDate)
-                    if (availableBed) onCreationCommit({ ...range, bedId: availableBed.id })
+                    const availableBed = freeBedForRange(room.beds, availabilityEventsByBed, range.startDate, range.endDate)
+                    if (!availableBed) { toast.error(c.noAvailability); onCreationAbort(); return }
+                    onCreationCommit({ ...range, bedId: availableBed.id })
                   }}
                 />
               })}
@@ -359,7 +358,6 @@ export function TimelineGrid(props: TimelineGridProps) {
         </div>
       </div>
 
-      <ReservationQuickInspector reservation={inspectedReservation} open={Boolean(inspectedReservation)} onOpenChange={(open) => { if (!open) setInspectedReservation(null) }} onOpenFull={(event) => { setInspectedReservation(null); window.location.assign(`/${language}/bookings/reservations/${event.event_id}`) }} />
     </CardContent>
   )
 }

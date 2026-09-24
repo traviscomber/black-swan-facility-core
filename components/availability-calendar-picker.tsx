@@ -1,16 +1,18 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { format, addDays, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isBefore, isAfter, parseISO } from "date-fns"
+import { format, addDays, startOfDay, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isBefore, isAfter, parseISO } from "date-fns"
 import { de, enUS, es } from "date-fns/locale"
 import { createBrowserClient } from "@/lib/supabase/client"
 import { ChevronLeft, ChevronRight, AlertCircle, CheckCircle2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useLanguage } from "@/lib/hooks/use-language"
 import { addReservationCopy, fillReservationCopy } from "@/lib/translations/add-reservation"
+import { bookingTodayDate } from "@/lib/booking/timezone"
 
 interface AvailabilityCalendarPickerProps {
   bedId: string
+  roomId?: string
   onDateRangeSelect: (checkIn: string, checkOut: string) => void
   currentCheckIn?: string
   currentCheckOut?: string
@@ -33,10 +35,11 @@ const PICKER_COPY = {
 
 export function AvailabilityCalendarPicker({
   bedId,
+  roomId,
   onDateRangeSelect,
   currentCheckIn,
   currentCheckOut,
-  minDate = new Date(),
+  minDate,
 }: AvailabilityCalendarPickerProps) {
   const { language } = useLanguage()
   const copy = addReservationCopy[language]
@@ -48,9 +51,11 @@ export function AvailabilityCalendarPicker({
   const [checkOut, setCheckOut] = useState<Date | null>(currentCheckOut ? parseISO(currentCheckOut) : null)
   const [availability, setAvailability] = useState<DayAvailability[]>([])
   const [loading, setLoading] = useState(false)
+  const [rangeError, setRangeError] = useState<string | null>(null)
   const supabase = createBrowserClient()
+  const effectiveMinDate = startOfDay(minDate ?? bookingTodayDate())
 
-  useEffect(() => { loadAvailability() }, [currentMonth, bedId])
+  useEffect(() => { void loadAvailability() }, [currentMonth, bedId, roomId])
 
   async function loadAvailability() {
     if (!bedId) return
@@ -58,23 +63,42 @@ export function AvailabilityCalendarPicker({
     try {
       const monthStart = startOfMonth(currentMonth)
       const monthEnd = endOfMonth(currentMonth)
-      const { data: reservations, error } = await supabase
-        .from("reservations")
-        .select("check_in, check_out, guest_name, status")
-        .eq("bed_id", bedId)
-        .gte("check_out", format(monthStart, "yyyy-MM-dd"))
-        .lte("check_in", format(monthEnd, "yyyy-MM-dd"))
-        .not("status", "in", "(cancelled, canceled, void, voided)")
-      if (error) throw error
+      const [reservationResult, blockResult] = await Promise.all([
+        supabase
+          .from("reservations")
+          .select("check_in, check_out, guest_name, status")
+          .eq("bed_id", bedId)
+          .gte("check_out", format(monthStart, "yyyy-MM-dd"))
+          .lte("check_in", format(monthEnd, "yyyy-MM-dd"))
+          .not("status", "in", "(cancelled, canceled, void, voided)"),
+        roomId
+          ? supabase
+              .from("room_blocks")
+              .select("start_date, end_date, reason, status")
+              .eq("room_id", roomId)
+              .eq("status", "active")
+              .lte("start_date", format(monthEnd, "yyyy-MM-dd"))
+              .gte("end_date", format(monthStart, "yyyy-MM-dd"))
+          : Promise.resolve({ data: [], error: null }),
+      ])
+      if (reservationResult.error) throw reservationResult.error
+      if (blockResult.error) throw blockResult.error
+      const reservations = reservationResult.data ?? []
+      const blocks = blockResult.data ?? []
 
       const days = eachDayOfInterval({ start: monthStart, end: monthEnd })
       const nextAvailability: DayAvailability[] = days.map((date) => {
-        const conflict = reservations?.find((res: { check_in: string; check_out: string; guest_name: string }) => {
+        const reservationConflict = reservations.find((res: { check_in: string; check_out: string; guest_name: string }) => {
           const resStart = parseISO(res.check_in)
           const resEnd = parseISO(res.check_out)
           return date >= resStart && date < resEnd
         })
-        return { date, isBooked: Boolean(conflict), isBlocked: false, conflictsWith: conflict?.guest_name }
+        const blockConflict = blocks.find((block: { start_date: string; end_date: string; reason: string }) => {
+          const blockStart = parseISO(block.start_date)
+          const blockEnd = parseISO(block.end_date)
+          return date >= blockStart && date < blockEnd
+        })
+        return { date, isBooked: Boolean(reservationConflict), isBlocked: Boolean(blockConflict), conflictsWith: reservationConflict?.guest_name ?? blockConflict?.reason }
       })
       setAvailability(nextAvailability)
     } catch (error) {
@@ -84,15 +108,46 @@ export function AvailabilityCalendarPicker({
     }
   }
 
-  function handleDayClick(date: Date) {
-    if (isBefore(date, minDate)) return
+  async function handleDayClick(date: Date) {
+    if (isBefore(date, effectiveMinDate)) return
+    setRangeError(null)
     if (!checkIn) {
       setCheckIn(date)
       setCheckOut(null)
     } else if (!checkOut) {
       if (isAfter(date, checkIn)) {
+        const rangeStart = format(checkIn, "yyyy-MM-dd")
+        const rangeEnd = format(date, "yyyy-MM-dd")
+        const localConflict = availability.some((item) => item.date >= checkIn && item.date < date && (item.isBooked || item.isBlocked))
+        if (localConflict) { setRangeError(copy.rangeConflict); return }
+        const [reservationConflict, blockConflict] = await Promise.all([
+          supabase
+            .from("reservations")
+            .select("id", { head: true, count: "exact" })
+            .eq("bed_id", bedId)
+            .lt("check_in", rangeEnd)
+            .gt("check_out", rangeStart)
+            .not("status", "in", "(cancelled, canceled, void, voided)"),
+          roomId
+            ? supabase
+                .from("room_blocks")
+                .select("id", { head: true, count: "exact" })
+                .eq("room_id", roomId)
+                .eq("status", "active")
+                .lt("start_date", rangeEnd)
+                .gt("end_date", rangeStart)
+            : Promise.resolve({ count: 0, error: null }),
+        ])
+        if (reservationConflict.error || blockConflict.error) {
+          setRangeError(copy.availabilityError)
+          return
+        }
+        if ((reservationConflict.count ?? 0) > 0 || (blockConflict.count ?? 0) > 0) {
+          setRangeError(copy.rangeConflict)
+          return
+        }
         setCheckOut(date)
-        onDateRangeSelect(format(checkIn, "yyyy-MM-dd"), format(date, "yyyy-MM-dd"))
+        onDateRangeSelect(rangeStart, rangeEnd)
       } else {
         setCheckIn(date)
         setCheckOut(null)
@@ -103,13 +158,12 @@ export function AvailabilityCalendarPicker({
     }
   }
 
-  function getDateStatus(date: Date): "available" | "booked" | "selected" | "in-range" {
-    if (checkIn && checkOut) {
-      if (date >= checkIn && date < checkOut) return "in-range"
-      if (date.toDateString() === checkIn.toDateString()) return "selected"
-      if (date.toDateString() === checkOut.toDateString()) return "selected"
-    } else if (checkIn && date.toDateString() === checkIn.toDateString()) return "selected"
+  function getDateStatus(date: Date): "available" | "booked" | "blocked" | "selected" | "in-range" {
+    if (checkIn && date.toDateString() === checkIn.toDateString()) return "selected"
+    if (checkOut && date.toDateString() === checkOut.toDateString()) return "selected"
+    if (checkIn && checkOut && date > checkIn && date < checkOut) return "in-range"
     const dayAvail = availability.find((a) => a.date.toDateString() === date.toDateString())
+    if (dayAvail?.isBlocked) return "blocked"
     return dayAvail?.isBooked ? "booked" : "available"
   }
 
@@ -124,9 +178,10 @@ export function AvailabilityCalendarPicker({
         <button type="button" onClick={() => setCurrentMonth(addDays(currentMonth, 32))} className="rounded p-1 hover:bg-slate-100 dark:hover:bg-slate-800" aria-label={pickerCopy.nextMonth}><ChevronRight className="h-4 w-4" /></button>
       </div>
 
-      <div className="grid grid-cols-3 gap-2 text-xs">
+      <div className="grid grid-cols-4 gap-2 text-xs">
         <div className="flex items-center gap-1"><div className="h-3 w-3 rounded border border-green-200 bg-green-50" /><span>{copy.available}</span></div>
         <div className="flex items-center gap-1"><div className="h-3 w-3 rounded border border-red-300 bg-red-100" /><span>{copy.booked}</span></div>
+        <div className="flex items-center gap-1"><div className="h-3 w-3 rounded border border-amber-300 bg-amber-100" /><span>{copy.blocked}</span></div>
         <div className="flex items-center gap-1"><div className="h-3 w-3 rounded border border-blue-300 bg-blue-100" /><span>{copy.selected}</span></div>
       </div>
 
@@ -139,15 +194,15 @@ export function AvailabilityCalendarPicker({
           {daysInMonth.map((date) => {
             const status = getDateStatus(date)
             const dayAvail = availability.find((a) => a.date.toDateString() === date.toDateString())
-            const isDisabled = isBefore(date, minDate) || status === "booked"
+            const isDisabled = isBefore(date, effectiveMinDate) || status === "booked" || status === "blocked"
             return (
               <button
                 key={date.toISOString()}
                 type="button"
-                onClick={() => handleDayClick(date)}
+                onClick={() => void handleDayClick(date)}
                 disabled={isDisabled}
-                title={dayAvail?.conflictsWith ? fillReservationCopy(copy.bookedBy, { guest: dayAvail.conflictsWith }) : ""}
-                className={`relative rounded border p-2 text-xs font-medium transition-colors ${status === "booked" ? "cursor-not-allowed border-red-300 bg-red-100 text-red-900 dark:border-red-700 dark:bg-red-900/20" : ""} ${status === "available" ? "border-green-200 bg-green-50 hover:bg-green-100 dark:border-green-700 dark:bg-green-900/10" : ""} ${status === "selected" ? "border-blue-400 bg-blue-100 text-blue-900 dark:border-blue-600 dark:bg-blue-900/20" : ""} ${status === "in-range" ? "border-blue-200 bg-blue-50 dark:border-blue-700 dark:bg-blue-900/10" : ""} ${isBefore(date, minDate) ? "cursor-not-allowed text-slate-400 opacity-30" : ""} ${!isSameMonth(date, currentMonth) ? "text-slate-300 dark:text-slate-600" : ""}`}
+                title={dayAvail?.conflictsWith ? (dayAvail.isBlocked ? fillReservationCopy(copy.blockedBy, { reason: dayAvail.conflictsWith }) : fillReservationCopy(copy.bookedBy, { guest: dayAvail.conflictsWith })) : ""}
+                className={`relative rounded border p-2 text-xs font-medium transition-colors ${status === "booked" ? "cursor-not-allowed border-red-300 bg-red-100 text-red-900 dark:border-red-700 dark:bg-red-900/20" : ""} ${status === "blocked" ? "cursor-not-allowed border-amber-300 bg-amber-100 text-amber-900 dark:border-amber-700 dark:bg-amber-900/20" : ""} ${status === "available" ? "border-green-200 bg-green-50 hover:bg-green-100 dark:border-green-700 dark:bg-green-900/10" : ""} ${status === "selected" ? "border-blue-400 bg-blue-100 text-blue-900 dark:border-blue-600 dark:bg-blue-900/20" : ""} ${status === "in-range" ? "border-blue-200 bg-blue-50 dark:border-blue-700 dark:bg-blue-900/10" : ""} ${isBefore(date, effectiveMinDate) ? "cursor-not-allowed text-slate-400 opacity-30" : ""} ${!isSameMonth(date, currentMonth) ? "text-slate-300 dark:text-slate-600" : ""}`}
               >
                 {format(date, "d")}
               </button>
@@ -155,6 +210,8 @@ export function AvailabilityCalendarPicker({
           })}
         </div>
       </div>
+
+      {rangeError && <div className="border border-amber-400/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-300">{rangeError}</div>}
 
       {checkIn && checkOut && (
         <div className="space-y-1 rounded-md border border-blue-200 bg-blue-50 p-3 dark:border-blue-700 dark:bg-blue-900/20">
@@ -171,7 +228,7 @@ export function AvailabilityCalendarPicker({
       )}
 
       {(checkIn || checkOut) && (
-        <Button variant="outline" size="sm" onClick={() => { setCheckIn(null); setCheckOut(null) }} className="w-full">{copy.clearSelection}</Button>
+        <Button variant="outline" size="sm" onClick={() => { setCheckIn(null); setCheckOut(null); setRangeError(null) }} className="w-full">{copy.clearSelection}</Button>
       )}
       {loading && <span className="sr-only">{pickerCopy.loading}</span>}
     </div>

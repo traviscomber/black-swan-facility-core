@@ -23,6 +23,7 @@ import {
   Sparkles,
   Users,
   Wrench,
+  FileText,
   X,
 } from "lucide-react"
 import { toast } from "sonner"
@@ -39,6 +40,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { useLanguage } from "@/lib/hooks/use-language"
+import { bookingDateKey, bookingTodayDate } from "@/lib/booking/timezone"
 import { createClient } from "@/lib/supabase/client"
 import { translateBookingOperationsValue } from "@/lib/translations/booking-operations"
 
@@ -154,12 +156,51 @@ type BookingExtra = {
   price: number
   tax_rate: number
 }
+type ReservationLogistics = {
+  id: string
+  direction: string
+  hub: string
+  anchor_at: string | null
+  status: string
+  notes: string | null
+}
+type HandoverItem = {
+  id: string
+  handover_id: string
+  title: string
+  detail: string | null
+  priority: string
+  status: string
+  due_at: string | null
+}
+type ReservationInvoice = {
+  id: string
+  invoice_number: string
+  status: string
+  payment_status: string
+  total_amount: number
+  amount_paid: number | null
+  due_date: string
+}
+type MaintenanceItem = {
+  id: string
+  maintenance_type: string | null
+  scheduled_date: string | null
+  duration_minutes: number | null
+  priority: number | null
+  status: string | null
+  notes: string | null
+}
 type BookingOperations = {
   summary: {
     openHospitality: number
     openHousekeeping: number
     openGuestRequests: number
     openIssues: number
+    openLogistics: number
+    openHandovers: number
+    openMaintenance: number
+    openBalance: number
     extrasCount: number
     extrasAmount: number
     totalOperations: number
@@ -167,6 +208,10 @@ type BookingOperations = {
   extras: ReservationExtra[]
   guestRequests: GuestRequest[]
   issues: BookingIssue[]
+  logistics: ReservationLogistics[]
+  handoverItems: HandoverItem[]
+  invoices: ReservationInvoice[]
+  maintenance: MaintenanceItem[]
   catalog: BookingExtra[]
 }
 type SelectedReservation = Reservation & { bed?: Bed }
@@ -270,7 +315,7 @@ export default function BookingOperationsTimelinePage() {
 
   const [rangeDays, setRangeDays] = useState<(typeof ZOOM_OPTIONS)[number]>(21)
   const dayWidth = rangeDays <= 7 ? 128 : rangeDays <= 14 ? 104 : rangeDays <= 21 ? 92 : 72
-  const [startDate, setStartDate] = useState(startOfDay(new Date()))
+  const [startDate, setStartDate] = useState(bookingTodayDate)
   const endDate = useMemo(() => addDays(startDate, rangeDays), [rangeDays, startDate])
   const dates = useMemo(
     () => Array.from({ length: rangeDays }, (_, index) => addDays(startDate, index)),
@@ -348,25 +393,129 @@ export default function BookingOperationsTimelinePage() {
     setLoading(false)
   }, [endDate, startDate, supabase, tr])
 
-  const loadOperations = useCallback(async (reservationId: string) => {
+  const loadOperations = useCallback(async (reservationId: string, bedId?: string | null) => {
     setOperationsLoading(true)
     setOperationsError(null)
     try {
-      const response = await fetch(`/api/bookings/${reservationId}/operations`, { cache: "no-store" })
-      const payload = await response.json()
-      if (!response.ok) {
-        console.error("[booking-operations] reservation operations load failed", payload.error)
-        throw new Error(tr("No fue posible cargar las operaciones de la reserva"))
-      }
-      setOperations(payload as BookingOperations)
+      const maintenancePromise = bedId
+        ? supabase
+            .from("maintenance_schedules")
+            .select("id, maintenance_type, scheduled_date, duration_minutes, priority, status, notes")
+            .eq("bed_id", bedId)
+            .order("scheduled_date", { ascending: true })
+        : Promise.resolve({ data: [], error: null })
+
+      const [extrasResult, guestRequestsResult, issuesResult, catalogResult, housekeepingResult, hospitalityResult, logisticsResult, handoverResult, invoicesResult, maintenanceResult] = await Promise.all([
+        supabase
+          .from("reservation_extras")
+          .select("id, extra_id, name, unit, quantity, unit_price, tax_rate, total_amount, notes, created_at")
+          .eq("reservation_id", reservationId)
+          .order("created_at", { ascending: false }),
+        supabase
+          .from("guest_requests")
+          .select("id, request_type, description, status, assigned_to, created_at, resolved_at")
+          .eq("reservation_id", reservationId)
+          .order("created_at", { ascending: false }),
+        supabase
+          .from("issues")
+          .select("id, title, description, category, priority, severity, status, photo_url, created_at, resolved_at")
+          .eq("related_item_type", "reservation")
+          .eq("related_item_id", reservationId)
+          .order("created_at", { ascending: false }),
+        supabase
+          .from("booking_extras")
+          .select("id, name, description, unit, price, tax_rate")
+          .eq("is_active", true)
+          .order("name"),
+        supabase
+          .from("housekeeping_tasks")
+          .select("id, status")
+          .eq("reservation_id", reservationId),
+        supabase
+          .from("hospitality_requests")
+          .select("id, status")
+          .eq("reservation_id", reservationId),
+        supabase
+          .from("reservation_logistics")
+          .select("id, direction, hub, anchor_at, status, notes")
+          .eq("reservation_id", reservationId)
+          .order("anchor_at", { ascending: true, nullsFirst: false }),
+        supabase
+          .from("booking_handover_items")
+          .select("id, handover_id, title, detail, priority, status, due_at")
+          .eq("reservation_id", reservationId)
+          .order("due_at", { ascending: true, nullsFirst: false }),
+        supabase
+          .from("invoices")
+          .select("id, invoice_number, status, payment_status, total_amount, amount_paid, due_date")
+          .eq("reservation_id", reservationId)
+          .order("invoice_date", { ascending: false }),
+        maintenancePromise,
+      ])
+
+      const firstError = extrasResult.error
+        || guestRequestsResult.error
+        || issuesResult.error
+        || catalogResult.error
+        || housekeepingResult.error
+        || hospitalityResult.error
+        || logisticsResult.error
+        || handoverResult.error
+        || invoicesResult.error
+        || maintenanceResult.error
+
+      if (firstError) throw firstError
+
+      const extras = (extrasResult.data ?? []) as ReservationExtra[]
+      const guestRequests = (guestRequestsResult.data ?? []) as GuestRequest[]
+      const issues = (issuesResult.data ?? []) as BookingIssue[]
+      const catalog = (catalogResult.data ?? []) as BookingExtra[]
+      const logistics = (logisticsResult.data ?? []) as ReservationLogistics[]
+      const handoverItems = (handoverResult.data ?? []) as HandoverItem[]
+      const invoices = (invoicesResult.data ?? []) as ReservationInvoice[]
+      const maintenance = (maintenanceResult.data ?? []) as MaintenanceItem[]
+      const openStatuses = new Set(["pending", "assigned", "in_progress", "open"])
+      const openHospitality = (hospitalityResult.data ?? []).filter((item) => openStatuses.has(item.status ?? "pending")).length
+      const openHousekeeping = (housekeepingResult.data ?? []).filter((item) => openStatuses.has(item.status ?? "pending")).length
+      const openGuestRequests = guestRequests.filter((item) => openStatuses.has(item.status ?? "pending")).length
+      const openIssues = issues.filter((item) => openStatuses.has(item.status ?? "open")).length
+      const openLogistics = logistics.filter((item) => !["completed", "cancelled"].includes(item.status)).length
+      const openHandovers = handoverItems.filter((item) => !["resolved", "completed", "cancelled"].includes(item.status)).length
+      const openMaintenance = maintenance.filter((item) => !["completed", "cancelled"].includes(item.status ?? "pending")).length
+      const openBalance = invoices.reduce((sum, item) => sum + Math.max(0, Number(item.total_amount ?? 0) - Number(item.amount_paid ?? 0)), 0)
+      const extrasAmount = extras.reduce((sum, item) => sum + Number(item.total_amount ?? 0), 0)
+
+      setOperations({
+        summary: {
+          openHospitality,
+          openHousekeeping,
+          openGuestRequests,
+          openIssues,
+          openLogistics,
+          openHandovers,
+          openMaintenance,
+          openBalance,
+          extrasCount: extras.length,
+          extrasAmount,
+          totalOperations: openHospitality + openHousekeeping + guestRequests.length + issues.length + logistics.length + handoverItems.length + extras.length,
+        },
+        extras,
+        guestRequests,
+        issues,
+        logistics,
+        handoverItems,
+        invoices,
+        maintenance,
+        catalog,
+      })
     } catch (loadError) {
-      console.error("[booking-operations] reservation operations request failed", loadError)
+      console.error("[booking-operations] reservation operations load failed", loadError)
       setOperations(null)
       setOperationsError(tr("No fue posible cargar las operaciones"))
     } finally {
       setOperationsLoading(false)
     }
-  }, [tr])
+  }, [supabase, tr])
 
   useEffect(() => { void loadData() }, [loadData])
   useEffect(() => {
@@ -375,7 +524,7 @@ export default function BookingOperationsTimelinePage() {
       setOperationsError(null)
       return
     }
-    void loadOperations(selected.id)
+    void loadOperations(selected.id, selected.bed_id ?? selected.bed?.id ?? null)
   }, [loadOperations, selected])
   useEffect(() => {
     const channel = supabase
@@ -460,9 +609,44 @@ export default function BookingOperationsTimelinePage() {
   const selectedRoomStatus = selectedRoom?.operational_status ?? null
   const selectedIsCheckedIn = Boolean(selected && ["checked_in", "checked-in"].includes(selected.status))
   const selectedIsClosed = Boolean(selected && ["checked_out", "checked-out", "cancelled", "canceled"].includes(selected.status))
+  const selectedExceptions = useMemo(() => {
+    if (!selected) return [] as string[]
+    const exceptions: string[] = []
+    if (!selectedIsCheckedIn && !selectedIsClosed && !roomReady(selectedRoomStatus)) {
+      exceptions.push(tr("Habitación aún no lista para check-in"))
+    }
+    if (!["paid", "settled", "completed"].includes((selected.payment_status ?? "").toLowerCase())) {
+      exceptions.push(tr("Pago pendiente o incompleto"))
+    }
+    if (selectedHousekeeping.some((task) => !["completed", "cancelled"].includes(task.status))) {
+      exceptions.push(tr("Housekeeping pendiente"))
+    }
+    if (selectedHospitality.some((request) => !["completed", "resolved", "cancelled"].includes(request.status))) {
+      exceptions.push(tr("Solicitud de Hospitality abierta"))
+    }
+    if ((operations?.summary.openGuestRequests ?? 0) > 0) {
+      exceptions.push(tr("Solicitud del huésped pendiente"))
+    }
+    if ((operations?.summary.openIssues ?? 0) > 0) {
+      exceptions.push(tr("Incidente abierto"))
+    }
+    if ((operations?.summary.openLogistics ?? 0) > 0) {
+      exceptions.push(tr("Logística de llegada o salida pendiente"))
+    }
+    if ((operations?.summary.openHandovers ?? 0) > 0) {
+      exceptions.push(tr("Pendiente incluido en entrega de turno"))
+    }
+    if ((operations?.summary.openMaintenance ?? 0) > 0) {
+      exceptions.push(tr("Mantenimiento abierto en la habitación"))
+    }
+    if ((operations?.summary.openBalance ?? 0) > 0) {
+      exceptions.push(tr("Saldo de factura pendiente"))
+    }
+    return exceptions
+  }, [operations?.summary.openBalance, operations?.summary.openGuestRequests, operations?.summary.openHandovers, operations?.summary.openIssues, operations?.summary.openLogistics, operations?.summary.openMaintenance, selected, selectedHospitality, selectedHousekeeping, selectedIsCheckedIn, selectedIsClosed, selectedRoomStatus, tr])
 
   const metrics = useMemo(() => {
-    const today = iso(new Date())
+    const today = bookingDateKey()
     const uniqueRooms = Array.from(new Map(beds.map((bed) => [bed.room.id, bed.room])).values())
     return {
       arrivals: reservations.filter((item) => item.check_in === today).length,
@@ -494,7 +678,7 @@ export default function BookingOperationsTimelinePage() {
 
   async function refreshSelected() {
     await loadData()
-    if (selected) await loadOperations(selected.id)
+    if (selected) await loadOperations(selected.id, selected.bed_id ?? selected.bed?.id ?? null)
   }
 
   function reportActionError(scope: string, actionError: unknown) {
@@ -707,8 +891,8 @@ export default function BookingOperationsTimelinePage() {
         )}
       />
 
-      <div className="space-y-4 p-4 md:p-6">
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
+      <div className="space-y-2 p-2 md:p-3">
+        <div className="grid grid-cols-2 border border-white/[0.06] bg-[#211e1a] md:grid-cols-3 xl:grid-cols-6">
           <Metric icon={<LogIn />} label={tr("Llegadas hoy")} value={formatCount(metrics.arrivals)} />
           <Metric icon={<LogOut />} label={tr("Salidas hoy")} value={formatCount(metrics.departures)} />
           <Metric icon={<BedDouble />} label={tr("Ocupadas hoy")} value={formatCount(metrics.occupied)} />
@@ -717,8 +901,8 @@ export default function BookingOperationsTimelinePage() {
           <Metric icon={<ConciergeBell />} label={tr("Solicitudes abiertas")} value={formatCount(metrics.pendingHospitality)} />
         </div>
 
-        <Card>
-          <CardContent className="flex flex-col gap-3 p-4 xl:flex-row xl:items-center xl:justify-between">
+        <Card className="rounded-none border-white/[0.06] shadow-none">
+          <CardContent className="flex flex-col gap-2 p-2 xl:flex-row xl:items-center xl:justify-between">
             <div className="flex flex-wrap items-center gap-2">
               <Button
                 variant="outline"
@@ -740,7 +924,7 @@ export default function BookingOperationsTimelinePage() {
               <span className="ml-1 text-sm font-medium">
                 {format(startDate, "dd MMM", { locale: dateLocale })} – {format(addDays(endDate, -1), "dd MMM yyyy", { locale: dateLocale })}
               </span>
-              <div className="ml-2 flex rounded-md border p-1">
+              <div className="ml-2 flex border p-0.5">
                 {ZOOM_OPTIONS.map((days) => (
                   <Button
                     key={days}
@@ -758,7 +942,7 @@ export default function BookingOperationsTimelinePage() {
               <select
                 value={locationId}
                 onChange={(event: React.ChangeEvent<HTMLSelectElement>) => setLocationId(event.target.value)}
-                className="h-10 rounded-md border bg-background px-3 text-sm"
+                className="h-8 rounded-none border bg-background px-2 text-xs"
                 aria-label={tr("Filtrar por propiedad")}
               >
                 <option value="all">{tr("Todas las propiedades")}</option>
@@ -788,7 +972,7 @@ export default function BookingOperationsTimelinePage() {
         </Card>
 
         {error && (
-          <div className="rounded-lg border border-destructive/40 bg-destructive/5 p-4 text-sm text-destructive">
+          <div className="border border-destructive/40 bg-destructive/5 p-3 text-xs text-destructive">
             {error}
           </div>
         )}
@@ -833,8 +1017,8 @@ export default function BookingOperationsTimelinePage() {
             onClick={() => setSelected(null)}
             aria-label={tr("Cerrar panel")}
           />
-          <aside className="relative z-10 flex h-full w-full max-w-xl flex-col border-l bg-background shadow-2xl">
-            <div className="flex items-start justify-between border-b p-5">
+          <aside className="relative z-10 flex h-full w-full max-w-2xl flex-col border-l bg-background shadow-2xl">
+            <div className="flex items-start justify-between border-b px-4 py-3">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">{tr("Operación de estadía")}</p>
                 <h2 className="mt-1 text-xl font-semibold">{selected.guest_name}</h2>
@@ -847,7 +1031,7 @@ export default function BookingOperationsTimelinePage() {
               </Button>
             </div>
 
-            <div className="flex-1 space-y-6 overflow-y-auto p-5">
+            <div className="flex-1 space-y-4 overflow-y-auto p-4">
               <div className="flex flex-wrap gap-2">
                 <Badge>
                   {tr(RESERVATION_LABELS[selected.arrival_status ?? selected.status]
@@ -878,18 +1062,42 @@ export default function BookingOperationsTimelinePage() {
                 )}
               </div>
 
-              <div className="grid gap-3 sm:grid-cols-2">
+              <section className="border border-white/[0.08] bg-white/[0.025]">
+                <div className="flex items-center justify-between border-b border-white/[0.06] px-3 py-2">
+                  <div className="flex items-center gap-2">
+                    <AlertTriangle className={`h-4 w-4 ${selectedExceptions.length ? "text-amber-400" : "text-emerald-400"}`} />
+                    <span className="text-[11px] font-medium uppercase tracking-[0.08em]">{tr("Necesita atención")}</span>
+                  </div>
+                  <span className="text-xs tabular-nums text-muted-foreground">{formatCount(selectedExceptions.length)}</span>
+                </div>
+                {selectedExceptions.length > 0 ? (
+                  <div className="divide-y divide-white/[0.05]">
+                    {selectedExceptions.map((item) => (
+                      <div key={item} className="flex items-center gap-2 px-3 py-2 text-xs">
+                        <span className="h-1.5 w-1.5 shrink-0 bg-amber-400" />
+                        <span>{item}</span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="px-3 py-2 text-xs text-emerald-300">{tr("Sin excepciones operativas abiertas")}</div>
+                )}
+              </section>
+
+              <div className="grid gap-px bg-white/[0.08] sm:grid-cols-2">
                 <Info label="Check-in" value={formatStayDate(selected.check_in)} />
                 <Info label="Check-out" value={formatStayDate(selected.check_out)} />
                 <Info label={tr("Huéspedes")} value={formatCount(selected.num_guests ?? 1)} />
                 <Info label={tr("Monto")} value={formatClp(Number(selected.total_amount ?? 0))} />
+                <Info label={tr("Email")} value={selected.guest_email ?? tr("Sin registrar")} />
+                <Info label={tr("Teléfono")} value={selected.guest_phone ?? tr("Sin registrar")} />
               </div>
               {selected.special_requests && (
                 <Info label={tr("Solicitudes especiales")} value={selected.special_requests} />
               )}
 
               <ActionSection title={tr("Preparación de habitación")} icon={<DoorOpen className="h-4 w-4" />}>
-                <div className="col-span-full rounded-lg border p-4">
+                <div className="col-span-full border border-white/[0.08] p-3">
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
                       <p className="font-medium">{tr("Estado operativo actual")}</p>
@@ -955,11 +1163,71 @@ export default function BookingOperationsTimelinePage() {
                 </div>
               )}
               {operations && (
-                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                <div className="grid gap-px bg-white/[0.08] sm:grid-cols-4">
                   <Info label={tr("Operaciones")} value={formatCount(operations.summary.totalOperations)} />
                   <Info label={tr("Servicios / cargos")} value={formatCount(operations.summary.extrasCount)} />
                   <Info label={tr("Monto extras")} value={formatClp(operations.summary.extrasAmount)} />
+                  <Info label={tr("Saldo facturado")} value={formatClp(operations.summary.openBalance)} />
                 </div>
+              )}
+
+              <ActionSection title={tr("Llegada, salida y traspaso")} icon={<Users className="h-4 w-4" />}>
+                {!operations || (operations.logistics.length === 0 && operations.handoverItems.length === 0)
+                  ? <Empty text={tr("No hay logística ni pendientes de turno vinculados a esta estadía.")} />
+                  : (
+                    <>
+                      {operations.logistics.map((item) => (
+                        <OperationCard
+                          key={item.id}
+                          title={tr(item.direction === "arrival" ? "Llegada" : "Salida")}
+                          subtitle={[item.hub, item.anchor_at ? formatDateTime(item.anchor_at) : null].filter(Boolean).join(" · ")}
+                          status={tr(item.status)}
+                          description={item.notes}
+                          actions={null}
+                        />
+                      ))}
+                      {operations.handoverItems.map((item) => (
+                        <OperationCard
+                          key={item.id}
+                          title={item.title}
+                          subtitle={`${tr("Entrega de turno")} · ${tr(item.priority)}${item.due_at ? ` · ${formatDateTime(item.due_at)}` : ""}`}
+                          status={tr(item.status)}
+                          description={item.detail}
+                          actions={null}
+                        />
+                      ))}
+                    </>
+                  )}
+              </ActionSection>
+
+              {operations && operations.invoices.length > 0 && (
+                <ActionSection title={tr("Facturación")} icon={<FileText className="h-4 w-4" />}>
+                  {operations.invoices.map((invoice) => (
+                    <OperationCard
+                      key={invoice.id}
+                      title={invoice.invoice_number}
+                      subtitle={`${tr("Vence")} ${formatStayDate(invoice.due_date)} · ${formatClp(Number(invoice.total_amount ?? 0))}`}
+                      status={tr(invoice.payment_status ?? invoice.status)}
+                      description={Number(invoice.amount_paid ?? 0) > 0 ? `${tr("Pagado")}: ${formatClp(Number(invoice.amount_paid ?? 0))}` : null}
+                      actions={null}
+                    />
+                  ))}
+                </ActionSection>
+              )}
+
+              {operations && operations.maintenance.length > 0 && (
+                <ActionSection title={tr("Mantenimiento vinculado")} icon={<Wrench className="h-4 w-4" />}>
+                  {operations.maintenance.map((item) => (
+                    <OperationCard
+                      key={item.id}
+                      title={tr((item.maintenance_type ?? "general").replaceAll("_", " "))}
+                      subtitle={[item.scheduled_date ? formatStayDate(item.scheduled_date) : null, item.duration_minutes ? `${item.duration_minutes} min` : null, item.priority ? `${tr("Prioridad")} ${item.priority}` : null].filter(Boolean).join(" · ")}
+                      status={tr(item.status ?? "pending")}
+                      description={item.notes}
+                      actions={null}
+                    />
+                  ))}
+                </ActionSection>
               )}
 
               <ActionSection title={tr("Servicios y cargos")} icon={<PackagePlus className="h-4 w-4" />}>
@@ -1194,30 +1462,28 @@ function Metric({
   value: string | number
 }) {
   return (
-    <Card>
-      <CardContent className="flex items-center gap-3 p-4">
-        <div className="text-primary [&>svg]:h-5 [&>svg]:w-5">{icon}</div>
-        <div>
-          <p className="text-xs text-muted-foreground">{label}</p>
-          <p className="text-lg font-semibold">{value}</p>
-        </div>
-      </CardContent>
-    </Card>
+    <div className="flex min-h-[52px] items-center gap-2 border-r border-white/[0.06] px-3 py-2 last:border-r-0">
+      <div className="text-primary [&>svg]:h-4 [&>svg]:w-4">{icon}</div>
+      <div className="min-w-0">
+        <p className="truncate text-[10px] uppercase tracking-[0.06em] text-muted-foreground">{label}</p>
+        <p className="text-[16px] font-medium tabular-nums">{value}</p>
+      </div>
+    </div>
   )
 }
 
 function Info({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-lg border p-3">
-      <p className="text-xs text-muted-foreground">{label}</p>
-      <p className="mt-1 text-sm font-medium">{value}</p>
+    <div className="min-h-[54px] bg-background px-3 py-2.5">
+      <p className="text-[10px] uppercase tracking-[0.06em] text-muted-foreground">{label}</p>
+      <p className="mt-0.5 break-words text-xs font-medium">{value}</p>
     </div>
   )
 }
 
 function Empty({ text }: { text: string }) {
   return (
-    <p className="col-span-full rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
+    <p className="col-span-full border border-dashed p-3 text-xs text-muted-foreground">
       {text}
     </p>
   )
@@ -1234,9 +1500,9 @@ function ActionSection({
 }) {
   return (
     <section>
-      <div className="mb-3 flex items-center gap-2">
+      <div className="mb-2 flex items-center gap-2">
         <span className="text-primary">{icon}</span>
-        <h3 className="text-sm font-semibold">{title}</h3>
+        <h3 className="text-[11px] font-medium uppercase tracking-[0.08em]">{title}</h3>
       </div>
       <div className="grid gap-2 sm:grid-cols-2">{children}</div>
     </section>
@@ -1258,7 +1524,7 @@ function ActionButton({
     <Button
       type="button"
       variant="outline"
-      className="h-auto min-h-12 justify-start whitespace-normal py-3 text-left"
+      className="h-auto min-h-9 justify-start rounded-none whitespace-normal px-3 py-2 text-left text-xs"
       onClick={onClick}
       disabled={disabled}
     >
@@ -1281,7 +1547,7 @@ function OperationCard({
   actions: React.ReactNode | null
 }) {
   return (
-    <div className="col-span-full rounded-lg border p-4">
+    <div className="col-span-full border border-white/[0.08] p-3">
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="font-medium">{title}</p>
