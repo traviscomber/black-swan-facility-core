@@ -55,27 +55,12 @@ export async function POST(request: Request) {
     const bytes = Buffer.from(await source.arrayBuffer())
     const extraction = await extractSiiPdfFiscalMetadata(bytes, upload.original_filename)
 
-    if (!extraction.metadata) {
-      return NextResponse.json({
-        ok: false,
-        status: 'needs_metadata',
-        reason: extraction.reason ?? 'required_fiscal_fields_missing',
-      }, { status: extraction.reason === 'document_ai_not_configured' ? 503 : 422 })
-    }
-
-    const { data: finalized, error: finalizeError } = await admin.rpc('finalize_sii_pdf_upload', {
-      p_upload_id: upload.id,
-      p_actor_id: authorization.user.id,
-      p_metadata: extraction.metadata,
-    })
-    if (finalizeError) return NextResponse.json({ error: finalizeError.message }, { status: 400 })
-
     return NextResponse.json({
       ok: true,
-      status: 'automatic',
+      status: extraction.metadata ? 'extracted' : 'partial',
       confidence: extraction.confidence,
-      metadata: extraction.metadata,
-      result: finalized,
+      metadata: extraction.metadata ?? extraction.draft,
+      reason: extraction.reason ?? null,
     })
   } catch (error) {
     console.error('[finance/sii-invoices/extract] automatic extraction failed', error)
