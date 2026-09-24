@@ -31,7 +31,9 @@ type QueueRow = {
   historical_count: number
   historical_dominance: number | string | null
   amount_in_range: boolean | null
+  division_id: string | null
   division_name: string | null
+  category_id: string | null
   category_name: string | null
   category_key: string | null
   category_role: string | null
@@ -39,6 +41,8 @@ type QueueRow = {
   operational_label: string | null
   decision_notes: string | null
 }
+type Division = { id: string; name: string }
+type Category = { id: string; division_id: string; name: string }
 
 const pct = new Intl.NumberFormat('es-CL', { style: 'percent', maximumFractionDigits: 0 })
 function n(value: unknown) { const parsed = Number(value ?? 0); return Number.isFinite(parsed) ? parsed : 0 }
@@ -70,12 +74,27 @@ export function FinanceApprovalQueue() {
   const [status, setStatus] = useState<ApprovalStatus>('ready')
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [busy, setBusy] = useState(false)
+  const [divisions, setDivisions] = useState<Division[]>([])
+  const [categories, setCategories] = useState<Category[]>([])
+  const [reassigningId, setReassigningId] = useState<string | null>(null)
+  const [reassignDivision, setReassignDivision] = useState('')
+  const [reassignCategory, setReassignCategory] = useState('')
+  const [reassignNote, setReassignNote] = useState('')
 
   const load = useCallback(async () => {
     setLoading(true)
-    const { data, error } = await supabase.from('finance_approval_queue').select('*').order('queue_order').order('document_date', { ascending: false })
+    const [queueResult, divisionResult, categoryResult] = await Promise.all([
+      supabase.from('finance_approval_queue').select('*').order('queue_order').order('document_date', { ascending: false }),
+      supabase.from('budget_divisions').select('id,name').eq('is_active', true).eq('is_aggregate', false).not('source_key', 'is', null).order('sort_order'),
+      supabase.from('budget_categories').select('id,division_id,name').eq('is_active', true).not('source_key', 'is', null).eq('category_role', 'cost').order('sort_order'),
+    ])
+    const error = queueResult.error || divisionResult.error || categoryResult.error
     if (error) toast.error(error.message)
-    else setRows((data ?? []) as QueueRow[])
+    else {
+      setRows((queueResult.data ?? []) as QueueRow[])
+      setDivisions((divisionResult.data ?? []) as Division[])
+      setCategories((categoryResult.data ?? []) as Category[])
+    }
     setLoading(false)
   }, [supabase])
 
@@ -118,6 +137,35 @@ export function FinanceApprovalQueue() {
     }
     if (approved) toast.success(`${approved} documento${approved === 1 ? '' : 's'} aprobado${approved === 1 ? '' : 's'}${valuation ? ` · ${valuation} pendiente${valuation === 1 ? '' : 's'} de valorización EUR` : ''}.`)
     setSelected(new Set()); await load(); setBusy(false)
+  }
+
+  function startReassign(row: QueueRow) {
+    setReassigningId(row.id)
+    setReassignDivision(row.division_id ?? '')
+    setReassignCategory(row.category_id ?? '')
+    setReassignNote('')
+  }
+
+  async function reassign(row: QueueRow) {
+    if (!reassignDivision || !reassignCategory || !reassignNote.trim()) {
+      toast.error('Selecciona P&L, categoría y registra el motivo del cambio.')
+      return
+    }
+    setBusy(true)
+    const { error } = await supabase.rpc('reassign_finance_document_center', {
+      p_document_id: row.id,
+      p_division_id: reassignDivision,
+      p_category_id: reassignCategory,
+      p_note: reassignNote.trim(),
+    })
+    if (error) toast.error(error.message)
+    else {
+      toast.success('Centro/categoría reasignado. El documento sigue listo para decisión de Raimundo.')
+      setReassigningId(null)
+      setReassignNote('')
+      await load()
+    }
+    setBusy(false)
   }
 
   async function reject(row: QueueRow) {
@@ -182,7 +230,33 @@ export function FinanceApprovalQueue() {
                   <td className="px-4 py-4"><div className="flex gap-2 text-xs leading-5 text-[var(--bs-text-secondary)]">{row.classification_status === 'ready' ? <Check className="mt-0.5 h-4 w-4 shrink-0 text-[var(--bs-cool-sage)]" /> : row.classification_status === 'exception' ? <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-[var(--bs-warm-orange)]" /> : <FileSearch className="mt-0.5 h-4 w-4 shrink-0 text-[var(--bs-cool-sky)]" />}<span><span className="block text-[var(--bs-text-primary)]">{classificationLabel(row.classification_status)}</span>{row.classification_reason ?? 'Sin explicación registrada.'}</span></div></td>
                   <td className="px-4 py-4 text-right"><p className="text-[var(--bs-text-primary)]">{formatMoney(row.total_amount, row.currency)}</p>{row.amount_eur != null && <p className="mt-1 text-xs text-[var(--bs-cool-sage)]">{formatMoney(row.amount_eur, 'EUR')}</p>}</td>
                   <td className="px-4 py-4 text-xs leading-5 text-[var(--bs-text-secondary)]"><p>{row.confidence_label ?? (row.confidence == null ? 'Sin confianza' : `Confianza ${pct.format(n(row.confidence))}`)}</p><p>{row.historical_count} antecedentes · {row.historical_dominance == null ? 'dominio —' : `dominio ${pct.format(n(row.historical_dominance))}`}</p><p className={row.amount_in_range === false ? 'text-[var(--bs-warm-orange)]' : row.amount_in_range === true ? 'text-[var(--bs-cool-sage)]' : 'text-[var(--bs-text-muted)]'}>{row.amount_in_range == null ? 'Sin rango' : row.amount_in_range ? 'Dentro de rango' : 'Fuera de rango'}</p></td>
-                  <td className="px-4 py-4 text-right">{row.approval_status === 'pending_mapping' ? <span className="text-xs text-[var(--bs-text-muted)]">Mapear arriba</span> : row.approval_status === 'ready' ? <div className="flex justify-end gap-2"><Button size="sm" onClick={() => void approve([row.id])} disabled={busy || !mapped}><Check className="mr-2 h-4 w-4" />Aprobar</Button><Button size="sm" variant="outline" onClick={() => void reject(row)} disabled={busy}><X className="mr-2 h-4 w-4" />Rechazar</Button></div> : row.approval_status === 'pending_valuation' ? <Button size="sm" onClick={() => void valueInEur(row)} disabled={busy}>Valorizar EUR</Button> : <span className="text-xs text-[var(--bs-text-muted)]">{row.approval_status === 'approved' ? 'Posteado al Budget' : 'Rechazado'}</span>}</td>
+                  <td className="px-4 py-4 text-right">{row.approval_status === 'pending_mapping' ? <span className="text-xs text-[var(--bs-text-muted)]">Mapear arriba</span> : row.approval_status === 'ready' ? (
+                    <div className="space-y-2">
+                      <div className="flex justify-end gap-2">
+                        <Button size="sm" onClick={() => void approve([row.id])} disabled={busy || !mapped}><Check className="mr-2 h-4 w-4" />Aprobar</Button>
+                        <Button size="sm" variant="outline" onClick={() => startReassign(row)} disabled={busy}>Reasignar</Button>
+                        <Button size="sm" variant="outline" onClick={() => void reject(row)} disabled={busy}><X className="mr-2 h-4 w-4" />Rechazar gasto</Button>
+                      </div>
+                      {reassigningId === row.id && (
+                        <div className="ml-auto w-[340px] space-y-2 bg-[var(--bs-surface-secondary)] p-3 text-left">
+                          <p className="text-xs text-[var(--bs-text-secondary)]">Corrige la imputación antes de aprobar. El documento no avanza a Santiago hasta que Raimundo confirme.</p>
+                          <select value={reassignDivision} onChange={(event) => { setReassignDivision(event.target.value); setReassignCategory('') }} className="h-9 w-full bg-[var(--bs-bg-primary)] px-2 text-xs text-[var(--bs-text-primary)]">
+                            <option value="">Seleccionar P&L</option>
+                            {divisions.map((division) => <option key={division.id} value={division.id}>{division.name}</option>)}
+                          </select>
+                          <select value={reassignCategory} onChange={(event) => setReassignCategory(event.target.value)} disabled={!reassignDivision} className="h-9 w-full bg-[var(--bs-bg-primary)] px-2 text-xs text-[var(--bs-text-primary)] disabled:opacity-50">
+                            <option value="">Seleccionar categoría</option>
+                            {categories.filter((category) => category.division_id === reassignDivision).map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}
+                          </select>
+                          <input value={reassignNote} onChange={(event) => setReassignNote(event.target.value)} placeholder="Motivo de la reasignación" className="h-9 w-full bg-[var(--bs-bg-primary)] px-2 text-xs text-[var(--bs-text-primary)]" />
+                          <div className="flex justify-end gap-2">
+                            <Button size="sm" variant="outline" onClick={() => setReassigningId(null)} disabled={busy}>Cancelar</Button>
+                            <Button size="sm" onClick={() => void reassign(row)} disabled={busy || !reassignDivision || !reassignCategory || !reassignNote.trim()}>Guardar reasignación</Button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ) : row.approval_status === 'pending_valuation' ? <Button size="sm" onClick={() => void valueInEur(row)} disabled={busy}>Valorizar EUR</Button> : <span className="text-xs text-[var(--bs-text-muted)]">{row.approval_status === 'approved' ? 'Posteado al Budget' : 'Rechazado'}</span>}</td>
                 </tr>
               })}
               {!loading && !filtered.length && <tr><td colSpan={7} className="px-5 py-12 text-center text-[var(--bs-text-muted)]">No hay documentos en esta etapa.</td></tr>}
