@@ -105,11 +105,17 @@ test('upload route enforces Maribel-compatible least privilege and safe file han
 })
 
 
-test('PDF intake attempts automatic fiscal extraction before manual fallback', () => {
+test('PDF extraction prefills data but requires explicit process/save', () => {
   const source = readFileSync(routeUrl, 'utf8')
+  const extractionRoute = readFileSync(new URL('../app/api/finance/sii-invoices/extract/route.ts', import.meta.url), 'utf8')
+  const formSource = readFileSync(new URL('../components/sii-pdf-metadata-form.tsx', import.meta.url), 'utf8')
   const extractionSource = readFileSync(new URL('../lib/finance/sii-pdf-extraction.ts', import.meta.url), 'utf8')
 
-  assert.match(source, /extractSiiPdfFiscalMetadata/)
+  assert.doesNotMatch(source, /automatic PDF finalization/)
+  assert.match(extractionRoute, /status: extraction\.metadata \? 'extracted' : 'partial'/)
+  assert.doesNotMatch(extractionRoute, /finalize_sii_pdf_upload/)
+  assert.match(formSource, /Procesar y guardar/)
+  assert.match(formSource, /Datos extraídos automáticamente/)
   assert.match(source, /finalize_sii_pdf_upload/)
   assert.match(extractionSource, /DOCUMENT_AI_ENDPOINT/)
   assert.match(extractionSource, /supplier_name/)
