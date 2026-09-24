@@ -13,7 +13,7 @@ export type OsNavItem = {
   allowedRoles?: string[]
   action?: string
   department?: string
-  badge?: "finance_pending"
+  badge?: "finance_pending" | "finance_payment_pending"
   serverAuthorized?: boolean
   subItems?: Array<{ nameKey: string; href: string; icon: string }>
 }
@@ -77,6 +77,7 @@ export const osAreas: OsArea[] = [
     key: "finance", labelKey: "os.finance", descKey: "os.finance_desc", href: "/os?area=finance", items: [
       { key: "budget", nameKey: "finance_budget", href: "/budgets", area: "finance", tipKey: "finance_budget_tip", viewDomain: "finance", action: "payments.record", department: "finance" },
       { key: "approvals", nameKey: "finance_approvals", href: "/budgets/approvals", area: "finance", tipKey: "finance_approvals_tip", viewDomain: "finance", badge: "finance_pending", action: "payments.record", department: "finance" },
+      { key: "payments", nameKey: "finance_payments", href: "/budgets/payments", area: "finance", tipKey: "finance_payments_tip", viewDomain: "finance", badge: "finance_payment_pending", action: "payments.record", department: "finance" },
       { key: "documents", nameKey: "finance_documents", href: "/budgets/documents", area: "finance", tipKey: "finance_documents_tip", viewDomain: "finance", action: "payments.record", department: "finance" },
       { key: "reconciliation", nameKey: "finance_reconciliation", href: "/budgets/reconciliation", area: "finance", tipKey: "finance_reconciliation_tip", viewDomain: "finance", action: "payments.record", department: "finance" },
       { key: "accounting", nameKey: "nav.accounting", href: "/accounting", area: "finance", tipKey: "nav.accounting_tip", viewDomain: "finance", department: "finance" },
