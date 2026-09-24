@@ -18,11 +18,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useLanguage } from "@/lib/hooks/use-language"
 import { bookingsCalendarPageCopy } from "@/lib/translations/bookings-calendar-page"
 import { bookingDateFromKey, bookingTodayDate } from "@/lib/booking/timezone"
+import { calendarDayWidth } from "@/lib/bookings/calendar-day-width"
 import { type ReservationResizeEdge, useReservationResizeState } from "./use-reservation-resize-state"
 import { useFlipAnimation } from "./use-flip-animation"
 import { useCalendarInteraction } from "./use-calendar-interaction"
 import { TimelineGrid } from "@/components/calendar/timeline-grid"
-import { normalizedStatus } from "@/components/calendar/timeline-row"
+import { DAY_WIDTH, LABEL_WIDTH, normalizedStatus } from "@/components/calendar/timeline-row"
 
 interface Location { id: string; name: string }
 interface Bed { id: string; bed_number: string; bed_type: string; room: { id: string; room_number: string; room_type?: string; location_id: string; location_ref?: { id: string; name: string } } }
@@ -31,7 +32,6 @@ interface RoomBlock { id: string; room_id: string; start_date: string; end_date:
 interface ResizeRpcResult { success: boolean; message: string; check_in: string; check_out: string }
 interface BulkConflict { reservation_id: string; reason: string }
 
-const DAY_WIDTH = 46
 function intervalsOverlap(startA: string, endA: string, startB: string, endB: string) { return parseISO(startA) < parseISO(endB) && parseISO(endA) > parseISO(startB) }
 
 export default function BookingsCalendarPage() {
@@ -50,6 +50,8 @@ export default function BookingsCalendarPage() {
   const [search, setSearch] = useState("")
   const [showFilters, setShowFilters] = useState(false)
   const [rangeDays, setRangeDays] = useState(33)
+  const [calendarWidth, setCalendarWidth] = useState(0)
+  const calendarRef = useRef<HTMLDivElement | null>(null)
   const [startDate, setStartDate] = useState(() => { const requested = searchParams.get("date"); return requested && /^\\d{4}-\\d{2}-\\d{2}$/.test(requested) ? bookingDateFromKey(requested) : bookingTodayDate() })
   const [inventoryReady, setInventoryReady] = useState(false)
   const [eventsReady, setEventsReady] = useState(false)
@@ -86,11 +88,19 @@ export default function BookingsCalendarPage() {
   const [isTouchDevice, setIsTouchDevice] = useState(false)
 
   useEffect(() => { setIsTouchDevice(() => window.matchMedia("(hover: none)").matches || "ontouchstart" in window) }, [])
+  useEffect(() => {
+    const container = calendarRef.current
+    if (!container) return
+    const observer = new ResizeObserver(([entry]) => setCalendarWidth(entry.contentRect.width))
+    observer.observe(container)
+    return () => observer.disconnect()
+  }, [])
   useEffect(() => { if (searchParams.get("new") === "1") { setPreselectedBed(null); setPreselectedDate(null); setPreselectedCheckOutDate(null); setNewReservationOpen(true) } }, [searchParams])
 
   const endDate = useMemo(() => addDays(startDate, rangeDays), [startDate, rangeDays])
   const dates = useMemo(() => Array.from({ length: rangeDays }, (_, index) => addDays(startDate, index)), [rangeDays, startDate])
-  const timelineWidth = rangeDays * DAY_WIDTH
+  const dayWidth = calendarDayWidth(calendarWidth, rangeDays, LABEL_WIDTH, DAY_WIDTH)
+  const timelineWidth = rangeDays * dayWidth
 
   const loadInventory = useCallback(async () => {
     const bedsResult = await supabase.from("beds").select(`id, bed_number, bed_type, room:rooms!inner(id, room_number, room_type, location_id, location_ref:locations!inner(id, name, is_active))`).eq("room.location_ref.is_active", true).order("room_id")
@@ -261,14 +271,14 @@ export default function BookingsCalendarPage() {
   function clearSelection() { setSelectedIds(new Set()); setBulkConflicts([]) }
 
   function eventAt(bedId: string, date: Date, type: CalendarEvent["event_type"]) { return (eventsByBed.get(bedId) ?? []).find((event) => event.event_type === type && date >= parseISO(event.starts_on) && date < parseISO(event.ends_on)) }
-  function geometryForDates(startsOn: string, endsOn: string) { const eventStart = parseISO(startsOn) < startDate ? startDate : parseISO(startsOn); const eventEnd = parseISO(endsOn) > endDate ? endDate : parseISO(endsOn); const offsetDays = Math.max(0, differenceInCalendarDays(eventStart, startDate)); const durationDays = Math.max(1, differenceInCalendarDays(eventEnd, eventStart)); return { left: offsetDays * DAY_WIDTH + 2, width: Math.max(22, durationDays * DAY_WIDTH - 4) } }
+  function geometryForDates(startsOn: string, endsOn: string) { const eventStart = parseISO(startsOn) < startDate ? startDate : parseISO(startsOn); const eventEnd = parseISO(endsOn) > endDate ? endDate : parseISO(endsOn); const offsetDays = Math.max(0, differenceInCalendarDays(eventStart, startDate)); const durationDays = Math.max(1, differenceInCalendarDays(eventEnd, eventStart)); return { left: offsetDays * dayWidth + 2, width: Math.max(22, durationDays * dayWidth - 4) } }
   function eventGeometry(event: CalendarEvent) { return geometryForDates(event.starts_on, event.ends_on) }
 
   function openNewReservation(bed: Bed, date: Date) { if (eventAt(bed.id, date, "block") || eventAt(bed.id, date, "reservation")) return; setPreselectedBed(bed); setPreselectedDate(date); setNewReservationOpen(true) }
-  function openReservationFromTimeline(bed: Bed, clientX: number, currentTarget: HTMLDivElement) { if (draggingEventId || isResizing || confirmingReservationId || isBulkMode) return; const rect = currentTarget.getBoundingClientRect(); const offset = Math.max(0, Math.min(timelineWidth - 1, clientX - rect.left)); openNewReservation(bed, addDays(startDate, Math.floor(offset / DAY_WIDTH))) }
+  function openReservationFromTimeline(bed: Bed, clientX: number, currentTarget: HTMLDivElement) { if (draggingEventId || isResizing || confirmingReservationId || isBulkMode) return; const rect = currentTarget.getBoundingClientRect(); const offset = Math.max(0, Math.min(timelineWidth - 1, clientX - rect.left)); openNewReservation(bed, addDays(startDate, Math.floor(offset / dayWidth))) }
 
   function beginReservationResize(event: CalendarEvent, edge: ReservationResizeEdge, pointerEvent: React.PointerEvent<HTMLSpanElement>) { if (event.event_type !== "reservation" || movingReservationId || draggingEventId || confirmingReservationId || isBulkMode) return; pointerEvent.preventDefault(); pointerEvent.stopPropagation(); pointerEvent.currentTarget.setPointerCapture(pointerEvent.pointerId); beginResize({ reservationId: event.event_id, bedId: event.bed_id, edge, pointerId: pointerEvent.pointerId, pointerStartX: pointerEvent.clientX, startsOn: event.starts_on, endsOn: event.ends_on }) }
-  function moveReservationResize(pointerEvent: React.PointerEvent<HTMLSpanElement>) { if (!resizeState || resizeState.pointerId !== pointerEvent.pointerId) return; pointerEvent.preventDefault(); pointerEvent.stopPropagation(); const deltaDays = Math.round((pointerEvent.clientX - resizeState.pointerStartX) / DAY_WIDTH); const originalStart = parseISO(resizeState.originalStart); const originalEnd = parseISO(resizeState.originalEnd); if (resizeState.edge === "left") { const candidate = addDays(originalStart, deltaDays); const latestStart = addDays(originalEnd, -1); updatePreview(format(candidate > latestStart ? latestStart : candidate, "yyyy-MM-dd"), resizeState.originalEnd) } else { const candidate = addDays(originalEnd, deltaDays); const earliestEnd = addDays(originalStart, 1); updatePreview(resizeState.originalStart, format(candidate < earliestEnd ? earliestEnd : candidate, "yyyy-MM-dd")) } }
+  function moveReservationResize(pointerEvent: React.PointerEvent<HTMLSpanElement>) { if (!resizeState || resizeState.pointerId !== pointerEvent.pointerId) return; pointerEvent.preventDefault(); pointerEvent.stopPropagation(); const deltaDays = Math.round((pointerEvent.clientX - resizeState.pointerStartX) / dayWidth); const originalStart = parseISO(resizeState.originalStart); const originalEnd = parseISO(resizeState.originalEnd); if (resizeState.edge === "left") { const candidate = addDays(originalStart, deltaDays); const latestStart = addDays(originalEnd, -1); updatePreview(format(candidate > latestStart ? latestStart : candidate, "yyyy-MM-dd"), resizeState.originalEnd) } else { const candidate = addDays(originalEnd, deltaDays); const earliestEnd = addDays(originalStart, 1); updatePreview(resizeState.originalStart, format(candidate < earliestEnd ? earliestEnd : candidate, "yyyy-MM-dd")) } }
   async function finishReservationResize(pointerEvent: React.PointerEvent<HTMLSpanElement>) {
     pointerEvent.preventDefault(); pointerEvent.stopPropagation()
     if (pointerEvent.currentTarget.hasPointerCapture(pointerEvent.pointerId)) pointerEvent.currentTarget.releasePointerCapture(pointerEvent.pointerId)
@@ -368,7 +378,7 @@ export default function BookingsCalendarPage() {
   const monthValue = format(startDate, "yyyy-MM")
   const addLabel = language === "es" ? "Agregar" : language === "de" ? "Hinzufügen" : "Add"
 
-  return <div className="min-h-screen bg-[#101314]">
+  return <div ref={calendarRef} className="flex h-full min-h-0 flex-col bg-[#101314]">
     <div className="sticky top-0 z-50 border-b border-white/10 bg-[#17191a]">
       <div className="flex min-h-12 items-center gap-1.5 overflow-x-auto px-2 py-1.5">
         <Input type="month" value={monthValue} onChange={(event) => { if (event.target.value) setStartDate(bookingDateFromKey(`${event.target.value}-01`)) }} className="h-8 w-[160px] shrink-0 border-white/10 bg-[#111314] text-xs" aria-label={pageCopy.month} />
@@ -376,6 +386,7 @@ export default function BookingsCalendarPage() {
         <Button variant="outline" size="icon" className="h-8 w-8 shrink-0" onClick={() => setStartDate(addDays(startDate, -rangeDays))}><ChevronLeft className="h-4 w-4" /></Button>
         <div className="min-w-[108px] shrink-0 text-center text-[11px] font-medium text-white/75">{rangeLabel}</div>
         <Button variant="outline" size="icon" className="h-8 w-8 shrink-0" onClick={() => setStartDate(addDays(startDate, rangeDays))}><ChevronRight className="h-4 w-4" /></Button>
+        <Select value={String(rangeDays)} onValueChange={(value) => setRangeDays(Number(value))}><SelectTrigger className="h-8 w-[96px] shrink-0 border-white/10 bg-[#111314] text-xs" aria-label={pageCopy.days}><SelectValue /></SelectTrigger><SelectContent><SelectItem value="7">7 {pageCopy.days}</SelectItem><SelectItem value="14">14 {pageCopy.days}</SelectItem><SelectItem value="19">19 {pageCopy.days}</SelectItem><SelectItem value="30">30 {pageCopy.days}</SelectItem><SelectItem value="33">33 {pageCopy.days}</SelectItem></SelectContent></Select>
         <div className="ml-auto flex items-center gap-1.5" aria-label="Calendar actions">
           <Button size="sm" className="h-8 shrink-0 bg-emerald-600 px-3 text-xs text-white hover:bg-emerald-500" onClick={() => { setPreselectedBed(null); setPreselectedDate(null); setPreselectedCheckOutDate(null); setNewReservationOpen(true) }}><Plus className="mr-1 h-3.5 w-3.5" />{addLabel}</Button>
           <Button variant="outline" size="icon" className={`h-8 w-8 shrink-0 ${showFilters ? "border-emerald-600 text-emerald-400" : ""}`} title={pageCopy.search} aria-label={pageCopy.search} aria-expanded={showFilters} onClick={() => { setShowFilters((current) => !current); window.setTimeout(() => searchInputRef.current?.focus(), 0) }}><Search className="h-4 w-4" /></Button>
@@ -395,7 +406,6 @@ export default function BookingsCalendarPage() {
         <div className="relative min-w-[240px] flex-1"><Search className="absolute left-3 top-1.5 h-4 w-4 text-white/35" /><Input ref={searchInputRef} className="h-7 border-white/10 bg-[#111314] pl-9 text-xs" value={search} onChange={(event) => setSearch(event.target.value)} placeholder={pageCopy.searchPlaceholder} /></div>
         <Select value={locationId} onValueChange={setLocationId}><SelectTrigger className="h-7 w-44 shrink-0 border-white/10 bg-[#111314] text-xs"><SelectValue placeholder={pageCopy.property} /></SelectTrigger><SelectContent><SelectItem value="all">{pageCopy.allProperties}</SelectItem>{locations.map((item) => <SelectItem key={item.id} value={item.id}>{item.name}</SelectItem>)}</SelectContent></Select>
         <Select value={status} onValueChange={setStatus}><SelectTrigger className="h-7 w-36 shrink-0 border-white/10 bg-[#111314] text-xs"><SelectValue placeholder={pageCopy.allStatuses} /></SelectTrigger><SelectContent><SelectItem value="all">{pageCopy.allStatuses}</SelectItem><SelectItem value="pending">{pageCopy.pending}</SelectItem><SelectItem value="confirmed">{pageCopy.confirmed}</SelectItem><SelectItem value="checked_in">{pageCopy.checkedIn}</SelectItem><SelectItem value="checked_out">{pageCopy.completed}</SelectItem></SelectContent></Select>
-        <Select value={String(rangeDays)} onValueChange={(value) => setRangeDays(Number(value))}><SelectTrigger className="h-7 w-24 shrink-0 border-white/10 bg-[#111314] text-xs"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="7">7 {pageCopy.days}</SelectItem><SelectItem value="14">14 {pageCopy.days}</SelectItem><SelectItem value="19">19 {pageCopy.days}</SelectItem><SelectItem value="30">30 {pageCopy.days}</SelectItem><SelectItem value="33">33 {pageCopy.days}</SelectItem></SelectContent></Select>
       </div>}
     </div>
 
@@ -403,12 +413,13 @@ export default function BookingsCalendarPage() {
     {bulkConflicts.length > 0 && <div className="border-b border-amber-500/30 bg-amber-500/10 px-4 py-2 text-xs text-amber-300">{bulkConflicts.length} {pageCopy.conflicts}.</div>}
     {lastOperationId && undoSecondsLeft > 0 && <div className="flex items-center gap-3 border-b border-primary/20 bg-primary/5 px-4 py-2"><RotateCcw className="h-4 w-4 text-primary" /><p className="flex-1 text-xs">{pageCopy.operationComplete} · {undoSecondsLeft}s {pageCopy.undoWindow}.</p><Button size="sm" variant="outline" onClick={undoLastOperation} disabled={bulkLoading}>{pageCopy.undo}</Button></div>}
 
-    <Card className="overflow-hidden border-0 bg-transparent shadow-none">
+    <Card className="flex min-h-0 flex-1 flex-col gap-0 overflow-hidden border-0 bg-transparent py-0 shadow-none">
       {isBulkMode && <div className="flex flex-wrap items-center gap-2 border-b border-white/10 bg-primary/5 px-3 py-2"><span className="mr-1 text-xs font-semibold text-primary">{selectedIds.size} {pageCopy.selected}</span><Button size="sm" variant="outline" onClick={selectAll} disabled={bulkLoading}><CheckSquare className="mr-1.5 h-3.5 w-3.5" />{pageCopy.all}</Button><Button size="sm" variant="outline" onClick={() => executeBulkShift(-1)} disabled={bulkLoading}>-1 {pageCopy.shiftDay}</Button><Button size="sm" variant="outline" onClick={() => executeBulkShift(1)} disabled={bulkLoading}>+1 {pageCopy.shiftDay}</Button><Button size="sm" variant="outline" onClick={() => executeBulkShift(7)} disabled={bulkLoading}>+7 {pageCopy.days}</Button><Button size="sm" variant="outline" onClick={() => executeBulkExtend(1)} disabled={bulkLoading}>{pageCopy.extend} +1</Button><Button size="sm" variant="outline" onClick={() => executeBulkExtend(-1)} disabled={bulkLoading}>{pageCopy.reduce} -1</Button><Button size="sm" variant="outline" onClick={() => executeBulkStatus("confirmed")} disabled={bulkLoading}>{pageCopy.confirmAction}</Button><Button size="sm" variant="outline" onClick={() => executeBulkStatus("checked_in")} disabled={bulkLoading}>{pageCopy.checkInAction}</Button><Button size="sm" variant="outline" onClick={() => executeBulkStatus("cancelled")} disabled={bulkLoading}>{pageCopy.cancel}</Button><Button size="sm" variant="destructive" onClick={executeBulkDelete} disabled={bulkLoading}><Trash2 className="mr-1.5 h-3.5 w-3.5" />{pageCopy.delete}</Button><div className="ml-auto flex items-center gap-2">{bulkLoading && <Loader2 className="h-4 w-4 animate-spin" />}<Button size="sm" variant="ghost" onClick={clearSelection}><X className="mr-1.5 h-3.5 w-3.5" />{pageCopy.clear}</Button></div></div>}
 
       <TimelineGrid
         dates={dates}
         rangeDays={rangeDays}
+        dayWidth={dayWidth}
         timelineWidth={timelineWidth}
         isTouchDevice={isTouchDevice}
         visibleBeds={visibleBeds}

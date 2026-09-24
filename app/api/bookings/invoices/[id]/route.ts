@@ -8,7 +8,7 @@ const ALLOWED_STATUSES = new Set(["draft", "sent", "paid", "cancelled"])
 const ALLOWED_PAYMENT_STATUSES = new Set(["pending", "partial", "paid", "overdue"])
 const FINANCE_ROLES = new Set(["admin", "approver"])
 
-type RouteContext = { params: Promise<{ id: string }> | { id: string } }
+type RouteContext = { params: Promise<{ id: string }> }
 type LineItem = { description?: unknown; qty?: unknown; quantity?: unknown; unit_price?: unknown }
 
 function isValidDate(value: string) {

@@ -155,6 +155,14 @@ test("calendar keeps BedBooking-like filters collapsed behind the familiar searc
   assert.match(calendarPage, /\{showFilters && <div className="flex min-h-9/)
 })
 
+test("calendar day range is available without opening search filters", () => {
+  const toolbar = calendarPage.slice(calendarPage.indexOf('return <div ref={calendarRef}'), calendarPage.indexOf('{showFilters &&'))
+  assert.match(toolbar, /<Select value=\{String\(rangeDays\)\}/)
+  for (const days of [7, 14, 19, 30, 33]) assert.match(toolbar, new RegExp(`value="${days}"`))
+  assert.match(calendarPage, /<Card className="flex min-h-0 flex-1 flex-col gap-0[^\n]*py-0/)
+  assert.match(timelineGrid, /<CardContent className="flex min-h-0 flex-1 flex-col space-y-0 p-0"/)
+})
+
 
 test("expanded reservation combines operational activities into one compact infinite-calendar lane", () => {
   const lanes = readFileSync(new URL("../components/calendar/reservation-operational-lanes.tsx", import.meta.url), "utf8")
@@ -197,10 +205,11 @@ test("calendar primary toolbar keeps only high-frequency actions visible", () =>
 })
 
 
-test("calendar view controls are consolidated and inactive properties collapse by default", () => {
+test("calendar view controls keep the full inventory available by default", () => {
   assert.match(timelineGrid, /Expand active/)
   assert.match(timelineGrid, /function expandActiveGroups/)
   assert.match(timelineGrid, /uniqueGroupReservationEvents\(group, eventsByBed\)\.length === 0/)
+  assert.match(timelineGrid, /const \[collapsedGroups, setCollapsedGroups\] = useState<Set<string>>\(new Set\(\)\)/)
   assert.match(timelineGrid, /<details className="group relative">/)
   assert.doesNotMatch(timelineGrid, /inline-flex h-5 w-5 items-center justify-center border/)
 })
