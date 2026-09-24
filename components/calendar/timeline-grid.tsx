@@ -90,21 +90,21 @@ const copy = {
     legend: { pending: "Pending", confirmed: "Confirmed", checkedIn: "Checked in", completed: "Completed", block: "Block" },
     layersButton: "Layers", summary: "Summary", shortcuts: "Shortcuts", interactionHint: "Click: inspect · double-click: full view · drag: move · edges: dates",
     navigate: "navigate", select: "select", help: "help", all: "All", deselectAll: "Deselect all", selectAll: "Select all", rooms: "ROOMS",
-    loading: "Loading availability…", empty: "No rooms match the selected filters.", noAvailability: "No bed is available for the selected dates.", collapseGroups: "Collapse groups", expandGroups: "Expand groups", roomCount: "rooms", reservationCount: "bookings", selectedCount: "selected", conflictCount: "conflicts",
+    loading: "Loading availability…", empty: "No rooms match the selected filters.", noAvailability: "No bed is available for the selected dates.", collapseGroups: "Collapse groups", expandGroups: "Expand groups", roomCount: "rooms", reservationCount: "bookings", selectedCount: "selected", conflictCount: "conflicts", viewControls:"Calendar view controls", statusLegend:"Reservation status legend",
   },
   es: {
     layers: { milestones: "Hitos", housekeeping: "Limpieza", hospitality: "Hospitalidad", services: "Servicios", activities: "Actividades", payments: "Pagos", issues: "Incidencias", maintenance: "Mantenimiento" },
     legend: { pending: "Pendiente", confirmed: "Confirmada", checkedIn: "Hospedado", completed: "Finalizada", block: "Bloqueo" },
     layersButton: "Capas", summary: "Resumen", shortcuts: "Atajos", interactionHint: "Clic: revisar · doble clic: vista completa · arrastra: mover · extremos: fechas",
     navigate: "navegar", select: "seleccionar", help: "ayuda", all: "Todo", deselectAll: "Deseleccionar todo", selectAll: "Seleccionar todo", rooms: "HABITACIONES",
-    loading: "Cargando disponibilidad…", empty: "No hay habitaciones para los filtros seleccionados.", noAvailability: "No hay una cama disponible para las fechas seleccionadas.", collapseGroups: "Colapsar grupos", expandGroups: "Expandir grupos", roomCount: "habitaciones", reservationCount: "reservas", selectedCount: "seleccionadas", conflictCount: "conflictos",
+    loading: "Cargando disponibilidad…", empty: "No hay habitaciones para los filtros seleccionados.", noAvailability: "No hay una cama disponible para las fechas seleccionadas.", collapseGroups: "Colapsar grupos", expandGroups: "Expandir grupos", roomCount: "habitaciones", reservationCount: "reservas", selectedCount: "seleccionadas", conflictCount: "conflictos", viewControls:"Controles de vista del calendario", statusLegend:"Leyenda de estados de reserva",
   },
   de: {
     layers: { milestones: "Meilensteine", housekeeping: "Zimmerreinigung", hospitality: "Gästeservice", services: "Leistungen", activities: "Aktivitäten", payments: "Zahlungen", issues: "Vorfälle", maintenance: "Wartung" },
     legend: { pending: "Ausstehend", confirmed: "Bestätigt", checkedIn: "Eingecheckt", completed: "Abgeschlossen", block: "Sperre" },
     layersButton: "Ebenen", summary: "Übersicht", shortcuts: "Tastenkürzel", interactionHint: "Klick: prüfen · Doppelklick: Vollansicht · ziehen: verschieben · Ränder: Daten",
     navigate: "navigieren", select: "auswählen", help: "Hilfe", all: "Alle", deselectAll: "Auswahl aufheben", selectAll: "Alle auswählen", rooms: "ZIMMER",
-    loading: "Verfügbarkeit wird geladen…", empty: "Keine Zimmer entsprechen den gewählten Filtern.", noAvailability: "Für die ausgewählten Daten ist kein Bett verfügbar.", collapseGroups: "Gruppen einklappen", expandGroups: "Gruppen ausklappen", roomCount: "Zimmer", reservationCount: "Buchungen", selectedCount: "ausgewählt", conflictCount: "Konflikte",
+    loading: "Verfügbarkeit wird geladen…", empty: "Keine Zimmer entsprechen den gewählten Filtern.", noAvailability: "Für die ausgewählten Daten ist kein Bett verfügbar.", collapseGroups: "Gruppen einklappen", expandGroups: "Gruppen ausklappen", roomCount: "Zimmer", reservationCount: "Buchungen", selectedCount: "ausgewählt", conflictCount: "Konflikte", viewControls:"Kalenderansicht steuern", statusLegend:"Legende der Reservierungsstatus",
   },
 } satisfies Record<Language, any>
 
@@ -267,12 +267,12 @@ export function TimelineGrid(props: TimelineGridProps) {
   return (
     <CardContent className="p-0">
       <div className="border-b bg-background">
-        <div className="flex min-h-8 items-center gap-1 px-2 py-1" aria-label="Calendar view controls">
+        <div className="flex min-h-8 items-center gap-1 px-2 py-1" aria-label={c.viewControls}>
           <button type="button" title={c.layersButton} aria-label={c.layersButton} onClick={() => setPreferences((current) => ({ ...current, showLayerToolbar: !current.showLayerToolbar }))} className={`inline-flex h-7 w-7 items-center justify-center border text-muted-foreground transition hover:bg-muted ${preferences.showLayerToolbar ? "border-primary bg-primary text-primary-foreground" : "bg-background"}`}><Layers3 className="h-3.5 w-3.5" /></button>
           <button type="button" title={c.summary} aria-label={c.summary} onClick={() => setPreferences((current) => ({ ...current, showSummary: !current.showSummary }))} className={`inline-flex h-7 w-7 items-center justify-center border transition hover:bg-muted ${preferences.showSummary ? "border-primary/40 bg-primary/10 text-primary" : "bg-background text-muted-foreground"}`}><Rows3 className="h-3.5 w-3.5" /></button>
           <button type="button" title={`${c.shortcuts} · ${c.interactionHint}`} aria-label={c.shortcuts} onClick={() => setShowKeyboardHelp((current) => !current)} className={`inline-flex h-7 w-7 items-center justify-center border transition hover:bg-muted ${showKeyboardHelp ? "border-primary/40 bg-primary/10 text-primary" : "bg-background text-muted-foreground"}`}><Keyboard className="h-3.5 w-3.5" /></button>
           {inventoryGroups.length > 0 && <button type="button" title={allGroupsCollapsed ? c.expandGroups : c.collapseGroups} aria-label={allGroupsCollapsed ? c.expandGroups : c.collapseGroups} onClick={toggleAllGroups} className="inline-flex h-7 w-7 items-center justify-center border bg-background text-muted-foreground transition hover:bg-muted"><ChevronRight className={`h-3.5 w-3.5 transition-transform ${allGroupsCollapsed ? "" : "rotate-90"}`} /></button>}
-          <div className="ml-1 flex items-center gap-1.5 border-l pl-2" aria-label="Reservation status legend">
+          <div className="ml-1 flex items-center gap-1.5 border-l pl-2" aria-label={c.statusLegend}>
             {statusLegend.map((item) => <span key={item.label} title={item.label} aria-label={item.label} className={`h-2 w-2 ${item.className}`} />)}
           </div>
         </div>
