@@ -25,3 +25,12 @@ test("invoice UI exposes canonical payment capture only for finalized invoices",
   assert.match(invoiceEditor, /paymentExceedsBalance/)
   assert.match(invoiceEditor, /disabled className="h-10 w-full rounded-md border bg-background px-3 text-sm"/)
 })
+
+
+test("invoice workspace overrides the base dialog width and contains overflow", () => {
+  assert.match(invoiceEditor, /sm:max-w-\[1180px\]/)
+  assert.match(invoiceEditor, /xl:max-w-\[1280px\]/)
+  assert.match(invoiceEditor, /grid-rows-\[auto_minmax\(0,1fr\)_auto\]/)
+  assert.match(invoiceEditor, /overflow-y-auto overflow-x-hidden/)
+  assert.match(invoiceEditor, /lg:grid-cols-\[minmax\(0,1fr\)_minmax\(300px,360px\)\]/)
+})
