@@ -27,10 +27,14 @@ type PaymentRow = {
   paid_at: string | null
   payment_method: string | null
   payment_reference: string | null
+  reconciliation_status: 'unknown' | 'unpaid' | 'paid_observed' | 'reconciled' | 'exception'
+  reconciliation_checked_at: string | null
+  reconciliation_notes: string | null
 }
 
 type Division = { id: string; name: string }
 type Category = { id: string; name: string }
+type BankStatement = { period_end: string; processed_at: string | null; matched_count: number; unmatched_count: number; processing_error: string | null }
 type FinanceAlert = {
   id: string
   document_id: string
@@ -72,6 +76,7 @@ export function SantiagoPaymentQueue() {
   const [reference, setReference] = useState('')
   const [sourceDocumentIds, setSourceDocumentIds] = useState<Set<string>>(new Set())
   const [alerts, setAlerts] = useState<FinanceAlert[]>([])
+  const [latestStatement, setLatestStatement] = useState<BankStatement | null>(null)
 
   const load = useCallback(async () => {
     const permission = await supabase.rpc('can_finance_payment_authorize')
@@ -83,17 +88,18 @@ export function SantiagoPaymentQueue() {
     setAllowed(canPay)
     if (!canPay) return
 
-    const [documents, divisionResult, categoryResult, sourceResult, alertResult] = await Promise.all([
+    const [documents, divisionResult, categoryResult, sourceResult, alertResult, statementResult] = await Promise.all([
       supabase.from('finance_documents')
-        .select('id,supplier_name,document_number,document_date,due_date,total_amount,currency,division_id,category_id,cost_center_id,operational_label,approved_at,payment_status,payment_decision_notes,payment_decided_at,paid_at,payment_method,payment_reference')
+        .select('id,supplier_name,document_number,document_date,due_date,total_amount,currency,division_id,category_id,cost_center_id,operational_label,approved_at,payment_status,payment_decision_notes,payment_decided_at,paid_at,payment_method,payment_reference,reconciliation_status,reconciliation_checked_at,reconciliation_notes')
         .neq('payment_status', 'not_ready')
         .order('approved_at', { ascending: false }),
       supabase.from('budget_divisions').select('id,name'),
       supabase.from('budget_categories').select('id,name'),
       supabase.from('finance_sii_uploads').select('finance_document_id').not('finance_document_id', 'is', null),
       supabase.from('finance_document_alerts').select('id,document_id,change_kind,old_value,new_value,title,detail,created_at,read_at').order('created_at', { ascending: false }).limit(20),
+      supabase.from('finance_bank_statement_uploads').select('period_end,processed_at,matched_count,unmatched_count,processing_error').order('period_end', { ascending: false }).order('created_at', { ascending: false }).limit(1).maybeSingle(),
     ])
-    const error = documents.error || divisionResult.error || categoryResult.error || sourceResult.error || alertResult.error
+    const error = documents.error || divisionResult.error || categoryResult.error || sourceResult.error || alertResult.error || statementResult.error
     if (error) {
       toast.error(error.message)
       return
@@ -103,6 +109,7 @@ export function SantiagoPaymentQueue() {
     setCategories((categoryResult.data ?? []) as Category[])
     setSourceDocumentIds(new Set((sourceResult.data ?? []).map((row) => row.finance_document_id).filter((value): value is string => typeof value === 'string')))
     setAlerts((alertResult.data ?? []) as FinanceAlert[])
+    setLatestStatement((statementResult.data ?? null) as BankStatement | null)
   }, [supabase])
 
   useEffect(() => { void load() }, [load])
@@ -116,6 +123,9 @@ export function SantiagoPaymentQueue() {
 
   const filtered = rows.filter((row) => row.payment_status === status)
   const unreadAlerts = alerts.filter((alert) => !alert.read_at)
+  const withoutBankProof = rows.filter((row) => row.reconciliation_status === 'unknown' || row.reconciliation_status === 'unpaid').length
+  const bankObserved = rows.filter((row) => row.reconciliation_status === 'paid_observed').length
+  const reconciled = rows.filter((row) => row.reconciliation_status === 'reconciled').length
   const counts = rows.reduce<Record<string, number>>((acc, row) => {
     acc[row.payment_status] = (acc[row.payment_status] ?? 0) + 1
     return acc
@@ -187,21 +197,21 @@ export function SantiagoPaymentQueue() {
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div className="max-w-3xl">
             <p className="text-xs uppercase tracking-[0.14em] text-[var(--bs-cool-sage)]">Control final · Santiago</p>
-            <h2 className="mt-2 text-xl font-normal text-[var(--bs-text-primary)]">Autorizar y ejecutar pagos</h2>
-            <p className="mt-2 text-sm leading-6 text-[var(--bs-text-secondary)]">
-Solo lo que requiere acción: decidir pagos, ejecutar los autorizados y revisar cambios relevantes.
-            </p>
+            <h2 className="mt-2 text-xl font-normal text-[var(--bs-text-primary)]">Qué está pagado y qué sigue pendiente</h2>
+            <p className="mt-2 text-sm leading-6 text-[var(--bs-text-secondary)]">La vista cruza los gastos aprobados con la última cartola bancaria. Santiago actúa sobre lo pendiente; el banco confirma la realidad del pago.</p>
           </div>
           <div className="flex items-center gap-3">
             <span className="inline-flex items-center gap-2 text-xs text-[var(--bs-cool-sage)]"><ShieldCheck className="h-4 w-4" />Control final habilitado</span>
             <Button variant="outline" onClick={() => void load()}><RefreshCw className="mr-2 h-4 w-4" />Actualizar</Button>
           </div>
         </div>
-        <div className="mt-5 grid gap-3 sm:grid-cols-3">
+        <div className="mt-5 grid gap-3 sm:grid-cols-4">
+          <Metric label="Sin pago conciliado" value={withoutBankProof} />
+          <Metric label="Pago observado" value={bankObserved} />
+          <Metric label="Conciliados" value={reconciled} />
           <Metric label="Por decidir" value={counts.pending_santiago ?? 0} />
-          <Metric label="Alertas nuevas" value={unreadAlerts.length} />
-          <Metric label="Pagados" value={counts.paid ?? 0} />
         </div>
+        <p className="mt-4 text-xs text-[var(--bs-text-muted)]">{latestStatement ? latestStatement.processing_error ? `Última cartola: ${latestStatement.period_end} · cruce pendiente` : `Banco actualizado al ${latestStatement.period_end} · ${latestStatement.matched_count} pagos observados` : 'Aún no hay cartola bancaria cargada.'}</p>
       </section>
 
       <section className="bg-[var(--bs-surface-primary)] p-5 md:p-6">
@@ -239,7 +249,7 @@ Solo lo que requiere acción: decidir pagos, ejecutar los autorizados y revisar 
         <div className="overflow-x-auto">
           <table className="w-full min-w-[1040px] text-sm">
             <thead className="text-left text-xs uppercase tracking-[0.1em] text-[var(--bs-text-muted)]">
-              <tr><th className="px-4 py-3 font-normal">Proveedor / documento</th><th className="px-4 py-3 font-normal">Imputación validada</th><th className="px-4 py-3 text-right font-normal">Monto</th><th className="px-4 py-3 font-normal">Estado</th><th className="px-4 py-3 text-right font-normal">Acción</th></tr>
+              <tr><th className="px-4 py-3 font-normal">Proveedor / documento</th><th className="px-4 py-3 text-right font-normal">Monto</th><th className="px-4 py-3 font-normal">Banco</th><th className="px-4 py-3 font-normal">Pago</th><th className="px-4 py-3 text-right font-normal">Acción</th></tr>
             </thead>
             <tbody>
               {filtered.map((row) => {
@@ -252,12 +262,13 @@ Solo lo que requiere acción: decidir pagos, ejecutar los autorizados y revisar 
                       <p className="mt-1 text-xs text-[var(--bs-text-muted)]">{row.document_number} · {new Date(`${row.document_date}T00:00:00`).toLocaleDateString('es-CL')}</p>
                       {sourceDocumentIds.has(row.id) ? <a className="mt-2 inline-flex items-center gap-1 text-xs text-[var(--bs-cool-sky)] underline" href={`/api/finance/sii-invoices/source?documentId=${encodeURIComponent(row.id)}`} target="_blank" rel="noreferrer"><FileText className="h-3.5 w-3.5" />Ver factura</a> : <p className="mt-2 text-xs text-[var(--bs-text-muted)]">Sin archivo SII adjunto · evidencia histórica</p>}
                     </td>
-                    <td className="px-4 py-4">
-                      <p className="text-[var(--bs-text-primary)]">{division} · {category}</p>
-                      {row.operational_label && <p className="mt-1 text-xs text-[var(--bs-text-secondary)]">{row.operational_label}</p>}
-                      {row.approved_at && <p className="mt-2 text-xs text-[var(--bs-cool-sage)]">Validado por Raimundo · {new Date(row.approved_at).toLocaleString('es-CL')}</p>}
-                    </td>
                     <td className="px-4 py-4 text-right text-[var(--bs-text-primary)]">{money(row.total_amount, row.currency)}</td>
+                    <td className="px-4 py-4 text-xs">
+                      <p className={row.reconciliation_status === 'reconciled' ? 'text-[var(--bs-cool-sage)]' : row.reconciliation_status === 'paid_observed' ? 'text-[var(--bs-cool-sky)]' : row.reconciliation_status === 'exception' ? 'text-[var(--bs-warm-orange)]' : 'text-[var(--bs-text-secondary)]'}>
+                        {row.reconciliation_status === 'reconciled' ? 'Conciliado' : row.reconciliation_status === 'paid_observed' ? 'Pago observado' : row.reconciliation_status === 'exception' ? 'Excepción' : 'Sin pago conciliado'}
+                      </p>
+                      {row.reconciliation_checked_at && <p className="mt-1 text-[11px] text-[var(--bs-text-muted)]">{new Date(row.reconciliation_checked_at).toLocaleString('es-CL')}</p>}
+                    </td>
                     <td className="px-4 py-4 text-xs text-[var(--bs-text-secondary)]">
                       {row.payment_status === 'pending_santiago' && 'Esperando decisión de Santiago'}
                       {row.payment_status === 'authorized' && 'Autorizado · pendiente de ejecutar'}
