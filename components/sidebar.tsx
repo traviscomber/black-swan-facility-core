@@ -113,6 +113,9 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const [userInitials, setUserInitials] = useState("?")
   const [financePendingCount, setFinancePendingCount] = useState(0)
   const [financePaymentPendingCount, setFinancePaymentPendingCount] = useState(0)
+  const [financeAlertCount, setFinanceAlertCount] = useState(0)
+  const [canFinanceReview, setCanFinanceReview] = useState(false)
+  const [canFinancePay, setCanFinancePay] = useState(false)
 
   useEffect(() => {
     void supabase.auth.getUser().then(({ data: { user } }) => {
@@ -139,20 +142,29 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
     if (!canAccessDepartment("finance")) {
       setFinancePendingCount(0)
       setFinancePaymentPendingCount(0)
+      setFinanceAlertCount(0)
+      setCanFinanceReview(false)
+      setCanFinancePay(false)
       return
     }
     let cancelled = false
     const loadFinancePendingCount = async () => {
-      const [readyResult, mappingResult, reviewResult, payerResult, paymentPendingResult] = await Promise.all([
+      const [readyResult, mappingResult, reviewResult, payerResult, paymentPendingResult, alertResult] = await Promise.all([
         supabase.from("finance_documents").select("id", { count: "exact", head: true }).eq("approval_status", "ready"),
         supabase.from("finance_documents").select("id", { count: "exact", head: true }).eq("approval_status", "pending_mapping"),
         supabase.rpc("can_finance_review_ambiguous"),
         supabase.rpc("can_finance_payment_authorize"),
         supabase.from("finance_documents").select("id", { count: "exact", head: true }).eq("payment_status", "pending_santiago"),
+        supabase.from("finance_document_alerts").select("id", { count: "exact", head: true }).is("read_at", null),
       ])
       if (cancelled) return
-      setFinancePendingCount((readyResult.count ?? 0) + (reviewResult.data ? (mappingResult.count ?? 0) : 0))
-      setFinancePaymentPendingCount(payerResult.data ? (paymentPendingResult.count ?? 0) : 0)
+      const reviewer = Boolean(reviewResult.data)
+      const payer = Boolean(payerResult.data)
+      setCanFinanceReview(reviewer)
+      setCanFinancePay(payer)
+      setFinancePendingCount(reviewer ? (readyResult.count ?? 0) + (mappingResult.count ?? 0) : 0)
+      setFinanceAlertCount(payer ? (alertResult.count ?? 0) : 0)
+      setFinancePaymentPendingCount(payer ? (paymentPendingResult.count ?? 0) + (alertResult.count ?? 0) : 0)
     }
     void loadFinancePendingCount()
     const handler = () => void loadFinancePendingCount()
@@ -177,9 +189,17 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
     persona,
   ), [access, persona, routeCapabilities])
   const intakeOnly = access.role === "finance_uploader"
-  const displayedAreas = useMemo(() => intakeOnly ? osAreas.filter(area => area.key === "finance").map(area => ({
-    ...area, items: area.items.filter(item => item.key === "documents"),
-  })) : visibleAreas, [intakeOnly, visibleAreas])
+  const displayedAreas = useMemo(() => {
+    if (intakeOnly) return osAreas.filter(area => area.key === "finance").map(area => ({ ...area, items: area.items.filter(item => item.key === "documents") }))
+    return visibleAreas.map((area) => area.key !== "finance" ? area : ({
+      ...area,
+      items: area.items.filter((item) => {
+        if (item.key === "approvals") return canFinanceReview
+        if (item.key === "payments") return canFinancePay
+        return true
+      }),
+    }))
+  }, [canFinancePay, canFinanceReview, intakeOnly, visibleAreas])
 
   useEffect(() => {
     const initial = new Set<string>()
