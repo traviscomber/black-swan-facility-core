@@ -273,8 +273,8 @@ export function TimelineGrid(props: TimelineGridProps) {
       <div className="border-b border-white/5 bg-[#17191a]">
         <div className="flex min-h-7 items-center justify-end px-2 py-0.5" aria-label={c.viewControls}>
           <details className="group relative">
-            <summary className="flex h-6 cursor-pointer list-none items-center gap-1.5 border border-white/10 bg-[#111314] px-2 text-[10px] text-white/55 hover:text-white marker:hidden">
-              <Layers3 className="h-3 w-3" />{language === "es" ? "Vista" : language === "de" ? "Ansicht" : "View"}
+            <summary className="flex h-7 cursor-pointer list-none items-center gap-1.5 border border-white/10 bg-[#111314] px-2 text-[11px] text-white/55 hover:text-white marker:hidden">
+              <Layers3 className="h-3.5 w-3.5" />{language === "es" ? "Vista" : language === "de" ? "Ansicht" : "View"}
             </summary>
             <div className="absolute right-0 top-7 z-50 w-56 border border-white/10 bg-[#17191a] p-1 shadow-xl">
               <button type="button" onClick={() => setPreferences((current) => ({ ...current, showSummary: !current.showSummary }))} className="flex h-8 w-full items-center gap-2 px-2 text-left text-xs text-white/70 hover:bg-white/5"><Rows3 className="h-3.5 w-3.5" />{c.summary}<span className="ml-auto text-[10px] text-white/35">{preferences.showSummary ? "ON" : "OFF"}</span></button>
@@ -295,7 +295,7 @@ export function TimelineGrid(props: TimelineGridProps) {
       <div ref={scrollRef} className="overflow-auto bg-[#122526]">
         <div style={{ minWidth: totalWidth }}>
           <div className="sticky top-0 z-30 flex border-b border-white/10 bg-[#17191a] shadow-sm">
-            <div className="sticky left-0 z-40 flex shrink-0 items-center gap-2 border-r border-white/10 bg-[#17191a] px-3 text-[11px] font-medium tracking-wide text-white/65" style={{ width: LABEL_WIDTH, height: 40 }}>
+            <div className="sticky left-0 z-40 flex shrink-0 items-center gap-2 border-r border-white/10 bg-[#17191a] px-3 text-[11px] font-medium tracking-wide text-white/65" style={{ width: LABEL_WIDTH, height: 46 }}>
               {visibleReservationEvents.length > 0 && <button type="button" onClick={isBulkMode ? onClearSelection : onSelectAll} className="shrink-0 text-white/50 transition hover:text-white" aria-label={isBulkMode ? c.deselectAll : c.selectAll}>{isBulkMode ? <CheckSquare className="h-4 w-4 text-primary" /> : <Square className="h-4 w-4" />}</button>}
               <span>{c.rooms} ({roomCount})</span>
             </div>
@@ -304,9 +304,9 @@ export function TimelineGrid(props: TimelineGridProps) {
                 const weekend = date.getDay() === 0 || date.getDay() === 6
                 const monthBoundary = index === 0 || date.getDate() === 1
                 const today = isBookingToday(date)
-                return <div key={date.toISOString()} className={`relative flex flex-col items-center justify-center border-r border-white/10 text-center text-white ${weekend ? "bg-black/10" : ""} ${today ? "bg-emerald-500/20 text-emerald-100" : ""} ${monthBoundary ? "border-l border-l-white/20" : ""}` } style={{ height: 40 }}>
-                  {monthBoundary && <span className="absolute left-1 top-0 text-[8px] font-medium uppercase tracking-wide text-white/45">{format(date, "MMM", { locale: dateLocale })}</span>}
-                  <div className={`text-[9px] ${today ? "text-white" : "text-white/65"}`}>{format(date, "EEE", { locale: dateLocale })}</div><div className="text-sm font-medium leading-none">{format(date, "dd")}</div>
+                return <div key={date.toISOString()} className={`relative flex flex-col items-center justify-center border-r border-white/10 text-center text-white ${weekend ? "bg-black/10" : ""} ${today ? "bg-emerald-500/20 text-emerald-100" : ""} ${monthBoundary ? "border-l border-l-white/20" : ""}` } style={{ height: 46 }}>
+                  {monthBoundary && <span className="absolute left-1 top-0 text-[9px] font-medium uppercase tracking-wide text-white/45">{format(date, "MMM", { locale: dateLocale })}</span>}
+                  <div className={`text-[10px] ${today ? "text-white" : "text-white/65"}`}>{format(date, "EEE", { locale: dateLocale })}</div><div className="text-[15px] font-medium leading-none">{format(date, "dd")}</div>
                 </div>
               })}
             </div>
@@ -319,13 +319,13 @@ export function TimelineGrid(props: TimelineGridProps) {
             const selectedCount = groupReservations.filter((event) => selectedIds.has(event.event_id)).length
             const conflictCount = groupReservations.filter((event) => conflictIds.has(event.event_id)).length
             return <section key={location.locationId} className={`[content-visibility:auto] [contain-intrinsic-size:180px] ${propertyBand}`} title={location.locationName} data-property-group data-collapsed={isCollapsed ? "true" : "false"}>
-              <button type="button" onClick={() => toggleGroup(location.locationId)} className="flex h-4 w-full items-center border-b border-white/5 text-left text-white/60 transition hover:brightness-110 focus-visible:outline-none" aria-expanded={!isCollapsed} aria-label={`${isCollapsed ? c.expandGroups : c.collapseGroups}: ${location.locationName}`}>
+              <button type="button" onClick={() => toggleGroup(location.locationId)} className="flex h-7 w-full items-center border-b border-white/5 text-left text-white/60 transition hover:brightness-110 focus-visible:outline-none" aria-expanded={!isCollapsed} aria-label={`${isCollapsed ? c.expandGroups : c.collapseGroups}: ${location.locationName}`}>
                 <span className="sticky left-0 z-20 flex h-full shrink-0 items-center gap-1.5 border-r border-white/5 px-3" style={{ width: LABEL_WIDTH }}>
-                  <ChevronRight className={`h-3 w-3 shrink-0 transition-transform ${isCollapsed ? "" : "rotate-90"}`} />
-                  <span className="min-w-0 flex-1 truncate text-[9px] font-medium tracking-[0.04em] text-white/70">{location.locationName || "—"}</span>
-                  <span className="shrink-0 text-[8px] tabular-nums text-white/35">{location.rooms.length}</span>
+                  <ChevronRight className={`h-3.5 w-3.5 shrink-0 transition-transform ${isCollapsed ? "" : "rotate-90"}`} />
+                  <span className="min-w-0 flex-1 truncate text-[11px] font-medium tracking-[0.025em] text-white/70">{location.locationName || "—"}</span>
+                  <span className="shrink-0 text-[10px] tabular-nums text-white/35">{location.rooms.length}</span>
                 </span>
-                <span className="flex h-full items-center gap-3 px-3 text-[8px]" style={{ width: timelineWidth }}>
+                <span className="flex h-full items-center gap-3 px-3 text-[10px]" style={{ width: timelineWidth }}>
                   {selectedCount > 0 && <span className="text-white/70">{selectedCount} {c.selectedCount}</span>}
                   {conflictCount > 0 && <span className="text-amber-300/90">{conflictCount} {c.conflictCount}</span>}
                 </span>

@@ -31,7 +31,7 @@ interface RoomBlock { id: string; room_id: string; start_date: string; end_date:
 interface ResizeRpcResult { success: boolean; message: string; check_in: string; check_out: string }
 interface BulkConflict { reservation_id: string; reason: string }
 
-const DAY_WIDTH = 46
+const DAY_WIDTH = 52
 function intervalsOverlap(startA: string, endA: string, startB: string, endB: string) { return parseISO(startA) < parseISO(endB) && parseISO(endA) > parseISO(startB) }
 
 export default function BookingsCalendarPage() {
@@ -371,17 +371,17 @@ export default function BookingsCalendarPage() {
   return <div className="min-h-screen bg-[#101314]">
     <div className="sticky top-0 z-50 border-b border-white/10 bg-[#17191a]">
       <div className="flex min-h-12 items-center gap-1.5 overflow-x-auto px-2 py-1.5">
-        <Input type="month" value={monthValue} onChange={(event) => { if (event.target.value) setStartDate(bookingDateFromKey(`${event.target.value}-01`)) }} className="h-8 w-[160px] shrink-0 border-white/10 bg-[#111314] text-xs" aria-label={pageCopy.month} />
-        <Button variant="outline" size="sm" className="h-8 shrink-0 border-emerald-600 px-3 text-emerald-400 hover:bg-emerald-950" onClick={() => setStartDate(bookingTodayDate())}><CalendarDays className="mr-1.5 h-3.5 w-3.5" />{pageCopy.today}</Button>
-        <Button variant="outline" size="icon" className="h-8 w-8 shrink-0" onClick={() => setStartDate(addDays(startDate, -rangeDays))}><ChevronLeft className="h-4 w-4" /></Button>
-        <div className="min-w-[108px] shrink-0 text-center text-[11px] font-medium text-white/75">{rangeLabel}</div>
-        <Button variant="outline" size="icon" className="h-8 w-8 shrink-0" onClick={() => setStartDate(addDays(startDate, rangeDays))}><ChevronRight className="h-4 w-4" /></Button>
+        <Input type="month" value={monthValue} onChange={(event) => { if (event.target.value) setStartDate(bookingDateFromKey(`${event.target.value}-01`)) }} className="h-9 w-[172px] shrink-0 border-white/10 bg-[#111314] text-xs" aria-label={pageCopy.month} />
+        <Button variant="outline" size="sm" className="h-9 shrink-0 border-emerald-600 px-3.5 text-emerald-400 hover:bg-emerald-950" onClick={() => setStartDate(bookingTodayDate())}><CalendarDays className="mr-1.5 h-3.5 w-3.5" />{pageCopy.today}</Button>
+        <Button variant="outline" size="icon" className="h-9 w-9 shrink-0" onClick={() => setStartDate(addDays(startDate, -rangeDays))}><ChevronLeft className="h-4 w-4" /></Button>
+        <div className="min-w-[124px] shrink-0 text-center text-[12px] font-medium text-white/75">{rangeLabel}</div>
+        <Button variant="outline" size="icon" className="h-9 w-9 shrink-0" onClick={() => setStartDate(addDays(startDate, rangeDays))}><ChevronRight className="h-4 w-4" /></Button>
         <div className="ml-auto flex items-center gap-1.5" aria-label="Calendar actions">
-          <Button size="sm" className="h-8 shrink-0 bg-emerald-600 px-3 text-xs text-white hover:bg-emerald-500" onClick={() => { setPreselectedBed(null); setPreselectedDate(null); setPreselectedCheckOutDate(null); setNewReservationOpen(true) }}><Plus className="mr-1 h-3.5 w-3.5" />{addLabel}</Button>
-          <Button variant="outline" size="icon" className={`h-8 w-8 shrink-0 ${showFilters ? "border-emerald-600 text-emerald-400" : ""}`} title={pageCopy.search} aria-label={pageCopy.search} aria-expanded={showFilters} onClick={() => { setShowFilters((current) => !current); window.setTimeout(() => searchInputRef.current?.focus(), 0) }}><Search className="h-4 w-4" /></Button>
-          <Button asChild variant="outline" size="icon" className="relative h-8 w-8 shrink-0" title={pageCopy.tasksAlerts} aria-label={pageCopy.tasksAlerts}><Link href={`/${language}/bookings/operations`}><Bell className="h-4 w-4" /></Link></Button>
+          <Button size="sm" className="h-9 shrink-0 bg-emerald-600 px-3.5 text-[13px] text-white hover:bg-emerald-500" onClick={() => { setPreselectedBed(null); setPreselectedDate(null); setPreselectedCheckOutDate(null); setNewReservationOpen(true) }}><Plus className="mr-1 h-3.5 w-3.5" />{addLabel}</Button>
+          <Button variant="outline" size="icon" className={`h-9 w-9 shrink-0 ${showFilters ? "border-emerald-600 text-emerald-400" : ""}`} title={pageCopy.search} aria-label={pageCopy.search} aria-expanded={showFilters} onClick={() => { setShowFilters((current) => !current); window.setTimeout(() => searchInputRef.current?.focus(), 0) }}><Search className="h-4 w-4" /></Button>
+          <Button asChild variant="outline" size="icon" className="relative h-9 w-9 shrink-0" title={pageCopy.tasksAlerts} aria-label={pageCopy.tasksAlerts}><Link href={`/${language}/bookings/operations`}><Bell className="h-4 w-4" /></Link></Button>
           <details className="group relative">
-            <summary aria-label={language === "es" ? "Más acciones" : language === "de" ? "Weitere Aktionen" : "More actions"} className="flex h-8 w-8 cursor-pointer list-none items-center justify-center border border-white/10 bg-[#111314] text-lg leading-none text-white/65 hover:bg-white/5 hover:text-white marker:hidden">⋯</summary>
+            <summary aria-label={language === "es" ? "Más acciones" : language === "de" ? "Weitere Aktionen" : "More actions"} className="flex h-9 w-9 cursor-pointer list-none items-center justify-center border border-white/10 bg-[#111314] text-lg leading-none text-white/65 hover:bg-white/5 hover:text-white marker:hidden">⋯</summary>
             <div className="absolute right-0 top-9 z-[70] w-48 border border-white/10 bg-[#17191a] p-1 shadow-xl">
               <button type="button" onClick={() => window.print()} className="flex h-8 w-full items-center gap-2 px-2 text-left text-xs text-white/70 hover:bg-white/5 hover:text-white"><Printer className="h-3.5 w-3.5" />{pageCopy.print}</button>
               <Link href={`/${language}/bookings/rooms`} className="flex h-8 items-center gap-2 px-2 text-xs text-white/70 hover:bg-white/5 hover:text-white"><BedDouble className="h-3.5 w-3.5" />{pageCopy.roomsBeds}</Link>

@@ -203,3 +203,58 @@
     transition: none !important;
   }
 }
+
+
+/* Calendar legibility pass: preserve BedBooking density without miniaturizing the workspace. */
+.booking-workspace[data-booking-section="calendar"] [data-property-group] > button {
+  height: 34px !important;
+}
+
+.booking-workspace[data-booking-section="calendar"] [data-property-group] > button > span:first-child {
+  padding-inline: 12px !important;
+}
+
+.booking-workspace[data-booking-section="calendar"] [data-property-group] > button > span:first-child span[class*="text-[11px]"] {
+  font-size: 12px !important;
+  font-weight: 560 !important;
+  letter-spacing: .015em !important;
+}
+
+.booking-workspace[data-booking-section="calendar"] [data-calendar-row] > div > .sticky.left-0 {
+  padding-inline: 11px !important;
+}
+
+.booking-workspace[data-booking-section="calendar"] [data-calendar-row] > div > .sticky.left-0 .text-white\/90 {
+  font-size: 12px !important;
+  line-height: 17px !important;
+}
+
+.booking-workspace[data-booking-section="calendar"] [data-calendar-row] > div > .sticky.left-0 .text-white\/55 {
+  font-size: 10px !important;
+  line-height: 15px !important;
+}
+
+.booking-workspace[data-booking-section="calendar"] .booking-reference-nav-link,
+.booking-workspace[data-booking-section="calendar"] .booking-reference-nav-parent {
+  min-height: 36px !important;
+  font-size: 12.5px !important;
+}
+
+.booking-workspace[data-booking-section="calendar"] .booking-reference-nav-link.is-inset {
+  min-height: 30px !important;
+  font-size: 12px !important;
+}
+
+.booking-workspace[data-booking-section="calendar"] .booking-reference-brand-name {
+  font-size: 15px !important;
+}
+
+.booking-workspace[data-booking-section="calendar"] [data-calendar-row] button.absolute:not([class*="border-zinc"]) > div:first-of-type {
+  font-size: 11px !important;
+  line-height: 16px !important;
+}
+
+.booking-workspace[data-booking-section="calendar"] [data-calendar-row] button.absolute:not([class*="border-zinc"]) > div:nth-of-type(2) {
+  font-size: 9px !important;
+  line-height: 13px !important;
+}
