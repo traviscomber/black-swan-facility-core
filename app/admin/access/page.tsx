@@ -36,7 +36,7 @@ async function updateUserAccess(formData: FormData) {
   const departments = formData.getAll("departments").map(String)
   const locations = formData.getAll("locations").map(String)
 
-  if (!targetUserId || !["admin", "approver", "operator"].includes(role)) throw new Error("INVALID_ACCESS_DATA")
+  if (!targetUserId || !["admin", "approver", "operator", "finance_uploader"].includes(role)) throw new Error("INVALID_ACCESS_DATA")
   if (reason.length < 5) throw new Error("ACCESS_REASON_TOO_SHORT")
   if (targetUserId === actor.id && (!isActive || role !== "admin")) throw new Error("ADMIN_SELF_PROTECTION")
   if (locations.length > 0 && departments.length === 0) throw new Error("LOCATION_REQUIRES_DEPARTMENT")

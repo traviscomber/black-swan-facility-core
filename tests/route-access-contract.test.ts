@@ -30,7 +30,7 @@ test('route access snapshot names every OS route domain and only canonical level
   for (const domain of ['booking','operations','people','places_assets','finance','network','admin','procurement','maintenance','inventory','orchard','vineyard','cattle','fuel','map']) {
     assert.match(sql, new RegExp(`'${domain}'`))
   }
-  for (const level of ['view','operate','approve','admin']) assert.match(sql, new RegExp(`'${level}'`))
+  for (const level of ['view','operate','approve','admin']) assert.match(sql, new RegExp(`["']${level}["']`))
 })
 
 test('proxy maps sensitive route families to canonical capabilities', () => {

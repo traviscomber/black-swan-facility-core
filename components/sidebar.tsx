@@ -170,22 +170,26 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
     ),
     persona,
   ), [access, persona, routeCapabilities])
+  const intakeOnly = access.role === "finance_uploader"
+  const displayedAreas = useMemo(() => intakeOnly ? osAreas.filter(area => area.key === "finance").map(area => ({
+    ...area, items: area.items.filter(item => item.key === "documents"),
+  })) : visibleAreas, [intakeOnly, visibleAreas])
 
   useEffect(() => {
     const initial = new Set<string>()
-    visibleAreas.forEach((area) => {
+    displayedAreas.forEach((area) => {
       if (area.items.some((item) => isItemActive(internalPathname, item))) initial.add(area.key)
     })
     setExpandedAreas(initial)
-  }, [internalPathname, visibleAreas])
+  }, [internalPathname, displayedAreas])
 
   useEffect(() => {
     const initial = new Set<string>()
-    visibleAreas.forEach((area) => area.items.forEach((item) => {
+    displayedAreas.forEach((area) => area.items.forEach((item) => {
       if (item.subItems?.some((subItem) => internalPathname === subItem.href)) initial.add(item.key)
     }))
     setExpandedItems(initial)
-  }, [internalPathname, visibleAreas])
+  }, [internalPathname, displayedAreas])
 
   const handleLogout = async () => {
     await supabase.auth.signOut()
@@ -209,7 +213,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
       {isOpen && <div className="fixed inset-0 z-40 bg-black/20 lg:hidden" onClick={onClose} />}
       <div className={cn("fixed inset-y-0 left-0 z-50 flex h-screen w-64 flex-col overflow-y-auto border-r border-sidebar-border bg-sidebar transition-transform duration-300 lg:relative lg:inset-auto lg:z-auto lg:h-full lg:translate-x-0", isOpen ? "translate-x-0" : "-translate-x-full")}>
         <div className="flex h-16 items-center justify-between border-b border-sidebar-border bg-primary/5 px-4 sm:h-20">
-          <Link href={localizedHref(language, "/os")} className="flex min-w-0 items-center gap-2 hover:opacity-80">
+          <Link href={localizedHref(language, intakeOnly ? "/budgets/documents" : "/os")} className="flex min-w-0 items-center gap-2 hover:opacity-80">
             <img src="/blackswan-logo.png" alt="Blackswan Logo" className="h-12 w-12 flex-shrink-0 object-contain sm:h-14 sm:w-14" />
             <div className="min-w-0"><h1 className="truncate text-sm font-bold uppercase tracking-wider text-accent sm:text-base">BSFC</h1><p className="text-xs text-muted-foreground">Core System</p></div>
           </Link>
@@ -217,7 +221,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
         </div>
 
         <nav className="min-h-0 flex-1 space-y-2 overflow-y-auto px-3 py-4">
-          {accessLoading ? <p className="px-3 text-xs text-muted-foreground">{t("shell.loading_access")}</p> : visibleAreas.map((area) => {
+          {accessLoading ? <p className="px-3 text-xs text-muted-foreground">{t("shell.loading_access")}</p> : displayedAreas.map((area) => {
             const isToday = area.key === "today"
             const areaActive = isToday ? internalPathname === "/os" : area.items.some((item) => isItemActive(internalPathname, item))
             return <div key={area.key} className="space-y-1">
@@ -233,7 +237,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
 
           <div className="mt-4 border-t pt-3">
             <p className="px-3 pb-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{t("shell.global_tools")}</p>
-            <UtilityLink href="/os" icon={LayoutDashboard} label={t("os.today")} language={language} onClose={onClose} />
+            {!intakeOnly && <UtilityLink href="/os" icon={LayoutDashboard} label={t("os.today")} language={language} onClose={onClose} />}
             {showConcierge && <UtilityLink href="/concierge" icon={MessageSquare} label={t("shell.concierge")} language={language} onClose={onClose} />}
             {access.is_admin && <UtilityLink href="/ai-ops" icon={Bot} label={t("shell.ai_ops")} language={language} onClose={onClose} />}
             {access.is_admin && <UtilityLink href="/sovereignty" icon={Crown} label={t("nav.sovereignty_dashboard")} language={language} onClose={onClose} />}

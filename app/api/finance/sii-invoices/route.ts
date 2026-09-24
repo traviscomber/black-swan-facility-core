@@ -97,9 +97,12 @@ async function authorizeFinance() {
   const { data: authData, error: authError } = await supabase.auth.getUser()
   if (authError || !authData.user) return { error: NextResponse.json({ error: 'Authentication required' }, { status: 401 }) }
 
-  const { data: allowed, error: permissionError } = await supabase.rpc('can_app_action', { p_action_key: 'finance.adjust' })
-  if (permissionError || !allowed) return { error: NextResponse.json({ error: 'Finance permission required' }, { status: 403 }) }
-  return { user: authData.user }
+  const [{ data: reviewer }, { data: uploader }] = await Promise.all([
+    supabase.rpc('can_app_action', { p_action_key: 'finance.adjust' }),
+    supabase.rpc('can_app_action', { p_action_key: 'finance.document_upload' }),
+  ])
+  if (!reviewer && !uploader) return { error: NextResponse.json({ error: 'Document upload permission required' }, { status: 403 }) }
+  return { user: authData.user, reviewer: Boolean(reviewer) }
 }
 
 function adminClient() {
@@ -262,6 +265,10 @@ export async function PATCH(request: Request) {
 
     if (uploadError) return NextResponse.json({ error: uploadError.message }, { status: 500 })
     if (!upload) return NextResponse.json({ error: 'SII upload not found' }, { status: 404 })
+    if (!authorization.reviewer) {
+      const { data: owned } = await admin.from('finance_sii_uploads').select('id').eq('id', uploadId).eq('uploaded_by', authorization.user.id).maybeSingle()
+      if (!owned) return NextResponse.json({ error: 'SII upload not found' }, { status: 404 })
+    }
     if (upload.upload_kind !== 'pdf') return NextResponse.json({ error: 'Only PDF uploads use manual metadata completion' }, { status: 409 })
 
     const { data, error } = await admin.rpc('finalize_sii_pdf_upload', {

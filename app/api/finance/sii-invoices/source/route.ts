@@ -16,8 +16,11 @@ export async function GET(request: Request) {
   const { data: authData } = await supabase.auth.getUser()
   if (!authData.user) return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
 
-  const { data: allowed, error: permissionError } = await supabase.rpc('can_app_action', { p_action_key: 'finance.adjust' })
-  if (permissionError || !allowed) return NextResponse.json({ error: 'Finance permission required' }, { status: 403 })
+  const [{ data: reviewer }, { data: uploader }] = await Promise.all([
+    supabase.rpc('can_app_action', { p_action_key: 'finance.adjust' }),
+    supabase.rpc('can_app_action', { p_action_key: 'finance.document_upload' }),
+  ])
+  if (!reviewer && !uploader) return NextResponse.json({ error: 'Document permission required' }, { status: 403 })
 
   const params = new URL(request.url).searchParams
   const documentId = params.get('documentId')
@@ -27,7 +30,7 @@ export async function GET(request: Request) {
   const admin = adminClient()
   let query = admin
     .from('finance_sii_uploads')
-    .select('storage_bucket,storage_path,upload_kind')
+    .select('storage_bucket,storage_path,upload_kind,uploaded_by')
     .order('upload_kind', { ascending: true })
     .order('created_at', { ascending: false })
     .limit(1)
@@ -37,6 +40,7 @@ export async function GET(request: Request) {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   if (!upload) return NextResponse.json({ error: 'No SII source file was found' }, { status: 404 })
+  if (!reviewer && upload.uploaded_by !== authData.user.id) return NextResponse.json({ error: 'No SII source file was found' }, { status: 404 })
 
   const { data: signed, error: signedError } = await admin.storage.from(upload.storage_bucket).createSignedUrl(upload.storage_path, 300)
   if (signedError || !signed?.signedUrl) return NextResponse.json({ error: signedError?.message ?? 'Could not create source link' }, { status: 500 })

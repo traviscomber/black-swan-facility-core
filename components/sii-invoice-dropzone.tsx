@@ -33,7 +33,7 @@ function statusCopy(row: UploadResult) {
   return row.status
 }
 
-export function SiiInvoiceDropzone() {
+export function SiiInvoiceDropzone({ canReview = true }: { canReview?: boolean }) {
   const { language } = useLanguage()
   const supabase = useMemo(() => createClient(), [])
   const inputRef = useRef<HTMLInputElement>(null)
@@ -146,7 +146,7 @@ export function SiiInvoiceDropzone() {
                   {row.document_id && (
                     <div className="flex shrink-0 gap-2">
                       <Button variant="outline" size="sm" asChild><a href={`/api/finance/sii-invoices/source?documentId=${encodeURIComponent(row.document_id)}`} target="_blank" rel="noreferrer"><FileText className="mr-2 h-4 w-4" />Ver original</a></Button>
-                      <Button size="sm" asChild><a href={`/${language}/budgets/approvals`}>Ir a aprobación</a></Button>
+                      {canReview && <Button size="sm" asChild><a href={`/${language}/budgets/approvals`}>Ir a aprobación</a></Button>}
                     </div>
                   )}
                 </div>

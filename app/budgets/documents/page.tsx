@@ -7,6 +7,8 @@ import { FinanceApprovalQueue } from '@/components/finance-approval-queue'
 import { PageHeader } from '@/components/page-header'
 import { SiiInvoiceDropzone } from '@/components/sii-invoice-dropzone'
 import { Button } from '@/components/ui/button'
+import { BankStatementDropzone } from '@/components/bank-statement-dropzone'
+import { useEffectiveAccess } from '@/lib/hooks/use-effective-access'
 import { useLanguage } from '@/lib/hooks/use-language'
 
 const copy = {
@@ -47,12 +49,15 @@ const copy = {
 
 export default function FinanceDocumentsPage() {
   const { language } = useLanguage()
+  const { access, loading } = useEffectiveAccess()
   const text = copy[language]
+  const canReview = access.is_admin || access.allowed_actions.includes('finance.adjust')
+  const canUpload = canReview || access.allowed_actions.includes('finance.document_upload')
 
   return (
     <AppLayout>
       <PageHeader title={text.title} description={text.description} />
-
+      {!loading && canUpload && <>
       <section className="mx-4 mt-4 grid gap-3 md:mx-8 lg:grid-cols-2">
         <div className="bg-[var(--bs-surface-primary)] p-5 md:p-6">
           <div className="flex items-start gap-3">
@@ -69,27 +74,28 @@ export default function FinanceDocumentsPage() {
             <Landmark className="mt-0.5 h-5 w-5 shrink-0 text-[var(--bs-warm-yellow)]" />
             <div className="min-w-0 flex-1">
               <h2 className="text-base font-medium text-[var(--bs-text-primary)]">{text.bankTitle}</h2>
-              <p className="mt-1 text-sm leading-6 text-[var(--bs-text-secondary)]">{text.bankBody}</p>
-              <Button asChild variant="outline" className="mt-4">
+              <p className="mt-1 text-sm leading-6 text-[var(--bs-text-secondary)]">{canReview ? text.bankBody : language === 'es' ? 'Sube la cartola semanal para revisión financiera.' : language === 'de' ? 'Wöchentliche Kontoauszüge zur Finanzprüfung hochladen.' : 'Upload the weekly statement for finance review.'}</p>
+              {canReview && <Button asChild variant="outline" className="mt-4">
                 <Link href={`/${language}/accounting/reconciliation`}>
                   {text.bankCta}
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Link>
-              </Button>
+              </Button>}
             </div>
           </div>
         </div>
       </section>
 
-      <SiiInvoiceDropzone />
-
-      <section className="mx-4 mt-6 md:mx-8">
+      <SiiInvoiceDropzone canReview={canReview} />
+      <BankStatementDropzone />
+      {canReview && <><section className="mx-4 mt-6 md:mx-8">
         <div className="mb-3">
           <h2 className="text-base font-medium text-[var(--bs-text-primary)]">{text.queueTitle}</h2>
           <p className="mt-1 text-sm text-[var(--bs-text-secondary)]">{text.queueBody}</p>
         </div>
       </section>
-      <FinanceApprovalQueue />
+      <FinanceApprovalQueue /></>}
+      </>}
     </AppLayout>
   )
 }
