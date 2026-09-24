@@ -120,3 +120,10 @@ test("canonical Black Swan inventory resolves to the 41 verified BedBooking room
   assert.deepEqual(canonical.map(([, , capacity]) => capacity), VERIFIED_BEDBOOKING_REFERENCE_ROWS.map((row) => row.guestCapacity))
   assert.ok(canonical.every(([propertyName, roomNumber, capacity]) => { const identity = getBedBookingDisplayIdentity({ propertyName, roomNumber }); return identity.source === "bedbooking_verified" && identity.guestCapacity === capacity }))
 })
+
+
+test("calendar does not reload stable room inventory on every date-window event refresh", () => {
+  assert.doesNotMatch(calendarPage, /loadInitialData/)
+  assert.match(calendarPage, /void loadInventory\(\)\.finally/)
+  assert.match(calendarPage, /void loadEvents\(\)/)
+})

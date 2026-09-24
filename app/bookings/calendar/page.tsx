@@ -109,13 +109,6 @@ export default function BookingsCalendarPage() {
 
   loadEventsRef.current = loadEvents
 
-  const loadInitialData = useCallback(async () => {
-    setLoading(true)
-    setError(null)
-    await Promise.all([loadInventory(), loadEvents()])
-    setLoading(false)
-  }, [loadEvents, loadInventory])
-
   const refreshEvents = useCallback(async () => {
     setError(null)
     await loadEvents()
@@ -148,7 +141,18 @@ export default function BookingsCalendarPage() {
     onMoveComplete: () => loadEventsRef.current(),
   })
 
-  useEffect(() => { void loadInitialData() }, [loadInitialData])
+  useEffect(() => {
+    let active = true
+    setLoading(true)
+    setError(null)
+    void loadInventory().finally(() => { if (active) setLoading(false) })
+    return () => { active = false }
+  }, [loadInventory])
+
+  useEffect(() => {
+    setError(null)
+    void loadEvents()
+  }, [loadEvents])
   useEffect(() => {
     const scheduleEvents = () => {
       if (realtimeEventsTimer.current) clearTimeout(realtimeEventsTimer.current)
