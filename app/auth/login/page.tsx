@@ -32,9 +32,22 @@ export default function LoginPage() {
 
       if (data?.user) {
         const requestedPath = searchParams.get('next')
-        const destination = requestedPath?.startsWith('/') && !requestedPath.startsWith('//')
+        const normalizedEmail = data.user.email?.trim().toLowerCase() ?? ''
+        const preferredLanguage = normalizedEmail === 'maribel@blackswn.org' ? 'es' : language
+
+        const safeRequestedPath = requestedPath?.startsWith('/') && !requestedPath.startsWith('//')
           ? requestedPath
-          : `/${language}`
+          : null
+
+        const destination = safeRequestedPath
+          ? safeRequestedPath.replace(/^\/(?:en|es|de)(?=\/|$)/, `/${preferredLanguage}`)
+          : `/${preferredLanguage}`
+
+        if (preferredLanguage === 'es') {
+          localStorage.setItem('language', 'es')
+          document.cookie = 'site-locale=es; path=/; samesite=lax'
+        }
+
         router.refresh()
         router.push(destination)
       }
