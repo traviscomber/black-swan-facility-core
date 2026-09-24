@@ -27,7 +27,7 @@ type PendingPdf = {
 function statusCopy(row: UploadResult) {
   if (row.status === 'ready' || row.status === 'classified') return 'Clasificada · lista para decisión de Raimundo'
   if (row.status === 'pending_mapping' || row.status === 'linked') return 'Recibida · clasificación canónica pendiente'
-  if (row.status === 'needs_metadata') return 'PDF guardado · completa los datos fiscales para enviarlo a clasificación'
+  if (row.status === 'needs_metadata') return 'PDF guardado · extracción automática pendiente o requiere revisión puntual'
   if (row.status === 'duplicate') return 'Ya existía · no se creó un segundo documento'
   if (row.status === 'failed') return row.error ?? 'No fue posible procesar el archivo'
   return row.status
@@ -82,7 +82,7 @@ export function SiiInvoiceDropzone({ canReview = true }: { canReview?: boolean }
       const pending = next.filter((row) => row.status === 'needs_metadata').length
       const failed = next.filter((row) => row.status === 'failed').length
       if (created) toast.success(`${created} documento${created === 1 ? '' : 's'} recibido${created === 1 ? '' : 's'} por Finance.`)
-      if (pending) toast.success(`${pending} PDF${pending === 1 ? '' : 's'} guardado${pending === 1 ? '' : 's'} · completa los datos fiscales abajo.`)
+      if (pending) toast.success(`${pending} PDF${pending === 1 ? '' : 's'} guardado${pending === 1 ? '' : 's'} · intentando extracción automática.`)
       if (failed) toast.error(failed === 1 ? '1 archivo no pudo procesarse.' : `${failed} archivos no pudieron procesarse.`)
       window.dispatchEvent(new Event('finance-workbook-imported'))
       window.dispatchEvent(new Event('finance-sii-uploaded'))
@@ -103,7 +103,7 @@ export function SiiInvoiceDropzone({ canReview = true }: { canReview?: boolean }
             <p className="text-xs uppercase tracking-[0.14em] text-[var(--bs-warm-yellow)]">Entrada SII · Manual</p>
             <h2 className="mt-2 text-xl font-normal text-[var(--bs-text-primary)]">Subir facturas para clasificación y aprobación</h2>
             <p className="mt-2 text-sm leading-6 text-[var(--bs-text-secondary)]">
-              Arrastra PDF o XML del SII. El XML extrae los datos fiscales; un PDF solo queda guardado de forma privada y solicita los datos mínimos antes de entrar a clasificación. Raimundo conserva la decisión final.
+              Arrastra PDF o XML del SII. El sistema extrae automáticamente proveedor, RUT, folio, fechas y montos; solo pedirá revisión si algún dato no puede confirmarse. Raimundo conserva la decisión final.
             </p>
           </div>
           <Button variant="outline" onClick={() => inputRef.current?.click()} disabled={uploading}>
@@ -127,7 +127,7 @@ export function SiiInvoiceDropzone({ canReview = true }: { canReview?: boolean }
           {uploading ? <Loader2 className="h-7 w-7 animate-spin text-[var(--bs-warm-yellow)]" /> : <UploadCloud className="h-7 w-7 text-[var(--bs-warm-yellow)]" />}
           <p className="mt-3 text-sm text-[var(--bs-text-primary)]">Arrastra aquí las facturas SII</p>
           <p className="mt-1 text-xs text-[var(--bs-text-muted)]">PDF o XML · máximo 15 MB por archivo · hasta 10 por lote</p>
-          <p className="mt-3 max-w-2xl text-xs leading-5 text-[var(--bs-text-secondary)]">PDF-only también funciona: el archivo se conserva privado y el sistema pide proveedor, RUT, folio, fecha y total antes de crear el documento canónico.</p>
+          <p className="mt-3 max-w-2xl text-xs leading-5 text-[var(--bs-text-secondary)]">PDF-only funciona automáticamente: primero se leen los datos fiscales y solo aparece un formulario si falta confirmar información esencial.</p>
         </button>
 
         {results.length > 0 && (
@@ -157,7 +157,7 @@ export function SiiInvoiceDropzone({ canReview = true }: { canReview?: boolean }
 
         {pendingPdfs.length > 0 && (
           <div className="mt-6">
-            <p className="text-xs uppercase tracking-[0.12em] text-[var(--bs-warm-yellow)]">PDF pendientes de datos fiscales · {pendingPdfs.length}</p>
+            <p className="text-xs uppercase tracking-[0.12em] text-[var(--bs-warm-yellow)]">PDF en extracción / revisión · {pendingPdfs.length}</p>
             <div className="mt-3 space-y-3">
               {pendingPdfs.map((pdf) => (
                 <SiiPdfMetadataForm
