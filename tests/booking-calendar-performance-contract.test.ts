@@ -97,19 +97,19 @@ test("calendar default range matches the authenticated BedBooking working horizo
 
 test("canonical Black Swan inventory resolves to the 41 verified BedBooking room identities", () => {
   const canonical = [
-    ["TO","TO-Arrayan"],["TO","TO-Copihue"],["TO","TO-Camelia"],["TO","TO-Hortensia"],["TO","TO-Loto"],["TO","TO-Chilco"],
-    ["CP","CP-Bandurrias"],["CP","CP-Cisne Negro"],["CP","CP-Queltehue"],["CP","CP-Choroy"],
-    ["Clubhouse","Notro"],["Clubhouse","Avellano"],["Clubhouse","Ulmo"],
-    ["Garden House","Habitación 1"],["Garden House","Habitación 2"],["Garden House","Habitación 3"],
-    ["Bamboo House","Room 1"],["Bamboo House","Room 2"],["Bamboo House","Room 3"],
-    ["Hotelito","Hotelito 1"],["Hotelito","Hotelito 2"],["Hotelito","Hotelito 3"],
-    ["Ed Office","Oficina"],["Ed Office","Office Room 2"],
-    ["Prairie House 1","PH1- Prairie House 1"],["Prairie House 1","PH1- Prairie House 2"],["Prairie House 1","PH1- Prairie House 3"],
-    ["Prairy House 2","Room1"],["Prairy House 2","Room2"],["Prairy House 2","Room3"],
-    ["Prairie House 3","PH3- Prairie House 1"],["Prairie House 3","PH3- Prairie House 2"],["Prairie House 3","PH3- Prairie House 3"],
-    ["Chef House","CH- Chef House 1"],["Chef House","CH- Chef House 2"],
-    ["Puerto Claro","PC- Puerto Claro 1"],["Puerto Claro","PC- Puerto Claro 2"],["Puerto Claro","PC- Puerto Claro 3"],
-    ["CH","CH-Canelo"],["CH","CH-Laurel"],["Glamping","Glamping Tent"],
+    ["TO","TO-Arrayan",2],["TO","TO-Copihue",2],["TO","TO-Camelia",2],["TO","TO-Hortensia",2],["TO","TO-Loto",2],["TO","TO-Chilco",2],
+    ["CP","CP-Bandurrias",2],["CP","CP-Cisne Negro",2],["CP","CP-Queltehue",2],["CP","CP-Choroy",2],
+    ["Clubhouse","Notro",2],["Clubhouse","Avellano",6],["Clubhouse","Ulmo",5],
+    ["Garden House","Habitación 1",2],["Garden House","Habitación 2",2],["Garden House","Habitación 3",2],
+    ["Bamboo House","Room 1",2],["Bamboo House","Room 2",2],["Bamboo House","Room 3",2],
+    ["Hotelito","Hotelito 1",2],["Hotelito","Hotelito 2",2],["Hotelito","Hotelito 3",2],
+    ["Ed Office","Oficina",1],["Ed Office","Office Room 2",1],
+    ["Prairie House 1","PH1- Prairie House 1",2],["Prairie House 1","PH1- Prairie House 2",2],["Prairie House 1","PH1- Prairie House 3",2],
+    ["Prairy House 2","Room1",2],["Prairy House 2","Room2",2],["Prairy House 2","Room3",2],
+    ["Prairie House 3","PH3- Prairie House 1",2],["Prairie House 3","PH3- Prairie House 2",2],["Prairie House 3","PH3- Prairie House 3",2],
+    ["Chef House","CH- Chef House 1",2],["Chef House","CH- Chef House 2",2],
+    ["Puerto Claro","PC- Puerto Claro 1",2],["Puerto Claro","PC- Puerto Claro 2",2],["Puerto Claro","PC- Puerto Claro 3",2],
+    ["CH","CH-Canelo",2],["CH","CH-Laurel",2],["Glamping","Glamping Tent",2],
   ] as const
 
   assert.equal(canonical.length, 41)
@@ -117,5 +117,6 @@ test("canonical Black Swan inventory resolves to the 41 verified BedBooking room
   const expected = VERIFIED_BEDBOOKING_REFERENCE_ROWS.map((row) => row.displayName)
   const resolved = canonical.map(([propertyName, roomNumber]) => getBedBookingDisplayIdentity({ propertyName, roomNumber }).displayName)
   assert.deepEqual(resolved, expected)
-  assert.ok(canonical.every(([propertyName, roomNumber]) => getBedBookingDisplayIdentity({ propertyName, roomNumber }).source === "bedbooking_verified"))
+  assert.deepEqual(canonical.map(([, , capacity]) => capacity), VERIFIED_BEDBOOKING_REFERENCE_ROWS.map((row) => row.guestCapacity))
+  assert.ok(canonical.every(([propertyName, roomNumber, capacity]) => { const identity = getBedBookingDisplayIdentity({ propertyName, roomNumber }); return identity.source === "bedbooking_verified" && identity.guestCapacity === capacity }))
 })
