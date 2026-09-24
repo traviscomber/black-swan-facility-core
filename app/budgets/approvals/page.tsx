@@ -21,11 +21,16 @@ export default function BudgetApprovalsPage() {
   return (
     <AppLayout>
       <PageHeader title={text.title} description={text.description} />
-      <SiiSourceReview />
-      <RaimundoReviewInbox />
-      <FinanceHistoricalAliasReview />
       <FinanceApprovalQueue />
-      <RaimundoFinanceImport />
+      <details className="mx-4 mb-8 bg-[var(--bs-surface-primary)] md:mx-8">
+        <summary className="cursor-pointer px-5 py-4 text-sm text-[var(--bs-text-secondary)]">Excepciones y herramientas</summary>
+        <div className="space-y-4 border-t border-[var(--bs-divider-subtle)] p-4">
+          <SiiSourceReview />
+          <RaimundoReviewInbox />
+          <FinanceHistoricalAliasReview />
+          <RaimundoFinanceImport />
+        </div>
+      </details>
     </AppLayout>
   )
 }
