@@ -190,12 +190,7 @@ export function FinanceApprovalQueue() {
   }
 
   async function setReconciliation(row: QueueRow, next: QueueRow['reconciliation_status']) {
-    const note = next === 'unknown' ? null : window.prompt(
-      next === 'unpaid' ? 'Nota opcional: por qué sigue impago' :
-      next === 'paid_observed' ? 'Nota opcional: evidencia de pago observada' :
-      next === 'reconciled' ? 'Nota opcional: referencia de conciliación' :
-      'Describe la excepción de conciliación'
-    )
+    const note = next === 'exception' ? window.prompt('Describe la excepción de conciliación') : null
     if (next === 'exception' && !note?.trim()) return
     setBusy(true)
     const { error } = await supabase.rpc('set_finance_document_reconciliation_status', {
@@ -230,9 +225,9 @@ export function FinanceApprovalQueue() {
       <section className="bg-[var(--bs-surface-primary)] p-5 md:p-6">
         <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
           <div className="max-w-3xl">
-            <p className="text-xs uppercase tracking-[0.14em] text-[var(--bs-warm-yellow)]">Paso 2 · Decidir</p>
-            <h2 className="mt-2 text-xl font-normal text-[var(--bs-text-primary)]">Clasificación y aprobación son estados distintos</h2>
-            <p className="mt-2 text-sm leading-6 text-[var(--bs-text-secondary)]">El historial explica qué tan confiable es una clasificación. Raimundo aprueba o rechaza después. Si el documento viene en CLP, la aprobación no altera el Budget hasta registrar una valorización EUR trazable.</p>
+            <p className="text-xs uppercase tracking-[0.14em] text-[var(--bs-warm-yellow)]">Raimundo</p>
+            <h2 className="mt-2 text-xl font-normal text-[var(--bs-text-primary)]">Revisar gastos</h2>
+            <p className="mt-2 text-sm leading-6 text-[var(--bs-text-secondary)]">Valida centro de costo, aprueba o rechaza y actualiza si sigue impago, fue pagado o quedó conciliado.</p>
           </div>
           <Button variant="outline" onClick={() => void load()} disabled={loading}><RefreshCw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />Actualizar</Button>
         </div>
