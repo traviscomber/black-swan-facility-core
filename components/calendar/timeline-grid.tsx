@@ -82,7 +82,7 @@ const propertyBandClasses = [
   "bg-slate-950/25",
 ]
 
-const COLLAPSED_GROUPS_KEY = "black-swan-booking-calendar-collapsed-properties"
+const COLLAPSED_GROUPS_KEY = "black-swan-booking-calendar-collapsed-properties-v2"
 
 const copy = {
   en: {
@@ -201,11 +201,9 @@ export function TimelineGrid(props: TimelineGridProps) {
       if (stored) {
         const parsed = JSON.parse(stored)
         if (Array.isArray(parsed)) setCollapsedGroups(new Set(parsed.filter((value): value is string => typeof value === "string")))
-      } else {
-        setCollapsedGroups(new Set(inventoryGroups.filter((group) => uniqueGroupReservationEvents(group, eventsByBed).length === 0).map((group) => group.locationId)))
       }
     } catch {
-      setCollapsedGroups(new Set(inventoryGroups.filter((group) => uniqueGroupReservationEvents(group, eventsByBed).length === 0).map((group) => group.locationId)))
+      setCollapsedGroups(new Set())
     } finally {
       setGroupsInitialized(true)
     }
@@ -269,7 +267,7 @@ export function TimelineGrid(props: TimelineGridProps) {
   }
 
   return (
-    <CardContent className="p-0">
+    <CardContent className="flex min-h-0 flex-1 flex-col space-y-0 p-0">
       <div className="border-b border-white/5 bg-[#17191a]">
         <div className="flex min-h-7 items-center justify-end px-2 py-0.5" aria-label={c.viewControls}>
           <details className="group relative">
@@ -292,7 +290,7 @@ export function TimelineGrid(props: TimelineGridProps) {
         </div>}
       </div>
 
-      <div ref={scrollRef} className="overflow-auto bg-[#122526]">
+      <div ref={scrollRef} className="min-h-0 flex-1 overflow-auto bg-[#122526]">
         <div style={{ minWidth: totalWidth }}>
           <div className="sticky top-0 z-30 flex border-b border-white/10 bg-[#17191a] shadow-sm">
             <div className="sticky left-0 z-40 flex shrink-0 items-center gap-2 border-r border-white/10 bg-[#17191a] px-3 text-[11px] font-medium tracking-wide text-white/65" style={{ width: LABEL_WIDTH, height: 40 }}>
