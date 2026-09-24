@@ -56,15 +56,23 @@ export function SiiPdfMetadataForm({ uploadId, filename, onCompleted }: Props) {
           headers: { 'content-type': 'application/json' },
           body: JSON.stringify({ upload_id: uploadId }),
         })
-        const payload = await response.json() as { error?: string; status?: string; result?: { document_id?: string | null; status?: string }; metadata?: FormState }
+        const payload = await response.json() as { error?: string; status?: string; confidence?: number | null; metadata?: Partial<FormState> }
         if (!active) return
-        if (response.ok && (payload.status === 'automatic' || payload.status === 'already_finalized')) {
-          toast.success('Factura leída automáticamente y enviada a clasificación.')
-          onCompleted(payload.result ?? { status: payload.status })
-          return
+        if (response.ok && payload.metadata) {
+          const metadata = payload.metadata
+          setForm((current) => ({
+            ...current,
+            ...metadata,
+            net_amount: metadata.net_amount == null ? current.net_amount : String(metadata.net_amount),
+            tax_amount: metadata.tax_amount == null ? current.tax_amount : String(metadata.tax_amount),
+            total_amount: metadata.total_amount == null ? current.total_amount : String(metadata.total_amount),
+            due_date: metadata.due_date ?? current.due_date,
+          }))
+          const confidence = typeof payload.confidence === 'number' ? ` · confianza ${Math.round(payload.confidence * 100)}%` : ''
+          setExtractionNote(`Datos extraídos automáticamente${confidence}. Revisa y presiona Procesar y guardar.`)
+        } else {
+          setExtractionNote('No fue posible completar la extracción automática. Revisa solo los campos que falten.')
         }
-        if (payload.metadata) setForm((current) => ({ ...current, ...payload.metadata }))
-        setExtractionNote('No fue posible confirmar todos los datos automáticamente. Revisa solo los campos pendientes.')
       } catch {
         if (active) setExtractionNote('No fue posible leer la factura automáticamente. Revisa los datos antes de continuar.')
       } finally {
@@ -126,7 +134,7 @@ export function SiiPdfMetadataForm({ uploadId, filename, onCompleted }: Props) {
     <div className="mt-4 bg-[var(--bs-surface-primary)] p-4">
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div>
-          <p className="text-xs uppercase tracking-[0.1em] text-[var(--bs-text-muted)]">Completar PDF</p>
+          <p className="text-xs uppercase tracking-[0.1em] text-[var(--bs-text-muted)]">Revisar factura</p>
           <p className="mt-1 text-sm text-[var(--bs-text-primary)]">{filename}</p>
           <p className="mt-1 text-xs text-[var(--bs-text-secondary)]">{extractionNote ?? 'Extracción automática incompleta; confirma únicamente los datos que falten. Raimundo mantiene la aprobación final.'}</p>
         </div>
@@ -149,7 +157,7 @@ export function SiiPdfMetadataForm({ uploadId, filename, onCompleted }: Props) {
       </div>
 
       <div className="mt-4 flex justify-end">
-        <Button onClick={() => void submit()} disabled={saving}>{saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}{saving ? 'Guardando…' : 'Crear y clasificar factura'}</Button>
+        <Button onClick={() => void submit()} disabled={saving}>{saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}{saving ? 'Procesando…' : 'Procesar y guardar'}</Button>
       </div>
     </div>
   )
