@@ -2,6 +2,7 @@ import { parseManualPdfMetadata, type ManualPdfMetadata } from '@/lib/finance/si
 
 export type PdfFiscalExtraction = {
   metadata: ManualPdfMetadata | null
+  draft: Record<string, unknown>
   confidence: number | null
   raw: Record<string, unknown>
   reason?: string
@@ -57,7 +58,7 @@ export async function extractSiiPdfFiscalMetadata(
   filename: string,
 ): Promise<PdfFiscalExtraction> {
   const endpoint = process.env.DOCUMENT_AI_ENDPOINT
-  if (!endpoint) return { metadata: null, confidence: null, raw: {}, reason: 'document_ai_not_configured' }
+  if (!endpoint) return { metadata: null, draft: {}, confidence: null, raw: {}, reason: 'document_ai_not_configured' }
 
   const token = process.env.DOCUMENT_AI_TOKEN
   const response = await fetch(endpoint, {
@@ -110,6 +111,7 @@ export async function extractSiiPdfFiscalMetadata(
 
   return {
     metadata,
+    draft: normalized,
     confidence,
     raw: payload,
     reason: metadata ? undefined : 'required_fiscal_fields_missing',
