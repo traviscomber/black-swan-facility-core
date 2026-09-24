@@ -2,7 +2,7 @@ import { createHash, randomUUID } from 'node:crypto'
 import { NextResponse } from 'next/server'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase/server'
-import { parseManualPdfMetadata, parseSiiXml, siiBaseName, siiExtension } from '@/lib/finance/sii-invoice'
+import { parseManualPdfMetadata, parseSiiXml, siiBaseName, siiExtension, type ParsedSiiInvoice } from '@/lib/finance/sii-invoice'
 
 export const runtime = 'nodejs'
 
@@ -28,40 +28,6 @@ function adminClient() {
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY
   if (!url || !key) throw new Error('Supabase server configuration is incomplete')
   return createAdminClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } })
-}
-
-function parseManualPdfMetadata(value: unknown): ManualPdfMetadata | null {
-  if (!value || typeof value !== 'object') return null
-  const row = value as Record<string, unknown>
-  const supplierName = typeof row.supplier_name === 'string' ? row.supplier_name.trim() : ''
-  const supplierRut = typeof row.supplier_rut === 'string' ? row.supplier_rut.trim() : ''
-  const documentNumber = typeof row.document_number === 'string' ? row.document_number.trim() : ''
-  const documentDate = typeof row.document_date === 'string' ? row.document_date.trim() : ''
-  const dueDate = typeof row.due_date === 'string' && row.due_date.trim() ? row.due_date.trim() : null
-  const documentType = typeof row.document_type === 'string' ? row.document_type : 'invoice'
-  const currency = typeof row.currency === 'string' ? row.currency.trim().toUpperCase() : 'CLP'
-  const totalAmount = Number(row.total_amount)
-  const netAmount = row.net_amount === '' || row.net_amount == null ? null : Number(row.net_amount)
-  const taxAmount = row.tax_amount === '' || row.tax_amount == null ? null : Number(row.tax_amount)
-
-  if (!supplierName || !supplierRut || !documentNumber || !/^\d{4}-\d{2}-\d{2}$/.test(documentDate)) return null
-  if (!['invoice', 'credit_note', 'debit_note', 'other'].includes(documentType)) return null
-  if (!/^[A-Z]{3}$/.test(currency) || !Number.isFinite(totalAmount) || totalAmount < 0) return null
-  if (netAmount != null && (!Number.isFinite(netAmount) || netAmount < 0)) return null
-  if (taxAmount != null && (!Number.isFinite(taxAmount) || taxAmount < 0)) return null
-
-  return {
-    supplier_name: supplierName,
-    supplier_rut: supplierRut,
-    document_number: documentNumber,
-    document_date: documentDate,
-    due_date: dueDate,
-    document_type: documentType as ManualPdfMetadata['document_type'],
-    net_amount: netAmount,
-    tax_amount: taxAmount,
-    total_amount: totalAmount,
-    currency,
-  }
 }
 
 export async function POST(request: Request) {
