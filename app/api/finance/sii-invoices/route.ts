@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase/server'
 import { parseManualPdfMetadata, parseSiiXml, siiBaseName, siiExtension, type ParsedSiiInvoice } from '@/lib/finance/sii-invoice'
+import { extractSiiPdfFiscalMetadata } from '@/lib/finance/sii-pdf-extraction'
 
 export const runtime = 'nodejs'
 
@@ -74,8 +75,35 @@ export async function POST(request: Request) {
         .maybeSingle()
 
       if (existingUpload) {
-        const existingDocumentId = existingUpload.finance_document_id
-        const existingStatus = existingDocumentId ? 'duplicate' : existingUpload.status
+        let existingDocumentId = existingUpload.finance_document_id
+        let existingStatus = existingDocumentId ? 'duplicate' : existingUpload.status
+        let extractionStatus: string | undefined
+
+        if (ext === 'pdf' && !existingDocumentId && (authorization.reviewer || existingUpload.uploaded_by === authorization.user.id)) {
+          try {
+            const extraction = await extractSiiPdfFiscalMetadata(bytes, file.name)
+            if (extraction.metadata) {
+              const { data: finalized, error: finalizeError } = await admin.rpc('finalize_sii_pdf_upload', {
+                p_upload_id: existingUpload.id,
+                p_actor_id: authorization.user.id,
+                p_metadata: extraction.metadata,
+              })
+              if (!finalizeError && finalized && typeof finalized === 'object') {
+                const auto = finalized as { document_id?: string | null; status?: string }
+                existingDocumentId = auto.document_id ?? null
+                existingStatus = auto.status ?? existingStatus
+                extractionStatus = 'automatic'
+              } else if (finalizeError) {
+                console.error('[finance/sii-invoices] automatic PDF finalization failed', finalizeError)
+              }
+            } else {
+              extractionStatus = extraction.reason ?? 'needs_review'
+            }
+          } catch (extractionError) {
+            console.error('[finance/sii-invoices] automatic extraction retry failed', extractionError)
+            extractionStatus = 'failed'
+          }
+        }
 
         results.push({
           filename: file.name,
@@ -83,6 +111,7 @@ export async function POST(request: Request) {
           document_id: existingDocumentId,
           status: existingStatus,
           duplicate: Boolean(existingUpload.finance_document_id),
+          ...(extractionStatus ? { extraction_status: extractionStatus } : {}),
         })
         if (existingDocumentId) documentByBase.set(siiBaseName(file.name), existingDocumentId)
         continue
@@ -115,6 +144,35 @@ export async function POST(request: Request) {
       }
 
       const result = registration as { upload_id?: string; document_id?: string | null; status?: string; classification_status?: string; duplicate?: boolean }
+
+      if (ext === 'pdf' && result.upload_id && !result.document_id) {
+        try {
+          const extraction = await extractSiiPdfFiscalMetadata(bytes, file.name)
+          if (extraction.metadata) {
+            const { data: finalized, error: finalizeError } = await admin.rpc('finalize_sii_pdf_upload', {
+              p_upload_id: result.upload_id,
+              p_actor_id: authorization.user.id,
+              p_metadata: extraction.metadata,
+            })
+            if (!finalizeError && finalized && typeof finalized === 'object') {
+              const auto = finalized as { document_id?: string | null; status?: string; classification_status?: string }
+              result.document_id = auto.document_id ?? null
+              result.status = auto.status ?? result.status
+              result.classification_status = auto.classification_status ?? result.classification_status
+              ;(result as Record<string, unknown>).extraction_status = 'automatic'
+              ;(result as Record<string, unknown>).extraction_confidence = extraction.confidence
+            } else if (finalizeError) {
+              console.error('[finance/sii-invoices] automatic PDF finalization failed', finalizeError)
+            }
+          } else {
+            ;(result as Record<string, unknown>).extraction_status = extraction.reason ?? 'needs_review'
+          }
+        } catch (extractionError) {
+          console.error('[finance/sii-invoices] automatic PDF extraction failed', extractionError)
+          ;(result as Record<string, unknown>).extraction_status = 'failed'
+        }
+      }
+
       if (result.document_id) documentByBase.set(siiBaseName(file.name), result.document_id)
       results.push({ filename: file.name, ...result })
     }
