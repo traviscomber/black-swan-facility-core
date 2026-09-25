@@ -10,10 +10,12 @@ import { loadAuthorizedNavigation, type AuthorizedNavItem } from "@/lib/os/autho
 import { SantiagoTodayCommandCenter } from "@/components/santiago-today-command-center"
 import { RoleAgenticBrief } from "@/components/role-agentic-brief"
 
-type FinanceCounts = {
+type WorkspaceCounts = {
   escalatedCenters: number
   pendingPayments: number
   readyToPay: number
+  openGuestRequests: number
+  pendingHousekeeping: number
 }
 
 const COPY = {
@@ -82,14 +84,21 @@ export function SantiagoHome() {
   const { language } = useLanguage()
   const locale = language === "en" || language === "de" ? language : "es"
   const copy = COPY[locale]
-  const [counts, setCounts] = useState<FinanceCounts>({ escalatedCenters: 0, pendingPayments: 0, readyToPay: 0 })
+  const [counts, setCounts] = useState<WorkspaceCounts>({
+    escalatedCenters: 0,
+    pendingPayments: 0,
+    readyToPay: 0,
+    openGuestRequests: 0,
+    pendingHousekeeping: 0,
+  })
   const [otherItems, setOtherItems] = useState<AuthorizedNavItem[]>([])
   const [loading, setLoading] = useState(true)
 
   const load = useCallback(async () => {
     setLoading(true)
 
-    const [escalatedResult, pendingResult, readyResult, navigationResult] = await Promise.all([
+    const today = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Santiago" }).format(new Date())
+    const [escalatedResult, pendingResult, readyResult, guestRequestsResult, housekeepingResult, navigationResult] = await Promise.all([
       supabase
         .from("finance_documents")
         .select("id", { count: "exact", head: true })
@@ -102,6 +111,15 @@ export function SantiagoHome() {
         .from("finance_documents")
         .select("id", { count: "exact", head: true })
         .eq("payment_status", "authorized"),
+      supabase
+        .from("hospitality_requests")
+        .select("id", { count: "exact", head: true })
+        .not("status", "in", "(completed,resolved,cancelled)"),
+      supabase
+        .from("housekeeping_tasks")
+        .select("id", { count: "exact", head: true })
+        .eq("service_date", today)
+        .not("status", "in", "(completed,cancelled)"),
       loadAuthorizedNavigation().catch(() => ({ items: [] })),
     ])
 
@@ -109,6 +127,8 @@ export function SantiagoHome() {
       escalatedCenters: escalatedResult.count ?? 0,
       pendingPayments: pendingResult.count ?? 0,
       readyToPay: readyResult.count ?? 0,
+      openGuestRequests: guestRequestsResult.count ?? 0,
+      pendingHousekeeping: housekeepingResult.count ?? 0,
     })
 
     const secondaryKeys = new Set(["bookings", "guest-requests", "payments"])
@@ -122,6 +142,8 @@ export function SantiagoHome() {
       .channel("santiago-home-live")
       .on("postgres_changes", { event: "*", schema: "public", table: "finance_documents" }, () => void load())
       .on("postgres_changes", { event: "*", schema: "public", table: "reservations" }, () => void load())
+      .on("postgres_changes", { event: "*", schema: "public", table: "hospitality_requests" }, () => void load())
+      .on("postgres_changes", { event: "*", schema: "public", table: "housekeeping_tasks" }, () => void load())
       .subscribe()
     return () => { void supabase.removeChannel(channel) }
   }, [load, supabase])
@@ -146,6 +168,22 @@ export function SantiagoHome() {
       <RoleAgenticBrief
         persona="santiago"
         signals={[
+          {
+            key: "guest-requests",
+            count: counts.openGuestRequests,
+            title: copy.requests,
+            task: `coordinar ${counts.openGuestRequests} solicitudes abiertas de huéspedes y asegurar responsable y seguimiento`,
+            operationalArea: "hospitality",
+            severity: counts.openGuestRequests > 0 ? "attention" : "normal",
+          },
+          {
+            key: "housekeeping-today",
+            count: counts.pendingHousekeeping,
+            title: "Housekeeping pendiente",
+            task: `coordinar ${counts.pendingHousekeeping} tareas de housekeeping pendientes para hoy`,
+            operationalArea: "hospitality",
+            severity: counts.pendingHousekeeping > 0 ? "attention" : "normal",
+          },
           {
             key: "cost-center-exceptions",
             count: counts.escalatedCenters,
