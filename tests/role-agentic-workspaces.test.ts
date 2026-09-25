@@ -73,3 +73,12 @@ test('orchestrator supports structured arrival preparation proposals', () => {
   assert.match(route, /requestedCapability === "hospitality\.prepare_arrival"/)
   assert.match(route, /create_ai_arrival_preparation_proposal/)
 })
+
+
+test('Raimundo agent consolidates cattle vineyard and orchard into one daily field round', () => {
+  assert.match(raimundo, /field-admin-round/)
+  assert.match(raimundo, /Ronda diaria del campo/)
+  assert.match(raimundo, /orchardOpenTasks/)
+  assert.match(raimundo, /operationalArea: "field_admin"/)
+  assert.match(raimundo, /table: "tasks"/)
+})
