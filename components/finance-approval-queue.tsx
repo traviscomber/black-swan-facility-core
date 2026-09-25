@@ -94,7 +94,7 @@ export function FinanceApprovalQueue() {
   const requestedSuggestions = useRef(new Set<string>())
   const requestedValuations = useRef(new Set<string>())
 
-  const approveWithAutomaticEur = useCallback(async (documentId: string, notes: string | null = null) => {
+  const approveDocument = useCallback(async (documentId: string, notes: string | null = null) => {
     const response = await fetch('/api/finance/approve', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
@@ -112,7 +112,7 @@ export function FinanceApprovalQueue() {
         fx_source?: string
       }
     }
-    if (!response.ok) throw new Error(payload.error || 'No se pudo aprobar y convertir a EUR.')
+    if (!response.ok) throw new Error(payload.error || 'No se pudo aprobar el documento.')
     return payload
   }, [])
 
@@ -190,19 +190,16 @@ export function FinanceApprovalQueue() {
       let failed = 0
       for (const row of pending) {
         try {
-          await approveWithAutomaticEur(row.id, 'Conversión EUR automática de aprobación previa')
+          await approveDocument(row.id, 'Valorización interna automática')
           converted += 1
         } catch {
           failed += 1
         }
       }
-      if (converted) {
-        toast.success(`${converted} aprobación${converted === 1 ? '' : 'es'} convertida${converted === 1 ? '' : 's'} automáticamente a EUR.`)
-        await load()
-      }
-      if (failed) toast.error(`${failed} conversión${failed === 1 ? '' : 'es'} EUR quedó${failed === 1 ? '' : 'aron'} pendiente${failed === 1 ? '' : 's'} por falta de tasa válida.`)
+      if (converted) await load()
+      if (failed) console.warn('[finance] background valuation retry deferred', { failed })
     })()
-  }, [approveWithAutomaticEur, canApprove, load, rows])
+  }, [approveDocument, canApprove, load, rows])
 
   const filtered = useMemo(() => status === 'review'
     ? rows.filter((row) => row.approval_status === 'pending_mapping' || row.approval_status === 'ready')
@@ -219,14 +216,14 @@ export function FinanceApprovalQueue() {
     let approved = 0
     for (const id of validIds) {
       try {
-        await approveWithAutomaticEur(id)
+        await approveDocument(id)
         approved += 1
       } catch (error) {
-        toast.error(error instanceof Error ? error.message : 'No se pudo completar la aprobación con conversión EUR.')
+        toast.error(error instanceof Error ? error.message : 'No se pudo completar la aprobación.')
         break
       }
     }
-    if (approved) toast.success(`${approved} documento${approved === 1 ? '' : 's'} aprobado${approved === 1 ? '' : 's'} · EUR convertido automáticamente · enviado${approved === 1 ? '' : 's'} a Santiago.`)
+    if (approved) toast.success(`${approved} documento${approved === 1 ? '' : 's'} aprobado${approved === 1 ? '' : 's'} · enviado${approved === 1 ? '' : 's'} a Santiago.`)
     await load()
     setBusy(false)
   }
@@ -277,14 +274,10 @@ export function FinanceApprovalQueue() {
         ? 'Centro de costo asignado por Raimundo antes de envío a Santiago'
         : `Centro de costo corregido por Raimundo · ${note}`
     try {
-      const approval = await approveWithAutomaticEur(row.id, approvalNote)
-      const amountEur = Number(approval.result?.amount_eur ?? 0)
-      const eurText = approval.valuation === 'automatic' && amountEur > 0
-        ? ` · €${amountEur.toLocaleString('es-CL', { maximumFractionDigits: 2 })} valorizado automáticamente`
-        : ''
-      toast.success(`Centro confirmado y gasto aprobado${eurText} · enviado a Santiago para revisión y pago.`)
+      await approveDocument(row.id, approvalNote)
+      toast.success('Centro confirmado y gasto aprobado · enviado a Santiago para revisión y pago.')
     } catch (error) {
-      toast.error(`Centro guardado, pero la aprobación no avanzó a Santiago: ${error instanceof Error ? error.message : 'falló la conversión EUR automática'}`)
+      toast.error(`Centro guardado, pero la aprobación no avanzó a Santiago: ${error instanceof Error ? error.message : 'falló la aprobación'}`)
     }
 
     setReassigningId(null)
@@ -315,9 +308,8 @@ export function FinanceApprovalQueue() {
           </div>
           <Button variant="outline" onClick={() => void load()} disabled={loading}><RefreshCw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />Actualizar</Button>
         </div>
-        <div className="mt-5 grid gap-3 md:grid-cols-4">
+        <div className="mt-5 grid gap-3 md:grid-cols-3">
           <div className="bg-[var(--bs-surface-secondary)] p-4 md:col-span-2"><p className="text-xs uppercase tracking-[0.1em] text-[var(--bs-text-muted)]">Por revisar</p><p className="mt-2 text-xl text-[var(--bs-warm-yellow)]">{reviewCount}</p><p className="mt-1 text-xs text-[var(--bs-text-secondary)]">{counts.pending_mapping ?? 0} sin confirmar · {aiSuggestionCount} recomendaciones IA disponibles · {counts.ready ?? 0} preclasificadas por historial{aiAnalyzedCount ? ` · ${aiAnalyzedCount} analizadas` : ''}</p></div>
-          <div className="bg-[var(--bs-surface-secondary)] p-4"><p className="text-xs uppercase tracking-[0.1em] text-[var(--bs-text-muted)]">EUR automático</p><p className="mt-2 text-xl text-[var(--bs-cool-sky)]">{counts.pending_valuation ?? 0}</p><p className="mt-1 text-xs text-[var(--bs-text-secondary)]">pendientes heredadas en conversión · las nuevas se valorizan al aprobar</p></div>
           <div className="bg-[var(--bs-surface-secondary)] p-4"><p className="text-xs uppercase tracking-[0.1em] text-[var(--bs-text-muted)]">Cerradas</p><p className="mt-2 text-xl text-[var(--bs-text-primary)]">{(counts.approved ?? 0) + (counts.rejected ?? 0)}</p></div>
         </div>
       </section>
