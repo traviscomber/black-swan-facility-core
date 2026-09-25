@@ -14,8 +14,9 @@ export type AgenticSignal = {
   task: string
   operationalArea: string
   severity?: "normal" | "attention"
-  capability?: "hospitality.assign_request"
+  capability?: "hospitality.assign_request" | "hospitality.prepare_arrival"
   requestId?: string | null
+  reservationId?: string | null
 }
 
 type ProposalState = {
@@ -100,10 +101,16 @@ export function RoleAgenticBrief({ persona, signals }: { persona: Persona; signa
                 requestId: signal.requestId,
                 context: { operationalArea: signal.operationalArea, persona, source: "role_agentic_brief" },
               }
-            : {
-                message: `crea una tarea para ${signal.task}`,
-                context: { operationalArea: signal.operationalArea, persona, source: "role_agentic_brief" },
-              },
+            : signal.capability === "hospitality.prepare_arrival" && signal.reservationId
+              ? {
+                  capability: signal.capability,
+                  reservationId: signal.reservationId,
+                  context: { operationalArea: signal.operationalArea, persona, source: "role_agentic_brief" },
+                }
+              : {
+                  message: `crea una tarea para ${signal.task}`,
+                  context: { operationalArea: signal.operationalArea, persona, source: "role_agentic_brief" },
+                },
         ),
       })
       const result = await response.json()
@@ -112,10 +119,16 @@ export function RoleAgenticBrief({ persona, signals }: { persona: Persona; signa
       }
       const proposedName =
         typeof result?.proposedAction?.employeeName === "string" ? result.proposedAction.employeeName : null
+      const proposedGuest =
+        typeof result?.proposedAction?.guestName === "string" ? result.proposedAction.guestName : null
       setProposal({
         signalKey: signal.key,
         proposalId: result.proposalId,
-        title: proposedName ? `${signal.title} → ${proposedName}` : signal.title,
+        title: proposedName
+          ? `${signal.title} → ${proposedName}`
+          : proposedGuest
+            ? `${signal.title} · ${proposedGuest}`
+            : signal.title,
       })
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : copy.failed)
