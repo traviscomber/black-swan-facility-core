@@ -32,7 +32,7 @@ const areaPriorities: Record<OsPersonaKey, OsAreaKey[]> = {
   field_admin: ["today", "operations", "places-assets", "people", "finance", "network"],
   general: ["today", "operations", "places-assets", "people", "finance", "network"],
   santiago: ["today", "operations", "finance", "people", "places-assets", "network"],
-  raimundo: ["today", "finance", "places-assets", "operations", "people", "network"],
+  raimundo: ["today", "finance", "operations", "places-assets", "people", "network"],
 }
 
 export function normalizeOsPersona(value: unknown): OsPersonaKey {
