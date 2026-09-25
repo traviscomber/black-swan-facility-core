@@ -114,6 +114,8 @@ test('PDF intake attempts automatic fiscal extraction before manual fallback', (
   assert.match(extractionSource, /OPENAI_API_KEY/)
   assert.match(extractionSource, /api\.openai\.com\/v1\/responses/)
   assert.match(extractionSource, /type: 'input_file'/)
+  assert.match(extractionSource, /data:application\\/pdf;base64/)
+  assert.match(extractionSource, /detail: 'high'/)
   assert.doesNotMatch(extractionSource, /DOCUMENT_AI_ENDPOINT/)
   assert.doesNotMatch(extractionSource, /from 'ai'/)
   assert.match(extractionSource, /supplier_name/)
