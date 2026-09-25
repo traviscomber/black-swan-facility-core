@@ -7,7 +7,7 @@ import { useLanguage } from '@/lib/hooks/use-language'
 
 const copy = {
   en: { title: 'Supplier payments', description: 'Final payment authorization and execution after Raimundo validates the expense allocation.' },
-  es: { title: 'Pagos a proveedores', description: 'Autorización final y ejecución del pago después de que Raimundo valida la imputación del gasto.' },
+  es: { title: 'Finanzas · Santiago', description: 'Dos tareas separadas: resolver imputaciones escaladas y autorizar o ejecutar pagos ya aprobados por Raimundo.' },
   de: { title: 'Lieferantenzahlungen', description: 'Endgültige Zahlungsfreigabe und Ausführung nach Raimundos Prüfung der Kostenverteilung.' },
 } as const
 
