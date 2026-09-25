@@ -12,7 +12,7 @@ export type AuthorizedNavigation = { role?: string; is_member?: boolean; items?:
 const labels: Record<string, string> = {
   bookings: 'Reservas', activities: 'Actividades', tasks: 'Tareas', 'asana-live': 'Asana en vivo', checklists: 'Checklists', procurement: 'Compras', maintenance: 'Mantenimiento', issues: 'Incidencias',
   'guest-requests': 'Solicitudes de huéspedes', employees: 'Personas', 'property-management': 'Propiedades', inventory: 'Inventario', energy: 'Energía', map: 'Mapa', orchard: 'Huerto', vineyard: 'Viñedo', cattle: 'Ganadería',
-  'cattle-health': 'Salud animal', fuel: 'Combustibles', budget: 'Presupuesto', approvals: 'Aprobaciones', documents: 'Documentos', reconciliation: 'Conciliación', accounting: 'Contabilidad', invoices: 'Facturas',
+  'cattle-health': 'Salud animal', fuel: 'Combustibles', budget: 'Presupuesto', approvals: 'Aprobaciones', payments: 'Pagos a proveedores', documents: 'Documentos', reconciliation: 'Conciliación', accounting: 'Contabilidad', invoices: 'Facturas',
 }
 
 function readableLabel(key: string) {
