@@ -32,5 +32,5 @@ test('Raimundo can reassign allocation before expense approval', () => {
   assert.match(approval, /Seleccionar centro de costo/)
   assert.match(approval, /p_target_center_id/)
   assert.match(approval, /Motivo de la reasignación/)
-  assert.match(approval, /Rechazar gasto/)
+  assert.match(approval, />Rechazar<\/Button>/)
 })
