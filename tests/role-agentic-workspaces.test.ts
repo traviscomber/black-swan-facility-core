@@ -59,3 +59,17 @@ test('orchestrator supports structured hospitality assignment proposals', () => 
   assert.match(route, /requestedCapability === "hospitality\.assign_request"/)
   assert.match(route, /create_ai_hospitality_assignment_proposal/)
 })
+
+
+test('Santiago can prepare one confirmation-gated arrival bundle', () => {
+  assert.match(santiago, /prepare-next-arrival/)
+  assert.match(santiago, /hospitality\.prepare_arrival/)
+  assert.match(santiago, /reservationId: nextArrival\?\.id/)
+  assert.match(brief, /hospitality\.prepare_arrival/)
+  assert.match(brief, /reservationId/)
+})
+
+test('orchestrator supports structured arrival preparation proposals', () => {
+  assert.match(route, /requestedCapability === "hospitality\.prepare_arrival"/)
+  assert.match(route, /create_ai_arrival_preparation_proposal/)
+})
