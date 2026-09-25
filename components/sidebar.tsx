@@ -199,6 +199,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
     if (paymentOnlyFinance) {
       return visibleAreas.map(area => area.key === "finance" ? {
         ...area,
+        href: "/budgets/payments",
         items: area.items.filter(item => item.key === "payments"),
       } : area)
     }
