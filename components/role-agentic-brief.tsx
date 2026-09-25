@@ -14,6 +14,8 @@ export type AgenticSignal = {
   task: string
   operationalArea: string
   severity?: "normal" | "attention"
+  capability?: "hospitality.assign_request"
+  requestId?: string | null
 }
 
 type ProposalState = {
@@ -91,16 +93,30 @@ export function RoleAgenticBrief({ persona, signals }: { persona: Persona; signa
       const response = await fetch("/api/ai/orchestrate", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          message: `crea una tarea para ${signal.task}`,
-          context: { operationalArea: signal.operationalArea, persona, source: "role_agentic_brief" },
-        }),
+        body: JSON.stringify(
+          signal.capability === "hospitality.assign_request" && signal.requestId
+            ? {
+                capability: signal.capability,
+                requestId: signal.requestId,
+                context: { operationalArea: signal.operationalArea, persona, source: "role_agentic_brief" },
+              }
+            : {
+                message: `crea una tarea para ${signal.task}`,
+                context: { operationalArea: signal.operationalArea, persona, source: "role_agentic_brief" },
+              },
+        ),
       })
       const result = await response.json()
       if (!response.ok || result?.success !== true || typeof result?.proposalId !== "string") {
         throw new Error(typeof result?.error === "string" ? result.error : copy.failed)
       }
-      setProposal({ signalKey: signal.key, proposalId: result.proposalId, title: signal.title })
+      const proposedName =
+        typeof result?.proposedAction?.employeeName === "string" ? result.proposedAction.employeeName : null
+      setProposal({
+        signalKey: signal.key,
+        proposalId: result.proposalId,
+        title: proposedName ? `${signal.title} → ${proposedName}` : signal.title,
+      })
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : copy.failed)
     } finally {
@@ -172,10 +188,13 @@ export function RoleAgenticBrief({ persona, signals }: { persona: Persona; signa
                     {isDone ? (
                       <div className="text-xs font-medium text-primary">{copy.done}</div>
                     ) : isPrepared ? (
-                      <Button size="sm" className="w-full" disabled={isBusy} onClick={() => void execute()}>
+                      <div className="space-y-2">
+                        <p className="text-xs text-muted-foreground">{proposal?.title}</p>
+                        <Button size="sm" className="w-full" disabled={isBusy} onClick={() => void execute()}>
                         {isBusy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Check className="mr-2 h-4 w-4" />}
                         {isBusy ? copy.executing : copy.confirm}
-                      </Button>
+                        </Button>
+                      </div>
                     ) : (
                       <Button size="sm" variant="outline" className="w-full" disabled={isBusy || Boolean(proposal)} onClick={() => void prepare(signal)}>
                         {isBusy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
