@@ -22,6 +22,9 @@ type PaymentRow = {
   operational_label: string | null
   approved_at: string | null
   payment_status: PaymentStatus
+  amount_eur: number | string | null
+  fx_rate_to_eur: number | string | null
+  fx_date: string | null
   payment_decision_notes: string | null
   payment_decided_at: string | null
   paid_at: string | null
@@ -73,7 +76,7 @@ export function SantiagoPaymentQueue() {
 
     const [documents, divisionResult, categoryResult, sourceResult] = await Promise.all([
       supabase.from('finance_documents')
-        .select('id,supplier_name,document_number,document_date,due_date,total_amount,currency,division_id,category_id,cost_center_id,operational_label,approved_at,payment_status,payment_decision_notes,payment_decided_at,paid_at,payment_method,payment_reference')
+        .select('id,supplier_name,document_number,document_date,due_date,total_amount,currency,division_id,category_id,cost_center_id,operational_label,approved_at,payment_status,amount_eur,fx_rate_to_eur,fx_date,payment_decision_notes,payment_decided_at,paid_at,payment_method,payment_reference')
         .neq('payment_status', 'not_ready')
         .order('approved_at', { ascending: false }),
       supabase.from('budget_divisions').select('id,name'),
@@ -205,7 +208,14 @@ export function SantiagoPaymentQueue() {
                       {row.operational_label && <p className="mt-1 text-xs text-[var(--bs-text-secondary)]">{row.operational_label}</p>}
                       {row.approved_at && <p className="mt-2 text-xs text-[var(--bs-cool-sage)]">Validado por Raimundo · {new Date(row.approved_at).toLocaleString('es-CL')}</p>}
                     </td>
-                    <td className="px-4 py-4 text-right text-[var(--bs-text-primary)]">{money(row.total_amount, row.currency)}</td>
+                    <td className="px-4 py-4 text-right text-[var(--bs-text-primary)]">
+                      <p>{money(row.total_amount, row.currency)}</p>
+                      {row.amount_eur !== null && row.amount_eur !== undefined && (
+                        <p className="mt-1 text-xs text-[var(--bs-cool-sky)]">
+                          Budget · {money(row.amount_eur, 'EUR')}{row.fx_date ? ` · FX ${new Date(`${row.fx_date}T00:00:00`).toLocaleDateString('es-CL')}` : ''}
+                        </p>
+                      )}
+                    </td>
                     <td className="px-4 py-4 text-xs text-[var(--bs-text-secondary)]">
                       {row.payment_status === 'pending_santiago' && 'Esperando decisión de Santiago'}
                       {row.payment_status === 'authorized' && 'Autorizado · pendiente de ejecutar'}
