@@ -6,6 +6,8 @@ const migration = readFileSync(new URL('../supabase/migrations/20260924212000_sa
 const queue = readFileSync(new URL('../components/santiago-payment-queue.tsx', import.meta.url), 'utf8')
 const approval = readFileSync(new URL('../components/finance-approval-queue.tsx', import.meta.url), 'utf8')
 const budgetMappingFix = readFileSync(new URL('../supabase/migrations/20260925024500_fix_assign_finance_budget_audit_action.sql', import.meta.url), 'utf8')
+const sidebar = readFileSync(new URL('../components/sidebar.tsx', import.meta.url), 'utf8')
+const approvalsPage = readFileSync(new URL('../app/budgets/approvals/page.tsx', import.meta.url), 'utf8')
 
 test('finance flow separates Raimundo expense validation from Santiago payment control', () => {
   assert.match(migration, /payment_status/)
@@ -46,4 +48,20 @@ test('canonical Budget mapping uses an allowed critical audit action', () => {
   assert.match(budgetMappingFix, /'UPDATE','finance'/)
   assert.match(budgetMappingFix, /'operation','assign_canonical_budget_mapping'/)
   assert.doesNotMatch(budgetMappingFix, /'assign_canonical_budget_mapping','finance'/)
+})
+
+
+test('Santiago sees only his supplier payment task in Finance', () => {
+  assert.match(sidebar, /const paymentOnly = financePayer && !financeApprover/)
+  assert.match(sidebar, /item\.key === "payments"/)
+  assert.match(sidebar, /paymentOnly \? "\/budgets\/payments" : "\/os"/)
+  assert.match(sidebar, /supabase\.rpc\("can_finance_approve"\)/)
+  assert.match(sidebar, /supabase\.rpc\("can_finance_payment_authorize"\)/)
+})
+
+test('Santiago cannot open Raimundo approval workspace', () => {
+  assert.match(approvalsPage, /can_finance_approve/)
+  assert.match(approvalsPage, /can_finance_payment_authorize/)
+  assert.match(approvalsPage, /payer\.data \? '\/budgets\/payments' : '\/os'/)
+  assert.match(approvalsPage, /if \(allowed !== true\) return null/)
 })
