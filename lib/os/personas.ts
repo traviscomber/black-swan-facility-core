@@ -1,6 +1,6 @@
 import type { OsAreaKey } from "@/lib/os/navigation"
 
-export type OsPersonaKey = "executive" | "field_admin" | "general"
+export type OsPersonaKey = "executive" | "field_admin" | "general" | "santiago"
 export type OsPersonaLanguage = "en" | "es" | "de"
 
 const personaLabels: Record<OsPersonaLanguage, Record<OsPersonaKey, string>> = {
@@ -8,16 +8,19 @@ const personaLabels: Record<OsPersonaLanguage, Record<OsPersonaKey, string>> = {
     executive: "Executive",
     field_admin: "Field operations",
     general: "Operations",
+    santiago: "Santiago · Booking & Finance",
   },
   es: {
     executive: "Dirección",
     field_admin: "Operación en terreno",
     general: "Operación",
+    santiago: "Santiago · Booking y Finanzas",
   },
   de: {
     executive: "Leitung",
     field_admin: "Betrieb vor Ort",
     general: "Betrieb",
+    santiago: "Santiago · Buchung & Finanzen",
   },
 }
 
@@ -25,10 +28,11 @@ const areaPriorities: Record<OsPersonaKey, OsAreaKey[]> = {
   executive: ["operations", "today", "finance", "places-assets", "people", "network"],
   field_admin: ["today", "operations", "places-assets", "people", "finance", "network"],
   general: ["today", "operations", "places-assets", "people", "finance", "network"],
+  santiago: ["today", "operations", "finance", "people", "places-assets", "network"],
 }
 
 export function normalizeOsPersona(value: unknown): OsPersonaKey {
-  return value === "executive" || value === "field_admin" || value === "general" ? value : "general"
+  return value === "executive" || value === "field_admin" || value === "general" || value === "santiago" ? value : "general"
 }
 
 export function getOsPersonaLabel(persona: OsPersonaKey, primaryDomain?: string | null, language: OsPersonaLanguage = "es") {
