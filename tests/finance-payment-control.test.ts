@@ -29,9 +29,9 @@ test('Santiago is the configured final payer and payment evidence is mandatory',
 test('Raimundo can reassign allocation before expense approval', () => {
   assert.match(approval, /Cambiar centro/)
   assert.match(approval, /Asignar centro de costo/)
-  assert.match(approval, /reassign_finance_document_center/)
-  assert.match(approval, /Seleccionar centro de costo/)
-  assert.match(approval, /p_target_center_id/)
+  assert.match(approval, /assign_finance_document_budget_mapping/)
+  assert.match(approval, /Seleccionar imputación del Budget/)
+  assert.match(approval, /p_category_id/)
   assert.match(approval, /Motivo de la reasignación/)
   assert.match(approval, /Aprobar sugerencia → Santiago/)
   assert.match(approval, /Cambiar y aprobar → Santiago/)
