@@ -6,6 +6,7 @@ import { BigPictureHome } from '@/components/big-picture-home'
 import { FieldAdminHome } from '@/components/field-admin-home'
 import { OsDecisionCockpit } from '@/components/os-decision-cockpit'
 import { OsHome } from '@/components/os-home'
+import { SantiagoHome } from '@/components/santiago-home'
 import { useOsPersona } from '@/lib/hooks/use-os-persona'
 import { useLanguage } from '@/lib/hooks/use-language'
 
@@ -26,8 +27,8 @@ export function OsEntry() {
 
   if (loading) return <div className="p-6 text-sm text-muted-foreground">{text.loading}</div>
 
-  const dailyHome = persona === 'field_admin' ? <FieldAdminHome /> : <OsHome />
-  const showDecisionCockpit = !panorama && !areaView && persona !== 'field_admin'
+  const dailyHome = persona === 'field_admin' ? <FieldAdminHome /> : persona === 'santiago' ? <SantiagoHome /> : <OsHome />
+  const showDecisionCockpit = !panorama && !areaView && persona !== 'field_admin' && persona !== 'santiago'
 
   return (
     <div>
