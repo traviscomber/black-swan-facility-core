@@ -13,7 +13,10 @@ test("OS exposes daily operation and Panorama as two locale-preserving views of 
   assert.match(entry, /href=\{osHref\}/)
   assert.match(entry, /href=\{`\$\{osHref\}\?view=panorama`\}/)
   assert.match(entry, /panorama \? <BigPictureHome \/>/)
-  assert.match(entry, /persona === 'field_admin' \? <FieldAdminHome \/> : <OsHome \/>/)
+  assert.match(entry, /persona === 'field_admin' \? <FieldAdminHome \/>/)
+  assert.match(entry, /persona === 'santiago' \? <SantiagoHome \/>/)
+  assert.match(entry, /persona === 'raimundo' \? <RaimundoHome \/>/)
+  assert.match(entry, /: <OsHome \/>/)
 })
 
 test("OS home localizes workspace presentation while keeping canonical navigation neutral", () => {
