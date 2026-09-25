@@ -316,7 +316,7 @@ export function FinanceApprovalQueue() {
           <div className="max-w-3xl">
             <p className="text-xs uppercase tracking-[0.14em] text-[var(--bs-warm-yellow)]">Bandeja 1 · Raimundo</p>
             <h2 className="mt-2 text-xl font-normal text-[var(--bs-text-primary)]">Decidir imputación y aprobar gasto</h2>
-            <p className="mt-2 text-sm leading-6 text-[var(--bs-text-secondary)]">Una sola decisión por factura: aprobar la imputación, corregirla, pedir a Santiago que defina el centro o rechazar el gasto. Las facturas escaladas vuelven aquí antes de cualquier pago.</p>
+            <p className="mt-2 text-sm leading-6 text-[var(--bs-text-secondary)]">Raimundo siempre es el primero en revisar el centro de costo sugerido. Debe aceptarlo o cambiarlo; sólo si no tiene certeza puede pedir apoyo a Santiago. Las facturas escaladas vuelven aquí antes de cualquier aprobación de gasto o pago.</p>
           </div>
           <Button variant="outline" onClick={() => void load()} disabled={loading}><RefreshCw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />Actualizar</Button>
         </div>
