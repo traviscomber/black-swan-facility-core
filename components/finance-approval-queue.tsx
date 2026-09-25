@@ -119,7 +119,6 @@ export function FinanceApprovalQueue() {
     : rows.filter((row) => row.approval_status === status), [rows, status])
   const counts = useMemo(() => rows.reduce<Record<string, number>>((acc, row) => { acc[row.approval_status] = (acc[row.approval_status] ?? 0) + 1; return acc }, {}), [rows])
   const reviewCount = (counts.pending_mapping ?? 0) + (counts.ready ?? 0)
-  const decisionBreakdown = useMemo(() => rows.filter((row) => row.approval_status === 'ready').reduce<Record<string, number>>((acc, row) => { acc[row.classification_status] = (acc[row.classification_status] ?? 0) + 1; return acc }, {}), [rows])
 
   async function approve(ids: string[]) {
     const validIds = ids.filter((id) => rows.some((row) => row.id === id && row.approval_status === 'ready' && isCanonicalMapped(row)))
