@@ -38,6 +38,7 @@ type QueueRow = {
   cost_center_name: string | null
   operational_label: string | null
   decision_notes: string | null
+  cost_center_escalation_status: 'none' | 'pending_santiago' | 'resolved'
 }
 type Division = { id: string; name: string }
 type Category = { id: string; division_id: string; name: string }
@@ -196,10 +197,11 @@ export function FinanceApprovalQueue() {
   }, [approveDocument, canApprove, load, rows])
 
   const filtered = useMemo(() => status === 'review'
-    ? rows.filter((row) => row.approval_status === 'pending_mapping' || row.approval_status === 'ready')
+    ? rows.filter((row) => (row.approval_status === 'pending_mapping' || row.approval_status === 'ready') && row.cost_center_escalation_status !== 'pending_santiago')
     : rows.filter((row) => row.approval_status === status), [rows, status])
   const counts = useMemo(() => rows.reduce<Record<string, number>>((acc, row) => { acc[row.approval_status] = (acc[row.approval_status] ?? 0) + 1; return acc }, {}), [rows])
-  const reviewCount = (counts.pending_mapping ?? 0) + (counts.ready ?? 0)
+  const escalatedCount = rows.filter((row) => row.cost_center_escalation_status === 'pending_santiago').length
+  const reviewCount = rows.filter((row) => (row.approval_status === 'pending_mapping' || row.approval_status === 'ready') && row.cost_center_escalation_status !== 'pending_santiago').length
   const aiSuggestionCount = Object.values(aiSuggestions).filter(Boolean).length
   const aiAnalyzedCount = Object.keys(aiSuggestions).length
 
@@ -281,6 +283,22 @@ export function FinanceApprovalQueue() {
     setBusy(false)
   }
 
+  async function escalateToSantiago(row: QueueRow) {
+    setBusy(true)
+    const { error } = await supabase.rpc('escalate_finance_document_cost_center', {
+      p_document_id: row.id,
+      p_note: 'Raimundo solicita a Santiago definir la imputación del centro de costo',
+    })
+    if (error) toast.error(error.message)
+    else {
+      toast.success('Escalado a Santiago para asignar centro de costo. Volverá a Raimundo para aprobación.')
+      setReassigningId(null)
+      setReassignNote('')
+      await load()
+    }
+    setBusy(false)
+  }
+
   async function reject(row: QueueRow) {
     const notes = window.prompt(`Motivo de rechazo para ${row.supplier_name} · ${row.document_number}`)
     if (!notes?.trim()) return
@@ -298,12 +316,12 @@ export function FinanceApprovalQueue() {
           <div className="max-w-3xl">
             <p className="text-xs uppercase tracking-[0.14em] text-[var(--bs-warm-yellow)]">Raimundo · Primera tarea</p>
             <h2 className="mt-2 text-xl font-normal text-[var(--bs-text-primary)]">Revisar todas las facturas nuevas</h2>
-            <p className="mt-2 text-sm leading-6 text-[var(--bs-text-secondary)]">La IA sugiere el centro de costo de cada factura. Raimundo aprueba la sugerencia en un clic o cambia el centro y aprueba; solo entonces el gasto pasa a Santiago para revisión final y pago.</p>
+            <p className="mt-2 text-sm leading-6 text-[var(--bs-text-secondary)]">La IA sugiere el centro de costo de cada factura. Raimundo puede aprobar la sugerencia, cambiarla o escalar la imputación a Santiago si no tiene certeza. Cuando Santiago asigna el centro, la factura vuelve a Raimundo para aprobación antes del pago.</p>
           </div>
           <Button variant="outline" onClick={() => void load()} disabled={loading}><RefreshCw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />Actualizar</Button>
         </div>
         <div className="mt-5 grid gap-3 md:grid-cols-3">
-          <div className="bg-[var(--bs-surface-secondary)] p-4 md:col-span-2"><p className="text-xs uppercase tracking-[0.1em] text-[var(--bs-text-muted)]">Por revisar</p><p className="mt-2 text-xl text-[var(--bs-warm-yellow)]">{reviewCount}</p><p className="mt-1 text-xs text-[var(--bs-text-secondary)]">{counts.pending_mapping ?? 0} sin confirmar · {aiSuggestionCount} recomendaciones IA disponibles · {counts.ready ?? 0} preclasificadas por historial{aiAnalyzedCount ? ` · ${aiAnalyzedCount} analizadas` : ''}</p></div>
+          <div className="bg-[var(--bs-surface-secondary)] p-4 md:col-span-2"><p className="text-xs uppercase tracking-[0.1em] text-[var(--bs-text-muted)]">Por revisar</p><p className="mt-2 text-xl text-[var(--bs-warm-yellow)]">{reviewCount}</p><p className="mt-1 text-xs text-[var(--bs-text-secondary)]">{reviewCount} en manos de Raimundo · {escalatedCount} escaladas a Santiago · {aiSuggestionCount} recomendaciones IA disponibles{aiAnalyzedCount ? ` · ${aiAnalyzedCount} analizadas` : ''}</p></div>
           <div className="bg-[var(--bs-surface-secondary)] p-4"><p className="text-xs uppercase tracking-[0.1em] text-[var(--bs-text-muted)]">Cerradas</p><p className="mt-2 text-xl text-[var(--bs-text-primary)]">{(counts.approved ?? 0) + (counts.rejected ?? 0)}</p></div>
         </div>
       </section>
@@ -360,11 +378,11 @@ export function FinanceApprovalQueue() {
                       {reassigningId !== row.id && aiSuggestions[row.id] && (
                         <div className="flex justify-end gap-2">
                           <Button size="sm" onClick={() => void saveCenterAndApprove(row, aiSuggestions[row.id]!.center_id)} disabled={busy || !canApprove}><Check className="mr-2 h-4 w-4" />Aprobar sugerencia → Santiago</Button>
-                          <Button size="sm" variant="outline" onClick={() => startReassign(row)} disabled={busy || !canApprove}>Cambiar centro</Button>
+                          <Button size="sm" variant="outline" onClick={() => startReassign(row)} disabled={busy || !canApprove}>Cambiar centro</Button><Button size="sm" variant="outline" onClick={() => void escalateToSantiago(row)} disabled={busy || !canApprove}>No sé → Santiago</Button>
                         </div>
                       )}
                       {reassigningId !== row.id && !aiSuggestions[row.id] && !suggestionLoadingIds.has(row.id) && (
-                        <Button size="sm" onClick={() => startReassign(row)} disabled={busy || !canApprove}>Asignar centro de costo</Button>
+                        <div className="flex justify-end gap-2"><Button size="sm" onClick={() => startReassign(row)} disabled={busy || !canApprove}>Asignar centro de costo</Button><Button size="sm" variant="outline" onClick={() => void escalateToSantiago(row)} disabled={busy || !canApprove}>Escalar a Santiago</Button></div>
                       )}
                       {reassigningId !== row.id && suggestionLoadingIds.has(row.id) && (
                         <span className="text-xs text-[var(--bs-text-muted)]">Generando sugerencia IA…</span>
@@ -381,7 +399,7 @@ export function FinanceApprovalQueue() {
                           </select>
                           <div className="flex justify-end gap-2">
                             <Button size="sm" variant="outline" onClick={() => setReassigningId(null)} disabled={busy}>Cancelar</Button>
-                            <Button size="sm" onClick={() => void saveCenterAndApprove(row)} disabled={busy || !reassignCenterId}>Asignar y aprobar → Santiago</Button>
+                            <Button size="sm" variant="outline" onClick={() => void escalateToSantiago(row)} disabled={busy}>No sé → Santiago</Button><Button size="sm" onClick={() => void saveCenterAndApprove(row)} disabled={busy || !reassignCenterId}>Asignar y aprobar → Santiago</Button>
                           </div>
                         </div>
                       )}

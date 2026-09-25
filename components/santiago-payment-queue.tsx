@@ -27,10 +27,13 @@ type PaymentRow = {
   paid_at: string | null
   payment_method: string | null
   payment_reference: string | null
+  cost_center_escalation_status: 'none' | 'pending_santiago' | 'resolved'
+  cost_center_escalation_note: string | null
+  cost_center_escalated_at: string | null
 }
 
 type Division = { id: string; name: string }
-type Category = { id: string; name: string }
+type Category = { id: string; division_id: string; name: string }
 
 const tabs: Array<{ key: PaymentStatus; label: string }> = [
   { key: 'pending_santiago', label: 'Por autorizar' },
@@ -60,6 +63,8 @@ export function SantiagoPaymentQueue() {
   const [method, setMethod] = useState('transferencia_bancaria')
   const [reference, setReference] = useState('')
   const [sourceDocumentIds, setSourceDocumentIds] = useState<Set<string>>(new Set())
+  const [assignmentCenter, setAssignmentCenter] = useState<Record<string, string>>({})
+  const [assignmentNote, setAssignmentNote] = useState<Record<string, string>>({})
 
   const load = useCallback(async () => {
     const permission = await supabase.rpc('can_finance_payment_authorize')
@@ -73,11 +78,11 @@ export function SantiagoPaymentQueue() {
 
     const [documents, divisionResult, categoryResult, sourceResult] = await Promise.all([
       supabase.from('finance_documents')
-        .select('id,supplier_name,document_number,document_date,due_date,total_amount,currency,division_id,category_id,cost_center_id,operational_label,approved_at,payment_status,payment_decision_notes,payment_decided_at,paid_at,payment_method,payment_reference')
-        .neq('payment_status', 'not_ready')
+        .select('id,supplier_name,document_number,document_date,due_date,total_amount,currency,division_id,category_id,cost_center_id,operational_label,approved_at,payment_status,payment_decision_notes,payment_decided_at,paid_at,payment_method,payment_reference,cost_center_escalation_status,cost_center_escalation_note,cost_center_escalated_at')
+        .or('payment_status.neq.not_ready,cost_center_escalation_status.eq.pending_santiago')
         .order('approved_at', { ascending: false }),
       supabase.from('budget_divisions').select('id,name'),
-      supabase.from('budget_categories').select('id,name'),
+      supabase.from('budget_categories').select('id,division_id,name').eq('is_active', true).not('source_key', 'is', null).eq('category_role', 'cost').order('sort_order'),
       supabase.from('finance_sii_uploads').select('finance_document_id').not('finance_document_id', 'is', null),
     ])
     const error = documents.error || divisionResult.error || categoryResult.error || sourceResult.error
@@ -99,11 +104,35 @@ export function SantiagoPaymentQueue() {
     return () => { void supabase.removeChannel(channel) }
   }, [load, supabase])
 
+  const escalations = rows.filter((row) => row.cost_center_escalation_status === 'pending_santiago')
   const filtered = rows.filter((row) => row.payment_status === status)
   const counts = rows.reduce<Record<string, number>>((acc, row) => {
     acc[row.payment_status] = (acc[row.payment_status] ?? 0) + 1
     return acc
   }, {})
+
+  async function assignEscalatedCenter(row: PaymentRow) {
+    const categoryId = assignmentCenter[row.id] ?? ''
+    if (!categoryId) {
+      toast.error('Selecciona el centro de costo antes de guardar.')
+      return
+    }
+    const note = (assignmentNote[row.id] ?? '').trim()
+    setBusy(row.id)
+    const { error } = await supabase.rpc('santiago_assign_finance_document_budget_mapping', {
+      p_document_id: row.id,
+      p_category_id: categoryId,
+      p_note: note || null,
+    })
+    if (error) toast.error(error.message)
+    else {
+      toast.success('Centro asignado. La factura volvió a Raimundo para aprobación.')
+      setAssignmentCenter((current) => ({ ...current, [row.id]: '' }))
+      setAssignmentNote((current) => ({ ...current, [row.id]: '' }))
+      await load()
+    }
+    setBusy(null)
+  }
 
   async function decide(row: PaymentRow, decision: 'authorized' | 'rejected') {
     const notes = decision === 'rejected'
@@ -156,9 +185,9 @@ export function SantiagoPaymentQueue() {
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div className="max-w-3xl">
             <p className="text-xs uppercase tracking-[0.14em] text-[var(--bs-cool-sage)]">Control final · Santiago</p>
-            <h2 className="mt-2 text-xl font-normal text-[var(--bs-text-primary)]">Autorizar y ejecutar pagos</h2>
+            <h2 className="mt-2 text-xl font-normal text-[var(--bs-text-primary)]">Resolver imputaciones y ejecutar pagos</h2>
             <p className="mt-2 text-sm leading-6 text-[var(--bs-text-secondary)]">
-              Aquí llegan únicamente gastos ya validados por Raimundo. Santiago autoriza o rechaza el pago y, una vez autorizado, registra la ejecución con referencia bancaria.
+              Si Raimundo no sabe a qué centro imputar una factura, puede escalarla aquí. Santiago asigna el centro y la factura vuelve a Raimundo para aprobación. Los gastos ya aprobados siguen después al flujo normal de autorización y pago.
             </p>
           </div>
           <div className="flex items-center gap-3">
@@ -166,13 +195,57 @@ export function SantiagoPaymentQueue() {
             <Button variant="outline" onClick={() => void load()}><RefreshCw className="mr-2 h-4 w-4" />Actualizar</Button>
           </div>
         </div>
-        <div className="mt-5 grid gap-3 sm:grid-cols-4">
+        <div className="mt-5 grid gap-3 sm:grid-cols-5">
+          <Metric label="Por asignar centro" value={escalations.length} />
           <Metric label="Por autorizar" value={counts.pending_santiago ?? 0} />
           <Metric label="Autorizados" value={counts.authorized ?? 0} />
           <Metric label="Rechazados" value={counts.rejected ?? 0} />
           <Metric label="Pagados" value={counts.paid ?? 0} />
         </div>
       </section>
+
+      {escalations.length > 0 && (
+        <section className="bg-[var(--bs-surface-primary)]">
+          <div className="p-5 md:p-6">
+            <p className="text-xs uppercase tracking-[0.14em] text-[var(--bs-warm-yellow)]">Escalaciones de Raimundo</p>
+            <h3 className="mt-2 text-lg font-normal text-[var(--bs-text-primary)]">Asignar centro de costo</h3>
+            <p className="mt-1 text-sm text-[var(--bs-text-secondary)]">Santiago define únicamente la imputación. La aprobación del gasto sigue siendo de Raimundo.</p>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[980px] text-sm">
+              <thead className="text-left text-xs uppercase tracking-[0.1em] text-[var(--bs-text-muted)]">
+                <tr><th className="px-4 py-3 font-normal">Factura</th><th className="px-4 py-3 font-normal">Contexto</th><th className="px-4 py-3 font-normal">Centro de costo</th><th className="px-4 py-3 text-right font-normal">Acción</th></tr>
+              </thead>
+              <tbody>
+                {escalations.map((row) => (
+                  <tr key={row.id} className="border-t border-[var(--bs-divider-subtle)] align-top">
+                    <td className="px-4 py-4">
+                      <p className="text-[var(--bs-text-primary)]">{row.supplier_name}</p>
+                      <p className="mt-1 text-xs text-[var(--bs-text-muted)]">{row.document_number} · {money(row.total_amount, row.currency)}</p>
+                      {sourceDocumentIds.has(row.id) && <a className="mt-2 inline-flex items-center gap-1 text-xs text-[var(--bs-cool-sky)] underline" href={`/api/finance/sii-invoices/source?documentId=${encodeURIComponent(row.id)}`} target="_blank" rel="noreferrer"><FileText className="h-3.5 w-3.5" />Ver factura</a>}
+                    </td>
+                    <td className="px-4 py-4">
+                      <p className="text-xs text-[var(--bs-text-secondary)]">{row.cost_center_escalation_note || 'Raimundo solicita apoyo para definir la imputación.'}</p>
+                      {row.cost_center_escalated_at && <p className="mt-2 text-[11px] text-[var(--bs-text-muted)]">{new Date(row.cost_center_escalated_at).toLocaleString('es-CL')}</p>}
+                    </td>
+                    <td className="px-4 py-4">
+                      <select value={assignmentCenter[row.id] ?? ''} onChange={(event) => setAssignmentCenter((current) => ({ ...current, [row.id]: event.target.value }))} className="h-9 w-full bg-[var(--bs-surface-secondary)] px-2 text-xs text-[var(--bs-text-primary)]">
+                        <option value="">Seleccionar imputación del Budget</option>
+                        {categories.map((category) => {
+                          const division = divisions.find((item) => item.id === category.division_id)?.name ?? 'P&L'
+                          return <option key={category.id} value={category.id}>{division} · {category.name}</option>
+                        })}
+                      </select>
+                      <input value={assignmentNote[row.id] ?? ''} onChange={(event) => setAssignmentNote((current) => ({ ...current, [row.id]: event.target.value }))} placeholder="Nota opcional para Raimundo" className="mt-2 h-9 w-full bg-[var(--bs-surface-secondary)] px-2 text-xs text-[var(--bs-text-primary)]" />
+                    </td>
+                    <td className="px-4 py-4 text-right"><Button size="sm" onClick={() => void assignEscalatedCenter(row)} disabled={busy === row.id || !(assignmentCenter[row.id] ?? '')}><Check className="mr-2 h-4 w-4" />Asignar y devolver a Raimundo</Button></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
 
       <section className="bg-[var(--bs-surface-primary)]">
         <div className="flex flex-wrap gap-2 p-4">
