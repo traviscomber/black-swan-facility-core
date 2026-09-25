@@ -6,6 +6,7 @@ const route = readFileSync(new URL('../app/api/finance/approve/route.ts', import
 const queue = readFileSync(new URL('../components/finance-approval-queue.tsx', import.meta.url), 'utf8')
 const autoFx = readFileSync(new URL('../supabase/migrations/20260925030000_auto_finance_eur_conversion.sql', import.meta.url), 'utf8')
 const paymentAudit = readFileSync(new URL('../supabase/migrations/20260925030500_fix_finance_payment_audit_actions.sql', import.meta.url), 'utf8')
+const santiago = readFileSync(new URL('../components/santiago-payment-queue.tsx', import.meta.url), 'utf8')
 
 test('Raimundo approval automatically resolves CLP to EUR from the document date', () => {
   assert.match(route, /mindicador\.cl\/api\/euro/)
@@ -42,4 +43,12 @@ test('Santiago payment audit keeps SQL action values valid', () => {
   assert.match(paymentAudit, /'operation','record_supplier_payment'/)
   assert.doesNotMatch(paymentAudit, /'authorize_payment','finance'/)
   assert.doesNotMatch(paymentAudit, /'record_supplier_payment','finance'/)
+})
+
+
+test('Santiago sees original currency and automatic Budget EUR amount', () => {
+  assert.match(santiago, /amount_eur/)
+  assert.match(santiago, /fx_date/)
+  assert.match(santiago, /Budget ·/)
+  assert.match(santiago, /money\(row\.amount_eur, 'EUR'\)/)
 })
