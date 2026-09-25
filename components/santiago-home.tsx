@@ -16,6 +16,7 @@ type WorkspaceCounts = {
   readyToPay: number
   openGuestRequests: number
   pendingHousekeeping: number
+  unassignedGuestRequests: number
 }
 
 const COPY = {
@@ -90,7 +91,9 @@ export function SantiagoHome() {
     readyToPay: 0,
     openGuestRequests: 0,
     pendingHousekeeping: 0,
+    unassignedGuestRequests: 0,
   })
+  const [nextUnassignedRequestId, setNextUnassignedRequestId] = useState<string | null>(null)
   const [otherItems, setOtherItems] = useState<AuthorizedNavItem[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -98,7 +101,7 @@ export function SantiagoHome() {
     setLoading(true)
 
     const today = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Santiago" }).format(new Date())
-    const [escalatedResult, pendingResult, readyResult, guestRequestsResult, housekeepingResult, navigationResult] = await Promise.all([
+    const [escalatedResult, pendingResult, readyResult, guestRequestsResult, unassignedGuestRequestsResult, nextUnassignedResult, housekeepingResult, navigationResult] = await Promise.all([
       supabase
         .from("finance_documents")
         .select("id", { count: "exact", head: true })
@@ -116,6 +119,19 @@ export function SantiagoHome() {
         .select("id", { count: "exact", head: true })
         .not("status", "in", "(completed,resolved,cancelled)"),
       supabase
+        .from("hospitality_requests")
+        .select("id", { count: "exact", head: true })
+        .is("assigned_to", null)
+        .not("status", "in", "(completed,resolved,cancelled)"),
+      supabase
+        .from("hospitality_requests")
+        .select("id")
+        .is("assigned_to", null)
+        .not("status", "in", "(completed,resolved,cancelled)")
+        .order("created_at", { ascending: true })
+        .limit(1)
+        .maybeSingle(),
+      supabase
         .from("housekeeping_tasks")
         .select("id", { count: "exact", head: true })
         .eq("service_date", today)
@@ -129,7 +145,9 @@ export function SantiagoHome() {
       readyToPay: readyResult.count ?? 0,
       openGuestRequests: guestRequestsResult.count ?? 0,
       pendingHousekeeping: housekeepingResult.count ?? 0,
+      unassignedGuestRequests: unassignedGuestRequestsResult.count ?? 0,
     })
+    setNextUnassignedRequestId(nextUnassignedResult.data?.id ?? null)
 
     const secondaryKeys = new Set(["bookings", "guest-requests", "payments"])
     setOtherItems((navigationResult.items ?? []).filter((item) => !secondaryKeys.has(item.key)).slice(0, 8))
@@ -169,12 +187,14 @@ export function SantiagoHome() {
         persona="santiago"
         signals={[
           {
-            key: "guest-requests",
-            count: counts.openGuestRequests,
-            title: copy.requests,
-            task: `coordinar ${counts.openGuestRequests} solicitudes abiertas de huéspedes y asegurar responsable y seguimiento`,
+            key: "guest-requests-unassigned",
+            count: counts.unassignedGuestRequests,
+            title: `${copy.requests} · sin responsable`,
+            task: `asignar seguimiento a ${counts.unassignedGuestRequests} solicitudes de huéspedes sin responsable`,
             operationalArea: "hospitality",
-            severity: counts.openGuestRequests > 0 ? "attention" : "normal",
+            severity: counts.unassignedGuestRequests > 0 ? "attention" : "normal",
+            capability: nextUnassignedRequestId ? "hospitality.assign_request" : undefined,
+            requestId: nextUnassignedRequestId,
           },
           {
             key: "housekeeping-today",
