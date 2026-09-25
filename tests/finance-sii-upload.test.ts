@@ -10,6 +10,10 @@ import {
 
 const routeUrl = new URL('../app/api/finance/sii-invoices/route.ts', import.meta.url)
 const dropzoneUrl = new URL('../components/sii-invoice-dropzone.tsx', import.meta.url)
+const loginUrl = new URL('../app/auth/login/page.tsx', import.meta.url)
+const approvalQueueUrl = new URL('../components/finance-approval-queue.tsx', import.meta.url)
+const approvalsPageUrl = new URL('../app/budgets/approvals/page.tsx', import.meta.url)
+const raimundoHomeMigrationUrl = new URL('../supabase/migrations/20260924223500_raimundo_finance_home.sql', import.meta.url)
 
 test('SII file extension and pairing normalization are strict', () => {
   assert.equal(siiExtension('FACTURA.PDF'), 'pdf')
@@ -139,4 +143,27 @@ test('finance uploader can see persisted invoice upload history', () => {
   assert.match(source, /uploadId=/)
   assert.match(source, /Ver original/)
   assert.match(source, /refreshUploads/)
+})
+
+
+test('Raimundo login honors canonical start path and approvals are the first task', () => {
+  const loginSource = readFileSync(loginUrl, 'utf8')
+  const queueSource = readFileSync(approvalQueueUrl, 'utf8')
+  const pageSource = readFileSync(approvalsPageUrl, 'utf8')
+  const migrationSource = readFileSync(raimundoHomeMigrationUrl, 'utf8')
+
+  assert.match(loginSource, /user_access_profiles/)
+  assert.match(loginSource, /os_start_path/)
+  assert.match(loginSource, /localizedProfileStart/)
+  assert.match(migrationSource, /raimundo@blackswn\.org/)
+  assert.match(migrationSource, /os_primary_domain\s*=\s*'finance'/)
+  assert.match(migrationSource, /os_start_path\s*=\s*'\/budgets\/approvals'/)
+
+  assert.match(queueSource, /initialStatusSet/)
+  assert.match(queueSource, /approval_status === 'pending_mapping'/)
+  assert.match(queueSource, /Asignar centro de costo/)
+  assert.match(queueSource, /Guardar y revisar/)
+  assert.match(queueSource, /reassign_finance_document_center/)
+
+  assert.ok(pageSource.indexOf('<FinanceApprovalQueue />') < pageSource.indexOf('<SiiSourceReview />'))
 })
