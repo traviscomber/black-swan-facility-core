@@ -95,10 +95,20 @@ export async function loadAuthorizedNavigationWith({
   const merged = new Map(capabilityItems.map((item) => [item.key, item]))
   for (const item of serverNavigation.items ?? []) merged.set(item.key, item)
 
+  const [{ data: canApprove }, { data: canPay }] = await Promise.all([
+    supabase.rpc('can_finance_approve'),
+    supabase.rpc('can_finance_payment_authorize'),
+  ])
+  const paymentOnlyFinance = Boolean(canPay) && !Boolean(canApprove)
+  const financeKeys = new Set(osAreas.find((area) => area.key === 'finance')?.items.map((item) => item.key) ?? [])
+  const items = [...merged.values()].filter((item) =>
+    !paymentOnlyFinance || !financeKeys.has(item.key) || item.key === 'payments'
+  )
+
   return {
     ...serverNavigation,
     role: serverNavigation.role ?? access.role_key,
-    items: [...merged.values()],
+    items,
   }
 }
 
