@@ -236,7 +236,7 @@ export function SiiInvoiceDropzone({ canReview = true }: { canReview?: boolean }
                   filename={pdf.original_filename}
                   onCompleted={() => {
                     setPendingPdfs((current) => current.filter((row) => row.id !== pdf.id))
-                    void loadPending()
+                    void refreshUploads()
                   }}
                 />
               ))}
