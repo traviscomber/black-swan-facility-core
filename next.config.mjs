@@ -10,19 +10,6 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
-  async headers() {
-    const loginCacheHeaders = [
-      { key: "Cache-Control", value: "public, max-age=0, must-revalidate" },
-      { key: "Vercel-CDN-Cache-Control", value: "public, s-maxage=86400, stale-while-revalidate=604800" },
-    ]
-
-    return [
-      { source: "/auth/login", headers: loginCacheHeaders },
-      { source: "/en/auth/login", headers: loginCacheHeaders },
-      { source: "/es/auth/login", headers: loginCacheHeaders },
-      { source: "/de/auth/login", headers: loginCacheHeaders },
-    ]
-  },
   skipTrailingSlashRedirect: true,
   staticPageGenerationTimeout: 30,
   onDemandEntries: {
