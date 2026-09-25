@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { AlertTriangle, Check, FileSearch, RefreshCw, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
@@ -45,6 +45,16 @@ type QueueRow = {
 type Division = { id: string; name: string }
 type Category = { id: string; division_id: string; name: string }
 type HistoricalCenter = { id: string; historical_label: string; operational_label: string | null; division_id: string; category_id: string }
+type AiSuggestion = {
+  center_id: string
+  center_label: string
+  division_id: string
+  division_name: string
+  category_id: string
+  category_name: string
+  confidence: number
+  reason: string
+}
 
 const pct = new Intl.NumberFormat('es-CL', { style: 'percent', maximumFractionDigits: 0 })
 function n(value: unknown) { const parsed = Number(value ?? 0); return Number.isFinite(parsed) ? parsed : 0 }
@@ -82,6 +92,9 @@ export function FinanceApprovalQueue() {
   const [reassignNote, setReassignNote] = useState('')
   const [canApprove, setCanApprove] = useState(false)
   const [canAdmin, setCanAdmin] = useState(false)
+  const [aiSuggestions, setAiSuggestions] = useState<Record<string, AiSuggestion | null>>({})
+  const [suggestionLoadingIds, setSuggestionLoadingIds] = useState<Set<string>>(new Set())
+  const requestedSuggestions = useRef(new Set<string>())
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -114,6 +127,34 @@ export function FinanceApprovalQueue() {
     const channel = supabase.channel('finance-approval-queue-live').on('postgres_changes', { event: '*', schema: 'public', table: 'finance_documents' }, () => void load()).subscribe()
     return () => { window.removeEventListener('finance-workbook-imported', onImported); void supabase.removeChannel(channel) }
   }, [load, supabase])
+
+  useEffect(() => {
+    if (!canApprove) return
+    const pending = rows.filter((row) => row.approval_status === 'pending_mapping').slice(0, 10)
+    for (const row of pending) {
+      if (requestedSuggestions.current.has(row.id)) continue
+      requestedSuggestions.current.add(row.id)
+      setSuggestionLoadingIds((current) => new Set(current).add(row.id))
+
+      void fetch('/api/finance/cost-center-suggestion', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ document_id: row.id }),
+      }).then(async (response) => {
+        const payload = await response.json() as { suggestion?: AiSuggestion | null }
+        setAiSuggestions((current) => ({ ...current, [row.id]: response.ok ? (payload.suggestion ?? null) : null }))
+      }).catch(() => {
+        setAiSuggestions((current) => ({ ...current, [row.id]: null }))
+      }).finally(() => {
+        setSuggestionLoadingIds((current) => {
+          const next = new Set(current)
+          next.delete(row.id)
+          return next
+        })
+      })
+    }
+  }, [canApprove, rows])
+
   const filtered = useMemo(() => status === 'review'
     ? rows.filter((row) => row.approval_status === 'pending_mapping' || row.approval_status === 'ready')
     : rows.filter((row) => row.approval_status === status), [rows, status])
@@ -140,21 +181,28 @@ export function FinanceApprovalQueue() {
   function startReassign(row: QueueRow) {
     setReassigningId(row.id)
     const current = historicalCenters.find((center) => center.division_id === row.division_id && center.category_id === row.category_id && center.operational_label === row.operational_label)
-    setReassignCenterId(current?.id ?? '')
+    const aiSuggestion = aiSuggestions[row.id]
+    setReassignCenterId(current?.id ?? aiSuggestion?.center_id ?? '')
     setReassignNote('')
   }
 
-  async function saveCenterAndApprove(row: QueueRow) {
+  async function saveCenterAndApprove(row: QueueRow, targetCenterId = reassignCenterId, manualNote = reassignNote.trim()) {
     const initialAssignment = row.approval_status === 'pending_mapping'
-    const note = initialAssignment ? 'Centro de costo asignado y aprobado por Raimundo' : reassignNote.trim()
-    if (!reassignCenterId || (!initialAssignment && !note)) {
+    const aiSuggestion = aiSuggestions[row.id]
+    const acceptedAiSuggestion = initialAssignment && Boolean(aiSuggestion && aiSuggestion.center_id === targetCenterId)
+    const note = acceptedAiSuggestion
+      ? `Sugerencia IA confirmada por Raimundo · ${aiSuggestion?.reason ?? 'centro sugerido'}`
+      : initialAssignment
+        ? 'Centro de costo asignado y aprobado por Raimundo'
+        : manualNote
+    if (!targetCenterId || (!initialAssignment && !note)) {
       toast.error(initialAssignment ? 'Selecciona el centro de costo correcto.' : 'Selecciona el centro de costo correcto y registra el motivo del cambio.')
       return
     }
     setBusy(true)
     const { error: reassignError } = await supabase.rpc('reassign_finance_document_center', {
       p_document_id: row.id,
-      p_target_center_id: reassignCenterId,
+      p_target_center_id: targetCenterId,
       p_note: note,
     })
     if (reassignError) {
@@ -163,9 +211,11 @@ export function FinanceApprovalQueue() {
       return
     }
 
-    const approvalNote = initialAssignment
-      ? 'Centro de costo asignado por Raimundo antes de envío a Santiago'
-      : `Centro de costo corregido por Raimundo · ${note}`
+    const approvalNote = acceptedAiSuggestion
+      ? 'Sugerencia IA de centro de costo confirmada por Raimundo antes de envío a Santiago'
+      : initialAssignment
+        ? 'Centro de costo asignado por Raimundo antes de envío a Santiago'
+        : `Centro de costo corregido por Raimundo · ${note}`
     const { data: approvalData, error: approvalError } = await supabase.rpc('approve_finance_document', {
       p_document_id: row.id,
       p_notes: approvalNote,
@@ -244,14 +294,50 @@ export function FinanceApprovalQueue() {
                 const mapped = isCanonicalMapped(row)
                 return <tr key={row.id} className="border-t border-[var(--bs-divider-subtle)] align-top">
                   <td className="px-4 py-4"><p className="text-[var(--bs-text-primary)]">{row.supplier_name}</p><p className="mt-1 text-xs text-[var(--bs-text-muted)]">{row.document_number} · {new Date(`${row.document_date}T00:00:00`).toLocaleDateString('es-CL')}</p>{row.description && <p className="mt-2 max-w-72 text-xs leading-5 text-[var(--bs-text-secondary)]">{row.description}</p>}</td>
-                  <td className="px-4 py-4">{row.approval_status === 'ready' && mapped && <p className="mb-1 text-[11px] uppercase tracking-[0.1em] text-[var(--bs-cool-sage)]">IA sugiere</p>}<p className={mapped ? 'text-[var(--bs-text-primary)]' : 'text-[var(--bs-warm-yellow)]'}>{row.division_name ?? 'P&L pendiente'}</p><p className="mt-1 text-xs text-[var(--bs-text-secondary)]">{row.category_name ?? 'Categoría canónica pendiente'}</p>{row.operational_label && <p className="mt-2 text-xs text-[var(--bs-warm-yellow)]">Detalle operativo · {row.operational_label}</p>}{row.cost_center_name && row.cost_center_name !== row.operational_label && <p className="mt-1 text-[11px] text-[var(--bs-text-muted)]">Origen · {row.cost_center_name}</p>}</td>
+                  <td className="px-4 py-4">{(() => {
+                    const aiSuggestion = aiSuggestions[row.id]
+                    if (row.approval_status === 'pending_mapping' && aiSuggestion) {
+                      return <>
+                        <p className="mb-1 text-[11px] uppercase tracking-[0.1em] text-[var(--bs-cool-sage)]">IA sugiere · {pct.format(aiSuggestion.confidence)}</p>
+                        <p className="text-[var(--bs-text-primary)]">{aiSuggestion.division_name}</p>
+                        <p className="mt-1 text-xs text-[var(--bs-text-secondary)]">{aiSuggestion.category_name}</p>
+                        <p className="mt-2 text-xs text-[var(--bs-warm-yellow)]">Centro · {aiSuggestion.center_label}</p>
+                        <p className="mt-1 max-w-72 text-[11px] leading-4 text-[var(--bs-text-muted)]">{aiSuggestion.reason}</p>
+                      </>
+                    }
+                    if (row.approval_status === 'pending_mapping' && suggestionLoadingIds.has(row.id)) {
+                      return <p className="text-xs text-[var(--bs-text-secondary)]">IA analizando factura…</p>
+                    }
+                    if (row.approval_status === 'pending_mapping' && requestedSuggestions.current.has(row.id) && aiSuggestions[row.id] === null) {
+                      return <>
+                        <p className="text-xs text-[var(--bs-warm-yellow)]">Sin sugerencia IA segura</p>
+                        <p className="mt-1 text-[11px] text-[var(--bs-text-muted)]">Raimundo debe seleccionar el centro manualmente.</p>
+                      </>
+                    }
+                    return <>
+                      {row.approval_status === 'ready' && mapped && <p className="mb-1 text-[11px] uppercase tracking-[0.1em] text-[var(--bs-cool-sage)]">Sugerencia por historial</p>}
+                      <p className={mapped ? 'text-[var(--bs-text-primary)]' : 'text-[var(--bs-warm-yellow)]'}>{row.division_name ?? 'P&L pendiente'}</p>
+                      <p className="mt-1 text-xs text-[var(--bs-text-secondary)]">{row.category_name ?? 'Categoría canónica pendiente'}</p>
+                      {row.operational_label && <p className="mt-2 text-xs text-[var(--bs-warm-yellow)]">Detalle operativo · {row.operational_label}</p>}
+                      {row.cost_center_name && row.cost_center_name !== row.operational_label && <p className="mt-1 text-[11px] text-[var(--bs-text-muted)]">Origen · {row.cost_center_name}</p>}
+                    </>
+                  })()}</td>
                   <td className="px-4 py-4"><div className="flex gap-2 text-xs leading-5 text-[var(--bs-text-secondary)]">{row.classification_status === 'ready' ? <Check className="mt-0.5 h-4 w-4 shrink-0 text-[var(--bs-cool-sage)]" /> : row.classification_status === 'exception' ? <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-[var(--bs-warm-orange)]" /> : <FileSearch className="mt-0.5 h-4 w-4 shrink-0 text-[var(--bs-cool-sky)]" />}<span><span className="block text-[var(--bs-text-primary)]">{classificationLabel(row.classification_status)}</span>{row.classification_reason ?? 'Sin explicación registrada.'}</span></div></td>
                   <td className="px-4 py-4 text-right"><p className="text-[var(--bs-text-primary)]">{formatMoney(row.total_amount, row.currency)}</p>{row.amount_eur != null && <p className="mt-1 text-xs text-[var(--bs-cool-sage)]">{formatMoney(row.amount_eur, 'EUR')}</p>}</td>
                   <td className="px-4 py-4 text-xs leading-5 text-[var(--bs-text-secondary)]"><p>{row.confidence_label ?? (row.confidence == null ? 'Sin confianza' : `Confianza ${pct.format(n(row.confidence))}`)}</p><p>{row.historical_count} antecedentes · {row.historical_dominance == null ? 'dominio —' : `dominio ${pct.format(n(row.historical_dominance))}`}</p><p className={row.amount_in_range === false ? 'text-[var(--bs-warm-orange)]' : row.amount_in_range === true ? 'text-[var(--bs-cool-sage)]' : 'text-[var(--bs-text-muted)]'}>{row.amount_in_range == null ? 'Sin rango' : row.amount_in_range ? 'Dentro de rango' : 'Fuera de rango'}</p></td>
                   <td className="px-4 py-4 text-right">{row.approval_status === 'pending_mapping' ? (
                     <div className="space-y-2">
-                      {reassigningId !== row.id && (
+                      {reassigningId !== row.id && aiSuggestions[row.id] && (
+                        <div className="flex justify-end gap-2">
+                          <Button size="sm" onClick={() => void saveCenterAndApprove(row, aiSuggestions[row.id]!.center_id)} disabled={busy || !canApprove}><Check className="mr-2 h-4 w-4" />Aprobar sugerencia → Santiago</Button>
+                          <Button size="sm" variant="outline" onClick={() => startReassign(row)} disabled={busy || !canApprove}>Cambiar centro</Button>
+                        </div>
+                      )}
+                      {reassigningId !== row.id && !aiSuggestions[row.id] && !suggestionLoadingIds.has(row.id) && (
                         <Button size="sm" onClick={() => startReassign(row)} disabled={busy || !canApprove}>Asignar centro de costo</Button>
+                      )}
+                      {reassigningId !== row.id && suggestionLoadingIds.has(row.id) && (
+                        <span className="text-xs text-[var(--bs-text-muted)]">Generando sugerencia IA…</span>
                       )}
                       {reassigningId === row.id && (
                         <div className="ml-auto w-[340px] space-y-2 bg-[var(--bs-surface-secondary)] p-3 text-left">
