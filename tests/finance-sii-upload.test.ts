@@ -105,18 +105,19 @@ test('upload route enforces Maribel-compatible least privilege and safe file han
 })
 
 
-test('PDF OCR uses Vercel AI Gateway first and direct OpenAI as fallback', () => {
+test('PDF OCR is a small direct OpenAI reader with no SDK or gateway dependency', () => {
   const extractionSource = readFileSync(new URL('../lib/finance/sii-pdf-extraction.ts', import.meta.url), 'utf8')
-  assert.match(extractionSource, /openai\/gpt-5\.6-luna/)
-  assert.match(extractionSource, /generateObject/)
-  assert.match(extractionSource, /mediaType: 'application\/pdf'/)
   assert.match(extractionSource, /OPENAI_API_KEY/)
+  assert.match(extractionSource, /gpt-5\.6-luna/)
   assert.match(extractionSource, /api\.openai\.com\/v1\/responses/)
   assert.match(extractionSource, /type: 'input_file'/)
   assert.match(extractionSource, /data:application\/pdf;base64/)
   assert.match(extractionSource, /type: 'json_schema'/)
-  assert.match(extractionSource, /Extract only values visible in the source document/)
-  assert.match(extractionSource, /Vercel AI Gateway OCR failed; trying direct OpenAI/)
+  assert.match(extractionSource, /No inventes, no completes por contexto y no uses placeholders/)
+  assert.doesNotMatch(extractionSource, /from 'ai'/)
+  assert.doesNotMatch(extractionSource, /generateObject/)
+  assert.doesNotMatch(extractionSource, /Vercel AI Gateway/)
+  assert.doesNotMatch(extractionSource, /DOCUMENT_AI_ENDPOINT/)
 })
 
 test('PDF intake is automatic with manual fallback only for incomplete extraction', () => {
@@ -132,7 +133,6 @@ test('PDF intake is automatic with manual fallback only for incomplete extractio
   assert.match(formSource, /Factura leída, guardada y clasificada automáticamente/)
   assert.match(formSource, /Revisión excepcional/)
   assert.match(formSource, /Completar excepción/)
-  assert.match(extractionSource, /DOCUMENT_AI_ENDPOINT/)
   assert.match(extractionSource, /supplier_name/)
   assert.match(extractionSource, /supplier_rut/)
   assert.match(extractionSource, /document_number/)
