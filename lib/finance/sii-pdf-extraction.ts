@@ -1,3 +1,5 @@
+import { generateObject } from 'ai'
+import { z } from 'zod'
 import { parseManualPdfMetadata, type ManualPdfMetadata } from '@/lib/finance/sii-invoice'
 
 export type PdfFiscalExtraction = {
@@ -50,6 +52,63 @@ function normalizePayload(payload: Record<string, unknown>) {
     tax_amount: numberValue(nested.tax_amount ?? source.proposed_tax_amount ?? nested.iva),
     total_amount: numberValue(nested.total_amount ?? source.proposed_total_amount),
     currency: stringValue(nested.currency ?? source.proposed_currency)?.toUpperCase() ?? 'CLP',
+  }
+}
+
+
+const invoiceOcrSchema = z.object({
+  supplier_name: z.string().nullable(),
+  supplier_rut: z.string().nullable(),
+  document_number: z.string().nullable(),
+  document_date: z.string().nullable(),
+  due_date: z.string().nullable(),
+  document_type: z.enum(['invoice', 'credit_note', 'debit_note', 'other']),
+  net_amount: z.number().nullable(),
+  tax_amount: z.number().nullable(),
+  total_amount: z.number().nullable(),
+  currency: z.string().nullable(),
+  confidence: z.number().min(0).max(1),
+})
+
+async function extractWithVercelGateway(bytes: Buffer, filename: string): Promise<PdfFiscalExtraction> {
+  const { object } = await generateObject({
+    model: process.env.OCR_GATEWAY_MODEL || 'openai/gpt-5.6-luna',
+    schema: invoiceOcrSchema,
+    messages: [{
+      role: 'user',
+      content: [
+        {
+          type: 'file',
+          data: bytes,
+          mediaType: 'application/pdf',
+          filename,
+        },
+        {
+          type: 'text',
+          text: [
+            'OCR fiscal para una factura chilena.',
+            'Lee texto e imagen del PDF y devuelve solamente datos visibles.',
+            'No inventes valores ni uses placeholders.',
+            'supplier_name y supplier_rut corresponden al emisor/proveedor.',
+            'document_number es el folio SII.',
+            'Fechas en YYYY-MM-DD.',
+            'Montos como números sin separadores de miles.',
+            'Usa CLP salvo que el documento muestre explícitamente otra moneda.',
+          ].join(' '),
+        },
+      ],
+    }],
+  })
+
+  const payload = object as z.infer<typeof invoiceOcrSchema>
+  const normalized = normalizePayload(payload as unknown as Record<string, unknown>)
+  const metadata = parseManualPdfMetadata(normalized)
+  return {
+    metadata,
+    draft: normalized,
+    confidence: payload.confidence,
+    raw: { provider: 'vercel_ai_gateway', extraction: payload },
+    reason: metadata ? undefined : 'required_fiscal_fields_missing',
   }
 }
 
@@ -233,29 +292,32 @@ export async function extractSiiPdfFiscalMetadata(
   bytes: Buffer,
   filename: string,
 ): Promise<PdfFiscalExtraction> {
-  let endpointResult: PdfFiscalExtraction | null = null
-
   try {
-    endpointResult = await extractWithConfiguredEndpoint(bytes, filename)
-    if (endpointResult?.metadata) return endpointResult
+    const gatewayResult = await extractWithVercelGateway(bytes, filename)
+    if (gatewayResult.metadata || Object.keys(gatewayResult.draft).length > 0) return gatewayResult
   } catch (error) {
-    console.error('[sii-pdf-extraction] configured OCR failed; trying OpenAI fallback', error)
+    console.error('[sii-pdf-extraction] Vercel AI Gateway OCR failed; trying direct OpenAI', error)
   }
 
   try {
     const openAiResult = await extractWithOpenAi(bytes, filename)
     if (openAiResult.metadata || Object.keys(openAiResult.draft).length > 0) return openAiResult
-    if (!endpointResult) return openAiResult
   } catch (error) {
-    console.error('[sii-pdf-extraction] OpenAI OCR failed', error)
-    if (!endpointResult) throw error
+    console.error('[sii-pdf-extraction] direct OpenAI OCR failed; trying configured endpoint', error)
   }
 
-  return endpointResult ?? {
+  try {
+    const endpointResult = await extractWithConfiguredEndpoint(bytes, filename)
+    if (endpointResult) return endpointResult
+  } catch (error) {
+    console.error('[sii-pdf-extraction] configured OCR failed', error)
+  }
+
+  return {
     metadata: null,
     draft: {},
     confidence: null,
     raw: {},
-    reason: process.env.OPENAI_API_KEY ? 'required_fiscal_fields_missing' : 'document_ai_not_configured',
+    reason: 'ocr_unavailable',
   }
 }
