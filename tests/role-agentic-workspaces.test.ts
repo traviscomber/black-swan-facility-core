@@ -36,3 +36,13 @@ test('agentic proposals persist role-aware audit context', () => {
   assert.match(route, /const source = readString\(contextInput\.source/)
   assert.match(route, /operational_area: operationalArea/)
 })
+
+
+test('Santiago agent includes booking and hospitality operational signals', () => {
+  assert.match(santiago, /openGuestRequests/)
+  assert.match(santiago, /pendingHousekeeping/)
+  assert.match(santiago, /guest-requests/)
+  assert.match(santiago, /housekeeping-today/)
+  assert.match(santiago, /table: "hospitality_requests"/)
+  assert.match(santiago, /table: "housekeeping_tasks"/)
+})
