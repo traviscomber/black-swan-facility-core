@@ -31,4 +31,7 @@ test('Raimundo sees the AI suggestion and remains the human decision gate', () =
   assert.match(queue, /Cambiar centro/)
   assert.match(queue, /Sugerencia IA confirmada por Raimundo/)
   assert.match(queue, /saveCenterAndApprove/)
+  assert.match(queue, /recomendaciones IA disponibles/)
+  assert.match(queue, /texto histórico \+ Budget/)
+  assert.match(queue, /slice\(0, 24\)/)
 })
