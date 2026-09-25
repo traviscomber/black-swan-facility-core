@@ -74,7 +74,7 @@ export async function POST(request: Request) {
 
     const { data: document, error: documentError } = await supabase
       .from('finance_documents')
-      .select('id,document_date,total_amount,currency,approval_status,approved_at')
+      .select('id,document_date,total_amount,currency,approval_status,approved_at,payment_status')
       .eq('id', documentId)
       .maybeSingle()
 
@@ -85,45 +85,68 @@ export async function POST(request: Request) {
     }
 
     const currency = String(document.currency ?? '').toUpperCase()
-    if (currency === 'EUR') {
-      if (document.approval_status !== 'ready') {
-        return NextResponse.json({ error: 'EUR document is already beyond the approval step' }, { status: 409 })
-      }
+    let approvalResult: Record<string, unknown> | null = null
+
+    // Approval and hand-off to Santiago must never depend on FX availability.
+    if (document.approval_status === 'ready') {
       const { data, error } = await supabase.rpc('approve_finance_document', {
         p_document_id: documentId,
         p_notes: notes,
       })
       if (error) return NextResponse.json({ error: error.message }, { status: 400 })
-      return NextResponse.json({ ok: true, valuation: 'not_required', result: data })
+      approvalResult = (data ?? null) as Record<string, unknown> | null
     }
 
-    if (currency !== 'CLP') {
-      return NextResponse.json({ error: `Automatic EUR conversion does not yet support ${currency || 'unknown currency'}` }, { status: 422 })
+    if (currency === 'EUR') {
+      return NextResponse.json({
+        ok: true,
+        valuation: 'not_required',
+        result: approvalResult ?? {
+          approval_status: document.approval_status,
+          payment_status: document.payment_status,
+        },
+      })
     }
 
-    const fx = await resolveClpPerEur(document.document_date)
-    const { data, error } = await supabase.rpc('approve_finance_document_auto_eur', {
-      p_document_id: documentId,
-      p_clp_per_eur: fx.clpPerEur,
-      p_fx_date: fx.fxDate,
-      p_fx_source: fx.source,
-      p_notes: notes,
-    })
+    // EUR valuation is an internal Budget concern. It runs best-effort and
+    // never blocks Raimundo's approval or Santiago's payment queue.
+    if (currency === 'CLP') {
+      try {
+        const fx = await resolveClpPerEur(document.document_date)
+        const { data, error } = await supabase.rpc('approve_finance_document_auto_eur', {
+          p_document_id: documentId,
+          p_clp_per_eur: fx.clpPerEur,
+          p_fx_date: fx.fxDate,
+          p_fx_source: fx.source,
+          p_notes: notes,
+        })
+        if (error) throw error
 
-    if (error) return NextResponse.json({ error: error.message }, { status: 400 })
+        return NextResponse.json({
+          ok: true,
+          valuation: 'automatic',
+          result: data,
+        })
+      } catch (error) {
+        console.warn('[finance/approve] EUR valuation deferred without blocking approval', {
+          documentId,
+          error: error instanceof Error ? error.message : String(error),
+        })
+      }
+    }
 
     return NextResponse.json({
       ok: true,
-      valuation: 'automatic',
-      clp_per_eur: fx.clpPerEur,
-      fx_date: fx.fxDate,
-      fx_source: fx.source,
-      result: data,
+      valuation: 'deferred',
+      result: approvalResult ?? {
+        approval_status: 'pending_valuation',
+        payment_status: document.payment_status,
+      },
     })
   } catch (error) {
-    console.error('[finance/approve] automatic EUR conversion failed', error)
+    console.error('[finance/approve] approval failed', error)
     return NextResponse.json({
-      error: error instanceof Error ? error.message : 'Automatic EUR conversion failed',
-    }, { status: 503 })
+      error: error instanceof Error ? error.message : 'Finance approval failed',
+    }, { status: 500 })
   }
 }
