@@ -23,9 +23,6 @@ type QueueRow = {
   classification_status: ClassificationStatus
   approval_status: ApprovalStatus
   valuation_status: string
-  amount_eur: number | string | null
-  fx_rate_to_eur: number | string | null
-  fx_date: string | null
   confidence: number | string | null
   confidence_label?: string | null
   classification_reason: string | null
@@ -58,7 +55,7 @@ type AiSuggestion = {
 
 const pct = new Intl.NumberFormat('es-CL', { style: 'percent', maximumFractionDigits: 0 })
 function n(value: unknown) { const parsed = Number(value ?? 0); return Number.isFinite(parsed) ? parsed : 0 }
-function formatMoney(value: unknown, currency = 'EUR') {
+function formatMoney(value: unknown, currency: string) {
   try { return new Intl.NumberFormat('es-CL', { style: 'currency', currency, maximumFractionDigits: currency === 'CLP' ? 0 : 2 }).format(n(value)) }
   catch { return `${n(value).toLocaleString('es-CL')} ${currency}` }
 }
@@ -106,10 +103,6 @@ export function FinanceApprovalQueue() {
       result?: {
         approval_status?: string
         payment_status?: string
-        valuation_status?: string
-        amount_eur?: number
-        fx_date?: string
-        fx_source?: string
       }
     }
     if (!response.ok) throw new Error(payload.error || 'No se pudo aprobar el documento.')
