@@ -8,6 +8,7 @@ import { createClient } from "@/lib/supabase/client"
 import { useLanguage } from "@/lib/hooks/use-language"
 import { loadAuthorizedNavigation, type AuthorizedNavItem } from "@/lib/os/authorized-navigation-client"
 import { SantiagoTodayCommandCenter } from "@/components/santiago-today-command-center"
+import { RoleAgenticBrief } from "@/components/role-agentic-brief"
 
 type FinanceCounts = {
   escalatedCenters: number
@@ -141,6 +142,35 @@ export function SantiagoHome() {
       </section>
 
       <SantiagoTodayCommandCenter />
+
+      <RoleAgenticBrief
+        persona="santiago"
+        signals={[
+          {
+            key: "cost-center-exceptions",
+            count: counts.escalatedCenters,
+            title: copy.escalated,
+            task: `revisar y resolver ${counts.escalatedCenters} centros de costo escalados por Raimundo`,
+            operationalArea: "finance",
+            severity: counts.escalatedCenters > 0 ? "attention" : "normal",
+          },
+          {
+            key: "payments-to-authorize",
+            count: counts.pendingPayments,
+            title: copy.pending,
+            task: `revisar ${counts.pendingPayments} pagos pendientes de autorización, sin aprobarlos automáticamente`,
+            operationalArea: "finance",
+            severity: counts.pendingPayments > 0 ? "attention" : "normal",
+          },
+          {
+            key: "payments-ready",
+            count: counts.readyToPay,
+            title: copy.ready,
+            task: `preparar seguimiento de ${counts.readyToPay} pagos autorizados listos para ejecución`,
+            operationalArea: "finance",
+          },
+        ]}
+      />
 
       <section className="px-4 py-5 md:px-6">
         <div className="mx-auto grid max-w-[1600px] gap-4 xl:grid-cols-2">
