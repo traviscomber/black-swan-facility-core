@@ -187,7 +187,7 @@ export function SantiagoPaymentQueue() {
             <p className="text-xs uppercase tracking-[0.14em] text-[var(--bs-cool-sage)]">Santiago · Trabajo pendiente</p>
             <h2 className="mt-2 text-xl font-normal text-[var(--bs-text-primary)]">Resolver excepciones y pagos</h2>
             <p className="mt-2 text-sm leading-6 text-[var(--bs-text-secondary)]">
-              Santiago tiene dos tareas separadas: resolver centros que Raimundo escaló y, por otra vía, autorizar o ejecutar pagos de gastos que Raimundo ya aprobó.
+              Raimundo siempre revisa primero la imputación. Santiago sólo recibe excepciones que Raimundo escaló explícitamente y, por otra vía, pagos de gastos que Raimundo ya aprobó.
             </p>
           </div>
           <div className="flex items-center gap-3">
@@ -207,9 +207,9 @@ export function SantiagoPaymentQueue() {
       {escalations.length > 0 && (
         <section className="bg-[var(--bs-surface-primary)]">
           <div className="p-5 md:p-6">
-            <p className="text-xs uppercase tracking-[0.14em] text-[var(--bs-warm-yellow)]">Bandeja 2 · Santiago</p>
-            <h3 className="mt-2 text-lg font-normal text-[var(--bs-text-primary)]">Resolver centro solicitado</h3>
-            <p className="mt-1 text-sm text-[var(--bs-text-secondary)]">Santiago define únicamente la imputación solicitada. Al guardar, la factura vuelve a la Bandeja 1 de Raimundo; aquí no se aprueba el gasto ni el pago.</p>
+            <p className="text-xs uppercase tracking-[0.14em] text-[var(--bs-warm-yellow)]">Bandeja 2 · Excepciones escaladas por Raimundo</p>
+            <h3 className="mt-2 text-lg font-normal text-[var(--bs-text-primary)]">Resolver centro sólo cuando Raimundo escala</h3>
+            <p className="mt-1 text-sm text-[var(--bs-text-secondary)]">Santiago interviene únicamente después de que Raimundo revisó la factura y decidió escalarla. Define la imputación solicitada y la devuelve a la Bandeja 1 de Raimundo; aquí no se aprueba el gasto ni el pago.</p>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full min-w-[980px] text-sm">
