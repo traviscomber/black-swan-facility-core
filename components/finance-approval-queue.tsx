@@ -190,8 +190,9 @@ export function FinanceApprovalQueue() {
       let failed = 0
       for (const row of pending) {
         try {
-          await approveDocument(row.id, 'Valorización interna automática')
-          converted += 1
+          const result = await approveDocument(row.id, 'Valorización interna automática')
+          if (result.valuation === 'automatic' || result.valuation === 'not_required') converted += 1
+          else failed += 1
         } catch {
           failed += 1
         }
@@ -359,7 +360,7 @@ export function FinanceApprovalQueue() {
                     </>
                   })()}</td>
                   <td className="px-4 py-4"><div className="flex gap-2 text-xs leading-5 text-[var(--bs-text-secondary)]">{row.classification_status === 'ready' ? <Check className="mt-0.5 h-4 w-4 shrink-0 text-[var(--bs-cool-sage)]" /> : row.classification_status === 'exception' ? <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-[var(--bs-warm-orange)]" /> : <FileSearch className="mt-0.5 h-4 w-4 shrink-0 text-[var(--bs-cool-sky)]" />}<span><span className="block text-[var(--bs-text-primary)]">{classificationLabel(row.classification_status)}</span>{row.classification_reason ?? 'Sin explicación registrada.'}</span></div></td>
-                  <td className="px-4 py-4 text-right"><p className="text-[var(--bs-text-primary)]">{formatMoney(row.total_amount, row.currency)}</p>{row.amount_eur != null && <p className="mt-1 text-xs text-[var(--bs-cool-sage)]">{formatMoney(row.amount_eur, 'EUR')}</p>}</td>
+                  <td className="px-4 py-4 text-right"><p className="text-[var(--bs-text-primary)]">{formatMoney(row.total_amount, row.currency)}</p></td>
                   <td className="px-4 py-4 text-xs leading-5 text-[var(--bs-text-secondary)]"><p>{row.confidence_label ?? (row.confidence == null ? 'Sin confianza' : `Confianza ${pct.format(n(row.confidence))}`)}</p><p>{row.historical_count} antecedentes · {row.historical_dominance == null ? 'dominio —' : `dominio ${pct.format(n(row.historical_dominance))}`}</p><p className={row.amount_in_range === false ? 'text-[var(--bs-warm-orange)]' : row.amount_in_range === true ? 'text-[var(--bs-cool-sage)]' : 'text-[var(--bs-text-muted)]'}>{row.amount_in_range == null ? 'Sin rango' : row.amount_in_range ? 'Dentro de rango' : 'Fuera de rango'}</p></td>
                   <td className="px-4 py-4 text-right">{row.approval_status === 'pending_mapping' ? (
                     <div className="space-y-2">
@@ -418,7 +419,7 @@ export function FinanceApprovalQueue() {
                         </div>
                       )}
                     </div>
-                  ) : row.approval_status === 'pending_valuation' ? <span className="text-xs text-[var(--bs-cool-sky)]">Conversión EUR automática…</span> : <span className="text-xs text-[var(--bs-text-muted)]">{row.approval_status === 'approved' ? 'Posteado al Budget' : 'Rechazado'}</span>}</td>
+                  ) : row.approval_status === 'pending_valuation' ? <span className="text-xs text-[var(--bs-text-muted)]">Aprobado · enviado a Santiago</span> : <span className="text-xs text-[var(--bs-text-muted)]">{row.approval_status === 'approved' ? 'Posteado al Budget' : 'Rechazado'}</span>}</td>
                 </tr>
               })}
               {!loading && !filtered.length && <tr><td colSpan={7} className="px-5 py-12 text-center text-[var(--bs-text-muted)]">No hay documentos en esta etapa.</td></tr>}
