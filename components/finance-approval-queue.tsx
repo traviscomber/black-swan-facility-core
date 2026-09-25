@@ -63,7 +63,7 @@ function formatMoney(value: unknown, currency: string) {
 function isCanonicalMapped(row: QueueRow) { return Boolean(row.division_name && row.category_name && row.category_key && row.category_role === 'cost') }
 
 const tabs: Array<{ key: QueueView; label: string }> = [
-  { key: 'review', label: 'Por revisar' },
+  { key: 'review', label: 'Pendientes conmigo' },
   { key: 'approved', label: 'Aprobadas' },
   { key: 'rejected', label: 'Rechazadas' },
 ]
@@ -314,9 +314,9 @@ export function FinanceApprovalQueue() {
       <section className="bg-[var(--bs-surface-primary)] p-5 md:p-6">
         <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
           <div className="max-w-3xl">
-            <p className="text-xs uppercase tracking-[0.14em] text-[var(--bs-warm-yellow)]">Raimundo · Primera tarea</p>
-            <h2 className="mt-2 text-xl font-normal text-[var(--bs-text-primary)]">Revisar todas las facturas nuevas</h2>
-            <p className="mt-2 text-sm leading-6 text-[var(--bs-text-secondary)]">La IA sugiere el centro de costo de cada factura. Raimundo puede aprobar la sugerencia, cambiarla o escalar la imputación a Santiago si no tiene certeza. Cuando Santiago asigna el centro, la factura vuelve a Raimundo para aprobación antes del pago.</p>
+            <p className="text-xs uppercase tracking-[0.14em] text-[var(--bs-warm-yellow)]">Bandeja 1 · Raimundo</p>
+            <h2 className="mt-2 text-xl font-normal text-[var(--bs-text-primary)]">Decidir imputación y aprobar gasto</h2>
+            <p className="mt-2 text-sm leading-6 text-[var(--bs-text-secondary)]">Una sola decisión por factura: aprobar la imputación, corregirla, pedir a Santiago que defina el centro o rechazar el gasto. Las facturas escaladas vuelven aquí antes de cualquier pago.</p>
           </div>
           <Button variant="outline" onClick={() => void load()} disabled={loading}><RefreshCw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />Actualizar</Button>
         </div>
@@ -377,12 +377,12 @@ export function FinanceApprovalQueue() {
                     <div className="space-y-2">
                       {reassigningId !== row.id && aiSuggestions[row.id] && (
                         <div className="flex justify-end gap-2">
-                          <Button size="sm" onClick={() => void saveCenterAndApprove(row, aiSuggestions[row.id]!.center_id)} disabled={busy || !canApprove}><Check className="mr-2 h-4 w-4" />Aprobar sugerencia → Santiago</Button>
-                          <Button size="sm" variant="outline" onClick={() => startReassign(row)} disabled={busy || !canApprove}>Cambiar centro</Button><Button size="sm" variant="outline" onClick={() => void escalateToSantiago(row)} disabled={busy || !canApprove}>No sé → Santiago</Button>
+                          <Button size="sm" onClick={() => void saveCenterAndApprove(row, aiSuggestions[row.id]!.center_id)} disabled={busy || !canApprove}><Check className="mr-2 h-4 w-4" />Aprobar y enviar a pago</Button>
+                          <Button size="sm" variant="outline" onClick={() => startReassign(row)} disabled={busy || !canApprove}>Cambiar imputación</Button><Button size="sm" variant="outline" onClick={() => void escalateToSantiago(row)} disabled={busy || !canApprove}>Pedir centro a Santiago</Button>
                         </div>
                       )}
                       {reassigningId !== row.id && !aiSuggestions[row.id] && !suggestionLoadingIds.has(row.id) && (
-                        <div className="flex justify-end gap-2"><Button size="sm" onClick={() => startReassign(row)} disabled={busy || !canApprove}>Asignar centro de costo</Button><Button size="sm" variant="outline" onClick={() => void escalateToSantiago(row)} disabled={busy || !canApprove}>Escalar a Santiago</Button></div>
+                        <div className="flex justify-end gap-2"><Button size="sm" onClick={() => startReassign(row)} disabled={busy || !canApprove}>Asignar imputación</Button><Button size="sm" variant="outline" onClick={() => void escalateToSantiago(row)} disabled={busy || !canApprove}>Pedir centro a Santiago</Button></div>
                       )}
                       {reassigningId !== row.id && suggestionLoadingIds.has(row.id) && (
                         <span className="text-xs text-[var(--bs-text-muted)]">Generando sugerencia IA…</span>
@@ -399,7 +399,7 @@ export function FinanceApprovalQueue() {
                           </select>
                           <div className="flex justify-end gap-2">
                             <Button size="sm" variant="outline" onClick={() => setReassigningId(null)} disabled={busy}>Cancelar</Button>
-                            <Button size="sm" variant="outline" onClick={() => void escalateToSantiago(row)} disabled={busy}>No sé → Santiago</Button><Button size="sm" onClick={() => void saveCenterAndApprove(row)} disabled={busy || !reassignCenterId}>Asignar y aprobar → Santiago</Button>
+                            <Button size="sm" variant="outline" onClick={() => void escalateToSantiago(row)} disabled={busy}>No sé → Santiago</Button><Button size="sm" onClick={() => void saveCenterAndApprove(row)} disabled={busy || !reassignCenterId}>Asignar y aprobar</Button>
                           </div>
                         </div>
                       )}
@@ -426,7 +426,7 @@ export function FinanceApprovalQueue() {
                           <input value={reassignNote} onChange={(event) => setReassignNote(event.target.value)} placeholder="Motivo de la reasignación" className="h-9 w-full bg-[var(--bs-bg-primary)] px-2 text-xs text-[var(--bs-text-primary)]" />
                           <div className="flex justify-end gap-2">
                             <Button size="sm" variant="outline" onClick={() => setReassigningId(null)} disabled={busy}>Cancelar</Button>
-                            <Button size="sm" onClick={() => void saveCenterAndApprove(row)} disabled={busy || !reassignCenterId || !reassignNote.trim()}>Cambiar y aprobar → Santiago</Button>
+                            <Button size="sm" onClick={() => void saveCenterAndApprove(row)} disabled={busy || !reassignCenterId || !reassignNote.trim()}>Cambiar y aprobar</Button>
                           </div>
                         </div>
                       )}
