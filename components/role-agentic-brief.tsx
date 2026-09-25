@@ -14,6 +14,7 @@ export type AgenticSignal = {
   task: string
   operationalArea: string
   severity?: "normal" | "attention"
+  priority?: number
   capability?: "hospitality.assign_request" | "hospitality.prepare_arrival"
   requestId?: string | null
   reservationId?: string | null
@@ -80,6 +81,8 @@ export function RoleAgenticBrief({ persona, signals }: { persona: Persona; signa
     return [...signals]
       .filter((signal) => signal.count > 0)
       .sort((a, b) => {
+        const priority = (b.priority ?? 0) - (a.priority ?? 0)
+        if (priority !== 0) return priority
         const severity = Number(b.severity === "attention") - Number(a.severity === "attention")
         return severity !== 0 ? severity : b.count - a.count
       })
