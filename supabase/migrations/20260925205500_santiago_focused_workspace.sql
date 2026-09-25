@@ -1,4 +1,14 @@
 -- Give Santiago a focused daily workspace: booking first, finance second.
+alter table public.user_access_profiles
+  drop constraint if exists user_access_profiles_os_persona_key_check;
+
+alter table public.user_access_profiles
+  add constraint user_access_profiles_os_persona_key_check
+  check (
+    os_persona_key is null
+    or os_persona_key in ('executive','field_admin','general','external_orchard','santiago')
+  );
+
 update public.user_access_profiles
 set os_persona_key='santiago',
     os_start_path='/os',
