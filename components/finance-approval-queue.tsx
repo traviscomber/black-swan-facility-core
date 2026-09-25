@@ -53,6 +53,7 @@ type AiSuggestion = {
   category_name: string
   confidence: number
   reason: string
+  source?: string
 }
 
 const pct = new Intl.NumberFormat('es-CL', { style: 'percent', maximumFractionDigits: 0 })
@@ -126,7 +127,7 @@ export function FinanceApprovalQueue() {
 
   useEffect(() => {
     if (!canApprove) return
-    const pending = rows.filter((row) => row.approval_status === 'pending_mapping').slice(0, 10)
+    const pending = rows.filter((row) => row.approval_status === 'pending_mapping').slice(0, 24)
     for (const row of pending) {
       if (requestedSuggestions.current.has(row.id)) continue
       requestedSuggestions.current.add(row.id)
@@ -137,8 +138,11 @@ export function FinanceApprovalQueue() {
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ document_id: row.id }),
       }).then(async (response) => {
-        const payload = await response.json() as { suggestion?: AiSuggestion | null }
-        setAiSuggestions((current) => ({ ...current, [row.id]: response.ok ? (payload.suggestion ?? null) : null }))
+        const payload = await response.json() as { suggestion?: AiSuggestion | null; source?: string }
+        const suggestion = response.ok && payload.suggestion
+          ? { ...payload.suggestion, source: payload.source }
+          : null
+        setAiSuggestions((current) => ({ ...current, [row.id]: suggestion }))
       }).catch(() => {
         setAiSuggestions((current) => ({ ...current, [row.id]: null }))
       }).finally(() => {
@@ -156,6 +160,8 @@ export function FinanceApprovalQueue() {
     : rows.filter((row) => row.approval_status === status), [rows, status])
   const counts = useMemo(() => rows.reduce<Record<string, number>>((acc, row) => { acc[row.approval_status] = (acc[row.approval_status] ?? 0) + 1; return acc }, {}), [rows])
   const reviewCount = (counts.pending_mapping ?? 0) + (counts.ready ?? 0)
+  const aiSuggestionCount = Object.values(aiSuggestions).filter(Boolean).length
+  const aiAnalyzedCount = Object.keys(aiSuggestions).length
 
   async function approve(ids: string[]) {
     const validIds = ids.filter((id) => rows.some((row) => row.id === id && row.approval_status === 'ready' && isCanonicalMapped(row)))
@@ -276,7 +282,7 @@ export function FinanceApprovalQueue() {
           <Button variant="outline" onClick={() => void load()} disabled={loading}><RefreshCw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />Actualizar</Button>
         </div>
         <div className="mt-5 grid gap-3 md:grid-cols-4">
-          <div className="bg-[var(--bs-surface-secondary)] p-4 md:col-span-2"><p className="text-xs uppercase tracking-[0.1em] text-[var(--bs-text-muted)]">Por revisar</p><p className="mt-2 text-xl text-[var(--bs-warm-yellow)]">{reviewCount}</p><p className="mt-1 text-xs text-[var(--bs-text-secondary)]">{counts.pending_mapping ?? 0} sin centro confirmado · {counts.ready ?? 0} con centro sugerido por IA</p></div>
+          <div className="bg-[var(--bs-surface-secondary)] p-4 md:col-span-2"><p className="text-xs uppercase tracking-[0.1em] text-[var(--bs-text-muted)]">Por revisar</p><p className="mt-2 text-xl text-[var(--bs-warm-yellow)]">{reviewCount}</p><p className="mt-1 text-xs text-[var(--bs-text-secondary)]">{counts.pending_mapping ?? 0} sin confirmar · {aiSuggestionCount} recomendaciones IA disponibles · {counts.ready ?? 0} preclasificadas por historial{aiAnalyzedCount ? ` · ${aiAnalyzedCount} analizadas` : ''}</p></div>
           <div className="bg-[var(--bs-surface-secondary)] p-4"><p className="text-xs uppercase tracking-[0.1em] text-[var(--bs-text-muted)]">Valorar en EUR</p><p className="mt-2 text-xl text-[var(--bs-cool-sky)]">{counts.pending_valuation ?? 0}</p></div>
           <div className="bg-[var(--bs-surface-secondary)] p-4"><p className="text-xs uppercase tracking-[0.1em] text-[var(--bs-text-muted)]">Cerradas</p><p className="mt-2 text-xl text-[var(--bs-text-primary)]">{(counts.approved ?? 0) + (counts.rejected ?? 0)}</p></div>
         </div>
@@ -306,6 +312,7 @@ export function FinanceApprovalQueue() {
                         <p className="mt-1 text-xs text-[var(--bs-text-secondary)]">{aiSuggestion.category_name}</p>
                         <p className="mt-2 text-xs text-[var(--bs-warm-yellow)]">Budget · {aiSuggestion.center_label}</p>
                         <p className="mt-1 max-w-72 text-[11px] leading-4 text-[var(--bs-text-muted)]">{aiSuggestion.reason}</p>
+                        <p className="mt-1 text-[10px] uppercase tracking-[0.08em] text-[var(--bs-text-muted)]">{aiSuggestion.source === 'pdf_plus_historical_text' ? 'Evidencia · PDF + texto histórico' : 'Evidencia · texto histórico + Budget'}</p>
                       </>
                     }
                     if (row.approval_status === 'pending_mapping' && suggestionLoadingIds.has(row.id)) {
