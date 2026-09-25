@@ -6,12 +6,13 @@ export const runtime = 'nodejs'
 
 type Candidate = {
   id: string
-  historical_label: string
-  operational_label: string | null
   division_id: string
-  category_id: string
   division_name: string
+  division_key: string
+  category_id: string
   category_name: string
+  category_key: string
+  source_row: number | null
 }
 
 function outputText(payload: Record<string, unknown>) {
@@ -60,49 +61,85 @@ export async function POST(request: Request) {
     if (!apiKey) return NextResponse.json({ ok: false, suggestion: null, reason: 'openai_api_key_missing' }, { status: 503 })
 
     const admin = adminClient()
-    const [{ data: document, error: documentError }, { data: centers, error: centersError }, { data: upload, error: uploadError }] = await Promise.all([
-      admin.from('finance_documents')
-        .select('id,supplier_name,supplier_rut,document_number,document_date,total_amount,currency,approval_status,description')
-        .eq('id', documentId)
-        .maybeSingle(),
-      admin.from('finance_historical_cost_centers')
-        .select('id,historical_label,operational_label,division_id,category_id,budget_divisions!inner(name),budget_categories!inner(name)')
-        .eq('mapping_status', 'mapped')
-        .not('division_id', 'is', null)
-        .not('category_id', 'is', null)
-        .order('historical_label'),
-      admin.from('finance_sii_uploads')
-        .select('id,storage_bucket,storage_path,original_filename,finance_document_id')
-        .eq('finance_document_id', documentId)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle(),
-    ])
+    const { data: document, error: documentError } = await admin.from('finance_documents')
+      .select('id,supplier_name,supplier_rut,document_number,document_date,total_amount,currency,approval_status,description')
+      .eq('id', documentId)
+      .maybeSingle()
 
     if (documentError) return NextResponse.json({ error: documentError.message }, { status: 500 })
     if (!document) return NextResponse.json({ error: 'Finance document not found' }, { status: 404 })
     if (!['pending_mapping', 'ready'].includes(document.approval_status)) {
       return NextResponse.json({ error: 'Document is not awaiting Raimundo review' }, { status: 409 })
     }
-    if (centersError) return NextResponse.json({ error: centersError.message }, { status: 500 })
+
+    const historyQuery = admin.from('finance_documents')
+      .select('division_id,category_id,supplier_name,supplier_rut,approved_at')
+      .not('division_id', 'is', null)
+      .not('category_id', 'is', null)
+      .in('approval_status', ['approved', 'pending_valuation'])
+      .order('approved_at', { ascending: false })
+      .limit(20)
+
+    if (document.supplier_rut) historyQuery.eq('supplier_rut', document.supplier_rut)
+    else historyQuery.eq('supplier_name', document.supplier_name)
+
+    const [{ data: categories, error: categoriesError }, { data: upload, error: uploadError }, { data: history, error: historyError }] = await Promise.all([
+      admin.from('budget_categories')
+        .select('id,name,source_key,source_row,division_id,budget_divisions!inner(id,name,source_key,is_active,is_aggregate)')
+        .eq('is_active', true)
+        .eq('category_role', 'cost')
+        .not('source_key', 'is', null)
+        .eq('budget_divisions.is_active', true)
+        .eq('budget_divisions.is_aggregate', false)
+        .not('budget_divisions.source_key', 'is', null)
+        .order('source_row'),
+      admin.from('finance_sii_uploads')
+        .select('id,storage_bucket,storage_path,original_filename,finance_document_id')
+        .eq('finance_document_id', documentId)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle(),
+      historyQuery,
+    ])
+
+    if (categoriesError) return NextResponse.json({ error: categoriesError.message }, { status: 500 })
     if (uploadError) return NextResponse.json({ error: uploadError.message }, { status: 500 })
+    if (historyError) return NextResponse.json({ error: historyError.message }, { status: 500 })
     if (!upload) return NextResponse.json({ ok: true, suggestion: null, reason: 'source_pdf_not_available' })
 
-    const candidates = (centers ?? []).map((row) => {
+    const candidates = (categories ?? []).map((row) => {
       const division = Array.isArray(row.budget_divisions) ? row.budget_divisions[0] : row.budget_divisions
-      const category = Array.isArray(row.budget_categories) ? row.budget_categories[0] : row.budget_categories
       return {
         id: row.id,
-        historical_label: row.historical_label,
-        operational_label: row.operational_label,
         division_id: row.division_id,
-        category_id: row.category_id,
         division_name: division?.name ?? 'P&L',
-        category_name: category?.name ?? 'Categoría',
+        division_key: division?.source_key ?? '',
+        category_id: row.id,
+        category_name: row.name,
+        category_key: row.source_key,
+        source_row: row.source_row,
       } satisfies Candidate
-    })
+    }).filter((candidate) => candidate.division_id && candidate.division_key && candidate.category_key)
 
-    if (!candidates.length) return NextResponse.json({ ok: true, suggestion: null, reason: 'no_mapped_centers' })
+    if (!candidates.length) return NextResponse.json({ ok: true, suggestion: null, reason: 'canonical_budget_not_available' })
+
+    const candidateByCategory = new Map(candidates.map((candidate) => [candidate.category_id, candidate]))
+    const historyCounts = new Map<string, number>()
+    for (const row of history ?? []) {
+      const candidate = row.category_id ? candidateByCategory.get(row.category_id) : null
+      if (!candidate || candidate.division_id !== row.division_id) continue
+      const key = candidate.category_id
+      historyCounts.set(key, (historyCounts.get(key) ?? 0) + 1)
+    }
+
+    const historyText = Array.from(historyCounts.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 8)
+      .map(([categoryId, count]) => {
+        const candidate = candidateByCategory.get(categoryId)!
+        return `${count}× | ${candidate.division_name} | ${candidate.category_name}`
+      })
+      .join('\n')
 
     const { data: source, error: sourceError } = await admin.storage.from(upload.storage_bucket).download(upload.storage_path)
     if (sourceError || !source) return NextResponse.json({ error: sourceError?.message ?? 'Could not read invoice PDF' }, { status: 500 })
@@ -112,9 +149,9 @@ export async function POST(request: Request) {
     const candidateText = candidates.map((candidate) =>
       [
         candidate.id,
-        candidate.operational_label ?? candidate.historical_label,
         candidate.division_name,
         candidate.category_name,
+        `budget_row=${candidate.source_row ?? '—'}`,
       ].join(' | ')
     ).join('\n')
 
@@ -139,10 +176,12 @@ export async function POST(request: Request) {
               type: 'input_text',
               text: [
                 'Actúa como clasificador contable interno, no como aprobador.',
-                'Debes sugerir como máximo un centro de costo de la lista permitida.',
-                'Usa únicamente evidencia visible en la factura: proveedor, glosa, bienes/servicios, cantidades y contexto explícito.',
-                'Nunca inventes un centro, nunca elijas fuera de la lista y nunca apruebes el gasto.',
-                'Si la evidencia no distingue razonablemente un centro, responde center_id=null.',
+                'La fuente de verdad es el Budget canónico importado desde el Excel maestro.',
+                'Debes sugerir como máximo una combinación división/categoría de costo de la lista permitida.',
+                'Usa evidencia visible en la factura: proveedor, glosa, bienes/servicios, cantidades y contexto explícito.',
+                'El historial del proveedor es evidencia adicional, nunca limita el universo del Budget.',
+                'Nunca inventes una combinación, nunca elijas fuera de la lista y nunca apruebes el gasto.',
+                'Si la evidencia no distingue razonablemente una combinación, responde category_id=null.',
                 'Una sugerencia de baja confianza debe ser null.',
                 '',
                 `Proveedor: ${document.supplier_name ?? '—'}`,
@@ -151,7 +190,10 @@ export async function POST(request: Request) {
                 `Fecha: ${document.document_date ?? '—'}`,
                 `Monto: ${document.total_amount ?? '—'} ${document.currency ?? ''}`,
                 '',
-                'Centros permitidos (id | centro | división | categoría):',
+                'Historial aprobado del proveedor (solo evidencia):',
+                historyText || 'Sin historial aprobado comparable.',
+                '',
+                'Budget canónico permitido (category_id | división | categoría | fila Excel):',
                 candidateText,
               ].join('\n'),
             },
@@ -160,14 +202,14 @@ export async function POST(request: Request) {
         text: {
           format: {
             type: 'json_schema',
-            name: 'finance_cost_center_suggestion',
+            name: 'finance_budget_mapping_suggestion',
             strict: true,
             schema: {
               type: 'object',
               additionalProperties: false,
-              required: ['center_id', 'confidence', 'reason'],
+              required: ['category_id', 'confidence', 'reason'],
               properties: {
-                center_id: { anyOf: [{ type: 'string', enum: candidateIds }, { type: 'null' }] },
+                category_id: { anyOf: [{ type: 'string', enum: candidateIds }, { type: 'null' }] },
                 confidence: { type: 'number', minimum: 0, maximum: 1 },
                 reason: { type: 'string', maxLength: 320 },
               },
@@ -187,8 +229,8 @@ export async function POST(request: Request) {
     const text = outputText(raw)
     if (!text) return NextResponse.json({ ok: true, suggestion: null, reason: 'empty_model_output' })
 
-    const parsed = JSON.parse(text) as { center_id: string | null; confidence: number; reason: string }
-    const selected = parsed.center_id ? candidates.find((candidate) => candidate.id === parsed.center_id) : null
+    const parsed = JSON.parse(text) as { category_id: string | null; confidence: number; reason: string }
+    const selected = parsed.category_id ? candidateByCategory.get(parsed.category_id) : null
     if (!selected || parsed.confidence < 0.55) {
       return NextResponse.json({
         ok: true,
@@ -201,15 +243,19 @@ export async function POST(request: Request) {
     return NextResponse.json({
       ok: true,
       suggestion: {
-        center_id: selected.id,
-        center_label: selected.operational_label ?? selected.historical_label,
+        center_id: selected.category_id,
+        center_label: `${selected.division_name} · ${selected.category_name}`,
         division_id: selected.division_id,
         division_name: selected.division_name,
+        division_key: selected.division_key,
         category_id: selected.category_id,
         category_name: selected.category_name,
+        category_key: selected.category_key,
         confidence: parsed.confidence,
         reason: parsed.reason,
       },
+      candidate_count: candidates.length,
+      source: 'canonical_budget_workbook',
     })
   } catch (error) {
     console.error('[finance/cost-center-suggestion] failed', error)
