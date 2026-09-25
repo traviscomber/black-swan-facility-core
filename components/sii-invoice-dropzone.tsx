@@ -24,6 +24,24 @@ type PendingPdf = {
   created_at: string
 }
 
+type UploadHistoryRow = {
+  id: string
+  original_filename: string
+  status: string
+  finance_document_id: string | null
+  upload_kind: 'pdf' | 'xml'
+  error_message: string | null
+  created_at: string
+}
+
+function historyStatus(row: UploadHistoryRow) {
+  if (row.status === 'ready' || row.status === 'classified' || row.status === 'linked' || row.finance_document_id) return 'Procesada'
+  if (row.status === 'pending_mapping') return 'Clasificación pendiente'
+  if (row.status === 'needs_metadata') return 'Revisión pendiente'
+  if (row.status === 'failed') return row.error_message || 'Error'
+  return 'Recibida'
+}
+
 function statusCopy(row: UploadResult) {
   if (row.status === 'ready' || row.status === 'classified') return 'Clasificada · lista para decisión de Raimundo'
   if (row.status === 'pending_mapping' || row.status === 'linked') return 'Recibida · clasificación canónica pendiente'
@@ -41,6 +59,7 @@ export function SiiInvoiceDropzone({ canReview = true }: { canReview?: boolean }
   const [uploading, setUploading] = useState(false)
   const [results, setResults] = useState<UploadResult[]>([])
   const [pendingPdfs, setPendingPdfs] = useState<PendingPdf[]>([])
+  const [uploadHistory, setUploadHistory] = useState<UploadHistoryRow[]>([])
 
   const loadPending = useCallback(async () => {
     const { data, error } = await supabase
@@ -54,12 +73,26 @@ export function SiiInvoiceDropzone({ canReview = true }: { canReview?: boolean }
     if (!error) setPendingPdfs((data ?? []) as PendingPdf[])
   }, [supabase])
 
-  useEffect(() => { void loadPending() }, [loadPending])
+  const loadUploadHistory = useCallback(async () => {
+    const { data, error } = await supabase
+      .from('finance_sii_uploads')
+      .select('id,original_filename,status,finance_document_id,upload_kind,error_message,created_at')
+      .order('created_at', { ascending: false })
+      .limit(50)
+
+    if (!error) setUploadHistory((data ?? []) as UploadHistoryRow[])
+  }, [supabase])
+
+  const refreshUploads = useCallback(async () => {
+    await Promise.all([loadPending(), loadUploadHistory()])
+  }, [loadPending, loadUploadHistory])
+
+  useEffect(() => { void refreshUploads() }, [refreshUploads])
   useEffect(() => {
-    const refresh = () => void loadPending()
+    const refresh = () => void refreshUploads()
     window.addEventListener('finance-sii-uploaded', refresh)
     return () => window.removeEventListener('finance-sii-uploaded', refresh)
-  }, [loadPending])
+  }, [refreshUploads])
 
   const upload = useCallback(async (files: File[]) => {
     if (!files.length || uploading) return
@@ -86,14 +119,14 @@ export function SiiInvoiceDropzone({ canReview = true }: { canReview?: boolean }
       if (failed) toast.error(failed === 1 ? '1 archivo no pudo procesarse.' : `${failed} archivos no pudieron procesarse.`)
       window.dispatchEvent(new Event('finance-workbook-imported'))
       window.dispatchEvent(new Event('finance-sii-uploaded'))
-      await loadPending()
+      await refreshUploads()
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'No fue posible subir las facturas.')
     } finally {
       setUploading(false)
       if (inputRef.current) inputRef.current.value = ''
     }
-  }, [loadPending, uploading])
+  }, [refreshUploads, uploading])
 
   return (
     <section className="mx-4 mt-4 bg-[var(--bs-surface-primary)] md:mx-8">
@@ -152,6 +185,43 @@ export function SiiInvoiceDropzone({ canReview = true }: { canReview?: boolean }
                 </div>
               )
             })}
+          </div>
+        )}
+
+
+        {uploadHistory.length > 0 && (
+          <div className="mt-6 border-t border-[var(--bs-divider-subtle)] pt-5">
+            <div className="flex flex-col gap-1 md:flex-row md:items-end md:justify-between">
+              <div>
+                <p className="text-xs uppercase tracking-[0.12em] text-[var(--bs-warm-yellow)]">{canReview ? 'Facturas subidas' : 'Mis facturas subidas'} · {uploadHistory.length}</p>
+                <p className="mt-1 text-xs text-[var(--bs-text-secondary)]">{canReview ? 'Últimas cargas SII visibles para Finanzas.' : 'Aquí puedes confirmar qué archivos ya subiste y en qué estado están.'}</p>
+              </div>
+            </div>
+            <div className="mt-3 divide-y divide-[var(--bs-divider-subtle)] bg-[var(--bs-surface-secondary)]">
+              {uploadHistory.map((row) => (
+                <div key={row.id} className="flex flex-col gap-3 p-4 md:flex-row md:items-center md:justify-between">
+                  <div className="min-w-0">
+                    <p className="truncate text-sm text-[var(--bs-text-primary)]">{row.original_filename}</p>
+                    <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-[var(--bs-text-secondary)]">
+                      <span>{new Intl.DateTimeFormat(language === 'es' ? 'es-CL' : language === 'de' ? 'de-DE' : 'en-US', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(row.created_at))}</span>
+                      <span>{row.upload_kind.toUpperCase()}</span>
+                      <span>{historyStatus(row)}</span>
+                    </div>
+                  </div>
+                  <div className="flex shrink-0 gap-2">
+                    <Button variant="outline" size="sm" asChild>
+                      <a href={`/api/finance/sii-invoices/source?uploadId=${encodeURIComponent(row.id)}`} target="_blank" rel="noreferrer">
+                        <FileText className="mr-2 h-4 w-4" />
+                        Ver original
+                      </a>
+                    </Button>
+                    {canReview && row.finance_document_id && (
+                      <Button size="sm" asChild><a href={`/${language}/budgets/approvals`}>Ir a aprobación</a></Button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         )}
 
