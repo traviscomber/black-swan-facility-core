@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react"
 import Link from "next/link"
-import { ArrowRight, Beef, CheckSquare, Grape, HeartPulse, Leaf, RefreshCw, ShieldAlert } from "lucide-react"
+import { ArrowRight, Beef, CalendarDays, CheckSquare, Grape, HeartPulse, Hotel, Leaf, RefreshCw, ShieldAlert } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { createClient } from "@/lib/supabase/client"
 import { useLanguage } from "@/lib/hooks/use-language"
@@ -20,13 +20,17 @@ type Counts = {
 const COPY = {
   es: {
     eyebrow: "RAIMUNDO · FOCO DE TRABAJO",
-    title: "Aprobaciones, Ganadería, Viñedo y Huerto",
-    subtitle: "Primero decide la imputación de los gastos. Después, seguimiento operativo de ganadería, viñedo y huerto. El resto del sistema queda disponible sin competir por atención.",
+    title: "Aprobaciones, Booking y operación del campo",
+    subtitle: "Como administrador del campo, Raimundo mantiene una vista amplia. Aprobaciones primero; luego Booking y Hospitality; después Ganadería, Viñedo y Huerto. Los demás módulos siguen disponibles.",
     approvalsTitle: "Aprobaciones",
     approvalsBody: "Revisa primero el centro de costo sugerido, acéptalo o cámbialo. Si no tienes certeza, escala el caso a Santiago.",
     pending: "Pendientes conmigo",
     escalated: "Escaladas a Santiago",
     openApprovals: "Abrir aprobaciones",
+    bookingTitle: "Booking y Hospitality",
+    bookingBody: "Calendario completo de reservas, llegadas, salidas y solicitudes de huéspedes.",
+    openCalendar: "Abrir calendario",
+    openRequests: "Solicitudes de huéspedes",
     cattleTitle: "Ganadería",
     cattleBody: "Estado del ganado, alertas de salud y seguimiento operativo del Fundo Corcovado.",
     animals: "Animales activos",
@@ -49,13 +53,17 @@ const COPY = {
   },
   en: {
     eyebrow: "RAIMUNDO · WORK FOCUS",
-    title: "Approvals, Cattle, Vineyard and Orchard",
-    subtitle: "Decide expense allocation first. Then follow cattle, vineyard and orchard operations. Everything else remains available without competing for attention.",
+    title: "Approvals, Booking and field operations",
+    subtitle: "As field administrator, Raimundo keeps a broad view. Approvals first; then Booking and Hospitality; then Cattle, Vineyard and Orchard. All other authorized modules remain available.",
     approvalsTitle: "Approvals",
     approvalsBody: "Review the suggested cost center first, accept it or change it. If you are unsure, escalate the case to Santiago.",
     pending: "Pending with me",
     escalated: "Escalated to Santiago",
     openApprovals: "Open approvals",
+    bookingTitle: "Booking and Hospitality",
+    bookingBody: "Full reservation calendar, arrivals, departures and guest requests.",
+    openCalendar: "Open calendar",
+    openRequests: "Guest requests",
     cattleTitle: "Cattle",
     cattleBody: "Herd status, health alerts and operational follow-up for Fundo Corcovado.",
     animals: "Active animals",
@@ -78,13 +86,17 @@ const COPY = {
   },
   de: {
     eyebrow: "RAIMUNDO · ARBEITSFOKUS",
-    title: "Freigaben, Rinderhaltung, Weinberg und Obstgarten",
-    subtitle: "Zuerst Kostenstellen und Ausgaben entscheiden. Danach Rinder-, Weinberg- und Obstgartenbetrieb verfolgen. Andere Bereiche bleiben verfügbar, ohne abzulenken.",
+    title: "Freigaben, Buchungen und Feldbetrieb",
+    subtitle: "Als Feldadministrator behält Raimundo eine breite Sicht. Zuerst Freigaben, dann Buchungen und Hospitality, danach Rinderhaltung, Weinberg und Obstgarten. Weitere berechtigte Module bleiben verfügbar.",
     approvalsTitle: "Freigaben",
     approvalsBody: "Vorgeschlagene Kostenstelle zuerst prüfen, bestätigen oder ändern. Bei Unsicherheit an Santiago eskalieren.",
     pending: "Bei mir offen",
     escalated: "An Santiago eskaliert",
     openApprovals: "Freigaben öffnen",
+    bookingTitle: "Buchungen und Hospitality",
+    bookingBody: "Vollständiger Reservierungskalender, Anreisen, Abreisen und Gästeanfragen.",
+    openCalendar: "Kalender öffnen",
+    openRequests: "Gästeanfragen",
     cattleTitle: "Rinderhaltung",
     cattleBody: "Bestandsstatus, Gesundheitswarnungen und operative Nachverfolgung für Fundo Corcovado.",
     animals: "Aktive Tiere",
@@ -166,7 +178,7 @@ export function RaimundoHome() {
       vineyardCritical: pestResult.count ?? 0,
     })
 
-    const primaryKeys = new Set(["approvals", "cattle", "cattle-health", "vineyard", "orchard"])
+    const primaryKeys = new Set(["approvals", "bookings", "guest-requests", "cattle", "cattle-health", "vineyard", "orchard"])
     setOtherItems((navigationResult.items ?? []).filter((item) => !primaryKeys.has(item.key)).slice(0, 8))
     setLoading(false)
   }, [supabase])
@@ -201,7 +213,7 @@ export function RaimundoHome() {
       </section>
 
       <section className="px-4 py-5 md:px-6">
-        <div className="mx-auto grid max-w-[1600px] gap-4 xl:grid-cols-2 2xl:grid-cols-4">
+        <div className="mx-auto grid max-w-[1600px] gap-4 xl:grid-cols-2 2xl:grid-cols-5">
           <div className="border border-border bg-card p-5">
             <div className="flex items-start gap-3">
               <CheckSquare className="mt-0.5 h-5 w-5 text-primary" />
@@ -222,9 +234,28 @@ export function RaimundoHome() {
 
           <div className="border border-border bg-card p-5">
             <div className="flex items-start gap-3">
-              <Beef className="mt-0.5 h-5 w-5 text-primary" />
+              <Hotel className="mt-0.5 h-5 w-5 text-primary" />
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-primary">02 · PRIORIDAD</p>
+                <h2 className="mt-1 text-lg font-medium text-foreground">{copy.bookingTitle}</h2>
+                <p className="mt-1 text-sm text-muted-foreground">{copy.bookingBody}</p>
+              </div>
+            </div>
+            <div className="mt-5 grid gap-2">
+              <Link href={localized(locale, "/bookings/calendar")} className="flex items-center justify-between border border-border p-4 text-sm font-medium hover:bg-secondary/40">
+                <span className="flex items-center gap-2"><CalendarDays className="h-4 w-4 text-primary" />{copy.openCalendar}</span><ArrowRight className="h-4 w-4" />
+              </Link>
+              <Link href={localized(locale, "/bookings/requests")} className="flex items-center justify-between border border-border p-4 text-sm font-medium hover:bg-secondary/40">
+                <span className="flex items-center gap-2"><Hotel className="h-4 w-4 text-primary" />{copy.openRequests}</span><ArrowRight className="h-4 w-4" />
+              </Link>
+            </div>
+          </div>
+
+          <div className="border border-border bg-card p-5">
+            <div className="flex items-start gap-3">
+              <Beef className="mt-0.5 h-5 w-5 text-primary" />
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-primary">03 · PRIORIDAD</p>
                 <h2 className="mt-1 text-lg font-medium text-foreground">{copy.cattleTitle}</h2>
                 <p className="mt-1 text-sm text-muted-foreground">{copy.cattleBody}</p>
               </div>
@@ -247,7 +278,7 @@ export function RaimundoHome() {
             <div className="flex items-start gap-3">
               <Grape className="mt-0.5 h-5 w-5 text-primary" />
               <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-primary">03 · PRIORIDAD</p>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-primary">04 · PRIORIDAD</p>
                 <h2 className="mt-1 text-lg font-medium text-foreground">{copy.vineyardTitle}</h2>
                 <p className="mt-1 text-sm text-muted-foreground">{copy.vineyardBody}</p>
               </div>
@@ -270,7 +301,7 @@ export function RaimundoHome() {
             <div className="flex items-start gap-3">
               <Leaf className="mt-0.5 h-5 w-5 text-primary" />
               <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-primary">04 · PRIORIDAD</p>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-primary">05 · PRIORIDAD</p>
                 <h2 className="mt-1 text-lg font-medium text-foreground">{copy.orchardTitle}</h2>
                 <p className="mt-1 text-sm text-muted-foreground">{copy.orchardBody}</p>
               </div>
