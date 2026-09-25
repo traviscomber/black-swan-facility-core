@@ -171,7 +171,7 @@ export async function proxy(request: NextRequest) {
     rewriteUrl.pathname = effectivePathname
   }
 
-  const createPageResponse = () => {
+  const createPageResponse = (persistLocale = true) => {
     const requestHeaders = new Headers(request.headers)
     if (locale) requestHeaders.set(LOCALE_HEADER, locale)
 
@@ -179,11 +179,13 @@ export async function proxy(request: NextRequest) {
       ? NextResponse.rewrite(rewriteUrl, { request: { headers: requestHeaders } })
       : NextResponse.next({ request: { headers: requestHeaders } })
 
-    return locale ? setLocaleCookie(response, locale) : response
+    return locale && persistLocale ? setLocaleCookie(response, locale) : response
   }
 
   if (isPublicRequest(effectivePathname, request.method)) {
-    return createPageResponse()
+    // The login route is fully public and client-authenticated. Avoid Set-Cookie
+    // so Vercel can cache its HTML at the CDN by locale path.
+    return createPageResponse(effectivePathname !== "/auth/login")
   }
 
   let response = createPageResponse()
