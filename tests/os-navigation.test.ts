@@ -124,6 +124,8 @@ test("Operations API outage falls back to canonical RPCs without granting routes
         }
       }
       if (name === "get_discovery_navigation_entitlement") return { data: true, error: null }
+      if (name === "can_finance_approve") return { data: false, error: null }
+      if (name === "can_finance_payment_authorize") return { data: false, error: null }
       throw new Error(`Unexpected RPC: ${name}`)
     },
   }
@@ -144,7 +146,7 @@ test("Operations API outage falls back to canonical RPCs without granting routes
   const keys = navigation.items?.map((item) => item.key) ?? []
 
   assert.deepEqual(requests, [{ input: "https://operations.example/v1/os/navigation", authorization: "Bearer test-token" }])
-  assert.deepEqual(rpcCalls, ["get_current_route_access", "get_black_swan_os_navigation", "get_discovery_navigation_entitlement"])
+  assert.deepEqual(rpcCalls, ["get_current_route_access", "get_black_swan_os_navigation", "get_discovery_navigation_entitlement", "can_finance_approve", "can_finance_payment_authorize"])
   assert.equal(navigation.role, "hospitality")
   assert.equal(keys.includes("bookings"), true)
   assert.equal(keys.includes("tasks"), true)
@@ -177,6 +179,8 @@ test("malformed successful Operations API payload uses the canonical RPC fallbac
         }
       }
       if (name === "get_discovery_navigation_entitlement") return { data: false, error: null }
+      if (name === "can_finance_approve") return { data: false, error: null }
+      if (name === "can_finance_payment_authorize") return { data: false, error: null }
       throw new Error(`Unexpected RPC: ${name}`)
     },
   }
@@ -191,7 +195,7 @@ test("malformed successful Operations API payload uses the canonical RPC fallbac
   })
   const keys = navigation.items?.map((item) => item.key) ?? []
 
-  assert.deepEqual(rpcCalls, ["get_current_route_access", "get_black_swan_os_navigation", "get_discovery_navigation_entitlement"])
+  assert.deepEqual(rpcCalls, ["get_current_route_access", "get_black_swan_os_navigation", "get_discovery_navigation_entitlement", "can_finance_approve", "can_finance_payment_authorize"])
   assert.equal(navigation.role, "hospitality")
   assert.equal(keys.includes("bookings"), true)
   assert.equal(keys.includes("events"), true)

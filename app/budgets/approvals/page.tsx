@@ -2,6 +2,7 @@
 
 import { AppLayout } from '@/components/app-layout'
 import { FinanceApprovalQueue } from '@/components/finance-approval-queue'
+import { FinanceApprovalRouteGate } from '@/components/finance-approval-route-gate'
 import { FinanceHistoricalAliasReview } from '@/components/finance-historical-alias-review'
 import { RaimundoFinanceImport } from '@/components/raimundo-finance-import'
 import { RaimundoReviewInbox } from '@/components/raimundo-review-inbox'
@@ -20,12 +21,14 @@ export default function BudgetApprovalsPage() {
   const text = copy[language]
   return (
     <AppLayout>
-      <PageHeader title={text.title} description={text.description} />
-      <FinanceApprovalQueue />
-      <SiiSourceReview />
-      <RaimundoReviewInbox />
-      <FinanceHistoricalAliasReview />
-      <RaimundoFinanceImport />
+      <FinanceApprovalRouteGate>
+        <PageHeader title={text.title} description={text.description} />
+        <FinanceApprovalQueue />
+        <SiiSourceReview />
+        <RaimundoReviewInbox />
+        <FinanceHistoricalAliasReview />
+        <RaimundoFinanceImport />
+      </FinanceApprovalRouteGate>
     </AppLayout>
   )
 }
