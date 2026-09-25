@@ -23,9 +23,6 @@ type QueueRow = {
   classification_status: ClassificationStatus
   approval_status: ApprovalStatus
   valuation_status: string
-  amount_eur: number | string | null
-  fx_rate_to_eur: number | string | null
-  fx_date: string | null
   confidence: number | string | null
   confidence_label?: string | null
   classification_reason: string | null
@@ -58,7 +55,7 @@ type AiSuggestion = {
 
 const pct = new Intl.NumberFormat('es-CL', { style: 'percent', maximumFractionDigits: 0 })
 function n(value: unknown) { const parsed = Number(value ?? 0); return Number.isFinite(parsed) ? parsed : 0 }
-function formatMoney(value: unknown, currency = 'EUR') {
+function formatMoney(value: unknown, currency: string) {
   try { return new Intl.NumberFormat('es-CL', { style: 'currency', currency, maximumFractionDigits: currency === 'CLP' ? 0 : 2 }).format(n(value)) }
   catch { return `${n(value).toLocaleString('es-CL')} ${currency}` }
 }
@@ -94,7 +91,7 @@ export function FinanceApprovalQueue() {
   const requestedSuggestions = useRef(new Set<string>())
   const requestedValuations = useRef(new Set<string>())
 
-  const approveWithAutomaticEur = useCallback(async (documentId: string, notes: string | null = null) => {
+  const approveDocument = useCallback(async (documentId: string, notes: string | null = null) => {
     const response = await fetch('/api/finance/approve', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
@@ -106,13 +103,9 @@ export function FinanceApprovalQueue() {
       result?: {
         approval_status?: string
         payment_status?: string
-        valuation_status?: string
-        amount_eur?: number
-        fx_date?: string
-        fx_source?: string
       }
     }
-    if (!response.ok) throw new Error(payload.error || 'No se pudo aprobar y convertir a EUR.')
+    if (!response.ok) throw new Error(payload.error || 'No se pudo aprobar el documento.')
     return payload
   }, [])
 
@@ -190,19 +183,17 @@ export function FinanceApprovalQueue() {
       let failed = 0
       for (const row of pending) {
         try {
-          await approveWithAutomaticEur(row.id, 'Conversión EUR automática de aprobación previa')
-          converted += 1
+          const result = await approveDocument(row.id, 'Valorización interna automática')
+          if (result.valuation === 'automatic' || result.valuation === 'not_required') converted += 1
+          else failed += 1
         } catch {
           failed += 1
         }
       }
-      if (converted) {
-        toast.success(`${converted} aprobación${converted === 1 ? '' : 'es'} convertida${converted === 1 ? '' : 's'} automáticamente a EUR.`)
-        await load()
-      }
-      if (failed) toast.error(`${failed} conversión${failed === 1 ? '' : 'es'} EUR quedó${failed === 1 ? '' : 'aron'} pendiente${failed === 1 ? '' : 's'} por falta de tasa válida.`)
+      if (converted) await load()
+      if (failed) console.warn('[finance] background valuation retry deferred', { failed })
     })()
-  }, [approveWithAutomaticEur, canApprove, load, rows])
+  }, [approveDocument, canApprove, load, rows])
 
   const filtered = useMemo(() => status === 'review'
     ? rows.filter((row) => row.approval_status === 'pending_mapping' || row.approval_status === 'ready')
@@ -219,14 +210,14 @@ export function FinanceApprovalQueue() {
     let approved = 0
     for (const id of validIds) {
       try {
-        await approveWithAutomaticEur(id)
+        await approveDocument(id)
         approved += 1
       } catch (error) {
-        toast.error(error instanceof Error ? error.message : 'No se pudo completar la aprobación con conversión EUR.')
+        toast.error(error instanceof Error ? error.message : 'No se pudo completar la aprobación.')
         break
       }
     }
-    if (approved) toast.success(`${approved} documento${approved === 1 ? '' : 's'} aprobado${approved === 1 ? '' : 's'} · EUR convertido automáticamente · enviado${approved === 1 ? '' : 's'} a Santiago.`)
+    if (approved) toast.success(`${approved} documento${approved === 1 ? '' : 's'} aprobado${approved === 1 ? '' : 's'} · enviado${approved === 1 ? '' : 's'} a Santiago.`)
     await load()
     setBusy(false)
   }
@@ -277,14 +268,10 @@ export function FinanceApprovalQueue() {
         ? 'Centro de costo asignado por Raimundo antes de envío a Santiago'
         : `Centro de costo corregido por Raimundo · ${note}`
     try {
-      const approval = await approveWithAutomaticEur(row.id, approvalNote)
-      const amountEur = Number(approval.result?.amount_eur ?? 0)
-      const eurText = approval.valuation === 'automatic' && amountEur > 0
-        ? ` · €${amountEur.toLocaleString('es-CL', { maximumFractionDigits: 2 })} valorizado automáticamente`
-        : ''
-      toast.success(`Centro confirmado y gasto aprobado${eurText} · enviado a Santiago para revisión y pago.`)
+      await approveDocument(row.id, approvalNote)
+      toast.success('Centro confirmado y gasto aprobado · enviado a Santiago para revisión y pago.')
     } catch (error) {
-      toast.error(`Centro guardado, pero la aprobación no avanzó a Santiago: ${error instanceof Error ? error.message : 'falló la conversión EUR automática'}`)
+      toast.error(`Centro guardado, pero la aprobación no avanzó a Santiago: ${error instanceof Error ? error.message : 'falló la aprobación'}`)
     }
 
     setReassigningId(null)
@@ -315,9 +302,8 @@ export function FinanceApprovalQueue() {
           </div>
           <Button variant="outline" onClick={() => void load()} disabled={loading}><RefreshCw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />Actualizar</Button>
         </div>
-        <div className="mt-5 grid gap-3 md:grid-cols-4">
+        <div className="mt-5 grid gap-3 md:grid-cols-3">
           <div className="bg-[var(--bs-surface-secondary)] p-4 md:col-span-2"><p className="text-xs uppercase tracking-[0.1em] text-[var(--bs-text-muted)]">Por revisar</p><p className="mt-2 text-xl text-[var(--bs-warm-yellow)]">{reviewCount}</p><p className="mt-1 text-xs text-[var(--bs-text-secondary)]">{counts.pending_mapping ?? 0} sin confirmar · {aiSuggestionCount} recomendaciones IA disponibles · {counts.ready ?? 0} preclasificadas por historial{aiAnalyzedCount ? ` · ${aiAnalyzedCount} analizadas` : ''}</p></div>
-          <div className="bg-[var(--bs-surface-secondary)] p-4"><p className="text-xs uppercase tracking-[0.1em] text-[var(--bs-text-muted)]">EUR automático</p><p className="mt-2 text-xl text-[var(--bs-cool-sky)]">{counts.pending_valuation ?? 0}</p><p className="mt-1 text-xs text-[var(--bs-text-secondary)]">pendientes heredadas en conversión · las nuevas se valorizan al aprobar</p></div>
           <div className="bg-[var(--bs-surface-secondary)] p-4"><p className="text-xs uppercase tracking-[0.1em] text-[var(--bs-text-muted)]">Cerradas</p><p className="mt-2 text-xl text-[var(--bs-text-primary)]">{(counts.approved ?? 0) + (counts.rejected ?? 0)}</p></div>
         </div>
       </section>
@@ -367,7 +353,7 @@ export function FinanceApprovalQueue() {
                     </>
                   })()}</td>
                   <td className="px-4 py-4"><div className="flex gap-2 text-xs leading-5 text-[var(--bs-text-secondary)]">{row.classification_status === 'ready' ? <Check className="mt-0.5 h-4 w-4 shrink-0 text-[var(--bs-cool-sage)]" /> : row.classification_status === 'exception' ? <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-[var(--bs-warm-orange)]" /> : <FileSearch className="mt-0.5 h-4 w-4 shrink-0 text-[var(--bs-cool-sky)]" />}<span><span className="block text-[var(--bs-text-primary)]">{classificationLabel(row.classification_status)}</span>{row.classification_reason ?? 'Sin explicación registrada.'}</span></div></td>
-                  <td className="px-4 py-4 text-right"><p className="text-[var(--bs-text-primary)]">{formatMoney(row.total_amount, row.currency)}</p>{row.amount_eur != null && <p className="mt-1 text-xs text-[var(--bs-cool-sage)]">{formatMoney(row.amount_eur, 'EUR')}</p>}</td>
+                  <td className="px-4 py-4 text-right"><p className="text-[var(--bs-text-primary)]">{formatMoney(row.total_amount, row.currency)}</p></td>
                   <td className="px-4 py-4 text-xs leading-5 text-[var(--bs-text-secondary)]"><p>{row.confidence_label ?? (row.confidence == null ? 'Sin confianza' : `Confianza ${pct.format(n(row.confidence))}`)}</p><p>{row.historical_count} antecedentes · {row.historical_dominance == null ? 'dominio —' : `dominio ${pct.format(n(row.historical_dominance))}`}</p><p className={row.amount_in_range === false ? 'text-[var(--bs-warm-orange)]' : row.amount_in_range === true ? 'text-[var(--bs-cool-sage)]' : 'text-[var(--bs-text-muted)]'}>{row.amount_in_range == null ? 'Sin rango' : row.amount_in_range ? 'Dentro de rango' : 'Fuera de rango'}</p></td>
                   <td className="px-4 py-4 text-right">{row.approval_status === 'pending_mapping' ? (
                     <div className="space-y-2">
@@ -426,7 +412,7 @@ export function FinanceApprovalQueue() {
                         </div>
                       )}
                     </div>
-                  ) : row.approval_status === 'pending_valuation' ? <span className="text-xs text-[var(--bs-cool-sky)]">Conversión EUR automática…</span> : <span className="text-xs text-[var(--bs-text-muted)]">{row.approval_status === 'approved' ? 'Posteado al Budget' : 'Rechazado'}</span>}</td>
+                  ) : row.approval_status === 'pending_valuation' ? <span className="text-xs text-[var(--bs-text-muted)]">Aprobado · enviado a Santiago</span> : <span className="text-xs text-[var(--bs-text-muted)]">{row.approval_status === 'approved' ? 'Posteado al Budget' : 'Rechazado'}</span>}</td>
                 </tr>
               })}
               {!loading && !filtered.length && <tr><td colSpan={7} className="px-5 py-12 text-center text-[var(--bs-text-muted)]">No hay documentos en esta etapa.</td></tr>}
