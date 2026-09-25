@@ -8,7 +8,7 @@ const autoFx = readFileSync(new URL('../supabase/migrations/20260925030000_auto_
 const paymentAudit = readFileSync(new URL('../supabase/migrations/20260925030500_fix_finance_payment_audit_actions.sql', import.meta.url), 'utf8')
 const santiago = readFileSync(new URL('../components/santiago-payment-queue.tsx', import.meta.url), 'utf8')
 
-test('Raimundo approval automatically resolves CLP to EUR from the document date', () => {
+test('CLP to EUR valuation remains automatic and auditable', () => {
   assert.match(route, /mindicador\.cl\/api\/euro/)
   assert.match(route, /document_date/)
   assert.match(route, /offset <= 7/)
@@ -18,23 +18,35 @@ test('Raimundo approval automatically resolves CLP to EUR from the document date
   assert.match(autoFx, /v_rate_to_eur := 1 \/ p_clp_per_eur/)
 })
 
-test('automatic EUR conversion completes Budget posting before Santiago payment review', () => {
-  assert.match(autoFx, /approval_status='approved'/)
-  assert.match(autoFx, /valuation_status='valued'/)
-  assert.match(autoFx, /payment_status=v_payment_status/)
-  assert.match(autoFx, /financial_postings/)
-  assert.match(autoFx, /automatic_eur_valuation/)
-  assert.match(queue, /EUR convertido automáticamente/)
-  assert.match(queue, /Conversión EUR automática/)
+test('FX can never block Raimundo approval or Santiago hand-off', () => {
+  const approvalCall = route.indexOf("supabase.rpc('approve_finance_document'")
+  const fxLookup = route.indexOf('resolveClpPerEur(document.document_date)')
+  assert.ok(approvalCall >= 0)
+  assert.ok(fxLookup > approvalCall)
+  assert.match(route, /valuation: 'deferred'/)
+  assert.match(route, /EUR valuation deferred without blocking approval/)
+  assert.match(route, /ok: true/)
+  assert.doesNotMatch(route, /Automatic EUR conversion failed/)
+})
+
+test('background valuation retry is silent in Raimundo UI', () => {
+  assert.match(queue, /requestedValuations/)
+  assert.match(queue, /approval_status === 'pending_valuation'/)
+  assert.match(queue, /Valorización interna automática/)
+  assert.doesNotMatch(queue, /EUR automático/)
+  assert.doesNotMatch(queue, /EUR convertido automáticamente/)
+  assert.doesNotMatch(queue, /convertida.*automáticamente a EUR/)
+  assert.doesNotMatch(queue, /falta de tasa válida/)
   assert.doesNotMatch(queue, /Monto canónico en EUR/)
   assert.doesNotMatch(queue, /Tipo de cambio: EUR por 1/)
 })
 
-test('legacy pending valuations are automatically backfilled for Raimundo', () => {
-  assert.match(queue, /requestedValuations/)
-  assert.match(queue, /approval_status === 'pending_valuation'/)
-  assert.match(queue, /Conversión EUR automática de aprobación previa/)
-  assert.match(route, /\['ready', 'pending_valuation'\]/)
+test('Santiago operates only on the original payment amount', () => {
+  assert.doesNotMatch(santiago, /amount_eur/)
+  assert.doesNotMatch(santiago, /fx_rate_to_eur/)
+  assert.doesNotMatch(santiago, /fx_date/)
+  assert.doesNotMatch(santiago, /Budget ·/)
+  assert.match(santiago, /money\(row\.total_amount, row\.currency\)/)
 })
 
 test('Santiago payment audit keeps SQL action values valid', () => {
@@ -43,12 +55,4 @@ test('Santiago payment audit keeps SQL action values valid', () => {
   assert.match(paymentAudit, /'operation','record_supplier_payment'/)
   assert.doesNotMatch(paymentAudit, /'authorize_payment','finance'/)
   assert.doesNotMatch(paymentAudit, /'record_supplier_payment','finance'/)
-})
-
-
-test('Santiago sees original currency and automatic Budget EUR amount', () => {
-  assert.match(santiago, /amount_eur/)
-  assert.match(santiago, /fx_date/)
-  assert.match(santiago, /Budget ·/)
-  assert.match(santiago, /money\(row\.amount_eur, 'EUR'\)/)
 })
