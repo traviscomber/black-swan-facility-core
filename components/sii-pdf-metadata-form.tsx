@@ -56,9 +56,13 @@ export function SiiPdfMetadataForm({ uploadId, filename, onCompleted }: Props) {
           headers: { 'content-type': 'application/json' },
           body: JSON.stringify({ upload_id: uploadId }),
         })
-        const payload = await response.json() as { error?: string; status?: string; confidence?: number | null; metadata?: Partial<FormState> }
+        const payload = await response.json() as { error?: string; reason?: string; status?: string; confidence?: number | null; metadata?: Partial<FormState> }
         if (!active) return
-        if (response.ok && payload.metadata) {
+        if (!response.ok) {
+          setExtractionNote(payload.error ?? 'No fue posible leer la factura automáticamente.')
+          return
+        }
+        if (payload.metadata) {
           const metadata = payload.metadata
           const completed = {
             ...initialState,
@@ -177,7 +181,7 @@ export function SiiPdfMetadataForm({ uploadId, filename, onCompleted }: Props) {
 
       <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
         <label className="text-xs text-[var(--bs-text-muted)]">Proveedor<input className={fieldClass()} value={form.supplier_name} onChange={(event) => update('supplier_name', event.target.value)} /></label>
-        <label className="text-xs text-[var(--bs-text-muted)]">RUT proveedor<input className={fieldClass()} placeholder="12.345.678-9" value={form.supplier_rut} onChange={(event) => update('supplier_rut', event.target.value)} /></label>
+        <label className="text-xs text-[var(--bs-text-muted)]">RUT proveedor<input className={fieldClass()} value={form.supplier_rut} onChange={(event) => update('supplier_rut', event.target.value)} /></label>
         <label className="text-xs text-[var(--bs-text-muted)]">Folio<input className={fieldClass()} value={form.document_number} onChange={(event) => update('document_number', event.target.value)} /></label>
         <label className="text-xs text-[var(--bs-text-muted)]">Tipo<select className={fieldClass()} value={form.document_type} onChange={(event) => update('document_type', event.target.value as FormState['document_type'])}><option value="invoice">Factura</option><option value="credit_note">Nota de crédito</option><option value="debit_note">Nota de débito</option><option value="other">Otro</option></select></label>
         <label className="text-xs text-[var(--bs-text-muted)]">Fecha emisión<input type="date" className={fieldClass()} value={form.document_date} onChange={(event) => update('document_date', event.target.value)} /></label>
