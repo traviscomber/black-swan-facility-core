@@ -52,6 +52,13 @@ export async function POST(request: Request) {
     const { data: source, error: sourceError } = await admin.storage.from(upload.storage_bucket).download(upload.storage_path)
     if (sourceError || !source) return NextResponse.json({ error: sourceError?.message ?? 'Could not read PDF source' }, { status: 500 })
 
+    if (!process.env.OPENAI_API_KEY) {
+      return NextResponse.json({
+        error: 'OCR no configurado: falta OPENAI_API_KEY en este environment.',
+        reason: 'openai_api_key_missing',
+      }, { status: 503 })
+    }
+
     const bytes = Buffer.from(await source.arrayBuffer())
     const extraction = await extractSiiPdfFiscalMetadata(bytes, upload.original_filename)
 
