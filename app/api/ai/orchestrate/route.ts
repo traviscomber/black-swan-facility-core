@@ -39,6 +39,68 @@ export async function POST(request: Request) {
   const message = typeof input.message === "string" ? input.message.trim() : ""
   const confirmed = input.confirmed === true
   const proposalId = input.proposalId
+  const requestedCapability = typeof input.capability === "string" ? input.capability : null
+  const requestId = input.requestId
+
+  if (requestedCapability === "hospitality.assign_request") {
+    if (!isUuid(requestId)) {
+      return NextResponse.json({ success: false, error: "invalid_request_id" }, { status: 400 })
+    }
+
+    const contextInput =
+      typeof input.context === "object" && input.context !== null
+        ? (input.context as Record<string, unknown>)
+        : {}
+    const persona = readString(contextInput.persona, 40)
+    const source = readString(contextInput.source, 80)
+
+    const { data: proposal, error: proposalError } = await supabase.rpc("create_ai_hospitality_assignment_proposal", {
+      p_request_id: requestId,
+      p_context: {
+        source: source ?? "role_agentic_brief",
+        persona,
+        mode: "FULL_AGENTIC",
+      },
+    })
+
+    if (proposalError) {
+      console.error("[Black Swan AI] Hospitality assignment proposal failed", {
+        userId: user.id,
+        requestId,
+        error: proposalError.message,
+      })
+      return NextResponse.json(
+        { success: false, error: proposalError.message.includes("denied") ? "hospitality_assignment_denied" : "proposal_creation_failed" },
+        { status: proposalError.message.includes("denied") ? 403 : 409 },
+      )
+    }
+
+    const persisted = proposal && typeof proposal === "object" ? (proposal as Record<string, unknown>) : null
+    const persistedId = persisted?.id
+    const payload = persisted?.payload && typeof persisted.payload === "object" ? (persisted.payload as Record<string, unknown>) : null
+
+    if (!isUuid(persistedId)) {
+      return NextResponse.json({ success: false, error: "invalid_persisted_proposal" }, { status: 503 })
+    }
+
+    return NextResponse.json({
+      success: true,
+      mode: "FULL_AGENTIC",
+      source: "deterministic",
+      requiresConfirmation: true,
+      executionStatus: "confirmation_required",
+      proposalId: persistedId,
+      capability: "hospitality.assign_request",
+      proposedAction: {
+        requestId,
+        employeeId: payload?.employee_id ?? null,
+        employeeName: payload?.employee_name ?? null,
+        guestName: payload?.guest_name ?? null,
+        requestType: payload?.request_type ?? null,
+      },
+      response: `Preparé la asignación de la solicitud a ${typeof payload?.employee_name === "string" ? payload.employee_name : "un responsable disponible"}. Confirma para aplicarla.`,
+    })
+  }
 
   if (proposalId !== undefined) {
     if (!isUuid(proposalId)) {
