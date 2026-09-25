@@ -180,12 +180,16 @@ const attentionPriority: Record<OsPersonaKey, string[]> = {
   executive: ['booking-overdue', 'finance', 'procurement', 'issues', 'maintenance-blocked', 'maintenance-due', 'stock', 'replenishment', 'tasks'],
   field_admin: ['booking-overdue', 'maintenance-blocked', 'maintenance-due', 'issues', 'tasks', 'stock', 'replenishment', 'procurement', 'finance'],
   general: ['booking-overdue', 'issues', 'maintenance-blocked', 'maintenance-due', 'tasks', 'stock', 'replenishment', 'procurement', 'finance'],
+  santiago: ['booking-overdue', 'finance', 'issues', 'tasks'],
+  raimundo: ['finance', 'booking-overdue', 'issues', 'maintenance-blocked', 'maintenance-due', 'tasks'],
 }
 
 const quickActionPriority: Record<OsPersonaKey, string[]> = {
   executive: ['approvals', 'bookings', 'procurement', 'inventory'],
   field_admin: ['bookings', 'tasks', 'maintenance', 'inventory', 'procurement'],
   general: ['bookings', 'tasks', 'maintenance', 'inventory'],
+  santiago: ['bookings', 'payments', 'guest-requests'],
+  raimundo: ['approvals', 'bookings', 'cattle', 'vineyard', 'orchard'],
 }
 
 export function OsHome() {
