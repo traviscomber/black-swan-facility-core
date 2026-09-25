@@ -97,7 +97,8 @@ export async function extractSiiPdfFiscalMetadata(
           {
             type: 'input_file',
             filename,
-            file_data: bytes.toString('base64'),
+            file_data: `data:application/pdf;base64,${bytes.toString('base64')}`,
+            detail: 'high',
           },
           {
             type: 'input_text',
