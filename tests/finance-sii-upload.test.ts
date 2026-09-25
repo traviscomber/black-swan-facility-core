@@ -159,10 +159,14 @@ test('Raimundo login honors canonical start path and approvals are the first tas
   assert.match(migrationSource, /os_primary_domain\s*=\s*'finance'/)
   assert.match(migrationSource, /os_start_path\s*=\s*'\/budgets\/approvals'/)
 
-  assert.match(queueSource, /initialStatusSet/)
-  assert.match(queueSource, /approval_status === 'pending_mapping'/)
+  assert.match(queueSource, /type QueueView = 'review'/)
+  assert.match(queueSource, /approval_status === 'pending_mapping' \|\| row\.approval_status === 'ready'/)
+  assert.match(queueSource, /Toda factura subida aparece aquí, aunque la IA ya haya reconocido el centro de costo/)
+  assert.match(queueSource, /Por revisar/)
   assert.match(queueSource, /Asignar centro de costo/)
   assert.match(queueSource, /Guardar y revisar/)
+  assert.match(queueSource, /Centro correcto · aprobar/)
+  assert.match(queueSource, /Cambiar centro/)
   assert.match(queueSource, /reassign_finance_document_center/)
 
   assert.ok(pageSource.indexOf('<FinanceApprovalQueue />') < pageSource.indexOf('<SiiSourceReview />'))
