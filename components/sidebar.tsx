@@ -113,6 +113,8 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const [userInitials, setUserInitials] = useState("?")
   const [financePendingCount, setFinancePendingCount] = useState(0)
   const [financePaymentPendingCount, setFinancePaymentPendingCount] = useState(0)
+  const [financeApprover, setFinanceApprover] = useState(false)
+  const [financePayer, setFinancePayer] = useState(false)
 
   useEffect(() => {
     void supabase.auth.getUser().then(({ data: { user } }) => {
@@ -143,15 +145,18 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
     }
     let cancelled = false
     const loadFinancePendingCount = async () => {
-      const [readyResult, mappingResult, reviewResult, payerResult, paymentPendingResult] = await Promise.all([
+      const [readyResult, mappingResult, reviewResult, approverResult, payerResult, paymentPendingResult] = await Promise.all([
         supabase.from("finance_documents").select("id", { count: "exact", head: true }).eq("approval_status", "ready"),
         supabase.from("finance_documents").select("id", { count: "exact", head: true }).eq("approval_status", "pending_mapping"),
         supabase.rpc("can_finance_review_ambiguous"),
+        supabase.rpc("can_finance_approve"),
         supabase.rpc("can_finance_payment_authorize"),
         supabase.from("finance_documents").select("id", { count: "exact", head: true }).eq("payment_status", "pending_santiago"),
       ])
       if (cancelled) return
-      setFinancePendingCount((readyResult.count ?? 0) + (reviewResult.data ? (mappingResult.count ?? 0) : 0))
+      setFinanceApprover(Boolean(approverResult.data))
+      setFinancePayer(Boolean(payerResult.data))
+      setFinancePendingCount(approverResult.data ? ((readyResult.count ?? 0) + (reviewResult.data ? (mappingResult.count ?? 0) : 0)) : 0)
       setFinancePaymentPendingCount(payerResult.data ? (paymentPendingResult.count ?? 0) : 0)
     }
     void loadFinancePendingCount()
@@ -177,9 +182,20 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
     persona,
   ), [access, persona, routeCapabilities])
   const intakeOnly = access.role === "finance_uploader"
-  const displayedAreas = useMemo(() => intakeOnly ? osAreas.filter(area => area.key === "finance").map(area => ({
-    ...area, items: area.items.filter(item => item.key === "documents"),
-  })) : visibleAreas, [intakeOnly, visibleAreas])
+  const paymentOnly = financePayer && !financeApprover
+  const displayedAreas = useMemo(() => {
+    if (intakeOnly) {
+      return osAreas.filter(area => area.key === "finance").map(area => ({
+        ...area, items: area.items.filter(item => item.key === "documents"),
+      }))
+    }
+    if (paymentOnly) {
+      return visibleAreas.map(area => area.key === "finance"
+        ? { ...area, items: area.items.filter(item => item.key === "payments") }
+        : area)
+    }
+    return visibleAreas
+  }, [intakeOnly, paymentOnly, visibleAreas])
 
   useEffect(() => {
     const initial = new Set<string>()
@@ -219,7 +235,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
       {isOpen && <div className="fixed inset-0 z-40 bg-black/20 lg:hidden" onClick={onClose} />}
       <div className={cn("fixed inset-y-0 left-0 z-50 flex h-screen w-64 flex-col overflow-y-auto border-r border-sidebar-border bg-sidebar transition-transform duration-300 lg:relative lg:inset-auto lg:z-auto lg:h-full lg:translate-x-0", isOpen ? "translate-x-0" : "-translate-x-full")}>
         <div className="flex h-16 items-center justify-between border-b border-sidebar-border bg-primary/5 px-4 sm:h-20">
-          <Link href={localizedHref(language, intakeOnly ? "/budgets/documents" : "/os")} className="flex min-w-0 items-center gap-2 hover:opacity-80">
+          <Link href={localizedHref(language, intakeOnly ? "/budgets/documents" : paymentOnly ? "/budgets/payments" : "/os")} className="flex min-w-0 items-center gap-2 hover:opacity-80">
             <img src="/blackswan-logo.png" alt="Blackswan Logo" className="h-12 w-12 flex-shrink-0 object-contain sm:h-14 sm:w-14" />
             <div className="min-w-0"><h1 className="truncate text-sm font-bold uppercase tracking-wider text-accent sm:text-base">BSFC</h1><p className="text-xs text-muted-foreground">Core System</p></div>
           </Link>
