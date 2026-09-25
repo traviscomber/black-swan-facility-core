@@ -25,9 +25,16 @@ export default function BudgetApprovalsPage() {
         <PageHeader title={text.title} description={text.description} />
         <FinanceApprovalQueue />
         <SiiSourceReview />
-        <RaimundoReviewInbox />
-        <FinanceHistoricalAliasReview />
-        <RaimundoFinanceImport />
+        <details className="mx-4 mt-4 bg-[var(--bs-surface-primary)] md:mx-8">
+          <summary className="cursor-pointer list-none p-5 text-sm text-[var(--bs-text-secondary)]">
+            Herramientas históricas · mapeos y normalización
+          </summary>
+          <div className="border-t border-[var(--bs-divider-subtle)] pb-4">
+            <RaimundoReviewInbox />
+            <FinanceHistoricalAliasReview />
+            <RaimundoFinanceImport />
+          </div>
+        </details>
       </FinanceApprovalRouteGate>
     </AppLayout>
   )
