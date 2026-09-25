@@ -2,6 +2,7 @@ import { parseManualPdfMetadata, type ManualPdfMetadata } from '@/lib/finance/si
 
 export type PdfFiscalExtraction = {
   metadata: ManualPdfMetadata | null
+  draft: Record<string, unknown>
   confidence: number | null
   raw: Record<string, unknown>
   reason?: string
@@ -23,95 +24,185 @@ function numberValue(value: unknown) {
 
 function mapDocumentType(value: unknown): ManualPdfMetadata['document_type'] {
   const normalized = String(value ?? '').toLowerCase()
-  if (normalized.includes('credit')) return 'credit_note'
-  if (normalized.includes('debit')) return 'debit_note'
+  if (normalized.includes('credit') || normalized.includes('credito') || normalized.includes('crédito')) return 'credit_note'
+  if (normalized.includes('debit') || normalized.includes('debito') || normalized.includes('débito')) return 'debit_note'
   if (normalized.includes('invoice') || normalized.includes('factura')) return 'invoice'
   return 'other'
 }
 
-function normalizePayload(payload: Record<string, unknown>) {
-  const source = payload.data && typeof payload.data === 'object'
-    ? payload.data as Record<string, unknown>
-    : payload
-
-  const nested = source.raw_extraction && typeof source.raw_extraction === 'object'
-    ? source.raw_extraction as Record<string, unknown>
-    : source
-
+function normalizePayload(source: Record<string, unknown>) {
   return {
-    supplier_name: stringValue(nested.supplier_name ?? nested.issuer_name ?? nested.emitter_name),
-    supplier_rut: stringValue(nested.supplier_rut ?? nested.issuer_rut ?? nested.emitter_rut),
-    document_number: stringValue(nested.document_number ?? source.proposed_document_number ?? nested.folio),
-    document_date: stringValue(nested.document_date ?? source.proposed_document_date ?? nested.issue_date),
-    due_date: stringValue(nested.due_date ?? source.proposed_due_date),
-    document_type: mapDocumentType(nested.document_type ?? source.proposed_document_type),
-    net_amount: numberValue(nested.net_amount ?? source.proposed_net_amount),
-    tax_amount: numberValue(nested.tax_amount ?? source.proposed_tax_amount ?? nested.iva),
-    total_amount: numberValue(nested.total_amount ?? source.proposed_total_amount),
-    currency: stringValue(nested.currency ?? source.proposed_currency)?.toUpperCase() ?? 'CLP',
+    supplier_name: stringValue(source.supplier_name),
+    supplier_rut: stringValue(source.supplier_rut),
+    document_number: stringValue(source.document_number),
+    document_date: stringValue(source.document_date),
+    due_date: stringValue(source.due_date),
+    document_type: mapDocumentType(source.document_type),
+    net_amount: numberValue(source.net_amount),
+    tax_amount: numberValue(source.tax_amount),
+    total_amount: numberValue(source.total_amount),
+    currency: stringValue(source.currency)?.toUpperCase() ?? 'CLP',
   }
+}
+
+function outputText(payload: Record<string, unknown>) {
+  if (typeof payload.output_text === 'string' && payload.output_text.trim()) return payload.output_text.trim()
+
+  const output = Array.isArray(payload.output) ? payload.output : []
+  for (const item of output) {
+    if (!item || typeof item !== 'object') continue
+    const content = Array.isArray((item as Record<string, unknown>).content)
+      ? (item as Record<string, unknown>).content as unknown[]
+      : []
+
+    for (const part of content) {
+      if (!part || typeof part !== 'object') continue
+      const record = part as Record<string, unknown>
+      if (record.type === 'output_text' && typeof record.text === 'string' && record.text.trim()) {
+        return record.text.trim()
+      }
+    }
+  }
+
+  return null
 }
 
 export async function extractSiiPdfFiscalMetadata(
   bytes: Buffer,
   filename: string,
 ): Promise<PdfFiscalExtraction> {
-  const endpoint = process.env.DOCUMENT_AI_ENDPOINT
-  if (!endpoint) return { metadata: null, confidence: null, raw: {}, reason: 'document_ai_not_configured' }
+  const apiKey = process.env.OPENAI_API_KEY
+  if (!apiKey) {
+    console.error('[sii-pdf-extraction] OPENAI_API_KEY missing')
+    return {
+      metadata: null,
+      draft: {},
+      confidence: null,
+      raw: {},
+      reason: 'openai_api_key_missing',
+    }
+  }
 
-  const token = process.env.DOCUMENT_AI_TOKEN
-  const response = await fetch(endpoint, {
+  const response = await fetch('https://api.openai.com/v1/responses', {
     method: 'POST',
     headers: {
+      authorization: `Bearer ${apiKey}`,
       'content-type': 'application/json',
-      ...(token ? { authorization: `Bearer ${token}` } : {}),
     },
     body: JSON.stringify({
-      task: 'black_swan_sii_invoice_extraction',
-      schema_version: '1',
-      file: {
-        name: filename,
-        content_type: 'application/pdf',
-        base64: bytes.toString('base64'),
+      model: process.env.OPENAI_OCR_MODEL || 'gpt-5.6-luna',
+      input: [{
+        role: 'user',
+        content: [
+          {
+            type: 'input_file',
+            filename,
+            file_data: bytes.toString('base64'),
+          },
+          {
+            type: 'input_text',
+            text: [
+              'OCR fiscal de una factura chilena.',
+              'Lee solo información visible en el PDF.',
+              'No inventes, no completes por contexto y no uses placeholders.',
+              'supplier_name y supplier_rut son los datos del emisor/proveedor.',
+              'document_number es el folio SII.',
+              'document_date y due_date deben ser YYYY-MM-DD.',
+              'net_amount, tax_amount y total_amount deben ser números sin separadores de miles.',
+              'currency debe ser CLP salvo que el documento muestre explícitamente otra moneda.',
+              'confidence debe estar entre 0 y 1.',
+            ].join(' '),
+          },
+        ],
+      }],
+      text: {
+        format: {
+          type: 'json_schema',
+          name: 'chilean_invoice_ocr',
+          strict: true,
+          schema: {
+            type: 'object',
+            additionalProperties: false,
+            required: [
+              'supplier_name',
+              'supplier_rut',
+              'document_number',
+              'document_date',
+              'due_date',
+              'document_type',
+              'net_amount',
+              'tax_amount',
+              'total_amount',
+              'currency',
+              'confidence',
+            ],
+            properties: {
+              supplier_name: { anyOf: [{ type: 'string' }, { type: 'null' }] },
+              supplier_rut: { anyOf: [{ type: 'string' }, { type: 'null' }] },
+              document_number: { anyOf: [{ type: 'string' }, { type: 'null' }] },
+              document_date: { anyOf: [{ type: 'string' }, { type: 'null' }] },
+              due_date: { anyOf: [{ type: 'string' }, { type: 'null' }] },
+              document_type: {
+                type: 'string',
+                enum: ['invoice', 'credit_note', 'debit_note', 'other'],
+              },
+              net_amount: { anyOf: [{ type: 'number' }, { type: 'null' }] },
+              tax_amount: { anyOf: [{ type: 'number' }, { type: 'null' }] },
+              total_amount: { anyOf: [{ type: 'number' }, { type: 'null' }] },
+              currency: { anyOf: [{ type: 'string' }, { type: 'null' }] },
+              confidence: { type: 'number', minimum: 0, maximum: 1 },
+            },
+          },
+        },
       },
-      schema: {
-        supplier_name: 'string',
-        supplier_rut: 'string Chilean RUT',
-        document_number: 'string folio',
-        document_date: 'YYYY-MM-DD',
-        due_date: 'YYYY-MM-DD|null',
-        document_type: 'invoice|credit_note|debit_note|other',
-        net_amount: 'number|null',
-        tax_amount: 'number|null',
-        total_amount: 'number',
-        currency: 'ISO-4217, default CLP',
-      },
-      rules: [
-        'Extract only values visible in the source document.',
-        'Never infer or invent a missing fiscal value.',
-        'For Chilean invoices, issuer/emitter data is the supplier.',
-        'Return null for unreadable optional values.',
-      ],
+      max_output_tokens: 600,
     }),
   })
 
   if (!response.ok) {
     const detail = await response.text()
-    throw new Error(`Document AI failed (${response.status}): ${detail.slice(0, 300)}`)
+    throw new Error(`OpenAI OCR failed (${response.status}): ${detail.slice(0, 300)}`)
   }
 
-  const payload = await response.json() as Record<string, unknown>
-  const normalized = normalizePayload(payload)
+  const raw = await response.json() as Record<string, unknown>
+  console.info('[sii-pdf-extraction] OpenAI response received', { filename, status: response.status })
+  const text = outputText(raw)
+  if (!text) {
+    return {
+      metadata: null,
+      draft: {},
+      confidence: null,
+      raw,
+      reason: 'openai_ocr_empty',
+    }
+  }
+
+  let parsed: Record<string, unknown>
+  try {
+    parsed = JSON.parse(text) as Record<string, unknown>
+  } catch {
+    return {
+      metadata: null,
+      draft: {},
+      confidence: null,
+      raw,
+      reason: 'openai_ocr_invalid_json',
+    }
+  }
+
+  const normalized = normalizePayload(parsed)
   const metadata = parseManualPdfMetadata(normalized)
-  const confidenceRaw = payload.confidence ?? (payload.data && typeof payload.data === 'object' ? (payload.data as Record<string, unknown>).confidence : null)
+  console.info('[sii-pdf-extraction] OCR parsed', { filename, complete: Boolean(metadata), fields: Object.entries(normalized).filter(([, value]) => value !== null && value !== '').map(([key]) => key) })
+  const confidenceRaw = parsed.confidence
   const confidence = typeof confidenceRaw === 'number' && Number.isFinite(confidenceRaw)
     ? Math.max(0, Math.min(1, confidenceRaw))
     : null
 
   return {
     metadata,
+    draft: normalized,
     confidence,
-    raw: payload,
+    raw: { provider: 'openai_direct', extraction: parsed },
     reason: metadata ? undefined : 'required_fiscal_fields_missing',
   }
 }
