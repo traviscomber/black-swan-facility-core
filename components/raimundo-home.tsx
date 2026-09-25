@@ -15,6 +15,9 @@ type Counts = {
   healthAlerts: number
   vineyardPlots: number
   vineyardCritical: number
+  arrivalsToday: number
+  departuresToday: number
+  openGuestRequests: number
 }
 
 const COPY = {
@@ -29,6 +32,9 @@ const COPY = {
     openApprovals: "Abrir aprobaciones",
     bookingTitle: "Booking y Hospitality",
     bookingBody: "Calendario completo de reservas, llegadas, salidas y solicitudes de huéspedes.",
+    arrivals: "Llegadas hoy",
+    departures: "Salidas hoy",
+    openGuestRequests: "Solicitudes abiertas",
     openCalendar: "Abrir calendario",
     openRequests: "Solicitudes de huéspedes",
     cattleTitle: "Ganadería",
@@ -62,6 +68,9 @@ const COPY = {
     openApprovals: "Open approvals",
     bookingTitle: "Booking and Hospitality",
     bookingBody: "Full reservation calendar, arrivals, departures and guest requests.",
+    arrivals: "Arrivals today",
+    departures: "Departures today",
+    openGuestRequests: "Open requests",
     openCalendar: "Open calendar",
     openRequests: "Guest requests",
     cattleTitle: "Cattle",
@@ -95,6 +104,9 @@ const COPY = {
     openApprovals: "Freigaben öffnen",
     bookingTitle: "Buchungen und Hospitality",
     bookingBody: "Vollständiger Reservierungskalender, Anreisen, Abreisen und Gästeanfragen.",
+    arrivals: "Anreisen heute",
+    departures: "Abreisen heute",
+    openGuestRequests: "Offene Anfragen",
     openCalendar: "Kalender öffnen",
     openRequests: "Gästeanfragen",
     cattleTitle: "Rinderhaltung",
@@ -135,13 +147,17 @@ export function RaimundoHome() {
     healthAlerts: 0,
     vineyardPlots: 0,
     vineyardCritical: 0,
+    arrivalsToday: 0,
+    departuresToday: 0,
+    openGuestRequests: 0,
   })
   const [otherItems, setOtherItems] = useState<AuthorizedNavItem[]>([])
   const [loading, setLoading] = useState(true)
 
   const load = useCallback(async () => {
     setLoading(true)
-    const [approvalResult, escalatedResult, animalsResult, healthResult, plotsResult, pestResult, navigationResult] = await Promise.all([
+    const today = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Santiago" }).format(new Date())
+    const [approvalResult, escalatedResult, animalsResult, healthResult, plotsResult, pestResult, arrivalsResult, departuresResult, guestRequestsResult, navigationResult] = await Promise.all([
       supabase
         .from("finance_documents")
         .select("id", { count: "exact", head: true })
@@ -166,6 +182,20 @@ export function RaimundoHome() {
         .from("vineyard_pest_logs")
         .select("id", { count: "exact", head: true })
         .in("severity_level", ["critical", "high"]),
+      supabase
+        .from("reservations")
+        .select("id", { count: "exact", head: true })
+        .eq("check_in", today)
+        .not("status", "in", "(cancelled,checked_out,checked-out)"),
+      supabase
+        .from("reservations")
+        .select("id", { count: "exact", head: true })
+        .eq("check_out", today)
+        .not("status", "in", "(cancelled,checked_out,checked-out)"),
+      supabase
+        .from("hospitality_requests")
+        .select("id", { count: "exact", head: true })
+        .not("status", "in", "(completed,resolved,cancelled)"),
       loadAuthorizedNavigation().catch(() => ({ items: [] })),
     ])
 
@@ -176,6 +206,9 @@ export function RaimundoHome() {
       healthAlerts: healthResult.count ?? 0,
       vineyardPlots: plotsResult.count ?? 0,
       vineyardCritical: pestResult.count ?? 0,
+      arrivalsToday: arrivalsResult.count ?? 0,
+      departuresToday: departuresResult.count ?? 0,
+      openGuestRequests: guestRequestsResult.count ?? 0,
     })
 
     const primaryKeys = new Set(["approvals", "bookings", "guest-requests", "cattle", "cattle-health", "vineyard", "orchard"])
@@ -192,6 +225,8 @@ export function RaimundoHome() {
       .on("postgres_changes", { event: "*", schema: "public", table: "cattle_health_alerts" }, () => void load())
       .on("postgres_changes", { event: "*", schema: "public", table: "vineyard_plots" }, () => void load())
       .on("postgres_changes", { event: "*", schema: "public", table: "vineyard_pest_logs" }, () => void load())
+      .on("postgres_changes", { event: "*", schema: "public", table: "reservations" }, () => void load())
+      .on("postgres_changes", { event: "*", schema: "public", table: "hospitality_requests" }, () => void load())
       .subscribe()
 
     return () => { void supabase.removeChannel(channel) }
@@ -241,7 +276,12 @@ export function RaimundoHome() {
                 <p className="mt-1 text-sm text-muted-foreground">{copy.bookingBody}</p>
               </div>
             </div>
-            <div className="mt-5 grid gap-2">
+            <div className="mt-5 grid gap-2 sm:grid-cols-3 2xl:grid-cols-1">
+              <Metric label={copy.arrivals} value={counts.arrivalsToday} />
+              <Metric label={copy.departures} value={counts.departuresToday} />
+              <Metric label={copy.openGuestRequests} value={counts.openGuestRequests} emphasis={counts.openGuestRequests > 0} />
+            </div>
+            <div className="mt-3 grid gap-2 sm:grid-cols-2">
               <Link href={localized(locale, "/bookings/calendar")} className="flex items-center justify-between border border-border p-4 text-sm font-medium hover:bg-secondary/40">
                 <span className="flex items-center gap-2"><CalendarDays className="h-4 w-4 text-primary" />{copy.openCalendar}</span><ArrowRight className="h-4 w-4" />
               </Link>
