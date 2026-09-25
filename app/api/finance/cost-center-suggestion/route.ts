@@ -62,7 +62,7 @@ export async function POST(request: Request) {
 
     const admin = adminClient()
     const { data: document, error: documentError } = await admin.from('finance_documents')
-      .select('id,supplier_name,supplier_rut,document_number,document_date,total_amount,currency,approval_status,description')
+      .select('id,supplier_name,supplier_rut,document_number,document_date,total_amount,currency,approval_status,description,source_payload,classification_reason,historical_count,historical_dominance,operational_label,division_id,category_id')
       .eq('id', documentId)
       .maybeSingle()
 
@@ -105,9 +105,8 @@ export async function POST(request: Request) {
     if (categoriesError) return NextResponse.json({ error: categoriesError.message }, { status: 500 })
     if (uploadError) return NextResponse.json({ error: uploadError.message }, { status: 500 })
     if (historyError) return NextResponse.json({ error: historyError.message }, { status: 500 })
-    if (!upload) return NextResponse.json({ ok: true, suggestion: null, reason: 'source_pdf_not_available' })
 
-    const candidates = (categories ?? []).map((row) => {
+    const allCandidates = (categories ?? []).map((row) => {
       const division = Array.isArray(row.budget_divisions) ? row.budget_divisions[0] : row.budget_divisions
       return {
         id: row.id,
@@ -120,6 +119,10 @@ export async function POST(request: Request) {
         source_row: row.source_row,
       } satisfies Candidate
     }).filter((candidate) => candidate.division_id && candidate.division_key && candidate.category_key)
+
+    const candidates = document.division_id
+      ? allCandidates.filter((candidate) => candidate.division_id === document.division_id)
+      : allCandidates
 
     if (!candidates.length) return NextResponse.json({ ok: true, suggestion: null, reason: 'canonical_budget_not_available' })
 
@@ -141,9 +144,32 @@ export async function POST(request: Request) {
       })
       .join('\n')
 
-    const { data: source, error: sourceError } = await admin.storage.from(upload.storage_bucket).download(upload.storage_path)
-    if (sourceError || !source) return NextResponse.json({ error: sourceError?.message ?? 'Could not read invoice PDF' }, { status: 500 })
-    const bytes = Buffer.from(await source.arrayBuffer())
+    let pdfContent: { type: 'input_file'; filename: string; file_data: string; detail: 'high' } | null = null
+    if (upload) {
+      const { data: source, error: sourceError } = await admin.storage.from(upload.storage_bucket).download(upload.storage_path)
+      if (!sourceError && source) {
+        const bytes = Buffer.from(await source.arrayBuffer())
+        pdfContent = {
+          type: 'input_file',
+          filename: upload.original_filename,
+          file_data: `data:application/pdf;base64,${bytes.toString('base64')}`,
+          detail: 'high',
+        }
+      }
+    }
+
+    const sourcePayload = document.source_payload && typeof document.source_payload === 'object'
+      ? document.source_payload as Record<string, unknown>
+      : {}
+    const historicalCostCenter = typeof sourcePayload.historical_cost_center === 'string'
+      ? sourcePayload.historical_cost_center
+      : null
+    const decisionSource = typeof sourcePayload.decision_source === 'string'
+      ? sourcePayload.decision_source
+      : null
+    const sourceRow = typeof sourcePayload.source_row === 'number'
+      ? sourcePayload.source_row
+      : null
 
     const candidateIds = candidates.map((candidate) => candidate.id)
     const candidateText = candidates.map((candidate) =>
@@ -166,19 +192,19 @@ export async function POST(request: Request) {
         input: [{
           role: 'user',
           content: [
-            {
-              type: 'input_file',
-              filename: upload.original_filename,
-              file_data: `data:application/pdf;base64,${bytes.toString('base64')}`,
-              detail: 'high',
-            },
+            ...(pdfContent ? [pdfContent] : []),
             {
               type: 'input_text',
               text: [
                 'Actúa como clasificador contable interno, no como aprobador.',
                 'La fuente de verdad es el Budget canónico importado desde el Excel maestro.',
                 'Debes sugerir como máximo una combinación división/categoría de costo de la lista permitida.',
-                'Usa evidencia visible en la factura: proveedor, glosa, bienes/servicios, cantidades y contexto explícito.',
+                'Usa TODA la evidencia disponible: PDF cuando exista, descripción histórica del documento, etiqueta operacional, centro histórico del Excel, proveedor, monto y patrones aprobados.',
+                'La etiqueta histórica entre paréntesis puede ser evidencia fuerte de P&L cuando coincide con una división canónica (por ejemplo CATTLE→Cattle, VINEYARD→Vineyard, LANDSCAPING→Landscaping, HOSP FARM/HOSPITALITY FARM→Farm, HOSP TOROBAYO/HOSPITALITY TOROBAYO→Torobayo).',
+                'AGRICOLA es una agrupación histórica amplia y NO equivale automáticamente a una división canónica; solo infiere división si la descripción, etiqueta operacional u otra evidencia la distingue.',
+                'Si el documento ya trae una división canónica parcial, respétala: las opciones ya vienen restringidas a esa división.',
+                'Para categoría usa el significado operacional: sueldos/personal→HR; combustibles/vehículos/maquinaria→Vehicles / Machines / Fuel; mantención o construcción de inmuebles→Buildings; insumos, herramientas, fertilizantes, farmacia animal, fletes y consumibles→Variable Cost / Consumables / Tools; abogado, notaría, contador, intereses u otros servicios financieros→Legal & Financial.',
+                'Estos ejemplos son guías semánticas, no reglas ciegas. Prioriza el texto específico del documento.',
                 'El historial del proveedor es evidencia adicional, nunca limita el universo del Budget.',
                 'Nunca inventes una combinación, nunca elijas fuera de la lista y nunca apruebes el gasto.',
                 'Si la evidencia no distingue razonablemente una combinación, responde category_id=null.',
@@ -189,6 +215,13 @@ export async function POST(request: Request) {
                 `Documento: ${document.document_number ?? '—'}`,
                 `Fecha: ${document.document_date ?? '—'}`,
                 `Monto: ${document.total_amount ?? '—'} ${document.currency ?? ''}`,
+                `Descripción subida/importada: ${document.description ?? '—'}`,
+                `Etiqueta operacional histórica: ${document.operational_label ?? '—'}`,
+                `Centro histórico Excel: ${historicalCostCenter ?? '—'}`,
+                `Clasificación histórica previa: ${document.classification_reason ?? '—'}`,
+                `Antecedentes históricos: ${document.historical_count ?? 0}; dominancia: ${document.historical_dominance ?? '—'}`,
+                `Origen de decisión legado: ${decisionSource ?? '—'}; fila fuente: ${sourceRow ?? '—'}`,
+                `PDF fuente disponible: ${pdfContent ? 'sí' : 'no'}`,
                 '',
                 'Historial aprobado del proveedor (solo evidencia):',
                 historyText || 'Sin historial aprobado comparable.',
@@ -268,7 +301,7 @@ export async function POST(request: Request) {
         reason: parsed.reason,
       },
       candidate_count: candidates.length,
-      source: 'canonical_budget_workbook',
+      source: pdfContent ? 'pdf_plus_historical_text' : 'historical_text_plus_canonical_budget',
     })
   } catch (error) {
     console.error('[finance/cost-center-suggestion] failed', error)
