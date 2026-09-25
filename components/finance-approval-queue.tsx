@@ -129,11 +129,11 @@ export function FinanceApprovalQueue() {
     for (const id of validIds) {
       const { data, error } = await supabase.rpc('approve_finance_document', { p_document_id: id, p_notes: null })
       if (error) { toast.error(error.message); break }
-      const result = data as { approval_status?: string } | null
+      const result = data as { approval_status?: string; payment_status?: string } | null
       if (result?.approval_status === 'pending_valuation') valuation += 1
       approved += 1
     }
-    if (approved) toast.success(`${approved} documento${approved === 1 ? '' : 's'} aprobado${approved === 1 ? '' : 's'}${valuation ? ` · ${valuation} pendiente${valuation === 1 ? '' : 's'} de valorización EUR` : ''}.`)
+    if (approved) toast.success(`${approved} documento${approved === 1 ? '' : 's'} aprobado${approved === 1 ? '' : 's'} · enviado${approved === 1 ? '' : 's'} a Santiago para revisión y pago${valuation ? ` · ${valuation} pendiente${valuation === 1 ? '' : 's'} de valorización EUR para Budget` : ''}.`)
     await load(); setBusy(false)
   }
 
@@ -144,27 +144,45 @@ export function FinanceApprovalQueue() {
     setReassignNote('')
   }
 
-  async function saveCenter(row: QueueRow) {
+  async function saveCenterAndApprove(row: QueueRow) {
     const initialAssignment = row.approval_status === 'pending_mapping'
-    const note = initialAssignment ? 'Asignación inicial de centro de costo confirmada por Raimundo' : reassignNote.trim()
+    const note = initialAssignment ? 'Centro de costo asignado y aprobado por Raimundo' : reassignNote.trim()
     if (!reassignCenterId || (!initialAssignment && !note)) {
       toast.error(initialAssignment ? 'Selecciona el centro de costo correcto.' : 'Selecciona el centro de costo correcto y registra el motivo del cambio.')
       return
     }
     setBusy(true)
-    const { error } = await supabase.rpc('reassign_finance_document_center', {
+    const { error: reassignError } = await supabase.rpc('reassign_finance_document_center', {
       p_document_id: row.id,
       p_target_center_id: reassignCenterId,
       p_note: note,
     })
-    if (error) toast.error(error.message)
-    else {
-      toast.success(initialAssignment ? 'Centro de costo asignado. Revisa y decide el gasto.' : 'Centro de costo reasignado. El documento sigue listo para decisión de Raimundo.')
-      setReassigningId(null)
-      setReassignNote('')
-      await load()
-      if (initialAssignment) setStatus('review')
+    if (reassignError) {
+      toast.error(reassignError.message)
+      setBusy(false)
+      return
     }
+
+    const approvalNote = initialAssignment
+      ? 'Centro de costo asignado por Raimundo antes de envío a Santiago'
+      : `Centro de costo corregido por Raimundo · ${note}`
+    const { data: approvalData, error: approvalError } = await supabase.rpc('approve_finance_document', {
+      p_document_id: row.id,
+      p_notes: approvalNote,
+    })
+
+    if (approvalError) {
+      toast.error(`Centro guardado, pero la aprobación no avanzó a Santiago: ${approvalError.message}`)
+    } else {
+      const approval = approvalData as { approval_status?: string; payment_status?: string } | null
+      const budgetNote = approval?.approval_status === 'pending_valuation' ? ' · valorización EUR pendiente para Budget' : ''
+      toast.success(`Centro confirmado y gasto aprobado · enviado a Santiago para revisión y pago${budgetNote}.`)
+    }
+
+    setReassigningId(null)
+    setReassignNote('')
+    await load()
+    setStatus('review')
     setBusy(false)
   }
 
@@ -200,7 +218,7 @@ export function FinanceApprovalQueue() {
           <div className="max-w-3xl">
             <p className="text-xs uppercase tracking-[0.14em] text-[var(--bs-warm-yellow)]">Raimundo · Primera tarea</p>
             <h2 className="mt-2 text-xl font-normal text-[var(--bs-text-primary)]">Revisar todas las facturas nuevas</h2>
-            <p className="mt-2 text-sm leading-6 text-[var(--bs-text-secondary)]">Toda factura subida aparece aquí, aunque la IA ya haya reconocido el centro de costo. Raimundo confirma o cambia esa imputación y después aprueba o rechaza el gasto.</p>
+            <p className="mt-2 text-sm leading-6 text-[var(--bs-text-secondary)]">La IA sugiere el centro de costo de cada factura. Raimundo aprueba la sugerencia en un clic o cambia el centro y aprueba; solo entonces el gasto pasa a Santiago para revisión final y pago.</p>
           </div>
           <Button variant="outline" onClick={() => void load()} disabled={loading}><RefreshCw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />Actualizar</Button>
         </div>
@@ -226,7 +244,7 @@ export function FinanceApprovalQueue() {
                 const mapped = isCanonicalMapped(row)
                 return <tr key={row.id} className="border-t border-[var(--bs-divider-subtle)] align-top">
                   <td className="px-4 py-4"><p className="text-[var(--bs-text-primary)]">{row.supplier_name}</p><p className="mt-1 text-xs text-[var(--bs-text-muted)]">{row.document_number} · {new Date(`${row.document_date}T00:00:00`).toLocaleDateString('es-CL')}</p>{row.description && <p className="mt-2 max-w-72 text-xs leading-5 text-[var(--bs-text-secondary)]">{row.description}</p>}</td>
-                  <td className="px-4 py-4"><p className={mapped ? 'text-[var(--bs-text-primary)]' : 'text-[var(--bs-warm-yellow)]'}>{row.division_name ?? 'P&L pendiente'}</p><p className="mt-1 text-xs text-[var(--bs-text-secondary)]">{row.category_name ?? 'Categoría canónica pendiente'}</p>{row.operational_label && <p className="mt-2 text-xs text-[var(--bs-warm-yellow)]">Detalle operativo · {row.operational_label}</p>}{row.cost_center_name && row.cost_center_name !== row.operational_label && <p className="mt-1 text-[11px] text-[var(--bs-text-muted)]">Origen · {row.cost_center_name}</p>}</td>
+                  <td className="px-4 py-4">{row.approval_status === 'ready' && mapped && <p className="mb-1 text-[11px] uppercase tracking-[0.1em] text-[var(--bs-cool-sage)]">IA sugiere</p>}<p className={mapped ? 'text-[var(--bs-text-primary)]' : 'text-[var(--bs-warm-yellow)]'}>{row.division_name ?? 'P&L pendiente'}</p><p className="mt-1 text-xs text-[var(--bs-text-secondary)]">{row.category_name ?? 'Categoría canónica pendiente'}</p>{row.operational_label && <p className="mt-2 text-xs text-[var(--bs-warm-yellow)]">Detalle operativo · {row.operational_label}</p>}{row.cost_center_name && row.cost_center_name !== row.operational_label && <p className="mt-1 text-[11px] text-[var(--bs-text-muted)]">Origen · {row.cost_center_name}</p>}</td>
                   <td className="px-4 py-4"><div className="flex gap-2 text-xs leading-5 text-[var(--bs-text-secondary)]">{row.classification_status === 'ready' ? <Check className="mt-0.5 h-4 w-4 shrink-0 text-[var(--bs-cool-sage)]" /> : row.classification_status === 'exception' ? <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-[var(--bs-warm-orange)]" /> : <FileSearch className="mt-0.5 h-4 w-4 shrink-0 text-[var(--bs-cool-sky)]" />}<span><span className="block text-[var(--bs-text-primary)]">{classificationLabel(row.classification_status)}</span>{row.classification_reason ?? 'Sin explicación registrada.'}</span></div></td>
                   <td className="px-4 py-4 text-right"><p className="text-[var(--bs-text-primary)]">{formatMoney(row.total_amount, row.currency)}</p>{row.amount_eur != null && <p className="mt-1 text-xs text-[var(--bs-cool-sage)]">{formatMoney(row.amount_eur, 'EUR')}</p>}</td>
                   <td className="px-4 py-4 text-xs leading-5 text-[var(--bs-text-secondary)]"><p>{row.confidence_label ?? (row.confidence == null ? 'Sin confianza' : `Confianza ${pct.format(n(row.confidence))}`)}</p><p>{row.historical_count} antecedentes · {row.historical_dominance == null ? 'dominio —' : `dominio ${pct.format(n(row.historical_dominance))}`}</p><p className={row.amount_in_range === false ? 'text-[var(--bs-warm-orange)]' : row.amount_in_range === true ? 'text-[var(--bs-cool-sage)]' : 'text-[var(--bs-text-muted)]'}>{row.amount_in_range == null ? 'Sin rango' : row.amount_in_range ? 'Dentro de rango' : 'Fuera de rango'}</p></td>
@@ -237,7 +255,7 @@ export function FinanceApprovalQueue() {
                       )}
                       {reassigningId === row.id && (
                         <div className="ml-auto w-[340px] space-y-2 bg-[var(--bs-surface-secondary)] p-3 text-left">
-                          <p className="text-xs text-[var(--bs-text-secondary)]">Primera tarea: confirma dónde corresponde este gasto. Después podrás aprobarlo o rechazarlo.</p>
+                          <p className="text-xs text-[var(--bs-text-secondary)]">Selecciona el centro correcto. Al confirmar, el gasto se aprueba y pasa directamente a Santiago para revisión y pago.</p>
                           <select value={reassignCenterId} onChange={(event) => setReassignCenterId(event.target.value)} className="h-9 w-full bg-[var(--bs-bg-primary)] px-2 text-xs text-[var(--bs-text-primary)]">
                             <option value="">Seleccionar centro de costo</option>
                             {historicalCenters.map((center) => {
@@ -248,7 +266,7 @@ export function FinanceApprovalQueue() {
                           </select>
                           <div className="flex justify-end gap-2">
                             <Button size="sm" variant="outline" onClick={() => setReassigningId(null)} disabled={busy}>Cancelar</Button>
-                            <Button size="sm" onClick={() => void saveCenter(row)} disabled={busy || !reassignCenterId}>Guardar y revisar</Button>
+                            <Button size="sm" onClick={() => void saveCenterAndApprove(row)} disabled={busy || !reassignCenterId}>Asignar y aprobar → Santiago</Button>
                           </div>
                         </div>
                       )}
@@ -256,14 +274,14 @@ export function FinanceApprovalQueue() {
                   ) : row.approval_status === 'ready' ? (
                     <div className="space-y-2">
                       <div className="flex justify-end gap-2">
-                        {canApprove && <Button size="sm" onClick={() => void approve([row.id])} disabled={busy || !mapped}><Check className="mr-2 h-4 w-4" />Centro correcto · aprobar</Button>}
+                        {canApprove && <Button size="sm" onClick={() => void approve([row.id])} disabled={busy || !mapped}><Check className="mr-2 h-4 w-4" />Aprobar sugerencia → Santiago</Button>}
                         {canApprove && <Button size="sm" variant="outline" onClick={() => startReassign(row)} disabled={busy}>Cambiar centro</Button>}
                         {canApprove && <Button size="sm" variant="outline" onClick={() => void reject(row)} disabled={busy}><X className="mr-2 h-4 w-4" />Rechazar gasto</Button>}
                         {!canApprove && <span className="text-xs text-[var(--bs-text-muted)]">Solo lectura</span>}
                       </div>
                       {reassigningId === row.id && (
                         <div className="ml-auto w-[340px] space-y-2 bg-[var(--bs-surface-secondary)] p-3 text-left">
-                          <p className="text-xs text-[var(--bs-text-secondary)]">Selecciona el centro de costo correcto antes de aprobar. El documento no avanza a Santiago hasta que Raimundo confirme.</p>
+                          <p className="text-xs text-[var(--bs-text-secondary)]">Selecciona el centro correcto y registra por qué cambiaste la sugerencia. Al confirmar, el gasto queda aprobado y pasa a Santiago.</p>
                           <select value={reassignCenterId} onChange={(event) => setReassignCenterId(event.target.value)} className="h-9 w-full bg-[var(--bs-bg-primary)] px-2 text-xs text-[var(--bs-text-primary)]">
                             <option value="">Seleccionar centro de costo</option>
                             {historicalCenters.map((center) => {
@@ -275,7 +293,7 @@ export function FinanceApprovalQueue() {
                           <input value={reassignNote} onChange={(event) => setReassignNote(event.target.value)} placeholder="Motivo de la reasignación" className="h-9 w-full bg-[var(--bs-bg-primary)] px-2 text-xs text-[var(--bs-text-primary)]" />
                           <div className="flex justify-end gap-2">
                             <Button size="sm" variant="outline" onClick={() => setReassigningId(null)} disabled={busy}>Cancelar</Button>
-                            <Button size="sm" onClick={() => void saveCenter(row)} disabled={busy || !reassignCenterId || !reassignNote.trim()}>Guardar reasignación</Button>
+                            <Button size="sm" onClick={() => void saveCenterAndApprove(row)} disabled={busy || !reassignCenterId || !reassignNote.trim()}>Cambiar y aprobar → Santiago</Button>
                           </div>
                         </div>
                       )}
