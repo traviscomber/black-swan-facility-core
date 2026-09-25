@@ -90,14 +90,14 @@ export async function extractSiiPdfFiscalMetadata(
       'content-type': 'application/json',
     },
     body: JSON.stringify({
-      model: process.env.OPENAI_OCR_MODEL || 'gpt-4o-mini',
+      model: process.env.OPENAI_OCR_MODEL || 'gpt-5.6-luna',
       input: [{
         role: 'user',
         content: [
           {
             type: 'input_file',
             filename,
-            file_data: `data:application/pdf;base64,${bytes.toString('base64')}`,
+            file_data: bytes.toString('base64'),
           },
           {
             type: 'input_text',
