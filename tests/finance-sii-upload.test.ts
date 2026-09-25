@@ -9,6 +9,7 @@ import {
 } from '../lib/finance/sii-invoice.ts'
 
 const routeUrl = new URL('../app/api/finance/sii-invoices/route.ts', import.meta.url)
+const dropzoneUrl = new URL('../components/sii-invoice-dropzone.tsx', import.meta.url)
 
 test('SII file extension and pairing normalization are strict', () => {
   assert.equal(siiExtension('FACTURA.PDF'), 'pdf')
@@ -126,4 +127,16 @@ test('PDF intake attempts automatic fiscal extraction before manual fallback', (
   assert.match(extractionSource, /tax_amount/)
   assert.match(extractionSource, /total_amount/)
   assert.match(extractionSource, /No inventes, no completes por contexto y no uses placeholders/)
+})
+
+
+test('finance uploader can see persisted invoice upload history', () => {
+  const source = readFileSync(dropzoneUrl, 'utf8')
+
+  assert.match(source, /Mis facturas subidas/)
+  assert.match(source, /finance_sii_uploads/)
+  assert.match(source, /original_filename,status,finance_document_id,upload_kind,error_message,created_at/)
+  assert.match(source, /uploadId=/)
+  assert.match(source, /Ver original/)
+  assert.match(source, /refreshUploads/)
 })
