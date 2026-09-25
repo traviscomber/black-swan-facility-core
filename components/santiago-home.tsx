@@ -213,6 +213,7 @@ export function SantiagoHome() {
               : "preparar la próxima llegada",
             operationalArea: "hospitality",
             severity: nextArrival ? "attention" : "normal",
+            priority: 100,
             capability: nextArrival ? "hospitality.prepare_arrival" : undefined,
             reservationId: nextArrival?.id ?? null,
           },
@@ -223,6 +224,7 @@ export function SantiagoHome() {
             task: `asignar seguimiento a ${counts.unassignedGuestRequests} solicitudes de huéspedes sin responsable`,
             operationalArea: "hospitality",
             severity: counts.unassignedGuestRequests > 0 ? "attention" : "normal",
+            priority: 90,
             capability: nextUnassignedRequestId ? "hospitality.assign_request" : undefined,
             requestId: nextUnassignedRequestId,
           },
@@ -233,6 +235,7 @@ export function SantiagoHome() {
             task: `coordinar ${counts.pendingHousekeeping} tareas de housekeeping pendientes para hoy`,
             operationalArea: "hospitality",
             severity: counts.pendingHousekeeping > 0 ? "attention" : "normal",
+            priority: 80,
           },
           {
             key: "cost-center-exceptions",
@@ -241,6 +244,7 @@ export function SantiagoHome() {
             task: `revisar y resolver ${counts.escalatedCenters} centros de costo escalados por Raimundo`,
             operationalArea: "finance",
             severity: counts.escalatedCenters > 0 ? "attention" : "normal",
+            priority: 70,
           },
           {
             key: "payments-to-authorize",
@@ -249,6 +253,7 @@ export function SantiagoHome() {
             task: `revisar ${counts.pendingPayments} pagos pendientes de autorización, sin aprobarlos automáticamente`,
             operationalArea: "finance",
             severity: counts.pendingPayments > 0 ? "attention" : "normal",
+            priority: 60,
           },
           {
             key: "payments-ready",
@@ -256,6 +261,7 @@ export function SantiagoHome() {
             title: copy.ready,
             task: `preparar seguimiento de ${counts.readyToPay} pagos autorizados listos para ejecución`,
             operationalArea: "finance",
+            priority: 50,
           },
         ]}
       />
