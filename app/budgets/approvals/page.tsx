@@ -12,7 +12,7 @@ import { useLanguage } from '@/lib/hooks/use-language'
 
 const copy = {
   en: { title: 'Financial approval', description: 'Review one case at a time, confirm quickly and preserve traceability against the canonical Budget.' },
-  es: { title: 'Aprobación financiera', description: 'Revisa un caso por vez, confirma rápido y conserva trazabilidad contra el Budget canónico.' },
+  es: { title: 'Aprobaciones · Raimundo', description: 'Tu única bandeja diaria: define la imputación y aprueba o rechaza cada gasto.' },
   de: { title: 'Finanzielle Freigabe', description: 'Prüfen Sie jeweils einen Fall, bestätigen Sie zügig und erhalten Sie die Nachverfolgbarkeit zum kanonischen Budget.' },
 } as const
 
