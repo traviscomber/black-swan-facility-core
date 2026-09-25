@@ -73,6 +73,7 @@ export async function extractSiiPdfFiscalMetadata(
 ): Promise<PdfFiscalExtraction> {
   const apiKey = process.env.OPENAI_API_KEY
   if (!apiKey) {
+    console.error('[sii-pdf-extraction] OPENAI_API_KEY missing')
     return {
       metadata: null,
       draft: {},
@@ -164,6 +165,7 @@ export async function extractSiiPdfFiscalMetadata(
   }
 
   const raw = await response.json() as Record<string, unknown>
+  console.info('[sii-pdf-extraction] OpenAI response received', { filename, status: response.status })
   const text = outputText(raw)
   if (!text) {
     return {
@@ -190,6 +192,7 @@ export async function extractSiiPdfFiscalMetadata(
 
   const normalized = normalizePayload(parsed)
   const metadata = parseManualPdfMetadata(normalized)
+  console.info('[sii-pdf-extraction] OCR parsed', { filename, complete: Boolean(metadata), fields: Object.entries(normalized).filter(([, value]) => value !== null && value !== '').map(([key]) => key) })
   const confidenceRaw = parsed.confidence
   const confidence = typeof confidenceRaw === 'number' && Number.isFinite(confidenceRaw)
     ? Math.max(0, Math.min(1, confidenceRaw))
