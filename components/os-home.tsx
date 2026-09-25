@@ -52,17 +52,17 @@ const navLabels = {
   en: {
     bookings: 'Reservations', activities: 'Activities', tasks: 'Tasks', checklists: 'Checklists', procurement: 'Procurement', maintenance: 'Maintenance', issues: 'Issues', 'guest-requests': 'Guest requests', employees: 'People',
     'property-management': 'Properties', inventory: 'Inventory', energy: 'Energy', map: 'Map', orchard: 'Orchard', vineyard: 'Vineyard', cattle: 'Cattle', 'cattle-health': 'Animal health', fuel: 'Fuels',
-    budget: 'Budget', approvals: 'Approvals', documents: 'Documents', reconciliation: 'Reconciliation', accounting: 'Accounting', invoices: 'Invoices', discovery: 'Discovery', events: 'Events', 'event-providers': 'Event providers', 'front-door': 'Front door', education: 'Education', 'os-people': 'People',
+    budget: 'Budget', approvals: 'Approvals', payments: 'Supplier payments', documents: 'Documents', reconciliation: 'Reconciliation', accounting: 'Accounting', invoices: 'Invoices', discovery: 'Discovery', events: 'Events', 'event-providers': 'Event providers', 'front-door': 'Front door', education: 'Education', 'os-people': 'People',
   },
   es: {
     bookings: 'Reservas', activities: 'Actividades', tasks: 'Tareas', checklists: 'Listas de verificación', procurement: 'Adquisiciones y Procuramiento', maintenance: 'Mantenimiento', issues: 'Incidencias', 'guest-requests': 'Solicitudes de huéspedes', employees: 'Personas',
     'property-management': 'Propiedades', inventory: 'Inventario', energy: 'Energía', map: 'Mapa', orchard: 'Huerto', vineyard: 'Viñedo', cattle: 'Ganadería', 'cattle-health': 'Salud animal', fuel: 'Combustibles',
-    budget: 'Presupuesto', approvals: 'Aprobaciones', documents: 'Documentos', reconciliation: 'Conciliación', accounting: 'Contabilidad', invoices: 'Facturas', discovery: 'Discovery', events: 'Eventos', 'event-providers': 'Proveedores de eventos', 'front-door': 'Acceso principal', education: 'Educación', 'os-people': 'Personas',
+    budget: 'Presupuesto', approvals: 'Aprobaciones', payments: 'Pagos a proveedores', documents: 'Documentos', reconciliation: 'Conciliación', accounting: 'Contabilidad', invoices: 'Facturas', discovery: 'Discovery', events: 'Eventos', 'event-providers': 'Proveedores de eventos', 'front-door': 'Acceso principal', education: 'Educación', 'os-people': 'Personas',
   },
   de: {
     bookings: 'Reservierungen', activities: 'Aktivitäten', tasks: 'Aufgaben', checklists: 'Checklisten', procurement: 'Beschaffung', maintenance: 'Instandhaltung', issues: 'Vorfälle', 'guest-requests': 'Gästeanfragen', employees: 'Personen',
     'property-management': 'Immobilien', inventory: 'Inventar', energy: 'Energie', map: 'Karte', orchard: 'Obstgarten', vineyard: 'Weinberg', cattle: 'Rinder', 'cattle-health': 'Tiergesundheit', fuel: 'Kraftstoffe',
-    budget: 'Budget', approvals: 'Freigaben', documents: 'Dokumente', reconciliation: 'Abstimmung', accounting: 'Buchhaltung', invoices: 'Rechnungen', discovery: 'Discovery', events: 'Ereignisse', 'event-providers': 'Eventanbieter', 'front-door': 'Eingang', education: 'Bildung', 'os-people': 'Personen',
+    budget: 'Budget', approvals: 'Freigaben', payments: 'Lieferantenzahlungen', documents: 'Dokumente', reconciliation: 'Abstimmung', accounting: 'Buchhaltung', invoices: 'Rechnungen', discovery: 'Discovery', events: 'Ereignisse', 'event-providers': 'Eventanbieter', 'front-door': 'Eingang', education: 'Bildung', 'os-people': 'Personen',
   },
 } as const
 
