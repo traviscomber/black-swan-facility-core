@@ -50,3 +50,14 @@ test('Raimundo keeps elevated field-admin visibility with booking and hospitalit
   assert.match(raimundo, /\/bookings\/requests/)
   assert.match(personas, /raimundo: \["today", "finance", "operations", "places-assets"/)
 })
+
+
+test('Raimundo booking overview is live and operational', () => {
+  const raimundo = readFileSync(new URL('../components/raimundo-home.tsx', import.meta.url), 'utf8')
+  assert.match(raimundo, /arrivalsToday/)
+  assert.match(raimundo, /departuresToday/)
+  assert.match(raimundo, /openGuestRequests/)
+  assert.match(raimundo, /table: "reservations"/)
+  assert.match(raimundo, /table: "hospitality_requests"/)
+  assert.match(raimundo, /\/bookings\/calendar/)
+})
