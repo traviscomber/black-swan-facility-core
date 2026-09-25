@@ -23,7 +23,7 @@ test('automatic bank matching is evidence-based and never final reconciliation',
   assert.match(parser, /supplier_name/)
   assert.match(parser, /confidence < 0\.85/)
   assert.doesNotMatch(route, /reconciliation_status: 'reconciled'/)
-  assert.match(migration, /paid_observed, never final reconciliation automatically/)
+  assert.match(migration, /payment observed, never final reconciliation automatically/)
 })
 
 test('Santiago view centers paid versus not-yet-reconciled', () => {
