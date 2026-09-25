@@ -131,7 +131,7 @@ export function FinanceApprovalQueue() {
       approved += 1
     }
     if (approved) toast.success(`${approved} documento${approved === 1 ? '' : 's'} aprobado${approved === 1 ? '' : 's'}${valuation ? ` · ${valuation} pendiente${valuation === 1 ? '' : 's'} de valorización EUR` : ''}.`)
-    setSelected(new Set()); await load(); setBusy(false)
+    await load(); setBusy(false)
   }
 
   function startReassign(row: QueueRow) {
