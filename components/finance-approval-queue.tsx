@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { AlertTriangle, Check, CheckCircle2, FileSearch, RefreshCw, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
@@ -83,6 +83,7 @@ export function FinanceApprovalQueue() {
   const [reassignNote, setReassignNote] = useState('')
   const [canApprove, setCanApprove] = useState(false)
   const [canAdmin, setCanAdmin] = useState(false)
+  const initialStatusSet = useRef(false)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -97,7 +98,12 @@ export function FinanceApprovalQueue() {
     const error = queueResult.error || divisionResult.error || categoryResult.error || centerResult.error || approvePermission.error || adminPermission.error
     if (error) toast.error(error.message)
     else {
-      setRows((queueResult.data ?? []) as QueueRow[])
+      const queueRows = (queueResult.data ?? []) as QueueRow[]
+      setRows(queueRows)
+      if (!initialStatusSet.current) {
+        initialStatusSet.current = true
+        setStatus(queueRows.some((row) => row.approval_status === 'pending_mapping') ? 'pending_mapping' : 'ready')
+      }
       setDivisions((divisionResult.data ?? []) as Division[])
       setCategories((categoryResult.data ?? []) as Category[])
       setHistoricalCenters((centerResult.data ?? []) as HistoricalCenter[])
@@ -155,23 +161,26 @@ export function FinanceApprovalQueue() {
     setReassignNote('')
   }
 
-  async function reassign(row: QueueRow) {
-    if (!reassignCenterId || !reassignNote.trim()) {
-      toast.error('Selecciona el centro de costo correcto y registra el motivo del cambio.')
+  async function saveCenter(row: QueueRow) {
+    const initialAssignment = row.approval_status === 'pending_mapping'
+    const note = initialAssignment ? 'Asignación inicial de centro de costo confirmada por Raimundo' : reassignNote.trim()
+    if (!reassignCenterId || (!initialAssignment && !note)) {
+      toast.error(initialAssignment ? 'Selecciona el centro de costo correcto.' : 'Selecciona el centro de costo correcto y registra el motivo del cambio.')
       return
     }
     setBusy(true)
     const { error } = await supabase.rpc('reassign_finance_document_center', {
       p_document_id: row.id,
       p_target_center_id: reassignCenterId,
-      p_note: reassignNote.trim(),
+      p_note: note,
     })
     if (error) toast.error(error.message)
     else {
-      toast.success('Centro de costo reasignado. El documento sigue listo para decisión de Raimundo.')
+      toast.success(initialAssignment ? 'Centro de costo asignado. Revisa y decide el gasto.' : 'Centro de costo reasignado. El documento sigue listo para decisión de Raimundo.')
       setReassigningId(null)
       setReassignNote('')
       await load()
+      if (initialAssignment) setStatus('ready')
     }
     setBusy(false)
   }
@@ -238,7 +247,30 @@ export function FinanceApprovalQueue() {
                   <td className="px-4 py-4"><div className="flex gap-2 text-xs leading-5 text-[var(--bs-text-secondary)]">{row.classification_status === 'ready' ? <Check className="mt-0.5 h-4 w-4 shrink-0 text-[var(--bs-cool-sage)]" /> : row.classification_status === 'exception' ? <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-[var(--bs-warm-orange)]" /> : <FileSearch className="mt-0.5 h-4 w-4 shrink-0 text-[var(--bs-cool-sky)]" />}<span><span className="block text-[var(--bs-text-primary)]">{classificationLabel(row.classification_status)}</span>{row.classification_reason ?? 'Sin explicación registrada.'}</span></div></td>
                   <td className="px-4 py-4 text-right"><p className="text-[var(--bs-text-primary)]">{formatMoney(row.total_amount, row.currency)}</p>{row.amount_eur != null && <p className="mt-1 text-xs text-[var(--bs-cool-sage)]">{formatMoney(row.amount_eur, 'EUR')}</p>}</td>
                   <td className="px-4 py-4 text-xs leading-5 text-[var(--bs-text-secondary)]"><p>{row.confidence_label ?? (row.confidence == null ? 'Sin confianza' : `Confianza ${pct.format(n(row.confidence))}`)}</p><p>{row.historical_count} antecedentes · {row.historical_dominance == null ? 'dominio —' : `dominio ${pct.format(n(row.historical_dominance))}`}</p><p className={row.amount_in_range === false ? 'text-[var(--bs-warm-orange)]' : row.amount_in_range === true ? 'text-[var(--bs-cool-sage)]' : 'text-[var(--bs-text-muted)]'}>{row.amount_in_range == null ? 'Sin rango' : row.amount_in_range ? 'Dentro de rango' : 'Fuera de rango'}</p></td>
-                  <td className="px-4 py-4 text-right">{row.approval_status === 'pending_mapping' ? <span className="text-xs text-[var(--bs-text-muted)]">Mapear arriba</span> : row.approval_status === 'ready' ? (
+                  <td className="px-4 py-4 text-right">{row.approval_status === 'pending_mapping' ? (
+                    <div className="space-y-2">
+                      {reassigningId !== row.id && (
+                        <Button size="sm" onClick={() => startReassign(row)} disabled={busy || !canApprove}>Asignar centro de costo</Button>
+                      )}
+                      {reassigningId === row.id && (
+                        <div className="ml-auto w-[340px] space-y-2 bg-[var(--bs-surface-secondary)] p-3 text-left">
+                          <p className="text-xs text-[var(--bs-text-secondary)]">Primera tarea: confirma dónde corresponde este gasto. Después podrás aprobarlo o rechazarlo.</p>
+                          <select value={reassignCenterId} onChange={(event) => setReassignCenterId(event.target.value)} className="h-9 w-full bg-[var(--bs-bg-primary)] px-2 text-xs text-[var(--bs-text-primary)]">
+                            <option value="">Seleccionar centro de costo</option>
+                            {historicalCenters.map((center) => {
+                              const division = divisions.find((item) => item.id === center.division_id)?.name ?? 'P&L'
+                              const category = categories.find((item) => item.id === center.category_id)?.name ?? 'Categoría'
+                              return <option key={center.id} value={center.id}>{center.operational_label ?? center.historical_label} · {division} · {category}</option>
+                            })}
+                          </select>
+                          <div className="flex justify-end gap-2">
+                            <Button size="sm" variant="outline" onClick={() => setReassigningId(null)} disabled={busy}>Cancelar</Button>
+                            <Button size="sm" onClick={() => void saveCenter(row)} disabled={busy || !reassignCenterId}>Guardar y revisar</Button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ) : row.approval_status === 'ready' ? (
                     <div className="space-y-2">
                       <div className="flex justify-end gap-2">
                         {canApprove && <Button size="sm" onClick={() => void approve([row.id])} disabled={busy || !mapped}><Check className="mr-2 h-4 w-4" />Aprobar</Button>}
@@ -260,7 +292,7 @@ export function FinanceApprovalQueue() {
                           <input value={reassignNote} onChange={(event) => setReassignNote(event.target.value)} placeholder="Motivo de la reasignación" className="h-9 w-full bg-[var(--bs-bg-primary)] px-2 text-xs text-[var(--bs-text-primary)]" />
                           <div className="flex justify-end gap-2">
                             <Button size="sm" variant="outline" onClick={() => setReassigningId(null)} disabled={busy}>Cancelar</Button>
-                            <Button size="sm" onClick={() => void reassign(row)} disabled={busy || !reassignCenterId || !reassignNote.trim()}>Guardar reasignación</Button>
+                            <Button size="sm" onClick={() => void saveCenter(row)} disabled={busy || !reassignCenterId || !reassignNote.trim()}>Guardar reasignación</Button>
                           </div>
                         </div>
                       )}
