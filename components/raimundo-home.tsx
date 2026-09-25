@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { createClient } from "@/lib/supabase/client"
 import { useLanguage } from "@/lib/hooks/use-language"
 import { loadAuthorizedNavigation, type AuthorizedNavItem } from "@/lib/os/authorized-navigation-client"
+import { RoleAgenticBrief } from "@/components/role-agentic-brief"
 
 type Counts = {
   approvals: number
@@ -246,6 +247,44 @@ export function RaimundoHome() {
           </Button>
         </div>
       </section>
+
+      <RoleAgenticBrief
+        persona="raimundo"
+        signals={[
+          {
+            key: "finance-approvals",
+            count: counts.approvals,
+            title: copy.approvalsTitle,
+            task: `revisar ${counts.approvals} gastos pendientes, validar primero su centro de costo y dejar lista la decisión de Raimundo`,
+            operationalArea: "finance",
+            severity: counts.approvals > 0 ? "attention" : "normal",
+          },
+          {
+            key: "guest-requests",
+            count: counts.openGuestRequests,
+            title: copy.openGuestRequests,
+            task: `coordinar ${counts.openGuestRequests} solicitudes abiertas de huéspedes y asignar seguimiento operativo`,
+            operationalArea: "hospitality",
+            severity: counts.openGuestRequests > 0 ? "attention" : "normal",
+          },
+          {
+            key: "cattle-health",
+            count: counts.healthAlerts,
+            title: copy.alerts,
+            task: `revisar ${counts.healthAlerts} alertas de salud ganadera y coordinar seguimiento`,
+            operationalArea: "cattle",
+            severity: counts.healthAlerts > 0 ? "attention" : "normal",
+          },
+          {
+            key: "vineyard-risk",
+            count: counts.vineyardCritical,
+            title: copy.critical,
+            task: `revisar ${counts.vineyardCritical} incidencias críticas o altas del viñedo y coordinar seguimiento`,
+            operationalArea: "vineyard",
+            severity: counts.vineyardCritical > 0 ? "attention" : "normal",
+          },
+        ]}
+      />
 
       <section className="px-4 py-5 md:px-6">
         <div className="mx-auto grid max-w-[1600px] gap-4 xl:grid-cols-2 2xl:grid-cols-5">
