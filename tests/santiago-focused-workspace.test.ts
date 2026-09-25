@@ -41,3 +41,12 @@ test('Raimundo home prioritizes approvals, cattle, vineyard and orchard', () => 
   assert.match(personas, /raimundo/)
   assert.match(migration, /raimundo@blackswn\.org/)
 })
+
+
+test('Raimundo keeps elevated field-admin visibility with booking and hospitality primary', () => {
+  const raimundo = readFileSync(new URL('../components/raimundo-home.tsx', import.meta.url), 'utf8')
+  assert.match(raimundo, /Booking y Hospitality/)
+  assert.match(raimundo, /\/bookings\/calendar/)
+  assert.match(raimundo, /\/bookings\/requests/)
+  assert.match(personas, /raimundo: \["today", "finance", "operations", "places-assets"/)
+})
