@@ -38,9 +38,23 @@ export default function LoginPage() {
           ? requestedPath
           : null
 
-        const destination = isMaribel
-          ? '/es/budgets/documents'
-          : safeRequestedPath ?? `/${language}`
+        const { data: accessProfile } = await supabase
+          .from('user_access_profiles')
+          .select('os_start_path')
+          .eq('user_id', data.user.id)
+          .maybeSingle()
+
+        const profileStartPath = typeof accessProfile?.os_start_path === 'string'
+          && accessProfile.os_start_path.startsWith('/')
+          && !accessProfile.os_start_path.startsWith('//')
+          ? accessProfile.os_start_path
+          : null
+        const localizedProfileStart = profileStartPath
+          ? `/${language}${profileStartPath === '/' ? '' : profileStartPath}`
+          : `/${language}`
+
+        const destination = safeRequestedPath
+          ?? (isMaribel ? '/es/budgets/documents' : localizedProfileStart)
 
         if (isMaribel) {
           localStorage.setItem('language', 'es')

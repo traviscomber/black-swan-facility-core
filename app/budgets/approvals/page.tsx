@@ -21,10 +21,10 @@ export default function BudgetApprovalsPage() {
   return (
     <AppLayout>
       <PageHeader title={text.title} description={text.description} />
+      <FinanceApprovalQueue />
       <SiiSourceReview />
       <RaimundoReviewInbox />
       <FinanceHistoricalAliasReview />
-      <FinanceApprovalQueue />
       <RaimundoFinanceImport />
     </AppLayout>
   )
