@@ -105,13 +105,34 @@ test('upload route enforces Maribel-compatible least privilege and safe file han
 })
 
 
-test('PDF intake attempts automatic fiscal extraction before manual fallback', () => {
+test('PDF OCR is a small direct OpenAI reader with no SDK or gateway dependency', () => {
+  const extractionSource = readFileSync(new URL('../lib/finance/sii-pdf-extraction.ts', import.meta.url), 'utf8')
+  assert.match(extractionSource, /OPENAI_API_KEY/)
+  assert.match(extractionSource, /gpt-5\.6-luna/)
+  assert.match(extractionSource, /api\.openai\.com\/v1\/responses/)
+  assert.match(extractionSource, /type: 'input_file'/)
+  assert.match(extractionSource, /data:application\/pdf;base64/)
+  assert.match(extractionSource, /type: 'json_schema'/)
+  assert.match(extractionSource, /No inventes, no completes por contexto y no uses placeholders/)
+  assert.doesNotMatch(extractionSource, /from 'ai'/)
+  assert.doesNotMatch(extractionSource, /generateObject/)
+  assert.doesNotMatch(extractionSource, /Vercel AI Gateway/)
+  assert.doesNotMatch(extractionSource, /DOCUMENT_AI_ENDPOINT/)
+})
+
+test('PDF intake is automatic with manual fallback only for incomplete extraction', () => {
   const source = readFileSync(routeUrl, 'utf8')
+  const extractionRoute = readFileSync(new URL('../app/api/finance/sii-invoices/extract/route.ts', import.meta.url), 'utf8')
+  const formSource = readFileSync(new URL('../components/sii-pdf-metadata-form.tsx', import.meta.url), 'utf8')
   const extractionSource = readFileSync(new URL('../lib/finance/sii-pdf-extraction.ts', import.meta.url), 'utf8')
 
   assert.match(source, /extractSiiPdfFiscalMetadata/)
+  assert.match(source, /automatic PDF finalization/)
   assert.match(source, /finalize_sii_pdf_upload/)
-  assert.match(extractionSource, /DOCUMENT_AI_ENDPOINT/)
+  assert.match(extractionRoute, /status: extraction\.metadata \? 'extracted' : 'partial'/)
+  assert.match(formSource, /Factura leída, guardada y clasificada automáticamente/)
+  assert.match(formSource, /Revisión excepcional/)
+  assert.match(formSource, /Completar excepción/)
   assert.match(extractionSource, /supplier_name/)
   assert.match(extractionSource, /supplier_rut/)
   assert.match(extractionSource, /document_number/)

@@ -10,9 +10,9 @@ import { PageHeader } from '@/components/page-header'
 import { useLanguage } from '@/lib/hooks/use-language'
 
 const copy = {
-  en: { title: 'Financial approval', description: 'Review one case at a time, confirm quickly and preserve traceability against the canonical Budget.' },
-  es: { title: 'Aprobación financiera', description: 'Revisa un caso por vez, confirma rápido y conserva trazabilidad contra el Budget canónico.' },
-  de: { title: 'Finanzielle Freigabe', description: 'Prüfen Sie jeweils einen Fall, bestätigen Sie zügig und erhalten Sie die Nachverfolgbarkeit zum kanonischen Budget.' },
+  en: { title: 'Raimundo · Expense review', description: 'Validate the AI-selected cost center, reassign when needed, then approve or reject the expense.' },
+  es: { title: 'Raimundo · Revisión de gastos', description: 'Valida el centro de costo sugerido por IA, reasigna si corresponde y luego aprueba o rechaza el gasto.' },
+  de: { title: 'Raimundo · Ausgabenprüfung', description: 'KI-Kostenstelle prüfen, bei Bedarf neu zuordnen und anschließend die Ausgabe freigeben oder ablehnen.' },
 } as const
 
 export default function BudgetApprovalsPage() {
@@ -21,11 +21,16 @@ export default function BudgetApprovalsPage() {
   return (
     <AppLayout>
       <PageHeader title={text.title} description={text.description} />
-      <SiiSourceReview />
-      <RaimundoReviewInbox />
-      <FinanceHistoricalAliasReview />
       <FinanceApprovalQueue />
-      <RaimundoFinanceImport />
+      <details className="mx-4 mb-8 bg-[var(--bs-surface-primary)] md:mx-8">
+        <summary className="cursor-pointer px-5 py-4 text-sm text-[var(--bs-text-secondary)]">Excepciones y herramientas</summary>
+        <div className="space-y-4 border-t border-[var(--bs-divider-subtle)] p-4">
+          <SiiSourceReview />
+          <RaimundoReviewInbox />
+          <FinanceHistoricalAliasReview />
+          <RaimundoFinanceImport />
+        </div>
+      </details>
     </AppLayout>
   )
 }

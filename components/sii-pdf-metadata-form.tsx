@@ -56,15 +56,59 @@ export function SiiPdfMetadataForm({ uploadId, filename, onCompleted }: Props) {
           headers: { 'content-type': 'application/json' },
           body: JSON.stringify({ upload_id: uploadId }),
         })
-        const payload = await response.json() as { error?: string; status?: string; result?: { document_id?: string | null; status?: string }; metadata?: FormState }
+        const payload = await response.json() as { error?: string; reason?: string; status?: string; confidence?: number | null; metadata?: Partial<FormState> }
         if (!active) return
-        if (response.ok && (payload.status === 'automatic' || payload.status === 'already_finalized')) {
-          toast.success('Factura leída automáticamente y enviada a clasificación.')
-          onCompleted(payload.result ?? { status: payload.status })
+        if (!response.ok) {
+          setExtractionNote(payload.error ?? 'No fue posible leer la factura automáticamente.')
           return
         }
-        if (payload.metadata) setForm((current) => ({ ...current, ...payload.metadata }))
-        setExtractionNote('No fue posible confirmar todos los datos automáticamente. Revisa solo los campos pendientes.')
+        if (payload.metadata) {
+          const metadata = payload.metadata
+          const completed = {
+            ...initialState,
+            ...metadata,
+            net_amount: metadata.net_amount == null ? '' : String(metadata.net_amount),
+            tax_amount: metadata.tax_amount == null ? '' : String(metadata.tax_amount),
+            total_amount: metadata.total_amount == null ? '' : String(metadata.total_amount),
+            due_date: metadata.due_date ?? '',
+          } as FormState
+          setForm(completed)
+
+          const complete = Boolean(
+            completed.supplier_name?.trim() &&
+            completed.supplier_rut?.trim() &&
+            completed.document_number?.trim() &&
+            completed.document_date &&
+            completed.total_amount?.trim()
+          )
+
+          if (complete) {
+            const finalizeResponse = await fetch('/api/finance/sii-invoices', {
+              method: 'PATCH',
+              headers: { 'content-type': 'application/json' },
+              body: JSON.stringify({
+                upload_id: uploadId,
+                metadata: {
+                  ...completed,
+                  net_amount: completed.net_amount || null,
+                  tax_amount: completed.tax_amount || null,
+                  due_date: completed.due_date || null,
+                },
+              }),
+            })
+            const finalized = await finalizeResponse.json() as { error?: string; result?: { document_id?: string | null; status?: string } }
+            if (!finalizeResponse.ok) throw new Error(finalized.error ?? 'No fue posible procesar automáticamente la factura.')
+            toast.success('Factura leída, guardada y clasificada automáticamente.')
+            window.dispatchEvent(new Event('finance-sii-uploaded'))
+            window.dispatchEvent(new Event('finance-workbook-imported'))
+            onCompleted(finalized.result ?? {})
+            return
+          }
+
+          setExtractionNote('Extracción incompleta. Completa únicamente los campos faltantes.')
+        } else {
+          setExtractionNote('No fue posible completar la extracción automática. Revisa solo los campos que falten.')
+        }
       } catch {
         if (active) setExtractionNote('No fue posible leer la factura automáticamente. Revisa los datos antes de continuar.')
       } finally {
@@ -117,7 +161,7 @@ export function SiiPdfMetadataForm({ uploadId, filename, onCompleted }: Props) {
     return (
       <div className="mt-4 flex items-center gap-3 bg-[var(--bs-surface-primary)] p-4 text-sm text-[var(--bs-text-secondary)]">
         <Loader2 className="h-4 w-4 animate-spin text-[var(--bs-warm-yellow)]" />
-        Leyendo factura y extrayendo datos fiscales…
+        Leyendo, guardando y clasificando factura…
       </div>
     )
   }
@@ -126,7 +170,7 @@ export function SiiPdfMetadataForm({ uploadId, filename, onCompleted }: Props) {
     <div className="mt-4 bg-[var(--bs-surface-primary)] p-4">
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div>
-          <p className="text-xs uppercase tracking-[0.1em] text-[var(--bs-text-muted)]">Completar PDF</p>
+          <p className="text-xs uppercase tracking-[0.1em] text-[var(--bs-text-muted)]">Revisión excepcional</p>
           <p className="mt-1 text-sm text-[var(--bs-text-primary)]">{filename}</p>
           <p className="mt-1 text-xs text-[var(--bs-text-secondary)]">{extractionNote ?? 'Extracción automática incompleta; confirma únicamente los datos que falten. Raimundo mantiene la aprobación final.'}</p>
         </div>
@@ -137,7 +181,7 @@ export function SiiPdfMetadataForm({ uploadId, filename, onCompleted }: Props) {
 
       <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
         <label className="text-xs text-[var(--bs-text-muted)]">Proveedor<input className={fieldClass()} value={form.supplier_name} onChange={(event) => update('supplier_name', event.target.value)} /></label>
-        <label className="text-xs text-[var(--bs-text-muted)]">RUT proveedor<input className={fieldClass()} placeholder="12.345.678-9" value={form.supplier_rut} onChange={(event) => update('supplier_rut', event.target.value)} /></label>
+        <label className="text-xs text-[var(--bs-text-muted)]">RUT proveedor<input className={fieldClass()} value={form.supplier_rut} onChange={(event) => update('supplier_rut', event.target.value)} /></label>
         <label className="text-xs text-[var(--bs-text-muted)]">Folio<input className={fieldClass()} value={form.document_number} onChange={(event) => update('document_number', event.target.value)} /></label>
         <label className="text-xs text-[var(--bs-text-muted)]">Tipo<select className={fieldClass()} value={form.document_type} onChange={(event) => update('document_type', event.target.value as FormState['document_type'])}><option value="invoice">Factura</option><option value="credit_note">Nota de crédito</option><option value="debit_note">Nota de débito</option><option value="other">Otro</option></select></label>
         <label className="text-xs text-[var(--bs-text-muted)]">Fecha emisión<input type="date" className={fieldClass()} value={form.document_date} onChange={(event) => update('document_date', event.target.value)} /></label>
@@ -149,7 +193,7 @@ export function SiiPdfMetadataForm({ uploadId, filename, onCompleted }: Props) {
       </div>
 
       <div className="mt-4 flex justify-end">
-        <Button onClick={() => void submit()} disabled={saving}>{saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}{saving ? 'Guardando…' : 'Crear y clasificar factura'}</Button>
+        <Button onClick={() => void submit()} disabled={saving}>{saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}{saving ? 'Procesando…' : 'Completar excepción'}</Button>
       </div>
     </div>
   )

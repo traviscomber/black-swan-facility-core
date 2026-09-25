@@ -93,6 +93,8 @@ export async function POST(request: Request) {
                 existingDocumentId = auto.document_id ?? null
                 existingStatus = auto.status ?? existingStatus
                 extractionStatus = 'automatic'
+              } else if (finalizeError) {
+                console.error('[finance/sii-invoices] automatic PDF finalization failed', finalizeError)
               }
             } else {
               extractionStatus = extraction.reason ?? 'needs_review'
@@ -107,7 +109,7 @@ export async function POST(request: Request) {
           filename: file.name,
           upload_id: existingUpload.id,
           document_id: existingDocumentId,
-          status: existingDocumentId ? existingStatus : existingStatus,
+          status: existingStatus,
           duplicate: Boolean(existingUpload.finance_document_id),
           ...(extractionStatus ? { extraction_status: extractionStatus } : {}),
         })
