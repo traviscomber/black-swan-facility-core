@@ -8,7 +8,7 @@ import { createClient } from '@/lib/supabase/client'
 
 type ClassificationStatus = 'ready' | 'exception' | 'manual_review' | 'approved' | 'rejected'
 type ApprovalStatus = 'pending_mapping' | 'ready' | 'pending_valuation' | 'approved' | 'rejected'
-type QueueView = 'review' | 'pending_valuation' | 'approved' | 'rejected'
+type QueueView = 'review' | 'approved' | 'rejected'
 type QueueRow = {
   id: string
   document_type: string
@@ -66,7 +66,6 @@ function isCanonicalMapped(row: QueueRow) { return Boolean(row.division_name && 
 
 const tabs: Array<{ key: QueueView; label: string }> = [
   { key: 'review', label: 'Por revisar' },
-  { key: 'pending_valuation', label: 'Valorar EUR' },
   { key: 'approved', label: 'Aprobadas' },
   { key: 'rejected', label: 'Rechazadas' },
 ]
@@ -90,21 +89,42 @@ export function FinanceApprovalQueue() {
   const [reassignCenterId, setReassignCenterId] = useState('')
   const [reassignNote, setReassignNote] = useState('')
   const [canApprove, setCanApprove] = useState(false)
-  const [canAdmin, setCanAdmin] = useState(false)
   const [aiSuggestions, setAiSuggestions] = useState<Record<string, AiSuggestion | null>>({})
   const [suggestionLoadingIds, setSuggestionLoadingIds] = useState<Set<string>>(new Set())
   const requestedSuggestions = useRef(new Set<string>())
+  const requestedValuations = useRef(new Set<string>())
+
+  const approveWithAutomaticEur = useCallback(async (documentId: string, notes: string | null = null) => {
+    const response = await fetch('/api/finance/approve', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ document_id: documentId, notes }),
+    })
+    const payload = await response.json() as {
+      error?: string
+      valuation?: string
+      result?: {
+        approval_status?: string
+        payment_status?: string
+        valuation_status?: string
+        amount_eur?: number
+        fx_date?: string
+        fx_source?: string
+      }
+    }
+    if (!response.ok) throw new Error(payload.error || 'No se pudo aprobar y convertir a EUR.')
+    return payload
+  }, [])
 
   const load = useCallback(async () => {
     setLoading(true)
-    const [queueResult, divisionResult, categoryResult, approvePermission, adminPermission] = await Promise.all([
+    const [queueResult, divisionResult, categoryResult, approvePermission] = await Promise.all([
       supabase.from('finance_approval_queue').select('*').order('queue_order').order('document_date', { ascending: false }),
       supabase.from('budget_divisions').select('id,name').eq('is_active', true).eq('is_aggregate', false).not('source_key', 'is', null).order('sort_order'),
       supabase.from('budget_categories').select('id,division_id,name').eq('is_active', true).not('source_key', 'is', null).eq('category_role', 'cost').order('sort_order'),
       supabase.rpc('can_finance_approve'),
-      supabase.rpc('can_finance_admin'),
     ])
-    const error = queueResult.error || divisionResult.error || categoryResult.error || approvePermission.error || adminPermission.error
+    const error = queueResult.error || divisionResult.error || categoryResult.error || approvePermission.error
     if (error) toast.error(error.message)
     else {
       const queueRows = (queueResult.data ?? []) as QueueRow[]
@@ -112,7 +132,6 @@ export function FinanceApprovalQueue() {
       setDivisions((divisionResult.data ?? []) as Division[])
       setCategories((categoryResult.data ?? []) as Category[])
       setCanApprove(Boolean(approvePermission.data))
-      setCanAdmin(Boolean(adminPermission.data))
     }
     setLoading(false)
   }, [supabase])
@@ -155,6 +174,36 @@ export function FinanceApprovalQueue() {
     }
   }, [canApprove, rows])
 
+  useEffect(() => {
+    if (!canApprove) return
+    const pending = rows.filter((row) =>
+      row.approval_status === 'pending_valuation'
+      && row.currency.toUpperCase() === 'CLP'
+      && !requestedValuations.current.has(row.id)
+    )
+    if (!pending.length) return
+
+    for (const row of pending) requestedValuations.current.add(row.id)
+
+    void (async () => {
+      let converted = 0
+      let failed = 0
+      for (const row of pending) {
+        try {
+          await approveWithAutomaticEur(row.id, 'Conversión EUR automática de aprobación previa')
+          converted += 1
+        } catch {
+          failed += 1
+        }
+      }
+      if (converted) {
+        toast.success(`${converted} aprobación${converted === 1 ? '' : 'es'} convertida${converted === 1 ? '' : 's'} automáticamente a EUR.`)
+        await load()
+      }
+      if (failed) toast.error(`${failed} conversión${failed === 1 ? '' : 'es'} EUR quedó${failed === 1 ? '' : 'aron'} pendiente${failed === 1 ? '' : 's'} por falta de tasa válida.`)
+    })()
+  }, [approveWithAutomaticEur, canApprove, load, rows])
+
   const filtered = useMemo(() => status === 'review'
     ? rows.filter((row) => row.approval_status === 'pending_mapping' || row.approval_status === 'ready')
     : rows.filter((row) => row.approval_status === status), [rows, status])
@@ -168,16 +217,18 @@ export function FinanceApprovalQueue() {
     if (!validIds.length) { toast.error('No hay documentos canónicamente listos para aprobar.'); return }
     setBusy(true)
     let approved = 0
-    let valuation = 0
     for (const id of validIds) {
-      const { data, error } = await supabase.rpc('approve_finance_document', { p_document_id: id, p_notes: null })
-      if (error) { toast.error(error.message); break }
-      const result = data as { approval_status?: string; payment_status?: string } | null
-      if (result?.approval_status === 'pending_valuation') valuation += 1
-      approved += 1
+      try {
+        await approveWithAutomaticEur(id)
+        approved += 1
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : 'No se pudo completar la aprobación con conversión EUR.')
+        break
+      }
     }
-    if (approved) toast.success(`${approved} documento${approved === 1 ? '' : 's'} aprobado${approved === 1 ? '' : 's'} · enviado${approved === 1 ? '' : 's'} a Santiago para revisión y pago${valuation ? ` · ${valuation} pendiente${valuation === 1 ? '' : 's'} de valorización EUR para Budget` : ''}.`)
-    await load(); setBusy(false)
+    if (approved) toast.success(`${approved} documento${approved === 1 ? '' : 's'} aprobado${approved === 1 ? '' : 's'} · EUR convertido automáticamente · enviado${approved === 1 ? '' : 's'} a Santiago.`)
+    await load()
+    setBusy(false)
   }
 
   function startReassign(row: QueueRow) {
@@ -225,17 +276,15 @@ export function FinanceApprovalQueue() {
       : initialAssignment
         ? 'Centro de costo asignado por Raimundo antes de envío a Santiago'
         : `Centro de costo corregido por Raimundo · ${note}`
-    const { data: approvalData, error: approvalError } = await supabase.rpc('approve_finance_document', {
-      p_document_id: row.id,
-      p_notes: approvalNote,
-    })
-
-    if (approvalError) {
-      toast.error(`Centro guardado, pero la aprobación no avanzó a Santiago: ${approvalError.message}`)
-    } else {
-      const approval = approvalData as { approval_status?: string; payment_status?: string } | null
-      const budgetNote = approval?.approval_status === 'pending_valuation' ? ' · valorización EUR pendiente para Budget' : ''
-      toast.success(`Centro confirmado y gasto aprobado · enviado a Santiago para revisión y pago${budgetNote}.`)
+    try {
+      const approval = await approveWithAutomaticEur(row.id, approvalNote)
+      const amountEur = Number(approval.result?.amount_eur ?? 0)
+      const eurText = approval.valuation === 'automatic' && amountEur > 0
+        ? ` · €${amountEur.toLocaleString('es-CL', { maximumFractionDigits: 2 })} valorizado automáticamente`
+        : ''
+      toast.success(`Centro confirmado y gasto aprobado${eurText} · enviado a Santiago para revisión y pago.`)
+    } catch (error) {
+      toast.error(`Centro guardado, pero la aprobación no avanzó a Santiago: ${error instanceof Error ? error.message : 'falló la conversión EUR automática'}`)
     }
 
     setReassigningId(null)
@@ -254,21 +303,6 @@ export function FinanceApprovalQueue() {
     await load(); setBusy(false)
   }
 
-  async function valueInEur(row: QueueRow) {
-    const amountRaw = window.prompt(`Monto canónico en EUR para ${row.document_number}`)
-    if (!amountRaw) return
-    const rateRaw = window.prompt(`Tipo de cambio: EUR por 1 ${row.currency}`)
-    if (!rateRaw) return
-    const dateRaw = window.prompt('Fecha del tipo de cambio (AAAA-MM-DD)', row.document_date)
-    if (!dateRaw) return
-    const amount = Number(amountRaw.replace(',', '.'))
-    const rate = Number(rateRaw.replace(',', '.'))
-    if (!Number.isFinite(amount) || amount <= 0 || !Number.isFinite(rate) || rate <= 0) { toast.error('Monto EUR o tipo de cambio inválido.'); return }
-    setBusy(true)
-    const { error } = await supabase.rpc('value_finance_document_eur', { p_document_id: row.id, p_amount_eur: amount, p_fx_rate_to_eur: rate, p_fx_date: dateRaw, p_notes: 'Valorización EUR validada desde aprobación financiera' })
-    if (error) toast.error(error.message); else toast.success('Valorización EUR registrada y posteada al Budget.')
-    await load(); setBusy(false)
-  }
 
   return (
     <div className="space-y-5 p-4 md:p-8">
@@ -283,7 +317,7 @@ export function FinanceApprovalQueue() {
         </div>
         <div className="mt-5 grid gap-3 md:grid-cols-4">
           <div className="bg-[var(--bs-surface-secondary)] p-4 md:col-span-2"><p className="text-xs uppercase tracking-[0.1em] text-[var(--bs-text-muted)]">Por revisar</p><p className="mt-2 text-xl text-[var(--bs-warm-yellow)]">{reviewCount}</p><p className="mt-1 text-xs text-[var(--bs-text-secondary)]">{counts.pending_mapping ?? 0} sin confirmar · {aiSuggestionCount} recomendaciones IA disponibles · {counts.ready ?? 0} preclasificadas por historial{aiAnalyzedCount ? ` · ${aiAnalyzedCount} analizadas` : ''}</p></div>
-          <div className="bg-[var(--bs-surface-secondary)] p-4"><p className="text-xs uppercase tracking-[0.1em] text-[var(--bs-text-muted)]">Valorar en EUR</p><p className="mt-2 text-xl text-[var(--bs-cool-sky)]">{counts.pending_valuation ?? 0}</p></div>
+          <div className="bg-[var(--bs-surface-secondary)] p-4"><p className="text-xs uppercase tracking-[0.1em] text-[var(--bs-text-muted)]">EUR automático</p><p className="mt-2 text-xl text-[var(--bs-cool-sky)]">{counts.pending_valuation ?? 0}</p><p className="mt-1 text-xs text-[var(--bs-text-secondary)]">pendientes heredadas en conversión · las nuevas se valorizan al aprobar</p></div>
           <div className="bg-[var(--bs-surface-secondary)] p-4"><p className="text-xs uppercase tracking-[0.1em] text-[var(--bs-text-muted)]">Cerradas</p><p className="mt-2 text-xl text-[var(--bs-text-primary)]">{(counts.approved ?? 0) + (counts.rejected ?? 0)}</p></div>
         </div>
       </section>
@@ -392,7 +426,7 @@ export function FinanceApprovalQueue() {
                         </div>
                       )}
                     </div>
-                  ) : row.approval_status === 'pending_valuation' ? (canAdmin ? <Button size="sm" onClick={() => void valueInEur(row)} disabled={busy}>Valorizar EUR</Button> : <span className="text-xs text-[var(--bs-text-muted)]">Aprobado por Raimundo</span>) : <span className="text-xs text-[var(--bs-text-muted)]">{row.approval_status === 'approved' ? 'Posteado al Budget' : 'Rechazado'}</span>}</td>
+                  ) : row.approval_status === 'pending_valuation' ? <span className="text-xs text-[var(--bs-cool-sky)]">Conversión EUR automática…</span> : <span className="text-xs text-[var(--bs-text-muted)]">{row.approval_status === 'approved' ? 'Posteado al Budget' : 'Rechazado'}</span>}</td>
                 </tr>
               })}
               {!loading && !filtered.length && <tr><td colSpan={7} className="px-5 py-12 text-center text-[var(--bs-text-muted)]">No hay documentos en esta etapa.</td></tr>}
