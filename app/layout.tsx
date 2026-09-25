@@ -1,6 +1,5 @@
 import type React from "react"
 import type { Metadata, Viewport } from "next"
-import { headers } from "next/headers"
 import { Montserrat } from "next/font/google"
 import { Analytics } from "@vercel/analytics/next"
 import "./globals.css"
@@ -13,37 +12,20 @@ const montserrat = Montserrat({
   display: "swap",
 })
 
-const metadataDescriptions = {
-  en: "Blackswan Facility Core internal system for operational management, facility traceability and user-based access control.",
-  es: "Sistema interno de Blackswan Facility Core para la gestión operativa, trazabilidad de instalaciones y control de acceso por usuario.",
-  de: "Internes System von Blackswan Facility Core für Betriebssteuerung, Anlagen-Nachverfolgbarkeit und benutzerbasierten Zugriffsschutz.",
-} as const
-
-type SiteLocale = keyof typeof metadataDescriptions
-
-function resolveLocale(value: string | null): SiteLocale {
-  return value === "de" || value === "es" || value === "en" ? value : "en"
-}
-
-export async function generateMetadata(): Promise<Metadata> {
-  const requestHeaders = await headers()
-  const locale = resolveLocale(requestHeaders.get("x-site-locale"))
-
-  return {
-    title: "BSFC | Blackswan Facility Core",
-    description: metadataDescriptions[locale],
-    applicationName: "Blackswan Facility Core",
-    icons: {
-      icon: [
-        { url: "/favicon.ico", type: "image/x-icon" },
-        { url: "/blackswan-favicon-32.png", type: "image/png", sizes: "32x32" },
-      ],
-      shortcut: "/favicon.ico",
-      apple: [{ url: "/apple-icon.png", type: "image/png", sizes: "180x180" }],
-    },
-    robots: { index: false, follow: false },
-    other: { google: "notranslate", "color-scheme": "dark" },
-  }
+export const metadata: Metadata = {
+  title: "BSFC | Blackswan Facility Core",
+  description: "Blackswan Facility Core internal system for operational management, facility traceability and user-based access control.",
+  applicationName: "Blackswan Facility Core",
+  icons: {
+    icon: [
+      { url: "/favicon.ico", type: "image/x-icon" },
+      { url: "/blackswan-favicon-32.png", type: "image/png", sizes: "32x32" },
+    ],
+    shortcut: "/favicon.ico",
+    apple: [{ url: "/apple-icon.png", type: "image/png", sizes: "180x180" }],
+  },
+  robots: { index: false, follow: false },
+  other: { google: "notranslate", "color-scheme": "dark" },
 }
 
 export const viewport: Viewport = {
@@ -54,13 +36,10 @@ export const viewport: Viewport = {
   themeColor: "#171512",
 }
 
-export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  const requestHeaders = await headers()
-  const documentLanguage = resolveLocale(requestHeaders.get("x-site-locale"))
-
+export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html
-      lang={documentLanguage}
+      lang="en"
       translate="no"
       className="dark notranslate"
       data-theme="dark"
