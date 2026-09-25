@@ -16,6 +16,7 @@ type Counts = {
   healthAlerts: number
   vineyardPlots: number
   vineyardCritical: number
+  orchardOpenTasks: number
   arrivalsToday: number
   departuresToday: number
   openGuestRequests: number
@@ -148,6 +149,7 @@ export function RaimundoHome() {
     healthAlerts: 0,
     vineyardPlots: 0,
     vineyardCritical: 0,
+    orchardOpenTasks: 0,
     arrivalsToday: 0,
     departuresToday: 0,
     openGuestRequests: 0,
@@ -158,7 +160,10 @@ export function RaimundoHome() {
   const load = useCallback(async () => {
     setLoading(true)
     const today = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Santiago" }).format(new Date())
-    const [approvalResult, escalatedResult, animalsResult, healthResult, plotsResult, pestResult, arrivalsResult, departuresResult, guestRequestsResult, navigationResult] = await Promise.all([
+    const through = new Date()
+    through.setDate(through.getDate() + 7)
+    const throughDate = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Santiago" }).format(through)
+    const [approvalResult, escalatedResult, animalsResult, healthResult, plotsResult, pestResult, orchardTasksResult, arrivalsResult, departuresResult, guestRequestsResult, navigationResult] = await Promise.all([
       supabase
         .from("finance_documents")
         .select("id", { count: "exact", head: true })
@@ -184,6 +189,13 @@ export function RaimundoHome() {
         .select("id", { count: "exact", head: true })
         .in("severity_level", ["critical", "high"]),
       supabase
+        .from("tasks")
+        .select("id", { count: "exact", head: true })
+        .in("operational_area", ["orchard", "huerto_vinedo"])
+        .gte("due_date", today)
+        .lte("due_date", throughDate)
+        .not("status", "in", "(completada,completado,completed,done,cancelada,cancelado,cancelled,canceled)"),
+      supabase
         .from("reservations")
         .select("id", { count: "exact", head: true })
         .eq("check_in", today)
@@ -207,6 +219,7 @@ export function RaimundoHome() {
       healthAlerts: healthResult.count ?? 0,
       vineyardPlots: plotsResult.count ?? 0,
       vineyardCritical: pestResult.count ?? 0,
+      orchardOpenTasks: orchardTasksResult.count ?? 0,
       arrivalsToday: arrivalsResult.count ?? 0,
       departuresToday: departuresResult.count ?? 0,
       openGuestRequests: guestRequestsResult.count ?? 0,
@@ -226,6 +239,7 @@ export function RaimundoHome() {
       .on("postgres_changes", { event: "*", schema: "public", table: "cattle_health_alerts" }, () => void load())
       .on("postgres_changes", { event: "*", schema: "public", table: "vineyard_plots" }, () => void load())
       .on("postgres_changes", { event: "*", schema: "public", table: "vineyard_pest_logs" }, () => void load())
+      .on("postgres_changes", { event: "*", schema: "public", table: "tasks" }, () => void load())
       .on("postgres_changes", { event: "*", schema: "public", table: "reservations" }, () => void load())
       .on("postgres_changes", { event: "*", schema: "public", table: "hospitality_requests" }, () => void load())
       .subscribe()
@@ -268,20 +282,13 @@ export function RaimundoHome() {
             severity: counts.openGuestRequests > 0 ? "attention" : "normal",
           },
           {
-            key: "cattle-health",
-            count: counts.healthAlerts,
-            title: copy.alerts,
-            task: `revisar ${counts.healthAlerts} alertas de salud ganadera y coordinar seguimiento`,
-            operationalArea: "cattle",
-            severity: counts.healthAlerts > 0 ? "attention" : "normal",
-          },
-          {
-            key: "vineyard-risk",
-            count: counts.vineyardCritical,
-            title: copy.critical,
-            task: `revisar ${counts.vineyardCritical} incidencias críticas o altas del viñedo y coordinar seguimiento`,
-            operationalArea: "vineyard",
-            severity: counts.vineyardCritical > 0 ? "attention" : "normal",
+            key: "field-admin-round",
+            count: counts.healthAlerts + counts.vineyardCritical + counts.orchardOpenTasks,
+            title: "Ronda diaria del campo",
+            task: `hacer la ronda diaria del campo: ${counts.healthAlerts} alertas ganaderas, ${counts.vineyardCritical} incidencias críticas/altas de viñedo y ${counts.orchardOpenTasks} tareas abiertas de huerto para los próximos 7 días; revisar, priorizar y dejar seguimiento operativo`,
+            operationalArea: "field_admin",
+            severity: counts.healthAlerts + counts.vineyardCritical > 0 ? "attention" : "normal",
+            priority: 95,
           },
         ]}
       />
