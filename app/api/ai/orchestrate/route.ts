@@ -118,13 +118,20 @@ export async function POST(request: Request) {
           : {}
       const operationalArea = readString(contextInput.operationalArea, MAX_OPERATIONAL_AREA_LENGTH)
       const locationId = isUuid(contextInput.locationId) ? contextInput.locationId : null
+      const persona = readString(contextInput.persona, 40)
+      const source = readString(contextInput.source, 80)
 
       const { data: proposal, error: proposalError } = await supabase.rpc("create_ai_task_proposal", {
         p_title: authorizedAction.title,
         p_description: authorizedAction.description,
         p_operational_area: operationalArea,
         p_location_id: locationId,
-        p_context: { source: "central_ai", mode },
+        p_context: {
+          source: source ?? "central_ai",
+          mode,
+          persona,
+          operational_area: operationalArea,
+        },
       })
 
       if (proposalError) {
