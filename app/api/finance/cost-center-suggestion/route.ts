@@ -232,6 +232,11 @@ export async function POST(request: Request) {
     const parsed = JSON.parse(text) as { category_id: string | null; confidence: number; reason: string }
     const selected = parsed.category_id ? candidateByCategory.get(parsed.category_id) : null
     if (!selected || parsed.confidence < 0.55) {
+      console.info('[finance/cost-center-suggestion] no-safe-suggestion', {
+        documentId,
+        confidence: parsed.confidence,
+        reason: parsed.reason || 'insufficient_evidence',
+      })
       return NextResponse.json({
         ok: true,
         suggestion: null,
@@ -239,6 +244,14 @@ export async function POST(request: Request) {
         confidence: parsed.confidence,
       })
     }
+
+    console.info('[finance/cost-center-suggestion] suggestion', {
+      documentId,
+      division: selected.division_name,
+      category: selected.category_name,
+      confidence: parsed.confidence,
+      reason: parsed.reason,
+    })
 
     return NextResponse.json({
       ok: true,
