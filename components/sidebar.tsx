@@ -115,6 +115,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const [financePaymentPendingCount, setFinancePaymentPendingCount] = useState(0)
   const [canFinanceApprove, setCanFinanceApprove] = useState(false)
   const [canFinancePay, setCanFinancePay] = useState(false)
+  const [financePermissionsLoading, setFinancePermissionsLoading] = useState(true)
 
   useEffect(() => {
     void supabase.auth.getUser().then(({ data: { user } }) => {
@@ -143,9 +144,11 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
       setFinancePaymentPendingCount(0)
       setCanFinanceApprove(false)
       setCanFinancePay(false)
+      setFinancePermissionsLoading(false)
       return
     }
     let cancelled = false
+    setFinancePermissionsLoading(true)
     const loadFinancePendingCount = async () => {
       const [readyResult, mappingResult, reviewResult, approverResult, payerResult, paymentPendingResult] = await Promise.all([
         supabase.from("finance_documents").select("id", { count: "exact", head: true }).eq("approval_status", "ready"),
@@ -160,6 +163,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
       setCanFinancePay(!payerResult.error && Boolean(payerResult.data))
       setFinancePendingCount((readyResult.count ?? 0) + (reviewResult.data ? (mappingResult.count ?? 0) : 0))
       setFinancePaymentPendingCount(payerResult.data ? (paymentPendingResult.count ?? 0) : 0)
+      setFinancePermissionsLoading(false)
     }
     void loadFinancePendingCount()
     const handler = () => void loadFinancePendingCount()
@@ -232,7 +236,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const handleOpenSearch = () => document.dispatchEvent(new KeyboardEvent("keydown", { key: "k", code: "KeyK", metaKey: true, bubbles: true }))
   const showConcierge = can("hospitality.operate") && canAccessDepartment("hospitality")
   const showItControl = access.is_admin || access.departments.includes("it")
-  const accessLoading = loading || routeCapabilitiesLoading
+  const accessLoading = loading || routeCapabilitiesLoading || financePermissionsLoading
 
   return (
     <>
