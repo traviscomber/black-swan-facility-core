@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react"
 import Link from "next/link"
-import { ArrowRight, Beef, CheckSquare, Grape, HeartPulse, RefreshCw, ShieldAlert } from "lucide-react"
+import { ArrowRight, Beef, CheckSquare, Grape, HeartPulse, Leaf, RefreshCw, ShieldAlert } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { createClient } from "@/lib/supabase/client"
 import { useLanguage } from "@/lib/hooks/use-language"
@@ -20,8 +20,8 @@ type Counts = {
 const COPY = {
   es: {
     eyebrow: "RAIMUNDO · FOCO DE TRABAJO",
-    title: "Aprobaciones, Ganadería y Viñedo",
-    subtitle: "Primero decide la imputación de los gastos. Después, seguimiento operativo de ganadería y viñedo. El resto del sistema queda disponible sin competir por atención.",
+    title: "Aprobaciones, Ganadería, Viñedo y Huerto",
+    subtitle: "Primero decide la imputación de los gastos. Después, seguimiento operativo de ganadería, viñedo y huerto. El resto del sistema queda disponible sin competir por atención.",
     approvalsTitle: "Aprobaciones",
     approvalsBody: "Revisa primero el centro de costo sugerido, acéptalo o cámbialo. Si no tienes certeza, escala el caso a Santiago.",
     pending: "Pendientes conmigo",
@@ -39,14 +39,18 @@ const COPY = {
     critical: "Incidencias críticas",
     openVineyard: "Abrir viñedo",
     openPests: "Plagas y enfermedades",
+    orchardTitle: "Huerto",
+    orchardBody: "Operación semanal, planificación, camas, cultivos y seguimiento del huerto.",
+    openOrchard: "Abrir huerto",
+    openWeek: "Semana operativa",
     other: "Otros espacios",
     otherBody: "Módulos secundarios disponibles cuando los necesites.",
     refresh: "Actualizar",
   },
   en: {
     eyebrow: "RAIMUNDO · WORK FOCUS",
-    title: "Approvals, Cattle and Vineyard",
-    subtitle: "Decide expense allocation first. Then follow cattle and vineyard operations. Everything else remains available without competing for attention.",
+    title: "Approvals, Cattle, Vineyard and Orchard",
+    subtitle: "Decide expense allocation first. Then follow cattle, vineyard and orchard operations. Everything else remains available without competing for attention.",
     approvalsTitle: "Approvals",
     approvalsBody: "Review the suggested cost center first, accept it or change it. If you are unsure, escalate the case to Santiago.",
     pending: "Pending with me",
@@ -64,14 +68,18 @@ const COPY = {
     critical: "Critical incidents",
     openVineyard: "Open vineyard",
     openPests: "Pests and diseases",
+    orchardTitle: "Orchard",
+    orchardBody: "Weekly operation, planning, beds, crops and orchard follow-up.",
+    openOrchard: "Open orchard",
+    openWeek: "Weekly operation",
     other: "Other workspaces",
     otherBody: "Secondary modules remain available when needed.",
     refresh: "Refresh",
   },
   de: {
     eyebrow: "RAIMUNDO · ARBEITSFOKUS",
-    title: "Freigaben, Rinderhaltung und Weinberg",
-    subtitle: "Zuerst Kostenstellen und Ausgaben entscheiden. Danach Rinder- und Weinbergbetrieb verfolgen. Andere Bereiche bleiben verfügbar, ohne abzulenken.",
+    title: "Freigaben, Rinderhaltung, Weinberg und Obstgarten",
+    subtitle: "Zuerst Kostenstellen und Ausgaben entscheiden. Danach Rinder-, Weinberg- und Obstgartenbetrieb verfolgen. Andere Bereiche bleiben verfügbar, ohne abzulenken.",
     approvalsTitle: "Freigaben",
     approvalsBody: "Vorgeschlagene Kostenstelle zuerst prüfen, bestätigen oder ändern. Bei Unsicherheit an Santiago eskalieren.",
     pending: "Bei mir offen",
@@ -89,6 +97,10 @@ const COPY = {
     critical: "Kritische Vorfälle",
     openVineyard: "Weinberg öffnen",
     openPests: "Schädlinge und Krankheiten",
+    orchardTitle: "Obstgarten",
+    orchardBody: "Wochenbetrieb, Planung, Beete, Kulturen und operative Nachverfolgung.",
+    openOrchard: "Obstgarten öffnen",
+    openWeek: "Wochenbetrieb",
     other: "Weitere Bereiche",
     otherBody: "Sekundäre Module bleiben bei Bedarf verfügbar.",
     refresh: "Aktualisieren",
@@ -154,7 +166,7 @@ export function RaimundoHome() {
       vineyardCritical: pestResult.count ?? 0,
     })
 
-    const primaryKeys = new Set(["approvals", "cattle", "cattle-health", "vineyard"])
+    const primaryKeys = new Set(["approvals", "cattle", "cattle-health", "vineyard", "orchard"])
     setOtherItems((navigationResult.items ?? []).filter((item) => !primaryKeys.has(item.key)).slice(0, 8))
     setLoading(false)
   }, [supabase])
@@ -189,7 +201,7 @@ export function RaimundoHome() {
       </section>
 
       <section className="px-4 py-5 md:px-6">
-        <div className="mx-auto grid max-w-[1600px] gap-4 xl:grid-cols-3">
+        <div className="mx-auto grid max-w-[1600px] gap-4 xl:grid-cols-2 2xl:grid-cols-4">
           <div className="border border-border bg-card p-5">
             <div className="flex items-start gap-3">
               <CheckSquare className="mt-0.5 h-5 w-5 text-primary" />
@@ -250,6 +262,25 @@ export function RaimundoHome() {
               </Link>
               <Link href={localized(locale, "/vineyard/pests")} className="flex items-center justify-between border border-border p-4 text-sm font-medium hover:bg-secondary/40">
                 <span className="flex items-center gap-2"><ShieldAlert className="h-4 w-4 text-primary" />{copy.openPests}</span><ArrowRight className="h-4 w-4" />
+              </Link>
+            </div>
+          </div>
+
+          <div className="border border-border bg-card p-5">
+            <div className="flex items-start gap-3">
+              <Leaf className="mt-0.5 h-5 w-5 text-primary" />
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-primary">04 · PRIORIDAD</p>
+                <h2 className="mt-1 text-lg font-medium text-foreground">{copy.orchardTitle}</h2>
+                <p className="mt-1 text-sm text-muted-foreground">{copy.orchardBody}</p>
+              </div>
+            </div>
+            <div className="mt-5 grid gap-2 sm:grid-cols-2">
+              <Link href={localized(locale, "/orchard/dashboard")} className="flex items-center justify-between border border-border p-4 text-sm font-medium hover:bg-secondary/40">
+                <span className="flex items-center gap-2"><Leaf className="h-4 w-4 text-primary" />{copy.openOrchard}</span><ArrowRight className="h-4 w-4" />
+              </Link>
+              <Link href={localized(locale, "/orchard/work/week-board")} className="flex items-center justify-between border border-border p-4 text-sm font-medium hover:bg-secondary/40">
+                <span className="flex items-center gap-2"><CheckSquare className="h-4 w-4 text-primary" />{copy.openWeek}</span><ArrowRight className="h-4 w-4" />
               </Link>
             </div>
           </div>
