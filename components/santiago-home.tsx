@@ -95,13 +95,14 @@ export function SantiagoHome() {
   })
   const [nextUnassignedRequestId, setNextUnassignedRequestId] = useState<string | null>(null)
   const [otherItems, setOtherItems] = useState<AuthorizedNavItem[]>([])
+  const [nextArrival, setNextArrival] = useState<{ id: string; guest_name: string; check_in: string } | null>(null)
   const [loading, setLoading] = useState(true)
 
   const load = useCallback(async () => {
     setLoading(true)
 
     const today = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Santiago" }).format(new Date())
-    const [escalatedResult, pendingResult, readyResult, guestRequestsResult, unassignedGuestRequestsResult, nextUnassignedResult, housekeepingResult, navigationResult] = await Promise.all([
+    const [escalatedResult, pendingResult, readyResult, guestRequestsResult, unassignedGuestRequestsResult, nextUnassignedResult, housekeepingResult, nextArrivalResult, navigationResult] = await Promise.all([
       supabase
         .from("finance_documents")
         .select("id", { count: "exact", head: true })
@@ -136,6 +137,14 @@ export function SantiagoHome() {
         .select("id", { count: "exact", head: true })
         .eq("service_date", today)
         .not("status", "in", "(completed,cancelled)"),
+      supabase
+        .from("reservations")
+        .select("id,guest_name,check_in")
+        .gte("check_in", today)
+        .not("status", "in", "(cancelled,checked_out,checked-out)")
+        .order("check_in", { ascending: true })
+        .limit(1)
+        .maybeSingle(),
       loadAuthorizedNavigation().catch(() => ({ items: [] })),
     ])
 
@@ -148,6 +157,15 @@ export function SantiagoHome() {
       unassignedGuestRequests: unassignedGuestRequestsResult.count ?? 0,
     })
     setNextUnassignedRequestId(nextUnassignedResult.data?.id ?? null)
+    setNextArrival(
+      nextArrivalResult.data
+        ? {
+            id: nextArrivalResult.data.id,
+            guest_name: nextArrivalResult.data.guest_name,
+            check_in: nextArrivalResult.data.check_in,
+          }
+        : null,
+    )
 
     const secondaryKeys = new Set(["bookings", "guest-requests", "payments"])
     setOtherItems((navigationResult.items ?? []).filter((item) => !secondaryKeys.has(item.key)).slice(0, 8))
@@ -186,6 +204,18 @@ export function SantiagoHome() {
       <RoleAgenticBrief
         persona="santiago"
         signals={[
+          {
+            key: "prepare-next-arrival",
+            count: nextArrival ? 1 : 0,
+            title: nextArrival ? `Preparar llegada · ${nextArrival.guest_name}` : "Preparar próxima llegada",
+            task: nextArrival
+              ? `preparar la llegada de ${nextArrival.guest_name} para ${nextArrival.check_in}`
+              : "preparar la próxima llegada",
+            operationalArea: "hospitality",
+            severity: nextArrival ? "attention" : "normal",
+            capability: nextArrival ? "hospitality.prepare_arrival" : undefined,
+            reservationId: nextArrival?.id ?? null,
+          },
           {
             key: "guest-requests-unassigned",
             count: counts.unassignedGuestRequests,
