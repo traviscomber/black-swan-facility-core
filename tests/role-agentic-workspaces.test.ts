@@ -46,3 +46,16 @@ test('Santiago agent includes booking and hospitality operational signals', () =
   assert.match(santiago, /table: "hospitality_requests"/)
   assert.match(santiago, /table: "housekeeping_tasks"/)
 })
+
+
+test('Santiago can prepare confirmation-gated smart assignment for unassigned guest requests', () => {
+  assert.match(santiago, /unassignedGuestRequests/)
+  assert.match(santiago, /nextUnassignedRequestId/)
+  assert.match(santiago, /hospitality\.assign_request/)
+  assert.match(brief, /signal\.capability === "hospitality\.assign_request"/)
+})
+
+test('orchestrator supports structured hospitality assignment proposals', () => {
+  assert.match(route, /requestedCapability === "hospitality\.assign_request"/)
+  assert.match(route, /create_ai_hospitality_assignment_proposal/)
+})
