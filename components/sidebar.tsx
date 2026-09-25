@@ -150,27 +150,40 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
     let cancelled = false
     setFinancePermissionsLoading(true)
     const loadFinancePendingCount = async () => {
-      const [readyResult, mappingResult, reviewResult, approverResult, payerResult, paymentPendingResult] = await Promise.all([
-        supabase.from("finance_documents").select("id", { count: "exact", head: true }).eq("approval_status", "ready"),
-        supabase.from("finance_documents").select("id", { count: "exact", head: true }).eq("approval_status", "pending_mapping"),
-        supabase.rpc("can_finance_review_ambiguous"),
+      const [raimundoPendingResult, approverResult, payerResult, paymentPendingResult] = await Promise.all([
+        supabase
+          .from("finance_documents")
+          .select("id", { count: "exact", head: true })
+          .in("approval_status", ["ready", "pending_mapping"])
+          .or("cost_center_escalation_status.neq.pending_santiago,cost_center_escalation_status.is.null"),
         supabase.rpc("can_finance_approve"),
         supabase.rpc("can_finance_payment_authorize"),
         supabase.from("finance_documents").select("id", { count: "exact", head: true }).eq("payment_status", "pending_santiago"),
       ])
       if (cancelled) return
-      setCanFinanceApprove(!approverResult.error && Boolean(approverResult.data))
-      setCanFinancePay(!payerResult.error && Boolean(payerResult.data))
-      setFinancePendingCount((readyResult.count ?? 0) + (reviewResult.data ? (mappingResult.count ?? 0) : 0))
-      setFinancePaymentPendingCount(payerResult.data ? (paymentPendingResult.count ?? 0) : 0)
+      const canApproveFinance = !approverResult.error && Boolean(approverResult.data)
+      const canPayFinance = !payerResult.error && Boolean(payerResult.data)
+      setCanFinanceApprove(canApproveFinance)
+      setCanFinancePay(canPayFinance)
+      setFinancePendingCount(canApproveFinance ? (raimundoPendingResult.count ?? 0) : 0)
+      setFinancePaymentPendingCount(canPayFinance ? (paymentPendingResult.count ?? 0) : 0)
       setFinancePermissionsLoading(false)
     }
     void loadFinancePendingCount()
     const handler = () => void loadFinancePendingCount()
     window.addEventListener("finance-workbook-imported", handler)
+
+    const financeCountChannel = supabase
+      .channel("sidebar-finance-counts-live")
+      .on("postgres_changes", { event: "*", schema: "public", table: "finance_documents" }, () => {
+        void loadFinancePendingCount()
+      })
+      .subscribe()
+
     return () => {
       cancelled = true
       window.removeEventListener("finance-workbook-imported", handler)
+      void supabase.removeChannel(financeCountChannel)
     }
   }, [canAccessDepartment, supabase])
 
