@@ -409,6 +409,7 @@ export function FinanceApprovalQueue() {
                       <div className="flex justify-end gap-2">
                         {canApprove && <Button size="sm" onClick={() => void approve([row.id])} disabled={busy || !mapped}><Check className="mr-2 h-4 w-4" />Aprobar sugerencia → Santiago</Button>}
                         {canApprove && <Button size="sm" variant="outline" onClick={() => startReassign(row)} disabled={busy}>Cambiar centro</Button>}
+                        {canApprove && <Button size="sm" variant="outline" onClick={() => void escalateToSantiago(row)} disabled={busy}>No sé → Santiago</Button>}
                         {canApprove && <Button size="sm" variant="outline" onClick={() => void reject(row)} disabled={busy}><X className="mr-2 h-4 w-4" />Rechazar gasto</Button>}
                         {!canApprove && <span className="text-xs text-[var(--bs-text-muted)]">Solo lectura</span>}
                       </div>
