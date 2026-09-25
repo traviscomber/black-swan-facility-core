@@ -1,17 +1,9 @@
 import type React from "react"
 import type { Metadata, Viewport } from "next"
 import { headers } from "next/headers"
-import { Montserrat } from "next/font/google"
 import { Analytics } from "@vercel/analytics/next"
 import "./globals.css"
 import { ClientProviders } from "@/components/client-providers"
-
-const montserrat = Montserrat({
-  subsets: ["latin"],
-  weight: ["400", "500", "600"],
-  variable: "--font-montserrat",
-  display: "swap",
-})
 
 const metadataDescriptions = {
   en: "Blackswan Facility Core internal system for operational management, facility traceability and user-based access control.",
@@ -67,7 +59,7 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
       style={{ colorScheme: "dark", backgroundColor: "#171512" }}
       suppressHydrationWarning
     >
-      <body className={`${montserrat.variable} antialiased notranslate`}>
+      <body className="antialiased notranslate">
         <ClientProviders>
           {children}
           <Analytics />

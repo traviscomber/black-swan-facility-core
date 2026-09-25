@@ -39,6 +39,131 @@ export async function POST(request: Request) {
   const message = typeof input.message === "string" ? input.message.trim() : ""
   const confirmed = input.confirmed === true
   const proposalId = input.proposalId
+  const requestedCapability = typeof input.capability === "string" ? input.capability : null
+  const requestId = input.requestId
+  const reservationId = input.reservationId
+
+  if (requestedCapability === "hospitality.prepare_arrival") {
+    if (!isUuid(reservationId)) {
+      return NextResponse.json({ success: false, error: "invalid_reservation_id" }, { status: 400 })
+    }
+
+    const contextInput =
+      typeof input.context === "object" && input.context !== null
+        ? (input.context as Record<string, unknown>)
+        : {}
+    const persona = readString(contextInput.persona, 40)
+    const source = readString(contextInput.source, 80)
+
+    const { data: proposal, error: proposalError } = await supabase.rpc("create_ai_arrival_preparation_proposal", {
+      p_reservation_id: reservationId,
+      p_context: {
+        source: source ?? "role_agentic_brief",
+        persona,
+        mode: "FULL_AGENTIC",
+      },
+    })
+
+    if (proposalError) {
+      console.error("[Black Swan AI] Arrival preparation proposal failed", {
+        userId: user.id,
+        reservationId,
+        error: proposalError.message,
+      })
+      return NextResponse.json(
+        { success: false, error: proposalError.message.includes("denied") ? "arrival_preparation_denied" : "proposal_creation_failed" },
+        { status: proposalError.message.includes("denied") ? 403 : 409 },
+      )
+    }
+
+    const persisted = proposal && typeof proposal === "object" ? (proposal as Record<string, unknown>) : null
+    const persistedId = persisted?.id
+    const payload = persisted?.payload && typeof persisted.payload === "object" ? (persisted.payload as Record<string, unknown>) : null
+
+    if (!isUuid(persistedId)) {
+      return NextResponse.json({ success: false, error: "invalid_persisted_proposal" }, { status: 503 })
+    }
+
+    return NextResponse.json({
+      success: true,
+      mode: "FULL_AGENTIC",
+      source: "deterministic",
+      requiresConfirmation: true,
+      executionStatus: "confirmation_required",
+      proposalId: persistedId,
+      capability: "hospitality.prepare_arrival",
+      proposedAction: {
+        reservationId,
+        guestName: payload?.guest_name ?? null,
+        checkIn: payload?.check_in ?? null,
+        locationName: payload?.location_name ?? null,
+        roomNumber: payload?.room_number ?? null,
+        bundleSize: payload?.bundle_size ?? null,
+        existingTasks: payload?.existing_tasks ?? null,
+      },
+      response: `Preparé el set de llegada para ${typeof payload?.guest_name === "string" ? payload.guest_name : "la próxima reserva"}. Confirma para crear sólo las tareas que aún no existan.`,
+    })
+  }
+
+  if (requestedCapability === "hospitality.assign_request") {
+    if (!isUuid(requestId)) {
+      return NextResponse.json({ success: false, error: "invalid_request_id" }, { status: 400 })
+    }
+
+    const contextInput =
+      typeof input.context === "object" && input.context !== null
+        ? (input.context as Record<string, unknown>)
+        : {}
+    const persona = readString(contextInput.persona, 40)
+    const source = readString(contextInput.source, 80)
+
+    const { data: proposal, error: proposalError } = await supabase.rpc("create_ai_hospitality_assignment_proposal", {
+      p_request_id: requestId,
+      p_context: {
+        source: source ?? "role_agentic_brief",
+        persona,
+        mode: "FULL_AGENTIC",
+      },
+    })
+
+    if (proposalError) {
+      console.error("[Black Swan AI] Hospitality assignment proposal failed", {
+        userId: user.id,
+        requestId,
+        error: proposalError.message,
+      })
+      return NextResponse.json(
+        { success: false, error: proposalError.message.includes("denied") ? "hospitality_assignment_denied" : "proposal_creation_failed" },
+        { status: proposalError.message.includes("denied") ? 403 : 409 },
+      )
+    }
+
+    const persisted = proposal && typeof proposal === "object" ? (proposal as Record<string, unknown>) : null
+    const persistedId = persisted?.id
+    const payload = persisted?.payload && typeof persisted.payload === "object" ? (persisted.payload as Record<string, unknown>) : null
+
+    if (!isUuid(persistedId)) {
+      return NextResponse.json({ success: false, error: "invalid_persisted_proposal" }, { status: 503 })
+    }
+
+    return NextResponse.json({
+      success: true,
+      mode: "FULL_AGENTIC",
+      source: "deterministic",
+      requiresConfirmation: true,
+      executionStatus: "confirmation_required",
+      proposalId: persistedId,
+      capability: "hospitality.assign_request",
+      proposedAction: {
+        requestId,
+        employeeId: payload?.employee_id ?? null,
+        employeeName: payload?.employee_name ?? null,
+        guestName: payload?.guest_name ?? null,
+        requestType: payload?.request_type ?? null,
+      },
+      response: `Preparé la asignación de la solicitud a ${typeof payload?.employee_name === "string" ? payload.employee_name : "un responsable disponible"}. Confirma para aplicarla.`,
+    })
+  }
 
   if (proposalId !== undefined) {
     if (!isUuid(proposalId)) {
@@ -118,13 +243,20 @@ export async function POST(request: Request) {
           : {}
       const operationalArea = readString(contextInput.operationalArea, MAX_OPERATIONAL_AREA_LENGTH)
       const locationId = isUuid(contextInput.locationId) ? contextInput.locationId : null
+      const persona = readString(contextInput.persona, 40)
+      const source = readString(contextInput.source, 80)
 
       const { data: proposal, error: proposalError } = await supabase.rpc("create_ai_task_proposal", {
         p_title: authorizedAction.title,
         p_description: authorizedAction.description,
         p_operational_area: operationalArea,
         p_location_id: locationId,
-        p_context: { source: "central_ai", mode },
+        p_context: {
+          source: source ?? "central_ai",
+          mode,
+          persona,
+          operational_area: operationalArea,
+        },
       })
 
       if (proposalError) {

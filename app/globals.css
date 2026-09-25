@@ -32,7 +32,7 @@
   --bs-cool-river: #4679ae;
   --bs-cool-klein: #062ea5;
   --bs-font-heading: "Everett", "Helvetica Neue", Arial, sans-serif;
-  --bs-font-body: var(--font-montserrat), Montserrat, Arial, sans-serif;
+  --bs-font-body: Montserrat, "Helvetica Neue", Arial, sans-serif;
 
   --background: var(--bs-bg-primary);
   --foreground: var(--bs-text-primary);
