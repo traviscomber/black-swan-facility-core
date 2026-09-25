@@ -1,6 +1,6 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "buildCommand": "node scripts/generate-legacy-translations.mjs && NODE_OPTIONS='--max-old-space-size=6144 --import=./scripts/suppress-known-build-warning.mjs' pnpm exec next build",
+  "fluid": true,\n  "buildCommand": "node scripts/generate-legacy-translations.mjs && NODE_OPTIONS='--max-old-space-size=6144 --import=./scripts/suppress-known-build-warning.mjs' pnpm exec next build",
   "crons": [],
   "git": {
     "deploymentEnabled": {
