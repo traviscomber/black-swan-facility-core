@@ -28,3 +28,16 @@ test('Santiago profile starts in focused OS home', () => {
   assert.match(migration, /os_start_path='\/os'/)
   assert.match(migration, /external_orchard/)
 })
+
+
+test('Raimundo home prioritizes approvals, cattle, vineyard and orchard', () => {
+  const raimundo = readFileSync(new URL('../components/raimundo-home.tsx', import.meta.url), 'utf8')
+  assert.match(raimundo, /Aprobaciones, Ganadería, Viñedo y Huerto/)
+  assert.match(raimundo, /\/budgets\/approvals/)
+  assert.match(raimundo, /\/cattle/)
+  assert.match(raimundo, /\/vineyard/)
+  assert.match(raimundo, /\/orchard\/dashboard/)
+  assert.match(raimundo, /raimundo-home-live/)
+  assert.match(personas, /raimundo/)
+  assert.match(migration, /raimundo@blackswn\.org/)
+})
