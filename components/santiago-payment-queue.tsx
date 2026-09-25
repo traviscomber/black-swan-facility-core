@@ -36,8 +36,8 @@ type Division = { id: string; name: string }
 type Category = { id: string; division_id: string; name: string }
 
 const tabs: Array<{ key: PaymentStatus; label: string }> = [
-  { key: 'pending_santiago', label: 'Por autorizar' },
-  { key: 'authorized', label: 'Autorizados' },
+  { key: 'pending_santiago', label: 'Pagos por autorizar' },
+  { key: 'authorized', label: 'Listos para pagar' },
   { key: 'rejected', label: 'Rechazados' },
   { key: 'paid', label: 'Pagados' },
 ]
@@ -184,10 +184,10 @@ export function SantiagoPaymentQueue() {
       <section className="bg-[var(--bs-surface-primary)] p-5 md:p-6">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div className="max-w-3xl">
-            <p className="text-xs uppercase tracking-[0.14em] text-[var(--bs-cool-sage)]">Control final · Santiago</p>
-            <h2 className="mt-2 text-xl font-normal text-[var(--bs-text-primary)]">Resolver imputaciones y ejecutar pagos</h2>
+            <p className="text-xs uppercase tracking-[0.14em] text-[var(--bs-cool-sage)]">Santiago · Trabajo pendiente</p>
+            <h2 className="mt-2 text-xl font-normal text-[var(--bs-text-primary)]">Resolver excepciones y pagos</h2>
             <p className="mt-2 text-sm leading-6 text-[var(--bs-text-secondary)]">
-              Si Raimundo no sabe a qué centro imputar una factura, puede escalarla aquí. Santiago asigna el centro y la factura vuelve a Raimundo para aprobación. Los gastos ya aprobados siguen después al flujo normal de autorización y pago.
+              Raimundo siempre revisa primero la imputación. Santiago sólo recibe excepciones que Raimundo escaló explícitamente y, por otra vía, pagos de gastos que Raimundo ya aprobó.
             </p>
           </div>
           <div className="flex items-center gap-3">
@@ -196,9 +196,9 @@ export function SantiagoPaymentQueue() {
           </div>
         </div>
         <div className="mt-5 grid gap-3 sm:grid-cols-5">
-          <Metric label="Por asignar centro" value={escalations.length} />
+          <Metric label="Centros por resolver" value={escalations.length} />
           <Metric label="Por autorizar" value={counts.pending_santiago ?? 0} />
-          <Metric label="Autorizados" value={counts.authorized ?? 0} />
+          <Metric label="Listos para pagar" value={counts.authorized ?? 0} />
           <Metric label="Rechazados" value={counts.rejected ?? 0} />
           <Metric label="Pagados" value={counts.paid ?? 0} />
         </div>
@@ -207,9 +207,9 @@ export function SantiagoPaymentQueue() {
       {escalations.length > 0 && (
         <section className="bg-[var(--bs-surface-primary)]">
           <div className="p-5 md:p-6">
-            <p className="text-xs uppercase tracking-[0.14em] text-[var(--bs-warm-yellow)]">Escalaciones de Raimundo</p>
-            <h3 className="mt-2 text-lg font-normal text-[var(--bs-text-primary)]">Asignar centro de costo</h3>
-            <p className="mt-1 text-sm text-[var(--bs-text-secondary)]">Santiago define únicamente la imputación. La aprobación del gasto sigue siendo de Raimundo.</p>
+            <p className="text-xs uppercase tracking-[0.14em] text-[var(--bs-warm-yellow)]">Bandeja 2 · Excepciones escaladas por Raimundo</p>
+            <h3 className="mt-2 text-lg font-normal text-[var(--bs-text-primary)]">Resolver centro sólo cuando Raimundo escala</h3>
+            <p className="mt-1 text-sm text-[var(--bs-text-secondary)]">Santiago interviene únicamente después de que Raimundo revisó la factura y decidió escalarla. Define la imputación solicitada y la devuelve a la Bandeja 1 de Raimundo; aquí no se aprueba el gasto ni el pago.</p>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full min-w-[980px] text-sm">
@@ -238,7 +238,7 @@ export function SantiagoPaymentQueue() {
                       </select>
                       <input value={assignmentNote[row.id] ?? ''} onChange={(event) => setAssignmentNote((current) => ({ ...current, [row.id]: event.target.value }))} placeholder="Nota opcional para Raimundo" className="mt-2 h-9 w-full bg-[var(--bs-surface-secondary)] px-2 text-xs text-[var(--bs-text-primary)]" />
                     </td>
-                    <td className="px-4 py-4 text-right"><Button size="sm" onClick={() => void assignEscalatedCenter(row)} disabled={busy === row.id || !(assignmentCenter[row.id] ?? '')}><Check className="mr-2 h-4 w-4" />Asignar y devolver a Raimundo</Button></td>
+                    <td className="px-4 py-4 text-right"><Button size="sm" onClick={() => void assignEscalatedCenter(row)} disabled={busy === row.id || !(assignmentCenter[row.id] ?? '')}><Check className="mr-2 h-4 w-4" />Asignar y devolver</Button></td>
                   </tr>
                 ))}
               </tbody>
@@ -248,7 +248,12 @@ export function SantiagoPaymentQueue() {
       )}
 
       <section className="bg-[var(--bs-surface-primary)]">
-        <div className="flex flex-wrap gap-2 p-4">
+        <div className="p-5 md:p-6">
+          <p className="text-xs uppercase tracking-[0.14em] text-[var(--bs-cool-sage)]">Bandeja 3 · Santiago</p>
+          <h3 className="mt-2 text-lg font-normal text-[var(--bs-text-primary)]">Autorizar y ejecutar pagos</h3>
+          <p className="mt-1 text-sm text-[var(--bs-text-secondary)]">Aquí entran sólo gastos ya aprobados por Raimundo. Autoriza el pago; después registra su ejecución y referencia bancaria.</p>
+        </div>
+        <div className="flex flex-wrap gap-2 border-t border-[var(--bs-divider-subtle)] p-4">
           {tabs.map((tab) => (
             <button key={tab.key} type="button" onClick={() => setStatus(tab.key)}
               className={`min-h-10 px-3 text-xs ${status === tab.key ? 'bg-[var(--bs-surface-elevated)] text-[var(--bs-text-primary)]' : 'bg-[var(--bs-surface-secondary)] text-[var(--bs-text-secondary)]'}`}>

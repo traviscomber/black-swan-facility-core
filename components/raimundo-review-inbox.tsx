@@ -132,9 +132,9 @@ export function RaimundoReviewInbox() {
       <div className="p-5 md:p-7">
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
-            <p className="text-xs uppercase tracking-[0.14em] text-[var(--bs-warm-yellow)]">Bandeja de Raimundo</p>
-            <h2 className="mt-2 text-xl font-normal text-[var(--bs-text-primary)]">Revisar y confirmar</h2>
-            <p className="mt-1 text-sm text-[var(--bs-text-secondary)]">Un caso por vez. Confirma la clasificación o cámbiala antes de guardar.</p>
+            <p className="text-xs uppercase tracking-[0.14em] text-[var(--bs-warm-yellow)]">Mapeo histórico</p>
+            <h2 className="mt-2 text-xl font-normal text-[var(--bs-text-primary)]">Resolver centros históricos</h2>
+            <p className="mt-1 text-sm text-[var(--bs-text-secondary)]">Herramienta auxiliar para consolidar centros históricos. No corresponde a la bandeja diaria de aprobación de facturas.</p>
           </div>
           <div className="text-right">
             <div className="flex items-center justify-end gap-2 text-xs text-[var(--bs-text-secondary)]"><ShieldCheck className="h-4 w-4" />{canReview ? 'Sesión habilitada' : 'Solo Raimundo puede confirmar'}</div>
