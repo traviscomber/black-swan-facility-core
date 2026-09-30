@@ -111,6 +111,7 @@ export default function ProcurementPage() {
       <Button variant="outline" asChild><Link href={href("/procurement/sourcing")}><Store className="mr-2 h-4 w-4" />{copy.sourcing}</Link></Button>
       <Button variant="outline" asChild><Link href={href("/suppliers")}><Users className="mr-2 h-4 w-4" />{copy.suppliers}</Link></Button>
       <Button variant="outline" asChild><Link href={href("/procurement/approvals")}><ShieldCheck className="mr-2 h-4 w-4" />{copy.approvals}</Link></Button>
+      <Button variant="outline" asChild><Link href={href("/procurement/lider")}><ShoppingCart className="mr-2 h-4 w-4" />Líder</Link></Button>
     </div>} />
     <div className="space-y-6 p-4 sm:p-8">
       {loadError && <Card className="border-destructive/60"><CardContent className="flex items-center justify-between gap-4 p-5"><p className="text-sm text-destructive">{copy.loadError}</p><Button variant="outline" size="sm" onClick={() => void loadData()}><RefreshCw className="mr-2 h-4 w-4" />{copy.retry}</Button></CardContent></Card>}
