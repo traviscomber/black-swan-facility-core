@@ -239,7 +239,7 @@ export function PeopleOperationalRoutines({ employees, onTasksGenerated }: { emp
             <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">Rutinas operativas</p>
             <CardTitle className="mt-1 text-xl">Trabajo repetible, sin recrearlo cada día</CardTitle>
             <p className="mt-1 max-w-3xl text-sm leading-6 text-muted-foreground">
-              Santiago define responsable, días y hora. Black Swan genera la tarea del día una sola vez y conserva su trazabilidad.
+              Santiago define responsable, días y hora. Las rutinas activas se generan automáticamente a las 06:00; “Generar hoy” permite adelantar o recuperar la corrida sin duplicar tareas.
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
