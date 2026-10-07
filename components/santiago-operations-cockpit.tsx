@@ -67,6 +67,11 @@ const COPY = {
     transport: 'Próximas recogidas',
     noPickups: 'Sin recogidas pendientes en los próximos 7 días.',
     coordinator: 'Encargado',
+    flight: 'Vuelo',
+    bus: 'Bus',
+    vehicle: 'Vehículo',
+    transfer: 'Traslado',
+    unassigned: 'Por asignar',
     staff: 'Tareas del personal',
     staffHint: 'Trabajo vigente asignado a personas, sin demos ni snapshots de Asana',
     newTask: 'Nueva tarea',
@@ -92,6 +97,11 @@ const COPY = {
     transport: 'Upcoming pickups',
     noPickups: 'No pending pickups in the next 7 days.',
     coordinator: 'Coordinator',
+    flight: 'Flight',
+    bus: 'Bus',
+    vehicle: 'Vehicle',
+    transfer: 'Transfer',
+    unassigned: 'Unassigned',
     staff: 'Staff tasks',
     staffHint: 'Current work assigned to staff, excluding demos and Asana snapshots',
     newTask: 'New task',
@@ -117,6 +127,11 @@ const COPY = {
     transport: 'Bevorstehende Abholungen',
     noPickups: 'Keine ausstehenden Abholungen in den nächsten 7 Tagen.',
     coordinator: 'Koordination',
+    flight: 'Flug',
+    bus: 'Bus',
+    vehicle: 'Fahrzeug',
+    transfer: 'Transfer',
+    unassigned: 'Nicht zugewiesen',
     staff: 'Personalaufgaben',
     staffHint: 'Aktuelle zugewiesene Arbeit ohne Demos und Asana-Snapshots',
     newTask: 'Neue Aufgabe',
@@ -309,36 +324,6 @@ export function SantiagoOperationsCockpit({ language, navigation }: { language: 
           </CardContent>
         </Card>
 
-        <Card className="xl:col-span-2">
-          <CardHeader className="border-b pb-4">
-            <CardTitle className="text-base">{text.transport}</CardTitle>
-          </CardHeader>
-          <CardContent className="p-0">
-            {pickups.length === 0 ? (
-              <p className="p-5 text-sm text-muted-foreground">{text.noPickups}</p>
-            ) : (
-              <div className="divide-y">
-                {pickups.slice(0, 6).map((pickup) => (
-                  <Link href={`/${language}/bookings/reservations/${pickup.reservationId}`} key={pickup.reservationId} className="grid gap-2 px-4 py-4 hover:bg-muted/30 sm:grid-cols-[1.2fr_1fr_1fr] sm:items-center">
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-medium">{pickup.guestName || 'Reserva'}</p>
-                      <p className="text-xs text-muted-foreground">{pickup.checkIn}{pickup.anchorAt ? ` · ${new Date(pickup.anchorAt).toLocaleString(language === 'es' ? 'es-CL' : language === 'de' ? 'de-DE' : 'en-US', { timeZone: 'America/Santiago', dateStyle: 'short', timeStyle: 'short' })}` : ''}</p>
-                    </div>
-                    <div className="text-sm">
-                      <p className="font-medium">{pickup.transportMode === 'flight' ? 'Vuelo' : pickup.transportMode === 'bus' ? 'Bus' : pickup.transportMode === 'private_vehicle' ? 'Vehículo' : 'Traslado'}</p>
-                      <p className="text-xs text-muted-foreground">{[pickup.carrierName, pickup.serviceNumber, pickup.originDestination].filter(Boolean).join(' · ') || pickup.hub}</p>
-                    </div>
-                    <div className="text-sm sm:text-right">
-                      <p className="text-xs text-muted-foreground">{text.coordinator}</p>
-                      <p className="font-medium">{pickup.transportCoordinatorName || 'Por asignar'}</p>
-                    </div>
-                  </Link>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
         <Card>
           <CardHeader className="border-b pb-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
@@ -376,6 +361,36 @@ export function SantiagoOperationsCockpit({ language, navigation }: { language: 
                     </Link>
                   )
                 })}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card className="xl:col-span-2">
+          <CardHeader className="border-b pb-4">
+            <CardTitle className="text-base">{text.transport}</CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
+            {pickups.length === 0 ? (
+              <p className="p-5 text-sm text-muted-foreground">{text.noPickups}</p>
+            ) : (
+              <div className="divide-y">
+                {pickups.slice(0, 6).map((pickup) => (
+                  <Link href={`/${language}/bookings/reservations/${pickup.reservationId}`} key={pickup.reservationId} className="grid gap-2 px-4 py-4 hover:bg-muted/30 sm:grid-cols-[1.2fr_1fr_1fr] sm:items-center">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium">{pickup.guestName || 'Reserva'}</p>
+                      <p className="text-xs text-muted-foreground">{pickup.checkIn}{pickup.anchorAt ? ` · ${new Date(pickup.anchorAt).toLocaleString(language === 'es' ? 'es-CL' : language === 'de' ? 'de-DE' : 'en-US', { timeZone: 'America/Santiago', dateStyle: 'short', timeStyle: 'short' })}` : ''}</p>
+                    </div>
+                    <div className="text-sm">
+                      <p className="font-medium">{pickup.transportMode === 'flight' ? text.flight : pickup.transportMode === 'bus' ? text.bus : pickup.transportMode === 'private_vehicle' ? text.vehicle : text.transfer}</p>
+                      <p className="text-xs text-muted-foreground">{[pickup.carrierName, pickup.serviceNumber, pickup.originDestination].filter(Boolean).join(' · ') || pickup.hub}</p>
+                    </div>
+                    <div className="text-sm sm:text-right">
+                      <p className="text-xs text-muted-foreground">{text.coordinator}</p>
+                      <p className="font-medium">{pickup.transportCoordinatorName || text.unassigned}</p>
+                    </div>
+                  </Link>
+                ))}
               </div>
             )}
           </CardContent>
