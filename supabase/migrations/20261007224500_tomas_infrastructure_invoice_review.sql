@@ -70,7 +70,8 @@ begin
     new.infrastructure_reviewed_at := null;
     new.infrastructure_review_notes := null;
     new.payment_status := 'not_ready';
-  elsif v_category_key is distinct from 'buildings'
+  elsif tg_op = 'UPDATE'
+        and v_category_key is distinct from 'buildings'
         and old.infrastructure_review_status = 'pending_tomas' then
     new.infrastructure_review_status := 'not_required';
     new.infrastructure_reviewed_by := null;
@@ -99,6 +100,9 @@ from public.budget_categories c
 where c.id = d.category_id
   and c.source_key = 'buildings'
   and d.approval_status in ('pending_mapping','ready')
+  and d.payment_status = 'not_ready'
+  and d.reconciliation_status = 'unpaid'
+  and d.cost_center_escalation_status = 'none'
   and d.infrastructure_review_status = 'not_required';
 
 create or replace function public.get_infrastructure_invoice_review_queue()
