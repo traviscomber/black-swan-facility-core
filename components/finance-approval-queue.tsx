@@ -6,6 +6,7 @@ import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { createClient } from '@/lib/supabase/client'
 import { financeAllocationLabel, financeDivisionLabel } from '@/lib/finance/budget-display'
+import { FinanceDecisionContext } from '@/components/finance-decision-context'
 
 type ClassificationStatus = 'ready' | 'exception' | 'manual_review' | 'approved' | 'rejected'
 type ApprovalStatus = 'pending_mapping' | 'ready' | 'pending_valuation' | 'approved' | 'rejected'
@@ -88,6 +89,7 @@ export function FinanceApprovalQueue() {
   const [reassignCenterId, setReassignCenterId] = useState('')
   const [reassignNote, setReassignNote] = useState('')
   const [canApprove, setCanApprove] = useState(false)
+  const [sourceDocumentIds, setSourceDocumentIds] = useState<Set<string>>(new Set())
   const [aiSuggestions, setAiSuggestions] = useState<Record<string, AiSuggestion | null>>({})
   const [suggestionLoadingIds, setSuggestionLoadingIds] = useState<Set<string>>(new Set())
   const requestedSuggestions = useRef(new Set<string>())
@@ -113,13 +115,14 @@ export function FinanceApprovalQueue() {
 
   const load = useCallback(async () => {
     setLoading(true)
-    const [queueResult, divisionResult, categoryResult, approvePermission] = await Promise.all([
+    const [queueResult, divisionResult, categoryResult, approvePermission, sourceResult] = await Promise.all([
       supabase.from('finance_approval_queue').select('*').order('queue_order').order('document_date', { ascending: false }),
       supabase.from('budget_divisions').select('id,name,source_key').eq('is_active', true).eq('is_aggregate', false).not('source_key', 'is', null).order('sort_order'),
       supabase.from('budget_categories').select('id,division_id,name').eq('is_active', true).not('source_key', 'is', null).eq('category_role', 'cost').order('sort_order'),
       supabase.rpc('can_finance_approve'),
+      supabase.from('finance_sii_uploads').select('finance_document_id').not('finance_document_id', 'is', null),
     ])
-    const error = queueResult.error || divisionResult.error || categoryResult.error || approvePermission.error
+    const error = queueResult.error || divisionResult.error || categoryResult.error || approvePermission.error || sourceResult.error
     if (error) toast.error(error.message)
     else {
       const queueRows = ((queueResult.data ?? []) as QueueRow[]).filter((row) => row.category_key !== 'buildings')
@@ -127,6 +130,7 @@ export function FinanceApprovalQueue() {
       setDivisions((divisionResult.data ?? []) as Division[])
       setCategories((categoryResult.data ?? []) as Category[])
       setCanApprove(Boolean(approvePermission.data))
+      setSourceDocumentIds(new Set((sourceResult.data ?? []).map((row) => row.finance_document_id).filter((value): value is string => typeof value === 'string')))
     }
     setLoading(false)
   }, [supabase])
@@ -340,10 +344,30 @@ export function FinanceApprovalQueue() {
             <tbody>
               {filtered.map((row) => {
                 const mapped = isCanonicalMapped(row)
+                const aiSuggestion = aiSuggestions[row.id]
+                const allocation = aiSuggestion
+                  ? financeAllocationLabel(aiSuggestion.division_name, aiSuggestion.category_name)
+                  : row.division_name && row.category_name
+                    ? financeAllocationLabel(row.division_name, row.category_name)
+                    : null
                 return <tr key={row.id} className="border-t border-[var(--bs-divider-subtle)] align-top">
-                  <td className="px-4 py-4"><p className="text-[var(--bs-text-primary)]">{row.supplier_name}</p><p className="mt-1 text-xs text-[var(--bs-text-muted)]">{row.document_number} · {new Date(`${row.document_date}T00:00:00`).toLocaleDateString('es-CL')}</p>{row.description && <p className="mt-2 max-w-72 text-xs leading-5 text-[var(--bs-text-secondary)]">{row.description}</p>}</td>
+                  <td className="px-4 py-4">
+                    <p className="text-[var(--bs-text-primary)]">{row.supplier_name}</p>
+                    <p className="mt-1 text-xs text-[var(--bs-text-muted)]">{row.document_number} · {new Date(`${row.document_date}T00:00:00`).toLocaleDateString('es-CL')}</p>
+                    <div className="mt-3">
+                      <FinanceDecisionContext
+                        description={row.description}
+                        allocation={allocation}
+                        operationalLabel={row.operational_label}
+                        reason={aiSuggestion?.reason || row.classification_reason}
+                        hasSourceFile={sourceDocumentIds.has(row.id)}
+                        sourceHref={`/api/finance/sii-invoices/source?documentId=${encodeURIComponent(row.id)}`}
+                        evidenceLabel={aiSuggestion?.source === 'pdf_plus_historical_text' ? 'PDF + historial' : sourceDocumentIds.has(row.id) ? 'Factura fuente + historial' : 'Datos fiscales + historial'}
+                        detail={row.classification_reason}
+                      />
+                    </div>
+                  </td>
                   <td className="px-4 py-4">{(() => {
-                    const aiSuggestion = aiSuggestions[row.id]
                     if (row.approval_status === 'pending_mapping' && aiSuggestion) {
                       return <>
                         <p className="mb-1 text-[11px] uppercase tracking-[0.1em] text-[var(--bs-cool-sage)]">IA sugiere · {pct.format(aiSuggestion.confidence)}</p>
