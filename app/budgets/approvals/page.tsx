@@ -12,7 +12,7 @@ import { useLanguage } from '@/lib/hooks/use-language'
 
 const copy = {
   en: { title: 'Financial approval', description: 'Review one case at a time, confirm quickly and preserve traceability against the canonical Budget.' },
-  es: { title: 'Aprobaciones · Raimundo', description: 'Tu única bandeja diaria: define la imputación y aprueba o rechaza cada gasto.' },
+  es: { title: 'Aprobaciones · Raimundo', description: 'Primero confirma centros nuevos; luego aprueba o rechaza los gastos ya organizados.' },
   de: { title: 'Finanzielle Freigabe', description: 'Prüfen Sie jeweils einen Fall, bestätigen Sie zügig und erhalten Sie die Nachverfolgbarkeit zum kanonischen Budget.' },
 } as const
 
@@ -23,6 +23,7 @@ export default function BudgetApprovalsPage() {
     <AppLayout>
       <FinanceApprovalRouteGate>
         <PageHeader title={text.title} description={text.description} />
+        <RaimundoReviewInbox />
         <FinanceApprovalQueue />
         <SiiSourceReview />
         <details className="mx-4 mt-4 bg-[var(--bs-surface-primary)] md:mx-8">
@@ -30,7 +31,6 @@ export default function BudgetApprovalsPage() {
             Herramientas históricas · mapeos y normalización
           </summary>
           <div className="border-t border-[var(--bs-divider-subtle)] pb-4">
-            <RaimundoReviewInbox />
             <FinanceHistoricalAliasReview />
             <RaimundoFinanceImport />
           </div>
