@@ -31,7 +31,7 @@ test('Santiago is the configured final payer and payment evidence is mandatory',
   assert.match(queue, /Aprobar pago/)
   assert.match(queue, /Rechazar pago/)
   assert.match(queue, /Registrar pago/)
-  assert.match(queue, /Referencia \/ comprobante/)
+  assert.match(queue, /placeholder="Comprobante"/)
 })
 
 test('Raimundo can reassign allocation before expense approval', () => {
@@ -62,7 +62,6 @@ test('observed reconciliation payments cannot be authorized or executed again', 
   assert.match(paidObservedGuard, /cannot be recorded again/)
   assert.match(queue, /reconciliation_status/)
   assert.match(queue, /observedPayments/)
-  assert.match(queue, /Pago observado/)
   assert.match(queue, /row\.reconciliation_status !== 'paid_observed'/)
   assert.match(queue, /row\.reconciliation_status !== 'reconciled'/)
 })
@@ -118,4 +117,17 @@ test('Tomas receives persisted invoice analysis without a new AI request', () =>
   assert.match(approvalContextMigration, /d\.confidence/)
   assert.match(tomasQueue, /classificationReason/)
   assert.doesNotMatch(tomasQueue, /cost-center-suggestion/)
+})
+
+
+test('Santiago payment surface stays easy and decision-first', () => {
+  assert.match(queue, />Pagos</)
+  assert.match(queue, />Autorizar</)
+  assert.match(queue, />No pagar</)
+  assert.match(queue, />Registrar pago</)
+  assert.match(queue, />Más</)
+  assert.doesNotMatch(queue, /Resolver excepciones y pagos/)
+  assert.doesNotMatch(queue, /Control final habilitado/)
+  assert.doesNotMatch(queue, /Proveedor \/ documento/)
+  assert.doesNotMatch(queue, /Imputación validada/)
 })
