@@ -5,6 +5,7 @@ import { readFileSync } from "node:fs"
 const osHome = readFileSync(new URL("../components/os-home.tsx", import.meta.url), "utf8")
 const cockpit = readFileSync(new URL("../components/santiago-operations-cockpit.tsx", import.meta.url), "utf8")
 const addTaskDialog = readFileSync(new URL("../components/add-task-dialog.tsx", import.meta.url), "utf8")
+const taskTemplates = readFileSync(new URL("../lib/operational-task-templates.ts", import.meta.url), "utf8")
 
 test("Santiago OS prioritizes booking and staff before cross-module alerts", () => {
   const cockpitIndex = osHome.indexOf("<SantiagoOperationsCockpit")
@@ -52,4 +53,14 @@ test("Santiago booking and task flow is mobile-first", () => {
   assert.match(addTaskDialog, /Más opciones/)
   assert.match(addTaskDialog, /sticky bottom-0/)
   assert.match(addTaskDialog, /min-h-12 cursor-pointer/)
+})
+
+
+test("hospitality operations library covers daily guest and staff handoffs", () => {
+  for (const id of [
+    "hosp-arrivals-review", "hosp-checkout", "hosp-shift-handover",
+    "hk-prearrival-inspection", "hk-room-release", "hk-lost-found",
+    "kitchen-cold-chain", "kitchen-service-reset",
+    "mant-room-quickcheck", "log-guest-supplies", "admin-shift-handover",
+  ]) assert.match(taskTemplates, new RegExp(`id: "${id}"`))
 })
