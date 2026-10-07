@@ -6,6 +6,7 @@ import { PageHeader } from "@/components/page-header"
 import { Card, CardContent } from "@/components/ui/card"
 import { AddEmployeeDialog } from "@/components/add-employee-dialog"
 import { EmployeeCard } from "@/components/employee-card"
+import { PeopleOperationsDispatch } from "@/components/people-operations-dispatch"
 import { useLanguage } from "@/lib/hooks/use-language"
 import type { Employee } from "@/lib/types"
 
@@ -23,6 +24,7 @@ export function EmployeesDirectoryView({ employees, loadFailed }: { employees: E
     {loadFailed && <Card className="border-destructive/60"><CardContent className="p-5"><p className="font-medium text-destructive">{copy.loadError}</p></CardContent></Card>}
     {(missingRole > 0 || duplicateNames > 0) && !loadFailed && <Card className="border-amber-300"><CardContent className="flex gap-3 p-5"><AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" /><div><p className="font-medium">{copy.review}</p><p className="mt-1 text-sm text-muted-foreground">{missingRole > 0 ? `${number.format(missingRole)} ${missingRole === 1 ? copy.missingRoleOne : copy.missingRoleMany} ` : ""}{duplicateNames > 0 ? `${number.format(duplicateNames)} ${duplicateNames === 1 ? copy.duplicateOne : copy.duplicateMany}` : ""}</p></div></CardContent></Card>}
     <div className="grid grid-cols-2 gap-x-6 gap-y-4 border-y py-4 sm:grid-cols-3 xl:grid-cols-5"><Metric icon={Users} title={copy.registered} value={employees.length} locale={locale} /><Metric icon={UserCheck} title={copy.active} value={active} locale={locale} /><Metric icon={Users} title={copy.inactive} value={inactive} locale={locale} /><Metric icon={Mail} title={copy.noEmail} value={missingEmail} warning={missingEmail > 0} locale={locale} /><Metric icon={Phone} title={copy.noPhone} value={missingPhone} warning={missingPhone > 0} locale={locale} /></div>
+    <PeopleOperationsDispatch employees={employees} />
     <section className="space-y-4"><div><h2 className="text-base font-medium">{copy.directory}</h2><p className="mt-1 max-w-4xl text-sm leading-6 text-muted-foreground">{copy.directoryDetail}</p></div>{employees.length > 0 ? <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{employees.map((employee) => <EmployeeCard key={employee.id} employee={employee} />)}</div> : <div className="border-y py-12 text-center"><p className="font-medium">{copy.empty}</p><p className="mt-1 text-sm text-muted-foreground">{copy.emptyHint}</p></div>}</section>
   </div></AppLayout>
 }
