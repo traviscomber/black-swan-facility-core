@@ -4,6 +4,7 @@ import { readFileSync } from "node:fs"
 
 const osHome = readFileSync(new URL("../components/os-home.tsx", import.meta.url), "utf8")
 const cockpit = readFileSync(new URL("../components/santiago-operations-cockpit.tsx", import.meta.url), "utf8")
+const addTaskDialog = readFileSync(new URL("../components/add-task-dialog.tsx", import.meta.url), "utf8")
 
 test("Santiago OS prioritizes booking and staff before cross-module alerts", () => {
   const cockpitIndex = osHome.indexOf("<SantiagoOperationsCockpit")
@@ -47,4 +48,8 @@ test("Santiago can turn an upcoming booking into a traced hospitality task", () 
 test("Santiago booking and task flow is mobile-first", () => {
   assert.match(cockpit, /snap-x snap-mandatory overflow-x-auto/)
   assert.match(cockpit, /h-11 flex-1 sm:h-9/)
+  assert.match(addTaskDialog, /h-\[100dvh\].*w-screen/)
+  assert.match(addTaskDialog, /Más opciones/)
+  assert.match(addTaskDialog, /sticky bottom-0/)
+  assert.match(addTaskDialog, /min-h-12 cursor-pointer/)
 })
