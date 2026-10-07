@@ -30,7 +30,7 @@ export async function POST(request: Request) {
       )
     }
 
-    const { data, error } = await supabase.rpc("create_reservation_atomic", {
+    const { data, error } = await supabase.rpc("create_reservation_with_arrival_logistics", {
       p_bed_id: bed_id,
       p_guest_name: guest_name,
       p_guest_email: body.guest_email || null,
@@ -42,6 +42,13 @@ export async function POST(request: Request) {
       p_status: body.status || "confirmed",
       p_special_requests: body.special_requests || null,
       p_invoice_due_date: body.invoice_due_date || null,
+      p_arrival_transport_mode: body.arrival_transport_mode || "unknown",
+      p_arrival_hub: body.arrival_hub || "unknown",
+      p_arrival_at: body.arrival_at || null,
+      p_arrival_carrier_name: body.arrival_carrier_name || null,
+      p_arrival_service_number: body.arrival_service_number || null,
+      p_arrival_origin: body.arrival_origin || null,
+      p_arrival_pickup_required: Boolean(body.arrival_pickup_required),
     })
 
     if (error) {
