@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react"
 import Link from "next/link"
-import { ArrowRight, CreditCard, RefreshCw } from "lucide-react"
+import { ArrowRight, CreditCard } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { createClient } from "@/lib/supabase/client"
 import { useLanguage } from "@/lib/hooks/use-language"
@@ -98,11 +98,8 @@ export function SantiagoHome() {
   const [otherItems, setOtherItems] = useState<AuthorizedNavItem[]>([])
   const [navigation, setNavigation] = useState<AuthorizedNavigation>({ items: [] })
   const [nextArrival, setNextArrival] = useState<{ id: string; guest_name: string; check_in: string } | null>(null)
-  const [loading, setLoading] = useState(true)
 
   const load = useCallback(async () => {
-    setLoading(true)
-
     const today = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Santiago" }).format(new Date())
     const [escalatedResult, pendingResult, readyResult, guestRequestsResult, unassignedGuestRequestsResult, nextUnassignedResult, housekeepingResult, nextArrivalResult, navigationResult] = await Promise.all([
       supabase
@@ -172,8 +169,7 @@ export function SantiagoHome() {
     setNavigation(navigationResult)
     const secondaryKeys = new Set(["bookings", "guest-requests", "payments", "tasks"])
     setOtherItems((navigationResult.items ?? []).filter((item) => !secondaryKeys.has(item.key)).slice(0, 8))
-    setLoading(false)
-  }, [supabase])
+   }, [supabase])
 
   useEffect(() => {
     void load()
@@ -289,8 +285,6 @@ export function SantiagoHome() {
       </section>
     </div>
   )
-}
-
 }
 
 function FinanceMetric({ label, value, emphasis = false }: { label: string; value: number; emphasis?: boolean }) {
