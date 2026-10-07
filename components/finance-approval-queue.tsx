@@ -5,6 +5,7 @@ import { AlertTriangle, Check, FileSearch, RefreshCw, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { createClient } from '@/lib/supabase/client'
+import { financeAllocationLabel, financeDivisionLabel } from '@/lib/finance/budget-display'
 
 type ClassificationStatus = 'ready' | 'exception' | 'manual_review' | 'approved' | 'rejected'
 type ApprovalStatus = 'pending_mapping' | 'ready' | 'pending_valuation' | 'approved' | 'rejected'
@@ -40,7 +41,7 @@ type QueueRow = {
   decision_notes: string | null
   cost_center_escalation_status: 'none' | 'pending_santiago' | 'resolved'
 }
-type Division = { id: string; name: string }
+type Division = { id: string; name: string; source_key: string | null }
 type Category = { id: string; division_id: string; name: string }
 type AiSuggestion = {
   center_id: string
@@ -114,14 +115,14 @@ export function FinanceApprovalQueue() {
     setLoading(true)
     const [queueResult, divisionResult, categoryResult, approvePermission] = await Promise.all([
       supabase.from('finance_approval_queue').select('*').order('queue_order').order('document_date', { ascending: false }),
-      supabase.from('budget_divisions').select('id,name').eq('is_active', true).eq('is_aggregate', false).not('source_key', 'is', null).order('sort_order'),
+      supabase.from('budget_divisions').select('id,name,source_key').eq('is_active', true).eq('is_aggregate', false).not('source_key', 'is', null).order('sort_order'),
       supabase.from('budget_categories').select('id,division_id,name').eq('is_active', true).not('source_key', 'is', null).eq('category_role', 'cost').order('sort_order'),
       supabase.rpc('can_finance_approve'),
     ])
     const error = queueResult.error || divisionResult.error || categoryResult.error || approvePermission.error
     if (error) toast.error(error.message)
     else {
-      const queueRows = (queueResult.data ?? []) as QueueRow[]
+      const queueRows = ((queueResult.data ?? []) as QueueRow[]).filter((row) => row.category_key !== 'buildings')
       setRows(queueRows)
       setDivisions((divisionResult.data ?? []) as Division[])
       setCategories((categoryResult.data ?? []) as Category[])
@@ -316,7 +317,7 @@ export function FinanceApprovalQueue() {
           <div className="max-w-3xl">
             <p className="text-xs uppercase tracking-[0.14em] text-[var(--bs-warm-yellow)]">Bandeja 1 · Raimundo</p>
             <h2 className="mt-2 text-xl font-normal text-[var(--bs-text-primary)]">Decidir imputación y aprobar gasto</h2>
-            <p className="mt-2 text-sm leading-6 text-[var(--bs-text-secondary)]">Raimundo siempre es el primero en revisar el centro de costo sugerido. Debe aceptarlo o cambiarlo; sólo si no tiene certeza puede pedir apoyo a Santiago. Las facturas escaladas vuelven aquí antes de cualquier aprobación de gasto o pago.</p>
+            <p className="mt-2 text-sm leading-6 text-[var(--bs-text-secondary)]">Raimundo revisa gastos generales. Las facturas de infraestructura (Buildings) se excluyen de esta bandeja y pasan directamente a Tomás; después continúa Santiago.</p>
           </div>
           <Button variant="outline" onClick={() => void load()} disabled={loading}><RefreshCw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />Actualizar</Button>
         </div>
@@ -346,7 +347,7 @@ export function FinanceApprovalQueue() {
                     if (row.approval_status === 'pending_mapping' && aiSuggestion) {
                       return <>
                         <p className="mb-1 text-[11px] uppercase tracking-[0.1em] text-[var(--bs-cool-sage)]">IA sugiere · {pct.format(aiSuggestion.confidence)}</p>
-                        <p className="text-[var(--bs-text-primary)]">{aiSuggestion.division_name}</p>
+                        <p className="text-[var(--bs-text-primary)]">{financeDivisionLabel(aiSuggestion.division_name)}</p>
                         <p className="mt-1 text-xs text-[var(--bs-text-secondary)]">{aiSuggestion.category_name}</p>
                         <p className="mt-2 text-xs text-[var(--bs-warm-yellow)]">Budget · {aiSuggestion.center_label}</p>
                         <p className="mt-1 max-w-72 text-[11px] leading-4 text-[var(--bs-text-muted)]">{aiSuggestion.reason}</p>
@@ -364,7 +365,7 @@ export function FinanceApprovalQueue() {
                     }
                     return <>
                       {row.approval_status === 'ready' && mapped && <p className="mb-1 text-[11px] uppercase tracking-[0.1em] text-[var(--bs-cool-sage)]">Sugerencia por historial</p>}
-                      <p className={mapped ? 'text-[var(--bs-text-primary)]' : 'text-[var(--bs-warm-yellow)]'}>{row.division_name ?? 'P&L pendiente'}</p>
+                      <p className={mapped ? 'text-[var(--bs-text-primary)]' : 'text-[var(--bs-warm-yellow)]'}>{row.division_name ? financeDivisionLabel(row.division_name) : 'P&L pendiente'}</p>
                       <p className="mt-1 text-xs text-[var(--bs-text-secondary)]">{row.category_name ?? 'Categoría canónica pendiente'}</p>
                       {row.operational_label && <p className="mt-2 text-xs text-[var(--bs-warm-yellow)]">Detalle operativo · {row.operational_label}</p>}
                       {row.cost_center_name && row.cost_center_name !== row.operational_label && <p className="mt-1 text-[11px] text-[var(--bs-text-muted)]">Origen · {row.cost_center_name}</p>}
@@ -393,8 +394,8 @@ export function FinanceApprovalQueue() {
                           <select value={reassignCenterId} onChange={(event) => setReassignCenterId(event.target.value)} className="h-9 w-full bg-[var(--bs-bg-primary)] px-2 text-xs text-[var(--bs-text-primary)]">
                             <option value="">Seleccionar imputación del Budget</option>
                             {categories.map((category) => {
-                              const division = divisions.find((item) => item.id === category.division_id)?.name ?? 'P&L'
-                              return <option key={category.id} value={category.id}>{division} · {category.name}</option>
+                              const division = divisions.find((item) => item.id === category.division_id)
+                              return <option key={category.id} value={category.id}>{financeAllocationLabel(division?.name, category.name, division?.source_key)}</option>
                             })}
                           </select>
                           <div className="flex justify-end gap-2">
@@ -419,8 +420,8 @@ export function FinanceApprovalQueue() {
                           <select value={reassignCenterId} onChange={(event) => setReassignCenterId(event.target.value)} className="h-9 w-full bg-[var(--bs-bg-primary)] px-2 text-xs text-[var(--bs-text-primary)]">
                             <option value="">Seleccionar imputación del Budget</option>
                             {categories.map((category) => {
-                              const division = divisions.find((item) => item.id === category.division_id)?.name ?? 'P&L'
-                              return <option key={category.id} value={category.id}>{division} · {category.name}</option>
+                              const division = divisions.find((item) => item.id === category.division_id)
+                              return <option key={category.id} value={category.id}>{financeAllocationLabel(division?.name, category.name, division?.source_key)}</option>
                             })}
                           </select>
                           <input value={reassignNote} onChange={(event) => setReassignNote(event.target.value)} placeholder="Motivo de la reasignación" className="h-9 w-full bg-[var(--bs-bg-primary)] px-2 text-xs text-[var(--bs-text-primary)]" />

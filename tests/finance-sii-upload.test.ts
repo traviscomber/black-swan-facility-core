@@ -161,7 +161,8 @@ test('Raimundo login honors canonical start path and approvals are the first tas
 
   assert.match(queueSource, /type QueueView = 'review'/)
   assert.match(queueSource, /approval_status === 'pending_mapping' \|\| row\.approval_status === 'ready'/)
-  assert.match(queueSource, /Raimundo siempre es el primero en revisar el centro de costo sugerido/)
+  assert.match(queueSource, /Raimundo revisa gastos generales/)
+  assert.match(queueSource, /row.category_key !== 'buildings'/)
   assert.match(queueSource, /Pendientes conmigo/)
   assert.match(queueSource, /Asignar imputación/)
   assert.match(queueSource, /Asignar y aprobar/)

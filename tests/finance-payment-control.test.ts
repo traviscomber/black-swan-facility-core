@@ -7,6 +7,10 @@ const queue = readFileSync(new URL('../components/santiago-payment-queue.tsx', i
 const approval = readFileSync(new URL('../components/finance-approval-queue.tsx', import.meta.url), 'utf8')
 const budgetMappingFix = readFileSync(new URL('../supabase/migrations/20260925024500_fix_assign_finance_budget_audit_action.sql', import.meta.url), 'utf8')
 const paidObservedGuard = readFileSync(new URL('../supabase/migrations/20261007153500_guard_paid_observed_supplier_payment.sql', import.meta.url), 'utf8')
+const infrastructureMigration = readFileSync(new URL('../supabase/migrations/20261007224500_tomas_infrastructure_invoice_review.sql', import.meta.url), 'utf8')
+const tomasQueue = readFileSync(new URL('../components/tomas-infrastructure-invoice-queue.tsx', import.meta.url), 'utf8')
+const approvalWorkspace = readFileSync(new URL('../components/finance-approval-workspace.tsx', import.meta.url), 'utf8')
+const budgetDisplay = readFileSync(new URL('../lib/finance/budget-display.ts', import.meta.url), 'utf8')
 
 test('finance flow separates Raimundo expense validation from Santiago payment control', () => {
   assert.match(migration, /payment_status/)
@@ -59,4 +63,37 @@ test('observed reconciliation payments cannot be authorized or executed again', 
   assert.match(queue, /Pago observado/)
   assert.match(queue, /row\.reconciliation_status !== 'paid_observed'/)
   assert.match(queue, /row\.reconciliation_status !== 'reconciled'/)
+})
+
+
+test('infrastructure invoices bypass Raimundo and go to Tomas then Santiago', () => {
+  assert.match(infrastructureMigration, /source_key = 'buildings'/)
+  assert.match(infrastructureMigration, /pending_tomas/)
+  assert.match(infrastructureMigration, /approved_by_tomas/)
+  assert.match(infrastructureMigration, /rejected_by_tomas/)
+  assert.match(infrastructureMigration, /Infrastructure invoices are reviewed by Tomas, not Raimundo/)
+  assert.match(infrastructureMigration, /reject_infrastructure_invoice_to_santiago/)
+  assert.match(infrastructureMigration, /payment_status = 'pending_santiago'/)
+  assert.match(tomasQueue, /Facturas por revisar/)
+  assert.match(tomasQueue, /enviada a Santiago/)
+  assert.match(approval, /row.category_key !== 'buildings'/)
+  assert.match(approvalWorkspace, /can_review_infrastructure_invoices/)
+})
+
+test('Santiago remains final payer even when Tomas rejects infrastructure invoice', () => {
+  assert.match(queue, /infrastructure_review_status/)
+  assert.match(queue, /Tomás observó esta factura/)
+  assert.match(queue, /Autorizar igualmente/)
+  assert.match(queue, /No pagar/)
+  assert.match(infrastructureMigration, /santiago_after_tomas_rejection/)
+  assert.match(infrastructureMigration, /can_finance_payment_authorize/)
+})
+
+
+test('hospitality budget labels preserve operational hierarchy', () => {
+  assert.match(budgetDisplay, /Hospitality · Farm/)
+  assert.match(budgetDisplay, /Hospitality · Torobayo/)
+  assert.match(approval, /financeAllocationLabel/)
+  assert.match(queue, /financeAllocationLabel/)
+  assert.match(tomasQueue, /financeAllocationLabel/)
 })
