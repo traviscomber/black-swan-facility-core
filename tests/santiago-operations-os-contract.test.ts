@@ -6,6 +6,7 @@ const osHome = readFileSync(new URL("../components/os-home.tsx", import.meta.url
 const cockpit = readFileSync(new URL("../components/santiago-operations-cockpit.tsx", import.meta.url), "utf8")
 const santiagoHome = readFileSync(new URL("../components/santiago-home.tsx", import.meta.url), "utf8")
 const todayCenter = readFileSync(new URL("../components/santiago-today-command-center.tsx", import.meta.url), "utf8")
+const osEntry = readFileSync(new URL("../components/os-entry.tsx", import.meta.url), "utf8")
 const addTaskDialog = readFileSync(new URL("../components/add-task-dialog.tsx", import.meta.url), "utf8")
 const taskTemplates = readFileSync(new URL("../lib/operational-task-templates.ts", import.meta.url), "utf8")
 
@@ -94,4 +95,11 @@ test("Santiago visible copy is concise and action-first", () => {
   assert.match(cockpit, /pickups\.slice\(0, 3\)/)
   assert.match(todayCenter, /title: "Operación"/)
   assert.doesNotMatch(todayCenter, /Lo que Santiago necesita resolver ahora/)
+})
+
+
+test("Santiago hides secondary panorama navigation until View more", () => {
+  assert.match(osEntry, /persona !== 'santiago'/)
+  assert.match(santiagoHome, /os\?view=panorama/)
+  assert.match(santiagoHome, /panorama: "Panorama"/)
 })
