@@ -199,9 +199,9 @@ export function SantiagoTodayCommandCenter() {
         <div className="mt-3 grid grid-cols-2 gap-2 md:grid-cols-5">
           <Metric icon={DoorOpen} label={copy.arrivals} value={arrivals.length} href={localized(locale, "/bookings/activities")} />
           <Metric icon={LogOut} label={copy.departures} value={departures} href={localized(locale, "/bookings/activities")} />
-          <Metric icon={AlertTriangle} label={copy.notReady} value={notReady.length} warning={notReady.length > 0} href={localized(locale, "/bookings/housekeeping")} />
-          <Metric icon={ClipboardList} label={copy.requests} value={openRequests} warning={unassignedRequests > 0} href={localized(locale, "/bookings/requests")} helper={unassignedRequests > 0 ? `${unassignedRequests} ${copy.unassignedRequests}` : undefined} />
-          <Metric icon={Sparkles} label={copy.housekeeping} value={pendingHousekeeping} href={localized(locale, "/bookings/housekeeping")} />
+          {notReady.length > 0 && <Metric icon={AlertTriangle} label={copy.notReady} value={notReady.length} warning href={localized(locale, "/bookings/housekeeping")} />}
+          {openRequests > 0 && <Metric icon={ClipboardList} label={copy.requests} value={openRequests} warning={unassignedRequests > 0} href={localized(locale, "/bookings/requests")} helper={unassignedRequests > 0 ? `${unassignedRequests} ${copy.unassignedRequests}` : undefined} />}
+          {pendingHousekeeping > 0 && <Metric icon={Sparkles} label={copy.housekeeping} value={pendingHousekeeping} href={localized(locale, "/bookings/housekeeping")} />}
         </div>
 
         <div className={`mt-3 flex flex-col gap-3 border p-4 md:flex-row md:items-center md:justify-between ${attentionCount > 0 ? "border-amber-400/35 bg-amber-400/8" : "border-primary/25 bg-primary/5"}`}>
