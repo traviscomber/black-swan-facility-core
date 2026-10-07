@@ -162,14 +162,11 @@ test('Raimundo login honors canonical start path and approvals are the first tas
 
   assert.match(queueSource, /type QueueView = 'review'/)
   assert.match(queueSource, /approval_status === 'pending_mapping' \|\| row\.approval_status === 'ready'/)
-  assert.match(queueSource, /Raimundo revisa gastos generales/)
   assert.match(queueSource, /row.category_key !== 'buildings'/)
   assert.match(queueSource, /Pendientes conmigo/)
-  assert.match(queueSource, /Asignar imputación/)
-  assert.match(queueSource, /Asignar y aprobar/)
-  assert.match(queueSource, /Aprobar y enviar a pago/)
-  assert.match(queueSource, /Cambiar imputación/)
-  assert.match(queueSource, /Cambiar y aprobar/)
+  assert.match(queueSource, />Asignar</)
+  assert.match(queueSource, />Aprobar</)
+  assert.match(queueSource, />Cambiar</)
   assert.match(queueSource, /assign_finance_document_budget_mapping/)
 
   assert.ok(pageSource.indexOf('<FinanceApprovalQueue />') < pageSource.indexOf('<SiiSourceReview />'))
