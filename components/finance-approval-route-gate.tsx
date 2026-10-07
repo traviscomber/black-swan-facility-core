@@ -19,13 +19,15 @@ export function FinanceApprovalRouteGate({ children }: { children: ReactNode }) 
     void Promise.all([
       supabase.rpc('can_finance_approve'),
       supabase.rpc('can_finance_payment_authorize'),
-    ]).then(([approveResult, paymentResult]) => {
+      supabase.rpc('can_review_infrastructure_invoices'),
+    ]).then(([approveResult, paymentResult, infrastructureResult]) => {
       if (cancelled) return
 
       const canApprove = !approveResult.error && Boolean(approveResult.data)
       const canPay = !paymentResult.error && Boolean(paymentResult.data)
+      const canReviewInfrastructure = !infrastructureResult.error && Boolean(infrastructureResult.data)
 
-      if (canApprove) {
+      if (canApprove || canReviewInfrastructure) {
         setAllowed(true)
         return
       }
