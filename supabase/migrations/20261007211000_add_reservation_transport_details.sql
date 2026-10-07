@@ -267,3 +267,54 @@ $function$;
 
 revoke all on function public.create_reservation_with_arrival_logistics(uuid,text,text,text,date,date,integer,numeric,text,text,date,text,text,timestamptz,text,text,text,boolean) from public, anon;
 grant execute on function public.create_reservation_with_arrival_logistics(uuid,text,text,text,date,date,integer,numeric,text,text,date,text,text,timestamptz,text,text,text,boolean) to authenticated, service_role;
+
+
+create or replace function public.get_upcoming_reservation_pickups(
+  p_from_date date default current_date,
+  p_to_date date default current_date + 7
+)
+returns jsonb
+language plpgsql
+stable
+security definer
+set search_path to 'public', 'pg_temp'
+as $function$
+begin
+  if auth.uid() is null then raise exception 'Authentication required'; end if;
+  if not (public.can_app_action('hospitality.operate') or public.can_app_action('booking.modify')) then
+    raise exception 'Operational booking permission required';
+  end if;
+
+  return coalesce((
+    select jsonb_agg(jsonb_build_object(
+      'reservationId', r.id,
+      'guestName', r.guest_name,
+      'checkIn', r.check_in,
+      'transportMode', l.transport_mode,
+      'carrierName', l.carrier_name,
+      'serviceNumber', l.service_number,
+      'originDestination', l.origin_destination,
+      'hub', l.hub,
+      'anchorAt', l.anchor_at,
+      'pickupRequired', l.pickup_required,
+      'transportCoordinatorId', l.transport_coordinator_id,
+      'transportCoordinatorName', e.name,
+      'driverId', l.driver_id,
+      'vehicleId', l.vehicle_id,
+      'status', l.status
+    ) order by coalesce(l.anchor_at, r.check_in::timestamptz), r.guest_name)
+    from public.reservation_logistics l
+    join public.reservations r on r.id=l.reservation_id
+    left join public.employees e on e.id=l.transport_coordinator_id
+    where l.direction='arrival'
+      and l.pickup_required
+      and l.status not in ('completed','cancelled')
+      and r.status not in ('cancelled','canceled','void','voided')
+      and r.check_in between p_from_date and p_to_date
+      and public.can_access_operational_scope('hospitality', r.location_id)
+  ), '[]'::jsonb);
+end;
+$function$;
+
+revoke all on function public.get_upcoming_reservation_pickups(date,date) from public, anon;
+grant execute on function public.get_upcoming_reservation_pickups(date,date) to authenticated, service_role;
