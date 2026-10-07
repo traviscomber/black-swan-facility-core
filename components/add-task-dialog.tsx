@@ -20,6 +20,8 @@ interface AddTaskDialogProps {
   onOpenChange: (open: boolean) => void
   onTaskCreated: () => void
   prefill?: OperationalTaskPrefill | null
+  defaultEmployeeIds?: string[]
+  defaultArea?: OperationalArea | null
 }
 
 type Employee = { id: string; name: string; role?: string | null }
@@ -30,7 +32,7 @@ type ReviewMode = "none" | "review"
 type ReviewRequirement = { required?: boolean; reason?: string | null }
 type ReviewResult = { required?: boolean; forced?: boolean; reason?: string | null; request_id?: string | null }
 
-export function AddTaskDialog({ open, onOpenChange, onTaskCreated, prefill }: AddTaskDialogProps) {
+export function AddTaskDialog({ open, onOpenChange, onTaskCreated, prefill, defaultEmployeeIds = [], defaultArea = null }: AddTaskDialogProps) {
   const supabase = useMemo(() => createBrowserClient(), [])
   const { toast } = useToast()
   const [templateId, setTemplateId] = useState("")
@@ -67,6 +69,12 @@ export function AddTaskDialog({ open, onOpenChange, onTaskCreated, prefill }: Ad
       if (!locationResult.error) setLocations((locationResult.data ?? []) as Location[])
     })
   }, [open, supabase])
+
+  useEffect(() => {
+    if (!open) return
+    if (defaultEmployeeIds.length) setEmployeeIds(defaultEmployeeIds)
+    if (defaultArea) setArea(defaultArea)
+  }, [defaultArea, defaultEmployeeIds, open])
 
   useEffect(() => {
     if (!open || !prefill) return
