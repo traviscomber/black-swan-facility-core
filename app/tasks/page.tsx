@@ -84,7 +84,14 @@ export default function TasksPage() {
     setIsLoading(false)
   }
   useEffect(() => { void fetchTasks() }, [copy.loadError])
-  useEffect(() => { const prefill = readTaskPrefill(priorityLabels); if (!prefill) return; setTaskPrefill(prefill); setIsAddDialogOpen(true) }, [])
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    if (params.get("new") === "1") {
+      const prefill = readTaskPrefill(priorityLabels)
+      setTaskPrefill(prefill)
+      setIsAddDialogOpen(true)
+    }
+  }, [])
 
   const openTasks = tasks.filter(isOpenTask)
   const operationalOpenTasks = openTasks.filter((task) => !isAsanaLegacyTask(task) && !isDemoTask(task))
