@@ -103,3 +103,10 @@ test("Santiago hides secondary panorama navigation until View more", () => {
   assert.match(santiagoHome, /os\?view=panorama/)
   assert.match(santiagoHome, /panorama: "Panorama"/)
 })
+
+
+test("Santiago hides zero-value operational noise", () => {
+  assert.match(todayCenter, /notReady\.length > 0 && <Metric/)
+  assert.match(todayCenter, /openRequests > 0 && <Metric/)
+  assert.match(todayCenter, /pendingHousekeeping > 0 && <Metric/)
+})
