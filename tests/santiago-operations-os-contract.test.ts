@@ -4,6 +4,8 @@ import { readFileSync } from "node:fs"
 
 const osHome = readFileSync(new URL("../components/os-home.tsx", import.meta.url), "utf8")
 const cockpit = readFileSync(new URL("../components/santiago-operations-cockpit.tsx", import.meta.url), "utf8")
+const santiagoHome = readFileSync(new URL("../components/santiago-home.tsx", import.meta.url), "utf8")
+const todayCenter = readFileSync(new URL("../components/santiago-today-command-center.tsx", import.meta.url), "utf8")
 const addTaskDialog = readFileSync(new URL("../components/add-task-dialog.tsx", import.meta.url), "utf8")
 const taskTemplates = readFileSync(new URL("../lib/operational-task-templates.ts", import.meta.url), "utf8")
 
@@ -68,7 +70,28 @@ test("hospitality operations library covers daily guest and staff handoffs", () 
 
 test("Santiago cockpit surfaces authorized upcoming pickup logistics", () => {
   assert.match(cockpit, /get_upcoming_reservation_pickups/)
-  assert.match(cockpit, /Próximas recogidas/)
+  assert.match(cockpit, /Recogidas/)
   assert.match(cockpit, /transportCoordinatorName/)
   assert.match(cockpit, /serviceNumber/)
+})
+
+
+test("Santiago home keeps only daily action surfaces visible and collapses the rest", () => {
+  assert.match(santiagoHome, /<SantiagoTodayCommandCenter/)
+  assert.match(santiagoHome, /<SantiagoOperationsCockpit/)
+  assert.match(santiagoHome, /<details className="border border-border bg-card">/)
+  assert.match(santiagoHome, /<RoleAgenticBrief/)
+  assert.doesNotMatch(santiagoHome, /Booking y documentos primero/)
+  assert.doesNotMatch(santiagoHome, /01 · PRIORIDAD/)
+  assert.doesNotMatch(santiagoHome, /02 · PRIORIDAD/)
+})
+
+test("Santiago visible copy is concise and action-first", () => {
+  assert.match(cockpit, /title: 'Hoy'/)
+  assert.match(cockpit, /openCalendar: 'Ver más'/)
+  assert.match(cockpit, /openTasks: 'Ver más'/)
+  assert.match(cockpit, /bookings\.slice\(0, 3\)/)
+  assert.match(cockpit, /pickups\.slice\(0, 3\)/)
+  assert.match(todayCenter, /title: "Operación"/)
+  assert.doesNotMatch(todayCenter, /Lo que Santiago necesita resolver ahora/)
 })
