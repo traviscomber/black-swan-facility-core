@@ -125,6 +125,7 @@ begin
       'totalAmount', d.total_amount,
       'currency', d.currency,
       'divisionName', bd.name,
+      'divisionKey', bd.source_key,
       'categoryName', bc.name,
       'operationalLabel', d.operational_label,
       'reviewStatus', d.infrastructure_review_status,
