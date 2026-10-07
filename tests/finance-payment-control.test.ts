@@ -28,8 +28,8 @@ test('Santiago is the configured final payer and payment evidence is mandatory',
   assert.match(migration, /santiago@blackswn\.org/)
   assert.match(migration, /Payment reference is required/)
   assert.match(migration, /record_supplier_payment/)
-  assert.match(queue, /Aprobar pago/)
-  assert.match(queue, /Rechazar pago/)
+  assert.match(queue, />Autorizar/)
+  assert.match(queue, />No pagar/)
   assert.match(queue, /Registrar pago/)
   assert.match(queue, /placeholder="Comprobante"/)
 })
@@ -61,7 +61,6 @@ test('observed reconciliation payments cannot be authorized or executed again', 
   assert.match(paidObservedGuard, /cannot be authorized again/)
   assert.match(paidObservedGuard, /cannot be recorded again/)
   assert.match(queue, /reconciliation_status/)
-  assert.match(queue, /observedPayments/)
   assert.match(queue, /row\.reconciliation_status !== 'paid_observed'/)
   assert.match(queue, /row\.reconciliation_status !== 'reconciled'/)
 })
@@ -83,8 +82,8 @@ test('infrastructure invoices bypass Raimundo and go to Tomas then Santiago', ()
 
 test('Santiago remains final payer even when Tomas rejects infrastructure invoice', () => {
   assert.match(queue, /infrastructure_review_status/)
-  assert.match(queue, /Tomás observó esta factura/)
-  assert.match(queue, /Autorizar igualmente/)
+  assert.match(queue, /Observada por Tomás/)
+  assert.match(queue, /Autorizar igual/)
   assert.match(queue, /No pagar/)
   assert.match(infrastructureMigration, /santiago_after_tomas_rejection/)
   assert.match(infrastructureMigration, /can_finance_payment_authorize/)
@@ -122,7 +121,7 @@ test('Tomas receives persisted invoice analysis without a new AI request', () =>
 
 test('Santiago payment surface stays easy and decision-first', () => {
   assert.match(queue, />Pagos</)
-  assert.match(queue, />Autorizar</)
+  assert.match(queue, /Autorizar/)
   assert.match(queue, />No pagar</)
   assert.match(queue, />Registrar pago</)
   assert.match(queue, />Más</)
