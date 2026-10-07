@@ -12,6 +12,7 @@ const routeUrl = new URL('../app/api/finance/sii-invoices/route.ts', import.meta
 const dropzoneUrl = new URL('../components/sii-invoice-dropzone.tsx', import.meta.url)
 const loginUrl = new URL('../app/auth/login/page.tsx', import.meta.url)
 const approvalQueueUrl = new URL('../components/finance-approval-queue.tsx', import.meta.url)
+const raimundoReviewInboxUrl = new URL('../components/raimundo-review-inbox.tsx', import.meta.url)
 const approvalsPageUrl = new URL('../app/budgets/approvals/page.tsx', import.meta.url)
 const raimundoHomeMigrationUrl = new URL('../supabase/migrations/20260925205500_santiago_focused_workspace.sql', import.meta.url)
 
@@ -172,4 +173,23 @@ test('Raimundo login honors canonical start path and approvals are the first tas
   assert.match(queueSource, /assign_finance_document_budget_mapping/)
 
   assert.ok(pageSource.indexOf('<FinanceApprovalQueue />') < pageSource.indexOf('<SiiSourceReview />'))
+})
+
+
+test('Raimundo finance approval surface stays easy and action-first', () => {
+  const queueSource = readFileSync(approvalQueueUrl, 'utf8')
+  const centerSource = readFileSync(raimundoReviewInboxUrl, 'utf8')
+  const pageSource = readFileSync(approvalsPageUrl, 'utf8')
+
+  assert.match(queueSource, />Aprobar</)
+  assert.match(queueSource, />Cambiar</)
+  assert.match(queueSource, />Más</)
+  assert.doesNotMatch(queueSource, /CENTRO DE COSTO \/ IMPUTACIÓN/)
+  assert.doesNotMatch(queueSource, /CLASIFICACIÓN HISTÓRICA/)
+  assert.doesNotMatch(queueSource, /EVIDENCIA<\/th>/)
+  assert.match(centerSource, /Centro nuevo/)
+  assert.match(centerSource, /Qué es/)
+  assert.match(centerSource, /Dónde va/)
+  assert.doesNotMatch(centerSource, /Sesión habilitada/)
+  assert.match(pageSource, /<summary[^>]*>\{text\.more\}<\/summary>/)
 })
