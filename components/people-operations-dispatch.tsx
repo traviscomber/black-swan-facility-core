@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { ChefHat, ClipboardPlus, ConciergeBell, Loader2, RefreshCw, Sparkles, Users } from "lucide-react"
 import { AddTaskDialog } from "@/components/add-task-dialog"
+import { PeopleOperationalRoutines } from "@/components/people-operational-routines"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -137,6 +138,7 @@ export function PeopleOperationsDispatch({ employees }: { employees: Employee[] 
   const defaultArea = focusMeta[focus].area ?? null
 
   return (
+    <div className="space-y-4">
     <Card className="overflow-hidden">
       <CardHeader className="gap-4 border-b bg-muted/10">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
@@ -222,5 +224,7 @@ export function PeopleOperationsDispatch({ employees }: { employees: Employee[] 
         defaultArea={defaultArea}
       />
     </Card>
+    <PeopleOperationalRoutines employees={employees} onTasksGenerated={() => void load()} />
+    </div>
   )
 }
