@@ -44,6 +44,7 @@ const COPY = {
     booking: 'Calendario de booking',
     bookingHint: 'Próximos 7 días · llegadas, salidas y estadías activas',
     openCalendar: 'Abrir calendario',
+    prepareArrival: 'Preparar llegada',
     noBookings: 'Sin movimientos de booking en los próximos 7 días.',
     arrivals: 'llegadas',
     departures: 'salidas',
@@ -65,6 +66,7 @@ const COPY = {
     booking: 'Booking calendar',
     bookingHint: 'Next 7 days · arrivals, departures and active stays',
     openCalendar: 'Open calendar',
+    prepareArrival: 'Prepare arrival',
     noBookings: 'No booking movement in the next 7 days.',
     arrivals: 'arrivals',
     departures: 'departures',
@@ -86,6 +88,7 @@ const COPY = {
     booking: 'Buchungskalender',
     bookingHint: 'Nächste 7 Tage · Anreisen, Abreisen und aktive Aufenthalte',
     openCalendar: 'Kalender öffnen',
+    prepareArrival: 'Anreise vorbereiten',
     noBookings: 'Keine Buchungsbewegung in den nächsten 7 Tagen.',
     arrivals: 'Anreisen',
     departures: 'Abreisen',
@@ -125,6 +128,21 @@ function addDays(dateKey: string, days: number) {
 function dateLabel(dateKey: string, language: Language) {
   const locale = language === 'es' ? 'es-CL' : language === 'de' ? 'de-DE' : 'en-US'
   return new Intl.DateTimeFormat(locale, { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' }).format(new Date(`${dateKey}T12:00:00Z`))
+}
+
+function arrivalTaskHref(booking: Booking, language: Language) {
+  const sourcePath = `/${language}/bookings/reservations/${booking.id}`
+  const params = new URLSearchParams({
+    new: '1',
+    sourceType: 'hospitality_request',
+    sourceId: booking.id,
+    sourceLabel: `Reserva · ${booking.guest_name || booking.id}`,
+    sourcePath,
+    template: 'hosp-checkin',
+    area: 'hospitalidad',
+    dueDate: booking.check_in,
+  })
+  return `/${language}/tasks?${params.toString()}`
 }
 
 function isDemoTask(task: StaffTask) {
@@ -242,13 +260,20 @@ export function SantiagoOperationsCockpit({ language, navigation }: { language: 
             ) : (
               <div className="divide-y">
                 {bookings.slice(0, 5).map((booking) => (
-                  <Link href={`/${language}/bookings/reservations/${booking.id}`} key={booking.id} className="flex items-center justify-between gap-3 px-4 py-3 text-sm hover:bg-muted/30">
-                    <div className="min-w-0">
+                  <div key={booking.id} className="flex items-center justify-between gap-3 px-4 py-3 text-sm hover:bg-muted/30">
+                    <Link href={`/${language}/bookings/reservations/${booking.id}`} className="min-w-0 flex-1">
                       <p className="truncate font-medium">{booking.guest_name || 'Reserva'}</p>
                       <p className="text-xs text-muted-foreground">{booking.check_in} → {booking.check_out}</p>
+                    </Link>
+                    <div className="flex shrink-0 items-center gap-2">
+                      {booking.check_in >= today && hasNavKey(navigation, 'tasks') && (
+                        <Button asChild size="sm" variant="outline">
+                          <Link href={arrivalTaskHref(booking, language)}><Plus className="mr-1 h-3.5 w-3.5" />{text.prepareArrival}</Link>
+                        </Button>
+                      )}
+                      <Badge variant="outline">{booking.num_guests ?? 0} <Users className="ml-1 h-3 w-3" /></Badge>
                     </div>
-                    <Badge variant="outline">{booking.num_guests ?? 0} <Users className="ml-1 h-3 w-3" /></Badge>
-                  </Link>
+                  </div>
                 ))}
               </div>
             )}
