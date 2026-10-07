@@ -8,13 +8,12 @@ import { FinanceHistoricalAliasReview } from '@/components/finance-historical-al
 import { RaimundoFinanceImport } from '@/components/raimundo-finance-import'
 import { RaimundoReviewInbox } from '@/components/raimundo-review-inbox'
 import { SiiSourceReview } from '@/components/sii-source-review'
-import { PageHeader } from '@/components/page-header'
 import { useLanguage } from '@/lib/hooks/use-language'
 
 const copy = {
-  en: { title: 'Financial approval', description: 'Review one case at a time, confirm quickly and preserve traceability against the canonical Budget.' },
-  es: { title: 'Aprobaciones · Raimundo', description: 'Primero confirma centros nuevos; luego aprueba o rechaza los gastos ya organizados.' },
-  de: { title: 'Finanzielle Freigabe', description: 'Prüfen Sie jeweils einen Fall, bestätigen Sie zügig und erhalten Sie die Nachverfolgbarkeit zum kanonischen Budget.' },
+  en: { more: 'View more' },
+  es: { more: 'Ver más' },
+  de: { more: 'Mehr' },
 } as const
 
 export default function BudgetApprovalsPage() {
@@ -24,15 +23,12 @@ export default function BudgetApprovalsPage() {
     <AppLayout>
       <FinanceApprovalRouteGate>
         <FinanceApprovalWorkspace>
-          <PageHeader title={text.title} description={text.description} />
           <RaimundoReviewInbox />
           <FinanceApprovalQueue />
-          <SiiSourceReview />
-          <details className="mx-4 mt-4 bg-[var(--bs-surface-primary)] md:mx-8">
-            <summary className="cursor-pointer list-none p-5 text-sm text-[var(--bs-text-secondary)]">
-              Herramientas históricas · mapeos y normalización
-            </summary>
+          <details className="mx-4 mb-8 bg-[var(--bs-surface-primary)] md:mx-8">
+            <summary className="cursor-pointer list-none p-4 text-sm text-[var(--bs-text-secondary)]">{text.more}</summary>
             <div className="border-t border-[var(--bs-divider-subtle)] pb-4">
+              <SiiSourceReview />
               <FinanceHistoricalAliasReview />
               <RaimundoFinanceImport />
             </div>
