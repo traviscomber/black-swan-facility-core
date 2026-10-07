@@ -93,3 +93,13 @@ test("reservation creation captures structured arrival transport and pickup coor
   assert.match(transportMigration, /carrier_name/)
   assert.match(transportMigration, /service_number/)
 })
+
+
+test("reservation form keeps secondary guest data behind details on mobile", () => {
+  const primaryForm = addReservationDialog.split("{showDetails &&")[0]
+  assert.doesNotMatch(primaryForm, /copy\.existingGuest/)
+  assert.match(addReservationDialog, /copy\.existingGuest/)
+  assert.match(addReservationDialog, /h-\[100dvh\].*w-screen/)
+  assert.match(addReservationDialog, /sticky bottom-0/)
+  assert.doesNotMatch(addReservationDialog, /copy\.howArrivesHint/)
+})
