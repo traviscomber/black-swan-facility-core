@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react"
 import Link from "next/link"
-import { AlertTriangle, ArrowRight, BedDouble, ClipboardList, DoorOpen, LogOut, RefreshCw, Sparkles } from "lucide-react"
+import { AlertTriangle, ArrowRight, BedDouble, ClipboardList, DoorOpen, LogOut, RefreshCw, Sparkles, Users } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { createClient } from "@/lib/supabase/client"
@@ -24,6 +24,8 @@ type Copy = {
   notReady: string
   requests: string
   housekeeping: string
+  teamWork: string
+  overdueTeamTasks: string
   attention: string
   allGood: string
   roomNotReady: string
@@ -31,6 +33,7 @@ type Copy = {
   openCalendar: string
   openRequests: string
   openHousekeeping: string
+  openPeople: string
   refresh: string
 }
 
@@ -38,55 +41,64 @@ const COPY: Record<"es" | "en" | "de", Copy> = {
   es: {
     eyebrow: "CENTRO OPERATIVO · HOY",
     title: "Lo que Santiago necesita resolver ahora",
-    subtitle: "Llegadas, salidas, preparación y solicitudes del día en una sola vista.",
+    subtitle: "Llegadas, salidas, preparación, solicitudes y trabajo operativo del equipo en una sola vista.",
     arrivals: "Llegadas hoy",
     departures: "Salidas hoy",
     notReady: "Llegadas no listas",
     requests: "Solicitudes abiertas",
     housekeeping: "Limpieza pendiente",
+    teamWork: "Trabajo del equipo",
+    overdueTeamTasks: "tarea vencida",
     attention: "Requiere atención",
-    allGood: "Sin bloqueos críticos para las llegadas de hoy.",
+    allGood: "Sin bloqueos críticos en llegadas ni trabajo operativo del equipo.",
     roomNotReady: "habitación por preparar",
     unassignedRequests: "solicitud sin responsable",
     openCalendar: "Abrir calendario",
     openRequests: "Ver solicitudes",
     openHousekeeping: "Ver limpieza",
+    openPeople: "Abrir Personal",
     refresh: "Actualizar",
   },
   en: {
     eyebrow: "OPERATIONS CENTER · TODAY",
     title: "What Santiago needs to resolve now",
-    subtitle: "Today’s arrivals, departures, readiness and guest requests in one view.",
+    subtitle: "Today’s arrivals, departures, readiness, guest requests and team operations in one view.",
     arrivals: "Today’s arrivals",
     departures: "Today’s departures",
     notReady: "Arrivals not ready",
     requests: "Open requests",
     housekeeping: "Pending housekeeping",
+    teamWork: "Team work",
+    overdueTeamTasks: "overdue task",
     attention: "Needs attention",
-    allGood: "No critical blockers for today’s arrivals.",
+    allGood: "No critical blockers in arrivals or team operations.",
     roomNotReady: "room to prepare",
     unassignedRequests: "request without owner",
     openCalendar: "Open calendar",
     openRequests: "View requests",
     openHousekeeping: "View housekeeping",
+    openPeople: "Open People",
     refresh: "Refresh",
   },
   de: {
     eyebrow: "BETRIEBSZENTRALE · HEUTE",
     title: "Was Santiago jetzt erledigen muss",
-    subtitle: "Heutige Anreisen, Abreisen, Zimmerbereitschaft und Gästeanfragen auf einen Blick.",
+    subtitle: "Heutige Anreisen, Abreisen, Zimmerbereitschaft, Gästeanfragen und Teamarbeit auf einen Blick.",
     arrivals: "Anreisen heute",
     departures: "Abreisen heute",
     notReady: "Anreisen nicht bereit",
     requests: "Offene Anfragen",
     housekeeping: "Offene Reinigung",
+    teamWork: "Teamarbeit",
+    overdueTeamTasks: "überfällige Aufgabe",
     attention: "Handlungsbedarf",
-    allGood: "Keine kritischen Blockaden für heutige Anreisen.",
+    allGood: "Keine kritischen Blockaden bei Anreisen oder Teamarbeit.",
     roomNotReady: "Zimmer vorzubereiten",
     unassignedRequests: "Anfrage ohne Verantwortlichen",
     openCalendar: "Kalender öffnen",
     openRequests: "Anfragen anzeigen",
     openHousekeeping: "Reinigung anzeigen",
+    openPeople: "Personal öffnen",
     refresh: "Aktualisieren",
   },
 }
@@ -118,13 +130,15 @@ export function SantiagoTodayCommandCenter() {
   const [openRequests, setOpenRequests] = useState(0)
   const [unassignedRequests, setUnassignedRequests] = useState(0)
   const [pendingHousekeeping, setPendingHousekeeping] = useState(0)
+  const [teamOpenTasks, setTeamOpenTasks] = useState(0)
+  const [overdueTeamTasks, setOverdueTeamTasks] = useState(0)
 
   const load = useCallback(async () => {
     setLoading(true)
     setError(null)
     const today = chileDate()
 
-    const [arrivalsResult, departuresResult, requestsResult, housekeepingResult] = await Promise.all([
+    const [arrivalsResult, departuresResult, requestsResult, housekeepingResult, teamTasksResult] = await Promise.all([
       supabase
         .from("reservations")
         .select("id,guest_name,room_id,rooms(room_number,operational_status)")
@@ -144,9 +158,14 @@ export function SantiagoTodayCommandCenter() {
         .select("id", { count: "exact", head: true })
         .eq("service_date", today)
         .not("status", "in", "(completed,cancelled)"),
+      supabase
+        .from("tasks")
+        .select("id,title,status,due_date,operational_area,task_category,source_label")
+        .in("status", ["nueva", "en_progreso"])
+        .in("operational_area", ["hospitalidad", "hospitality", "housekeeping", "cocina", "kitchen"]),
     ])
 
-    const firstError = arrivalsResult.error || departuresResult.error || requestsResult.error || housekeepingResult.error
+    const firstError = arrivalsResult.error || departuresResult.error || requestsResult.error || housekeepingResult.error || teamTasksResult.error
     if (firstError) {
       setError(firstError.message)
       setLoading(false)
@@ -159,6 +178,15 @@ export function SantiagoTodayCommandCenter() {
     setOpenRequests(requests.length)
     setUnassignedRequests(requests.filter((request) => !request.assigned_to).length)
     setPendingHousekeeping(housekeepingResult.count ?? 0)
+    const currentTeamTasks = (teamTasksResult.data ?? []).filter((task) => {
+      if (task.title?.trim().startsWith("[DEMO]")) return false
+      if (task.source_label?.startsWith("DEMO")) return false
+      if (task.task_category?.startsWith("asana_import")) return false
+      if (task.source_label?.startsWith("Asana ·")) return false
+      return true
+    })
+    setTeamOpenTasks(currentTeamTasks.length)
+    setOverdueTeamTasks(currentTeamTasks.filter((task) => Boolean(task.due_date && task.due_date < today)).length)
     setLoading(false)
   }, [supabase])
 
@@ -170,6 +198,7 @@ export function SantiagoTodayCommandCenter() {
       .on("postgres_changes", { event: "*", schema: "public", table: "rooms" }, () => void load())
       .on("postgres_changes", { event: "*", schema: "public", table: "hospitality_requests" }, () => void load())
       .on("postgres_changes", { event: "*", schema: "public", table: "housekeeping_tasks" }, () => void load())
+      .on("postgres_changes", { event: "*", schema: "public", table: "tasks" }, () => void load())
       .subscribe()
 
     return () => {
@@ -182,7 +211,7 @@ export function SantiagoTodayCommandCenter() {
     return status !== "ready" && status !== "inspected" && status !== "occupied"
   })
 
-  const attentionCount = notReady.length + unassignedRequests
+  const attentionCount = notReady.length + unassignedRequests + overdueTeamTasks
 
   return (
     <section className="border-b border-border bg-background px-4 py-5 md:px-6">
@@ -200,12 +229,13 @@ export function SantiagoTodayCommandCenter() {
 
         {error && <div className="mt-4 border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">{error}</div>}
 
-        <div className="mt-5 grid gap-2 sm:grid-cols-2 xl:grid-cols-5">
+        <div className="mt-5 grid gap-2 sm:grid-cols-2 xl:grid-cols-6">
           <Metric icon={DoorOpen} label={copy.arrivals} value={arrivals.length} href={localized(locale, "/bookings/activities")} />
           <Metric icon={LogOut} label={copy.departures} value={departures} href={localized(locale, "/bookings/activities")} />
           <Metric icon={AlertTriangle} label={copy.notReady} value={notReady.length} warning={notReady.length > 0} href={localized(locale, "/bookings/housekeeping")} />
           <Metric icon={ClipboardList} label={copy.requests} value={openRequests} warning={unassignedRequests > 0} href={localized(locale, "/bookings/requests")} helper={unassignedRequests > 0 ? `${unassignedRequests} ${copy.unassignedRequests}` : undefined} />
           <Metric icon={Sparkles} label={copy.housekeeping} value={pendingHousekeeping} href={localized(locale, "/bookings/housekeeping")} />
+          <Metric icon={Users} label={copy.teamWork} value={teamOpenTasks} warning={overdueTeamTasks > 0} href={localized(locale, "/employees")} helper={overdueTeamTasks > 0 ? `${overdueTeamTasks} ${copy.overdueTeamTasks}${overdueTeamTasks === 1 ? "" : locale === "es" ? "s" : ""}` : undefined} />
         </div>
 
         <div className={`mt-3 flex flex-col gap-3 border p-4 md:flex-row md:items-center md:justify-between ${attentionCount > 0 ? "border-amber-400/35 bg-amber-400/8" : "border-primary/25 bg-primary/5"}`}>
@@ -218,6 +248,8 @@ export function SantiagoTodayCommandCenter() {
                   {notReady.length > 0 && `${notReady.length} ${copy.roomNotReady}`}
                   {notReady.length > 0 && unassignedRequests > 0 ? " · " : ""}
                   {unassignedRequests > 0 && `${unassignedRequests} ${copy.unassignedRequests}`}
+                  {(notReady.length > 0 || unassignedRequests > 0) && overdueTeamTasks > 0 ? " · " : ""}
+                  {overdueTeamTasks > 0 && `${overdueTeamTasks} ${copy.overdueTeamTasks}${overdueTeamTasks === 1 ? "" : locale === "es" ? "s" : ""}`}
                 </p>
               )}
               {notReady.length > 0 && (
@@ -236,6 +268,7 @@ export function SantiagoTodayCommandCenter() {
             <Button asChild size="sm" variant="outline"><Link href={localized(locale, "/bookings/calendar")}>{copy.openCalendar}<ArrowRight className="ml-2 h-4 w-4" /></Link></Button>
             <Button asChild size="sm" variant="outline"><Link href={localized(locale, "/bookings/requests")}>{copy.openRequests}<ArrowRight className="ml-2 h-4 w-4" /></Link></Button>
             <Button asChild size="sm"><Link href={localized(locale, "/bookings/housekeeping")}>{copy.openHousekeeping}<ArrowRight className="ml-2 h-4 w-4" /></Link></Button>
+            {teamOpenTasks > 0 && <Button asChild size="sm" variant="outline"><Link href={localized(locale, "/employees")}>{copy.openPeople}<ArrowRight className="ml-2 h-4 w-4" /></Link></Button>}
           </div>
         </div>
       </div>
