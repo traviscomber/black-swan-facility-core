@@ -24,7 +24,7 @@ type Profile = {
 
 type AssignmentRow = {
   employee_id: string | null
-  tasks: { id: string; status: string; due_date: string | null } | null
+  tasks: { id: string; status: string; due_date: string | null; operational_area: string | null } | null
 }
 
 type Focus = "hospitality" | "housekeeping" | "kitchen" | "all"
@@ -84,7 +84,7 @@ export function PeopleOperationsDispatch({ employees }: { employees: Employee[] 
         .select("employee_id,canonical_job_title,role_summary,primary_operational_area,secondary_operational_areas,task_categories,core_responsibilities,can_receive_tasks"),
       supabase
         .from("task_assignments")
-        .select("employee_id,tasks!inner(id,status,due_date)")
+        .select("employee_id,tasks!inner(id,status,due_date,operational_area)")
         .not("employee_id", "is", null)
         .in("tasks.status", ["nueva", "en_progreso"]),
     ])
@@ -99,8 +99,17 @@ export function PeopleOperationsDispatch({ employees }: { employees: Employee[] 
     const profileByEmployee = new Map(profiles.map((profile) => [profile.employee_id, profile]))
     const counts = new Map<string, { open: number; dueToday: number }>()
     const today = chileDate()
+    const acceptedAreas = focus === "all"
+      ? null
+      : focus === "hospitality"
+        ? new Set(["hospitalidad", "hospitality"])
+        : focus === "housekeeping"
+          ? new Set(["housekeeping"])
+          : new Set(["cocina", "kitchen"])
     for (const assignment of assignments) {
       if (!assignment.employee_id || !assignment.tasks) continue
+      const taskArea = assignment.tasks.operational_area?.toLowerCase() ?? ""
+      if (acceptedAreas && !acceptedAreas.has(taskArea)) continue
       const current = counts.get(assignment.employee_id) ?? { open: 0, dueToday: 0 }
       current.open += 1
       if (assignment.tasks.due_date === today) current.dueToday += 1
@@ -117,7 +126,7 @@ export function PeopleOperationsDispatch({ employees }: { employees: Employee[] 
           dueToday: count.dueToday,
         }
       })
-  }, [assignments, employees, profiles])
+  }, [assignments, employees, focus, profiles])
 
   const visible = useMemo(
     () => rows.filter((row) => focusMatch(row, focus)).sort((a, b) => a.openTasks - b.openTasks || a.employee.name.localeCompare(b.employee.name, "es")),
