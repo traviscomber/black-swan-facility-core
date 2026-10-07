@@ -254,6 +254,13 @@ export function AddReservationDialog({
           total_amount: formData.total_amount,
           status: formData.status,
           special_requests: formData.special_requests,
+          arrival_transport_mode: formData.arrival_transport_mode,
+          arrival_hub: formData.arrival_hub,
+          arrival_at: formData.arrival_at ? new Date(formData.arrival_at).toISOString() : null,
+          arrival_carrier_name: formData.arrival_carrier_name,
+          arrival_service_number: formData.arrival_service_number,
+          arrival_origin: formData.arrival_origin,
+          arrival_pickup_required: formData.arrival_pickup_required,
         }),
       })
 
@@ -270,30 +277,6 @@ export function AddReservationDialog({
       }
 
       const reservationId = String(result.reservation_id || result.reservation?.id || "")
-      if (reservationId && formData.arrival_transport_mode !== "unknown") {
-        const { error: logisticsError } = await supabase.rpc("save_reservation_logistics_plan_v2", {
-          p_reservation_id: reservationId,
-          p_direction: "arrival",
-          p_transport_mode: formData.arrival_transport_mode,
-          p_hub: formData.arrival_hub,
-          p_anchor_at: formData.arrival_at ? new Date(formData.arrival_at).toISOString() : null,
-          p_margin_minutes: null,
-          p_carrier_name: formData.arrival_carrier_name || null,
-          p_service_number: formData.arrival_service_number || null,
-          p_origin_destination: formData.arrival_origin || null,
-          p_pickup_required: formData.arrival_pickup_required,
-          p_transport_coordinator_id: null,
-          p_boat_duration_minutes: 30,
-          p_road_duration_minutes: 30,
-          p_boat_id: null,
-          p_vehicle_id: null,
-          p_driver_id: null,
-          p_boat_responsible_id: null,
-          p_status: "planned",
-          p_notes: null,
-        })
-        if (logisticsError) throw new Error(`${copy.transportSaveFailed}: ${logisticsError.message}`)
-      }
       setShowConfirmation(false)
       onSuccess()
       onOpenChange(false)
