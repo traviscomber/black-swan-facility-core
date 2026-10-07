@@ -194,7 +194,7 @@ export function PeopleOperationsDispatch({ employees }: { employees: Employee[] 
             <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">Personal · operación diaria</p>
             <CardTitle className="mt-1 text-xl">Asignar trabajo sin perder contexto</CardTitle>
             <p className="mt-1 max-w-3xl text-sm leading-6 text-muted-foreground">
-              Santiago puede ver quién está disponible por función, cuánta carga abierta tiene y asignarle una tarea operativa con trazabilidad.
+              Santiago puede ver quién puede recibir tareas por función, su trabajo abierto y asignarle una tarea operativa con trazabilidad.
             </p>
           </div>
           <Button variant="outline" size="sm" onClick={() => void load()} disabled={loading}>
