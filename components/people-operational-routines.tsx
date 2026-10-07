@@ -310,7 +310,7 @@ export function PeopleOperationalRoutines({ employees, onTasksGenerated }: { emp
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label>Área</Label>
-                <Select value={area} onValueChange={(value: RoutineArea) => { setArea(value); setTemplateId(""); setEmployeeId("") }}>
+                <Select value={area} onValueChange={(value) => { setArea(value as RoutineArea); setTemplateId(""); setEmployeeId("") }}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="hospitalidad">Hospitality</SelectItem>
