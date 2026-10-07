@@ -232,18 +232,18 @@ export function SantiagoOperationsCockpit({ language, navigation }: { language: 
                 <CardTitle className="flex items-center gap-2 text-base"><CalendarDays className="h-4 w-4" />{text.booking}</CardTitle>
                 <p className="mt-1 text-xs text-muted-foreground">{text.bookingHint}</p>
               </div>
-              <Button asChild variant="outline" size="sm"><Link href={`/${language}/bookings/calendar`}>{text.openCalendar}</Link></Button>
+              <Button asChild variant="outline" size="sm" className="w-full sm:w-auto"><Link href={`/${language}/bookings/calendar`}>{text.openCalendar}</Link></Button>
             </div>
           </CardHeader>
           <CardContent className="p-0">
-            <div className="grid grid-cols-2 border-b sm:grid-cols-4 xl:grid-cols-7">
+            <div className="flex snap-x snap-mandatory overflow-x-auto border-b sm:grid sm:grid-cols-4 sm:overflow-visible xl:grid-cols-7">
               {days.map((day) => {
                 const arrivals = bookings.filter((booking) => booking.check_in === day).length
                 const departures = bookings.filter((booking) => booking.check_out === day).length
                 const stays = bookings.filter((booking) => booking.check_in <= day && booking.check_out > day).length
                 const isToday = day === today
                 return (
-                  <Link href={`/${language}/bookings/calendar`} key={day} className={`min-h-28 border-r border-t p-3 transition-colors hover:bg-muted/40 ${isToday ? 'bg-primary/5' : ''}`}>
+                  <Link href={`/${language}/bookings/calendar`} key={day} className={`min-h-24 min-w-[132px] snap-start border-r p-3 transition-colors hover:bg-muted/40 sm:min-h-28 sm:min-w-0 sm:border-t ${isToday ? 'bg-primary/5' : ''}`}>
                     <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{dateLabel(day, language)}</p>
                     <p className="mt-3 text-2xl font-semibold tabular-nums">{stays}</p>
                     <p className="text-[11px] text-muted-foreground">{text.stays}</p>
@@ -260,14 +260,14 @@ export function SantiagoOperationsCockpit({ language, navigation }: { language: 
             ) : (
               <div className="divide-y">
                 {bookings.slice(0, 5).map((booking) => (
-                  <div key={booking.id} className="flex items-center justify-between gap-3 px-4 py-3 text-sm hover:bg-muted/30">
+                  <div key={booking.id} className="flex flex-col gap-3 px-4 py-4 text-sm hover:bg-muted/30 sm:flex-row sm:items-center sm:justify-between">
                     <Link href={`/${language}/bookings/reservations/${booking.id}`} className="min-w-0 flex-1">
                       <p className="truncate font-medium">{booking.guest_name || 'Reserva'}</p>
                       <p className="text-xs text-muted-foreground">{booking.check_in} → {booking.check_out}</p>
                     </Link>
-                    <div className="flex shrink-0 items-center gap-2">
+                    <div className="flex w-full items-center gap-2 sm:w-auto sm:shrink-0">
                       {booking.check_in >= today && hasNavKey(navigation, 'tasks') && (
-                        <Button asChild size="sm" variant="outline">
+                        <Button asChild size="sm" className="h-11 flex-1 sm:h-9 sm:flex-none">
                           <Link href={arrivalTaskHref(booking, language)}><Plus className="mr-1 h-3.5 w-3.5" />{text.prepareArrival}</Link>
                         </Button>
                       )}
@@ -287,9 +287,9 @@ export function SantiagoOperationsCockpit({ language, navigation }: { language: 
                 <CardTitle className="flex items-center gap-2 text-base"><CheckCircle2 className="h-4 w-4" />{text.staff}</CardTitle>
                 <p className="mt-1 text-xs text-muted-foreground">{text.staffHint}</p>
               </div>
-              <div className="flex gap-2">
-                <Button asChild size="sm"><Link href={`/${language}/tasks?new=1`}><Plus className="mr-1 h-3.5 w-3.5" />{text.newTask}</Link></Button>
-                <Button asChild variant="outline" size="sm"><Link href={`/${language}/tasks`}>{text.openTasks}</Link></Button>
+              <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto">
+                <Button asChild size="sm" className="h-11 sm:h-9"><Link href={`/${language}/tasks?new=1`}><Plus className="mr-1 h-3.5 w-3.5" />{text.newTask}</Link></Button>
+                <Button asChild variant="outline" size="sm" className="h-11 sm:h-9"><Link href={`/${language}/tasks`}>{text.openTasks}</Link></Button>
               </div>
             </div>
           </CardHeader>
@@ -303,7 +303,7 @@ export function SantiagoOperationsCockpit({ language, navigation }: { language: 
                   const overdue = Boolean(task.due_date && task.due_date < today)
                   const dueToday = task.due_date === today
                   return (
-                    <Link href={`/${language}/tasks?selected=${task.id}`} key={task.id} className="block px-4 py-3 hover:bg-muted/30">
+                    <Link href={`/${language}/tasks?selected=${task.id}`} key={task.id} className="block min-h-16 px-4 py-4 hover:bg-muted/30">
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
                           <p className="truncate text-sm font-medium">{task.title}</p>
