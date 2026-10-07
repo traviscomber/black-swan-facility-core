@@ -224,7 +224,7 @@ export function AddTaskDialog({ open, onOpenChange, onTaskCreated, prefill, defa
 
   return (
     <Dialog open={open} onOpenChange={(next) => { onOpenChange(next); if (!next) resetForm() }}>
-      <DialogContent className="max-h-[94vh] overflow-y-auto sm:max-w-2xl">
+      <DialogContent className="h-[100dvh] max-h-[100dvh] w-screen max-w-none overflow-y-auto rounded-none p-4 sm:h-auto sm:max-h-[94vh] sm:w-full sm:max-w-2xl sm:rounded-lg sm:p-6">
         <DialogHeader>
           <DialogTitle>Nueva tarea operativa</DialogTitle>
           <DialogDescription>Asigna trabajo a trabajadores o voluntarios en ganadería, hospitalidad y las demás áreas de Black Swan.</DialogDescription>
@@ -233,23 +233,33 @@ export function AddTaskDialog({ open, onOpenChange, onTaskCreated, prefill, defa
           {error && <div className="rounded-md border border-destructive/40 bg-destructive/5 p-3 text-sm text-destructive">{error}</div>}
           {prefill && <div className="rounded-lg border border-primary/30 bg-primary/5 p-4 text-sm"><p className="font-medium">Origen: {prefill.sourceLabel}</p><p className="mt-1 text-muted-foreground">La tarea quedará vinculada al registro original para mantener trazabilidad.</p><Button asChild variant="link" className="mt-1 h-auto p-0"><Link href={prefill.sourcePath}><ExternalLink className="mr-1 h-3.5 w-3.5" />Abrir origen</Link></Button></div>}
 
-          <div className="rounded-lg border bg-muted/20 p-4">
-            <p className="mb-3 text-sm font-medium">Plantilla de trabajo habitual</p>
+          <details className="rounded-lg border bg-muted/20 p-4" open={!prefill}>
+            <summary className="cursor-pointer text-sm font-medium">Plantilla y área</summary>
+            <div className="mt-3">
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="space-y-2"><Label>Área</Label><Select value={area || "all"} onValueChange={(value) => { setArea(value === "all" ? "" : value as OperationalArea); setTemplateId("") }}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">Todas las áreas</SelectItem>{Object.entries(operationalAreaLabels).map(([value, label]) => <SelectItem key={value} value={value}>{label}</SelectItem>)}</SelectContent></Select></div>
               <div className="space-y-2"><Label>Trabajo sugerido</Label><Select value={templateId || "custom"} onValueChange={(value) => value === "custom" ? setTemplateId("") : applyTemplate(value)}><SelectTrigger><SelectValue placeholder="Seleccionar plantilla" /></SelectTrigger><SelectContent><SelectItem value="custom">Tarea personalizada</SelectItem>{templatesForArea.map((template) => <SelectItem key={template.id} value={template.id}>{template.title}</SelectItem>)}</SelectContent></Select></div>
             </div>
-          </div>
+            </div>
+          </details>
 
           <div className="space-y-2"><Label htmlFor="task-title">Trabajo a realizar *</Label><Input id="task-title" value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Ej. Revisar bebederos del potrero norte" /></div>
-          <div className="space-y-2"><Label htmlFor="task-description">Indicaciones</Label><Textarea id="task-description" value={description} onChange={(event) => setDescription(event.target.value)} placeholder="Resultado esperado, materiales y observaciones" rows={4} /></div>
-          <div className="grid gap-4 sm:grid-cols-3">
+          <div className="space-y-2"><Label htmlFor="task-description">Indicaciones</Label><Textarea id="task-description" value={description} onChange={(event) => setDescription(event.target.value)} placeholder="Resultado esperado, materiales y observaciones" rows={3} /></div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-2"><Label htmlFor="task-date">Fecha objetivo</Label><Input id="task-date" type="date" className="h-11 sm:h-10" value={dueDate} onChange={(event) => setDueDate(event.target.value)} /></div>
+            <div className="space-y-2"><Label>Prioridad</Label><Select value={priority} onValueChange={(value: Priority) => setPriority(value)}><SelectTrigger className="h-11 sm:h-10"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="baja">Baja</SelectItem><SelectItem value="media">Media</SelectItem><SelectItem value="alta">Alta</SelectItem><SelectItem value="urgente">Urgente</SelectItem></SelectContent></Select></div>
+          </div>
+          <div className="grid gap-4 lg:grid-cols-2"><AssigneeList title="Trabajadores" empty="No hay trabajadores activos." items={employees.map((item) => ({ id: item.id, name: item.name, subtitle: item.role }))} selected={employeeIds} onToggle={(id) => toggle(employeeIds, id, setEmployeeIds)} /><AssigneeList title="Voluntarios" empty="No hay voluntarios activos." items={volunteers.map((item) => ({ id: item.id, name: item.name, subtitle: item.volunteer_role }))} selected={volunteerIds} onToggle={(id) => toggle(volunteerIds, id, setVolunteerIds)} /></div>
+          <p className="text-xs text-muted-foreground">{employeeIds.length} trabajador{employeeIds.length === 1 ? "" : "es"} y {volunteerIds.length} voluntario{volunteerIds.length === 1 ? "" : "s"} seleccionados.</p>
+
+          <details className="rounded-lg border p-4">
+            <summary className="cursor-pointer text-sm font-medium">Más opciones</summary>
+            <div className="mt-4 space-y-4">
+          <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2"><Label>Categoría</Label><Input value={category} onChange={(event) => setCategory(event.target.value)} placeholder="Ej. Alimentación" /></div>
-            <div className="space-y-2"><Label>Prioridad</Label><Select value={priority} onValueChange={(value: Priority) => setPriority(value)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="baja">Baja</SelectItem><SelectItem value="media">Media</SelectItem><SelectItem value="alta">Alta</SelectItem><SelectItem value="urgente">Urgente</SelectItem></SelectContent></Select></div>
             <div className="space-y-2"><Label>Duración estimada</Label><Input type="number" min="5" max="1440" step="5" value={estimatedMinutes} onChange={(event) => setEstimatedMinutes(event.target.value)} placeholder="Minutos" /></div>
           </div>
-          <div className="grid gap-4 sm:grid-cols-3">
-            <div className="space-y-2"><Label htmlFor="task-date">Fecha objetivo</Label><Input id="task-date" type="date" value={dueDate} onChange={(event) => setDueDate(event.target.value)} /></div>
+          <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2"><Label>Lugar</Label><Select value={locationId || "none"} onValueChange={(value) => setLocationId(value === "none" ? "" : value)}><SelectTrigger><SelectValue placeholder="Sin ubicación específica" /></SelectTrigger><SelectContent><SelectItem value="none">Sin ubicación específica</SelectItem>{locations.map((location) => <SelectItem key={location.id} value={location.id}>{location.name}</SelectItem>)}</SelectContent></Select></div>
             <div className="space-y-2"><Label htmlFor="task-cost">Costo estimado (CLP)</Label><Input id="task-cost" type="number" min="0" step="1000" value={estimatedCost} onChange={(event) => setEstimatedCost(event.target.value)} placeholder="Opcional" /></div>
           </div>
@@ -259,15 +269,15 @@ export function AddTaskDialog({ open, onOpenChange, onTaskCreated, prefill, defa
             {forcedReviewReason && <p className="text-xs text-amber-500">Para revisión · {forcedReviewReason}</p>}
           </div>
           <div className="rounded-lg border p-4"><label className="flex items-start gap-3"><Checkbox checked={animalHandling} onCheckedChange={(checked) => setAnimalHandling(Boolean(checked))} /><span><span className="block text-sm font-medium">Incluye manejo o cercanía con animales</span><span className="block text-xs text-muted-foreground">Activa advertencias y exige instrucciones de seguridad claras.</span></span></label>{(animalHandling || safetyNotes) && <div className="mt-3 space-y-2"><Label>Indicaciones de seguridad</Label><Textarea value={safetyNotes} onChange={(event) => setSafetyNotes(event.target.value)} rows={3} placeholder="Riesgos, supervisión y acciones no autorizadas" /></div>}</div>
-          <div className="grid gap-4 lg:grid-cols-2"><AssigneeList title="Trabajadores" empty="No hay trabajadores activos." items={employees.map((item) => ({ id: item.id, name: item.name, subtitle: item.role }))} selected={employeeIds} onToggle={(id) => toggle(employeeIds, id, setEmployeeIds)} /><AssigneeList title="Voluntarios" empty="No hay voluntarios activos." items={volunteers.map((item) => ({ id: item.id, name: item.name, subtitle: item.volunteer_role }))} selected={volunteerIds} onToggle={(id) => toggle(volunteerIds, id, setVolunteerIds)} /></div>
-          <p className="text-xs text-muted-foreground">{employeeIds.length} trabajador{employeeIds.length === 1 ? "" : "es"} y {volunteerIds.length} voluntario{volunteerIds.length === 1 ? "" : "s"} seleccionados.</p>
+            </div>
+          </details>
         </div>
-        <DialogFooter><Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button><Button onClick={handleSubmit} disabled={isSubmitting}>{isSubmitting ? "Creando…" : "Crear tarea"}</Button></DialogFooter>
+        <DialogFooter className="sticky bottom-0 -mx-4 mt-2 grid grid-cols-2 gap-2 border-t bg-background p-4 sm:static sm:mx-0 sm:flex sm:border-0 sm:bg-transparent sm:p-0"><Button variant="outline" className="h-12 sm:h-10" onClick={() => onOpenChange(false)}>Cancelar</Button><Button className="h-12 sm:h-10" onClick={handleSubmit} disabled={isSubmitting}>{isSubmitting ? "Creando…" : "Crear tarea"}</Button></DialogFooter>
       </DialogContent>
     </Dialog>
   )
 }
 
 function AssigneeList({ title, empty, items, selected, onToggle }: { title: string; empty: string; items: Array<{ id: string; name: string; subtitle?: string | null }>; selected: string[]; onToggle: (id: string) => void }) {
-  return <div className="space-y-2"><Label>{title}</Label><div className="max-h-56 space-y-1 overflow-y-auto rounded-md border p-2">{items.length === 0 ? <p className="p-2 text-sm text-muted-foreground">{empty}</p> : items.map((item) => <label key={item.id} className="flex cursor-pointer items-center gap-3 rounded-md p-2 hover:bg-muted"><Checkbox checked={selected.includes(item.id)} onCheckedChange={() => onToggle(item.id)} /><span className="min-w-0"><span className="block text-sm font-medium">{item.name.trim()}</span>{item.subtitle && <span className="block truncate text-xs text-muted-foreground">{item.subtitle.trim()}</span>}</span></label>)}</div></div>
+  return <div className="space-y-2"><Label>{title}</Label><div className="max-h-56 space-y-1 overflow-y-auto rounded-md border p-2">{items.length === 0 ? <p className="p-2 text-sm text-muted-foreground">{empty}</p> : items.map((item) => <label key={item.id} className="flex min-h-12 cursor-pointer items-center gap-3 rounded-md p-3 hover:bg-muted"><Checkbox checked={selected.includes(item.id)} onCheckedChange={() => onToggle(item.id)} /><span className="min-w-0"><span className="block text-sm font-medium">{item.name.trim()}</span>{item.subtitle && <span className="block truncate text-xs text-muted-foreground">{item.subtitle.trim()}</span>}</span></label>)}</div></div>
 }
