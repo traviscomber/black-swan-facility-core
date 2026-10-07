@@ -108,6 +108,13 @@ export function AddReservationDialog({
     total_amount: 0,
     status: "confirmed",
     special_requests: "",
+    arrival_transport_mode: "unknown",
+    arrival_carrier_name: "",
+    arrival_service_number: "",
+    arrival_origin: "",
+    arrival_hub: "unknown",
+    arrival_at: "",
+    arrival_pickup_required: false,
   })
 
   const supabase = createBrowserClient()
@@ -263,6 +270,30 @@ export function AddReservationDialog({
       }
 
       const reservationId = String(result.reservation_id || result.reservation?.id || "")
+      if (reservationId && formData.arrival_transport_mode !== "unknown") {
+        const { error: logisticsError } = await supabase.rpc("save_reservation_logistics_plan_v2", {
+          p_reservation_id: reservationId,
+          p_direction: "arrival",
+          p_transport_mode: formData.arrival_transport_mode,
+          p_hub: formData.arrival_hub,
+          p_anchor_at: formData.arrival_at ? new Date(formData.arrival_at).toISOString() : null,
+          p_margin_minutes: null,
+          p_carrier_name: formData.arrival_carrier_name || null,
+          p_service_number: formData.arrival_service_number || null,
+          p_origin_destination: formData.arrival_origin || null,
+          p_pickup_required: formData.arrival_pickup_required,
+          p_transport_coordinator_id: null,
+          p_boat_duration_minutes: 30,
+          p_road_duration_minutes: 30,
+          p_boat_id: null,
+          p_vehicle_id: null,
+          p_driver_id: null,
+          p_boat_responsible_id: null,
+          p_status: "planned",
+          p_notes: null,
+        })
+        if (logisticsError) throw new Error(`${copy.transportSaveFailed}: ${logisticsError.message}`)
+      }
       setShowConfirmation(false)
       onSuccess()
       onOpenChange(false)
@@ -289,6 +320,13 @@ export function AddReservationDialog({
       total_amount: 0,
       status: "confirmed",
       special_requests: "",
+      arrival_transport_mode: "unknown",
+      arrival_carrier_name: "",
+      arrival_service_number: "",
+      arrival_origin: "",
+      arrival_hub: "unknown",
+      arrival_at: "",
+      arrival_pickup_required: false,
     })
     setShowDetails(false)
     setAmountTouched(false)
@@ -413,6 +451,70 @@ export function AddReservationDialog({
                 )}
 
                 {!formData.bed_id && <div className="sm:col-span-2 text-sm italic text-muted-foreground">{copy.selectBedHint}</div>}
+
+                <div className="space-y-3 sm:col-span-2 border-t pt-3">
+                  <div>
+                    <Label>{copy.howArrives}</Label>
+                    <p className="mt-1 text-xs text-muted-foreground">{copy.howArrivesHint}</p>
+                  </div>
+                  <Select value={formData.arrival_transport_mode} onValueChange={(value) => setFormData({
+                    ...formData,
+                    arrival_transport_mode: value,
+                    arrival_hub: value === "flight" ? "pichoy" : value === "bus" ? "valdivia_bus_terminal" : value === "private_vehicle" ? "direct" : formData.arrival_hub,
+                  })}>
+                    <SelectTrigger className="h-11 rounded-none"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="unknown">{copy.transportUnknown}</SelectItem>
+                      <SelectItem value="flight">{copy.flight}</SelectItem>
+                      <SelectItem value="bus">{copy.bus}</SelectItem>
+                      <SelectItem value="private_vehicle">{copy.privateVehicle}</SelectItem>
+                      <SelectItem value="other">{copy.otherTransport}</SelectItem>
+                    </SelectContent>
+                  </Select>
+
+                  {formData.arrival_transport_mode !== "unknown" && (
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      {(formData.arrival_transport_mode === "flight" || formData.arrival_transport_mode === "bus") && <>
+                        <div className="space-y-1.5">
+                          <Label htmlFor="arrival_carrier">{formData.arrival_transport_mode === "flight" ? copy.airline : copy.busCompany}</Label>
+                          <Input id="arrival_carrier" className="h-11 rounded-none" value={formData.arrival_carrier_name} onChange={(e) => setFormData({ ...formData, arrival_carrier_name: e.target.value })} />
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label htmlFor="arrival_service">{formData.arrival_transport_mode === "flight" ? copy.flightNumber : copy.serviceNumber}</Label>
+                          <Input id="arrival_service" className="h-11 rounded-none uppercase" value={formData.arrival_service_number} onChange={(e) => setFormData({ ...formData, arrival_service_number: e.target.value.toUpperCase() })} />
+                        </div>
+                      </>}
+                      <div className="space-y-1.5">
+                        <Label htmlFor="arrival_origin">{copy.origin}</Label>
+                        <Input id="arrival_origin" className="h-11 rounded-none" value={formData.arrival_origin} onChange={(e) => setFormData({ ...formData, arrival_origin: e.target.value })} placeholder={copy.originPlaceholder} />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label htmlFor="arrival_at">{copy.arrivalDateTime}</Label>
+                        <Input id="arrival_at" className="h-11 rounded-none" type="datetime-local" value={formData.arrival_at} onChange={(e) => setFormData({ ...formData, arrival_at: e.target.value })} />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label>{copy.arrivalPoint}</Label>
+                        <Select value={formData.arrival_hub} onValueChange={(value) => setFormData({ ...formData, arrival_hub: value })}>
+                          <SelectTrigger className="h-11 rounded-none"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="pichoy">{copy.pichoy}</SelectItem>
+                            <SelectItem value="valdivia_bus_terminal">{copy.valdiviaBusTerminal}</SelectItem>
+                            <SelectItem value="direct">{copy.directArrival}</SelectItem>
+                            <SelectItem value="other">{copy.otherArrivalPoint}</SelectItem>
+                            <SelectItem value="unknown">{copy.transportUnknown}</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <label className="flex min-h-11 items-center gap-3 border p-3 sm:mt-6">
+                        <input type="checkbox" checked={formData.arrival_pickup_required} onChange={(e) => setFormData({ ...formData, arrival_pickup_required: e.target.checked })} />
+                        <span className="text-sm">
+                          <span className="block font-medium">{copy.pickupRequired}</span>
+                          <span className="block text-xs text-muted-foreground">{copy.pickupCoordinator}</span>
+                        </span>
+                      </label>
+                    </div>
+                  )}
+                </div>
 
                 <div className="space-y-1.5 sm:col-span-2 border-t pt-3">
                   <Label htmlFor="total_amount">{copy.totalAmount}</Label>
