@@ -27,6 +27,7 @@ type PaymentRow = {
   paid_at: string | null
   payment_method: string | null
   payment_reference: string | null
+  reconciliation_status: 'unknown' | 'unpaid' | 'paid_observed' | 'reconciled' | 'exception'
   cost_center_escalation_status: 'none' | 'pending_santiago' | 'resolved'
   cost_center_escalation_note: string | null
   cost_center_escalated_at: string | null
@@ -78,7 +79,7 @@ export function SantiagoPaymentQueue() {
 
     const [documents, divisionResult, categoryResult, sourceResult] = await Promise.all([
       supabase.from('finance_documents')
-        .select('id,supplier_name,document_number,document_date,due_date,total_amount,currency,division_id,category_id,cost_center_id,operational_label,approved_at,payment_status,payment_decision_notes,payment_decided_at,paid_at,payment_method,payment_reference,cost_center_escalation_status,cost_center_escalation_note,cost_center_escalated_at')
+        .select('id,supplier_name,document_number,document_date,due_date,total_amount,currency,division_id,category_id,cost_center_id,operational_label,approved_at,payment_status,payment_decision_notes,payment_decided_at,paid_at,payment_method,payment_reference,reconciliation_status,cost_center_escalation_status,cost_center_escalation_note,cost_center_escalated_at')
         .or('payment_status.neq.not_ready,cost_center_escalation_status.eq.pending_santiago')
         .order('approved_at', { ascending: false }),
       supabase.from('budget_divisions').select('id,name'),
@@ -105,8 +106,10 @@ export function SantiagoPaymentQueue() {
   }, [load, supabase])
 
   const escalations = rows.filter((row) => row.cost_center_escalation_status === 'pending_santiago')
-  const filtered = rows.filter((row) => row.payment_status === status)
-  const counts = rows.reduce<Record<string, number>>((acc, row) => {
+  const observedPayments = rows.filter((row) => row.reconciliation_status === 'paid_observed' || row.reconciliation_status === 'reconciled')
+  const paymentRows = rows.filter((row) => row.reconciliation_status !== 'paid_observed' && row.reconciliation_status !== 'reconciled')
+  const filtered = paymentRows.filter((row) => row.payment_status === status)
+  const counts = paymentRows.reduce<Record<string, number>>((acc, row) => {
     acc[row.payment_status] = (acc[row.payment_status] ?? 0) + 1
     return acc
   }, {})
@@ -195,12 +198,13 @@ export function SantiagoPaymentQueue() {
             <Button variant="outline" onClick={() => void load()}><RefreshCw className="mr-2 h-4 w-4" />Actualizar</Button>
           </div>
         </div>
-        <div className="mt-5 grid gap-3 sm:grid-cols-5">
+        <div className="mt-5 grid gap-3 sm:grid-cols-6">
           <Metric label="Centros por resolver" value={escalations.length} />
           <Metric label="Por autorizar" value={counts.pending_santiago ?? 0} />
           <Metric label="Listos para pagar" value={counts.authorized ?? 0} />
           <Metric label="Rechazados" value={counts.rejected ?? 0} />
           <Metric label="Pagados" value={counts.paid ?? 0} />
+          <Metric label="Pago observado" value={observedPayments.length} />
         </div>
       </section>
 
