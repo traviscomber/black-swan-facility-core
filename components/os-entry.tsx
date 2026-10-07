@@ -33,12 +33,14 @@ export function OsEntry() {
 
   return (
     <div>
-      <div className="border-b border-border/50 px-4 pt-4 md:px-6">
-        <div className="flex w-fit items-center rounded-lg border bg-muted/20 p-1">
-          <Link href={osHref} className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${!panorama ? 'bg-background shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>{text.today}</Link>
-          <Link href={`${osHref}?view=panorama`} className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${panorama ? 'bg-background shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>{text.panorama}</Link>
+      {persona !== 'santiago' && (
+        <div className="border-b border-border/50 px-4 pt-4 md:px-6">
+          <div className="flex w-fit items-center rounded-lg border bg-muted/20 p-1">
+            <Link href={osHref} className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${!panorama ? 'bg-background shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>{text.today}</Link>
+            <Link href={`${osHref}?view=panorama`} className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${panorama ? 'bg-background shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>{text.panorama}</Link>
+          </div>
         </div>
-      </div>
+      )}
       {showDecisionCockpit && <OsDecisionCockpit />}
       {panorama ? <BigPictureHome /> : dailyHome}
     </div>
