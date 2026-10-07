@@ -12,6 +12,7 @@ import { rankAreasForPersona, type OsPersonaKey } from '@/lib/os/personas'
 import { useOsPersona } from '@/lib/hooks/use-os-persona'
 import { useLanguage } from '@/lib/hooks/use-language'
 import { loadAuthorizedNavigation, type AuthorizedNavigation as Navigation, type AuthorizedNavItem as NavItem } from '@/lib/os/authorized-navigation-client'
+import { SantiagoOperationsCockpit } from '@/components/santiago-operations-cockpit'
 
 type Signal = {
   key: string
@@ -27,21 +28,21 @@ type Language = 'en' | 'es' | 'de'
 const uiCopy = {
   en: {
     today: 'Today', areaDescription: 'Authorized workspaces in this OS area.', homeDescription: 'What you need to know, decide, or execute now. Full depth remains available in each workspace.',
-    attentionTitle: 'Requires attention', attentionDescription: 'Exceptions and decisions, ordered for your role.', updating: 'Updating operations…', noCritical: 'No critical pending items visible for your access.',
+    attentionTitle: 'Requires attention', attentionDescription: 'Exceptions and decisions, ordered for your role.', systemAlertsTitle: 'System alerts', systemAlertsDescription: 'Active exceptions across every authorized module.', updating: 'Updating operations…', noCritical: 'No critical pending items visible for your access.',
     todayTitle: "Today's operation", todayDescription: 'Daily pulse in Santiago time.', quickTitle: 'Quick actions', quickDescription: 'Shortcuts only to workspaces already authorized by the server.', newTask: 'New task',
     workspaces: 'Workspaces', workspacesDescription: 'The complete system, ordered for your work context.', noWorkspaces: 'No authorized workspaces are available in this area.', open: 'Open', openWorkspace: 'Open workspace',
     areaLabels: { today: 'Today', operations: 'Operations', people: 'People', 'places-assets': 'Places & Assets', finance: 'Finance', network: 'Network' },
   },
   es: {
     today: 'Hoy', areaDescription: 'Workspaces autorizados en esta área del OS.', homeDescription: 'Lo que necesitas saber, decidir o ejecutar ahora. La profundidad completa sigue disponible en cada workspace.',
-    attentionTitle: 'Requiere atención', attentionDescription: 'Excepciones y decisiones, ordenadas para tu función.', updating: 'Actualizando operación…', noCritical: 'Sin pendientes críticos visibles para tu acceso.',
+    attentionTitle: 'Requiere atención', attentionDescription: 'Excepciones y decisiones, ordenadas para tu función.', systemAlertsTitle: 'Alertas del sistema', systemAlertsDescription: 'Excepciones activas de todos los módulos autorizados.', updating: 'Actualizando operación…', noCritical: 'Sin pendientes críticos visibles para tu acceso.',
     todayTitle: 'Operación de hoy', todayDescription: 'Pulso del día en horario de Santiago.', quickTitle: 'Acciones rápidas', quickDescription: 'Atajos sólo a workspaces que el servidor ya autorizó.', newTask: 'Nueva tarea',
     workspaces: 'Workspaces', workspacesDescription: 'El sistema completo, ordenado por tu contexto de trabajo.', noWorkspaces: 'No hay workspaces autorizados disponibles en esta área.', open: 'Abrir', openWorkspace: 'Abrir workspace',
     areaLabels: { today: 'Hoy', operations: 'Operación', people: 'Personas', 'places-assets': 'Lugares y activos', finance: 'Finanzas', network: 'Red' },
   },
   de: {
     today: 'Heute', areaDescription: 'Autorisierte Arbeitsbereiche in diesem OS-Bereich.', homeDescription: 'Was jetzt bekannt, entschieden oder ausgeführt werden muss. Die vollständige Tiefe bleibt in jedem Arbeitsbereich verfügbar.',
-    attentionTitle: 'Erfordert Aufmerksamkeit', attentionDescription: 'Ausnahmen und Entscheidungen, nach deiner Rolle geordnet.', updating: 'Betrieb wird aktualisiert…', noCritical: 'Keine kritischen offenen Punkte für deinen Zugriff sichtbar.',
+    attentionTitle: 'Erfordert Aufmerksamkeit', attentionDescription: 'Ausnahmen und Entscheidungen, nach deiner Rolle geordnet.', systemAlertsTitle: 'Systemwarnungen', systemAlertsDescription: 'Aktive Ausnahmen aus allen autorisierten Modulen.', updating: 'Betrieb wird aktualisiert…', noCritical: 'Keine kritischen offenen Punkte für deinen Zugriff sichtbar.',
     todayTitle: 'Heutiger Betrieb', todayDescription: 'Tagesstatus in Santiago-Zeit.', quickTitle: 'Schnellaktionen', quickDescription: 'Verknüpfungen nur zu bereits serverseitig autorisierten Arbeitsbereichen.', newTask: 'Neue Aufgabe',
     workspaces: 'Arbeitsbereiche', workspacesDescription: 'Das vollständige System, nach deinem Arbeitskontext geordnet.', noWorkspaces: 'In diesem Bereich sind keine autorisierten Arbeitsbereiche verfügbar.', open: 'Öffnen', openWorkspace: 'Arbeitsbereich öffnen',
     areaLabels: { today: 'Heute', operations: 'Betrieb', people: 'Personen', 'places-assets': 'Orte & Anlagen', finance: 'Finanzen', network: 'Netzwerk' },
@@ -278,8 +279,9 @@ export function OsHome() {
       {error && <div className="rounded-md border border-destructive/40 bg-destructive/5 p-3 text-sm text-destructive">{error}</div>}
 
       {!selectedArea && !error && navigation && <>
+        {persona === 'santiago' && <SantiagoOperationsCockpit language={lang} navigation={navigation} />}
         <section className="space-y-3">
-          <div><h2 className="text-lg font-semibold">{text.attentionTitle}</h2><p className="text-sm text-muted-foreground">{text.attentionDescription}</p></div>
+          <div><h2 className="text-lg font-semibold">{persona === 'santiago' ? text.systemAlertsTitle : text.attentionTitle}</h2><p className="text-sm text-muted-foreground">{persona === 'santiago' ? text.systemAlertsDescription : text.attentionDescription}</p></div>
           {signalsLoading ? (
             <div className="rounded border border-dashed p-5 text-sm text-muted-foreground">{text.updating}</div>
           ) : attentionSignals.length === 0 ? (
