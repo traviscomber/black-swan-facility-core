@@ -2,6 +2,7 @@ export type OperationalArea =
   | "ganaderia"
   | "hospitalidad"
   | "housekeeping"
+  | "cocina"
   | "mantenimiento"
   | "huerto_vinedo"
   | "infraestructura"
@@ -26,6 +27,7 @@ export const operationalAreaLabels: Record<OperationalArea, string> = {
   ganaderia: "Ganadería y animales",
   hospitalidad: "Hospitalidad y huéspedes",
   housekeeping: "Housekeeping y habitaciones",
+  cocina: "Cocina y servicio",
   mantenimiento: "Mantenimiento",
   huerto_vinedo: "Huerto y viñedo",
   infraestructura: "Infraestructura y exteriores",
@@ -51,6 +53,15 @@ export const operationalTaskTemplates: OperationalTaskTemplate[] = [
   { id: "hk-refresh", area: "housekeeping", category: "Habitaciones", title: "Repaso diario de habitación ocupada", description: "Ordenar, retirar residuos, reponer insumos autorizados y reportar necesidades de mantenimiento sin mover pertenencias personales.", estimatedMinutes: 30, priority: "media", suitableForVolunteers: false },
   { id: "hk-laundry", area: "housekeeping", category: "Lavandería", title: "Clasificar y procesar ropa de cama", description: "Separar textiles, revisar manchas o daños, lavar según tipo, secar, doblar y registrar bajas necesarias.", estimatedMinutes: 90, priority: "media", suitableForVolunteers: true },
   { id: "hk-inventory", area: "housekeeping", category: "Insumos", title: "Revisar stock de housekeeping", description: "Contar ropa de cama, toallas, artículos de aseo y consumibles; informar faltantes o diferencias.", estimatedMinutes: 45, priority: "media", suitableForVolunteers: true },
+  { id: "hk-common", area: "housekeeping", category: "Áreas comunes", title: "Limpiar y ordenar áreas comunes", description: "Limpiar superficies, retirar residuos, ordenar mobiliario y reponer insumos básicos en espacios comunes de uso de huéspedes y equipo.", estimatedMinutes: 60, priority: "media", suitableForVolunteers: true },
+
+  { id: "kitchen-breakfast", area: "cocina", category: "Servicio", title: "Preparar desayuno", description: "Preparar mise en place, alimentos, vajilla y estación de servicio según número de huéspedes y requerimientos informados.", estimatedMinutes: 90, priority: "alta", suitableForVolunteers: false },
+  { id: "kitchen-lunch", area: "cocina", category: "Servicio", title: "Preparar almuerzo", description: "Preparar y servir almuerzo según planificación del día, restricciones alimentarias registradas y número de comensales.", estimatedMinutes: 120, priority: "alta", suitableForVolunteers: false },
+  { id: "kitchen-dinner", area: "cocina", category: "Servicio", title: "Preparar cena", description: "Preparar y servir cena, dejando cocina y superficies de trabajo sanitizadas al cierre.", estimatedMinutes: 120, priority: "alta", suitableForVolunteers: false },
+  { id: "kitchen-mise", area: "cocina", category: "Preparación", title: "Mise en place del día", description: "Revisar menú, porcionar ingredientes, preparar bases y dejar estaciones listas para los servicios programados.", estimatedMinutes: 60, priority: "media", suitableForVolunteers: false },
+  { id: "kitchen-hygiene", area: "cocina", category: "Higiene", title: "Limpieza y cierre de cocina", description: "Lavar y guardar utensilios, sanitizar superficies, retirar residuos, revisar equipos apagados y dejar la cocina lista para el siguiente turno.", estimatedMinutes: 60, priority: "alta", suitableForVolunteers: true },
+  { id: "kitchen-stock", area: "cocina", category: "Abastecimiento", title: "Revisar stock y vencimientos de cocina", description: "Revisar insumos críticos, cadena de frío, fechas de vencimiento y faltantes; registrar necesidades de compra sin ajustar inventario histórico.", estimatedMinutes: 45, priority: "media", suitableForVolunteers: true },
+  { id: "kitchen-dietary", area: "cocina", category: "Huéspedes", title: "Revisar restricciones alimentarias", description: "Confirmar alergias, restricciones y preferencias registradas para huéspedes antes de preparar el próximo servicio.", estimatedMinutes: 20, priority: "alta", suitableForVolunteers: false },
 
   { id: "mant-water", area: "mantenimiento", category: "Agua", title: "Inspeccionar sistema de agua del sector", description: "Revisar bombas, estanques, caudal, filtraciones, ruidos anormales y presión visible. Registrar evidencia de fallas.", estimatedMinutes: 60, priority: "alta", safetyNotes: "No intervenir tableros eléctricos ni equipos presurizados sin autorización.", suitableForVolunteers: false },
   { id: "mant-heating", area: "mantenimiento", category: "Calefacción", title: "Revisar calefacción y agua caliente", description: "Comprobar funcionamiento, temperatura, combustible o energía disponible y señales de fuga o combustión anormal.", estimatedMinutes: 45, priority: "alta", safetyNotes: "Suspender uso y escalar ante olor a gas, humo o sobrecalentamiento.", suitableForVolunteers: false },
