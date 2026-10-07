@@ -10,6 +10,7 @@ const roomObjectView = readFileSync(new URL("../components/booking-room-object-v
 const reservationObject = readFileSync(new URL("../app/bookings/reservations/[id]/page.tsx", import.meta.url), "utf8")
 const reservationStayCockpit = readFileSync(new URL("../components/booking-reservation-stay-cockpit.tsx", import.meta.url), "utf8")
 const addReservationDialog = readFileSync(new URL("../components/add-reservation-dialog.tsx", import.meta.url), "utf8")
+const reservationConfirmationModal = readFileSync(new URL("../components/reservation-confirmation-modal.tsx", import.meta.url), "utf8")
 const reservationLogisticsEditor = readFileSync(new URL("../components/reservation-logistics-editor.tsx", import.meta.url), "utf8")
 const transportMigration = readFileSync(new URL("../supabase/migrations/20261007211000_add_reservation_transport_details.sql", import.meta.url), "utf8")
 
@@ -102,4 +103,13 @@ test("reservation form keeps secondary guest data behind details on mobile", () 
   assert.match(addReservationDialog, /h-\[100dvh\].*w-screen/)
   assert.match(addReservationDialog, /sticky bottom-0/)
   assert.doesNotMatch(addReservationDialog, /copy\.howArrivesHint/)
+})
+
+
+test("reservation confirmation stays compact and includes arrival when present", () => {
+  assert.match(addReservationDialog, /arrivalSummary:/)
+  assert.match(reservationConfirmationModal, /reservationDetails\.arrivalSummary/)
+  assert.match(reservationConfirmationModal, /divide-y border-y/)
+  assert.doesNotMatch(reservationConfirmationModal, /copy\.review/)
+  assert.doesNotMatch(reservationConfirmationModal, /<Card/)
 })
