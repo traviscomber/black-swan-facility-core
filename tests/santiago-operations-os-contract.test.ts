@@ -44,7 +44,7 @@ test("Santiago can turn an upcoming booking into a traced hospitality task", () 
   assert.match(cockpit, /area: 'hospitalidad'/)
   assert.match(cockpit, /dueDate: booking\.check_in/)
   assert.match(cockpit, /arrivalTaskHref\(booking, language\)/)
-  assert.match(cockpit, /Preparar llegada/)
+  assert.match(cockpit, /prepareArrival: 'Preparar'/)
 })
 
 
