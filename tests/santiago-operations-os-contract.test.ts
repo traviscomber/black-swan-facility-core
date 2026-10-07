@@ -42,3 +42,9 @@ test("Santiago can turn an upcoming booking into a traced hospitality task", () 
   assert.match(cockpit, /arrivalTaskHref\(booking, language\)/)
   assert.match(cockpit, /Preparar llegada/)
 })
+
+
+test("Santiago booking and task flow is mobile-first", () => {
+  assert.match(cockpit, /snap-x snap-mandatory overflow-x-auto/)
+  assert.match(cockpit, /h-11 flex-1 sm:h-9/)
+})
