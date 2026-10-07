@@ -5,6 +5,7 @@ import { Check, FileText, RefreshCw, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { createClient } from '@/lib/supabase/client'
+import { financeAllocationLabel } from '@/lib/finance/budget-display'
 
 type InfrastructureInvoice = {
   id: string
@@ -16,6 +17,7 @@ type InfrastructureInvoice = {
   totalAmount: number | string
   currency: string
   divisionName: string | null
+  divisionKey: string | null
   categoryName: string | null
   operationalLabel: string | null
   reviewStatus: string
@@ -104,7 +106,7 @@ export function TomasInfrastructureInvoiceQueue() {
             </div>
             <div>
               <p className="text-sm text-[var(--bs-text-primary)]">{money(row.totalAmount, row.currency)}</p>
-              <p className="mt-1 text-xs text-[var(--bs-text-muted)]">{[row.divisionName, row.categoryName, row.operationalLabel].filter(Boolean).join(' · ')}</p>
+              <p className="mt-1 text-xs text-[var(--bs-text-muted)]">{[financeAllocationLabel(row.divisionName, row.categoryName, row.divisionKey), row.operationalLabel].filter(Boolean).join(' · ')}</p>
               {row.hasSourceFile && <a className="mt-2 inline-flex items-center gap-1 text-xs underline" href={`/api/finance/sii-invoices/source?documentId=${encodeURIComponent(row.id)}`} target="_blank" rel="noreferrer"><FileText className="h-3.5 w-3.5" />Ver factura</a>}
             </div>
             <div className="grid grid-cols-2 gap-2 md:flex">
