@@ -28,21 +28,21 @@ const uiCopy = {
   en: {
     today: 'Today', areaDescription: 'Authorized workspaces in this OS area.', homeDescription: 'What you need to know, decide, or execute now. Full depth remains available in each workspace.',
     attentionTitle: 'Requires attention', attentionDescription: 'Exceptions and decisions, ordered for your role.', updating: 'Updating operations…', noCritical: 'No critical pending items visible for your access.',
-    todayTitle: "Today's operation", todayDescription: 'Daily pulse in Santiago time.', quickTitle: 'Quick actions', quickDescription: 'Shortcuts only to workspaces already authorized by the server.',
+    todayTitle: "Today's operation", todayDescription: 'Daily pulse in Santiago time.', quickTitle: 'Quick actions', quickDescription: 'Shortcuts only to workspaces already authorized by the server.', newTask: 'New task',
     workspaces: 'Workspaces', workspacesDescription: 'The complete system, ordered for your work context.', noWorkspaces: 'No authorized workspaces are available in this area.', open: 'Open', openWorkspace: 'Open workspace',
     areaLabels: { today: 'Today', operations: 'Operations', people: 'People', 'places-assets': 'Places & Assets', finance: 'Finance', network: 'Network' },
   },
   es: {
     today: 'Hoy', areaDescription: 'Workspaces autorizados en esta área del OS.', homeDescription: 'Lo que necesitas saber, decidir o ejecutar ahora. La profundidad completa sigue disponible en cada workspace.',
     attentionTitle: 'Requiere atención', attentionDescription: 'Excepciones y decisiones, ordenadas para tu función.', updating: 'Actualizando operación…', noCritical: 'Sin pendientes críticos visibles para tu acceso.',
-    todayTitle: 'Operación de hoy', todayDescription: 'Pulso del día en horario de Santiago.', quickTitle: 'Acciones rápidas', quickDescription: 'Atajos sólo a workspaces que el servidor ya autorizó.',
+    todayTitle: 'Operación de hoy', todayDescription: 'Pulso del día en horario de Santiago.', quickTitle: 'Acciones rápidas', quickDescription: 'Atajos sólo a workspaces que el servidor ya autorizó.', newTask: 'Nueva tarea',
     workspaces: 'Workspaces', workspacesDescription: 'El sistema completo, ordenado por tu contexto de trabajo.', noWorkspaces: 'No hay workspaces autorizados disponibles en esta área.', open: 'Abrir', openWorkspace: 'Abrir workspace',
     areaLabels: { today: 'Hoy', operations: 'Operación', people: 'Personas', 'places-assets': 'Lugares y activos', finance: 'Finanzas', network: 'Red' },
   },
   de: {
     today: 'Heute', areaDescription: 'Autorisierte Arbeitsbereiche in diesem OS-Bereich.', homeDescription: 'Was jetzt bekannt, entschieden oder ausgeführt werden muss. Die vollständige Tiefe bleibt in jedem Arbeitsbereich verfügbar.',
     attentionTitle: 'Erfordert Aufmerksamkeit', attentionDescription: 'Ausnahmen und Entscheidungen, nach deiner Rolle geordnet.', updating: 'Betrieb wird aktualisiert…', noCritical: 'Keine kritischen offenen Punkte für deinen Zugriff sichtbar.',
-    todayTitle: 'Heutiger Betrieb', todayDescription: 'Tagesstatus in Santiago-Zeit.', quickTitle: 'Schnellaktionen', quickDescription: 'Verknüpfungen nur zu bereits serverseitig autorisierten Arbeitsbereichen.',
+    todayTitle: 'Heutiger Betrieb', todayDescription: 'Tagesstatus in Santiago-Zeit.', quickTitle: 'Schnellaktionen', quickDescription: 'Verknüpfungen nur zu bereits serverseitig autorisierten Arbeitsbereichen.', newTask: 'Neue Aufgabe',
     workspaces: 'Arbeitsbereiche', workspacesDescription: 'Das vollständige System, nach deinem Arbeitskontext geordnet.', noWorkspaces: 'In diesem Bereich sind keine autorisierten Arbeitsbereiche verfügbar.', open: 'Öffnen', openWorkspace: 'Arbeitsbereich öffnen',
     areaLabels: { today: 'Heute', operations: 'Betrieb', people: 'Personen', 'places-assets': 'Orte & Anlagen', finance: 'Finanzen', network: 'Netzwerk' },
   },
@@ -188,7 +188,7 @@ const quickActionPriority: Record<OsPersonaKey, string[]> = {
   executive: ['approvals', 'bookings', 'procurement', 'inventory'],
   field_admin: ['bookings', 'tasks', 'maintenance', 'inventory', 'procurement'],
   general: ['bookings', 'tasks', 'maintenance', 'inventory'],
-  santiago: ['bookings', 'payments', 'guest-requests'],
+  santiago: ['tasks', 'bookings', 'payments', 'guest-requests'],
   raimundo: ['approvals', 'bookings', 'cattle', 'vineyard', 'orchard'],
 }
 
@@ -312,7 +312,8 @@ export function OsHome() {
         {quickActions.length > 0 && <section className="space-y-3">
           <div><h2 className="text-lg font-semibold">{text.quickTitle}</h2><p className="text-sm text-muted-foreground">{text.quickDescription}</p></div>
           <div className="flex flex-wrap gap-2">
-            {quickActions.map((item) => <Link key={item.key} href={withLocale(item.href, lang)} className="rounded-md border px-3 py-2 text-sm font-medium hover:bg-muted">{displayNavLabel(item, lang)}</Link>)}
+            {persona === 'santiago' && hasNavKey(navigation, 'tasks') && <Link href={withLocale('/tasks?new=1', lang)} className="rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:opacity-90">{text.newTask}</Link>}
+            {quickActions.filter((item) => !(persona === 'santiago' && item.key === 'tasks')).map((item) => <Link key={item.key} href={withLocale(item.href, lang)} className="rounded-md border px-3 py-2 text-sm font-medium hover:bg-muted">{displayNavLabel(item, lang)}</Link>)}
           </div>
         </section>}
 
