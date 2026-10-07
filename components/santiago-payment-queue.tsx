@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Check, CreditCard, FileText, RefreshCw, ShieldCheck, X } from 'lucide-react'
+import { Check, CreditCard, RefreshCw } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { createClient } from '@/lib/supabase/client'
@@ -191,156 +191,175 @@ export function SantiagoPaymentQueue() {
   }
 
   return (
-    <div className="space-y-5 p-4 md:p-8">
-      <section className="bg-[var(--bs-surface-primary)] p-5 md:p-6">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-          <div className="max-w-3xl">
-            <p className="text-xs uppercase tracking-[0.14em] text-[var(--bs-cool-sage)]">Santiago · Trabajo pendiente</p>
-            <h2 className="mt-2 text-xl font-normal text-[var(--bs-text-primary)]">Resolver excepciones y pagos</h2>
-            <p className="mt-2 text-sm leading-6 text-[var(--bs-text-secondary)]">
-              Santiago concentra la decisión final de pago. Los gastos generales llegan desde Raimundo; infraestructura llega directamente desde Tomás, aprobada u observada.
-            </p>
-          </div>
-          <div className="flex items-center gap-3">
-            <span className="inline-flex items-center gap-2 text-xs text-[var(--bs-cool-sage)]"><ShieldCheck className="h-4 w-4" />Control final habilitado</span>
-            <Button variant="outline" onClick={() => void load()}><RefreshCw className="mr-2 h-4 w-4" />Actualizar</Button>
-          </div>
+    <div className="space-y-3 p-4 md:p-8">
+      <section className="flex items-center justify-between gap-3 bg-[var(--bs-surface-primary)] p-4">
+        <div>
+          <h2 className="text-lg font-medium text-[var(--bs-text-primary)]">Pagos</h2>
+          <p className="mt-1 text-xs text-[var(--bs-text-muted)]">{counts.pending_santiago ?? 0} por autorizar · {counts.authorized ?? 0} por pagar</p>
         </div>
-        <div className="mt-5 grid gap-3 sm:grid-cols-6">
-          <Metric label="Centros por resolver" value={escalations.length} />
-          <Metric label="Por autorizar" value={counts.pending_santiago ?? 0} />
-          <Metric label="Listos para pagar" value={counts.authorized ?? 0} />
-          <Metric label="Rechazados" value={counts.rejected ?? 0} />
-          <Metric label="Pagados" value={counts.paid ?? 0} />
-          <Metric label="Pago observado" value={observedPayments.length} />
-        </div>
+        <Button variant="ghost" size="icon" aria-label="Actualizar" onClick={() => void load()}>
+          <RefreshCw className="h-4 w-4" />
+        </Button>
       </section>
 
       {escalations.length > 0 && (
-        <section className="bg-[var(--bs-surface-primary)]">
-          <div className="p-5 md:p-6">
-            <p className="text-xs uppercase tracking-[0.14em] text-[var(--bs-warm-yellow)]">Bandeja 2 · Excepciones escaladas por Raimundo</p>
-            <h3 className="mt-2 text-lg font-normal text-[var(--bs-text-primary)]">Resolver centro sólo cuando Raimundo escala</h3>
-            <p className="mt-1 text-sm text-[var(--bs-text-secondary)]">Santiago interviene únicamente después de que Raimundo revisó la factura y decidió escalarla. Define la imputación solicitada y la devuelve a la Bandeja 1 de Raimundo; aquí no se aprueba el gasto ni el pago.</p>
+        <section className="bg-[var(--bs-surface-primary)] p-4">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="font-medium text-[var(--bs-text-primary)]">Centros por resolver</p>
+              <p className="mt-1 text-xs text-[var(--bs-text-muted)]">{escalations.length} pendiente{escalations.length === 1 ? '' : 's'}</p>
+            </div>
           </div>
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[980px] text-sm">
-              <thead className="text-left text-xs uppercase tracking-[0.1em] text-[var(--bs-text-muted)]">
-                <tr><th className="px-4 py-3 font-normal">Factura</th><th className="px-4 py-3 font-normal">Contexto</th><th className="px-4 py-3 font-normal">Centro de costo</th><th className="px-4 py-3 text-right font-normal">Acción</th></tr>
-              </thead>
-              <tbody>
-                {escalations.map((row) => (
-                  <tr key={row.id} className="border-t border-[var(--bs-divider-subtle)] align-top">
-                    <td className="px-4 py-4">
-                      <p className="text-[var(--bs-text-primary)]">{row.supplier_name}</p>
-                      <p className="mt-1 text-xs text-[var(--bs-text-muted)]">{row.document_number} · {money(row.total_amount, row.currency)}</p>
-                      {sourceDocumentIds.has(row.id) && <a className="mt-2 inline-flex items-center gap-1 text-xs text-[var(--bs-cool-sky)] underline" href={`/api/finance/sii-invoices/source?documentId=${encodeURIComponent(row.id)}`} target="_blank" rel="noreferrer"><FileText className="h-3.5 w-3.5" />Ver factura</a>}
-                    </td>
-                    <td className="px-4 py-4">
-                      <p className="text-xs text-[var(--bs-text-secondary)]">{row.cost_center_escalation_note || 'Raimundo solicita apoyo para definir la imputación.'}</p>
-                      {row.cost_center_escalated_at && <p className="mt-2 text-[11px] text-[var(--bs-text-muted)]">{new Date(row.cost_center_escalated_at).toLocaleString('es-CL')}</p>}
-                    </td>
-                    <td className="px-4 py-4">
-                      <select value={assignmentCenter[row.id] ?? ''} onChange={(event) => setAssignmentCenter((current) => ({ ...current, [row.id]: event.target.value }))} className="h-9 w-full bg-[var(--bs-surface-secondary)] px-2 text-xs text-[var(--bs-text-primary)]">
-                        <option value="">Seleccionar imputación del Budget</option>
-                        {categories.map((category) => {
-                          const division = divisions.find((item) => item.id === category.division_id)
-                          return <option key={category.id} value={category.id}>{financeAllocationLabel(division?.name, category.name, division?.source_key)}</option>
-                        })}
-                      </select>
-                      <input value={assignmentNote[row.id] ?? ''} onChange={(event) => setAssignmentNote((current) => ({ ...current, [row.id]: event.target.value }))} placeholder="Nota opcional para Raimundo" className="mt-2 h-9 w-full bg-[var(--bs-surface-secondary)] px-2 text-xs text-[var(--bs-text-primary)]" />
-                    </td>
-                    <td className="px-4 py-4 text-right"><Button size="sm" onClick={() => void assignEscalatedCenter(row)} disabled={busy === row.id || !(assignmentCenter[row.id] ?? '')}><Check className="mr-2 h-4 w-4" />Asignar y devolver</Button></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+
+          <div className="mt-3 space-y-2">
+            {escalations.map((row) => (
+              <article key={row.id} className="bg-[var(--bs-surface-secondary)] p-3">
+                <div className="grid gap-3 md:grid-cols-[1fr_1fr_auto] md:items-end">
+                  <div>
+                    <p className="text-sm font-medium text-[var(--bs-text-primary)]">{row.supplier_name}</p>
+                    <p className="mt-1 text-xs text-[var(--bs-text-muted)]">{row.document_number} · {money(row.total_amount, row.currency)}</p>
+                    {row.cost_center_escalation_note && <p className="mt-2 text-xs text-[var(--bs-text-secondary)]">{row.cost_center_escalation_note}</p>}
+                  </div>
+
+                  <select
+                    value={assignmentCenter[row.id] ?? ''}
+                    onChange={(event) => setAssignmentCenter((current) => ({ ...current, [row.id]: event.target.value }))}
+                    className="h-11 w-full bg-[var(--bs-bg-primary)] px-3 text-sm text-[var(--bs-text-primary)]"
+                  >
+                    <option value="">Imputación</option>
+                    {categories.map((category) => {
+                      const division = divisions.find((item) => item.id === category.division_id)
+                      return <option key={category.id} value={category.id}>{financeAllocationLabel(division?.name, category.name, division?.source_key)}</option>
+                    })}
+                  </select>
+
+                  <Button onClick={() => void assignEscalatedCenter(row)} disabled={busy === row.id || !(assignmentCenter[row.id] ?? '')}>
+                    <Check className="mr-2 h-4 w-4" />Asignar
+                  </Button>
+                </div>
+              </article>
+            ))}
           </div>
         </section>
       )}
 
-      <section className="bg-[var(--bs-surface-primary)]">
-        <div className="p-5 md:p-6">
-          <p className="text-xs uppercase tracking-[0.14em] text-[var(--bs-cool-sage)]">Bandeja 3 · Santiago</p>
-          <h3 className="mt-2 text-lg font-normal text-[var(--bs-text-primary)]">Autorizar y ejecutar pagos</h3>
-          <p className="mt-1 text-sm text-[var(--bs-text-secondary)]">Aquí llegan gastos aprobados y facturas de infraestructura revisadas por Tomás. Si Tomás observó una factura, Santiago ve el motivo y toma la decisión final.</p>
-        </div>
-        <div className="flex flex-wrap gap-2 border-t border-[var(--bs-divider-subtle)] p-4">
-          {tabs.map((tab) => (
-            <button key={tab.key} type="button" onClick={() => setStatus(tab.key)}
-              className={`min-h-10 px-3 text-xs ${status === tab.key ? 'bg-[var(--bs-surface-elevated)] text-[var(--bs-text-primary)]' : 'bg-[var(--bs-surface-secondary)] text-[var(--bs-text-secondary)]'}`}>
-              {tab.label} · {counts[tab.key] ?? 0}
-            </button>
-          ))}
-        </div>
+      <div className="flex gap-2 overflow-x-auto pb-1">
+        {tabs.map((tab) => (
+          <button
+            key={tab.key}
+            type="button"
+            onClick={() => setStatus(tab.key)}
+            className={`min-h-10 shrink-0 px-3 text-xs ${status === tab.key ? 'bg-[var(--bs-surface-elevated)] text-[var(--bs-text-primary)]' : 'bg-[var(--bs-surface-secondary)] text-[var(--bs-text-secondary)]'}`}
+          >
+            {tab.label} · {counts[tab.key] ?? 0}
+          </button>
+        ))}
+      </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[1040px] text-sm">
-            <thead className="text-left text-xs uppercase tracking-[0.1em] text-[var(--bs-text-muted)]">
-              <tr><th className="px-4 py-3 font-normal">Proveedor / documento</th><th className="px-4 py-3 font-normal">Imputación validada</th><th className="px-4 py-3 text-right font-normal">Monto</th><th className="px-4 py-3 font-normal">Estado</th><th className="px-4 py-3 text-right font-normal">Acción</th></tr>
-            </thead>
-            <tbody>
-              {filtered.map((row) => {
-                const division = divisions.find((item) => item.id === row.division_id)
-                const category = categories.find((item) => item.id === row.category_id)?.name ?? 'Categoría'
-                return (
-                  <tr key={row.id} className="border-t border-[var(--bs-divider-subtle)] align-top">
-                    <td className="px-4 py-4">
-                      <p className="text-[var(--bs-text-primary)]">{row.supplier_name}</p>
+      <section className="space-y-2">
+        {filtered.map((row) => {
+          const division = divisions.find((item) => item.id === row.division_id)
+          const category = categories.find((item) => item.id === row.category_id)?.name ?? 'Categoría'
+          const reviewLabel = row.infrastructure_review_status === 'approved_by_tomas'
+            ? 'Revisada por Tomás'
+            : row.infrastructure_review_status === 'rejected_by_tomas'
+              ? 'Observada por Tomás'
+              : row.approved_at
+                ? 'Validada por Raimundo'
+                : null
+
+          return (
+            <article key={row.id} className="bg-[var(--bs-surface-primary)] p-4 md:p-5">
+              <div className="grid gap-4 lg:grid-cols-[1fr_auto] lg:items-start">
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-start justify-between gap-2">
+                    <div>
+                      <p className="font-medium text-[var(--bs-text-primary)]">{row.supplier_name}</p>
                       <p className="mt-1 text-xs text-[var(--bs-text-muted)]">{row.document_number} · {new Date(`${row.document_date}T00:00:00`).toLocaleDateString('es-CL')}</p>
-                      <div className="mt-3">
-                        <FinanceDecisionContext
-                          description={row.description}
-                          allocation={financeAllocationLabel(division?.name, category, division?.source_key)}
-                          operationalLabel={row.operational_label}
-                          reason={row.infrastructure_review_notes || row.classification_reason}
-                          hasSourceFile={sourceDocumentIds.has(row.id)}
-                          sourceHref={`/api/finance/sii-invoices/source?documentId=${encodeURIComponent(row.id)}`}
-                          evidenceLabel={sourceDocumentIds.has(row.id) ? 'Factura fuente + revisión' : 'Datos fiscales + historial'}
-                          detail={row.confidence == null ? null : `Confianza de clasificación: ${Math.round(Number(row.confidence) * 100)}%`}
-                        />
-                      </div>
-                    </td>
-                    <td className="px-4 py-4">
-                      <p className="text-[var(--bs-text-primary)]">{financeAllocationLabel(division?.name, category, division?.source_key)}</p>
-                      {row.operational_label && <p className="mt-1 text-xs text-[var(--bs-text-secondary)]">{row.operational_label}</p>}
-                      {row.infrastructure_review_status === 'approved_by_tomas' && <p className="mt-2 text-xs text-[var(--bs-cool-sage)]">Infraestructura revisada por Tomás{row.infrastructure_reviewed_at ? ` · ${new Date(row.infrastructure_reviewed_at).toLocaleString('es-CL')}` : ''}</p>}
-                      {row.infrastructure_review_status === 'rejected_by_tomas' && <p className="mt-2 text-xs text-[var(--bs-warm-yellow)]">Tomás observó esta factura{row.infrastructure_review_notes ? ` · ${row.infrastructure_review_notes}` : ''}</p>}
-                      {row.infrastructure_review_status === 'not_required' && row.approved_at && <p className="mt-2 text-xs text-[var(--bs-cool-sage)]">Validado por Raimundo · {new Date(row.approved_at).toLocaleString('es-CL')}</p>}
-                    </td>
-                    <td className="px-4 py-4 text-right text-[var(--bs-text-primary)]">{money(row.total_amount, row.currency)}</td>
-                    <td className="px-4 py-4 text-xs text-[var(--bs-text-secondary)]">
-                      {row.payment_status === 'pending_santiago' && 'Esperando decisión de Santiago'}
-                      {row.payment_status === 'authorized' && 'Autorizado · pendiente de ejecutar'}
-                      {row.payment_status === 'rejected' && <>Pago rechazado{row.payment_decision_notes ? <span className="mt-1 block">{row.payment_decision_notes}</span> : null}</>}
-                      {row.payment_status === 'paid' && <>Pagado{row.paid_at ? <span className="mt-1 block">{new Date(row.paid_at).toLocaleString('es-CL')}</span> : null}{row.payment_reference ? <span className="mt-1 block">Ref. {row.payment_reference}</span> : null}</>}
-                    </td>
-                    <td className="px-4 py-4 text-right">
-                      {row.payment_status === 'pending_santiago' && <div className="flex justify-end gap-2"><Button size="sm" onClick={() => void decide(row, 'authorized')} disabled={busy === row.id}><Check className="mr-2 h-4 w-4" />{row.infrastructure_review_status === 'rejected_by_tomas' ? 'Autorizar igualmente' : 'Aprobar pago'}</Button><Button size="sm" variant="outline" onClick={() => void decide(row, 'rejected')} disabled={busy === row.id}><X className="mr-2 h-4 w-4" />{row.infrastructure_review_status === 'rejected_by_tomas' ? 'No pagar' : 'Rechazar pago'}</Button></div>}
-                      {row.payment_status === 'authorized' && (
-                        <div className="ml-auto w-[320px] space-y-2 text-left">
-                          {payingId !== row.id ? <Button size="sm" onClick={() => setPayingId(row.id)}><CreditCard className="mr-2 h-4 w-4" />Registrar pago</Button> : <>
-                            <select value={method} onChange={(event) => setMethod(event.target.value)} className="h-9 w-full bg-[var(--bs-surface-secondary)] px-2 text-xs text-[var(--bs-text-primary)]"><option value="transferencia_bancaria">Transferencia bancaria</option><option value="tarjeta">Tarjeta</option><option value="efectivo">Efectivo</option><option value="otro">Otro</option></select>
-                            <input value={reference} onChange={(event) => setReference(event.target.value)} placeholder="Referencia / comprobante" className="h-9 w-full bg-[var(--bs-surface-secondary)] px-2 text-xs text-[var(--bs-text-primary)]" />
-                            <div className="flex justify-end gap-2"><Button size="sm" variant="outline" onClick={() => { setPayingId(null); setReference('') }}>Cancelar</Button><Button size="sm" onClick={() => void recordPayment(row)} disabled={busy === row.id || !reference.trim()}>Confirmar pago</Button></div>
-                          </>}
-                        </div>
-                      )}
-                      {row.payment_status === 'rejected' && <span className="text-xs text-[var(--bs-text-muted)]">Sin pago</span>}
-                      {row.payment_status === 'paid' && <span className="text-xs text-[var(--bs-cool-sage)]">Cerrado</span>}
-                    </td>
-                  </tr>
-                )
-              })}
-              {!filtered.length && <tr><td colSpan={5} className="px-5 py-12 text-center text-[var(--bs-text-muted)]">No hay documentos en esta etapa.</td></tr>}
-            </tbody>
-          </table>
-        </div>
+                    </div>
+                    <p className="text-base font-medium text-[var(--bs-text-primary)]">{money(row.total_amount, row.currency)}</p>
+                  </div>
+
+                  <div className="mt-3">
+                    <FinanceDecisionContext
+                      description={row.description}
+                      allocation={financeAllocationLabel(division?.name, category, division?.source_key)}
+                      operationalLabel={row.operational_label}
+                      reason={row.infrastructure_review_notes || row.classification_reason}
+                      hasSourceFile={sourceDocumentIds.has(row.id)}
+                      sourceHref={`/api/finance/sii-invoices/source?documentId=${encodeURIComponent(row.id)}`}
+                      evidenceLabel={sourceDocumentIds.has(row.id) ? 'Factura + revisión' : 'Datos + historial'}
+                    />
+                  </div>
+
+                  {reviewLabel && (
+                    <p className={`mt-3 text-xs ${row.infrastructure_review_status === 'rejected_by_tomas' ? 'text-[var(--bs-warm-yellow)]' : 'text-[var(--bs-cool-sage)]'}`}>
+                      {reviewLabel}{row.infrastructure_review_status === 'rejected_by_tomas' && row.infrastructure_review_notes ? ` · ${row.infrastructure_review_notes}` : ''}
+                    </p>
+                  )}
+                </div>
+
+                <div className="flex min-w-[190px] flex-col gap-2 lg:items-end">
+                  {row.payment_status === 'pending_santiago' && (
+                    <>
+                      <Button className="w-full lg:w-auto" onClick={() => void decide(row, 'authorized')} disabled={busy === row.id}>
+                        <Check className="mr-2 h-4 w-4" />{row.infrastructure_review_status === 'rejected_by_tomas' ? 'Autorizar igual' : 'Autorizar'}
+                      </Button>
+                      <Button className="w-full lg:w-auto" size="sm" variant="outline" onClick={() => void decide(row, 'rejected')} disabled={busy === row.id}>No pagar</Button>
+                    </>
+                  )}
+
+                  {row.payment_status === 'authorized' && payingId !== row.id && (
+                    <Button className="w-full lg:w-auto" onClick={() => setPayingId(row.id)}>
+                      <CreditCard className="mr-2 h-4 w-4" />Registrar pago
+                    </Button>
+                  )}
+
+                  {row.payment_status === 'rejected' && <span className="text-xs text-[var(--bs-text-muted)]">No pagar</span>}
+                  {row.payment_status === 'paid' && <span className="text-xs text-[var(--bs-cool-sage)]">Pagado</span>}
+                </div>
+              </div>
+
+              {row.payment_status === 'authorized' && payingId === row.id && (
+                <div className="mt-4 border-t border-[var(--bs-divider-subtle)] pt-4">
+                  <div className="grid gap-3 md:grid-cols-[180px_1fr_auto] md:items-end">
+                    <label className="block text-xs text-[var(--bs-text-muted)]">
+                      Método
+                      <select value={method} onChange={(event) => setMethod(event.target.value)} className="mt-2 h-11 w-full bg-[var(--bs-surface-secondary)] px-3 text-sm text-[var(--bs-text-primary)]">
+                        <option value="transferencia_bancaria">Transferencia</option>
+                        <option value="tarjeta">Tarjeta</option>
+                        <option value="efectivo">Efectivo</option>
+                        <option value="otro">Otro</option>
+                      </select>
+                    </label>
+                    <label className="block text-xs text-[var(--bs-text-muted)]">
+                      Referencia
+                      <input value={reference} onChange={(event) => setReference(event.target.value)} placeholder="Comprobante" className="mt-2 h-11 w-full bg-[var(--bs-surface-secondary)] px-3 text-sm text-[var(--bs-text-primary)]" />
+                    </label>
+                    <div className="flex gap-2">
+                      <Button variant="outline" onClick={() => { setPayingId(null); setReference('') }}>Cancelar</Button>
+                      <Button onClick={() => void recordPayment(row)} disabled={busy === row.id || !reference.trim()}>Confirmar</Button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {(row.payment_status === 'rejected' || row.payment_status === 'paid') && (
+                <details className="mt-3">
+                  <summary className="cursor-pointer text-xs text-[var(--bs-text-muted)]">Más</summary>
+                  <div className="mt-2 text-xs text-[var(--bs-text-secondary)]">
+                    {row.payment_decision_notes && <p>{row.payment_decision_notes}</p>}
+                    {row.paid_at && <p>Pagado {new Date(row.paid_at).toLocaleString('es-CL')}</p>}
+                    {row.payment_reference && <p>Ref. {row.payment_reference}</p>}
+                  </div>
+                </details>
+              )}
+            </article>
+          )
+        })}
+
+        {!filtered.length && <div className="bg-[var(--bs-surface-primary)] p-8 text-center text-sm text-[var(--bs-text-muted)]">Sin pendientes.</div>}
       </section>
     </div>
   )
-}
-
-function Metric({ label, value }: { label: string; value: number }) {
-  return <div className="bg-[var(--bs-surface-secondary)] p-4"><p className="text-xs uppercase tracking-[0.1em] text-[var(--bs-text-muted)]">{label}</p><p className="mt-2 text-xl text-[var(--bs-text-primary)]">{value}</p></div>
 }
