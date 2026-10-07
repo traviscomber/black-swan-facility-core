@@ -25,6 +25,21 @@ type TaskAssignment = {
   employees: Array<{ id: string; name: string; role: string | null }> | null
 }
 
+type Pickup = {
+  reservationId: string
+  guestName: string | null
+  checkIn: string
+  transportMode: string
+  carrierName: string | null
+  serviceNumber: string | null
+  originDestination: string | null
+  hub: string
+  anchorAt: string | null
+  pickupRequired: boolean
+  transportCoordinatorName: string | null
+  status: string
+}
+
 type StaffTask = {
   id: string
   title: string
@@ -49,6 +64,9 @@ const COPY = {
     arrivals: 'llegadas',
     departures: 'salidas',
     stays: 'estadías',
+    transport: 'Próximas recogidas',
+    noPickups: 'Sin recogidas pendientes en los próximos 7 días.',
+    coordinator: 'Encargado',
     staff: 'Tareas del personal',
     staffHint: 'Trabajo vigente asignado a personas, sin demos ni snapshots de Asana',
     newTask: 'Nueva tarea',
@@ -71,6 +89,9 @@ const COPY = {
     arrivals: 'arrivals',
     departures: 'departures',
     stays: 'stays',
+    transport: 'Upcoming pickups',
+    noPickups: 'No pending pickups in the next 7 days.',
+    coordinator: 'Coordinator',
     staff: 'Staff tasks',
     staffHint: 'Current work assigned to staff, excluding demos and Asana snapshots',
     newTask: 'New task',
@@ -93,6 +114,9 @@ const COPY = {
     arrivals: 'Anreisen',
     departures: 'Abreisen',
     stays: 'Aufenthalte',
+    transport: 'Bevorstehende Abholungen',
+    noPickups: 'Keine ausstehenden Abholungen in den nächsten 7 Tagen.',
+    coordinator: 'Koordination',
     staff: 'Personalaufgaben',
     staffHint: 'Aktuelle zugewiesene Arbeit ohne Demos und Asana-Snapshots',
     newTask: 'Neue Aufgabe',
@@ -157,6 +181,7 @@ export function SantiagoOperationsCockpit({ language, navigation }: { language: 
   const text = COPY[language]
   const [bookings, setBookings] = useState<Booking[]>([])
   const [tasks, setTasks] = useState<StaffTask[]>([])
+  const [pickups, setPickups] = useState<Pickup[]>([])
   const [error, setError] = useState<string | null>(null)
   const today = chileToday()
   const horizon = addDays(today, 6)
@@ -167,7 +192,7 @@ export function SantiagoOperationsCockpit({ language, navigation }: { language: 
 
     async function load() {
       setError(null)
-      const [bookingResult, taskResult] = await Promise.all([
+      const [bookingResult, taskResult, pickupResult] = await Promise.all([
         hasNavKey(navigation, 'bookings')
           ? supabase
               .from('reservations')
@@ -186,13 +211,17 @@ export function SantiagoOperationsCockpit({ language, navigation }: { language: 
               .order('created_at', { ascending: false })
               .limit(80)
           : Promise.resolve({ data: [], error: null }),
+        hasNavKey(navigation, 'bookings')
+          ? supabase.rpc('get_upcoming_reservation_pickups', { p_from_date: today, p_to_date: horizon })
+          : Promise.resolve({ data: [], error: null }),
       ])
 
       if (cancelled) return
-      if (bookingResult.error || taskResult.error) {
+      if (bookingResult.error || taskResult.error || pickupResult.error) {
         setError(text.loadError)
       }
       setBookings((bookingResult.data ?? []) as Booking[])
+      setPickups((pickupResult.data ?? []) as Pickup[])
       setTasks(
         ((taskResult.data ?? []) as StaffTask[])
           .filter((task) => !isDemoTask(task) && !isAsanaTask(task))
@@ -274,6 +303,36 @@ export function SantiagoOperationsCockpit({ language, navigation }: { language: 
                       <Badge variant="outline">{booking.num_guests ?? 0} <Users className="ml-1 h-3 w-3" /></Badge>
                     </div>
                   </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card className="xl:col-span-2">
+          <CardHeader className="border-b pb-4">
+            <CardTitle className="text-base">{text.transport}</CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
+            {pickups.length === 0 ? (
+              <p className="p-5 text-sm text-muted-foreground">{text.noPickups}</p>
+            ) : (
+              <div className="divide-y">
+                {pickups.slice(0, 6).map((pickup) => (
+                  <Link href={`/${language}/bookings/reservations/${pickup.reservationId}`} key={pickup.reservationId} className="grid gap-2 px-4 py-4 hover:bg-muted/30 sm:grid-cols-[1.2fr_1fr_1fr] sm:items-center">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium">{pickup.guestName || 'Reserva'}</p>
+                      <p className="text-xs text-muted-foreground">{pickup.checkIn}{pickup.anchorAt ? ` · ${new Date(pickup.anchorAt).toLocaleString(language === 'es' ? 'es-CL' : language === 'de' ? 'de-DE' : 'en-US', { timeZone: 'America/Santiago', dateStyle: 'short', timeStyle: 'short' })}` : ''}</p>
+                    </div>
+                    <div className="text-sm">
+                      <p className="font-medium">{pickup.transportMode === 'flight' ? 'Vuelo' : pickup.transportMode === 'bus' ? 'Bus' : pickup.transportMode === 'private_vehicle' ? 'Vehículo' : 'Traslado'}</p>
+                      <p className="text-xs text-muted-foreground">{[pickup.carrierName, pickup.serviceNumber, pickup.originDestination].filter(Boolean).join(' · ') || pickup.hub}</p>
+                    </div>
+                    <div className="text-sm sm:text-right">
+                      <p className="text-xs text-muted-foreground">{text.coordinator}</p>
+                      <p className="font-medium">{pickup.transportCoordinatorName || 'Por asignar'}</p>
+                    </div>
+                  </Link>
                 ))}
               </div>
             )}
