@@ -5,6 +5,7 @@ import { Check, CreditCard, FileText, RefreshCw, ShieldCheck, X } from 'lucide-r
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { createClient } from '@/lib/supabase/client'
+import { financeAllocationLabel } from '@/lib/finance/budget-display'
 
 type PaymentStatus = 'not_ready' | 'pending_santiago' | 'authorized' | 'rejected' | 'paid'
 
@@ -36,7 +37,7 @@ type PaymentRow = {
   infrastructure_reviewed_at: string | null
 }
 
-type Division = { id: string; name: string }
+type Division = { id: string; name: string; source_key: string | null }
 type Category = { id: string; division_id: string; name: string }
 
 const tabs: Array<{ key: PaymentStatus; label: string }> = [
@@ -85,7 +86,7 @@ export function SantiagoPaymentQueue() {
         .select('id,supplier_name,document_number,document_date,due_date,total_amount,currency,division_id,category_id,cost_center_id,operational_label,approved_at,payment_status,payment_decision_notes,payment_decided_at,paid_at,payment_method,payment_reference,reconciliation_status,cost_center_escalation_status,cost_center_escalation_note,cost_center_escalated_at,infrastructure_review_status,infrastructure_review_notes,infrastructure_reviewed_at')
         .or('payment_status.neq.not_ready,cost_center_escalation_status.eq.pending_santiago')
         .order('approved_at', { ascending: false }),
-      supabase.from('budget_divisions').select('id,name'),
+      supabase.from('budget_divisions').select('id,name,source_key'),
       supabase.from('budget_categories').select('id,division_id,name').eq('is_active', true).not('source_key', 'is', null).eq('category_role', 'cost').order('sort_order'),
       supabase.from('finance_sii_uploads').select('finance_document_id').not('finance_document_id', 'is', null),
     ])
@@ -239,8 +240,8 @@ export function SantiagoPaymentQueue() {
                       <select value={assignmentCenter[row.id] ?? ''} onChange={(event) => setAssignmentCenter((current) => ({ ...current, [row.id]: event.target.value }))} className="h-9 w-full bg-[var(--bs-surface-secondary)] px-2 text-xs text-[var(--bs-text-primary)]">
                         <option value="">Seleccionar imputación del Budget</option>
                         {categories.map((category) => {
-                          const division = divisions.find((item) => item.id === category.division_id)?.name ?? 'P&L'
-                          return <option key={category.id} value={category.id}>{division} · {category.name}</option>
+                          const division = divisions.find((item) => item.id === category.division_id)
+                          return <option key={category.id} value={category.id}>{financeAllocationLabel(division?.name, category.name, division?.source_key)}</option>
                         })}
                       </select>
                       <input value={assignmentNote[row.id] ?? ''} onChange={(event) => setAssignmentNote((current) => ({ ...current, [row.id]: event.target.value }))} placeholder="Nota opcional para Raimundo" className="mt-2 h-9 w-full bg-[var(--bs-surface-secondary)] px-2 text-xs text-[var(--bs-text-primary)]" />
@@ -276,7 +277,7 @@ export function SantiagoPaymentQueue() {
             </thead>
             <tbody>
               {filtered.map((row) => {
-                const division = divisions.find((item) => item.id === row.division_id)?.name ?? 'P&L'
+                const division = divisions.find((item) => item.id === row.division_id)
                 const category = categories.find((item) => item.id === row.category_id)?.name ?? 'Categoría'
                 return (
                   <tr key={row.id} className="border-t border-[var(--bs-divider-subtle)] align-top">
@@ -286,7 +287,7 @@ export function SantiagoPaymentQueue() {
                       {sourceDocumentIds.has(row.id) ? <a className="mt-2 inline-flex items-center gap-1 text-xs text-[var(--bs-cool-sky)] underline" href={`/api/finance/sii-invoices/source?documentId=${encodeURIComponent(row.id)}`} target="_blank" rel="noreferrer"><FileText className="h-3.5 w-3.5" />Ver factura</a> : <p className="mt-2 text-xs text-[var(--bs-text-muted)]">Sin archivo SII adjunto · evidencia histórica</p>}
                     </td>
                     <td className="px-4 py-4">
-                      <p className="text-[var(--bs-text-primary)]">{division} · {category}</p>
+                      <p className="text-[var(--bs-text-primary)]">{financeAllocationLabel(division?.name, category, division?.source_key)}</p>
                       {row.operational_label && <p className="mt-1 text-xs text-[var(--bs-text-secondary)]">{row.operational_label}</p>}
                       {row.infrastructure_review_status === 'approved_by_tomas' && <p className="mt-2 text-xs text-[var(--bs-cool-sage)]">Infraestructura revisada por Tomás{row.infrastructure_reviewed_at ? ` · ${new Date(row.infrastructure_reviewed_at).toLocaleString('es-CL')}` : ''}</p>}
                       {row.infrastructure_review_status === 'rejected_by_tomas' && <p className="mt-2 text-xs text-[var(--bs-warm-yellow)]">Tomás observó esta factura{row.infrastructure_review_notes ? ` · ${row.infrastructure_review_notes}` : ''}</p>}
