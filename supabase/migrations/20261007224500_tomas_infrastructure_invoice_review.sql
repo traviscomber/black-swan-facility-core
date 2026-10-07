@@ -510,7 +510,7 @@ $$;
 
 -- Confirm the one currently-unmapped infrastructure invoice identified from canonical
 -- reconciliation evidence: electrical work at Cesar Palace belongs to Hospitality · Farm · Buildings.
-do $
+do $migration$
 declare
   v_division_id uuid;
   v_category_id uuid;
@@ -567,7 +567,7 @@ begin
     and document_date='2026-09-23'
     and description ilike '%CESAR PALACE%'
     and approval_status='pending_mapping';
-end $;
+end $migration$;
 
 revoke all on function public.route_infrastructure_finance_review() from public, anon, authenticated;
 revoke all on function public.get_infrastructure_invoice_review_queue() from public, anon;
