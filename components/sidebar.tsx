@@ -38,6 +38,7 @@ import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { cn } from "@/lib/utils"
 import { LanguageSwitcher } from "@/components/language-switcher"
+import { PwaInstallAction } from "@/components/pwa-install-action"
 import { useLanguage } from "@/lib/hooks/use-language"
 import { useEffectiveAccess } from "@/lib/hooks/use-effective-access"
 import { useOsPersona } from "@/lib/hooks/use-os-persona"
@@ -292,6 +293,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
 
         <div className="space-y-3 border-t border-sidebar-border p-3">
           <LanguageSwitcher />
+          <PwaInstallAction language={language} />
           <button onClick={handleOpenSearch} className="flex w-full items-center gap-3 rounded px-3 py-2 text-sm text-muted-foreground hover:bg-muted hover:text-foreground"><HelpCircle className="h-5 w-5" /><span>{t("shell.search")}</span><span className="ml-auto text-xs">⌘K</span></button>
           <div className="flex items-center gap-3 rounded bg-muted/40 px-3 py-2"><span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">{userInitials}</span><div className="min-w-0 flex-1"><p className="truncate text-xs font-medium">{userEmail || t("shell.user")}</p><p className="truncate text-[11px] text-muted-foreground">{personaLabel} · {access.role || "user"}</p></div><button onClick={handleLogout} className="rounded p-1.5 hover:bg-muted" title={t("shell.logout")}><LogOut className="h-4 w-4" /></button></div>
         </div>
