@@ -503,6 +503,68 @@ begin
 end;
 $$;
 
+
+-- Confirm the one currently-unmapped infrastructure invoice identified from canonical
+-- reconciliation evidence: electrical work at Cesar Palace belongs to Hospitality · Farm · Buildings.
+do $
+declare
+  v_division_id uuid;
+  v_category_id uuid;
+  v_match_count integer;
+begin
+  select id into v_division_id
+  from public.budget_divisions
+  where source_key='hospitality-farm' and is_active and not coalesce(is_aggregate,false)
+  limit 1;
+
+  select id into v_category_id
+  from public.budget_categories
+  where division_id=v_division_id and source_key='buildings' and is_active
+  limit 1;
+
+  if v_division_id is null or v_category_id is null then
+    raise exception 'Canonical Hospitality · Farm · Buildings mapping not found';
+  end if;
+
+  select count(*) into v_match_count
+  from public.finance_documents
+  where supplier_name ilike '%ELECTRICIDAD FRANCISCO JAVIER SOTO%'
+    and document_number='FE / 496'
+    and document_date='2026-09-23'
+    and description ilike '%CESAR PALACE%'
+    and approval_status='pending_mapping';
+
+  if v_match_count <> 1 then
+    raise exception 'Expected exactly one Cesar Palace FE / 496 invoice, found %', v_match_count;
+  end if;
+
+  update public.finance_documents
+  set division_id=v_division_id,
+      category_id=v_category_id,
+      cost_center_id=null,
+      operational_label='CESAR PALACE',
+      approval_status='ready',
+      classification_status='manual_review',
+      classification_reason='Infraestructura confirmada por evidencia canónica: servicios eléctricos Cesar Palace · Hospitality · Farm · Buildings',
+      confidence=null,
+      source_payload=source_payload || jsonb_build_object(
+        'canonical_budget_mapping',true,
+        'canonical_budget_division_key','hospitality-farm',
+        'canonical_budget_division_name','Farm',
+        'canonical_budget_category_key','buildings',
+        'canonical_budget_category_name','Buildings',
+        'infrastructure_routing_confirmed',true,
+        'infrastructure_routing_reason','Servicios eléctricos Cesar Palace; centro histórico HOSP FARM MANT Y REP CESAR PALACE',
+        'infrastructure_routing_target','tomas'
+      ),
+      updated_at=now()
+  where supplier_name ilike '%ELECTRICIDAD FRANCISCO JAVIER SOTO%'
+    and document_number='FE / 496'
+    and document_date='2026-09-23'
+    and description ilike '%CESAR PALACE%'
+    and approval_status='pending_mapping';
+end $;
+
 revoke all on function public.route_infrastructure_finance_review() from public, anon, authenticated;
 revoke all on function public.get_infrastructure_invoice_review_queue() from public, anon;
 revoke all on function public.review_infrastructure_finance_document(uuid,text,text) from public, anon;
