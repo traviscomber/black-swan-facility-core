@@ -56,15 +56,15 @@ type CurrentAsanaTask = {
   source_url: string | null
   last_seen_at: string
 }
-type ViewTab = "pendientes" | "completadas" | "todas"
+type ViewTab = "hoy" | "pendientes" | "completadas" | "todas"
 
 const LOCALES = { en: "en-US", es: "es-CL", de: "de-DE" } as const
 const DEFAULT_WORKSPACE_GID = "1205953160575908"
 
 const COPY = {
-  en: { eyebrow: "Black Swan · Personal workspace", title: "My tasks", description: "Only explicitly assigned Black Swan work and new Asana intake are shown here. Historical Asana backlog and demo routing stay separate.", pending: "Open", today: "Due today", completedWeek: "Completed this week", loadError: "Your tasks could not be loaded.", noProfile: "This account is not linked to an employee profile yet.", tabPending: "Open", tabCompleted: "Completed", tabAll: "All mine", empty: "No current tasks in this view.", allTasks: "All operational tasks", history: "Asana history", select: "Select a Black Swan task to review instructions, status, comments and evidence.", overdue: "Overdue", inProgress: "In progress", due: "Due", minutes: "min", asanaNew: "New from Asana", asanaNewDetail: "Only tasks created in Asana on or after the current-work cutover and still present in the latest workspace sync are shown.", sync: "Refresh from Asana", syncing: "Syncing…", syncOk: "Asana refreshed", syncFailed: "Asana could not be synchronized." },
-  es: { eyebrow: "Black Swan · Espacio personal", title: "Mis tareas", description: "Aquí sólo aparecen trabajo Black Swan asignado explícitamente y tareas nuevas de Asana. El backlog histórico y el ruteo demo quedan separados.", pending: "Abiertas", today: "Para hoy", completedWeek: "Completadas esta semana", loadError: "No fue posible cargar tus tareas.", noProfile: "Esta cuenta todavía no está vinculada a un perfil de trabajador.", tabPending: "Abiertas", tabCompleted: "Completadas", tabAll: "Todas las mías", empty: "No hay tareas vigentes en esta vista.", allTasks: "Todas las tareas operativas", history: "Histórico Asana", select: "Selecciona una tarea Black Swan para revisar instrucciones, estado, comentarios y evidencia.", overdue: "Vencida", inProgress: "En curso", due: "Fecha", minutes: "min", asanaNew: "Nuevas desde Asana", asanaNewDetail: "Sólo se muestran tareas creadas en Asana desde el corte de trabajo vigente y que siguen presentes en la última sincronización del workspace.", sync: "Actualizar desde Asana", syncing: "Sincronizando…", syncOk: "Asana actualizado", syncFailed: "No fue posible sincronizar con Asana." },
-  de: { eyebrow: "Black Swan · Persönlicher Bereich", title: "Meine Aufgaben", description: "Hier erscheinen nur ausdrücklich zugewiesene Black-Swan-Aufgaben und neue Asana-Eingänge. Historischer Asana-Backlog und Demo-Routing bleiben getrennt.", pending: "Offen", today: "Heute fällig", completedWeek: "Diese Woche erledigt", loadError: "Deine Aufgaben konnten nicht geladen werden.", noProfile: "Dieses Konto ist noch keinem Mitarbeiterprofil zugeordnet.", tabPending: "Offen", tabCompleted: "Erledigt", tabAll: "Alle meine", empty: "Keine aktuellen Aufgaben in dieser Ansicht.", allTasks: "Alle operativen Aufgaben", history: "Asana-Verlauf", select: "Wähle eine Black-Swan-Aufgabe, um Anweisungen, Status, Kommentare und Nachweise zu prüfen.", overdue: "Überfällig", inProgress: "In Bearbeitung", due: "Fällig", minutes: "Min", asanaNew: "Neu aus Asana", asanaNewDetail: "Nur Aufgaben, die seit dem aktuellen Arbeits-Cutover in Asana erstellt wurden und im letzten Workspace-Sync noch vorhanden sind, werden angezeigt.", sync: "Aus Asana aktualisieren", syncing: "Synchronisierung…", syncOk: "Asana aktualisiert", syncFailed: "Asana konnte nicht synchronisiert werden." },
+  en: { eyebrow: "Black Swan · Personal workspace", title: "My tasks", description: "Only explicitly assigned Black Swan work and new Asana intake are shown here. Historical Asana backlog and demo routing stay separate.", pending: "Open", today: "Due today", completedWeek: "Completed this week", loadError: "Your tasks could not be loaded.", noProfile: "This account is not linked to an employee profile yet.", tabToday: "Today", tabPending: "Open", tabCompleted: "Completed", tabAll: "All mine", empty: "No current tasks in this view.", allTasks: "All operational tasks", history: "Asana history", select: "Select a Black Swan task to review instructions, status, comments and evidence.", overdue: "Overdue", inProgress: "In progress", due: "Due", minutes: "min", asanaNew: "New from Asana", asanaNewDetail: "Only tasks created in Asana on or after the current-work cutover and still present in the latest workspace sync are shown.", sync: "Refresh from Asana", syncing: "Syncing…", syncOk: "Asana refreshed", syncFailed: "Asana could not be synchronized." },
+  es: { eyebrow: "Black Swan · Espacio personal", title: "Mis tareas", description: "Aquí sólo aparecen trabajo Black Swan asignado explícitamente y tareas nuevas de Asana. El backlog histórico y el ruteo demo quedan separados.", pending: "Abiertas", today: "Para hoy", completedWeek: "Completadas esta semana", loadError: "No fue posible cargar tus tareas.", noProfile: "Esta cuenta todavía no está vinculada a un perfil de trabajador.", tabToday: "Hoy", tabPending: "Abiertas", tabCompleted: "Completadas", tabAll: "Todas las mías", empty: "No hay tareas vigentes en esta vista.", allTasks: "Todas las tareas operativas", history: "Histórico Asana", select: "Selecciona una tarea Black Swan para revisar instrucciones, estado, comentarios y evidencia.", overdue: "Vencida", inProgress: "En curso", due: "Fecha", minutes: "min", asanaNew: "Nuevas desde Asana", asanaNewDetail: "Sólo se muestran tareas creadas en Asana desde el corte de trabajo vigente y que siguen presentes en la última sincronización del workspace.", sync: "Actualizar desde Asana", syncing: "Sincronizando…", syncOk: "Asana actualizado", syncFailed: "No fue posible sincronizar con Asana." },
+  de: { eyebrow: "Black Swan · Persönlicher Bereich", title: "Meine Aufgaben", description: "Hier erscheinen nur ausdrücklich zugewiesene Black-Swan-Aufgaben und neue Asana-Eingänge. Historischer Asana-Backlog und Demo-Routing bleiben getrennt.", pending: "Offen", today: "Heute fällig", completedWeek: "Diese Woche erledigt", loadError: "Deine Aufgaben konnten nicht geladen werden.", noProfile: "Dieses Konto ist noch keinem Mitarbeiterprofil zugeordnet.", tabToday: "Heute", tabPending: "Offen", tabCompleted: "Erledigt", tabAll: "Alle meine", empty: "Keine aktuellen Aufgaben in dieser Ansicht.", allTasks: "Alle operativen Aufgaben", history: "Asana-Verlauf", select: "Wähle eine Black-Swan-Aufgabe, um Anweisungen, Status, Kommentare und Nachweise zu prüfen.", overdue: "Überfällig", inProgress: "In Bearbeitung", due: "Fällig", minutes: "Min", asanaNew: "Neu aus Asana", asanaNewDetail: "Nur Aufgaben, die seit dem aktuellen Arbeits-Cutover in Asana erstellt wurden und im letzten Workspace-Sync noch vorhanden sind, werden angezeigt.", sync: "Aus Asana aktualisieren", syncing: "Synchronisierung…", syncOk: "Asana aktualisiert", syncFailed: "Asana konnte nicht synchronisiert werden." },
 } as const
 
 const priorityClasses: Record<TaskPriority, string> = {
@@ -86,6 +86,14 @@ function isDemoTask(task: PersonalTask) {
   return task.title.trim().startsWith("[DEMO]") || task.source_label?.startsWith("DEMO") === true
 }
 
+function requiresAttentionToday(task: PersonalTask) {
+  if (task.status !== "nueva" && task.status !== "en_progreso") return false
+  if (task.status === "en_progreso") return true
+  if (!task.due_date) return false
+  const due = parseISO(task.due_date)
+  return isToday(due) || isPast(due)
+}
+
 export default function MyTasksPage() {
   const router = useRouter()
   const { language } = useLanguage()
@@ -96,7 +104,7 @@ export default function MyTasksPage() {
   const [tasks, setTasks] = useState<PersonalTask[]>([])
   const [asanaTasks, setAsanaTasks] = useState<CurrentAsanaTask[]>([])
   const [selectedTask, setSelectedTask] = useState<PersonalTask | null>(null)
-  const [activeTab, setActiveTab] = useState<ViewTab>("pendientes")
+  const [activeTab, setActiveTab] = useState<ViewTab>("hoy")
   const [employeeName, setEmployeeName] = useState<string | null>(null)
   const [hasEmployeeProfile, setHasEmployeeProfile] = useState(true)
   const [canSyncAsana, setCanSyncAsana] = useState(false)
@@ -197,7 +205,7 @@ export default function MyTasksPage() {
     setSelectedTask((current) => selectedId ? nextTasks.find((task) => task.id === selectedId) ?? null : current ? nextTasks.find((task) => task.id === current.id) ?? null : null)
     if (selectedId) {
       const selected = nextTasks.find((task) => task.id === selectedId)
-      setActiveTab(selected?.status === "completada" ? "completadas" : selected?.status === "cancelada" ? "todas" : "pendientes")
+      setActiveTab(selected?.status === "completada" ? "completadas" : selected?.status === "cancelada" ? "todas" : requiresAttentionToday(selected as PersonalTask) ? "hoy" : "pendientes")
     }
     setIsLoading(false)
   }, [copy.loadError, lang, router, supabase])
@@ -226,8 +234,8 @@ export default function MyTasksPage() {
   const openTasks = tasks.filter((task) => task.status === "nueva" || task.status === "en_progreso")
   const completedWeek = tasks.filter((task) => task.status === "completada" && task.completed_at && isThisWeek(parseISO(task.completed_at), { weekStartsOn: 1 })).length
   const dueToday = openTasks.filter((task) => task.due_date && isToday(parseISO(task.due_date))).length + asanaTasks.filter((task) => task.due_on && isToday(parseISO(task.due_on))).length
-  const filteredTasks = tasks.filter((task) => activeTab === "pendientes" ? task.status === "nueva" || task.status === "en_progreso" : activeTab === "completadas" ? task.status === "completada" : true)
-  const visibleAsanaTasks = activeTab === "pendientes" || activeTab === "todas" ? asanaTasks : []
+  const filteredTasks = tasks.filter((task) => activeTab === "hoy" ? requiresAttentionToday(task) : activeTab === "pendientes" ? task.status === "nueva" || task.status === "en_progreso" : activeTab === "completadas" ? task.status === "completada" : true)
+  const visibleAsanaTasks = activeTab === "hoy" ? asanaTasks.filter((task) => task.due_on && (isToday(parseISO(task.due_on)) || isPast(parseISO(task.due_on)))) : activeTab === "pendientes" || activeTab === "todas" ? asanaTasks : []
   const hasVisibleWork = filteredTasks.length + visibleAsanaTasks.length > 0
 
   function openTask(task: PersonalTask) {
@@ -260,7 +268,8 @@ export default function MyTasksPage() {
     </div>}
 
     <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as ViewTab)}>
-      <TabsList className="grid h-auto w-full grid-cols-3 sm:w-fit">
+      <TabsList className="grid h-auto w-full grid-cols-4 sm:w-fit">
+        <TabsTrigger value="hoy">{copy.tabToday}</TabsTrigger>
         <TabsTrigger value="pendientes">{copy.tabPending}</TabsTrigger>
         <TabsTrigger value="completadas">{copy.tabCompleted}</TabsTrigger>
         <TabsTrigger value="todas">{copy.tabAll}</TabsTrigger>
@@ -307,7 +316,7 @@ export default function MyTasksPage() {
       </section>
 
       <section className="min-w-0 border-l-0 lg:border-l lg:pl-6">
-        {selectedTask ? <TaskDetailPanel task={selectedTask} onUpdate={loadTasks} onClose={() => { setSelectedTask(null); window.history.replaceState({}, "", `/${lang}/my-tasks`) }} onEdit={(task) => router.push(`/${lang}/tasks?selected=${task.id}`)} /> : <div className="flex min-h-64 items-center justify-center border-y p-8 text-center text-sm text-muted-foreground">{copy.select}</div>}
+        {selectedTask ? <TaskDetailPanel task={selectedTask} mode="execute" onUpdate={loadTasks} onClose={() => { setSelectedTask(null); window.history.replaceState({}, "", `/${lang}/my-tasks`) }} onEdit={(task) => router.push(`/${lang}/tasks?selected=${task.id}`)} /> : <div className="flex min-h-64 items-center justify-center border-y p-8 text-center text-sm text-muted-foreground">{copy.select}</div>}
       </section>
     </div>
   </div></AppLayout>
