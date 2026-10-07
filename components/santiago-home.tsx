@@ -37,6 +37,7 @@ const COPY = {
     openFinance: "Ver pagos",
     other: "Ver más",
     otherBody: "",
+    panorama: "Panorama",
     refresh: "Actualizar",
   },
   en: {
@@ -55,6 +56,7 @@ const COPY = {
     openFinance: "View payments",
     other: "View more",
     otherBody: "",
+    panorama: "Panorama",
     refresh: "Refresh",
   },
   de: {
@@ -73,6 +75,7 @@ const COPY = {
     openFinance: "Zahlungen",
     other: "Mehr",
     otherBody: "",
+    panorama: "Übersicht",
     refresh: "Aktualisieren",
   },
 } as const
@@ -268,6 +271,12 @@ export function SantiagoHome() {
                 <Button asChild variant="outline" size="sm">
                   <Link href={localized(locale, "/budgets/payments")}><CreditCard className="mr-2 h-4 w-4" />{copy.openFinance}</Link>
                 </Button>
+              </div>
+
+              <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+                <Link href={`/${locale}/os?view=panorama`} className="flex min-h-11 items-center justify-between border border-border px-3 py-2 text-sm text-muted-foreground hover:bg-secondary/40 hover:text-foreground">
+                  <span>{copy.panorama}</span><ArrowRight className="h-4 w-4" />
+                </Link>
               </div>
 
               {otherItems.length > 0 && (
