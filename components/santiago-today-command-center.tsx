@@ -36,57 +36,57 @@ type Copy = {
 
 const COPY: Record<"es" | "en" | "de", Copy> = {
   es: {
-    eyebrow: "CENTRO OPERATIVO · HOY",
-    title: "Lo que Santiago necesita resolver ahora",
-    subtitle: "Llegadas, salidas, preparación y solicitudes del día en una sola vista.",
+    eyebrow: "HOY",
+    title: "Operación",
+    subtitle: "",
     arrivals: "Llegadas hoy",
     departures: "Salidas hoy",
     notReady: "Llegadas no listas",
     requests: "Solicitudes abiertas",
     housekeeping: "Limpieza pendiente",
-    attention: "Requiere atención",
-    allGood: "Sin bloqueos críticos para las llegadas de hoy.",
+    attention: "Atención",
+    allGood: "Sin bloqueos.",
     roomNotReady: "habitación por preparar",
     unassignedRequests: "solicitud sin responsable",
-    openCalendar: "Abrir calendario",
-    openRequests: "Ver solicitudes",
-    openHousekeeping: "Ver limpieza",
+    openCalendar: "Calendario",
+    openRequests: "Solicitudes",
+    openHousekeeping: "Limpieza",
     refresh: "Actualizar",
   },
   en: {
-    eyebrow: "OPERATIONS CENTER · TODAY",
-    title: "What Santiago needs to resolve now",
-    subtitle: "Today’s arrivals, departures, readiness and guest requests in one view.",
+    eyebrow: "TODAY",
+    title: "Operations",
+    subtitle: "",
     arrivals: "Today’s arrivals",
     departures: "Today’s departures",
     notReady: "Arrivals not ready",
     requests: "Open requests",
     housekeeping: "Pending housekeeping",
-    attention: "Needs attention",
-    allGood: "No critical blockers for today’s arrivals.",
+    attention: "Attention",
+    allGood: "No blockers.",
     roomNotReady: "room to prepare",
     unassignedRequests: "request without owner",
-    openCalendar: "Open calendar",
-    openRequests: "View requests",
-    openHousekeeping: "View housekeeping",
+    openCalendar: "Calendar",
+    openRequests: "Requests",
+    openHousekeeping: "Housekeeping",
     refresh: "Refresh",
   },
   de: {
-    eyebrow: "BETRIEBSZENTRALE · HEUTE",
-    title: "Was Santiago jetzt erledigen muss",
-    subtitle: "Heutige Anreisen, Abreisen, Zimmerbereitschaft und Gästeanfragen auf einen Blick.",
+    eyebrow: "HEUTE",
+    title: "Betrieb",
+    subtitle: "",
     arrivals: "Anreisen heute",
     departures: "Abreisen heute",
     notReady: "Anreisen nicht bereit",
     requests: "Offene Anfragen",
     housekeeping: "Offene Reinigung",
-    attention: "Handlungsbedarf",
-    allGood: "Keine kritischen Blockaden für heutige Anreisen.",
+    attention: "Achtung",
+    allGood: "Keine Blockaden.",
     roomNotReady: "Zimmer vorzubereiten",
     unassignedRequests: "Anfrage ohne Verantwortlichen",
-    openCalendar: "Kalender öffnen",
-    openRequests: "Anfragen anzeigen",
-    openHousekeeping: "Reinigung anzeigen",
+    openCalendar: "Kalender",
+    openRequests: "Anfragen",
+    openHousekeeping: "Reinigung",
     refresh: "Aktualisieren",
   },
 }
@@ -185,22 +185,18 @@ export function SantiagoTodayCommandCenter() {
   const attentionCount = notReady.length + unassignedRequests
 
   return (
-    <section className="border-b border-border bg-background px-4 py-5 md:px-6">
+    <section className="border-b border-border bg-background px-4 py-4 md:px-6">
       <div className="mx-auto max-w-[1600px]">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-primary">{copy.eyebrow}</p>
-            <h1 className="mt-1 text-xl font-medium text-foreground md:text-2xl">{copy.title}</h1>
-            <p className="mt-1 text-sm text-muted-foreground">{copy.subtitle}</p>
-          </div>
-          <Button variant="outline" size="sm" onClick={() => void load()} disabled={loading}>
-            <RefreshCw className="mr-2 h-4 w-4" />{copy.refresh}
+        <div className="flex items-center justify-between gap-3">
+          <h1 className="text-lg font-semibold text-foreground">{copy.title}</h1>
+          <Button variant="ghost" size="icon" aria-label={copy.refresh} onClick={() => void load()} disabled={loading}>
+            <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
           </Button>
         </div>
 
         {error && <div className="mt-4 border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">{error}</div>}
 
-        <div className="mt-5 grid gap-2 sm:grid-cols-2 xl:grid-cols-5">
+        <div className="mt-3 grid grid-cols-2 gap-2 md:grid-cols-5">
           <Metric icon={DoorOpen} label={copy.arrivals} value={arrivals.length} href={localized(locale, "/bookings/activities")} />
           <Metric icon={LogOut} label={copy.departures} value={departures} href={localized(locale, "/bookings/activities")} />
           <Metric icon={AlertTriangle} label={copy.notReady} value={notReady.length} warning={notReady.length > 0} href={localized(locale, "/bookings/housekeeping")} />
@@ -212,7 +208,7 @@ export function SantiagoTodayCommandCenter() {
           <div className="flex items-start gap-3">
             {attentionCount > 0 ? <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-500" /> : <BedDouble className="mt-0.5 h-5 w-5 shrink-0 text-primary" />}
             <div>
-              <p className="text-sm font-medium text-foreground">{attentionCount > 0 ? copy.attention : copy.allGood}</p>
+              <p className="text-sm font-medium text-foreground">{attentionCount > 0 ? `${attentionCount} · ${copy.attention}` : copy.allGood}</p>
               {attentionCount > 0 && (
                 <p className="mt-1 text-xs text-muted-foreground">
                   {notReady.length > 0 && `${notReady.length} ${copy.roomNotReady}`}
@@ -232,7 +228,7 @@ export function SantiagoTodayCommandCenter() {
             </div>
           </div>
 
-          <div className="flex flex-wrap gap-2">
+          <div className="grid grid-cols-3 gap-1 sm:flex">
             <Button asChild size="sm" variant="outline"><Link href={localized(locale, "/bookings/calendar")}>{copy.openCalendar}<ArrowRight className="ml-2 h-4 w-4" /></Link></Button>
             <Button asChild size="sm" variant="outline"><Link href={localized(locale, "/bookings/requests")}>{copy.openRequests}<ArrowRight className="ml-2 h-4 w-4" /></Link></Button>
             <Button asChild size="sm"><Link href={localized(locale, "/bookings/housekeeping")}>{copy.openHousekeeping}<ArrowRight className="ml-2 h-4 w-4" /></Link></Button>
@@ -245,12 +241,12 @@ export function SantiagoTodayCommandCenter() {
 
 function Metric({ icon: Icon, label, value, warning = false, href, helper }: { icon: typeof DoorOpen; label: string; value: number; warning?: boolean; href: string; helper?: string }) {
   return (
-    <Link href={href} className={`group block border bg-card p-4 transition-colors hover:bg-secondary/45 ${warning ? "border-amber-400/35" : "border-border"}`}>
+    <Link href={href} className={`group block border bg-card p-3 transition-colors hover:bg-secondary/45 ${warning ? "border-amber-400/35" : "border-border"}`}>
       <div className="flex items-center justify-between gap-3">
         <p className="text-xs text-muted-foreground">{label}</p>
         <Icon className={`h-4 w-4 transition-transform group-hover:translate-x-0.5 ${warning ? "text-amber-500" : "text-primary"}`} />
       </div>
-      <p className="mt-2 text-2xl font-medium text-foreground">{value}</p>
+      <p className="mt-1 text-xl font-medium text-foreground">{value}</p>
       {helper && <p className="mt-1 text-[11px] text-amber-500">{helper}</p>}
     </Link>
   )
