@@ -1,7 +1,8 @@
 "use client"
 
+import Link from "next/link"
 import { useCallback, useEffect, useMemo, useState } from "react"
-import { ChefHat, ClipboardPlus, ConciergeBell, Loader2, RefreshCw, Sparkles, Users } from "lucide-react"
+import { AlertTriangle, ChefHat, CheckCircle2, ClipboardPlus, ConciergeBell, Loader2, RefreshCw, Sparkles, Users } from "lucide-react"
 import { AddTaskDialog } from "@/components/add-task-dialog"
 import { PeopleOperationalRoutines } from "@/components/people-operational-routines"
 import { Badge } from "@/components/ui/badge"
@@ -9,6 +10,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { createBrowserClient } from "@/lib/supabase/client"
+import { useLanguage } from "@/lib/hooks/use-language"
 import type { Employee } from "@/lib/types"
 import type { OperationalArea } from "@/lib/operational-task-templates"
 
@@ -23,9 +25,21 @@ type Profile = {
   can_receive_tasks: boolean | null
 }
 
+type AssignedTask = {
+  id: string
+  title: string
+  status: string
+  due_date: string | null
+  operational_area: string | null
+  priority: string
+  task_category: string | null
+  source_type: string | null
+  source_label: string | null
+}
+
 type AssignmentRow = {
   employee_id: string | null
-  tasks: { id: string; status: string; due_date: string | null; operational_area: string | null } | null
+  tasks: AssignedTask | null
 }
 
 type Focus = "hospitality" | "housekeeping" | "kitchen" | "all"
@@ -35,6 +49,8 @@ type PersonRow = {
   profile: Profile | null
   openTasks: number
   dueToday: number
+  overdue: number
+  currentTasks: AssignedTask[]
 }
 
 const focusMeta: Record<Focus, { label: string; area?: OperationalArea; icon: typeof Users }> = {
@@ -51,6 +67,14 @@ function chileDate() {
     month: "2-digit",
     day: "2-digit",
   }).format(new Date())
+}
+
+function isCurrentOperationalTask(task: AssignedTask) {
+  if (task.title.trim().startsWith("[DEMO]")) return false
+  if (task.source_label?.startsWith("DEMO") === true) return false
+  if (task.task_category?.startsWith("asana_import") === true) return false
+  if (task.source_label?.startsWith("Asana ·") === true) return false
+  return true
 }
 
 function focusMatch(row: PersonRow, focus: Focus) {
@@ -71,6 +95,8 @@ function focusMatch(row: PersonRow, focus: Focus) {
 
 export function PeopleOperationsDispatch({ employees }: { employees: Employee[] }) {
   const supabase = useMemo(() => createBrowserClient(), [])
+  const { language } = useLanguage()
+  const locale = language === "en" || language === "de" ? language : "es"
   const [focus, setFocus] = useState<Focus>("hospitality")
   const [profiles, setProfiles] = useState<Profile[]>([])
   const [assignments, setAssignments] = useState<AssignmentRow[]>([])
@@ -85,7 +111,7 @@ export function PeopleOperationsDispatch({ employees }: { employees: Employee[] 
         .select("employee_id,canonical_job_title,role_summary,primary_operational_area,secondary_operational_areas,task_categories,core_responsibilities,can_receive_tasks"),
       supabase
         .from("task_assignments")
-        .select("employee_id,tasks!inner(id,status,due_date,operational_area)")
+        .select("employee_id,tasks!inner(id,title,status,due_date,operational_area,priority,task_category,source_type,source_label)")
         .not("employee_id", "is", null)
         .in("tasks.status", ["nueva", "en_progreso"]),
     ])
@@ -98,7 +124,7 @@ export function PeopleOperationsDispatch({ employees }: { employees: Employee[] 
 
   const rows = useMemo<PersonRow[]>(() => {
     const profileByEmployee = new Map(profiles.map((profile) => [profile.employee_id, profile]))
-    const counts = new Map<string, { open: number; dueToday: number }>()
+    const taskMap = new Map<string, AssignedTask[]>()
     const today = chileDate()
     const acceptedAreas = focus === "all"
       ? null
@@ -107,32 +133,54 @@ export function PeopleOperationsDispatch({ employees }: { employees: Employee[] 
         : focus === "housekeeping"
           ? new Set(["housekeeping"])
           : new Set(["cocina", "kitchen"])
+
     for (const assignment of assignments) {
-      if (!assignment.employee_id || !assignment.tasks) continue
+      if (!assignment.employee_id || !assignment.tasks || !isCurrentOperationalTask(assignment.tasks)) continue
       const taskArea = assignment.tasks.operational_area?.toLowerCase() ?? ""
       if (acceptedAreas && !acceptedAreas.has(taskArea)) continue
-      const current = counts.get(assignment.employee_id) ?? { open: 0, dueToday: 0 }
-      current.open += 1
-      if (assignment.tasks.due_date === today) current.dueToday += 1
-      counts.set(assignment.employee_id, current)
+      const current = taskMap.get(assignment.employee_id) ?? []
+      if (!current.some((task) => task.id === assignment.tasks?.id)) current.push(assignment.tasks)
+      taskMap.set(assignment.employee_id, current)
     }
+
     return employees
       .filter((employee) => employee.is_active)
       .map((employee) => {
-        const count = counts.get(employee.id) ?? { open: 0, dueToday: 0 }
+        const currentTasks = (taskMap.get(employee.id) ?? []).sort((a, b) => {
+          const aOverdue = Boolean(a.due_date && a.due_date < today)
+          const bOverdue = Boolean(b.due_date && b.due_date < today)
+          if (aOverdue !== bOverdue) return aOverdue ? -1 : 1
+          if (a.due_date && b.due_date) return a.due_date.localeCompare(b.due_date)
+          if (a.due_date) return -1
+          if (b.due_date) return 1
+          return a.title.localeCompare(b.title, "es")
+        })
         return {
           employee,
           profile: profileByEmployee.get(employee.id) ?? null,
-          openTasks: count.open,
-          dueToday: count.dueToday,
+          openTasks: currentTasks.length,
+          dueToday: currentTasks.filter((task) => task.due_date === today).length,
+          overdue: currentTasks.filter((task) => Boolean(task.due_date && task.due_date < today)).length,
+          currentTasks,
         }
       })
   }, [assignments, employees, focus, profiles])
 
   const visible = useMemo(
-    () => rows.filter((row) => focusMatch(row, focus)).sort((a, b) => a.openTasks - b.openTasks || a.employee.name.localeCompare(b.employee.name, "es")),
+    () => rows
+      .filter((row) => focusMatch(row, focus))
+      .sort((a, b) => b.overdue - a.overdue || b.dueToday - a.dueToday || a.openTasks - b.openTasks || a.employee.name.localeCompare(b.employee.name, "es")),
     [focus, rows],
   )
+
+  const focusTotals = useMemo(() => visible.reduce(
+    (totals, row) => ({
+      open: totals.open + row.openTasks,
+      today: totals.today + row.dueToday,
+      overdue: totals.overdue + row.overdue,
+    }),
+    { open: 0, today: 0, overdue: 0 },
+  ), [visible])
 
   const selectedEmployee = employees.find((employee) => employee.id === dialogEmployeeId) ?? null
   const defaultArea = focusMeta[focus].area ?? null
@@ -163,6 +211,23 @@ export function PeopleOperationsDispatch({ employees }: { employees: Employee[] 
             })}
           </TabsList>
         </Tabs>
+        <div className="grid gap-2 border-t pt-3 sm:grid-cols-3">
+          <div className="flex items-center justify-between rounded-md border bg-background px-3 py-2">
+            <span className="text-xs text-muted-foreground">Trabajo abierto</span>
+            <span className="text-sm font-semibold">{focusTotals.open}</span>
+          </div>
+          <div className="flex items-center justify-between rounded-md border bg-background px-3 py-2">
+            <span className="text-xs text-muted-foreground">Para hoy</span>
+            <span className="text-sm font-semibold">{focusTotals.today}</span>
+          </div>
+          <div className={`flex items-center justify-between rounded-md border px-3 py-2 ${focusTotals.overdue > 0 ? "border-amber-400/40 bg-amber-500/5" : "bg-background"}`}>
+            <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              {focusTotals.overdue > 0 ? <AlertTriangle className="h-3.5 w-3.5 text-amber-500" /> : <CheckCircle2 className="h-3.5 w-3.5 text-primary" />}
+              Vencidas
+            </span>
+            <span className={`text-sm font-semibold ${focusTotals.overdue > 0 ? "text-amber-500" : ""}`}>{focusTotals.overdue}</span>
+          </div>
+        </div>
       </CardHeader>
 
       <CardContent className="p-0">
@@ -187,16 +252,40 @@ export function PeopleOperationsDispatch({ employees }: { employees: Employee[] 
                     {responsibilities.length > 0 && (
                       <p className="mt-2 text-xs text-muted-foreground">{responsibilities.join(" · ")}</p>
                     )}
+                    {row.currentTasks.length > 0 && (
+                      <div className="mt-3 space-y-1.5">
+                        {row.currentTasks.slice(0, 2).map((task) => {
+                          const overdue = Boolean(task.due_date && task.due_date < chileDate())
+                          return (
+                            <Link
+                              key={task.id}
+                              href={`/${locale}/tasks?selected=${task.id}`}
+                              className="flex items-center justify-between gap-3 rounded-md border px-2.5 py-2 text-xs transition-colors hover:bg-muted/50"
+                            >
+                              <span className="min-w-0 truncate font-medium">{task.title}</span>
+                              <span className={overdue ? "shrink-0 text-amber-500" : "shrink-0 text-muted-foreground"}>
+                                {overdue ? "Vencida" : task.due_date === chileDate() ? "Hoy" : task.status === "en_progreso" ? "En curso" : "Pendiente"}
+                              </span>
+                            </Link>
+                          )
+                        })}
+                        {row.currentTasks.length > 2 && <p className="text-[11px] text-muted-foreground">+{row.currentTasks.length - 2} tarea{row.currentTasks.length - 2 === 1 ? "" : "s"} más</p>}
+                      </div>
+                    )}
                   </div>
 
-                  <div className="flex gap-6 md:justify-end">
+                  <div className="flex gap-5 md:justify-end">
                     <div>
                       <p className="text-xs text-muted-foreground">Abiertas</p>
                       <p className="text-lg font-semibold">{row.openTasks}</p>
                     </div>
                     <div>
-                      <p className="text-xs text-muted-foreground">Para hoy</p>
+                      <p className="text-xs text-muted-foreground">Hoy</p>
                       <p className="text-lg font-semibold">{row.dueToday}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Vencidas</p>
+                      <p className={`text-lg font-semibold ${row.overdue > 0 ? "text-amber-500" : ""}`}>{row.overdue}</p>
                     </div>
                   </div>
 
