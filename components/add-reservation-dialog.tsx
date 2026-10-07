@@ -59,6 +59,7 @@ interface ReservationConfirmationData {
   nights: number
   totalAmount: number
   locationName: string
+  arrivalSummary?: string
 }
 
 interface AddReservationDialogProps {
@@ -228,6 +229,17 @@ export function AddReservationDialog({
       nights,
       totalAmount: formData.total_amount,
       locationName: selectedBed?.room?.location_ref?.name || selectedBed?.room?.location || (selectedLocationFilter === "all" ? copy.multiple : selectedLocationFilter),
+      arrivalSummary: formData.arrival_transport_mode === "unknown"
+        ? undefined
+        : [
+            formData.arrival_transport_mode === "flight" ? copy.flight
+              : formData.arrival_transport_mode === "bus" ? copy.bus
+                : formData.arrival_transport_mode === "private_vehicle" ? copy.privateVehicle
+                  : copy.otherTransport,
+            formData.arrival_carrier_name,
+            formData.arrival_service_number,
+            formData.arrival_at ? new Date(formData.arrival_at).toLocaleString(language === "es" ? "es-CL" : language === "de" ? "de-DE" : "en-US", { timeZone: "America/Santiago", dateStyle: "short", timeStyle: "short" }) : "",
+          ].filter(Boolean).join(" · "),
     })
     setShowConfirmation(true)
   }
