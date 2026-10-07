@@ -114,7 +114,6 @@ export function SantiagoPaymentQueue() {
   }, [load, supabase])
 
   const escalations = rows.filter((row) => row.cost_center_escalation_status === 'pending_santiago')
-  const observedPayments = rows.filter((row) => row.reconciliation_status === 'paid_observed' || row.reconciliation_status === 'reconciled')
   const paymentRows = rows.filter((row) => row.reconciliation_status !== 'paid_observed' && row.reconciliation_status !== 'reconciled')
   const filtered = paymentRows.filter((row) => row.payment_status === status)
   const counts = paymentRows.reduce<Record<string, number>>((acc, row) => {
