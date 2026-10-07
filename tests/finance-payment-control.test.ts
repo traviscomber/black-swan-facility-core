@@ -6,6 +6,7 @@ const migration = readFileSync(new URL('../supabase/migrations/20260924212000_sa
 const queue = readFileSync(new URL('../components/santiago-payment-queue.tsx', import.meta.url), 'utf8')
 const approval = readFileSync(new URL('../components/finance-approval-queue.tsx', import.meta.url), 'utf8')
 const budgetMappingFix = readFileSync(new URL('../supabase/migrations/20260925024500_fix_assign_finance_budget_audit_action.sql', import.meta.url), 'utf8')
+const paidObservedGuard = readFileSync(new URL('../supabase/migrations/20261007153500_guard_paid_observed_supplier_payment.sql', import.meta.url), 'utf8')
 
 test('finance flow separates Raimundo expense validation from Santiago payment control', () => {
   assert.match(migration, /payment_status/)
@@ -46,4 +47,16 @@ test('canonical Budget mapping uses an allowed critical audit action', () => {
   assert.match(budgetMappingFix, /'UPDATE','finance'/)
   assert.match(budgetMappingFix, /'operation','assign_canonical_budget_mapping'/)
   assert.doesNotMatch(budgetMappingFix, /'assign_canonical_budget_mapping','finance'/)
+})
+
+
+test('observed reconciliation payments cannot be authorized or executed again', () => {
+  assert.match(paidObservedGuard, /reconciliation_status in \('paid_observed','reconciled'\)/)
+  assert.match(paidObservedGuard, /cannot be authorized again/)
+  assert.match(paidObservedGuard, /cannot be recorded again/)
+  assert.match(queue, /reconciliation_status/)
+  assert.match(queue, /observedPayments/)
+  assert.match(queue, /Pago observado/)
+  assert.match(queue, /row\.reconciliation_status !== 'paid_observed'/)
+  assert.match(queue, /row\.reconciliation_status !== 'reconciled'/)
 })
