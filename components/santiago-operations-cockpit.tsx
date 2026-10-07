@@ -22,7 +22,7 @@ type Booking = {
 
 type TaskAssignment = {
   employee_id: string | null
-  employees: { id: string; name: string; role: string | null } | null
+  employees: Array<{ id: string; name: string; role: string | null }> | null
 }
 
 type StaffTask = {
@@ -178,7 +178,7 @@ export function SantiagoOperationsCockpit({ language, navigation }: { language: 
       setTasks(
         ((taskResult.data ?? []) as StaffTask[])
           .filter((task) => !isDemoTask(task) && !isAsanaTask(task))
-          .filter((task) => task.task_assignments?.some((assignment) => assignment.employee_id && assignment.employees))
+          .filter((task) => task.task_assignments?.some((assignment) => assignment.employee_id && assignment.employees?.length))
           .slice(0, 12),
       )
     }
@@ -274,7 +274,7 @@ export function SantiagoOperationsCockpit({ language, navigation }: { language: 
             ) : (
               <div className="divide-y">
                 {taskRows.map((task) => {
-                  const names = task.task_assignments.map((assignment) => assignment.employees?.name?.trim()).filter(Boolean) as string[]
+                  const names = task.task_assignments.map((assignment) => assignment.employees?.[0]?.name?.trim()).filter(Boolean) as string[]
                   const overdue = Boolean(task.due_date && task.due_date < today)
                   const dueToday = task.due_date === today
                   return (
