@@ -36,7 +36,7 @@ test("historical Asana snapshots remain read-only in task details", () => {
   assert.match(taskDetail, /if \(readOnlyAsanaSnapshot \|\| status === task\.status\) return/)
   assert.match(taskDetail, /if \(readOnlyAsanaSnapshot\) return/)
   assert.match(taskDetail, /Snapshot histórico de Asana · sólo lectura/)
-  assert.match(taskDetail, /!readOnlyAsanaSnapshot && <Button variant="outline" size="icon" onClick=\{\(\) => onEdit\(task\)\}/)
+  assert.match(taskDetail, /!readOnlyAsanaSnapshot && !executionMode && <Button variant="outline" size="icon" onClick=\{\(\) => onEdit\(task\)\}/)
   assert.match(taskDetail, /Estado histórico/)
   assert.match(taskDetail, /No editable/)
 })
