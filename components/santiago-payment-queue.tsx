@@ -6,6 +6,7 @@ import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { createClient } from '@/lib/supabase/client'
 import { financeAllocationLabel } from '@/lib/finance/budget-display'
+import { FinanceDecisionContext } from '@/components/finance-decision-context'
 
 type PaymentStatus = 'not_ready' | 'pending_santiago' | 'authorized' | 'rejected' | 'paid'
 
@@ -15,6 +16,9 @@ type PaymentRow = {
   document_number: string
   document_date: string
   due_date: string | null
+  description: string | null
+  classification_reason: string | null
+  confidence: number | string | null
   total_amount: number | string
   currency: string
   division_id: string | null
@@ -83,7 +87,7 @@ export function SantiagoPaymentQueue() {
 
     const [documents, divisionResult, categoryResult, sourceResult] = await Promise.all([
       supabase.from('finance_documents')
-        .select('id,supplier_name,document_number,document_date,due_date,total_amount,currency,division_id,category_id,cost_center_id,operational_label,approved_at,payment_status,payment_decision_notes,payment_decided_at,paid_at,payment_method,payment_reference,reconciliation_status,cost_center_escalation_status,cost_center_escalation_note,cost_center_escalated_at,infrastructure_review_status,infrastructure_review_notes,infrastructure_reviewed_at')
+        .select('id,supplier_name,document_number,document_date,due_date,description,classification_reason,confidence,total_amount,currency,division_id,category_id,cost_center_id,operational_label,approved_at,payment_status,payment_decision_notes,payment_decided_at,paid_at,payment_method,payment_reference,reconciliation_status,cost_center_escalation_status,cost_center_escalation_note,cost_center_escalated_at,infrastructure_review_status,infrastructure_review_notes,infrastructure_reviewed_at')
         .or('payment_status.neq.not_ready,cost_center_escalation_status.eq.pending_santiago')
         .order('approved_at', { ascending: false }),
       supabase.from('budget_divisions').select('id,name,source_key'),
@@ -284,7 +288,18 @@ export function SantiagoPaymentQueue() {
                     <td className="px-4 py-4">
                       <p className="text-[var(--bs-text-primary)]">{row.supplier_name}</p>
                       <p className="mt-1 text-xs text-[var(--bs-text-muted)]">{row.document_number} · {new Date(`${row.document_date}T00:00:00`).toLocaleDateString('es-CL')}</p>
-                      {sourceDocumentIds.has(row.id) ? <a className="mt-2 inline-flex items-center gap-1 text-xs text-[var(--bs-cool-sky)] underline" href={`/api/finance/sii-invoices/source?documentId=${encodeURIComponent(row.id)}`} target="_blank" rel="noreferrer"><FileText className="h-3.5 w-3.5" />Ver factura</a> : <p className="mt-2 text-xs text-[var(--bs-text-muted)]">Sin archivo SII adjunto · evidencia histórica</p>}
+                      <div className="mt-3">
+                        <FinanceDecisionContext
+                          description={row.description}
+                          allocation={financeAllocationLabel(division?.name, category, division?.source_key)}
+                          operationalLabel={row.operational_label}
+                          reason={row.infrastructure_review_notes || row.classification_reason}
+                          hasSourceFile={sourceDocumentIds.has(row.id)}
+                          sourceHref={`/api/finance/sii-invoices/source?documentId=${encodeURIComponent(row.id)}`}
+                          evidenceLabel={sourceDocumentIds.has(row.id) ? 'Factura fuente + revisión' : 'Datos fiscales + historial'}
+                          detail={row.confidence == null ? null : `Confianza de clasificación: ${Math.round(Number(row.confidence) * 100)}%`}
+                        />
+                      </div>
                     </td>
                     <td className="px-4 py-4">
                       <p className="text-[var(--bs-text-primary)]">{financeAllocationLabel(division?.name, category, division?.source_key)}</p>
