@@ -181,3 +181,89 @@ $function$;
 
 revoke all on function public.get_reservation_logistics_editor(uuid) from public, anon;
 grant execute on function public.get_reservation_logistics_editor(uuid) to authenticated, service_role;
+
+
+create or replace function public.create_reservation_with_arrival_logistics(
+  p_bed_id uuid default null,
+  p_guest_name text default null,
+  p_guest_email text default null,
+  p_guest_phone text default null,
+  p_check_in date default null,
+  p_check_out date default null,
+  p_num_guests integer default 1,
+  p_total_amount numeric default 0,
+  p_status text default 'confirmed',
+  p_special_requests text default null,
+  p_invoice_due_date date default null,
+  p_arrival_transport_mode text default 'unknown',
+  p_arrival_hub text default 'unknown',
+  p_arrival_at timestamptz default null,
+  p_arrival_carrier_name text default null,
+  p_arrival_service_number text default null,
+  p_arrival_origin text default null,
+  p_arrival_pickup_required boolean default false
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path to 'public', 'pg_temp'
+as $function$
+declare
+  v_result jsonb;
+  v_reservation_id uuid;
+  v_transport_coordinator_id uuid;
+begin
+  if p_arrival_transport_mode not in ('flight','bus','private_vehicle','other','unknown') then
+    return jsonb_build_object('success',false,'error','Modo de transporte inválido','error_code','22023');
+  end if;
+  if p_arrival_hub not in ('pichoy','valdivia_bus_terminal','rebellin','direct','other','unknown') then
+    return jsonb_build_object('success',false,'error','Punto de llegada inválido','error_code','22023');
+  end if;
+
+  v_result := public.create_reservation_atomic(
+    p_bed_id,p_guest_name,p_guest_email,p_guest_phone,p_check_in,p_check_out,
+    p_num_guests,p_total_amount,p_status,p_special_requests,p_invoice_due_date
+  );
+
+  if coalesce((v_result->>'success')::boolean,false) is not true then
+    return v_result;
+  end if;
+
+  v_reservation_id := (v_result->>'reservation_id')::uuid;
+
+  if p_arrival_transport_mode <> 'unknown' then
+    if coalesce(p_arrival_pickup_required,false) then
+      select e.id into v_transport_coordinator_id
+      from public.employees e
+      where e.is_active
+        and lower(e.name) in ('juan pablo atiaga','juan pablo arteaga')
+      order by case when lower(e.name)='juan pablo atiaga' then 0 else 1 end
+      limit 1;
+    end if;
+
+    insert into public.reservation_logistics(
+      reservation_id,direction,transport_mode,hub,anchor_at,margin_minutes,
+      carrier_name,service_number,origin_destination,pickup_required,transport_coordinator_id,
+      boat_duration_minutes,road_duration_minutes,status,notes,updated_at
+    ) values (
+      v_reservation_id,'arrival',p_arrival_transport_mode,p_arrival_hub,p_arrival_at,null,
+      nullif(trim(p_arrival_carrier_name),''),
+      nullif(trim(p_arrival_service_number),''),
+      nullif(trim(p_arrival_origin),''),
+      coalesce(p_arrival_pickup_required,false),
+      v_transport_coordinator_id,
+      30,30,'planned',null,now()
+    );
+  end if;
+
+  return v_result || jsonb_build_object(
+    'arrival_logistics_saved', p_arrival_transport_mode <> 'unknown',
+    'transport_coordinator_id', v_transport_coordinator_id
+  );
+exception when others then
+  raise;
+end;
+$function$;
+
+revoke all on function public.create_reservation_with_arrival_logistics(uuid,text,text,text,date,date,integer,numeric,text,text,date,text,text,timestamptz,text,text,text,boolean) from public, anon;
+grant execute on function public.create_reservation_with_arrival_logistics(uuid,text,text,text,date,date,integer,numeric,text,text,date,text,text,timestamptz,text,text,text,boolean) to authenticated, service_role;
