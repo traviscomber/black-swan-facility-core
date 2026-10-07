@@ -2,11 +2,11 @@ import type { MetadataRoute } from "next"
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    id: "/orchard/field",
+    id: "/",
     name: "Blackswan Facility Core",
     short_name: "BSFC",
-    description: "Blackswan Facility Core field operations and Orchard management.",
-    start_url: "/orchard/field",
+    description: "Blackswan Facility Core operational system for people, hospitality, facilities, finance and field work.",
+    start_url: "/os",
     scope: "/",
     display: "standalone",
     background_color: "#171512",
@@ -18,11 +18,11 @@ export default function manifest(): MetadataRoute.Manifest {
       { src: "/apple-icon.png", sizes: "180x180", type: "image/png", purpose: "any" },
     ],
     shortcuts: [
-      { name: "Orchard Field Mode", short_name: "Field", description: "Open today's Orchard field work.", url: "/orchard/field" },
-      { name: "Record Harvest", short_name: "Harvest", description: "Open fast harvest entry.", url: "/orchard/field/harvest" },
-      { name: "Nursery", short_name: "Nursery", description: "Update nursery batches.", url: "/orchard/field/nursery" },
-      { name: "Crop Care", short_name: "Care", description: "Record crop care.", url: "/orchard/care" },
-      { name: "Crop Health", short_name: "Health", description: "Record crop health observations.", url: "/orchard/pests" },
+      { name: "Hoy", short_name: "Hoy", description: "Open the Black Swan operating home.", url: "/os" },
+      { name: "Mis tareas", short_name: "Tareas", description: "Open assigned operational work.", url: "/my-tasks" },
+      { name: "Personal", short_name: "Personal", description: "Open people and daily operations.", url: "/employees" },
+      { name: "Reservas", short_name: "Reservas", description: "Open hospitality bookings.", url: "/bookings" },
+      { name: "Orchard", short_name: "Orchard", description: "Open Orchard field operations.", url: "/orchard/field" },
     ],
   }
 }

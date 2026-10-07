@@ -33,6 +33,7 @@ export async function generateMetadata(): Promise<Metadata> {
       shortcut: "/favicon.ico",
       apple: [{ url: "/apple-icon.png", type: "image/png", sizes: "180x180" }],
     },
+    appleWebApp: { capable: true, title: "BSFC", statusBarStyle: "black-translucent" },
     robots: { index: false, follow: false },
     other: { google: "notranslate", "color-scheme": "dark" },
   }
