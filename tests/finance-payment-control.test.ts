@@ -11,6 +11,8 @@ const infrastructureMigration = readFileSync(new URL('../supabase/migrations/202
 const tomasQueue = readFileSync(new URL('../components/tomas-infrastructure-invoice-queue.tsx', import.meta.url), 'utf8')
 const approvalWorkspace = readFileSync(new URL('../components/finance-approval-workspace.tsx', import.meta.url), 'utf8')
 const budgetDisplay = readFileSync(new URL('../lib/finance/budget-display.ts', import.meta.url), 'utf8')
+const decisionContext = readFileSync(new URL('../components/finance-decision-context.tsx', import.meta.url), 'utf8')
+const approvalContextMigration = readFileSync(new URL('../supabase/migrations/20261007232000_finance_approval_context.sql', import.meta.url), 'utf8')
 
 test('finance flow separates Raimundo expense validation from Santiago payment control', () => {
   assert.match(migration, /payment_status/)
@@ -96,4 +98,24 @@ test('hospitality budget labels preserve operational hierarchy', () => {
   assert.match(approval, /financeAllocationLabel/)
   assert.match(queue, /financeAllocationLabel/)
   assert.match(tomasQueue, /financeAllocationLabel/)
+})
+
+
+test('approval actions show a compact factual invoice explanation', () => {
+  assert.match(decisionContext, /Qué es/)
+  assert.match(decisionContext, /Imputación/)
+  assert.match(decisionContext, /Por qué/)
+  assert.match(decisionContext, /Evidencia/)
+  assert.match(decisionContext, /Ver detalle/)
+  assert.match(approval, /FinanceDecisionContext/)
+  assert.match(tomasQueue, /FinanceDecisionContext/)
+  assert.match(queue, /FinanceDecisionContext/)
+})
+
+test('Tomas receives persisted invoice analysis without a new AI request', () => {
+  assert.match(approvalContextMigration, /classificationReason/)
+  assert.match(approvalContextMigration, /d\.classification_reason/)
+  assert.match(approvalContextMigration, /d\.confidence/)
+  assert.match(tomasQueue, /classificationReason/)
+  assert.doesNotMatch(tomasQueue, /cost-center-suggestion/)
 })
