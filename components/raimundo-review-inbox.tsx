@@ -1,10 +1,11 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { CheckCircle2, ChevronLeft, ChevronRight, ShieldCheck } from 'lucide-react'
+import { CheckCircle2, ChevronLeft, ChevronRight } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { createClient } from '@/lib/supabase/client'
+import { financeDivisionLabel } from '@/lib/finance/budget-display'
 
 type Center = {
   id: string
@@ -129,66 +130,99 @@ export function RaimundoReviewInbox() {
 
   return (
     <section className="mx-4 mt-4 bg-[var(--bs-surface-primary)] md:mx-8">
-      <div className="p-5 md:p-7">
-        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+      <div className="p-4 md:p-5">
+        <div className="flex items-center justify-between gap-3">
           <div>
-            <p className="text-xs uppercase tracking-[0.14em] text-[var(--bs-warm-yellow)]">Paso 1 · Confirmaciones de centro</p>
-            <h2 className="mt-2 text-xl font-normal text-[var(--bs-text-primary)]">Confirmar centros de costo pendientes</h2>
-            <p className="mt-1 text-sm text-[var(--bs-text-secondary)]">Confirma cada centro nuevo una sola vez. La decisión se reutiliza en todos los documentos con la misma etiqueta; después los gastos quedan ordenados para aprobación.</p>
+            <h2 className="text-lg font-medium text-[var(--bs-text-primary)]">Centro nuevo</h2>
+            <p className="mt-1 text-xs text-[var(--bs-text-muted)]">{index + 1} de {centers.length}</p>
           </div>
-          <div className="text-right">
-            <div className="flex items-center justify-end gap-2 text-xs text-[var(--bs-text-secondary)]"><ShieldCheck className="h-4 w-4" />{canReview ? 'Sesión habilitada' : 'Solo Raimundo puede confirmar'}</div>
-            <p className="mt-2 text-sm text-[var(--bs-text-primary)]">{centers.length} centro{centers.length === 1 ? '' : 's'} pendiente{centers.length === 1 ? '' : 's'} · caso {index + 1} de {centers.length}</p>
-          </div>
+          <p className="text-xs text-[var(--bs-text-muted)]">{row.open_document_count} factura{row.open_document_count === 1 ? '' : 's'}</p>
         </div>
 
-        <div className="mt-6 grid gap-5 lg:grid-cols-[1.15fr_0.85fr]">
-          <div className="bg-[var(--bs-surface-secondary)] p-5">
-            <p className="text-[11px] uppercase tracking-[0.1em] text-[var(--bs-text-muted)]">Origen</p>
-            <p className="mt-2 text-lg text-[var(--bs-text-primary)]">{row.operational_label || row.historical_label}</p>
-            {row.operational_label && <p className="mt-1 text-xs text-[var(--bs-text-muted)]">Histórico: {row.historical_label}</p>}
-            <p className="mt-3 text-xs text-[var(--bs-text-secondary)]">{row.open_document_count} documento{row.open_document_count === 1 ? '' : 's'} pendiente{row.open_document_count === 1 ? '' : 's'}</p>
+        <div className="mt-4 grid gap-4 lg:grid-cols-[1fr_0.9fr]">
+          <div className="bg-[var(--bs-surface-secondary)] p-4">
+            <p className="text-xs text-[var(--bs-text-muted)]">Qué es</p>
+            <p className="mt-1 text-base text-[var(--bs-text-primary)]">{row.operational_label || row.historical_label}</p>
 
-            <div className="mt-5 space-y-3">
-              {evidence.slice(0, 3).map((document) => (
-                <div key={document.id} className="border-t border-white/10 pt-3 first:border-0 first:pt-0">
-                  <div className="flex justify-between gap-4"><p className="text-sm text-[var(--bs-text-primary)]">{document.supplier_name}</p><p className="shrink-0 text-sm text-[var(--bs-text-primary)]">{money(document.total_amount, document.currency)}</p></div>
-                  <p className="mt-1 text-xs text-[var(--bs-text-muted)]">Documento {document.document_number}</p>
-                  {document.description && <p className="mt-2 text-sm leading-5 text-[var(--bs-text-secondary)]">{document.description}</p>}
+            {evidence[0] && (
+              <div className="mt-4 border-t border-[var(--bs-divider-subtle)] pt-3">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <p className="text-sm text-[var(--bs-text-primary)]">{evidence[0].supplier_name}</p>
+                    <p className="mt-1 text-xs text-[var(--bs-text-muted)]">{evidence[0].document_number}</p>
+                  </div>
+                  <p className="shrink-0 text-sm text-[var(--bs-text-primary)]">{money(evidence[0].total_amount, evidence[0].currency)}</p>
                 </div>
-              ))}
-              {evidence.length > 3 && <p className="text-xs text-[var(--bs-text-muted)]">+{evidence.length - 3} documentos adicionales</p>}
-            </div>
-          </div>
-
-          <div className="bg-[var(--bs-surface-secondary)] p-5">
-            <p className="text-[11px] uppercase tracking-[0.1em] text-[var(--bs-text-muted)]">Clasificación</p>
-            {!editing && ready ? (
-              <div className="mt-4 space-y-4">
-                <div><p className="text-xs text-[var(--bs-text-muted)]">P&L</p><p className="mt-1 text-lg text-[var(--bs-text-primary)]">{divisions.find((division) => division.id === selectedDivision)?.name ?? row.division_name}</p></div>
-                <div><p className="text-xs text-[var(--bs-text-muted)]">Categoría</p><p className="mt-1 text-lg text-[var(--bs-text-primary)]">{categories.find((category) => category.id === selected.category)?.name ?? row.category_name}</p></div>
-              </div>
-            ) : (
-              <div className="mt-4 space-y-4">
-                <label className="block text-xs text-[var(--bs-text-muted)]">P&L<select value={selectedDivision} disabled={Boolean(row.division_id) || !canReview} onChange={(event) => setChoice((current) => ({ ...current, [row.id]: { division: event.target.value, category: '' } }))} className="mt-2 h-11 w-full bg-[var(--bs-bg-primary)] px-3 text-sm text-[var(--bs-text-primary)] disabled:opacity-60"><option value="">Seleccionar P&L</option>{divisions.map((division) => <option key={division.id} value={division.id}>{division.name}</option>)}</select></label>
-                <label className="block text-xs text-[var(--bs-text-muted)]">Categoría<select value={selected.category} disabled={!selectedDivision || !canReview} onChange={(event) => setChoice((current) => ({ ...current, [row.id]: { division: selectedDivision, category: event.target.value } }))} className="mt-2 h-11 w-full bg-[var(--bs-bg-primary)] px-3 text-sm text-[var(--bs-text-primary)] disabled:opacity-60"><option value="">Seleccionar categoría</option>{availableCategories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}</select></label>
+                {evidence[0].description && <p className="mt-2 text-sm text-[var(--bs-text-secondary)]">{evidence[0].description}</p>}
               </div>
             )}
 
-            <div className="mt-6 grid gap-2 sm:grid-cols-2">
-              <Button variant="outline" onClick={() => setEditing((value) => !value)} disabled={!canReview}>{editing ? 'Cerrar cambio' : 'Cambiar clasificación'}</Button>
-              <Button onClick={() => void confirm()} disabled={!canReview || !ready || busy}>{busy ? 'Guardando…' : 'Confirmar y siguiente'}</Button>
+            {evidence.length > 1 && (
+              <details className="mt-3">
+                <summary className="cursor-pointer text-xs text-[var(--bs-text-muted)]">Ver {evidence.length - 1} más</summary>
+                <div className="mt-2 space-y-2">
+                  {evidence.slice(1, 4).map((document) => (
+                    <div key={document.id} className="border-t border-[var(--bs-divider-subtle)] pt-2 text-xs">
+                      <div className="flex justify-between gap-3">
+                        <span>{document.supplier_name}</span>
+                        <span>{money(document.total_amount, document.currency)}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </details>
+            )}
+          </div>
+
+          <div className="bg-[var(--bs-surface-secondary)] p-4">
+            <p className="text-xs text-[var(--bs-text-muted)]">Dónde va</p>
+
+            {!editing && ready ? (
+              <div className="mt-3">
+                <p className="text-base font-medium text-[var(--bs-text-primary)]">
+                  {financeDivisionLabel(divisions.find((division) => division.id === selectedDivision)?.name ?? row.division_name)}
+                  {' · '}
+                  {categories.find((category) => category.id === selected.category)?.name ?? row.category_name}
+                </p>
+              </div>
+            ) : (
+              <div className="mt-3 space-y-3">
+                <select
+                  value={selectedDivision}
+                  disabled={Boolean(row.division_id) || !canReview}
+                  onChange={(event) => setChoice((current) => ({ ...current, [row.id]: { division: event.target.value, category: '' } }))}
+                  className="h-11 w-full bg-[var(--bs-bg-primary)] px-3 text-sm text-[var(--bs-text-primary)] disabled:opacity-60"
+                >
+                  <option value="">Área</option>
+                  {divisions.map((division) => <option key={division.id} value={division.id}>{financeDivisionLabel(division.name)}</option>)}
+                </select>
+                <select
+                  value={selected.category}
+                  disabled={!selectedDivision || !canReview}
+                  onChange={(event) => setChoice((current) => ({ ...current, [row.id]: { division: selectedDivision, category: event.target.value } }))}
+                  className="h-11 w-full bg-[var(--bs-bg-primary)] px-3 text-sm text-[var(--bs-text-primary)] disabled:opacity-60"
+                >
+                  <option value="">Categoría</option>
+                  {availableCategories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}
+                </select>
+              </div>
+            )}
+
+            <div className="mt-4 flex gap-2">
+              {ready && !editing && <Button variant="outline" onClick={() => setEditing(true)} disabled={!canReview}>Cambiar</Button>}
+              {editing && <Button variant="outline" onClick={() => setEditing(false)} disabled={!canReview}>Cancelar</Button>}
+              <Button className="flex-1" onClick={() => void confirm()} disabled={!canReview || !ready || busy}>{busy ? 'Guardando…' : 'Confirmar'}</Button>
             </div>
-            {!ready && <p className="mt-3 text-xs text-[var(--bs-warm-yellow)]">Completa P&L y categoría para confirmar.</p>}
           </div>
         </div>
 
-        <div className="mt-5 flex items-center justify-between">
-          <button type="button" onClick={() => { setIndex((value) => Math.max(0, value - 1)); setEditing(false) }} disabled={index === 0} className="inline-flex min-h-10 items-center gap-2 px-2 text-xs text-[var(--bs-text-secondary)] disabled:opacity-30"><ChevronLeft className="h-4 w-4" />Anterior</button>
-          <div className="h-1.5 flex-1 bg-[var(--bs-surface-secondary)] mx-5"><div className="h-full bg-[var(--bs-cool-sage)]" style={{ width: `${((index + 1) / centers.length) * 100}%` }} /></div>
-          <button type="button" onClick={() => { setIndex((value) => Math.min(centers.length - 1, value + 1)); setEditing(false) }} disabled={index === centers.length - 1} className="inline-flex min-h-10 items-center gap-2 px-2 text-xs text-[var(--bs-text-secondary)] disabled:opacity-30">Siguiente<ChevronRight className="h-4 w-4" /></button>
+        <div className="mt-4 flex items-center justify-between">
+          <button type="button" aria-label="Anterior" onClick={() => { setIndex((value) => Math.max(0, value - 1)); setEditing(false) }} disabled={index === 0} className="inline-flex min-h-10 items-center gap-1 px-2 text-xs text-[var(--bs-text-muted)] disabled:opacity-30"><ChevronLeft className="h-4 w-4" />Anterior</button>
+          <div className="mx-4 h-1 flex-1 bg-[var(--bs-surface-secondary)]"><div className="h-full bg-[var(--bs-cool-sage)]" style={{ width: `${((index + 1) / centers.length) * 100}%` }} /></div>
+          <button type="button" aria-label="Siguiente" onClick={() => { setIndex((value) => Math.min(centers.length - 1, value + 1)); setEditing(false) }} disabled={index === centers.length - 1} className="inline-flex min-h-10 items-center gap-1 px-2 text-xs text-[var(--bs-text-muted)] disabled:opacity-30">Siguiente<ChevronRight className="h-4 w-4" /></button>
         </div>
       </div>
     </section>
   )
+
 }
