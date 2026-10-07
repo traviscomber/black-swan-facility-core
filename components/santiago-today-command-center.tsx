@@ -48,7 +48,7 @@ const COPY: Record<"es" | "en" | "de", Copy> = {
     requests: "Solicitudes abiertas",
     housekeeping: "Limpieza pendiente",
     teamWork: "Trabajo del equipo",
-    overdueTeamTasks: "tarea vencida",
+    overdueTeamTasks: "vencidas",
     attention: "Requiere atención",
     allGood: "Sin bloqueos críticos en llegadas ni trabajo operativo del equipo.",
     roomNotReady: "habitación por preparar",
@@ -69,7 +69,7 @@ const COPY: Record<"es" | "en" | "de", Copy> = {
     requests: "Open requests",
     housekeeping: "Pending housekeeping",
     teamWork: "Team work",
-    overdueTeamTasks: "overdue task",
+    overdueTeamTasks: "overdue",
     attention: "Needs attention",
     allGood: "No critical blockers in arrivals or team operations.",
     roomNotReady: "room to prepare",
@@ -90,7 +90,7 @@ const COPY: Record<"es" | "en" | "de", Copy> = {
     requests: "Offene Anfragen",
     housekeeping: "Offene Reinigung",
     teamWork: "Teamarbeit",
-    overdueTeamTasks: "überfällige Aufgabe",
+    overdueTeamTasks: "überfällig",
     attention: "Handlungsbedarf",
     allGood: "Keine kritischen Blockaden bei Anreisen oder Teamarbeit.",
     roomNotReady: "Zimmer vorzubereiten",
@@ -235,7 +235,7 @@ export function SantiagoTodayCommandCenter() {
           <Metric icon={AlertTriangle} label={copy.notReady} value={notReady.length} warning={notReady.length > 0} href={localized(locale, "/bookings/housekeeping")} />
           <Metric icon={ClipboardList} label={copy.requests} value={openRequests} warning={unassignedRequests > 0} href={localized(locale, "/bookings/requests")} helper={unassignedRequests > 0 ? `${unassignedRequests} ${copy.unassignedRequests}` : undefined} />
           <Metric icon={Sparkles} label={copy.housekeeping} value={pendingHousekeeping} href={localized(locale, "/bookings/housekeeping")} />
-          <Metric icon={Users} label={copy.teamWork} value={teamOpenTasks} warning={overdueTeamTasks > 0} href={localized(locale, "/employees")} helper={overdueTeamTasks > 0 ? `${overdueTeamTasks} ${copy.overdueTeamTasks}${overdueTeamTasks === 1 ? "" : locale === "es" ? "s" : ""}` : undefined} />
+          <Metric icon={Users} label={copy.teamWork} value={teamOpenTasks} warning={overdueTeamTasks > 0} href={localized(locale, "/employees")} helper={overdueTeamTasks > 0 ? `${overdueTeamTasks} ${copy.overdueTeamTasks}` : undefined} />
         </div>
 
         <div className={`mt-3 flex flex-col gap-3 border p-4 md:flex-row md:items-center md:justify-between ${attentionCount > 0 ? "border-amber-400/35 bg-amber-400/8" : "border-primary/25 bg-primary/5"}`}>
@@ -249,7 +249,7 @@ export function SantiagoTodayCommandCenter() {
                   {notReady.length > 0 && unassignedRequests > 0 ? " · " : ""}
                   {unassignedRequests > 0 && `${unassignedRequests} ${copy.unassignedRequests}`}
                   {(notReady.length > 0 || unassignedRequests > 0) && overdueTeamTasks > 0 ? " · " : ""}
-                  {overdueTeamTasks > 0 && `${overdueTeamTasks} ${copy.overdueTeamTasks}${overdueTeamTasks === 1 ? "" : locale === "es" ? "s" : ""}`}
+                  {overdueTeamTasks > 0 && `${overdueTeamTasks} ${copy.overdueTeamTasks}`}
                 </p>
               )}
               {notReady.length > 0 && (
