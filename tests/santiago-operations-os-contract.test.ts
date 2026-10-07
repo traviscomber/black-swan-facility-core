@@ -64,3 +64,11 @@ test("hospitality operations library covers daily guest and staff handoffs", () 
     "mant-room-quickcheck", "log-guest-supplies", "admin-shift-handover",
   ]) assert.match(taskTemplates, new RegExp(`id: "${id}"`))
 })
+
+
+test("Santiago cockpit surfaces authorized upcoming pickup logistics", () => {
+  assert.match(cockpit, /get_upcoming_reservation_pickups/)
+  assert.match(cockpit, /Próximas recogidas/)
+  assert.match(cockpit, /transportCoordinatorName/)
+  assert.match(cockpit, /serviceNumber/)
+})
