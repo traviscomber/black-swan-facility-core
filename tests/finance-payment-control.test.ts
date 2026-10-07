@@ -10,6 +10,7 @@ const paidObservedGuard = readFileSync(new URL('../supabase/migrations/202610071
 const infrastructureMigration = readFileSync(new URL('../supabase/migrations/20261007224500_tomas_infrastructure_invoice_review.sql', import.meta.url), 'utf8')
 const tomasQueue = readFileSync(new URL('../components/tomas-infrastructure-invoice-queue.tsx', import.meta.url), 'utf8')
 const approvalWorkspace = readFileSync(new URL('../components/finance-approval-workspace.tsx', import.meta.url), 'utf8')
+const budgetDisplay = readFileSync(new URL('../lib/finance/budget-display.ts', import.meta.url), 'utf8')
 
 test('finance flow separates Raimundo expense validation from Santiago payment control', () => {
   assert.match(migration, /payment_status/)
@@ -86,4 +87,13 @@ test('Santiago remains final payer even when Tomas rejects infrastructure invoic
   assert.match(queue, /No pagar/)
   assert.match(infrastructureMigration, /santiago_after_tomas_rejection/)
   assert.match(infrastructureMigration, /can_finance_payment_authorize/)
+})
+
+
+test('hospitality budget labels preserve operational hierarchy', () => {
+  assert.match(budgetDisplay, /Hospitality · Farm/)
+  assert.match(budgetDisplay, /Hospitality · Torobayo/)
+  assert.match(approval, /financeAllocationLabel/)
+  assert.match(queue, /financeAllocationLabel/)
+  assert.match(tomasQueue, /financeAllocationLabel/)
 })
