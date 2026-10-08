@@ -409,7 +409,7 @@ export function FinanceApprovalQueue() {
                         </div>
                       )}
                       {reassigningId !== row.id && !aiSuggestions[row.id] && (
-                        <div className="flex justify-end gap-2"><Button size="sm" onClick={() => startReassign(row)} disabled={busy || !canApprove}>Elegir o cambiar centro</Button><Button size="sm" variant="outline" onClick={() => void escalateToSantiago(row)} disabled={busy || !canApprove}>Pedir centro a Santiago</Button></div>
+                        <div className="flex justify-end gap-2"><Button size="sm" onClick={() => startReassign(row)} disabled={busy || !canApprove}>Asignar imputación</Button><Button size="sm" variant="outline" onClick={() => void escalateToSantiago(row)} disabled={busy || !canApprove}>Pedir centro a Santiago</Button></div>
                       )}
                       {reassigningId === row.id && (
                         <div className="ml-auto w-[340px] space-y-2 bg-[var(--bs-surface-secondary)] p-3 text-left">
