@@ -11,6 +11,7 @@ import {
 const routeUrl = new URL('../app/api/finance/sii-invoices/route.ts', import.meta.url)
 const dropzoneUrl = new URL('../components/sii-invoice-dropzone.tsx', import.meta.url)
 const loginUrl = new URL('../app/auth/login/page.tsx', import.meta.url)
+const loginRouteUrl = new URL('../app/api/auth/login/route.ts', import.meta.url)
 const approvalQueueUrl = new URL('../components/finance-approval-queue.tsx', import.meta.url)
 const approvalsPageUrl = new URL('../app/budgets/approvals/page.tsx', import.meta.url)
 const raimundoHomeMigrationUrl = new URL('../supabase/migrations/20260925205500_santiago_focused_workspace.sql', import.meta.url)
@@ -148,13 +149,15 @@ test('finance uploader can see persisted invoice upload history', () => {
 
 test('Raimundo login honors canonical start path and approvals are the first task', () => {
   const loginSource = readFileSync(loginUrl, 'utf8')
+  const loginRouteSource = readFileSync(loginRouteUrl, 'utf8')
   const queueSource = readFileSync(approvalQueueUrl, 'utf8')
   const pageSource = readFileSync(approvalsPageUrl, 'utf8')
   const migrationSource = readFileSync(raimundoHomeMigrationUrl, 'utf8')
 
-  assert.match(loginSource, /user_access_profiles/)
-  assert.match(loginSource, /os_start_path/)
-  assert.match(loginSource, /localizedProfileStart/)
+  assert.match(loginSource, /action="\/api\/auth\/login"/)
+  assert.match(loginRouteSource, /user_access_profiles/)
+  assert.match(loginRouteSource, /os_start_path/)
+  assert.match(loginRouteSource, /profileStart/)
   assert.match(migrationSource, /raimundo@blackswn\.org/)
   assert.match(migrationSource, /os_persona_key='raimundo'/)
   assert.match(migrationSource, /os_start_path='\/os'/)
