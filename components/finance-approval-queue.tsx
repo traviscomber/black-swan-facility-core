@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import Link from 'next/link'
 import { AlertTriangle, Check, FileSearch, RefreshCw, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
@@ -339,7 +340,7 @@ export function FinanceApprovalQueue() {
           })}</div>
         </div>
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[1160px] text-sm">
+          <table className="w-full min-w-[1160px] table-fixed text-sm">
             <thead className="text-left text-xs uppercase tracking-[0.1em] text-[var(--bs-text-muted)]"><tr><th className="px-4 py-3 font-normal">Documento</th><th className="px-4 py-3 font-normal">Centro de costo / imputación</th><th className="px-4 py-3 font-normal">Clasificación histórica</th><th className="px-4 py-3 text-right font-normal">Monto</th><th className="px-4 py-3 font-normal">Evidencia</th><th className="px-4 py-3 text-right font-normal">Acción</th></tr></thead>
             <tbody>
               {filtered.map((row) => {
@@ -352,7 +353,8 @@ export function FinanceApprovalQueue() {
                     : null
                 return <tr key={row.id} className="border-t border-[var(--bs-divider-subtle)] align-top">
                   <td className="px-4 py-4">
-                    <p className="text-[var(--bs-text-primary)]">{row.supplier_name}</p>
+                    <p className="font-medium text-[var(--bs-text-primary)]">{row.supplier_name}</p>
+                    <Link href={`/budgets/approvals/${row.id}`} className="mt-2 inline-flex min-h-9 items-center text-sm font-medium text-[var(--bs-cool-sky)] underline underline-offset-4">Ver detalle de la factura</Link>
                     <p className="mt-1 text-xs text-[var(--bs-text-muted)]">{row.document_number} · {new Date(`${row.document_date}T00:00:00`).toLocaleDateString('es-CL')}</p>
                     <div className="mt-3">
                       <FinanceDecisionContext
@@ -406,11 +408,8 @@ export function FinanceApprovalQueue() {
                           <Button size="sm" variant="outline" onClick={() => startReassign(row)} disabled={busy || !canApprove}>Cambiar imputación</Button><Button size="sm" variant="outline" onClick={() => void escalateToSantiago(row)} disabled={busy || !canApprove}>Pedir centro a Santiago</Button>
                         </div>
                       )}
-                      {reassigningId !== row.id && !aiSuggestions[row.id] && !suggestionLoadingIds.has(row.id) && (
-                        <div className="flex justify-end gap-2"><Button size="sm" onClick={() => startReassign(row)} disabled={busy || !canApprove}>Asignar imputación</Button><Button size="sm" variant="outline" onClick={() => void escalateToSantiago(row)} disabled={busy || !canApprove}>Pedir centro a Santiago</Button></div>
-                      )}
-                      {reassigningId !== row.id && suggestionLoadingIds.has(row.id) && (
-                        <span className="text-xs text-[var(--bs-text-muted)]">Generando sugerencia IA…</span>
+                      {reassigningId !== row.id && !aiSuggestions[row.id] && (
+                        <div className="flex justify-end gap-2"><Button size="sm" onClick={() => startReassign(row)} disabled={busy || !canApprove}>Elegir o cambiar centro</Button><Button size="sm" variant="outline" onClick={() => void escalateToSantiago(row)} disabled={busy || !canApprove}>Pedir centro a Santiago</Button></div>
                       )}
                       {reassigningId === row.id && (
                         <div className="ml-auto w-[340px] space-y-2 bg-[var(--bs-surface-secondary)] p-3 text-left">
