@@ -1,75 +1,20 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { createClient } from '@/lib/supabase/client'
-import { toast } from 'sonner'
 import { useLanguage } from '@/lib/hooks/use-language'
 import { authTranslations } from '@/lib/translations/auth'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [loading, setLoading] = useState(false)
-  const router = useRouter()
   const searchParams = useSearchParams()
   const supabase = createClient()
   const { language } = useLanguage()
   const copy = authTranslations[language]
-
-  const handleLogin = async (event: React.FormEvent) => {
-    event.preventDefault()
-    setLoading(true)
-
-    try {
-      const { data, error } = await supabase.auth.signInWithPassword({ email, password })
-      if (error) {
-        toast.error(error.message)
-        return
-      }
-
-      if (data?.user) {
-        const normalizedEmail = data.user.email?.trim().toLowerCase() ?? ''
-        const isMaribel = normalizedEmail === 'maribel@blackswn.org'
-        const requestedPath = searchParams.get('next')
-        const safeRequestedPath = requestedPath?.startsWith('/') && !requestedPath.startsWith('//')
-          ? requestedPath
-          : null
-
-        const { data: accessProfile } = await supabase
-          .from('user_access_profiles')
-          .select('os_start_path')
-          .eq('user_id', data.user.id)
-          .maybeSingle()
-
-        const profileStartPath = typeof accessProfile?.os_start_path === 'string'
-          && accessProfile.os_start_path.startsWith('/')
-          && !accessProfile.os_start_path.startsWith('//')
-          ? accessProfile.os_start_path
-          : null
-        const localizedProfileStart = profileStartPath
-          ? `/${language}${profileStartPath === '/' ? '' : profileStartPath}`
-          : `/${language}`
-
-        const destination = safeRequestedPath
-          ?? (isMaribel ? '/es/budgets/documents' : localizedProfileStart)
-
-        if (isMaribel) {
-          localStorage.setItem('language', 'es')
-          document.cookie = 'site-locale=es; path=/; samesite=lax'
-        }
-
-        router.replace(destination)
-        router.refresh()
-      }
-    } catch (error: unknown) {
-      toast.error(error instanceof Error ? error.message : copy.genericError)
-    } finally {
-      setLoading(false)
-    }
-  }
 
   return (
     <main className="grid min-h-dvh bg-[var(--bs-bg-primary)] lg:grid-cols-2">
@@ -131,7 +76,9 @@ export default function LoginPage() {
             <p className="text-[13px] text-[var(--bs-text-secondary)]">{copy.subtitle}</p>
           </div>
 
-          <form onSubmit={handleLogin} className="space-y-5">
+          <form action="/api/auth/login" method="post" className="space-y-5">
+            <input type="hidden" name="language" value={language} />
+            <input type="hidden" name="next" value={searchParams.get('next') ?? ''} />
             <div className="space-y-2">
               <label htmlFor="email" className="block text-[13px] font-medium text-[var(--bs-text-primary)]">
                 {copy.email}
@@ -139,12 +86,12 @@ export default function LoginPage() {
               <Input
                 id="email"
                 type="email"
+                name="email"
                 value={email}
                 onChange={(event) => setEmail(event.target.value)}
                 placeholder={copy.emailPlaceholder}
                 autoComplete="email"
-                disabled={loading}
-                required
+                  required
                 className="h-11 border-0 bg-[var(--bs-surface-secondary)] text-[var(--bs-text-primary)] placeholder:text-[var(--bs-text-muted)]"
               />
             </div>
@@ -156,11 +103,12 @@ export default function LoginPage() {
               <Input
                 id="password"
                 type="password"
+                name="password"
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
                 placeholder="••••••••"
                 autoComplete="current-password"
-                disabled={loading}
+                
                 required
                 className="h-11 border-0 bg-[var(--bs-surface-secondary)] text-[var(--bs-text-primary)] placeholder:text-[var(--bs-text-muted)]"
               />
@@ -168,10 +116,10 @@ export default function LoginPage() {
 
             <Button
               type="submit"
-              disabled={loading}
+              
               className="h-11 w-full border-0 bg-[var(--bs-cool-sage)] text-[13px] font-medium text-[var(--bs-bg-primary)] hover:bg-[#9bd8b6]"
             >
-              {loading ? copy.submitting : copy.submit}
+              {copy.submit}
             </Button>
           </form>
 
