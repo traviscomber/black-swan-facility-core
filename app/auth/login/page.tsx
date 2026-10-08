@@ -4,7 +4,6 @@ import { useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { createClient } from '@/lib/supabase/client'
 import { useLanguage } from '@/lib/hooks/use-language'
 import { authTranslations } from '@/lib/translations/auth'
 
@@ -12,7 +11,6 @@ export default function LoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const searchParams = useSearchParams()
-  const supabase = createClient()
   const { language } = useLanguage()
   const copy = authTranslations[language]
 
@@ -91,7 +89,7 @@ export default function LoginPage() {
                 onChange={(event) => setEmail(event.target.value)}
                 placeholder={copy.emailPlaceholder}
                 autoComplete="email"
-                  required
+                required
                 className="h-11 border-0 bg-[var(--bs-surface-secondary)] text-[var(--bs-text-primary)] placeholder:text-[var(--bs-text-muted)]"
               />
             </div>
@@ -108,7 +106,6 @@ export default function LoginPage() {
                 onChange={(event) => setPassword(event.target.value)}
                 placeholder="••••••••"
                 autoComplete="current-password"
-                
                 required
                 className="h-11 border-0 bg-[var(--bs-surface-secondary)] text-[var(--bs-text-primary)] placeholder:text-[var(--bs-text-muted)]"
               />
@@ -116,7 +113,6 @@ export default function LoginPage() {
 
             <Button
               type="submit"
-              
               className="h-11 w-full border-0 bg-[var(--bs-cool-sage)] text-[13px] font-medium text-[var(--bs-bg-primary)] hover:bg-[#9bd8b6]"
             >
               {copy.submit}
