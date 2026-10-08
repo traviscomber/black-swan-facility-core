@@ -130,14 +130,14 @@ export function SantiagoPaymentQueue() {
     }
     const note = (assignmentNote[row.id] ?? '').trim()
     setBusy(row.id)
-    const { error } = await supabase.rpc('santiago_assign_finance_document_budget_mapping', {
+    const { error } = await supabase.rpc('santiago_resolve_and_approve_escalated_expense', {
       p_document_id: row.id,
       p_category_id: categoryId,
       p_note: note || null,
     })
     if (error) toast.error(error.message)
     else {
-      toast.success('Centro asignado. La factura volvió a Raimundo para aprobación.')
+      toast.success('Centro y gasto aprobados. Continúa en tu bandeja de pagos, sin volver a Raimundo.')
       setAssignmentCenter((current) => ({ ...current, [row.id]: '' }))
       setAssignmentNote((current) => ({ ...current, [row.id]: '' }))
       await load()
