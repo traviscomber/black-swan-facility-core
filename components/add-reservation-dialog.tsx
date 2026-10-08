@@ -59,6 +59,7 @@ interface ReservationConfirmationData {
   nights: number
   totalAmount: number
   locationName: string
+  arrivalSummary?: string
 }
 
 interface AddReservationDialogProps {
@@ -108,6 +109,13 @@ export function AddReservationDialog({
     total_amount: 0,
     status: "confirmed",
     special_requests: "",
+    arrival_transport_mode: "unknown",
+    arrival_carrier_name: "",
+    arrival_service_number: "",
+    arrival_origin: "",
+    arrival_hub: "unknown",
+    arrival_at: "",
+    arrival_pickup_required: false,
   })
 
   const supabase = createBrowserClient()
@@ -221,6 +229,17 @@ export function AddReservationDialog({
       nights,
       totalAmount: formData.total_amount,
       locationName: selectedBed?.room?.location_ref?.name || selectedBed?.room?.location || (selectedLocationFilter === "all" ? copy.multiple : selectedLocationFilter),
+      arrivalSummary: formData.arrival_transport_mode === "unknown"
+        ? undefined
+        : [
+            formData.arrival_transport_mode === "flight" ? copy.flight
+              : formData.arrival_transport_mode === "bus" ? copy.bus
+                : formData.arrival_transport_mode === "private_vehicle" ? copy.privateVehicle
+                  : copy.otherTransport,
+            formData.arrival_carrier_name,
+            formData.arrival_service_number,
+            formData.arrival_at ? new Date(formData.arrival_at).toLocaleString(language === "es" ? "es-CL" : language === "de" ? "de-DE" : "en-US", { timeZone: "America/Santiago", dateStyle: "short", timeStyle: "short" }) : "",
+          ].filter(Boolean).join(" · "),
     })
     setShowConfirmation(true)
   }
@@ -247,6 +266,13 @@ export function AddReservationDialog({
           total_amount: formData.total_amount,
           status: formData.status,
           special_requests: formData.special_requests,
+          arrival_transport_mode: formData.arrival_transport_mode,
+          arrival_hub: formData.arrival_hub,
+          arrival_at: formData.arrival_at ? new Date(formData.arrival_at).toISOString() : null,
+          arrival_carrier_name: formData.arrival_carrier_name,
+          arrival_service_number: formData.arrival_service_number,
+          arrival_origin: formData.arrival_origin,
+          arrival_pickup_required: formData.arrival_pickup_required,
         }),
       })
 
@@ -289,6 +315,13 @@ export function AddReservationDialog({
       total_amount: 0,
       status: "confirmed",
       special_requests: "",
+      arrival_transport_mode: "unknown",
+      arrival_carrier_name: "",
+      arrival_service_number: "",
+      arrival_origin: "",
+      arrival_hub: "unknown",
+      arrival_at: "",
+      arrival_pickup_required: false,
     })
     setShowDetails(false)
     setAmountTouched(false)
@@ -323,7 +356,7 @@ export function AddReservationDialog({
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-xl overflow-hidden rounded-none p-0">
+        <DialogContent className="h-[100dvh] max-h-[100dvh] w-screen max-w-none overflow-hidden rounded-none p-0 sm:h-auto sm:max-h-[94vh] sm:w-full sm:max-w-xl">
           <DialogHeader className="border-b px-4 py-3">
             <DialogTitle className="text-base font-medium">{copy.title}</DialogTitle>
             {(selectedBed || formData.check_in) && (
@@ -357,7 +390,7 @@ export function AddReservationDialog({
                 <div className="space-y-1.5">
                   <Label htmlFor="location_filter">{copy.filterLocation}</Label>
                   <Select value={selectedLocationFilter} onValueChange={setSelectedLocationFilter}>
-                    <SelectTrigger className="rounded-none"><SelectValue placeholder={copy.allLocations} /></SelectTrigger>
+                    <SelectTrigger className="h-11 rounded-none"><SelectValue placeholder={copy.allLocations} /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">{copy.allLocations}</SelectItem>
                       {locations.map((loc) => <SelectItem key={loc.id} value={loc.name}>{loc.name}</SelectItem>)}
@@ -368,7 +401,7 @@ export function AddReservationDialog({
                 <div className="space-y-1.5">
                   <Label htmlFor="bed_id">{copy.bed}</Label>
                   <Select value={formData.bed_id} onValueChange={(value) => setFormData({ ...formData, bed_id: value })}>
-                    <SelectTrigger className="rounded-none"><SelectValue placeholder={copy.selectBed} /></SelectTrigger>
+                    <SelectTrigger className="h-11 rounded-none"><SelectValue placeholder={copy.selectBed} /></SelectTrigger>
                     <SelectContent>
                       {filteredBeds.map((bed) => (
                         <SelectItem key={bed.id} value={bed.id}>
@@ -380,23 +413,13 @@ export function AddReservationDialog({
                   </Select>
                 </div>
 
-                <div className="space-y-1.5 sm:col-span-2 border-t pt-3">
-                  <Label htmlFor="guest_id">{copy.existingGuest}</Label>
-                  <Select value={formData.guest_id} onValueChange={handleGuestSelect}>
-                    <SelectTrigger className="rounded-none"><SelectValue placeholder={copy.selectGuest} /></SelectTrigger>
-                    <SelectContent>
-                      {guests.map((guest) => <SelectItem key={guest.id} value={guest.id}>{guest.name} - {guest.email}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                </div>
-
                 <div className="space-y-2">
                   <Label htmlFor="guest_name">{copy.guestName} *</Label>
-                  <Input id="guest_name" className="rounded-none" value={formData.guest_name} onChange={(e) => setFormData({ ...formData, guest_name: e.target.value })} required />
+                  <Input id="guest_name" className="h-11 rounded-none" value={formData.guest_name} onChange={(e) => setFormData({ ...formData, guest_name: e.target.value })} required />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="num_guests">{copy.numberGuests}</Label>
-                  <Input id="num_guests" className="rounded-none" type="number" min="1" value={formData.num_guests} onChange={(e) => setFormData({ ...formData, num_guests: Number.parseInt(e.target.value) })} required />
+                  <Input id="num_guests" className="h-11 rounded-none" type="number" min="1" value={formData.num_guests} onChange={(e) => setFormData({ ...formData, num_guests: Number.parseInt(e.target.value) })} required />
                 </div>
 
                 {formData.bed_id && (
@@ -414,9 +437,70 @@ export function AddReservationDialog({
 
                 {!formData.bed_id && <div className="sm:col-span-2 text-sm italic text-muted-foreground">{copy.selectBedHint}</div>}
 
+                <div className="space-y-3 sm:col-span-2 border-t pt-3">
+                  <Label>{copy.howArrives}</Label>
+                  <Select value={formData.arrival_transport_mode} onValueChange={(value) => setFormData({
+                    ...formData,
+                    arrival_transport_mode: value,
+                    arrival_hub: value === "flight" ? "pichoy" : value === "bus" ? "valdivia_bus_terminal" : value === "private_vehicle" ? "direct" : formData.arrival_hub,
+                  })}>
+                    <SelectTrigger className="h-11 rounded-none"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="unknown">{copy.transportUnknown}</SelectItem>
+                      <SelectItem value="flight">{copy.flight}</SelectItem>
+                      <SelectItem value="bus">{copy.bus}</SelectItem>
+                      <SelectItem value="private_vehicle">{copy.privateVehicle}</SelectItem>
+                      <SelectItem value="other">{copy.otherTransport}</SelectItem>
+                    </SelectContent>
+                  </Select>
+
+                  {formData.arrival_transport_mode !== "unknown" && (
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      {(formData.arrival_transport_mode === "flight" || formData.arrival_transport_mode === "bus") && <>
+                        <div className="space-y-1.5">
+                          <Label htmlFor="arrival_carrier">{formData.arrival_transport_mode === "flight" ? copy.airline : copy.busCompany}</Label>
+                          <Input id="arrival_carrier" className="h-11 rounded-none" value={formData.arrival_carrier_name} onChange={(e) => setFormData({ ...formData, arrival_carrier_name: e.target.value })} />
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label htmlFor="arrival_service">{formData.arrival_transport_mode === "flight" ? copy.flightNumber : copy.serviceNumber}</Label>
+                          <Input id="arrival_service" className="h-11 rounded-none uppercase" value={formData.arrival_service_number} onChange={(e) => setFormData({ ...formData, arrival_service_number: e.target.value.toUpperCase() })} />
+                        </div>
+                      </>}
+                      <div className="space-y-1.5">
+                        <Label htmlFor="arrival_origin">{copy.origin}</Label>
+                        <Input id="arrival_origin" className="h-11 rounded-none" value={formData.arrival_origin} onChange={(e) => setFormData({ ...formData, arrival_origin: e.target.value })} placeholder={copy.originPlaceholder} />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label htmlFor="arrival_at">{copy.arrivalDateTime}</Label>
+                        <Input id="arrival_at" className="h-11 rounded-none" type="datetime-local" value={formData.arrival_at} onChange={(e) => setFormData({ ...formData, arrival_at: e.target.value })} />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label>{copy.arrivalPoint}</Label>
+                        <Select value={formData.arrival_hub} onValueChange={(value) => setFormData({ ...formData, arrival_hub: value })}>
+                          <SelectTrigger className="h-11 rounded-none"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="pichoy">{copy.pichoy}</SelectItem>
+                            <SelectItem value="valdivia_bus_terminal">{copy.valdiviaBusTerminal}</SelectItem>
+                            <SelectItem value="direct">{copy.directArrival}</SelectItem>
+                            <SelectItem value="other">{copy.otherArrivalPoint}</SelectItem>
+                            <SelectItem value="unknown">{copy.transportUnknown}</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <label className="flex min-h-11 items-center gap-3 border p-3 sm:mt-6">
+                        <input type="checkbox" checked={formData.arrival_pickup_required} onChange={(e) => setFormData({ ...formData, arrival_pickup_required: e.target.checked })} />
+                        <span className="text-sm">
+                          <span className="block font-medium">{copy.pickupRequired}</span>
+                          <span className="block text-xs text-muted-foreground">{copy.pickupCoordinator}</span>
+                        </span>
+                      </label>
+                    </div>
+                  )}
+                </div>
+
                 <div className="space-y-1.5 sm:col-span-2 border-t pt-3">
                   <Label htmlFor="total_amount">{copy.totalAmount}</Label>
-                  <Input id="total_amount" className="rounded-none" type="number" step="0.01" value={formData.total_amount} onChange={(e) => { setAmountTouched(true); setFormData({ ...formData, total_amount: Number.parseFloat(e.target.value) }) }} required />
+                  <Input id="total_amount" className="h-11 rounded-none" type="number" step="0.01" value={formData.total_amount} onChange={(e) => { setAmountTouched(true); setFormData({ ...formData, total_amount: Number.parseFloat(e.target.value) }) }} required />
                   {!amountTouched && formData.total_amount > 0 && <p className="text-[11px] text-muted-foreground">{copy.estimated}</p>}
                 </div>
               </div>
@@ -428,18 +512,27 @@ export function AddReservationDialog({
 
               {showDetails && (
                 <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2 sm:col-span-2">
+                    <Label htmlFor="guest_id">{copy.existingGuest}</Label>
+                    <Select value={formData.guest_id} onValueChange={handleGuestSelect}>
+                      <SelectTrigger className="h-11 rounded-none"><SelectValue placeholder={copy.selectGuest} /></SelectTrigger>
+                      <SelectContent>
+                        {guests.map((guest) => <SelectItem key={guest.id} value={guest.id}>{guest.name}{guest.email ? ` · ${guest.email}` : ""}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
                   <div className="space-y-2">
                     <Label htmlFor="guest_email">{copy.email}</Label>
-                    <Input id="guest_email" className="rounded-none" type="email" value={formData.guest_email} onChange={(e) => setFormData({ ...formData, guest_email: e.target.value })} />
+                    <Input id="guest_email" className="h-11 rounded-none" type="email" value={formData.guest_email} onChange={(e) => setFormData({ ...formData, guest_email: e.target.value })} />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="guest_phone">{copy.phone}</Label>
-                    <Input id="guest_phone" className="rounded-none" value={formData.guest_phone} onChange={(e) => setFormData({ ...formData, guest_phone: e.target.value })} />
+                    <Input id="guest_phone" className="h-11 rounded-none" value={formData.guest_phone} onChange={(e) => setFormData({ ...formData, guest_phone: e.target.value })} />
                   </div>
                   <div className="space-y-2 sm:col-span-2">
                     <Label htmlFor="status">{copy.status}</Label>
                     <Select value={formData.status} onValueChange={(value) => setFormData({ ...formData, status: value })}>
-                      <SelectTrigger className="rounded-none"><SelectValue /></SelectTrigger>
+                      <SelectTrigger className="h-11 rounded-none"><SelectValue /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="confirmed">{copy.confirmed}</SelectItem>
                         <SelectItem value="pending">{copy.pending}</SelectItem>
@@ -456,13 +549,13 @@ export function AddReservationDialog({
                 </div>
               )}
 
-              <DialogFooter className="-mx-4 -mb-3 mt-4 flex-row items-center justify-between border-t bg-muted/10 px-4 py-3 sm:justify-between">
+              <DialogFooter className="sticky bottom-0 -mx-4 -mb-3 mt-4 flex-row items-center justify-between border-t bg-background px-4 py-3 sm:static sm:bg-muted/10 sm:justify-between">
                 <div className="mr-auto text-left">
                   <div className="text-sm font-medium">{stayNights > 0 ? `${stayNights} ${stayNights === 1 ? copy.night : copy.nights}` : copy.selectDates}</div>
                   <div className="text-[11px] text-muted-foreground">{formData.total_amount > 0 ? new Intl.NumberFormat(language === "de" ? "de-DE" : language === "es" ? "es-CL" : "en-US", { style: "currency", currency: "CLP", maximumFractionDigits: 0 }).format(formData.total_amount) : copy.totalAmount}</div>
                 </div>
-                <Button type="button" variant="outline" className="rounded-none" onClick={() => onOpenChange(false)}>{copy.cancel}</Button>
-                <Button type="submit" className="rounded-none" disabled={loading || accessLoading || !canCreateReservation}>
+                <Button type="button" variant="outline" className="h-11 rounded-none" onClick={() => onOpenChange(false)}>{copy.cancel}</Button>
+                <Button type="submit" className="h-11 rounded-none" disabled={loading || accessLoading || !canCreateReservation}>
                   {loading ? copy.creating : copy.create}
                 </Button>
               </DialogFooter>

@@ -9,6 +9,10 @@ const roomObject = readFileSync(new URL("../app/bookings/rooms/[id]/page.tsx", i
 const roomObjectView = readFileSync(new URL("../components/booking-room-object-view.tsx", import.meta.url), "utf8")
 const reservationObject = readFileSync(new URL("../app/bookings/reservations/[id]/page.tsx", import.meta.url), "utf8")
 const reservationStayCockpit = readFileSync(new URL("../components/booking-reservation-stay-cockpit.tsx", import.meta.url), "utf8")
+const addReservationDialog = readFileSync(new URL("../components/add-reservation-dialog.tsx", import.meta.url), "utf8")
+const reservationConfirmationModal = readFileSync(new URL("../components/reservation-confirmation-modal.tsx", import.meta.url), "utf8")
+const reservationLogisticsEditor = readFileSync(new URL("../components/reservation-logistics-editor.tsx", import.meta.url), "utf8")
+const transportMigration = readFileSync(new URL("../supabase/migrations/20261007211000_add_reservation_transport_details.sql", import.meta.url), "utf8")
 
 test("reservation list exposes the canonical reservation object in one click", () => {
   assert.match(bookingsPage, /href={`\/\$\{language\}\/bookings\/reservations\/\$\{row\.id\}`}/)
@@ -70,4 +74,42 @@ test("object pages degrade partial related-data failures without fabricating sta
   assert.match(reservationStayCockpit, /Parte del contexto relacionado no pudo cargarse/)
   assert.match(roomObjectView, /sin señal/)
   assert.match(reservationStayCockpit, /Sin registros vinculados/)
+})
+
+
+test("reservation creation captures structured arrival transport and pickup coordination", () => {
+  assert.match(addReservationDialog, /arrival_transport_mode/)
+  assert.match(addReservationDialog, /arrival_carrier_name/)
+  assert.match(addReservationDialog, /arrival_service_number/)
+  assert.match(addReservationDialog, /arrival_origin/)
+  assert.match(addReservationDialog, /arrival_at/)
+  assert.match(addReservationDialog, /arrival_pickup_required/)
+  assert.doesNotMatch(addReservationDialog, /save_reservation_logistics_plan_v2/)
+  assert.match(addReservationDialog, /arrival_pickup_required: formData\.arrival_pickup_required/)
+  assert.match(transportMigration, /create_reservation_with_arrival_logistics/)
+  assert.match(reservationLogisticsEditor, /transportCoordinatorName/)
+  assert.match(reservationLogisticsEditor, /pickupRequired/)
+  assert.match(transportMigration, /transport_coordinator_id/)
+  assert.match(transportMigration, /juan pablo atiaga/)
+  assert.match(transportMigration, /carrier_name/)
+  assert.match(transportMigration, /service_number/)
+})
+
+
+test("reservation form keeps secondary guest data behind details on mobile", () => {
+  const primaryForm = addReservationDialog.split("{showDetails &&")[0]
+  assert.doesNotMatch(primaryForm, /copy\.existingGuest/)
+  assert.match(addReservationDialog, /copy\.existingGuest/)
+  assert.match(addReservationDialog, /h-\[100dvh\].*w-screen/)
+  assert.match(addReservationDialog, /sticky bottom-0/)
+  assert.doesNotMatch(addReservationDialog, /copy\.howArrivesHint/)
+})
+
+
+test("reservation confirmation stays compact and includes arrival when present", () => {
+  assert.match(addReservationDialog, /arrivalSummary:/)
+  assert.match(reservationConfirmationModal, /reservationDetails\.arrivalSummary/)
+  assert.match(reservationConfirmationModal, /divide-y border-y/)
+  assert.doesNotMatch(reservationConfirmationModal, /copy\.review/)
+  assert.doesNotMatch(reservationConfirmationModal, /<Card/)
 })

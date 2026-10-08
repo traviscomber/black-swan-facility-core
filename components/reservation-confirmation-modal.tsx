@@ -2,8 +2,6 @@
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
-import { AlertCircle } from "lucide-react"
 import { format } from "date-fns"
 import { de, enUS, es } from "date-fns/locale"
 import { useLanguage } from "@/lib/hooks/use-language"
@@ -22,6 +20,7 @@ interface ReservationConfirmationModalProps {
     nights: number
     totalAmount: number
     locationName: string
+    arrivalSummary?: string
   } | null
   loading?: boolean
 }
@@ -49,35 +48,20 @@ export function ReservationConfirmationModal({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <div className="flex items-center gap-2">
-            <AlertCircle className="h-5 w-5 text-primary" />
-            <DialogTitle>{copy.confirmTitle}</DialogTitle>
-          </div>
+          <DialogTitle>{copy.confirmTitle}</DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-4">
-          <Card className="border-secondary bg-secondary/10">
-            <CardContent className="space-y-3 pt-6">
-              <div className="flex justify-between"><span className="text-muted-foreground">{copy.guestName}:</span><span className="font-semibold text-accent">{reservationDetails.guestName}</span></div>
-              <div className="flex justify-between"><span className="text-muted-foreground">{copy.location}:</span><span className="font-semibold text-accent">{reservationDetails.locationName}</span></div>
-              <div className="flex justify-between"><span className="text-muted-foreground">{copy.bed}:</span><span className="font-semibold text-accent">{reservationDetails.bedInfo}</span></div>
-              <div className="border-t border-secondary pt-3">
-                <div className="mb-2 flex justify-between"><span className="text-muted-foreground">{copy.checkIn}:</span><span className="font-semibold">{format(checkInDate, "dd MMM yyyy", { locale: dateLocale })}</span></div>
-                <div className="flex justify-between"><span className="text-muted-foreground">{copy.checkOut}:</span><span className="font-semibold">{format(checkOutDate, "dd MMM yyyy", { locale: dateLocale })}</span></div>
-                <div className="mt-2 flex justify-between text-sm"><span className="text-muted-foreground">{copy.duration}:</span><span className="font-semibold">{reservationDetails.nights} {reservationDetails.nights === 1 ? copy.night : copy.nights}</span></div>
-              </div>
-              <div className="border-t border-secondary pt-3">
-                <div className="flex justify-between"><span className="text-lg font-semibold text-accent">{copy.totalAmount}:</span><span className="text-lg font-bold text-primary">{formatClp(reservationDetails.totalAmount, numberLocale)}</span></div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <p className="text-sm text-muted-foreground">{copy.review}</p>
+        <div className="divide-y border-y text-sm">
+          <div className="flex justify-between gap-4 py-3"><span className="text-muted-foreground">{copy.guestName}</span><span className="text-right font-medium">{reservationDetails.guestName}</span></div>
+          <div className="flex justify-between gap-4 py-3"><span className="text-muted-foreground">{copy.location}</span><span className="text-right font-medium">{reservationDetails.locationName} · {reservationDetails.bedInfo}</span></div>
+          <div className="flex justify-between gap-4 py-3"><span className="text-muted-foreground">{copy.duration}</span><span className="text-right font-medium">{format(checkInDate, "dd MMM", { locale: dateLocale })} → {format(checkOutDate, "dd MMM", { locale: dateLocale })} · {reservationDetails.nights} {reservationDetails.nights === 1 ? copy.night : copy.nights}</span></div>
+          {reservationDetails.arrivalSummary && <div className="flex justify-between gap-4 py-3"><span className="text-muted-foreground">{copy.howArrives}</span><span className="text-right font-medium">{reservationDetails.arrivalSummary}</span></div>}
+          <div className="flex justify-between gap-4 py-3"><span className="font-medium">{copy.totalAmount}</span><span className="text-lg font-semibold">{formatClp(reservationDetails.totalAmount, numberLocale)}</span></div>
         </div>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>{copy.cancel}</Button>
-          <Button onClick={onConfirm} disabled={loading} className="bg-primary">{loading ? copy.confirming : copy.confirm}</Button>
+        <DialogFooter className="grid grid-cols-2 gap-2 sm:flex">
+          <Button className="h-11" variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>{copy.cancel}</Button>
+          <Button className="h-11" onClick={onConfirm} disabled={loading}>{loading ? copy.confirming : copy.confirm}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

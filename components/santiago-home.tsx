@@ -2,13 +2,14 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react"
 import Link from "next/link"
-import { ArrowRight, BedDouble, CalendarDays, CreditCard, FileCheck2, FolderOpen, RefreshCw } from "lucide-react"
+import { ArrowRight, CreditCard } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { createClient } from "@/lib/supabase/client"
 import { useLanguage } from "@/lib/hooks/use-language"
-import { loadAuthorizedNavigation, type AuthorizedNavItem } from "@/lib/os/authorized-navigation-client"
+import { loadAuthorizedNavigation, type AuthorizedNavItem, type AuthorizedNavigation } from "@/lib/os/authorized-navigation-client"
 import { SantiagoTodayCommandCenter } from "@/components/santiago-today-command-center"
 import { RoleAgenticBrief } from "@/components/role-agentic-brief"
+import { SantiagoOperationsCockpit } from "@/components/santiago-operations-cockpit"
 
 type WorkspaceCounts = {
   escalatedCenters: number
@@ -21,57 +22,60 @@ type WorkspaceCounts = {
 
 const COPY = {
   es: {
-    eyebrow: "SANTIAGO · FOCO DE TRABAJO",
-    title: "Booking y documentos primero",
-    subtitle: "La vista diaria prioriza reservas, excepciones operativas y documentos que requieren tu intervención. El resto del sistema queda disponible sin competir por atención.",
-    bookingTitle: "Booking",
-    bookingBody: "Calendario, llegadas, salidas y solicitudes de huéspedes.",
-    calendar: "Abrir calendario",
+    eyebrow: "SANTIAGO",
+    title: "Operación",
+    subtitle: "",
+    bookingTitle: "Reservas",
+    bookingBody: "",
+    calendar: "Calendario",
     requests: "Solicitudes",
-    financeTitle: "Documentos y pagos",
-    financeBody: "Primero resuelve centros escalados por Raimundo; después autoriza o registra pagos ya aprobados.",
+    financeTitle: "Finanzas",
+    financeBody: "",
     escalated: "Centros por resolver",
     pending: "Pagos por autorizar",
     ready: "Listos para pagar",
-    openFinance: "Abrir bandeja financiera",
-    other: "Otros espacios",
-    otherBody: "Módulos secundarios disponibles para consulta cuando los necesites.",
+    openFinance: "Ver pagos",
+    other: "Ver más",
+    otherBody: "",
+    panorama: "Panorama",
     refresh: "Actualizar",
   },
   en: {
-    eyebrow: "SANTIAGO · WORK FOCUS",
-    title: "Booking and documents first",
-    subtitle: "The daily view prioritizes reservations, operational exceptions and documents that need your intervention. Everything else stays available without competing for attention.",
-    bookingTitle: "Booking",
-    bookingBody: "Calendar, arrivals, departures and guest requests.",
-    calendar: "Open calendar",
+    eyebrow: "SANTIAGO",
+    title: "Operations",
+    subtitle: "",
+    bookingTitle: "Bookings",
+    bookingBody: "",
+    calendar: "Calendar",
     requests: "Guest requests",
-    financeTitle: "Documents and payments",
-    financeBody: "Resolve cost-center exceptions escalated by Raimundo first; then authorize or record already-approved payments.",
+    financeTitle: "Finance",
+    financeBody: "",
     escalated: "Centers to resolve",
     pending: "Payments to authorize",
     ready: "Ready to pay",
-    openFinance: "Open finance queue",
-    other: "Other workspaces",
-    otherBody: "Secondary modules remain available when needed.",
+    openFinance: "View payments",
+    other: "View more",
+    otherBody: "",
+    panorama: "Panorama",
     refresh: "Refresh",
   },
   de: {
-    eyebrow: "SANTIAGO · ARBEITSFOKUS",
-    title: "Buchungen und Dokumente zuerst",
-    subtitle: "Die Tagesansicht priorisiert Reservierungen, operative Ausnahmen und Dokumente, die deine Entscheidung brauchen. Andere Bereiche bleiben verfügbar, ohne abzulenken.",
+    eyebrow: "SANTIAGO",
+    title: "Betrieb",
+    subtitle: "",
     bookingTitle: "Buchungen",
-    bookingBody: "Kalender, Anreisen, Abreisen und Gästeanfragen.",
-    calendar: "Kalender öffnen",
+    bookingBody: "",
+    calendar: "Kalender",
     requests: "Gästeanfragen",
-    financeTitle: "Dokumente und Zahlungen",
-    financeBody: "Zuerst von Raimundo eskalierte Kostenstellen lösen; danach bereits genehmigte Zahlungen autorisieren oder erfassen.",
+    financeTitle: "Finanzen",
+    financeBody: "",
     escalated: "Kostenstellen zu lösen",
     pending: "Zahlungen zu autorisieren",
     ready: "Zahlbereit",
-    openFinance: "Finanzwarteschlange öffnen",
-    other: "Weitere Bereiche",
-    otherBody: "Sekundäre Module bleiben bei Bedarf verfügbar.",
+    openFinance: "Zahlungen",
+    other: "Mehr",
+    otherBody: "",
+    panorama: "Übersicht",
     refresh: "Aktualisieren",
   },
 } as const
@@ -95,12 +99,10 @@ export function SantiagoHome() {
   })
   const [nextUnassignedRequestId, setNextUnassignedRequestId] = useState<string | null>(null)
   const [otherItems, setOtherItems] = useState<AuthorizedNavItem[]>([])
+  const [navigation, setNavigation] = useState<AuthorizedNavigation>({ items: [] })
   const [nextArrival, setNextArrival] = useState<{ id: string; guest_name: string; check_in: string } | null>(null)
-  const [loading, setLoading] = useState(true)
 
   const load = useCallback(async () => {
-    setLoading(true)
-
     const today = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Santiago" }).format(new Date())
     const [escalatedResult, pendingResult, readyResult, guestRequestsResult, unassignedGuestRequestsResult, nextUnassignedResult, housekeepingResult, nextArrivalResult, navigationResult] = await Promise.all([
       supabase
@@ -167,10 +169,10 @@ export function SantiagoHome() {
         : null,
     )
 
-    const secondaryKeys = new Set(["bookings", "guest-requests", "payments"])
+    setNavigation(navigationResult)
+    const secondaryKeys = new Set(["bookings", "guest-requests", "payments", "tasks"])
     setOtherItems((navigationResult.items ?? []).filter((item) => !secondaryKeys.has(item.key)).slice(0, 8))
-    setLoading(false)
-  }, [supabase])
+   }, [supabase])
 
   useEffect(() => {
     void load()
@@ -186,149 +188,110 @@ export function SantiagoHome() {
 
   return (
     <div>
-      <section className="border-b border-border px-4 py-5 md:px-6">
-        <div className="mx-auto flex max-w-[1600px] flex-col gap-4 md:flex-row md:items-start md:justify-between">
-          <div className="max-w-3xl">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-primary">{copy.eyebrow}</p>
-            <h1 className="mt-1 text-2xl font-medium text-foreground">{copy.title}</h1>
-            <p className="mt-2 text-sm leading-6 text-muted-foreground">{copy.subtitle}</p>
-          </div>
-          <Button variant="outline" size="sm" onClick={() => void load()} disabled={loading}>
-            <RefreshCw className="mr-2 h-4 w-4" />{copy.refresh}
-          </Button>
-        </div>
-      </section>
-
       <SantiagoTodayCommandCenter />
 
-      <RoleAgenticBrief
-        persona="santiago"
-        signals={[
-          {
-            key: "prepare-next-arrival",
-            count: nextArrival ? 1 : 0,
-            title: nextArrival ? `Preparar llegada · ${nextArrival.guest_name}` : "Preparar próxima llegada",
-            task: nextArrival
-              ? `preparar la llegada de ${nextArrival.guest_name} para ${nextArrival.check_in}`
-              : "preparar la próxima llegada",
-            operationalArea: "hospitality",
-            severity: nextArrival ? "attention" : "normal",
-            priority: 100,
-            capability: nextArrival ? "hospitality.prepare_arrival" : undefined,
-            reservationId: nextArrival?.id ?? null,
-          },
-          {
-            key: "guest-requests-unassigned",
-            count: counts.unassignedGuestRequests,
-            title: `${copy.requests} · sin responsable`,
-            task: `asignar seguimiento a ${counts.unassignedGuestRequests} solicitudes de huéspedes sin responsable`,
-            operationalArea: "hospitality",
-            severity: counts.unassignedGuestRequests > 0 ? "attention" : "normal",
-            priority: 90,
-            capability: nextUnassignedRequestId ? "hospitality.assign_request" : undefined,
-            requestId: nextUnassignedRequestId,
-          },
-          {
-            key: "housekeeping-today",
-            count: counts.pendingHousekeeping,
-            title: "Housekeeping pendiente",
-            task: `coordinar ${counts.pendingHousekeeping} tareas de housekeeping pendientes para hoy`,
-            operationalArea: "hospitality",
-            severity: counts.pendingHousekeeping > 0 ? "attention" : "normal",
-            priority: 80,
-          },
-          {
-            key: "cost-center-exceptions",
-            count: counts.escalatedCenters,
-            title: copy.escalated,
-            task: `revisar y resolver ${counts.escalatedCenters} centros de costo escalados por Raimundo`,
-            operationalArea: "finance",
-            severity: counts.escalatedCenters > 0 ? "attention" : "normal",
-            priority: 70,
-          },
-          {
-            key: "payments-to-authorize",
-            count: counts.pendingPayments,
-            title: copy.pending,
-            task: `revisar ${counts.pendingPayments} pagos pendientes de autorización, sin aprobarlos automáticamente`,
-            operationalArea: "finance",
-            severity: counts.pendingPayments > 0 ? "attention" : "normal",
-            priority: 60,
-          },
-          {
-            key: "payments-ready",
-            count: counts.readyToPay,
-            title: copy.ready,
-            task: `preparar seguimiento de ${counts.readyToPay} pagos autorizados listos para ejecución`,
-            operationalArea: "finance",
-            priority: 50,
-          },
-        ]}
-      />
-
-      <section className="px-4 py-5 md:px-6">
-        <div className="mx-auto grid max-w-[1600px] gap-4 xl:grid-cols-2">
-          <div className="border border-border bg-card p-5">
-            <div className="flex items-start gap-3">
-              <BedDouble className="mt-0.5 h-5 w-5 text-primary" />
-              <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-primary">01 · PRIORIDAD</p>
-                <h2 className="mt-1 text-lg font-medium text-foreground">{copy.bookingTitle}</h2>
-                <p className="mt-1 text-sm text-muted-foreground">{copy.bookingBody}</p>
-              </div>
-            </div>
-            <div className="mt-5 grid gap-2 sm:grid-cols-2">
-              <Link href={localized(locale, "/bookings/calendar")} className="flex items-center justify-between border border-border p-4 text-sm font-medium hover:bg-secondary/40">
-                <span className="flex items-center gap-2"><CalendarDays className="h-4 w-4 text-primary" />{copy.calendar}</span><ArrowRight className="h-4 w-4" />
-              </Link>
-              <Link href={localized(locale, "/bookings/requests")} className="flex items-center justify-between border border-border p-4 text-sm font-medium hover:bg-secondary/40">
-                <span className="flex items-center gap-2"><FolderOpen className="h-4 w-4 text-primary" />{copy.requests}</span><ArrowRight className="h-4 w-4" />
-              </Link>
-            </div>
-          </div>
-
-          <div className="border border-border bg-card p-5">
-            <div className="flex items-start gap-3">
-              <FileCheck2 className="mt-0.5 h-5 w-5 text-primary" />
-              <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-primary">02 · PRIORIDAD</p>
-                <h2 className="mt-1 text-lg font-medium text-foreground">{copy.financeTitle}</h2>
-                <p className="mt-1 text-sm text-muted-foreground">{copy.financeBody}</p>
-              </div>
-            </div>
-
-            <div className="mt-5 grid gap-2 sm:grid-cols-3">
-              <FinanceMetric label={copy.escalated} value={counts.escalatedCenters} emphasis={counts.escalatedCenters > 0} />
-              <FinanceMetric label={copy.pending} value={counts.pendingPayments} emphasis={counts.pendingPayments > 0} />
-              <FinanceMetric label={copy.ready} value={counts.readyToPay} />
-            </div>
-
-            <Link href={localized(locale, "/budgets/payments")} className="mt-3 flex items-center justify-between border border-border p-4 text-sm font-medium hover:bg-secondary/40">
-              <span className="flex items-center gap-2"><CreditCard className="h-4 w-4 text-primary" />{copy.openFinance}</span><ArrowRight className="h-4 w-4" />
-            </Link>
-          </div>
+      <section className="px-4 py-4 md:px-6">
+        <div className="mx-auto max-w-[1600px]">
+          <SantiagoOperationsCockpit language={locale} navigation={navigation} />
         </div>
       </section>
 
-      {otherItems.length > 0 && (
-        <section className="px-4 pb-8 md:px-6">
-          <div className="mx-auto max-w-[1600px]">
-            <details className="border border-border bg-card">
-              <summary className="cursor-pointer list-none p-5">
-                <p className="text-sm font-medium text-foreground">{copy.other}</p>
-                <p className="mt-1 text-xs text-muted-foreground">{copy.otherBody}</p>
-              </summary>
-              <div className="grid gap-2 border-t border-border p-4 sm:grid-cols-2 lg:grid-cols-4">
-                {otherItems.map((item) => (
-                  <Link key={item.key} href={localized(locale, item.href)} className="flex items-center justify-between border border-border p-3 text-sm text-muted-foreground hover:bg-secondary/40 hover:text-foreground">
-                    <span>{item.label}</span><ArrowRight className="h-4 w-4" />
-                  </Link>
-                ))}
+      <section className="px-4 pb-8 md:px-6">
+        <div className="mx-auto max-w-[1600px]">
+          <details className="border border-border bg-card">
+            <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-medium">
+              <span>{copy.other}</span>
+              <ArrowRight className="h-4 w-4 text-muted-foreground" />
+            </summary>
+
+            <div className="space-y-4 border-t border-border p-4">
+              <RoleAgenticBrief
+                persona="santiago"
+                signals={[
+                  {
+                    key: "prepare-next-arrival",
+                    count: nextArrival ? 1 : 0,
+                    title: nextArrival ? `Preparar llegada · ${nextArrival.guest_name}` : "Preparar próxima llegada",
+                    task: nextArrival
+                      ? `preparar la llegada de ${nextArrival.guest_name} para ${nextArrival.check_in}`
+                      : "preparar la próxima llegada",
+                    operationalArea: "hospitality",
+                    severity: nextArrival ? "attention" : "normal",
+                    priority: 100,
+                    capability: nextArrival ? "hospitality.prepare_arrival" : undefined,
+                    reservationId: nextArrival?.id ?? null,
+                  },
+                  {
+                    key: "guest-requests-unassigned",
+                    count: counts.unassignedGuestRequests,
+                    title: `${copy.requests} · sin responsable`,
+                    task: `asignar seguimiento a ${counts.unassignedGuestRequests} solicitudes de huéspedes sin responsable`,
+                    operationalArea: "hospitality",
+                    severity: counts.unassignedGuestRequests > 0 ? "attention" : "normal",
+                    priority: 90,
+                    capability: nextUnassignedRequestId ? "hospitality.assign_request" : undefined,
+                    requestId: nextUnassignedRequestId,
+                  },
+                  {
+                    key: "housekeeping-today",
+                    count: counts.pendingHousekeeping,
+                    title: "Housekeeping pendiente",
+                    task: `coordinar ${counts.pendingHousekeeping} tareas de housekeeping pendientes para hoy`,
+                    operationalArea: "hospitality",
+                    severity: counts.pendingHousekeeping > 0 ? "attention" : "normal",
+                    priority: 80,
+                  },
+                  {
+                    key: "cost-center-exceptions",
+                    count: counts.escalatedCenters,
+                    title: copy.escalated,
+                    task: `revisar y resolver ${counts.escalatedCenters} centros de costo escalados por Raimundo`,
+                    operationalArea: "finance",
+                    severity: counts.escalatedCenters > 0 ? "attention" : "normal",
+                    priority: 70,
+                  },
+                  {
+                    key: "payments-to-authorize",
+                    count: counts.pendingPayments,
+                    title: copy.pending,
+                    task: `revisar ${counts.pendingPayments} pagos pendientes de autorización, sin aprobarlos automáticamente`,
+                    operationalArea: "finance",
+                    severity: counts.pendingPayments > 0 ? "attention" : "normal",
+                    priority: 60,
+                  },
+                ]}
+              />
+
+              <div className="grid gap-3 md:grid-cols-[1fr_auto] md:items-center">
+                <div className="grid grid-cols-3 gap-2">
+                  <FinanceMetric label={copy.escalated} value={counts.escalatedCenters} emphasis={counts.escalatedCenters > 0} />
+                  <FinanceMetric label={copy.pending} value={counts.pendingPayments} emphasis={counts.pendingPayments > 0} />
+                  <FinanceMetric label={copy.ready} value={counts.readyToPay} />
+                </div>
+                <Button asChild variant="outline" size="sm">
+                  <Link href={localized(locale, "/budgets/payments")}><CreditCard className="mr-2 h-4 w-4" />{copy.openFinance}</Link>
+                </Button>
               </div>
-            </details>
-          </div>
-        </section>
-      )}
+
+              <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+                <Link href={`/${locale}/os?view=panorama`} className="flex min-h-11 items-center justify-between border border-border px-3 py-2 text-sm text-muted-foreground hover:bg-secondary/40 hover:text-foreground">
+                  <span>{copy.panorama}</span><ArrowRight className="h-4 w-4" />
+                </Link>
+              </div>
+
+              {otherItems.length > 0 && (
+                <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+                  {otherItems.map((item) => (
+                    <Link key={item.key} href={localized(locale, item.href)} className="flex min-h-11 items-center justify-between border border-border px-3 py-2 text-sm text-muted-foreground hover:bg-secondary/40 hover:text-foreground">
+                      <span>{item.label}</span><ArrowRight className="h-4 w-4" />
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </div>
+          </details>
+        </div>
+      </section>
     </div>
   )
 }
