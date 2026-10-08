@@ -17,7 +17,8 @@ export default async function FinanceApprovalObjectPage({ params }: PageProps) {
     .maybeSingle()
 
   if (error || !data) notFound()
-  return <FinanceApprovalObjectView row={data} />
+  const { data: source } = await supabase.from('finance_sii_uploads').select('id').eq('finance_document_id', id).limit(1).maybeSingle()
+  return <FinanceApprovalObjectView row={data} hasSourceFile={Boolean(source)} />
 }
 
 export const dynamic = 'force-dynamic'
